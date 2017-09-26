@@ -129,6 +129,12 @@ class ArrayMetadata {
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(unsigned int attribute_id) const;
 
+  /** Returns the compression type used for offsets of variable-sized cells. */
+  Compressor cell_var_offsets_compression() const;
+
+  /** Returns the compression level used for offsets of variable-sized cells. */
+  int cell_var_offsets_compression_level() const;
+
   /**
    * Checks the correctness of the array metadata.
    *
@@ -264,6 +270,12 @@ class ArrayMetadata {
 
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<uint64_t> cell_sizes_;
+
+  /** The compression type used for offsets of variable-sized cells. */
+  Compressor cell_var_offsets_compression_;
+
+  /** The compression level used for offsets of variable-sized cells. */
+  int cell_var_offsets_compression_level_;
 
   /** The coordinates compression type. */
   Compressor coords_compression_;

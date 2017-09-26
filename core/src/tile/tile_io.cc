@@ -33,7 +33,9 @@
 #include "tile_io.h"
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
+#include "dd_compressor.h"
 #include "gzip_compressor.h"
+#include "logger.h"
 #include "lz4_compressor.h"
 #include "rle_compressor.h"
 #include "zstd_compressor.h"
@@ -165,6 +167,8 @@ Status TileIO::compress_tile(Tile* tile) {
       return compress_tile_rle(tile);
     case Compressor::BZIP2:
       return compress_tile_bzip2(tile, level);
+    case Compressor::DOUBLE_DELTA:
+      return compress_tile_double_delta(tile);
   }
 }
 
@@ -260,6 +264,64 @@ Status TileIO::compress_tile_bzip2(Tile* tile, int level) {
   return Status::Ok();
 }
 
+Status TileIO::compress_tile_double_delta(Tile* tile) {
+  // Allocate space to store the compressed tile
+  uint64_t tile_size = tile->offset();
+  auto dim_num = tile->dim_num();
+  auto batch_num = (dim_num == 0) ? 1 : dim_num;
+  uint64_t batch_size = tile_size / batch_num;
+  uint64_t compress_bound = tile_size + batch_num * DoubleDelta::OVERHEAD;
+
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size())
+    RETURN_NOT_OK(buffer_->realloc(compress_bound));
+  buffer_->reset_offset();
+
+  Status st;
+  for (unsigned int i = 0; i < batch_num; ++i) {
+    auto input_buffer =
+        new ConstBuffer((char*)tile->data() + i * batch_size, batch_size);
+    switch (tile->type()) {
+      case Datatype::CHAR:
+        st = DoubleDelta::compress<char>(input_buffer, buffer_);
+        break;
+      case Datatype::INT8:
+        st = DoubleDelta::compress<int8_t>(input_buffer, buffer_);
+        break;
+      case Datatype::UINT8:
+        st = DoubleDelta::compress<uint8_t>(input_buffer, buffer_);
+        break;
+      case Datatype::INT16:
+        st = DoubleDelta::compress<int16_t>(input_buffer, buffer_);
+        break;
+      case Datatype::UINT16:
+        st = DoubleDelta::compress<uint16_t>(input_buffer, buffer_);
+        break;
+      case Datatype::INT32:
+        st = DoubleDelta::compress<int>(input_buffer, buffer_);
+        break;
+      case Datatype::UINT32:
+        st = DoubleDelta::compress<uint32_t>(input_buffer, buffer_);
+        break;
+      case Datatype::INT64:
+        st = DoubleDelta::compress<int64_t>(input_buffer, buffer_);
+        break;
+      case Datatype::UINT64:
+        st = DoubleDelta::compress<uint64_t>(input_buffer, buffer_);
+        break;
+      default:
+        st = LOG_STATUS(Status::TileIOError(
+            "Cannot compress tile with DoubleDelta; Not supported datatype"));
+    }
+
+    delete input_buffer;
+    RETURN_NOT_OK(st);
+  }
+
+  return st;
+}
+
 Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
   Compressor compression = tile->compressor();
 
@@ -291,7 +353,61 @@ Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
       return RLE::decompress(tile->cell_size(), buffer_, tile->buffer());
     case Compressor::BZIP2:
       return BZip::decompress(buffer_, tile->buffer());
+    case Compressor::DOUBLE_DELTA:
+      return decompress_tile_double_delta(tile, tile_size);
   }
+}
+
+Status TileIO::decompress_tile_double_delta(Tile* tile, uint64_t tile_size) {
+  auto dim_num = tile->dim_num();
+  auto batch_num = (dim_num == 0) ? 1 : dim_num;
+
+  Status st;
+  auto input_buffer = new ConstBuffer(buffer_->data(), buffer_->size());
+  for (unsigned int i = 0; i < batch_num; ++i) {
+    switch (tile->type()) {
+      case Datatype::CHAR:
+        st = DoubleDelta::decompress<char>(input_buffer, tile->buffer());
+        break;
+      case Datatype::INT8:
+        st = DoubleDelta::decompress<int8_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::UINT8:
+        st = DoubleDelta::decompress<uint8_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::INT16:
+        st = DoubleDelta::decompress<int16_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::UINT16:
+        st = DoubleDelta::decompress<uint16_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::INT32:
+        st = DoubleDelta::decompress<int>(input_buffer, tile->buffer());
+        break;
+      case Datatype::UINT32:
+        st = DoubleDelta::decompress<uint32_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::INT64:
+        st = DoubleDelta::decompress<int64_t>(input_buffer, tile->buffer());
+        break;
+      case Datatype::UINT64:
+        st = DoubleDelta::decompress<uint64_t>(input_buffer, tile->buffer());
+        break;
+      default:
+        st = LOG_STATUS(Status::TileIOError(
+            "Cannot decompress tile with DoubleDelta; Not supported datatype"));
+    }
+    RETURN_NOT_OK_ELSE(st, delete input_buffer);
+  }
+
+  assert(tile->size() == tile_size);
+  assert(input_buffer->offset() == buffer_->size());
+
+  tile->reset_offset();
+
+  delete input_buffer;
+
+  return st;
 }
 
 }  // namespace tiledb

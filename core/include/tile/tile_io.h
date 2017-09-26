@@ -129,6 +129,7 @@ class TileIO {
    * Compresses a tile with gzip. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
+   * @param level The compression level.
    * @return Status
    */
   Status compress_tile_gzip(Tile* tile, int level);
@@ -137,6 +138,7 @@ class TileIO {
    * Compresses a tile with zstd. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
+   * @param level The compression level.
    * @return Status
    */
   Status compress_tile_zstd(Tile* tile, int level);
@@ -145,6 +147,7 @@ class TileIO {
    * Compresses a tile with lz4. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
+   * @param level The compression level.
    * @return Status
    */
   Status compress_tile_lz4(Tile* tile, int level);
@@ -153,6 +156,7 @@ class TileIO {
    * Compresses a tile with blosc. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
+   * @param level The compression level.
    * @return Status
    */
   Status compress_tile_blosc(Tile* tile, int level, const char* compressor);
@@ -169,18 +173,37 @@ class TileIO {
    * Compresses a tile with bzip2. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
+   * @param level The compression level.
    * @return Status
    */
   Status compress_tile_bzip2(Tile* tile, int level);
 
   /**
+   * Compresses a tile with double delta. The compressed data are written in
+   * buffer_.
+   *
+   * @param tile The tile to be compressed.
+   * @return Status
+   */
+  Status compress_tile_double_delta(Tile* tile);
+
+  /**
    * Decompresses buffer_ into a tile. .
    *
-   * @param tile The tile to be decompressed.
+   * @param tile The tile where the decompressed data will be stored.
    * @param tile_size The original size of the (decompressed) tile.
    * @return Status
    */
   Status decompress_tile(Tile* tile, uint64_t tile_size);
+
+  /**
+   * Decompresses buffer_ into a tile.
+   *
+   * @param tile The tile where the decompressed data will be stored.
+   * @param tile_size The original size of the (decompressed) tile.
+   * @return Status
+   */
+  Status decompress_tile_double_delta(Tile* tile, uint64_t tile_size);
 };
 
 }  // namespace tiledb

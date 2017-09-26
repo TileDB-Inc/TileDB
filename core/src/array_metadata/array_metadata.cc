@@ -51,8 +51,11 @@ ArrayMetadata::ArrayMetadata() {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  coords_compression_ = Compressor::BLOSC_ZSTD;
-  coords_compression_level_ = -1;
+  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
+  cell_var_offsets_compression_level_ =
+      constants::cell_var_offsets_compression_level;
+  coords_compression_ = constants::coords_compression;
+  coords_compression_level_ = constants::coords_compression_level;
   hyperspace_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
@@ -78,8 +81,11 @@ ArrayMetadata::ArrayMetadata(const URI& uri) {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  coords_compression_ = Compressor::BLOSC_ZSTD;
-  coords_compression_level_ = -1;
+  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
+  cell_var_offsets_compression_level_ =
+      constants::cell_var_offsets_compression_level;
+  coords_compression_ = constants::coords_compression;
+  coords_compression_level_ = constants::coords_compression_level;
   hyperspace_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
@@ -172,6 +178,14 @@ unsigned int ArrayMetadata::cell_val_num(unsigned int attribute_id) const {
   return attributes_[attribute_id]->cell_val_num();
 }
 
+Compressor ArrayMetadata::cell_var_offsets_compression() const {
+  return cell_var_offsets_compression_;
+}
+
+int ArrayMetadata::cell_var_offsets_compression_level() const {
+  return cell_var_offsets_compression_level_;
+}
+
 Status ArrayMetadata::check() const {
   if (array_uri_.is_invalid())
     return LOG_STATUS(Status::ArrayMetadataError(
@@ -184,6 +198,8 @@ Status ArrayMetadata::check() const {
   if (attribute_num_ == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No attributes provided"));
+
+  // TODO: Double delta does not work with float and double datatypes
 
   // TODO: all tile extents null, or all should have values
   // TODO: alternatively, null extents should be handled in Dimension
@@ -296,6 +312,10 @@ Status ArrayMetadata::get_attribute_ids(
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
+// coords_compression (char)
+// coords_compression_level (int)
+// cell_var_offsets_compression (char)
+// cell_var_offsets_compression_level (int)
 // hyperspace
 // attribute_num (unsigned int)
 //   attribute #1
@@ -324,6 +344,11 @@ Status ArrayMetadata::serialize(Buffer* buff) const {
   auto compressor = static_cast<char>(coords_compression_);
   RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
   RETURN_NOT_OK(buff->write(&coords_compression_level_, sizeof(int)));
+
+  // Write offsets compression
+  auto offset_compressor = static_cast<char>(cell_var_offsets_compression_);
+  RETURN_NOT_OK(buff->write(&offset_compressor, sizeof(char)));
+  RETURN_NOT_OK(buff->write(&cell_var_offsets_compression_level_, sizeof(int)));
 
   // Write hyperspace
   hyperspace_->serialize(buff);
@@ -382,6 +407,10 @@ void ArrayMetadata::add_attribute(const Attribute* attr) {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
+// coords_compression (char)
+// coords_compression_level (int)
+// cell_var_offsets_compression (char)
+// cell_var_offsets_compression_level (int)
 // hyperspace
 // attribute_num (unsigned int)
 //   attribute #1
@@ -416,11 +445,17 @@ Status ArrayMetadata::deserialize(ConstBuffer* buff) {
   // Load capacity
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
-  // Write coords compression
+  // Load coords compression
   char compressor;
   RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
   coords_compression_ = static_cast<Compressor>(compressor);
   RETURN_NOT_OK(buff->read(&coords_compression_level_, sizeof(int)));
+
+  // Load offsets compression
+  char offsets_compressor;
+  RETURN_NOT_OK(buff->read(&offsets_compressor, sizeof(char)));
+  cell_var_offsets_compression_ = static_cast<Compressor>(offsets_compressor);
+  RETURN_NOT_OK(buff->read(&cell_var_offsets_compression_level_, sizeof(int)));
 
   // Load hyperspace
   hyperspace_ = new Hyperspace();

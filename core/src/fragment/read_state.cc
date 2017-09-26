@@ -1215,6 +1215,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
+
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
 
@@ -1330,14 +1331,19 @@ void ReadState::init_tiles() {
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_metadata_->attribute(i);
     bool var_size = attr->var_size();
-    uint64_t cell_size = (var_size) ? array_metadata_->type_size(i) :
-                                      array_metadata_->cell_size(i);
-    tiles_.emplace_back(
-        new Tile(attr->type(), attr->compressor(), attr->cell_size(), 0));
+
+    tiles_.emplace_back(new Tile(
+        (var_size) ? constants::cell_var_offset_type : attr->type(),
+        attr->compressor(),
+        (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
+        0));
 
     if (var_size)
-      tiles_var_.emplace_back(
-          new Tile(attr->type(), attr->compressor(), cell_size, 0));
+      tiles_var_.emplace_back(new Tile(
+          attr->type(),
+          array_metadata_->cell_var_offsets_compression(),
+          datatype_size(attr->type()),
+          0));
     else
       tiles_var_.emplace_back(nullptr);
   }

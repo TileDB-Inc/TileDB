@@ -228,26 +228,23 @@ void WriteState::init_tiles() {
   auto attribute_num = array_metadata->attribute_num();
   for (unsigned int i = 0; i < attribute_num; ++i) {
     auto attr = array_metadata->attribute(i);
-    bool var_size = array_metadata->var_size(i);
-
-    uint64_t cell_size = (var_size) ? array_metadata->type_size(i) :
-                                      array_metadata->cell_size(i);
+    bool var_size = attr->var_size();
 
     tiles_.emplace_back(new Tile(
-        attr->type(),
+        (var_size) ? constants::cell_var_offset_type : attr->type(),
         attr->compressor(),
         attr->compression_level(),
         fragment_->tile_size(i),
-        attr->cell_size(),
+        (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
         0));
 
     if (var_size) {
       tiles_var_.emplace_back(new Tile(
           attr->type(),
-          attr->compressor(),
-          attr->compression_level(),
+          array_metadata->cell_var_offsets_compression(),
+          array_metadata->cell_var_offsets_compression_level(),
           fragment_->tile_size(i),
-          cell_size,
+          datatype_size(attr->type()),
           0));
     } else {
       tiles_var_.emplace_back(nullptr);

@@ -220,7 +220,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_metadata_get_coords_compressor(
       ctx_, array_metadata, &coords_compression, &coords_compression_level);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
+  CHECK(coords_compression == TILEDB_DOUBLE_DELTA);
   CHECK(coords_compression_level == -1);
 
   // Check attribute
@@ -350,7 +350,7 @@ TEST_CASE_METHOD(
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
-      "- Coordinates compressor: BLOSC_ZSTD\n" +
+      "- Coordinates compressor: DOUBLE_DELTA\n" +
       "- Coordinates compression level: -1\n\n" +
       "=== Hyperspace ===\n"
       "- Dimensions type: " +
