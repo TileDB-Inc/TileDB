@@ -173,7 +173,9 @@ struct ArraySchemaFx {
 };
 
 TEST_CASE_METHOD(
-    ArraySchemaFx, "C API: Test array metadata creation and retrieval") {
+    ArraySchemaFx,
+    "C API: Test array metadata creation and retrieval",
+    "[capi]") {
   create_dense_array();
 
   // Load array_metadata metadata from the disk

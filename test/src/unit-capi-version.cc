@@ -35,7 +35,7 @@
 
 #include "catch.hpp"
 
-TEST_CASE("C API: Test version") {
+TEST_CASE("C API: Test version", "[capi]") {
   int major = -1;
   int minor = -1;
   int rev = -1;

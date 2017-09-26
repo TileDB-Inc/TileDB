@@ -382,7 +382,8 @@ struct SparseArrayFx {
  * test runs through 10 iterations to choose random
  * width and height of the sub-regions
  */
-TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
+TEST_CASE_METHOD(
+    SparseArrayFx, "C API: Test random sparse sorted reads", "[capi]") {
   // error code
   int rc;
 
