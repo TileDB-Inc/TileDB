@@ -640,20 +640,20 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
   // For easy reference
   unsigned int dim_num = array_metadata_->dim_num();
-  auto hyperspace = array_metadata_->hyperspace();
-  auto tile_extents = static_cast<const T*>(hyperspace->tile_extents());
-  auto array_domain = static_cast<const T*>(hyperspace->domain());
+  auto domain = array_metadata_->domain();
+  auto tile_extents = static_cast<const T*>(domain->tile_extents());
+  auto array_domain = static_cast<const T*>(domain->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
-  auto domain = static_cast<const T*>(metadata_->domain());
+  auto metadata_domain = static_cast<const T*>(metadata_->domain());
   auto non_empty_domain = static_cast<const T*>(metadata_->non_empty_domain());
 
   // Compute the tile subarray
   auto tile_subarray = new T[2 * dim_num];
-  hyperspace->get_tile_subarray(tile_coords, tile_subarray);
+  domain->get_tile_subarray(tile_coords, tile_subarray);
 
   // Compute overlap of tile subarray with non-empty fragment domain
   auto tile_domain_overlap_subarray = new T[2 * dim_num];
-  auto tile_domain_overlap = (bool)hyperspace->subarray_overlap(
+  auto tile_domain_overlap = (bool)domain->subarray_overlap(
       tile_subarray, non_empty_domain, tile_domain_overlap_subarray);
 
   if (!tile_domain_overlap) {  // No overlap with the input tile
@@ -665,18 +665,18 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     for (unsigned int i = 0; i < dim_num; ++i)
       tile_coords_norm[i] =
           tile_coords[i] -
-          (domain[2 * i] - array_domain[2 * i]) / tile_extents[i];
-    search_tile_pos_ = hyperspace->get_tile_pos(domain, tile_coords_norm);
+          (metadata_domain[2 * i] - array_domain[2 * i]) / tile_extents[i];
+    search_tile_pos_ = domain->get_tile_pos(metadata_domain, tile_coords_norm);
     delete[] tile_coords_norm;
 
     // Compute overlap of the query subarray with tile
     auto query_tile_overlap_subarray = new T[2 * dim_num];
-    hyperspace->subarray_overlap(
+    domain->subarray_overlap(
         subarray, tile_subarray, query_tile_overlap_subarray);
 
     // Compute the overlap of the previous results with the non-empty domain
     auto search_tile_overlap_subarray = (T*)search_tile_overlap_subarray_;
-    auto overlap = (bool)hyperspace->subarray_overlap(
+    auto overlap = (bool)domain->subarray_overlap(
         query_tile_overlap_subarray,
         tile_domain_overlap_subarray,
         search_tile_overlap_subarray);
@@ -687,7 +687,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     } else {
       // Find the type of the search tile overlap
       auto temp = new T[2 * dim_num];
-      search_tile_overlap_ = hyperspace->subarray_overlap(
+      search_tile_overlap_ = domain->subarray_overlap(
           search_tile_overlap_subarray, tile_subarray, temp);
 
       // Check if fragment fully covers the tile
@@ -732,7 +732,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
     }
 
     auto mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
-    search_tile_overlap_ = array_metadata_->hyperspace()->subarray_overlap(
+    search_tile_overlap_ = array_metadata_->domain()->subarray_overlap(
         subarray, mbr, static_cast<T*>(search_tile_overlap_subarray_));
 
     if (!search_tile_overlap_)
@@ -752,13 +752,13 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
   unsigned int dim_num = array_metadata_->dim_num();
   const std::vector<void*>& mbrs = metadata_->mbrs();
   auto subarray = static_cast<const T*>(query_->subarray());
-  auto hyperspace = array_metadata_->hyperspace();
+  auto domain = array_metadata_->domain();
 
   // Compute the tile subarray
   auto tile_subarray = new T[2 * dim_num];
   auto mbr_tile_overlap_subarray = new T[2 * dim_num];
   auto tile_subarray_end = new T[dim_num];
-  hyperspace->get_tile_subarray(tile_coords, tile_subarray);
+  domain->get_tile_subarray(tile_coords, tile_subarray);
   for (unsigned int i = 0; i < dim_num; ++i)
     tile_subarray_end[i] = tile_subarray[2 * i + 1];
 
@@ -779,7 +779,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
       // Advance only if the MBR does not exceed the tile
       auto bounding_coords =
           static_cast<const T*>(metadata_->bounding_coords()[search_tile_pos_]);
-      if (hyperspace->tile_cell_order_cmp(
+      if (domain->tile_cell_order_cmp(
               &bounding_coords[dim_num],
               tile_subarray_end,
               (T*)tile_coords_aux_) <= 0) {
@@ -805,15 +805,15 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
 
     // Get overlap between MBR and tile subarray
     auto mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
-    mbr_tile_overlap_ = hyperspace->subarray_overlap(
-        tile_subarray, mbr, mbr_tile_overlap_subarray);
+    mbr_tile_overlap_ =
+        domain->subarray_overlap(tile_subarray, mbr, mbr_tile_overlap_subarray);
 
     // No overlap with the tile
     if (!mbr_tile_overlap_) {
       // Check if we need to break or continue
       auto bounding_coords =
           static_cast<const T*>(metadata_->bounding_coords()[search_tile_pos_]);
-      if (hyperspace->tile_cell_order_cmp(
+      if (domain->tile_cell_order_cmp(
               &bounding_coords[dim_num],
               tile_subarray_end,
               (T*)tile_coords_aux_) > 0)
@@ -823,7 +823,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
     }
 
     // Get overlap of MBR with the query inside the tile subarray
-    search_tile_overlap_ = hyperspace->subarray_overlap(
+    search_tile_overlap_ = domain->subarray_overlap(
         subarray,
         mbr_tile_overlap_subarray,
         static_cast<T*>(search_tile_overlap_subarray_));
@@ -1052,7 +1052,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
   auto subarray = static_cast<const T*>(query_->subarray());
   uint64_t tile_num = metadata_->tile_num();
   auto& bounding_coords = metadata_->bounding_coords();
-  auto hyperspace = array_metadata_->hyperspace();
+  auto domain = array_metadata_->domain();
 
   // Calculate subarray coordinates
   auto subarray_min_coords = new T[dim_num];
@@ -1080,12 +1080,12 @@ void ReadState::compute_tile_search_range_col_or_row() {
     tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
 
     // Calculate precedence
-    if (hyperspace->tile_cell_order_cmp(
+    if (domain->tile_cell_order_cmp(
             subarray_min_coords, tile_start_coords, (T*)tile_coords_aux_) <
         0) {  // Subarray min precedes MBR
       max = (med > 0) ? med - 1 : INVALID_UINT64;
     } else if (
-        hyperspace->tile_cell_order_cmp(
+        domain->tile_cell_order_cmp(
             subarray_min_coords, tile_end_coords, (T*)tile_coords_aux_) >
         0) {  // Subarray min succeeds MBR
       min = med + 1;
@@ -1121,12 +1121,12 @@ void ReadState::compute_tile_search_range_col_or_row() {
       tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
 
       // Calculate precedence
-      if (hyperspace->tile_cell_order_cmp(
+      if (domain->tile_cell_order_cmp(
               subarray_max_coords, tile_start_coords, (T*)tile_coords_aux_) <
           0) {  // Subarray max precedes MBR
         max = (med > 0) ? med - 1 : INVALID_UINT64;
       } else if (
-          hyperspace->tile_cell_order_cmp(
+          domain->tile_cell_order_cmp(
               subarray_max_coords, tile_end_coords, (T*)tile_coords_aux_) >
           0) {  // Subarray max succeeds MBR
         min = med + 1;
@@ -1184,7 +1184,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
+    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1223,7 +1223,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t))
 
     // Compute order
-    cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
+    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
@@ -1262,7 +1262,7 @@ Status ReadState::get_cell_pos_at_or_before(
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
+    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1326,7 +1326,7 @@ void ReadState::init_overflow() {
 }
 
 void ReadState::init_tiles() {
-  auto dim_num = array_metadata_->hyperspace()->dim_num();
+  auto dim_num = array_metadata_->domain()->dim_num();
 
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_metadata_->attribute(i);

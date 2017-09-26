@@ -185,8 +185,8 @@ typedef struct tiledb_dimension_t tiledb_dimension_t;
 /** A TileDB dimension iterator. */
 typedef struct tiledb_dimension_iter_t tiledb_dimension_iter_t;
 
-/** A TileDB hyperspace. */
-typedef struct tiledb_hyperspace_t tiledb_hyperspace_t;
+/** A TileDB domain. */
+typedef struct tiledb_domain_t tiledb_domain_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
@@ -380,79 +380,65 @@ TILEDB_EXPORT int tiledb_attribute_dump(
 /* ********************************* */
 
 /**
- * Creates a TileDB hyperspace.
+ * Creates a TileDB domain.
  *
  * @param ctx The TileDB context.
- * @param hyperspace The TileDB hyperspace to be created.
- * @param type The type of all dimensions of the hyperspace.
+ * @param domain The TileDB domain to be created.
+ * @param type The type of all dimensions of the domain.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_hyperspace_create(
-    tiledb_ctx_t* ctx,
-    tiledb_hyperspace_t** hyperspace,
-    tiledb_datatype_t type);
+TILEDB_EXPORT int tiledb_domain_create(
+    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type);
 
 /**
- * Destroys a TileDB hyperspace, freeing-up memory.
+ * Destroys a TileDB domain, freeing-up memory.
  *
  * @param ctx The TileDB context.
- * @param hyperspace The hyperspace to be destroyed.
+ * @param domain The domain to be destroyed.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_hyperspace_free(
-    tiledb_ctx_t* ctx, tiledb_hyperspace_t* hyperspace);
+TILEDB_EXPORT int tiledb_domain_free(
+    tiledb_ctx_t* ctx, tiledb_domain_t* domain);
 
 /**
- * Retrieves the dimensions type
+ * Retrieves the dimensions type.
  *
  * @param ctx The TileDB context.
- * @param hyperspace The hyperspace.
+ * @param domain The domain.
  * @param type The type to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_hyperspace_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_hyperspace_t* hyperspace,
-    tiledb_datatype_t* type);
+TILEDB_EXPORT int tiledb_domain_get_type(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
 
 /**
- * Adds a dimension to a TileDB hyperspace.
+ * Adds a dimension to a TileDB domain.
  *
  * @param ctx The TileDB context.
- * @param hyperspace The hyperspace to add the dimension to.
+ * @param domain The domain to add the dimension to.
  * @param name The dimension name.
- * @param domain The dimension domain.
+ * @param dim_domain The dimension domain.
  * @param tile_extent The dimension tile extent.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_hyperspace_add_dimension(
+TILEDB_EXPORT int tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx,
-    tiledb_hyperspace_t* hyperspace,
+    tiledb_domain_t* domain,
     const char* name,
-    const void* domain,
+    const void* dim_domain,
     const void* tile_extent);
 
 /**
- * Dumps the info of a hyperspace in ASCII form to some output (e.g.,
+ * Dumps the info of a domain in ASCII form to some output (e.g.,
  * file or stdout).
  *
  * @param ctx The TileDB context.
- * @param hyperspace The hyperspace.
+ * @param domain The domain.
  * @param out The output.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_hyperspace_dump(
-    tiledb_ctx_t* ctx, const tiledb_hyperspace_t* hyperspace, FILE* out);
-
-/**
- * Destroys a TileDB dimension, freeing-up memory.
- *
- * @param ctx The TileDB context.
- * @param dim The dimension to be destroyed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_free(
-    tiledb_ctx_t* ctx, tiledb_dimension_t* dim);
+TILEDB_EXPORT int tiledb_domain_dump(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out);
 
 /**
  * Retrieves the dimension name.
@@ -500,16 +486,16 @@ TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
 
 /**
- * Creates a dimensions iterator for the input hyperspace.
+ * Creates a dimensions iterator for the input domain.
  *
  * @param ctx The TileDB context.
- * @param hyperspace The input array metadata.
+ * @param domain The input array domain.
  * @param dim_it The dimension iterator to be created.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_iter_create(
     tiledb_ctx_t* ctx,
-    const tiledb_hyperspace_t* hyperspace,
+    const tiledb_domain_t* domain,
     tiledb_dimension_iter_t** dim_it);
 
 /**
@@ -608,17 +594,17 @@ TILEDB_EXPORT int tiledb_array_metadata_add_attribute(
     tiledb_attribute_t* attr);
 
 /**
- * Sets a hyperspace to array metadata.
+ * Sets a domain to array metadata.
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param hyperspace The hyperspace to be set.
+ * @param domain The domain to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_metadata_set_hyperspace(
+TILEDB_EXPORT int tiledb_array_metadata_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_metadata_t* array_metadata,
-    tiledb_hyperspace_t* hyperspace);
+    tiledb_domain_t* domain);
 
 /**
  * Sets the tile capacity.
@@ -765,17 +751,17 @@ TILEDB_EXPORT int tiledb_array_metadata_get_coords_compressor(
     int* coords_compression_level);
 
 /**
- * Retrieves the array hyperspace.
+ * Retrieves the array domain.
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param hyperspace The array hyperspace to be retrieved.
+ * @param domain The array domain to be retrieved.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_metadata_get_hyperspace(
+TILEDB_EXPORT int tiledb_array_metadata_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
-    tiledb_hyperspace_t** hyperspace);
+    tiledb_domain_t** domain);
 
 /**
  * Retrieves the tile order.

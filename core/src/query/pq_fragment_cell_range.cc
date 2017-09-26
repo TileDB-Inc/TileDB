@@ -79,7 +79,7 @@ bool PQFragmentCellRange<T>::begins_after(
     const PQFragmentCellRange* fcr) const {
   return tile_id_l_ > fcr->tile_id_r_ ||
          (tile_id_l_ == fcr->tile_id_r_ &&
-          array_metadata_->hyperspace()->cell_order_cmp(
+          array_metadata_->domain()->cell_order_cmp(
               cell_range_, &(fcr->cell_range_[dim_num_])) > 0);
 }
 
@@ -93,7 +93,7 @@ template <class T>
 bool PQFragmentCellRange<T>::ends_after(const PQFragmentCellRange* fcr) const {
   return tile_id_r_ > fcr->tile_id_r_ ||
          (tile_id_r_ == fcr->tile_id_r_ &&
-          array_metadata_->hyperspace()->cell_order_cmp(
+          array_metadata_->domain()->cell_order_cmp(
               &cell_range_[dim_num_], &fcr->cell_range_[dim_num_]) > 0);
 }
 
@@ -116,8 +116,8 @@ void PQFragmentCellRange<T>::import_from(
 
   // Compute tile ids
   tile_id_l_ =
-      array_metadata_->hyperspace()->tile_id<T>(cell_range_, tile_coords_aux_);
-  tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
+      array_metadata_->domain()->tile_id<T>(cell_range_, tile_coords_aux_);
+  tile_id_r_ = array_metadata_->domain()->tile_id<T>(
       &cell_range_[dim_num_], tile_coords_aux_);
 }
 
@@ -128,7 +128,7 @@ bool PQFragmentCellRange<T>::must_be_split(
          (fragment_id_ == INVALID_UINT || fcr->fragment_id_ > fragment_id_) &&
          (fcr->tile_id_l_ < tile_id_r_ ||
           (fcr->tile_id_l_ == tile_id_r_ &&
-           array_metadata_->hyperspace()->cell_order_cmp(
+           array_metadata_->domain()->cell_order_cmp(
                fcr->cell_range_, &cell_range_[dim_num_]) <= 0));
 }
 
@@ -139,11 +139,11 @@ bool PQFragmentCellRange<T>::must_trim(const PQFragmentCellRange* fcr) const {
           fcr->fragment_id_ < fragment_id_) &&
          (fcr->tile_id_l_ > tile_id_l_ ||
           (fcr->tile_id_l_ == tile_id_l_ &&
-           array_metadata_->hyperspace()->cell_order_cmp(
+           array_metadata_->domain()->cell_order_cmp(
                fcr->cell_range_, cell_range_) >= 0)) &&
          (fcr->tile_id_l_ < tile_id_r_ ||
           (fcr->tile_id_l_ == tile_id_r_ &&
-           array_metadata_->hyperspace()->cell_order_cmp(
+           array_metadata_->domain()->cell_order_cmp(
                fcr->cell_range_, &cell_range_[dim_num_]) <= 0));
 }
 
@@ -164,9 +164,9 @@ void PQFragmentCellRange<T>::split(
 
   // Trim the calling object range
   std::memcpy(&cell_range_[dim_num_], fcr->cell_range_, coords_size_);
-  array_metadata_->hyperspace()->get_previous_cell_coords<T>(
+  array_metadata_->domain()->get_previous_cell_coords<T>(
       tile_domain, &cell_range_[dim_num_]);
-  tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
+  tile_id_r_ = array_metadata_->domain()->tile_id<T>(
       &cell_range_[dim_num_], tile_coords_aux_);
 }
 
@@ -199,7 +199,7 @@ void PQFragmentCellRange<T>::split_to_3(
 
   // Clean up if necessary
   if (left_retrieved) {
-    fcr_left->tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
+    fcr_left->tile_id_r_ = array_metadata_->domain()->tile_id<T>(
         &fcr_left->cell_range_[dim_num_], tile_coords_aux_);
   } else {
     std::free(fcr_left->cell_range_);
@@ -207,8 +207,8 @@ void PQFragmentCellRange<T>::split_to_3(
   }
 
   if (right_retrieved) {
-    tile_id_l_ = array_metadata_->hyperspace()->tile_id<T>(
-        cell_range_, tile_coords_aux_);
+    tile_id_l_ =
+        array_metadata_->domain()->tile_id<T>(cell_range_, tile_coords_aux_);
   } else {
     std::free(cell_range_);
     cell_range_ = nullptr;
@@ -249,7 +249,7 @@ void PQFragmentCellRange<T>::trim(
   // Advance the left endpoint of the trimmed range
   bool coords_retrieved;
   if (fcr_trimmed->dense()) {
-    array_metadata_->hyperspace()->get_next_cell_coords<T>(  // fcr is DENSE
+    array_metadata_->domain()->get_next_cell_coords<T>(  // fcr is DENSE
         tile_domain,
         fcr_trimmed->cell_range_,
         &coords_retrieved);

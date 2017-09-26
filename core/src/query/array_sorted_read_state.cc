@@ -723,15 +723,15 @@ void ArraySortedReadState::calculate_buffer_sizes() {
 void ArraySortedReadState::calculate_buffer_sizes_dense() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
-  auto hyperspace = array_metadata->hyperspace();
+  auto domain = array_metadata->domain();
 
   // Get cell number in a (full) tile slab
   uint64_t tile_slab_cell_num = 0;
   Layout query_layout = query_->layout();
   if (query_layout == Layout::ROW_MAJOR)
-    tile_slab_cell_num = hyperspace->tile_slab_row_cell_num(subarray_);
+    tile_slab_cell_num = domain->tile_slab_row_cell_num(subarray_);
   else if (query_layout == Layout::COL_MAJOR)
-    tile_slab_cell_num = hyperspace->tile_slab_col_cell_num(subarray_);
+    tile_slab_cell_num = domain->tile_slab_col_cell_num(subarray_);
   else
     assert(0);
 
@@ -963,7 +963,7 @@ void ArraySortedReadState::calculate_tile_domain(unsigned int id) {
   // For easy reference
   auto tile_slab = (const T*)tile_slab_norm_[id];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto tile_coords = (T*)tile_coords_;
   auto tile_domain = (T*)tile_domain_;
 
@@ -1007,7 +1007,7 @@ void ArraySortedReadState::calculate_tile_slab_info_col(unsigned int id) {
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num, total_cell_num = 0;
@@ -1078,7 +1078,7 @@ void ArraySortedReadState::calculate_tile_slab_info_row(unsigned int id) {
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num, total_cell_num = 0;
@@ -1508,7 +1508,7 @@ uint64_t ArraySortedReadState::get_tile_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t* tile_offset_per_dim =
       tile_slab_info_[copy_id_].tile_offset_per_dim_;
 
@@ -1565,7 +1565,7 @@ void ArraySortedReadState::init_tile_slab_info(unsigned int id) {
 
   // Calculate tile number
   uint64_t tile_num =
-      query_->array_metadata()->hyperspace()->tile_num(tile_slab_[id]);
+      query_->array_metadata()->domain()->tile_num(tile_slab_[id]);
 
   // Initializations
   tile_slab_info_[id].cell_offset_per_dim_ = new uint64_t*[tile_num];
@@ -1626,9 +1626,9 @@ bool ArraySortedReadState::next_tile_slab_dense_col() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1702,9 +1702,9 @@ bool ArraySortedReadState::next_tile_slab_dense_row() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1771,9 +1771,9 @@ bool ArraySortedReadState::next_tile_slab_sparse_col() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = static_cast<T*>(tile_slab_[i]);
@@ -1832,9 +1832,8 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = (const float*)subarray_;
-  auto domain = (const float*)array_metadata->hyperspace()->domain();
-  auto tile_extents =
-      (const float*)array_metadata->hyperspace()->tile_extents();
+  auto domain = (const float*)array_metadata->domain()->domain();
+  auto tile_extents = (const float*)array_metadata->domain()->tile_extents();
   float* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (float*)tile_slab_[i];
@@ -1894,9 +1893,8 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<double>() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = (const double*)subarray_;
-  auto domain = (const double*)array_metadata->hyperspace()->domain();
-  auto tile_extents =
-      (const double*)array_metadata->hyperspace()->tile_extents();
+  auto domain = (const double*)array_metadata->domain()->domain();
+  auto tile_extents = (const double*)array_metadata->domain()->tile_extents();
   double* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (double*)tile_slab_[i];
@@ -1956,9 +1954,9 @@ bool ArraySortedReadState::next_tile_slab_sparse_row() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = static_cast<T*>(tile_slab_[i]);
@@ -2010,9 +2008,8 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = (const float*)subarray_;
-  auto domain = (const float*)array_metadata->hyperspace()->domain();
-  auto tile_extents =
-      (const float*)array_metadata->hyperspace()->tile_extents();
+  auto domain = (const float*)array_metadata->domain()->domain();
+  auto tile_extents = (const float*)array_metadata->domain()->tile_extents();
   float* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (float*)tile_slab_[i];
@@ -2065,9 +2062,8 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = (const double*)subarray_;
-  auto domain = (const double*)array_metadata->hyperspace()->domain();
-  auto tile_extents =
-      (const double*)array_metadata->hyperspace()->tile_extents();
+  auto domain = (const double*)array_metadata->domain()->domain();
+  auto tile_extents = (const double*)array_metadata->domain()->tile_extents();
   double* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (double*)tile_slab_[i];
@@ -2143,7 +2139,7 @@ Status ArraySortedReadState::read_dense_sorted_col() {
 
   // Check if this can be satisfied with a default read
   if (array_metadata->cell_order() == Layout::COL_MAJOR &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_row<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_row<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2214,7 +2210,7 @@ Status ArraySortedReadState::read_dense_sorted_row() {
 
   // Check if this can be satisfied with a default read
   if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_col<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_col<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2285,7 +2281,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
 
   // Check if this can be satisfied with a default read
   if (array_metadata->cell_order() == Layout::COL_MAJOR &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_row<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_row<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2360,7 +2356,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
 
   // Check if this can be satisfied with a default read
   if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_col<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_col<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic

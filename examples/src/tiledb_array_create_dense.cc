@@ -105,22 +105,22 @@ int main() {
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Domain and tile extents
-  int64_t domain[] = {1, 4, 1, 4};
+  int64_t dim_domain[] = {1, 4, 1, 4};
   int64_t tile_extents[] = {2, 2};
 
   // Hyperspace
-  tiledb_hyperspace_t* hyperspace;
-  tiledb_hyperspace_create(ctx, &hyperspace, TILEDB_INT64);
-  tiledb_hyperspace_add_dimension(
-      ctx, hyperspace, "d1", &domain[0], &tile_extents[0]);
-  tiledb_hyperspace_add_dimension(
-      ctx, hyperspace, "d2", &domain[2], &tile_extents[1]);
+  tiledb_domain_t* domain;
+  tiledb_domain_create(ctx, &domain, TILEDB_INT64);
+  tiledb_domain_add_dimension(
+      ctx, domain, "d1", &dim_domain[0], &tile_extents[0]);
+  tiledb_domain_add_dimension(
+      ctx, domain, "d2", &dim_domain[2], &tile_extents[1]);
 
   // Create array_metadata metadata
   tiledb_array_metadata_t* array_metadata;
   tiledb_array_metadata_create(ctx, &array_metadata, array_name);
   tiledb_array_metadata_set_array_type(ctx, array_metadata, TILEDB_DENSE);
-  tiledb_array_metadata_set_hyperspace(ctx, array_metadata, hyperspace);
+  tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a3);
@@ -143,7 +143,7 @@ int main() {
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
   tiledb_attribute_free(ctx, a3);
-  tiledb_hyperspace_free(ctx, hyperspace);
+  tiledb_domain_free(ctx, domain);
   tiledb_array_metadata_free(ctx, array_metadata);
   tiledb_ctx_free(ctx);
 

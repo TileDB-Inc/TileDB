@@ -146,16 +146,16 @@ int main() {
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
 
-  // Set hyperspace
+  // Set domain
   uint64_t d1_domain[] = {0, 1000};
   uint64_t d2_domain[] = {100, 10000};
   uint64_t d1_extent = 10;
   uint64_t d2_extent = 100;
-  tiledb_hyperspace_t* hyperspace;
-  tiledb_hyperspace_create(ctx, &hyperspace, TILEDB_UINT64);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d1", d1_domain, &d1_extent);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d2", d2_domain, &d2_extent);
-  tiledb_array_metadata_set_hyperspace(ctx, array_metadata, hyperspace);
+  tiledb_domain_t* domain;
+  tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
+  tiledb_domain_add_dimension(ctx, domain, "d1", d1_domain, &d1_extent);
+  tiledb_domain_add_dimension(ctx, domain, "d2", d2_domain, &d2_extent);
+  tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
 
   // Print array metadata contents again
   printf("\nThird dump:\n");
@@ -210,17 +210,17 @@ int main() {
   }
   printf("\n");
 
-  // Get and print hyperspace
-  tiledb_hyperspace_t* got_hyperspace;
-  tiledb_array_metadata_get_hyperspace(ctx, array_metadata, &got_hyperspace);
-  tiledb_hyperspace_dump(ctx, got_hyperspace, stdout);
+  // Get and print domain
+  tiledb_domain_t* got_domain;
+  tiledb_array_metadata_get_domain(ctx, array_metadata, &got_domain);
+  tiledb_domain_dump(ctx, got_domain, stdout);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
   tiledb_attribute_iter_free(ctx, attr_iter);
-  tiledb_hyperspace_free(ctx, hyperspace);
-  tiledb_hyperspace_free(ctx, got_hyperspace);
+  tiledb_domain_free(ctx, domain);
+  tiledb_domain_free(ctx, got_domain);
   tiledb_array_metadata_free(ctx, array_metadata);
   tiledb_ctx_free(ctx);
 

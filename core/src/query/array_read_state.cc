@@ -188,7 +188,7 @@ Status ArrayReadState::compute_fragment_cell_pos_ranges(
   unsigned int fragment_id;
   auto fragment_cell_ranges_num = (uint64_t)fragment_cell_ranges->size();
   Status st = Status::Ok();
-  auto hyperspace = array_metadata_->hyperspace();
+  auto domain = array_metadata_->domain();
 
   // Compute fragment cell position ranges
   for (uint64_t i = 0; i < fragment_cell_ranges_num; ++i) {
@@ -200,11 +200,10 @@ Status ArrayReadState::compute_fragment_cell_pos_ranges(
       fragment_cell_pos_range.first = (*fragment_cell_ranges)[i].first;
       CellPosRange& cell_pos_range = fragment_cell_pos_range.second;
       auto cell_range = static_cast<T*>((*fragment_cell_ranges)[i].second);
-      st = hyperspace->get_cell_pos(cell_range, &cell_pos_range.first);
+      st = domain->get_cell_pos(cell_range, &cell_pos_range.first);
       if (!st.ok())
         break;
-      st = hyperspace->get_cell_pos(
-          &cell_range[dim_num], &cell_pos_range.second);
+      st = domain->get_cell_pos(&cell_range[dim_num], &cell_pos_range.second);
       if (!st.ok())
         break;
 
@@ -265,7 +264,7 @@ void ArrayReadState::compute_min_bounding_coords_end() {
             coords_size_);
         first = false;
       } else if (
-          array_metadata_->hyperspace()->tile_cell_order_cmp(
+          array_metadata_->domain()->tile_cell_order_cmp(
               &fragment_bounding_coords[dim_num],
               min_bounding_coords_end,
               (T*)tile_coords_aux_) < 0) {
@@ -352,7 +351,7 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
 
     // Compute new fragment cell ranges
     if (fragment_bounding_coords != nullptr &&
-        array_metadata_->hyperspace()->tile_cell_order_cmp(
+        array_metadata_->domain()->tile_cell_order_cmp(
             fragment_bounding_coords,
             min_bounding_coords_end,
             (T*)tile_coords_aux_) <= 0) {
@@ -950,7 +949,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
   uint64_t cell_range_size = 2 * coords_size_;
   auto subarray = static_cast<const T*>(query_->subarray());
   auto tile_coords = (const T*)subarray_tile_coords_;
-  auto hyperspace = array_metadata_->hyperspace();
+  auto domain = array_metadata_->domain();
 
   // To return
   FragmentInfo fragment_info = FragmentInfo(INVALID_UINT, INVALID_UINT64);
@@ -958,11 +957,11 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
 
   // Compute the tile subarray
   auto tile_subarray = new T[2 * dim_num];
-  hyperspace->get_tile_subarray(tile_coords, tile_subarray);
+  domain->get_tile_subarray(tile_coords, tile_subarray);
 
   // Compute overlap of tile subarray with non-empty fragment domain
   auto query_tile_overlap_subarray = new T[2 * dim_num];
-  auto overlap = hyperspace->subarray_overlap(
+  auto overlap = domain->subarray_overlap(
       subarray, tile_subarray, query_tile_overlap_subarray);
 
   // Contiguous cells, single cell range
@@ -1246,8 +1245,8 @@ template <class T>
 void ArrayReadState::init_subarray_tile_coords() {
   // For easy reference
   auto dim_num = array_metadata_->dim_num();
-  auto hyperspace = array_metadata_->hyperspace();
-  auto tile_extents = static_cast<const T*>(hyperspace->tile_extents());
+  auto domain = array_metadata_->domain();
+  auto tile_extents = static_cast<const T*>(domain->tile_extents());
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Sanity checks
@@ -1260,7 +1259,7 @@ void ArrayReadState::init_subarray_tile_coords() {
   auto subarray_tile_domain = static_cast<T*>(subarray_tile_domain_);
 
   // Get subarray in tile domain
-  hyperspace->get_subarray_tile_domain<T>(
+  domain->get_subarray_tile_domain<T>(
       subarray, tile_domain, subarray_tile_domain);
 
   // Check if there is any overlap between the subarray tile domain and the
@@ -1298,7 +1297,7 @@ void ArrayReadState::get_next_subarray_tile_coords() {
   auto subarray_tile_coords = static_cast<T*>(subarray_tile_coords_);
 
   // Advance subarray tile coordinates
-  array_metadata_->hyperspace()->get_next_tile_coords<T>(
+  array_metadata_->domain()->get_next_tile_coords<T>(
       subarray_tile_domain, subarray_tile_coords);
 
   // Check if the new subarray coordinates fall out of the range domain
@@ -1801,9 +1800,9 @@ Status ArrayReadState::sort_fragment_cell_ranges(
 
   // For easy reference
   auto dim_num = array_metadata_->dim_num();
-  auto domain = static_cast<const T*>(array_metadata_->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata_->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata_->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata_->domain()->tile_extents());
   auto tile_coords = static_cast<const T*>(subarray_tile_coords_);
 
   // Compute tile domain

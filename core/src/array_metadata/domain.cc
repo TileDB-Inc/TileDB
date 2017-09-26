@@ -1,5 +1,5 @@
 /**
- * @file   hyperspace.cc
+ * @file   domain.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Hyperspace.
+ * This file implements class Domain.
  */
 
-#include "hyperspace.h"
+#include "domain.h"
 #include "logger.h"
 
 #include <cassert>
@@ -49,7 +49,7 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Hyperspace::Hyperspace() {
+Domain::Domain() {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -60,7 +60,7 @@ Hyperspace::Hyperspace() {
   tile_domain_ = nullptr;
 }
 
-Hyperspace::Hyperspace(Datatype type)
+Domain::Domain(Datatype type)
     : type_(type) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
@@ -71,43 +71,43 @@ Hyperspace::Hyperspace(Datatype type)
   tile_domain_ = nullptr;
 }
 
-Hyperspace::Hyperspace(const Hyperspace* hyperspace) {
-  cell_num_per_tile_ = hyperspace->cell_num_per_tile_;
-  cell_order_ = hyperspace->cell_order_;
-  dim_num_ = hyperspace->dim_num_;
-  for (auto dim : hyperspace->dimensions_)
+Domain::Domain(const Domain* domain) {
+  cell_num_per_tile_ = domain->cell_num_per_tile_;
+  cell_order_ = domain->cell_order_;
+  dim_num_ = domain->dim_num_;
+  for (auto dim : domain->dimensions_)
     dimensions_.emplace_back(new Dimension(dim));
-  type_ = hyperspace->type_;
+  type_ = domain->type_;
 
   uint64_t coords_size = dim_num_ * datatype_size(type_);
 
-  tile_order_ = hyperspace->tile_order_;
-  tile_offsets_col_ = hyperspace->tile_offsets_col_;
-  tile_offsets_row_ = hyperspace->tile_offsets_row_;
+  tile_order_ = domain->tile_order_;
+  tile_offsets_col_ = domain->tile_offsets_col_;
+  tile_offsets_row_ = domain->tile_offsets_row_;
 
-  if (hyperspace->domain_ == nullptr) {
+  if (domain->domain_ == nullptr) {
     domain_ = nullptr;
   } else {
     domain_ = std::malloc(2 * coords_size);
-    std::memcpy(domain_, hyperspace->domain_, 2 * coords_size);
+    std::memcpy(domain_, domain->domain_, 2 * coords_size);
   }
 
-  if (hyperspace->tile_domain_ == nullptr) {
+  if (domain->tile_domain_ == nullptr) {
     tile_domain_ = nullptr;
   } else {
     tile_domain_ = std::malloc(2 * coords_size);
-    std::memcpy(tile_domain_, hyperspace->tile_domain_, 2 * coords_size);
+    std::memcpy(tile_domain_, domain->tile_domain_, 2 * coords_size);
   }
 
-  if (hyperspace->tile_extents_ == nullptr) {
+  if (domain->tile_extents_ == nullptr) {
     tile_extents_ = nullptr;
   } else {
     tile_extents_ = std::malloc(coords_size);
-    std::memcpy(tile_extents_, hyperspace->tile_extents_, coords_size);
+    std::memcpy(tile_extents_, domain->tile_extents_, coords_size);
   }
 }
 
-Hyperspace::~Hyperspace() {
+Domain::~Domain() {
   for (auto dim : dimensions_)
     delete dim;
 
@@ -129,7 +129,7 @@ Hyperspace::~Hyperspace() {
 /*                API                */
 /* ********************************* */
 
-Status Hyperspace::add_dimension(
+Status Domain::add_dimension(
     const char* name, const void* domain, const void* tile_extent) {
   auto dim = new Dimension(name, type_);
   RETURN_NOT_OK_ELSE(dim->set_domain(domain), delete dim);
@@ -141,12 +141,12 @@ Status Hyperspace::add_dimension(
   return Status::Ok();
 }
 
-uint64_t Hyperspace::cell_num_per_tile() const {
+uint64_t Domain::cell_num_per_tile() const {
   return cell_num_per_tile_;
 }
 
 template <class T>
-int Hyperspace::cell_order_cmp(const T* coords_a, const T* coords_b) const {
+int Domain::cell_order_cmp(const T* coords_a, const T* coords_b) const {
   // Check if they are equal
   if (std::memcmp(coords_a, coords_b, dim_num_ * datatype_size(type_)) == 0)
     return 0;
@@ -183,7 +183,7 @@ int Hyperspace::cell_order_cmp(const T* coords_a, const T* coords_b) const {
 // dimension #1
 // dimension #2
 // ...
-Status Hyperspace::deserialize(ConstBuffer* buff) {
+Status Domain::deserialize(ConstBuffer* buff) {
   // Load type
   char type;
   RETURN_NOT_OK(buff->read(&type, sizeof(char)));
@@ -200,32 +200,32 @@ Status Hyperspace::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-unsigned int Hyperspace::dim_num() const {
+unsigned int Domain::dim_num() const {
   return dim_num_;
 }
 
-const void* Hyperspace::domain() const {
+const void* Domain::domain() const {
   return domain_;
 }
 
-const void* Hyperspace::domain(unsigned int i) const {
+const void* Domain::domain(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
 
   return dimensions_[i]->domain();
 }
 
-const Dimension* Hyperspace::dimension(unsigned int i) const {
+const Dimension* Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
 
   return dimensions_[i];
 }
 
-void Hyperspace::dump(FILE* out) const {
+void Domain::dump(FILE* out) const {
   const char* type_s = datatype_str(type_);
 
-  fprintf(out, "=== Hyperspace ===\n");
+  fprintf(out, "=== Domain ===\n");
   fprintf(out, "- Dimensions type: %s\n", type_s);
 
   for (auto& dim : dimensions_) {
@@ -234,7 +234,7 @@ void Hyperspace::dump(FILE* out) const {
   }
 }
 
-void Hyperspace::expand_domain(void* domain) const {
+void Domain::expand_domain(void* domain) const {
   switch (type_) {
     case Datatype::INT32:
       expand_domain<int>(static_cast<int*>(domain));
@@ -266,7 +266,7 @@ void Hyperspace::expand_domain(void* domain) const {
 }
 
 template <class T>
-void Hyperspace::expand_domain(T* domain) const {
+void Domain::expand_domain(T* domain) const {
   // Applicable only to regular tiles
   if (tile_extents_ == nullptr)
     return;
@@ -286,7 +286,7 @@ void Hyperspace::expand_domain(T* domain) const {
 }
 
 template <class T>
-Status Hyperspace::get_cell_pos(const T* coords, uint64_t* pos) const {
+Status Domain::get_cell_pos(const T* coords, uint64_t* pos) const {
   // Invoke the proper function based on the cell order
   if (cell_order_ == Layout::ROW_MAJOR) {
     *pos = get_cell_pos_row(coords);
@@ -298,11 +298,11 @@ Status Hyperspace::get_cell_pos(const T* coords, uint64_t* pos) const {
   }
 
   return LOG_STATUS(
-      Status::HyperspaceError("Cannot get cell position; Invalid cell order"));
+      Status::DomainError("Cannot get cell position; Invalid cell order"));
 }
 
 template <class T>
-void Hyperspace::get_next_cell_coords(
+void Domain::get_next_cell_coords(
     const T* domain, T* cell_coords, bool* coords_retrieved) const {
   // Invoke the proper function based on the tile order
   if (cell_order_ == Layout::ROW_MAJOR)
@@ -314,7 +314,7 @@ void Hyperspace::get_next_cell_coords(
 }
 
 template <class T>
-void Hyperspace::get_next_tile_coords(const T* domain, T* tile_coords) const {
+void Domain::get_next_tile_coords(const T* domain, T* tile_coords) const {
   // Invoke the proper function based on the tile order
   if (tile_order_ == Layout::ROW_MAJOR)
     get_next_tile_coords_row(domain, tile_coords);
@@ -325,8 +325,7 @@ void Hyperspace::get_next_tile_coords(const T* domain, T* tile_coords) const {
 }
 
 template <class T>
-void Hyperspace::get_previous_cell_coords(
-    const T* domain, T* cell_coords) const {
+void Domain::get_previous_cell_coords(const T* domain, T* cell_coords) const {
   // Invoke the proper function based on the tile order
   if (cell_order_ == Layout::ROW_MAJOR)
     get_previous_cell_coords_row(domain, cell_coords);
@@ -337,7 +336,7 @@ void Hyperspace::get_previous_cell_coords(
 }
 
 template <class T>
-void Hyperspace::get_subarray_tile_domain(
+void Domain::get_subarray_tile_domain(
     const T* subarray, T* tile_domain, T* subarray_tile_domain) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
@@ -364,7 +363,7 @@ void Hyperspace::get_subarray_tile_domain(
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos(const T* tile_coords) const {
+uint64_t Domain::get_tile_pos(const T* tile_coords) const {
   // Sanity check
   assert(tile_extents_);
 
@@ -377,7 +376,7 @@ uint64_t Hyperspace::get_tile_pos(const T* tile_coords) const {
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos(const T* domain, const T* tile_coords) const {
+uint64_t Domain::get_tile_pos(const T* domain, const T* tile_coords) const {
   // Sanity check
   assert(tile_extents_);
 
@@ -389,8 +388,7 @@ uint64_t Hyperspace::get_tile_pos(const T* domain, const T* tile_coords) const {
 }
 
 template <class T>
-void Hyperspace::get_tile_subarray(
-    const T* tile_coords, T* tile_subarray) const {
+void Domain::get_tile_subarray(const T* tile_coords, T* tile_subarray) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -402,7 +400,7 @@ void Hyperspace::get_tile_subarray(
   }
 }
 
-Status Hyperspace::init(Layout cell_order, Layout tile_order) {
+Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set cell and tile order
   cell_order_ = cell_order;
   tile_order_ = tile_order;
@@ -443,7 +441,7 @@ Status Hyperspace::init(Layout cell_order, Layout tile_order) {
   return Status::Ok();
 }
 
-bool Hyperspace::is_contained_in_tile_slab_col(const void* range) const {
+bool Domain::is_contained_in_tile_slab_col(const void* range) const {
   switch (type_) {
     case Datatype::INT32:
       return is_contained_in_tile_slab_col(static_cast<const int*>(range));
@@ -471,7 +469,7 @@ bool Hyperspace::is_contained_in_tile_slab_col(const void* range) const {
 }
 
 template <class T>
-bool Hyperspace::is_contained_in_tile_slab_col(const T* range) const {
+bool Domain::is_contained_in_tile_slab_col(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -491,7 +489,7 @@ bool Hyperspace::is_contained_in_tile_slab_col(const T* range) const {
   return true;
 }
 
-bool Hyperspace::is_contained_in_tile_slab_row(const void* range) const {
+bool Domain::is_contained_in_tile_slab_row(const void* range) const {
   switch (type_) {
     case Datatype::INT32:
       return is_contained_in_tile_slab_row(static_cast<const int*>(range));
@@ -519,7 +517,7 @@ bool Hyperspace::is_contained_in_tile_slab_row(const void* range) const {
 }
 
 template <class T>
-bool Hyperspace::is_contained_in_tile_slab_row(const T* range) const {
+bool Domain::is_contained_in_tile_slab_row(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -545,7 +543,7 @@ bool Hyperspace::is_contained_in_tile_slab_row(const T* range) const {
 // dimension #1
 // dimension #2
 // ...
-Status Hyperspace::serialize(Buffer* buff) {
+Status Domain::serialize(Buffer* buff) {
   // Write type
   auto type = static_cast<char>(type_);
   RETURN_NOT_OK(buff->write(&type, sizeof(char)));
@@ -559,7 +557,7 @@ Status Hyperspace::serialize(Buffer* buff) {
 }
 
 template <class T>
-unsigned int Hyperspace::subarray_overlap(
+unsigned int Domain::subarray_overlap(
     const T* subarray_a, const T* subarray_b, T* overlap_subarray) const {
   // Get overlap range
   for (unsigned int i = 0; i < dim_num_; ++i) {
@@ -620,7 +618,7 @@ unsigned int Hyperspace::subarray_overlap(
 }
 
 template <class T>
-int Hyperspace::tile_cell_order_cmp(
+int Domain::tile_cell_order_cmp(
     const T* coords_a, const T* coords_b, T* tile_coords) const {
   // Check tile order
   int tile_cmp = tile_order_cmp(coords_a, coords_b, tile_coords);
@@ -631,20 +629,19 @@ int Hyperspace::tile_cell_order_cmp(
   return cell_order_cmp(coords_a, coords_b);
 }
 
-const void* Hyperspace::tile_extent(unsigned int i) const {
+const void* Domain::tile_extent(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
 
   return dimensions_[i]->tile_extent();
 }
 
-const void* Hyperspace::tile_extents() const {
+const void* Domain::tile_extents() const {
   return tile_extents_;
 }
 
 template <typename T>
-inline uint64_t Hyperspace::tile_id(
-    const T* cell_coords, T* tile_coords) const {
+inline uint64_t Domain::tile_id(const T* cell_coords, T* tile_coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -662,7 +659,7 @@ inline uint64_t Hyperspace::tile_id(
   return tile_id;
 }
 
-uint64_t Hyperspace::tile_num() const {
+uint64_t Domain::tile_num() const {
   // Invoke the proper template function
   switch (type_) {
     case Datatype::INT32:
@@ -694,7 +691,7 @@ uint64_t Hyperspace::tile_num() const {
 }
 
 template <class T>
-uint64_t Hyperspace::tile_num() const {
+uint64_t Domain::tile_num() const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -706,7 +703,7 @@ uint64_t Hyperspace::tile_num() const {
   return ret;
 }
 
-uint64_t Hyperspace::tile_num(const void* range) const {
+uint64_t Domain::tile_num(const void* range) const {
   switch (type_) {
     case Datatype::INT32:
       return tile_num<int>(static_cast<const int*>(range));
@@ -737,7 +734,7 @@ uint64_t Hyperspace::tile_num(const void* range) const {
 }
 
 template <class T>
-uint64_t Hyperspace::tile_num(const T* range) const {
+uint64_t Domain::tile_num(const T* range) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
   auto domain = static_cast<const T*>(domain_);
@@ -754,7 +751,7 @@ uint64_t Hyperspace::tile_num(const T* range) const {
 }
 
 template <class T>
-int Hyperspace::tile_order_cmp(
+int Domain::tile_order_cmp(
     const T* coords_a, const T* coords_b, T* tile_coords) const {
   // Calculate tile ids
   auto id_a = tile_id(coords_a, tile_coords);
@@ -770,7 +767,7 @@ int Hyperspace::tile_order_cmp(
   return 0;
 }
 
-uint64_t Hyperspace::tile_slab_col_cell_num(const void* subarray) const {
+uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
   // Invoke the proper templated function
   switch (type_) {
     case Datatype::INT32:
@@ -799,7 +796,7 @@ uint64_t Hyperspace::tile_slab_col_cell_num(const void* subarray) const {
   }
 }
 
-uint64_t Hyperspace::tile_slab_row_cell_num(const void* subarray) const {
+uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
   // Invoke the proper templated function
   switch (type_) {
     case Datatype::INT32:
@@ -828,7 +825,7 @@ uint64_t Hyperspace::tile_slab_row_cell_num(const void* subarray) const {
   }
 }
 
-Datatype Hyperspace::type() const {
+Datatype Domain::type() const {
   return type_;
 }
 
@@ -836,7 +833,7 @@ Datatype Hyperspace::type() const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-void Hyperspace::compute_cell_num_per_tile() {
+void Domain::compute_cell_num_per_tile() {
   // Invoke the proper templated function
   switch (type_) {
     case Datatype::INT32:
@@ -869,7 +866,7 @@ void Hyperspace::compute_cell_num_per_tile() {
 }
 
 template <class T>
-void Hyperspace::compute_cell_num_per_tile() {
+void Domain::compute_cell_num_per_tile() {
   auto tile_extents = static_cast<const T*>(tile_extents_);
   cell_num_per_tile_ = 1;
 
@@ -877,7 +874,7 @@ void Hyperspace::compute_cell_num_per_tile() {
     cell_num_per_tile_ *= tile_extents[i];
 }
 
-void Hyperspace::compute_tile_domain() {
+void Domain::compute_tile_domain() {
   // Invoke the proper templated function
   switch (type_) {
     case Datatype::INT32:
@@ -916,7 +913,7 @@ void Hyperspace::compute_tile_domain() {
 }
 
 template <class T>
-void Hyperspace::compute_tile_domain() {
+void Domain::compute_tile_domain() {
   if (tile_extents_ == nullptr)
     return;
 
@@ -941,7 +938,7 @@ void Hyperspace::compute_tile_domain() {
   }
 }
 
-void Hyperspace::compute_tile_offsets() {
+void Domain::compute_tile_offsets() {
   // Invoke the proper templated function
   switch (type_) {
     case Datatype::INT32:
@@ -980,7 +977,7 @@ void Hyperspace::compute_tile_offsets() {
 }
 
 template <class T>
-void Hyperspace::compute_tile_offsets() {
+void Domain::compute_tile_offsets() {
   // Applicable only to non-NULL space tiles
   if (tile_extents_ == nullptr)
     return;
@@ -1015,7 +1012,7 @@ void Hyperspace::compute_tile_offsets() {
 }
 
 template <class T>
-uint64_t Hyperspace::get_cell_pos_col(const T* coords) const {
+uint64_t Domain::get_cell_pos_col(const T* coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -1043,7 +1040,7 @@ uint64_t Hyperspace::get_cell_pos_col(const T* coords) const {
 }
 
 template <class T>
-uint64_t Hyperspace::get_cell_pos_row(const T* coords) const {
+uint64_t Domain::get_cell_pos_row(const T* coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -1076,7 +1073,7 @@ uint64_t Hyperspace::get_cell_pos_row(const T* coords) const {
 }
 
 template <class T>
-void Hyperspace::get_next_cell_coords_col(
+void Domain::get_next_cell_coords_col(
     const T* domain, T* cell_coords, bool* coords_retrieved) const {
   unsigned int i = 0;
   ++cell_coords[i];
@@ -1091,7 +1088,7 @@ void Hyperspace::get_next_cell_coords_col(
 }
 
 template <class T>
-void Hyperspace::get_next_cell_coords_row(
+void Domain::get_next_cell_coords_row(
     const T* domain, T* cell_coords, bool* coords_retrieved) const {
   unsigned int i = dim_num_ - 1;
   ++cell_coords[i];
@@ -1105,7 +1102,7 @@ void Hyperspace::get_next_cell_coords_row(
 }
 
 template <class T>
-void Hyperspace::get_previous_cell_coords_col(
+void Domain::get_previous_cell_coords_col(
     const T* domain, T* cell_coords) const {
   unsigned int i = 0;
   --cell_coords[i];
@@ -1117,7 +1114,7 @@ void Hyperspace::get_previous_cell_coords_col(
 }
 
 template <class T>
-void Hyperspace::get_previous_cell_coords_row(
+void Domain::get_previous_cell_coords_row(
     const T* domain, T* cell_coords) const {
   unsigned int i = dim_num_ - 1;
   --cell_coords[i];
@@ -1129,8 +1126,7 @@ void Hyperspace::get_previous_cell_coords_row(
 }
 
 template <class T>
-void Hyperspace::get_next_tile_coords_col(
-    const T* domain, T* tile_coords) const {
+void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
   unsigned int i = 0;
   ++tile_coords[i];
 
@@ -1141,8 +1137,7 @@ void Hyperspace::get_next_tile_coords_col(
 }
 
 template <class T>
-void Hyperspace::get_next_tile_coords_row(
-    const T* domain, T* tile_coords) const {
+void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
   unsigned int i = dim_num_ - 1;
   ++tile_coords[i];
 
@@ -1153,7 +1148,7 @@ void Hyperspace::get_next_tile_coords_row(
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos_col(const T* tile_coords) const {
+uint64_t Domain::get_tile_pos_col(const T* tile_coords) const {
   // Calculate position
   uint64_t pos = 0;
   for (unsigned int i = 0; i < dim_num_; ++i)
@@ -1164,8 +1159,7 @@ uint64_t Hyperspace::get_tile_pos_col(const T* tile_coords) const {
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos_col(
-    const T* domain, const T* tile_coords) const {
+uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
@@ -1189,7 +1183,7 @@ uint64_t Hyperspace::get_tile_pos_col(
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos_row(const T* tile_coords) const {
+uint64_t Domain::get_tile_pos_row(const T* tile_coords) const {
   // Calculate position
   uint64_t pos = 0;
   for (unsigned int i = 0; i < dim_num_; ++i)
@@ -1200,8 +1194,7 @@ uint64_t Hyperspace::get_tile_pos_row(const T* tile_coords) const {
 }
 
 template <class T>
-uint64_t Hyperspace::get_tile_pos_row(
-    const T* domain, const T* tile_coords) const {
+uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
@@ -1230,7 +1223,7 @@ uint64_t Hyperspace::get_tile_pos_row(
 }
 
 template <class T>
-uint64_t Hyperspace::tile_slab_col_cell_num(const T* subarray) const {
+uint64_t Domain::tile_slab_col_cell_num(const T* subarray) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
@@ -1249,7 +1242,7 @@ uint64_t Hyperspace::tile_slab_col_cell_num(const T* subarray) const {
 }
 
 template <class T>
-uint64_t Hyperspace::tile_slab_row_cell_num(const T* subarray) const {
+uint64_t Domain::tile_slab_row_cell_num(const T* subarray) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
@@ -1266,320 +1259,320 @@ uint64_t Hyperspace::tile_slab_row_cell_num(const T* subarray) const {
 }
 // Explicit template instantiations
 
-template int Hyperspace::cell_order_cmp<int>(
+template int Domain::cell_order_cmp<int>(
     const int* coords_a, const int* coords_b) const;
-template int Hyperspace::cell_order_cmp<int64_t>(
+template int Domain::cell_order_cmp<int64_t>(
     const int64_t* coords_a, const int64_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<float>(
+template int Domain::cell_order_cmp<float>(
     const float* coords_a, const float* coords_b) const;
-template int Hyperspace::cell_order_cmp<double>(
+template int Domain::cell_order_cmp<double>(
     const double* coords_a, const double* coords_b) const;
-template int Hyperspace::cell_order_cmp<int8_t>(
+template int Domain::cell_order_cmp<int8_t>(
     const int8_t* coords_a, const int8_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<uint8_t>(
+template int Domain::cell_order_cmp<uint8_t>(
     const uint8_t* coords_a, const uint8_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<int16_t>(
+template int Domain::cell_order_cmp<int16_t>(
     const int16_t* coords_a, const int16_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<uint16_t>(
+template int Domain::cell_order_cmp<uint16_t>(
     const uint16_t* coords_a, const uint16_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<uint32_t>(
+template int Domain::cell_order_cmp<uint32_t>(
     const uint32_t* coords_a, const uint32_t* coords_b) const;
-template int Hyperspace::cell_order_cmp<uint64_t>(
+template int Domain::cell_order_cmp<uint64_t>(
     const uint64_t* coords_a, const uint64_t* coords_b) const;
 
-template Status Hyperspace::get_cell_pos<int>(
+template Status Domain::get_cell_pos<int>(
     const int* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<int64_t>(
+template Status Domain::get_cell_pos<int64_t>(
     const int64_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<float>(
+template Status Domain::get_cell_pos<float>(
     const float* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<double>(
+template Status Domain::get_cell_pos<double>(
     const double* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<int8_t>(
+template Status Domain::get_cell_pos<int8_t>(
     const int8_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<uint8_t>(
+template Status Domain::get_cell_pos<uint8_t>(
     const uint8_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<int16_t>(
+template Status Domain::get_cell_pos<int16_t>(
     const int16_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<uint16_t>(
+template Status Domain::get_cell_pos<uint16_t>(
     const uint16_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<uint32_t>(
+template Status Domain::get_cell_pos<uint32_t>(
     const uint32_t* coords, uint64_t* pos) const;
-template Status Hyperspace::get_cell_pos<uint64_t>(
+template Status Domain::get_cell_pos<uint64_t>(
     const uint64_t* coords, uint64_t* pos) const;
 
-template void Hyperspace::get_next_cell_coords<int>(
+template void Domain::get_next_cell_coords<int>(
     const int* domain, int* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<int64_t>(
+template void Domain::get_next_cell_coords<int64_t>(
     const int64_t* domain, int64_t* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<float>(
+template void Domain::get_next_cell_coords<float>(
     const float* domain, float* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<double>(
+template void Domain::get_next_cell_coords<double>(
     const double* domain, double* cell_coords, bool* coords_retrieved) const;
 
-template void Hyperspace::get_next_cell_coords<int8_t>(
+template void Domain::get_next_cell_coords<int8_t>(
     const int8_t* domain, int8_t* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<uint8_t>(
+template void Domain::get_next_cell_coords<uint8_t>(
     const uint8_t* domain, uint8_t* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<int16_t>(
+template void Domain::get_next_cell_coords<int16_t>(
     const int16_t* domain, int16_t* cell_coords, bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<uint16_t>(
+template void Domain::get_next_cell_coords<uint16_t>(
     const uint16_t* domain,
     uint16_t* cell_coords,
     bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<uint32_t>(
+template void Domain::get_next_cell_coords<uint32_t>(
     const uint32_t* domain,
     uint32_t* cell_coords,
     bool* coords_retrieved) const;
-template void Hyperspace::get_next_cell_coords<uint64_t>(
+template void Domain::get_next_cell_coords<uint64_t>(
     const uint64_t* domain,
     uint64_t* cell_coords,
     bool* coords_retrieved) const;
 
-template void Hyperspace::get_next_tile_coords<int>(
+template void Domain::get_next_tile_coords<int>(
     const int* domain, int* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<int64_t>(
+template void Domain::get_next_tile_coords<int64_t>(
     const int64_t* domain, int64_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<float>(
+template void Domain::get_next_tile_coords<float>(
     const float* domain, float* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<double>(
+template void Domain::get_next_tile_coords<double>(
     const double* domain, double* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<int8_t>(
+template void Domain::get_next_tile_coords<int8_t>(
     const int8_t* domain, int8_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<uint8_t>(
+template void Domain::get_next_tile_coords<uint8_t>(
     const uint8_t* domain, uint8_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<int16_t>(
+template void Domain::get_next_tile_coords<int16_t>(
     const int16_t* domain, int16_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<uint16_t>(
+template void Domain::get_next_tile_coords<uint16_t>(
     const uint16_t* domain, uint16_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<uint32_t>(
+template void Domain::get_next_tile_coords<uint32_t>(
     const uint32_t* domain, uint32_t* tile_coords) const;
-template void Hyperspace::get_next_tile_coords<uint64_t>(
+template void Domain::get_next_tile_coords<uint64_t>(
     const uint64_t* domain, uint64_t* tile_coords) const;
 
-template void Hyperspace::get_previous_cell_coords<int>(
+template void Domain::get_previous_cell_coords<int>(
     const int* domain, int* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<int64_t>(
+template void Domain::get_previous_cell_coords<int64_t>(
     const int64_t* domain, int64_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<float>(
+template void Domain::get_previous_cell_coords<float>(
     const float* domain, float* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<double>(
+template void Domain::get_previous_cell_coords<double>(
     const double* domain, double* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<int8_t>(
+template void Domain::get_previous_cell_coords<int8_t>(
     const int8_t* domain, int8_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<uint8_t>(
+template void Domain::get_previous_cell_coords<uint8_t>(
     const uint8_t* domain, uint8_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<int16_t>(
+template void Domain::get_previous_cell_coords<int16_t>(
     const int16_t* domain, int16_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<uint16_t>(
+template void Domain::get_previous_cell_coords<uint16_t>(
     const uint16_t* domain, uint16_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<uint32_t>(
+template void Domain::get_previous_cell_coords<uint32_t>(
     const uint32_t* domain, uint32_t* cell_coords) const;
-template void Hyperspace::get_previous_cell_coords<uint64_t>(
+template void Domain::get_previous_cell_coords<uint64_t>(
     const uint64_t* domain, uint64_t* cell_coords) const;
 
-template void Hyperspace::get_subarray_tile_domain<int>(
+template void Domain::get_subarray_tile_domain<int>(
     const int* subarray, int* tile_domain, int* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<int64_t>(
+template void Domain::get_subarray_tile_domain<int64_t>(
     const int64_t* subarray,
     int64_t* tile_domain,
     int64_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<int8_t>(
+template void Domain::get_subarray_tile_domain<int8_t>(
     const int8_t* subarray,
     int8_t* tile_domain,
     int8_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<uint8_t>(
+template void Domain::get_subarray_tile_domain<uint8_t>(
     const uint8_t* subarray,
     uint8_t* tile_domain,
     uint8_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<int16_t>(
+template void Domain::get_subarray_tile_domain<int16_t>(
     const int16_t* subarray,
     int16_t* tile_domain,
     int16_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<uint16_t>(
+template void Domain::get_subarray_tile_domain<uint16_t>(
     const uint16_t* subarray,
     uint16_t* tile_domain,
     uint16_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<uint32_t>(
+template void Domain::get_subarray_tile_domain<uint32_t>(
     const uint32_t* subarray,
     uint32_t* tile_domain,
     uint32_t* subarray_tile_domain) const;
-template void Hyperspace::get_subarray_tile_domain<uint64_t>(
+template void Domain::get_subarray_tile_domain<uint64_t>(
     const uint64_t* subarray,
     uint64_t* tile_domain,
     uint64_t* subarray_tile_domain) const;
 
-template uint64_t Hyperspace::get_tile_pos<int>(
+template uint64_t Domain::get_tile_pos<int>(
     const int* domain, const int* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<int64_t>(
+template uint64_t Domain::get_tile_pos<int64_t>(
     const int64_t* domain, const int64_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<float>(
+template uint64_t Domain::get_tile_pos<float>(
     const float* domain, const float* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<double>(
+template uint64_t Domain::get_tile_pos<double>(
     const double* domain, const double* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<int8_t>(
+template uint64_t Domain::get_tile_pos<int8_t>(
     const int8_t* domain, const int8_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<uint8_t>(
+template uint64_t Domain::get_tile_pos<uint8_t>(
     const uint8_t* domain, const uint8_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<int16_t>(
+template uint64_t Domain::get_tile_pos<int16_t>(
     const int16_t* domain, const int16_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<uint16_t>(
+template uint64_t Domain::get_tile_pos<uint16_t>(
     const uint16_t* domain, const uint16_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<uint32_t>(
+template uint64_t Domain::get_tile_pos<uint32_t>(
     const uint32_t* domain, const uint32_t* tile_coords) const;
-template uint64_t Hyperspace::get_tile_pos<uint64_t>(
+template uint64_t Domain::get_tile_pos<uint64_t>(
     const uint64_t* domain, const uint64_t* tile_coords) const;
 
-template void Hyperspace::get_tile_subarray<int>(
+template void Domain::get_tile_subarray<int>(
     const int* tile_coords, int* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<int64_t>(
+template void Domain::get_tile_subarray<int64_t>(
     const int64_t* tile_coords, int64_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<int8_t>(
+template void Domain::get_tile_subarray<int8_t>(
     const int8_t* tile_coords, int8_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<uint8_t>(
+template void Domain::get_tile_subarray<uint8_t>(
     const uint8_t* tile_coords, uint8_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<int16_t>(
+template void Domain::get_tile_subarray<int16_t>(
     const int16_t* tile_coords, int16_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<uint16_t>(
+template void Domain::get_tile_subarray<uint16_t>(
     const uint16_t* tile_coords, uint16_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<uint32_t>(
+template void Domain::get_tile_subarray<uint32_t>(
     const uint32_t* tile_coords, uint32_t* tile_subarray) const;
-template void Hyperspace::get_tile_subarray<uint64_t>(
+template void Domain::get_tile_subarray<uint64_t>(
     const uint64_t* tile_coords, uint64_t* tile_subarray) const;
 
-template bool Hyperspace::is_contained_in_tile_slab_col<int>(
+template bool Domain::is_contained_in_tile_slab_col<int>(
     const int* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<int64_t>(
+template bool Domain::is_contained_in_tile_slab_col<int64_t>(
     const int64_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<float>(
+template bool Domain::is_contained_in_tile_slab_col<float>(
     const float* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<double>(
+template bool Domain::is_contained_in_tile_slab_col<double>(
     const double* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<int8_t>(
+template bool Domain::is_contained_in_tile_slab_col<int8_t>(
     const int8_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<uint8_t>(
+template bool Domain::is_contained_in_tile_slab_col<uint8_t>(
     const uint8_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<int16_t>(
+template bool Domain::is_contained_in_tile_slab_col<int16_t>(
     const int16_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<uint16_t>(
+template bool Domain::is_contained_in_tile_slab_col<uint16_t>(
     const uint16_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<uint32_t>(
+template bool Domain::is_contained_in_tile_slab_col<uint32_t>(
     const uint32_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_col<uint64_t>(
+template bool Domain::is_contained_in_tile_slab_col<uint64_t>(
     const uint64_t* range) const;
 
-template bool Hyperspace::is_contained_in_tile_slab_row<int>(
+template bool Domain::is_contained_in_tile_slab_row<int>(
     const int* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<int64_t>(
+template bool Domain::is_contained_in_tile_slab_row<int64_t>(
     const int64_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<float>(
+template bool Domain::is_contained_in_tile_slab_row<float>(
     const float* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<double>(
+template bool Domain::is_contained_in_tile_slab_row<double>(
     const double* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<int8_t>(
+template bool Domain::is_contained_in_tile_slab_row<int8_t>(
     const int8_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<uint8_t>(
+template bool Domain::is_contained_in_tile_slab_row<uint8_t>(
     const uint8_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<int16_t>(
+template bool Domain::is_contained_in_tile_slab_row<int16_t>(
     const int16_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<uint16_t>(
+template bool Domain::is_contained_in_tile_slab_row<uint16_t>(
     const uint16_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<uint32_t>(
+template bool Domain::is_contained_in_tile_slab_row<uint32_t>(
     const uint32_t* range) const;
-template bool Hyperspace::is_contained_in_tile_slab_row<uint64_t>(
+template bool Domain::is_contained_in_tile_slab_row<uint64_t>(
     const uint64_t* range) const;
 
-template unsigned int Hyperspace::subarray_overlap<int>(
+template unsigned int Domain::subarray_overlap<int>(
     const int* subarray_a, const int* subarray_b, int* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<int64_t>(
+template unsigned int Domain::subarray_overlap<int64_t>(
     const int64_t* subarray_a,
     const int64_t* subarray_b,
     int64_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<float>(
+template unsigned int Domain::subarray_overlap<float>(
     const float* subarray_a,
     const float* subarray_b,
     float* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<double>(
+template unsigned int Domain::subarray_overlap<double>(
     const double* subarray_a,
     const double* subarray_b,
     double* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<int8_t>(
+template unsigned int Domain::subarray_overlap<int8_t>(
     const int8_t* subarray_a,
     const int8_t* subarray_b,
     int8_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<uint8_t>(
+template unsigned int Domain::subarray_overlap<uint8_t>(
     const uint8_t* subarray_a,
     const uint8_t* subarray_b,
     uint8_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<int16_t>(
+template unsigned int Domain::subarray_overlap<int16_t>(
     const int16_t* subarray_a,
     const int16_t* subarray_b,
     int16_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<uint16_t>(
+template unsigned int Domain::subarray_overlap<uint16_t>(
     const uint16_t* subarray_a,
     const uint16_t* subarray_b,
     uint16_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<uint32_t>(
+template unsigned int Domain::subarray_overlap<uint32_t>(
     const uint32_t* subarray_a,
     const uint32_t* subarray_b,
     uint32_t* overlap_subarray) const;
-template unsigned int Hyperspace::subarray_overlap<uint64_t>(
+template unsigned int Domain::subarray_overlap<uint64_t>(
     const uint64_t* subarray_a,
     const uint64_t* subarray_b,
     uint64_t* overlap_subarray) const;
 
-template int Hyperspace::tile_cell_order_cmp<int>(
+template int Domain::tile_cell_order_cmp<int>(
     const int* coords_a, const int* coords_b, int* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<int64_t>(
+template int Domain::tile_cell_order_cmp<int64_t>(
     const int64_t* coords_a,
     const int64_t* coords_b,
     int64_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<float>(
+template int Domain::tile_cell_order_cmp<float>(
     const float* coords_a, const float* coords_b, float* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<double>(
+template int Domain::tile_cell_order_cmp<double>(
     const double* coords_a, const double* coords_b, double* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<int8_t>(
+template int Domain::tile_cell_order_cmp<int8_t>(
     const int8_t* coords_a, const int8_t* coords_b, int8_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<uint8_t>(
+template int Domain::tile_cell_order_cmp<uint8_t>(
     const uint8_t* coords_a,
     const uint8_t* coords_b,
     uint8_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<int16_t>(
+template int Domain::tile_cell_order_cmp<int16_t>(
     const int16_t* coords_a,
     const int16_t* coords_b,
     int16_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<uint16_t>(
+template int Domain::tile_cell_order_cmp<uint16_t>(
     const uint16_t* coords_a,
     const uint16_t* coords_b,
     uint16_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<uint32_t>(
+template int Domain::tile_cell_order_cmp<uint32_t>(
     const uint32_t* coords_a,
     const uint32_t* coords_b,
     uint32_t* tile_coords) const;
-template int Hyperspace::tile_cell_order_cmp<uint64_t>(
+template int Domain::tile_cell_order_cmp<uint64_t>(
     const uint64_t* coords_a,
     const uint64_t* coords_b,
     uint64_t* tile_coords) const;
 
-template uint64_t Hyperspace::tile_id<int>(
+template uint64_t Domain::tile_id<int>(
     const int* cell_coords, int* tile_coords) const;
-template uint64_t Hyperspace::tile_id<int64_t>(
+template uint64_t Domain::tile_id<int64_t>(
     const int64_t* cell_coords, int64_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<float>(
+template uint64_t Domain::tile_id<float>(
     const float* cell_coords, float* tile_coords) const;
-template uint64_t Hyperspace::tile_id<double>(
+template uint64_t Domain::tile_id<double>(
     const double* cell_coords, double* tile_coords) const;
-template uint64_t Hyperspace::tile_id<int8_t>(
+template uint64_t Domain::tile_id<int8_t>(
     const int8_t* cell_coords, int8_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<uint8_t>(
+template uint64_t Domain::tile_id<uint8_t>(
     const uint8_t* cell_coords, uint8_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<int16_t>(
+template uint64_t Domain::tile_id<int16_t>(
     const int16_t* cell_coords, int16_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<uint16_t>(
+template uint64_t Domain::tile_id<uint16_t>(
     const uint16_t* cell_coords, uint16_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<uint32_t>(
+template uint64_t Domain::tile_id<uint32_t>(
     const uint32_t* cell_coords, uint32_t* tile_coords) const;
-template uint64_t Hyperspace::tile_id<uint64_t>(
+template uint64_t Domain::tile_id<uint64_t>(
     const uint64_t* cell_coords, uint64_t* tile_coords) const;
 
 }  // namespace tiledb

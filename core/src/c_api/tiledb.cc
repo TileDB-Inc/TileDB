@@ -94,14 +94,14 @@ struct tiledb_dimension_t {
 };
 
 struct tiledb_dimension_iter_t {
-  const tiledb_hyperspace_t* hyperspace_;
+  const tiledb_domain_t* domain_;
   tiledb_dimension_t* dim_;
   int dim_num_;
   int current_dim_;
 };
 
-struct tiledb_hyperspace_t {
-  tiledb::Hyperspace* hyperspace_;
+struct tiledb_domain_t {
+  tiledb::Domain* domain_;
 };
 
 struct tiledb_query_t {
@@ -167,7 +167,7 @@ inline int sanity_check(
 
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_dimension_iter_t* dim_it) {
-  if (dim_it == nullptr || dim_it->hyperspace_ == nullptr) {
+  if (dim_it == nullptr || dim_it->domain_ == nullptr) {
     save_error(
         ctx, tiledb::Status::Error("Invalid TileDB dimension iterator struct"));
     return TILEDB_ERR;
@@ -194,10 +194,9 @@ inline int sanity_check(
   return TILEDB_OK;
 }
 
-inline int sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_hyperspace_t* hyperspace) {
-  if (hyperspace == nullptr || hyperspace->hyperspace_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB hyperspace struct"));
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
+  if (domain == nullptr || domain->domain_ == nullptr) {
+    save_error(ctx, tiledb::Status::Error("Invalid TileDB domain struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -470,95 +469,78 @@ int tiledb_attribute_dump(
 /*            HYPERSPACE             */
 /* ********************************* */
 
-int tiledb_hyperspace_create(
-    tiledb_ctx_t* ctx,
-    tiledb_hyperspace_t** hyperspace,
-    tiledb_datatype_t type) {
+int tiledb_domain_create(
+    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create a hyperspace struct
-  *hyperspace = (tiledb_hyperspace_t*)std::malloc(sizeof(tiledb_hyperspace_t));
-  if (*hyperspace == nullptr) {
+  // Create a domain struct
+  *domain = (tiledb_domain_t*)std::malloc(sizeof(tiledb_domain_t));
+  if (*domain == nullptr) {
     save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB hyperspace struct"));
+        ctx, tiledb::Status::Error("Failed to allocate TileDB domain struct"));
     return TILEDB_OOM;
   }
 
-  // Create a new Hyperspace object
-  (*hyperspace)->hyperspace_ =
-      new tiledb::Hyperspace(static_cast<tiledb::Datatype>(type));
-  if ((*hyperspace)->hyperspace_ == nullptr) {
-    std::free(*hyperspace);
-    *hyperspace = nullptr;
+  // Create a new Domain object
+  (*domain)->domain_ = new tiledb::Domain(static_cast<tiledb::Datatype>(type));
+  if ((*domain)->domain_ == nullptr) {
+    std::free(*domain);
+    *domain = nullptr;
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB hyperspace object in struct"));
+            "Failed to allocate TileDB domain object in struct"));
     return TILEDB_OOM;
   }
   return TILEDB_OK;
 }
 
-int tiledb_hyperspace_free(tiledb_ctx_t* ctx, tiledb_hyperspace_t* hyperspace) {
+int tiledb_domain_free(tiledb_ctx_t* ctx, tiledb_domain_t* domain) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, hyperspace) == TILEDB_ERR)
+      sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  delete hyperspace->hyperspace_;
-  std::free(hyperspace);
+  delete domain->domain_;
+  std::free(domain);
 
   return TILEDB_OK;
 }
 
-int tiledb_hyperspace_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_hyperspace_t* hyperspace,
-    tiledb_datatype_t* type) {
+int tiledb_domain_get_type(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, hyperspace) == TILEDB_ERR)
+      sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *type = static_cast<tiledb_datatype_t>(hyperspace->hyperspace_->type());
+  *type = static_cast<tiledb_datatype_t>(domain->domain_->type());
 
   return TILEDB_OK;
 }
 
-int tiledb_hyperspace_add_dimension(
+int tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx,
-    tiledb_hyperspace_t* hyperspace,
+    tiledb_domain_t* domain,
     const char* name,
-    const void* domain,
+    const void* dim_domain,
     const void* tile_extent) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, hyperspace) == TILEDB_ERR)
+      sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (save_error(
-          ctx,
-          hyperspace->hyperspace_->add_dimension(name, domain, tile_extent)))
+          ctx, domain->domain_->add_dimension(name, dim_domain, tile_extent)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_hyperspace_dump(
-    tiledb_ctx_t* ctx, const tiledb_hyperspace_t* hyperspace, FILE* out) {
+int tiledb_domain_dump(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, hyperspace) == TILEDB_ERR)
+      sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
-  hyperspace->hyperspace_->dump(out);
-  return TILEDB_OK;
-}
-
-int tiledb_dimension_free(tiledb_ctx_t* ctx, tiledb_dimension_t* dim) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  delete dim->dim_;
-  std::free(dim);
-
+  domain->domain_->dump(out);
   return TILEDB_OK;
 }
 
@@ -598,10 +580,10 @@ int tiledb_dimension_dump(
 
 int tiledb_dimension_iter_create(
     tiledb_ctx_t* ctx,
-    const tiledb_hyperspace_t* hyperspace,
+    const tiledb_domain_t* domain,
     tiledb_dimension_iter_t** dim_it) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, hyperspace) == TILEDB_ERR)
+      sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create dimension iterator struct
   *dim_it =
@@ -615,8 +597,8 @@ int tiledb_dimension_iter_create(
   }
 
   // Initialize the iterator
-  (*dim_it)->hyperspace_ = hyperspace;
-  (*dim_it)->dim_num_ = hyperspace->hyperspace_->dim_num();
+  (*dim_it)->domain_ = domain;
+  (*dim_it)->dim_num_ = domain->domain_->dim_num();
   (*dim_it)->current_dim_ = 0;
   if ((*dim_it)->dim_num_ <= 0) {
     (*dim_it)->dim_ = nullptr;
@@ -636,7 +618,7 @@ int tiledb_dimension_iter_create(
 
     // Create a dimension object
     (*dim_it)->dim_->dim_ =
-        new tiledb::Dimension(hyperspace->hyperspace_->dimension(0));
+        new tiledb::Dimension(domain->domain_->dimension(0));
 
     // Check for allocation error
     if ((*dim_it)->dim_->dim_ == nullptr) {
@@ -693,7 +675,7 @@ int tiledb_dimension_iter_next(
 
     if (dim_it->current_dim_ >= 0 && dim_it->current_dim_ < dim_it->dim_num_)
       dim_it->dim_->dim_ = new tiledb::Dimension(
-          dim_it->hyperspace_->hyperspace_->dimension(dim_it->current_dim_));
+          dim_it->domain_->domain_->dimension(dim_it->current_dim_));
     else
       dim_it->dim_->dim_ = nullptr;
   }
@@ -722,7 +704,7 @@ int tiledb_dimension_iter_first(
     delete dim_it->dim_->dim_;
     if (dim_it->dim_num_ > 0)
       dim_it->dim_->dim_ =
-          new tiledb::Dimension(dim_it->hyperspace_->hyperspace_->dimension(0));
+          new tiledb::Dimension(dim_it->domain_->domain_->dimension(0));
     else
       dim_it->dim_->dim_ = nullptr;
   }
@@ -800,14 +782,14 @@ int tiledb_array_metadata_add_attribute(
   return TILEDB_OK;
 }
 
-int tiledb_array_metadata_set_hyperspace(
+int tiledb_array_metadata_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_metadata_t* array_metadata,
-    tiledb_hyperspace_t* hyperspace) {
+    tiledb_domain_t* domain) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_metadata->array_metadata_->set_hyperspace(hyperspace->hyperspace_);
+  array_metadata->array_metadata_->set_domain(domain->domain_);
   return TILEDB_OK;
 }
 
@@ -976,33 +958,32 @@ int tiledb_array_metadata_get_coords_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_array_metadata_get_hyperspace(
+int tiledb_array_metadata_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
-    tiledb_hyperspace_t** hyperspace) {
+    tiledb_domain_t** domain) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create a hyperspace struct
-  *hyperspace = (tiledb_hyperspace_t*)std::malloc(sizeof(tiledb_hyperspace_t));
-  if (*hyperspace == nullptr) {
+  // Create a domain struct
+  *domain = (tiledb_domain_t*)std::malloc(sizeof(tiledb_domain_t));
+  if (*domain == nullptr) {
     save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB hyperspace struct"));
+        ctx, tiledb::Status::Error("Failed to allocate TileDB domain struct"));
     return TILEDB_OOM;
   }
 
-  // Create a new Hyperspace object
-  (*hyperspace)->hyperspace_ =
-      new tiledb::Hyperspace(array_metadata->array_metadata_->hyperspace());
-  if ((*hyperspace)->hyperspace_ == nullptr) {
-    std::free(*hyperspace);
-    *hyperspace = nullptr;
+  // Create a new Domain object
+  (*domain)->domain_ =
+      new tiledb::Domain(array_metadata->array_metadata_->domain());
+  if ((*domain)->domain_ == nullptr) {
+    std::free(*domain);
+    *domain = nullptr;
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB hyperspace object in struct"));
+            "Failed to allocate TileDB domain object in struct"));
     return TILEDB_OOM;
   }
   return TILEDB_OK;
