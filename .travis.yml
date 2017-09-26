@@ -9,10 +9,10 @@ env:
 install:
     # Install library dependencies
     - sudo scripts/install-deps.sh
+    # Install clangformat (v5.0)
+    - sudo scripts/install-clangformat.sh
     # Install hadoop
     - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
-    # Install clangformat (v5.0)
-    # - sudo scripts/install-clangformat.sh
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
     # Build TileDB
@@ -26,7 +26,7 @@ before_script:
     - lcov --directory $TRAVIS_BUILD_DIR/build --zerocounters
 
 script:
-    # - make check-format
+    - make check-format
     - make check
 
 after_success:
