@@ -62,9 +62,9 @@ Tile::Tile(
     : cell_size_(cell_size)
     , compressor_(compressor)
     , compression_level_(compression_level)
+    , dim_num_(dim_num)
     , tile_size_(tile_size)
-    , type_(type)
-    , dim_num_(dim_num) {
+    , type_(type) {
   buffer_ = nullptr;
   offset_ = 0;
 }
@@ -76,8 +76,8 @@ Tile::Tile(
     unsigned int dim_num)
     : cell_size_(cell_size)
     , compressor_(compressor)
-    , type_(type)
-    , dim_num_(dim_num) {
+    , dim_num_(dim_num)
+    , type_(type) {
   buffer_ = nullptr;
   offset_ = 0;
   tile_size_ = 0;

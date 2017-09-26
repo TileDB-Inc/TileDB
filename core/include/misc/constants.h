@@ -37,6 +37,9 @@
 
 namespace tiledb {
 
+enum class Datatype : char;
+enum class Compressor : char;
+
 namespace constants {
 
 /** The array filelock name. */
@@ -50,6 +53,24 @@ extern const uint64_t capacity;
 
 /** The size of a variable cell offset. */
 extern const uint64_t cell_var_offset_size;
+
+/** The type of a variable cell offset. */
+extern const Datatype cell_var_offset_type;
+
+/** A special value indicating varibale size. */
+extern const uint64_t var_size;
+
+/** The default compressor for the offsets of variable-sized cells. */
+extern Compressor cell_var_offsets_compression;
+
+/** The default compression level for the offsets of variable-sized cells. */
+extern int cell_var_offsets_compression_level;
+
+/** The default compressor for the coordinates. */
+extern Compressor coords_compression;
+
+/** The default compression level for the coordinates. */
+extern int coords_compression_level;
 
 /** Special name reserved for the coordinates attribute. */
 extern const char* coords;
@@ -117,9 +138,6 @@ extern const uint64_t sorted_buffer_var_size;
 /** Special value indicating a variable number of elements. */
 extern const unsigned int var_num;
 
-/** Special value indicating a variable size. */
-extern const uint64_t var_size;
-
 /** String describing no compression. */
 extern const char* no_compression_str;
 
@@ -155,6 +173,9 @@ extern const char* rle_str;
 
 /** String describing BZIP2. */
 extern const char* bzip2_str;
+
+/** String describing DOUBLE_DELTA. */
+extern const char* double_delta_str;
 
 /** The string representation for type int32. */
 extern const char* int32_str;

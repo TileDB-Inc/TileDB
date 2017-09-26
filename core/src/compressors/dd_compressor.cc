@@ -39,13 +39,13 @@
 /*             MACROS             */
 /* ****************************** */
 
-#define ABS(x) ((x) < 0) ? (-(x)) : (x)
+#define ABS(x) ((x) < 0) ? uint64_t(-(x)) : uint64_t(x)
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 
-static const uint64_t OVERHEAD = 17;
+const uint64_t DoubleDelta::OVERHEAD = 17;
 
 /* ****************************** */
 /*               API              */
@@ -85,12 +85,12 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
     return Status::Ok();
 
   // Write double deltas
-  int64_t prev_delta = in[1] - in[0];
+  int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
   int bit_in_chunk = 63;  // Leftmost bit (MSB)
   uint64_t chunk = 0;
   int64_t cur_delta, dd;
   for (uint64_t i = 2; i < num; ++i) {
-    cur_delta = in[i] - in[i - 1];
+    cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
     dd = cur_delta - prev_delta;
     RETURN_NOT_OK(
         write_double_delta(output_buffer, dd, bitsize, &chunk, &bit_in_chunk));
@@ -98,7 +98,7 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   }
 
   // Write whatever is left in the chunk
-  if (bit_in_chunk > 0)
+  if (bit_in_chunk < 63)
     RETURN_NOT_OK(output_buffer->write(&chunk, sizeof(uint64_t)));
 
   return Status::Ok();
@@ -114,6 +114,7 @@ Status DoubleDelta::decompress(
   RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(char)));
   RETURN_NOT_OK(input_buffer->read(&num, sizeof(uint64_t)));
   auto bitsize = (int)bitsize_c;
+  uint64_t output_offset = output_buffer->offset();
 
   // Trivial case - no compression
   if (bitsize >= sizeof(T) * 8 - 1) {
@@ -145,8 +146,10 @@ Status DoubleDelta::decompress(
   for (uint64_t i = 2; i < num; ++i) {
     RETURN_NOT_OK(
         read_double_delta(input_buffer, &dd, bitsize, &chunk, &bit_in_chunk));
-    out = (T*)output_buffer->data();  // Important! Buffer may be realloced
-    value = (T)(dd + 2 * out[i - 1] - out[i - 2]);
+    // The following is very important! Proper start of values for this batch.
+    // Also the buffer may be realloced.
+    out = (T*)((char*)output_buffer->data() + output_offset);
+    value = (T)(dd + 2 * (int64_t)out[i - 1] - (int64_t)out[i - 2]);
     RETURN_NOT_OK(output_buffer->write(&value, value_size));
   }
 
@@ -159,8 +162,6 @@ Status DoubleDelta::decompress(
 
 template <class T>
 Status DoubleDelta::calculate_bitsize(T* in, uint64_t num, int* bitsize) {
-  // TODO: It could perform the test here about the max number...
-
   // Find maximum absolute double delta
   int64_t max = 0;
   int64_t prev_delta = in[1] - in[0];
@@ -204,6 +205,12 @@ Status DoubleDelta::read_double_delta(
   int sign = (((*chunk) & to_and) == 0) ? 1 : -1;
   --(*bit_in_chunk);
 
+  // Read chunk and reset
+  if (*bit_in_chunk < 0) {
+    RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
+    *bit_in_chunk = 63;
+  }
+
   // Read double delta
   int bits_left_to_read = bitsize;
   int bits_to_read_from_chunk = MIN(*bit_in_chunk + 1, bits_left_to_read);
@@ -224,6 +231,7 @@ Status DoubleDelta::read_double_delta(
     if (*bit_in_chunk < 0) {
       RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
+      bits_to_read_from_chunk = MIN(*bit_in_chunk + 1, bits_left_to_read);
     }
   }
 
@@ -244,6 +252,13 @@ Status DoubleDelta::write_double_delta(
   to_or <<= (*bit_in_chunk);
   (*chunk) |= to_or;
   --(*bit_in_chunk);
+
+  // Write chunk and reset
+  if (*bit_in_chunk < 0) {
+    RETURN_NOT_OK(buff->write(chunk, sizeof(uint64_t)));
+    *bit_in_chunk = 63;
+    *chunk = 0;
+  }
 
   // Write rest of bits
   int bits_left_to_write = bitsize;
@@ -267,6 +282,7 @@ Status DoubleDelta::write_double_delta(
       RETURN_NOT_OK(buff->write(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
       *chunk = 0;
+      bits_to_fill_in_chunk = MIN((*bit_in_chunk) + 1, bits_left_to_write);
     }
   }
 

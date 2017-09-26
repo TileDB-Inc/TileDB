@@ -75,7 +75,7 @@ Attribute::~Attribute() = default;
 
 uint64_t Attribute::cell_size() const {
   if (var_size())
-    return constants::cell_var_offset_size;
+    return constants::var_size;
 
   return cell_val_num_ * datatype_size(type_);
 }

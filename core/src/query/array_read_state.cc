@@ -1780,7 +1780,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
 
   // Calculate the number of non-empty unsorted fragment range lists
   unsigned int non_empty = 0;
-  int first_non_empty = INVALID_UINT;
+  unsigned int first_non_empty = INVALID_UINT;
   for (unsigned int i = 0; i < fragment_num; ++i) {
     if (!(*unsorted_fragment_cell_ranges)[i].empty()) {
       ++non_empty;

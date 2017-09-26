@@ -30,6 +30,8 @@
  * This file defines the TileDB constants.
  */
 
+#include <compressor.h>
+#include <datatype.h>
 #include <cfloat>
 #include <climits>
 #include <cstddef>
@@ -51,9 +53,25 @@ const char* fragment_metadata_filename = "__fragment_metadata.tdb";
 const uint64_t capacity = 10000;
 
 /** The size of a variable cell offset. */
-const uint64_t cell_var_offset_size = sizeof(size_t);
+const uint64_t cell_var_offset_size = sizeof(uint64_t);
 
-const uint64_t var_size = sizeof(uint64_t);
+/** The type of a variable cell offset. */
+const Datatype cell_var_offset_type = Datatype::UINT64;
+
+/** A special value indicating varibale size. */
+const uint64_t var_size = UINT64_MAX;
+
+/** The default compressor for the offsets of variable-sized cells. */
+Compressor cell_var_offsets_compression = Compressor::DOUBLE_DELTA;
+
+/** The default compression level for the offsets of variable-sized cells. */
+int cell_var_offsets_compression_level = -1;
+
+/** The default compressor for the coordinates. */
+Compressor coords_compression = Compressor::DOUBLE_DELTA;
+
+/** The default compression level for the coordinates. */
+int coords_compression_level = -1;
 
 /** Special name reserved for the coordinates attribute. */
 const char* coords = "__coords";
@@ -156,6 +174,9 @@ const char* rle_str = "RLE";
 
 /** String describing BZIP2. */
 const char* bzip2_str = "BZIP2";
+
+/** String describing DOUBLE_DELTA. */
+const char* double_delta_str = "DOUBLE_DELTA";
 
 /** The string representation for type int32. */
 const char* int32_str = "INT32";
