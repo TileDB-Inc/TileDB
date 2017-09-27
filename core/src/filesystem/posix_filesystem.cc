@@ -62,7 +62,7 @@ std::string abs_path(const std::string& path) {
   // Other cases
   std::string ret_dir;
   if (utils::starts_with(path, posix_prefix))
-    ret_dir = path;
+    return path;
   else if (utils::starts_with(path, "/"))
     ret_dir = posix_prefix + path;
   else if (utils::starts_with(path, "~/"))

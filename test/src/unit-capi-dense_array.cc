@@ -51,6 +51,7 @@ struct DenseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
 
   // Group folder name
+  const std::string URI_PREFIX = "file://";
   const std::string GROUP = "my_group/";
 
   // Array name
@@ -74,6 +75,8 @@ struct DenseArrayFx {
     assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
+    // TODO: The following should change for HDFS - GROUP does not have a URI
+    // prefix
     std::string cmd = "test -d " + GROUP;
     rc = system(cmd.c_str());
     if (rc == 0) {
@@ -81,7 +84,7 @@ struct DenseArrayFx {
       rc = system(cmd.c_str());
       assert(rc == 0);
     }
-    rc = tiledb_group_create(ctx_, GROUP.c_str());
+    rc = tiledb_group_create(ctx_, (URI_PREFIX + GROUP).c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -90,6 +93,8 @@ struct DenseArrayFx {
     tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
+    // TODO: The following should change for HDFS - GROUP does not have a URI
+    // prefix
     std::string cmd = "rm -rf " + GROUP;
     int rc = system(cmd.c_str());
     assert(rc == 0);
@@ -356,7 +361,7 @@ struct DenseArrayFx {
 
   /** Sets the array name for the current test. */
   void set_array_name(const char* name) {
-    array_name_ = GROUP + name;
+    array_name_ = URI_PREFIX + GROUP + name;
   }
 
   /**

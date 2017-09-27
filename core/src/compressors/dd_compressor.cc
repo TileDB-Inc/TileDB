@@ -178,7 +178,7 @@ Status DoubleDelta::calculate_bitsize(T* in, uint64_t num, int* bitsize) {
 
   // Handle error
   if (delta_out_of_bounds) {
-    LOG_STATUS(
+    return LOG_STATUS(
         Status::CompressionError("Cannot compress with DoubleDelta; Some "
                                  "negative double delta is out of bounds"));
   }
