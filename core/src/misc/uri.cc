@@ -34,6 +34,8 @@
 #include "utils.h"
 #include "vfs.h"
 
+#include <iostream>
+
 namespace tiledb {
 
 /* ********************************* */

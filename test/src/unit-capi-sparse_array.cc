@@ -53,6 +53,7 @@ struct SparseArrayFx {
   int COMPRESSION_LEVEL = -1;
 
   // Workspace folder name
+  const std::string URI_PREFIX = "file://";
   const std::string GROUP = "my_group/";
 
   // Array name
@@ -70,6 +71,8 @@ struct SparseArrayFx {
     assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
+    // TODO: The following should change for HDFS - GROUP does not have a URI
+    // prefix
     std::string cmd = "test -d " + GROUP;
     rc = system(cmd.c_str());
     if (rc == 0) {
@@ -77,7 +80,7 @@ struct SparseArrayFx {
       rc = system(cmd.c_str());
       assert(rc == 0);
     }
-    rc = tiledb_group_create(ctx_, GROUP.c_str());
+    rc = tiledb_group_create(ctx_, (URI_PREFIX + GROUP).c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -86,6 +89,8 @@ struct SparseArrayFx {
     tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
+    // TODO: The following should change for HDFS - GROUP does not have a URI
+    // prefix
     std::string cmd = "rm -rf " + GROUP;
     int rc = system(cmd.c_str());
     assert(rc == 0);
@@ -251,7 +256,7 @@ struct SparseArrayFx {
 
   /** Sets the array name for the current test. */
   void set_array_name(const char* name) {
-    array_name_ = GROUP + name;
+    array_name_ = URI_PREFIX + GROUP + name;
   }
 
   /**
@@ -412,7 +417,7 @@ TEST_CASE_METHOD(
         capacity,
         TILEDB_NO_COMPRESSION,
         TILEDB_ROW_MAJOR,
-        TILEDB_COL_MAJOR);
+        TILEDB_ROW_MAJOR);
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
@@ -446,7 +451,7 @@ TEST_CASE_METHOD(
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
-  SECTION("- gzip compression row/col-major") {
+  SECTION("- gzip compression row-major") {
     create_sparse_array_2D(
         tile_extent_0,
         tile_extent_1,
@@ -457,7 +462,7 @@ TEST_CASE_METHOD(
         capacity,
         TILEDB_GZIP,
         TILEDB_ROW_MAJOR,
-        TILEDB_COL_MAJOR);
+        TILEDB_ROW_MAJOR);
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
