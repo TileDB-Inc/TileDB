@@ -235,20 +235,25 @@ struct SparseArrayFx {
         1,
         buffers,
         buffer_sizes);
-    if (rc != TILEDB_OK)
+    if (rc != TILEDB_OK) {
+      delete [] buffer_a1;
       return nullptr;
+    }
 
     // Submit query
     rc = tiledb_query_submit(ctx_, query);
     if (rc != TILEDB_OK) {
       tiledb_query_free(ctx_, query);
+      delete [] buffer_a1;
       return nullptr;
     }
 
     // Free/finalize query
     rc = tiledb_query_free(ctx_, query);
-    if (rc != TILEDB_OK)
+    if (rc != TILEDB_OK) {
+      delete [] buffer_a1;
       return nullptr;
+    }
 
     // Success - return the created buffer
     return buffer_a1;

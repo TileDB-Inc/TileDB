@@ -53,8 +53,8 @@ Status BZip::compress(
         "Failed compressing with BZip; invalid buffer format"));
 
   // Compress
-  auto in_size = (unsigned int)input_buffer->offset();
-  auto out_size = (unsigned int)output_buffer->size();
+  auto in_size = (unsigned int)input_buffer->size();
+  auto out_size = (unsigned int)output_buffer->alloced_size();
   int rc = BZ2_bzBuffToBuffCompress(
       static_cast<char*>(output_buffer->data()),
       &out_size,
@@ -89,6 +89,7 @@ Status BZip::compress(
 
   // Set size of compressed data
   output_buffer->set_offset(out_size);
+  output_buffer->set_size(out_size);
 
   return Status::Ok();
 }
@@ -100,7 +101,7 @@ Status BZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
         "Failed decompressing with BZip; invalid buffer format"));
 
   // Decompress
-  auto out_size = (unsigned int)output_buffer->size();
+  auto out_size = (unsigned int)output_buffer->alloced_size();
   int rc = BZ2_bzBuffToBuffDecompress(
       static_cast<char*>(output_buffer->data()),
       &out_size,
@@ -132,6 +133,10 @@ Status BZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
             "BZip decompression error: unknown error code ");
     }
   }
+
+  // Set size of compressed data
+  output_buffer->set_offset(out_size);
+  output_buffer->set_size(out_size);
 
   return Status::Ok();
 }

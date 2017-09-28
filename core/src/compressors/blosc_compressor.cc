@@ -67,17 +67,17 @@ Status Blosc::compress(
       level < 0 ? Blosc::default_level() : level,
       1,  // shuffle
       type_size,
-      input_buffer->offset(),
+      input_buffer->size(),
       input_buffer->data(),
       output_buffer->data(),
-      output_buffer->size());
+      output_buffer->alloced_size());
 
   // Handle error
   if (rc < 0)
     return Status::CompressionError("Blosc compression error");
 
   // Set size of compressed data
-  output_buffer->set_offset(uint64_t(rc));
+  output_buffer->set_size(uint64_t(rc));
 
   return Status::Ok();
 }
@@ -92,11 +92,14 @@ Status Blosc::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
   int rc = blosc_decompress(
       static_cast<char*>(input_buffer->data()),
       output_buffer->data(),
-      output_buffer->size());
+      output_buffer->alloced_size());
 
   // Handle error
   if (rc <= 0)
     return Status::CompressionError("Blosc decompress error");
+
+  // Set size of decompressed data
+  output_buffer->set_size(uint64_t(rc));
 
   return Status::Ok();
 }

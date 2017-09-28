@@ -50,9 +50,6 @@ class Buffer {
   /** Constructor. */
   Buffer();
 
-  /** Constructor that allocates memory with the input size. */
-  explicit Buffer(uint64_t size);
-
   /** Destructor. */
   ~Buffer();
 
@@ -60,8 +57,8 @@ class Buffer {
   /*                API                */
   /* ********************************* */
 
-  /** Advances the buffer offset. */
-  void advance_offset(uint64_t nbytes);
+  /** Returns the allocated buffer size. */
+  uint64_t alloced_size() const;
 
   /** Clears the buffer, deallocating memory. */
   void clear();
@@ -95,7 +92,7 @@ class Buffer {
   /** Sets the buffer offset to the input offset. */
   void set_offset(uint64_t offset);
 
-  /** Sets the size of the buffer. */
+  /** Sets the buffer size. */
   void set_size(uint64_t size);
 
   /** Returns the buffer size. */
@@ -163,6 +160,9 @@ class Buffer {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The allocated buffer size. */
+  uint64_t alloced_size_;
 
   /** The buffer data. */
   void* data_;

@@ -166,7 +166,7 @@ class VFS {
    * @param buff The buffer to read into.
    * @return Status
    */
-  Status read_from_file(const URI& uri, Buffer** buff);
+  //  Status read_from_file(const URI& uri, Buffer** buff);
 
   /**
    * Reads from a file.

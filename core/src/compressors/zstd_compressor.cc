@@ -52,9 +52,9 @@ Status ZStd::compress(
   // Compress
   size_t zstd_code = ZSTD_compress(
       output_buffer->data(),
-      output_buffer->size(),
+      output_buffer->alloced_size(),
       input_buffer->data(),
-      input_buffer->offset(),
+      input_buffer->size(),
       level < 0 ? ZStd::default_level() : level);
 
   // Handle error
@@ -64,8 +64,8 @@ Status ZStd::compress(
         std::string("ZStd compression failed: ") + msg));
   }
 
-  // Set size and offset of compressed data
-  output_buffer->set_offset(zstd_code);
+  // Set size of compressed data
+  output_buffer->set_size(zstd_code);
 
   return Status::Ok();
 }
@@ -79,7 +79,7 @@ Status ZStd::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
   // Decompress
   size_t zstd_code = ZSTD_decompress(
       output_buffer->data(),
-      output_buffer->size(),
+      output_buffer->alloced_size(),
       input_buffer->data(),
       input_buffer->size());
 
@@ -89,6 +89,9 @@ Status ZStd::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
     return LOG_STATUS(Status::CompressionError(
         std::string("ZStd decompression failed: ") + msg));
   }
+
+  // Set size decompressed data
+  output_buffer->set_size(zstd_code);
 
   return Status::Ok();
 }

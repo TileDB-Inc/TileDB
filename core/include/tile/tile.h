@@ -68,7 +68,8 @@ class Tile {
    * @param type The type of the data to be stored.
    * @param compression The compression type.
    * @param compression_level The compression level.
-   * @param tile_size The tile size.
+   * @param tile_size The tile size. The internal buffer will be allocated
+   *     that much space upon construction.
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
@@ -103,9 +104,6 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  /** Allocates memory of the input size. */
-  Status alloc(uint64_t size);
-
   /** Returns the internal buffer. */
   Buffer* buffer() const;
 
@@ -133,6 +131,9 @@ class Tile {
   /** The current offset in the tile. */
   uint64_t offset() const;
 
+  /** Reallocates nbytes for the internal tile buffer. */
+  Status realloc(uint64_t nbytes);
+
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 
@@ -141,6 +142,9 @@ class Tile {
 
   /** Sets the tile offset. */
   void set_offset(uint64_t offset);
+
+  /** Sets the internal buffer size. */
+  void set_size(uint64_t size);
 
   /** Returns the tile size. */
   uint64_t size() const;
@@ -214,12 +218,6 @@ class Tile {
    * in case the tile stores attributes.
    */
   unsigned int dim_num_;
-
-  /** The current offset in the tile. */
-  uint64_t offset_;
-
-  /** The tile size. */
-  uint64_t tile_size_;
 
   /** The tile data type. */
   Datatype type_;

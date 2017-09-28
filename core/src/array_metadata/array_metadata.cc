@@ -68,6 +68,9 @@ ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
   capacity_ = array_metadata->capacity_;
   cell_order_ = array_metadata->cell_order_;
   cell_sizes_ = array_metadata->cell_sizes_;
+  cell_var_offsets_compression_ = array_metadata->cell_var_offsets_compression_;
+  cell_var_offsets_compression_level_ =
+      array_metadata->cell_var_offsets_compression_level_;
   coords_compression_ = array_metadata->coords_compression_;
   coords_compression_level_ = array_metadata->coords_compression_level_;
   coords_size_ = array_metadata->coords_size_;

@@ -57,7 +57,7 @@ Status RLE::compress(
       static_cast<unsigned char*>(input_buffer->data()) + type_size;
   auto input_prev = static_cast<const unsigned char*>(input_buffer->data());
   auto output_cur = static_cast<unsigned char*>(output_buffer->data());
-  uint64_t value_num = input_buffer->offset() / type_size;
+  uint64_t value_num = input_buffer->size() / type_size;
   uint64_t _output_size = 0;
   uint64_t run_size = type_size + 2 * sizeof(char);
   unsigned char byte;
@@ -68,7 +68,7 @@ Status RLE::compress(
   }
 
   // Sanity check on input buffer
-  if (input_buffer->offset() % type_size != 0) {
+  if (input_buffer->size() % type_size != 0) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; invalid input buffer format"));
   }
@@ -80,7 +80,7 @@ Status RLE::compress(
       ++cur_run_len;
     } else {  // Save the run
       // Sanity check on output size
-      if (_output_size + run_size > output_buffer->size()) {
+      if (_output_size + run_size > output_buffer->alloced_size()) {
         return LOG_STATUS(Status::CompressionError(
             "Failed compressing with RLE; output buffer overflow"));
       }
@@ -107,7 +107,7 @@ Status RLE::compress(
 
   // Save final run
   // --- Sanity check on size
-  if (_output_size + run_size > output_buffer->size()) {
+  if (_output_size + run_size > output_buffer->alloced_size()) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; output buffer overflow"));
   }
@@ -123,7 +123,7 @@ Status RLE::compress(
   _output_size += run_size;
 
   // Set size of compressed data
-  output_buffer->set_offset(_output_size);
+  output_buffer->set_size(_output_size);
 
   return Status::Ok();
 }
@@ -141,6 +141,7 @@ Status RLE::decompress(
   uint64_t run_size = type_size + 2 * sizeof(char);
   uint64_t run_num = input_buffer->size() / run_size;
   unsigned char byte;
+  uint64_t decompressed_size = 0;
 
   // Trivial case
   if (input_buffer->size() == 0)
@@ -161,7 +162,7 @@ Status RLE::decompress(
     run_len += (uint64_t)byte;
 
     // Sanity check on size
-    if (type_size * run_len > output_buffer->size()) {
+    if (type_size * run_len > output_buffer->alloced_size()) {
       return LOG_STATUS(Status::CompressionError(
           "Failed decompressing with RLE; output buffer overflow"));
     }
@@ -174,7 +175,13 @@ Status RLE::decompress(
 
     // Update input/output tracking info
     input_cur += run_size;
+
+    // Update decompressed size
+    decompressed_size += run_len * type_size;
   }
+
+  // Set the size of the decompressed data
+  output_buffer->set_size(decompressed_size);
 
   return Status::Ok();
 }

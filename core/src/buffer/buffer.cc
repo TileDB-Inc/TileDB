@@ -38,18 +38,19 @@
 namespace tiledb {
 
 /* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 Buffer::Buffer() {
+  alloced_size_ = 0;
   data_ = nullptr;
   size_ = 0;
-  offset_ = 0;
-}
-
-Buffer::Buffer(uint64_t size) {
-  data_ = std::malloc(size);
-  size_ = (data_ != nullptr) ? size : 0;
   offset_ = 0;
 }
 
@@ -61,8 +62,8 @@ Buffer::~Buffer() {
 /*               API              */
 /* ****************************** */
 
-void Buffer::advance_offset(uint64_t nbytes) {
-  offset_ += nbytes;
+uint64_t Buffer::alloced_size() const {
+  return alloced_size_;
 }
 
 void Buffer::clear() {
@@ -72,6 +73,7 @@ void Buffer::clear() {
   data_ = nullptr;
   offset_ = 0;
   size_ = 0;
+  alloced_size_ = 0;
 }
 
 void* Buffer::data() const {
@@ -93,18 +95,20 @@ Status Buffer::read(void* buffer, uint64_t nbytes) {
 }
 
 Status Buffer::realloc(uint64_t nbytes) {
-  if (data_ == nullptr)
+  if (data_ == nullptr) {
     data_ = std::malloc(nbytes);
-  else
-    data_ = std::realloc(data_, nbytes);
+  } else {
+    if (nbytes > alloced_size_)
+      data_ = std::realloc(data_, nbytes);
+  }
 
   if (data_ == nullptr) {
-    size_ = 0;
+    alloced_size_ = 0;
     return LOG_STATUS(Status::BufferError(
         "Cannot reallocate buffer; Memory allocation failed"));
   }
 
-  size_ = nbytes;
+  alloced_size_ = nbytes;
 
   return Status::Ok();
 }
@@ -126,51 +130,45 @@ uint64_t Buffer::size() const {
 }
 
 void Buffer::write(ConstBuffer* buff) {
-  uint64_t bytes_left_to_write = size_ - offset_;
+  uint64_t bytes_left_to_write = alloced_size_ - offset_;
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
 
   buff->read((char*)data_ + offset_, bytes_to_copy);
   offset_ += bytes_to_copy;
+  size_ = offset_;
 }
 
 Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
-  if (size_ == 0) {
-    RETURN_NOT_OK(realloc(nbytes));
-  } else {
-    while (offset_ + nbytes > size_) {
-      RETURN_NOT_OK(realloc(2 * size_));
-    }
-  }
+  while (offset_ + nbytes > alloced_size_)
+    RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
 
   buff->read((char*)data_ + offset_, nbytes);
   offset_ += nbytes;
+  size_ = offset_;
 
   return Status::Ok();
 }
 
 Status Buffer::write(const void* buffer, uint64_t nbytes) {
-  if (size_ == 0) {
-    RETURN_NOT_OK(realloc(nbytes));
-  } else {
-    while (offset_ + nbytes > size_) {
-      RETURN_NOT_OK(realloc(2 * size_));
-    }
-  }
+  while (offset_ + nbytes > alloced_size_)
+    RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);
   offset_ += nbytes;
+  size_ = offset_;
 
   return Status::Ok();
 }
 
 void Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
-  uint64_t bytes_left_to_write = size_ - offset_;
+  uint64_t bytes_left_to_write = alloced_size_ - offset_;
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
 
   buff->read_with_shift(static_cast<uint64_t*>(data_), bytes_to_copy, offset);
   offset_ += bytes_to_copy;
+  size_ = offset_;
 }
 
 /* ****************************** */

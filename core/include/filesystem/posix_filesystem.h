@@ -179,7 +179,7 @@ Status read_from_file(
  * @param buff A pointer to the buffer to be allocated.
  * @return Status
  */
-Status read_from_file(const std::string& path, Buffer** buff);
+// Status read_from_file(const std::string& path, Buffer** buff);
 
 /**
  * Syncs a file or directory.
