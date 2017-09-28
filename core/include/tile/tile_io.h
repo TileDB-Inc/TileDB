@@ -194,7 +194,7 @@ class TileIO {
    * @param tile_size The original size of the (decompressed) tile.
    * @return Status
    */
-  Status decompress_tile(Tile* tile, uint64_t tile_size);
+  Status decompress_tile(Tile* tile);
 
   /**
    * Decompresses buffer_ into a tile.
@@ -203,7 +203,7 @@ class TileIO {
    * @param tile_size The original size of the (decompressed) tile.
    * @return Status
    */
-  Status decompress_tile_double_delta(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_double_delta(Tile* tile);
 };
 
 }  // namespace tiledb

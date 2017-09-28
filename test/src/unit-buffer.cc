@@ -3,48 +3,41 @@
 
 using namespace tiledb;
 
-TEST_CASE("Default constructor with write void*", "[buffer]") {
+TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
+  // Write a char array
   Status st;
   char data[3] = {1, 2, 3};
-  Buffer* buff = new Buffer();
+  auto buff = new Buffer();
   CHECK(buff->size() == 0);
-  st = buff->write(data, 3);
+  st = buff->write(data, sizeof(data));
   REQUIRE(st.ok());
-  CHECK(buff->size() == 3);
+  CHECK(buff->offset() == 3);
+  CHECK(buff->size() == sizeof(data));
+  CHECK(buff->alloced_size() == 3);
   buff->reset_offset();
-  // read a single value
+  CHECK(buff->offset() == 0);
+
+  // Read a single char value
   char val = 0;
-  st = buff->read(&val, 1);
+  st = buff->read(&val, sizeof(char));
   REQUIRE(st.ok());
   CHECK(val == 1);
-  // read two values
-  char readtwo[2] = {0, 0};
-  st = buff->read(readtwo, 2);
-  REQUIRE(st.ok());
-  CHECK(readtwo[0] == 2);
-  CHECK(readtwo[1] == 3);
-  delete buff;
-}
+  CHECK(buff->offset() == 1);
 
-TEST_CASE("Pre-allocated size with write void*", "[buffer]") {
-  Status st;
-  char data[3] = {1, 2, 3};
-  Buffer* buff = new Buffer(3);
-  CHECK(buff->size() == 3);
-  st = buff->write(data, 3);
-  REQUIRE(st.ok());
-  CHECK(buff->size() == 3);
-  buff->reset_offset();
-  // read a single value
-  char val[1] = {0};
-  st = buff->read(val, 1);
-  REQUIRE(st.ok());
-  CHECK(val[0] == 1);
-  // read two values
+  // Read two values
   char readtwo[2] = {0, 0};
   st = buff->read(readtwo, 2);
   REQUIRE(st.ok());
   CHECK(readtwo[0] == 2);
   CHECK(readtwo[1] == 3);
+  CHECK(buff->offset() == 3);
+
+  // Reallocate
+  st = buff->realloc(10);
+  REQUIRE(st.ok());
+  CHECK(buff->size() == 3);
+  CHECK(buff->alloced_size() == 10);
+  CHECK(buff->offset() == 3);
+
   delete buff;
 }

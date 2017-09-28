@@ -232,8 +232,10 @@ void WriteState::init_tiles() {
 
     tiles_.emplace_back(new Tile(
         (var_size) ? constants::cell_var_offset_type : attr->type(),
-        attr->compressor(),
-        attr->compression_level(),
+        (var_size) ? array_metadata->cell_var_offsets_compression() :
+                     attr->compressor(),
+        (var_size) ? array_metadata->cell_var_offsets_compression_level() :
+                     attr->compression_level(),
         fragment_->tile_size(i),
         (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
         0));
@@ -241,8 +243,8 @@ void WriteState::init_tiles() {
     if (var_size) {
       tiles_var_.emplace_back(new Tile(
           attr->type(),
-          array_metadata->cell_var_offsets_compression(),
-          array_metadata->cell_var_offsets_compression_level(),
+          attr->compressor(),
+          attr->compression_level(),
           fragment_->tile_size(i),
           datatype_size(attr->type()),
           0));
@@ -412,9 +414,9 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   auto array_metadata = fragment_->query()->array_metadata();
   auto attribute_num = array_metadata->attribute_num();
   auto dim_num = array_metadata->dim_num();
-  uint64_t capacity = array_metadata->capacity();
-  uint64_t coords_size = array_metadata->coords_size();
-  uint64_t buffer_cell_num = buffer_size / coords_size;
+  auto capacity = array_metadata->capacity();
+  auto coords_size = array_metadata->coords_size();
+  auto buffer_cell_num = buffer_size / coords_size;
   auto buffer_T = static_cast<const T*>(buffer);
   uint64_t& tile_cell_num = tile_cell_num_[attribute_num];
 
@@ -422,7 +424,7 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   for (uint64_t i = 0; i < buffer_cell_num; ++i) {
     // Set first bounding coordinates
     if (tile_cell_num == 0)
-      memcpy(bounding_coords_, &buffer_T[i * dim_num], coords_size);
+      std::memcpy(bounding_coords_, &buffer_T[i * dim_num], coords_size);
 
     // Expand MBR
     expand_mbr(&buffer_T[i * dim_num]);
@@ -434,7 +436,7 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
 
     // Set second bounding coordinates
     if (i == buffer_cell_num - 1 || tile_cell_num == capacity)
-      memcpy(
+      std::memcpy(
           static_cast<char*>(bounding_coords_) + coords_size,
           &buffer_T[i * dim_num],
           coords_size);
@@ -471,6 +473,7 @@ Status WriteState::write_attr(
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
       metadata_->append_tile_offset(attribute_id, bytes_written);
       tile->reset_offset();
+      tile->set_size(0);
     }
   } while (!buf->end());
 
@@ -503,6 +506,7 @@ Status WriteState::write_attr_var(
   // Trivial case
   if (buffer_size == 0 || buffer_var_size == 0)
     return Status::Ok();
+  assert(buffer != nullptr && buffer_var != nullptr);
 
   auto buf = new ConstBuffer(buffer, buffer_size);
   auto buf_var = new ConstBuffer(buffer_var, buffer_var_size);
@@ -532,9 +536,11 @@ Status WriteState::write_attr_var(
       RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
       metadata_->append_tile_offset(attribute_id, bytes_written);
       metadata_->append_tile_var_offset(attribute_id, bytes_written_var);
-      metadata_->append_tile_var_size(attribute_id, tile_var->offset());
+      metadata_->append_tile_var_size(attribute_id, tile_var->size());
       tile->reset_offset();
+      tile->set_size(0);
       tile_var->reset_offset();
+      tile_var->set_size(0);
     }
   } while (!buf->end());
 
@@ -559,7 +565,7 @@ Status WriteState::write_attr_var_last(unsigned int attribute_id) {
   RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
   metadata_->append_tile_offset(attribute_id, bytes_written);
   metadata_->append_tile_var_offset(attribute_id, bytes_written_var);
-  metadata_->append_tile_var_size(attribute_id, tile_var->offset());
+  metadata_->append_tile_var_size(attribute_id, tile_var->size());
   tile->reset_offset();
   tile_var->reset_offset();
 
@@ -650,7 +656,7 @@ Status WriteState::write_sparse_unsorted_attr(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  auto sorted_buf = new Buffer(constants::sorted_buffer_size);
+  auto sorted_buf = new Buffer();
   auto buffer_c = static_cast<const char*>(buffer);
 
   // Sort and write attribute values in batches
@@ -705,8 +711,8 @@ Status WriteState::write_sparse_unsorted_attr_var(
         array_metadata->attribute_name(attribute_id) + "'"));
   }
 
-  auto sorted_buf = new Buffer(constants::sorted_buffer_size);
-  auto sorted_buf_var = new Buffer(constants::sorted_buffer_var_size);
+  auto sorted_buf = new Buffer();
+  auto sorted_buf_var = new Buffer();
 
   // Sort and write attribute values in batches
   Status st;

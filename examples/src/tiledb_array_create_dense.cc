@@ -88,7 +88,7 @@ int main() {
   system("rm -rf my_dense_array");
 
   // Array name
-  const char* array_name = "file://my_dense_array";
+  const char* array_name = "my_dense_array";
 
   // Attributes
   tiledb_attribute_t* a1;

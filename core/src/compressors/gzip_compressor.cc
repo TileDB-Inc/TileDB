@@ -62,8 +62,8 @@ Status GZip::compress(
   // Compress
   strm.next_in = static_cast<unsigned char*>(input_buffer->data());
   strm.next_out = static_cast<unsigned char*>(output_buffer->data());
-  strm.avail_in = (uInt)input_buffer->offset();
-  strm.avail_out = (uInt)output_buffer->size();
+  strm.avail_in = (uInt)input_buffer->size();
+  strm.avail_out = (uInt)output_buffer->alloced_size();
   ret = deflate(&strm, Z_FINISH);
 
   // Clean up
@@ -74,8 +74,8 @@ Status GZip::compress(
     return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
 
   // Set size of compressed data
-  uint64_t compressed_size = output_buffer->size() - strm.avail_out;
-  output_buffer->set_offset(compressed_size);
+  uint64_t compressed_size = output_buffer->alloced_size() - strm.avail_out;
+  output_buffer->set_size(compressed_size);
 
   return Status::Ok();
 }
@@ -105,13 +105,17 @@ Status GZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
   strm.next_in = static_cast<unsigned char*>(input_buffer->data());
   strm.next_out = static_cast<unsigned char*>(output_buffer->data());
   strm.avail_in = (uInt)input_buffer->size();
-  strm.avail_out = (uInt)output_buffer->size();
+  strm.avail_out = (uInt)output_buffer->alloced_size();
   ret = inflate(&strm, Z_FINISH);
 
   if (ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
     return LOG_STATUS(
         Status::GZipError("Cannot decompress with GZIP, Stream Error"));
   }
+
+  // Set size of decompressed data
+  uint64_t compressed_size = output_buffer->alloced_size() - strm.avail_out;
+  output_buffer->set_size(compressed_size);
 
   // Clean up
   (void)inflateEnd(&strm);

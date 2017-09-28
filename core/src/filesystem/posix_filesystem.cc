@@ -302,31 +302,33 @@ Status read_from_file(
   return Status::Ok();
 }
 
+/*
 Status read_from_file(const std::string& path, Buffer** buff) {
-  // Open file
-  int fd = open(path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot read file '") + path + "'; File open error"));
-  }
-
-  // Get file size
-  uint64_t nbytes;
-  RETURN_NOT_OK(file_size(path, &nbytes));
-
-  // Create new buffer
-  *buff = new Buffer(nbytes);
-
-  // Read contents
-  int64_t bytes_read = ::read(fd, static_cast<char*>((*buff)->data()), nbytes);
-  if (bytes_read != int64_t(nbytes)) {
-    delete *buff;
-    return LOG_STATUS(
-        Status::IOError("Cannot read from file; File reading error"));
-  }
-
-  return Status::Ok();
+// Open file
+int fd = open(path.c_str(), O_RDONLY);
+if (fd == -1) {
+return LOG_STATUS(Status::IOError(
+    std::string("Cannot read file '") + path + "'; File open error"));
 }
+
+// Get file size
+uint64_t nbytes;
+RETURN_NOT_OK(file_size(path, &nbytes));
+
+// Create new buffer
+*buff = new Buffer(nbytes);
+
+// Read contents
+int64_t bytes_read = ::read(fd, static_cast<char*>((*buff)->data()), nbytes);
+if (bytes_read != int64_t(nbytes)) {
+delete *buff;
+return LOG_STATUS(
+    Status::IOError("Cannot read from file; File reading error"));
+}
+
+return Status::Ok();
+}
+ */
 
 Status sync(const std::string& path) {
   // Open file

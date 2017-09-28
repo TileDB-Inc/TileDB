@@ -37,7 +37,7 @@
 
 #include <iostream>
 
-TEST_CASE("Compression: Test DoubleDelta 1-element case") {
+TEST_CASE("Compression-DoubleDelta: Test 1-element case", "[double-delta]") {
   // Compress
   int data[] = {1};
   auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
@@ -63,7 +63,7 @@ TEST_CASE("Compression: Test DoubleDelta 1-element case") {
   delete decomp_out_buff;
 }
 
-TEST_CASE("Compression: Test DoubleDelta 2-element case") {
+TEST_CASE("Compression-DoubleDelta: Test 2-element case", "[double-delta]") {
   // Compress
   int data[] = {1, 2};
   auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
@@ -90,7 +90,7 @@ TEST_CASE("Compression: Test DoubleDelta 2-element case") {
   delete decomp_out_buff;
 }
 
-TEST_CASE("Compression: Test DoubleDelta 3-element case") {
+TEST_CASE("Compression-DoubleDelta: Test 3-element case", "[double-delta]") {
   // Compress
   int data[] = {100, 300, 200};
   auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
@@ -118,7 +118,7 @@ TEST_CASE("Compression: Test DoubleDelta 3-element case") {
   delete decomp_out_buff;
 }
 
-TEST_CASE("Compression: Test DoubleDelta 4-element case") {
+TEST_CASE("Compression-DoubleDelta: Test 4-element case", "[double-delta]") {
   // Compress
   int data[] = {100, 300, 200, 600};
   auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
@@ -147,7 +147,7 @@ TEST_CASE("Compression: Test DoubleDelta 4-element case") {
   delete decomp_out_buff;
 }
 
-TEST_CASE("Compression: Test DoubleDelta n-element case") {
+TEST_CASE("Compression-DoubleDelta: Test n-element case", "[double-delta]") {
   // Create random array
   std::srand(std::time(0));
   int n = 1000000;

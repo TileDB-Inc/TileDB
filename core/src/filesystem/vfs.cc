@@ -143,6 +143,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   return Status::Ok();
 }
 
+/*
 Status VFS::read_from_file(const URI& uri, Buffer** buff) {
   if (uri.is_posix())
     return posix::read_from_file(uri.to_path(), buff);
@@ -150,6 +151,7 @@ Status VFS::read_from_file(const URI& uri, Buffer** buff) {
   // TODO: Handle all other file systems here !
   return Status::Ok();
 }
+ */
 
 Status VFS::read_from_file(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {

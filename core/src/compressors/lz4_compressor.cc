@@ -57,14 +57,14 @@ Status LZ4::compress(
   int ret = LZ4_compress_default(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
-      (int)input_buffer->offset(),
-      (int)output_buffer->size());
+      (int)input_buffer->size(),
+      (int)output_buffer->alloced_size());
 #else
   // deprecated lz4 api
   int ret = LZ4_compress(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
-      (int)input_buffer->offset());
+      (int)input_buffer->size());
 #endif
 
   // Check error
@@ -72,7 +72,7 @@ Status LZ4::compress(
     return Status::CompressionError("LZ4 compression failed");
 
   // Set size of compressed data
-  output_buffer->set_offset(static_cast<uint64_t>(ret));
+  output_buffer->set_size(static_cast<uint64_t>(ret));
 
   return Status::Ok();
 }
@@ -88,11 +88,14 @@ Status LZ4::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
       (int)input_buffer->size(),
-      (int)output_buffer->size());
+      (int)output_buffer->alloced_size());
 
   // Check error
   if (ret < 0)
     return Status::CompressionError("LZ4 decompression failed");
+
+  // Set size of decompressed data
+  output_buffer->set_size(static_cast<uint64_t>(ret));
 
   return Status::Ok();
 }

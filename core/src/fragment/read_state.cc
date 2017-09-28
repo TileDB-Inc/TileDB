@@ -1334,16 +1334,14 @@ void ReadState::init_tiles() {
 
     tiles_.emplace_back(new Tile(
         (var_size) ? constants::cell_var_offset_type : attr->type(),
-        attr->compressor(),
+        (var_size) ? array_metadata_->cell_var_offsets_compression() :
+                     attr->compressor(),
         (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
         0));
 
     if (var_size)
       tiles_var_.emplace_back(new Tile(
-          attr->type(),
-          array_metadata_->cell_var_offsets_compression(),
-          datatype_size(attr->type()),
-          0));
+          attr->type(), attr->compressor(), datatype_size(attr->type()), 0));
     else
       tiles_var_.emplace_back(nullptr);
   }

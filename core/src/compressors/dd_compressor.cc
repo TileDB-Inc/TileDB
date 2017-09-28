@@ -118,7 +118,8 @@ Status DoubleDelta::decompress(
 
   // Trivial case - no compression
   if (bitsize >= sizeof(T) * 8 - 1) {
-    output_buffer->write(input_buffer);
+    RETURN_NOT_OK(output_buffer->write(
+        input_buffer, input_buffer->nbytes_left_to_read()));
     return Status::Ok();
   }
 
