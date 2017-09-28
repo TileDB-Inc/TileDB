@@ -35,10 +35,11 @@
 
 #include <cinttypes>
 
-#include "const_buffer.h"
 #include "status.h"
 
 namespace tiledb {
+
+class ConstBuffer;
 
 /** Enables reading from and writing to a buffer. */
 class Buffer {

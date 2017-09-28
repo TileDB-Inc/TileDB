@@ -668,6 +668,7 @@ Status WriteState::write_sparse_unsorted_attr(
           write_attr(attribute_id, sorted_buf->data(), sorted_buf->offset()),
           delete sorted_buf);
       sorted_buf->reset_offset();
+      sorted_buf->set_size(0);
     }
 
     // Keep on copying the cells in the sorted order in the sorted buffer
@@ -741,7 +742,9 @@ Status WriteState::write_sparse_unsorted_attr_var(
       }
 
       sorted_buf->reset_offset();
+      sorted_buf->set_size(0);
       sorted_buf_var->reset_offset();
+      sorted_buf_var->set_size(0);
     }
 
     // Keep on copying the cells in sorted order in the sorted buffers

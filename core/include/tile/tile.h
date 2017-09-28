@@ -68,6 +68,30 @@ class Tile {
    * @param type The type of the data to be stored.
    * @param compression The compression type.
    * @param compression_level The compression level.
+   * @param cell_size The cell size.
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
+   * @param buff  The buffer to be encapsulated by the tile object. This
+   *     means that the tile will not create a new buffer object, but
+   *     operate directly on the input.
+   * @param owns_buff If *true* the tile object will delete *buff* upon
+   *     destruction, otherwise it will not delete it.
+   */
+  Tile(
+      Datatype type,
+      Compressor compression,
+      int compression_level,
+      uint64_t cell_size,
+      unsigned int dim_num,
+      Buffer* buff,
+      bool owns_buff);
+
+  /**
+   * Constructor.
+   *
+   * @param type The type of the data to be stored.
+   * @param compression The compression type.
+   * @param compression_level The compression level.
    * @param tile_size The tile size. The internal buffer will be allocated
    *     that much space upon construction.
    * @param cell_size The cell size.
@@ -218,6 +242,12 @@ class Tile {
    * in case the tile stores attributes.
    */
   unsigned int dim_num_;
+
+  /**
+   * If *true* the tile object will delete *buff* upon
+   * destruction, otherwise it will not delete it.
+   */
+  bool owns_buff_;
 
   /** The tile data type. */
   Datatype type_;

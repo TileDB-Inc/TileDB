@@ -48,8 +48,8 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO(StorageManager* storage_manager, const URI& attr_uri)
-    : attr_uri_(attr_uri)
+TileIO::TileIO(StorageManager* storage_manager, const URI& uri)
+    : uri_(uri)
     , storage_manager_(storage_manager) {
   buffer_ = new Buffer();
 }
@@ -63,7 +63,7 @@ TileIO::~TileIO() {
 /* ****************************** */
 
 Status TileIO::file_size(uint64_t* size) const {
-  return storage_manager_->file_size(attr_uri_, size);
+  return storage_manager_->file_size(uri_, size);
 }
 
 Status TileIO::read(
@@ -78,7 +78,7 @@ Status TileIO::read(
   if (tile->compressor() == Compressor::NO_COMPRESSION) {
     // TODO: put all in the storage manager function
     RETURN_NOT_OK(storage_manager_->read_from_file(
-        attr_uri_, file_offset, tile->data(), tile_size));
+        uri_, file_offset, tile->data(), tile_size));
     tile->set_size(tile_size);
     tile->reset_offset();
     return Status::Ok();
@@ -88,7 +88,7 @@ Status TileIO::read(
   // TODO: put all in the storage manager function
   buffer_->realloc(compressed_size);
   RETURN_NOT_OK(storage_manager_->read_from_file(
-      attr_uri_, file_offset, buffer_->data(), compressed_size));
+      uri_, file_offset, buffer_->data(), compressed_size));
   buffer_->set_size(compressed_size);
   buffer_->reset_offset();
 
@@ -101,6 +101,62 @@ Status TileIO::read(
 
   // TODO: here we will put all other filters, and potentially employ chunking
   // TODO: choose the proper buffer based on all filters, not just compression
+
+  return Status::Ok();
+}
+
+Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
+  uint64_t tile_size;
+  uint64_t compressed_size;
+  uint64_t header_size;
+  RETURN_NOT_OK(read_generic_tile_header(
+      tile, file_offset, &tile_size, &compressed_size, &header_size));
+  RETURN_NOT_OK_ELSE(
+      read(*tile, file_offset + header_size, compressed_size, tile_size),
+      delete *tile);
+
+  return Status::Ok();
+}
+
+Status TileIO::read_generic_tile_header(
+    Tile** tile,
+    uint64_t file_offset,
+    uint64_t* tile_size,
+    uint64_t* compressed_size,
+    uint64_t* header_size) {
+  // Initializations
+  *header_size = 3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(int);
+  char datatype;
+  uint64_t cell_size;
+  char compressor;
+  int compression_level;
+
+  // Read header from file
+  auto header_buff = new Buffer();
+  RETURN_NOT_OK_ELSE(header_buff->realloc(*header_size), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->read_from_file(
+          uri_, file_offset, header_buff->data(), *header_size),
+      delete header_buff);
+  header_buff->set_size(*header_size);
+
+  // Read header individual values
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(compressed_size, sizeof(uint64_t)), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(tile_size, sizeof(uint64_t)), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(&datatype, sizeof(char)), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(&cell_size, sizeof(uint64_t)), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(&compressor, sizeof(char)), delete header_buff);
+  RETURN_NOT_OK_ELSE(
+      header_buff->read(&compression_level, sizeof(int)), delete header_buff);
+
+  delete header_buff;
+
+  *tile = new Tile((Datatype)datatype, (Compressor)compressor, cell_size, 0);
 
   return Status::Ok();
 }
@@ -125,8 +181,57 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
                              buffer_->size();
   *bytes_written = buffer_size;
 
-  // Write based on the chosen method
-  return storage_manager_->write_to_file(attr_uri_, buffer, buffer_size);
+  return storage_manager_->write_to_file(uri_, buffer, buffer_size);
+}
+
+Status TileIO::write_generic(Tile* tile) {
+  // TODO: here we will put all other filters, and potentially employ chunking
+  // TODO: choose the proper buffer based on all filters, not just compression
+
+  // Split coordinates if this is a coordinates tile
+  if (tile->stores_coords())
+    tile->split_coordinates();
+
+  // Compress tile
+  RETURN_NOT_OK(compress_tile(tile));
+
+  // Prepare to write
+  Compressor compressor = tile->compressor();
+  void* buffer = (compressor == Compressor::NO_COMPRESSION) ? tile->data() :
+                                                              buffer_->data();
+  uint64_t buffer_size = (compressor == Compressor::NO_COMPRESSION) ?
+                             tile->size() :
+                             buffer_->size();
+
+  RETURN_NOT_OK(write_generic_tile_header(tile, buffer_size));
+
+  return storage_manager_->write_to_file(uri_, buffer, buffer_size);
+}
+
+Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
+  // Initializations
+  uint64_t tile_size = tile->size();
+  auto datatype = (char)tile->type();
+  uint64_t cell_size = tile->cell_size();
+  auto compressor = (char)tile->compressor();
+  int compression_level = tile->compression_level();
+
+  // Write to buffer
+  auto buff = new Buffer();
+  RETURN_NOT_OK_ELSE(
+      buff->write(&compressed_size, sizeof(uint64_t)), delete buff);
+  RETURN_NOT_OK_ELSE(buff->write(&tile_size, sizeof(uint64_t)), delete buff);
+  RETURN_NOT_OK_ELSE(buff->write(&datatype, sizeof(char)), delete buff);
+  RETURN_NOT_OK_ELSE(buff->write(&cell_size, sizeof(uint64_t)), delete buff);
+  RETURN_NOT_OK_ELSE(buff->write(&compressor, sizeof(char)), delete buff);
+  RETURN_NOT_OK_ELSE(buff->write(&compression_level, sizeof(int)), delete buff);
+
+  // Write to file
+  Status st = storage_manager_->write_to_file(uri_, buff->data(), buff->size());
+
+  delete buff;
+
+  return st;
 }
 
 /* ****************************** */

@@ -40,6 +40,12 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+ConstBuffer::ConstBuffer(Buffer* buff) {
+  data_ = buff->data();
+  size_ = buff->size();
+  offset_ = 0;
+}
+
 ConstBuffer::ConstBuffer(const void* data, uint64_t size)
     : data_(data)
     , size_(size) {
