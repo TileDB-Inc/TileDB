@@ -296,6 +296,9 @@ class ArrayMetadata {
    */
   Layout tile_order_;
 
+  /** The version under which this object was created. */
+  int version_[3];
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

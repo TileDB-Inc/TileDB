@@ -243,6 +243,9 @@ extern const char* unordered_str;
 /** The string representation of null. */
 extern const char* null_str;
 
+/** The version in format { major, minor, revision }. */
+extern const int version[3];
+
 }  // namespace constants
 
 }  // namespace tiledb

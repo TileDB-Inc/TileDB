@@ -244,6 +244,9 @@ const char* unordered_str = "unordered";
 /** The string representation of null. */
 const char* null_str = "null";
 
+/** The version in format { major, minor, revision }. */
+const int version[3] = {1, 0, 0};
+
 }  // namespace constants
 
 }  // namespace tiledb
