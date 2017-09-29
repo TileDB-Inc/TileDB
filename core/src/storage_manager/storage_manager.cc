@@ -529,7 +529,7 @@ Status StorageManager::open_array_load_metadata(
   if (open_array->array_metadata() != nullptr)
     return Status::Ok();
 
-  auto array_metadata = new ArrayMetadata();
+  auto array_metadata = new ArrayMetadata(array_uri);
   RETURN_NOT_OK_ELSE(
       load(array_uri.to_string(), array_metadata), delete array_metadata);
   open_array->set_array_metadata(array_metadata);

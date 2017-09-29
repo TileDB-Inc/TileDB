@@ -53,9 +53,9 @@ unsigned int tiledb_var_num() {
 /* ****************************** */
 
 void tiledb_version(int* major, int* minor, int* rev) {
-  *major = TILEDB_VERSION_MAJOR;
-  *minor = TILEDB_VERSION_MINOR;
-  *rev = TILEDB_VERSION_REVISION;
+  *major = tiledb::constants::version[0];
+  *minor = tiledb::constants::version[1];
+  *rev = tiledb::constants::version[2];
 }
 
 /* ********************************* */
@@ -869,7 +869,8 @@ int tiledb_array_metadata_load(
   }
 
   // Create ArrayMetadata object
-  (*array_metadata)->array_metadata_ = new tiledb::ArrayMetadata();
+  (*array_metadata)->array_metadata_ =
+      new tiledb::ArrayMetadata(tiledb::URI(array_name));
   if ((*array_metadata)->array_metadata_ == nullptr) {
     std::free(*array_metadata);
     *array_metadata = nullptr;

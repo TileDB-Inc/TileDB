@@ -59,6 +59,7 @@ ArrayMetadata::ArrayMetadata() {
   coords_compression_level_ = constants::coords_compression_level;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
+  std::memcpy(version_, constants::version, sizeof(version_));
 }
 
 ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
@@ -77,6 +78,7 @@ ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
   coords_size_ = array_metadata->coords_size_;
   domain_ = array_metadata->domain_;
   tile_order_ = array_metadata->tile_order_;
+  std::memcpy(version_, array_metadata->version_, sizeof(version_));
 }
 
 ArrayMetadata::ArrayMetadata(const URI& uri) {
@@ -92,6 +94,7 @@ ArrayMetadata::ArrayMetadata(const URI& uri) {
   coords_compression_level_ = constants::coords_compression_level;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
+  std::memcpy(version_, constants::version, sizeof(version_));
 }
 
 ArrayMetadata::~ArrayMetadata() {
@@ -310,8 +313,7 @@ Status ArrayMetadata::get_attribute_ids(
 }
 
 // ===== FORMAT =====
-// array_uri_size (unsigned int)
-// array_uri (string)
+// version (int[3])
 // array_type (char)
 // tile_order (char)
 // cell_order (char)
@@ -326,10 +328,8 @@ Status ArrayMetadata::get_attribute_ids(
 //   attribute #2
 //   ...
 Status ArrayMetadata::serialize(Buffer* buff) const {
-  // Write array uri
-  auto array_uri_size = (unsigned int)array_uri_.to_string().size();
-  RETURN_NOT_OK(buff->write(&array_uri_size, sizeof(unsigned int)));
-  RETURN_NOT_OK(buff->write(array_uri_.to_string().c_str(), array_uri_size));
+  // Write version
+  RETURN_NOT_OK(buff->write(constants::version, sizeof(constants::version)));
 
   // Write array type
   auto array_type = (char)array_type_;
@@ -405,8 +405,7 @@ void ArrayMetadata::add_attribute(const Attribute* attr) {
 }
 
 // ===== FORMAT =====
-// array_uri_size (unsigned int)
-// array_uri (string)
+// version (int[3])
 // array_type (char)
 // tile_order (char)
 // cell_order (char)
@@ -421,15 +420,8 @@ void ArrayMetadata::add_attribute(const Attribute* attr) {
 //   attribute #2
 //   ...
 Status ArrayMetadata::deserialize(ConstBuffer* buff) {
-  // TODO: remove array name and add version
-
-  // Load array uri
-  unsigned int array_uri_size;
-  RETURN_NOT_OK(buff->read(&array_uri_size, sizeof(unsigned int)));
-  std::string array_uri_str;
-  array_uri_str.resize(array_uri_size);
-  RETURN_NOT_OK(buff->read(&array_uri_str[0], array_uri_size));
-  array_uri_ = URI(array_uri_str);
+  // Load version
+  RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
 
   // Load array type
   char array_type;

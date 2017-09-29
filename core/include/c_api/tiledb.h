@@ -63,11 +63,6 @@ extern "C" {
 /*            CONSTANTS           */
 /* ****************************** */
 
-/** Version. */
-#define TILEDB_VERSION_MAJOR 0
-#define TILEDB_VERSION_MINOR 6
-#define TILEDB_VERSION_REVISION 1
-
 /**@{*/
 /** Return code. */
 #define TILEDB_OK 0      // Success
