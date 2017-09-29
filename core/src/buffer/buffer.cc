@@ -31,6 +31,7 @@
  */
 
 #include "buffer.h"
+#include "const_buffer.h"
 #include "logger.h"
 
 #include <iostream>

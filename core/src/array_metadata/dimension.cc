@@ -31,6 +31,7 @@
  */
 
 #include "dimension.h"
+#include "const_buffer.h"
 #include "logger.h"
 #include "utils.h"
 

@@ -32,6 +32,7 @@
  */
 
 #include "fragment_metadata.h"
+#include "const_buffer.h"
 #include "logger.h"
 
 #include <cassert>

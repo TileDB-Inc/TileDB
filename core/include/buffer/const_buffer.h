@@ -35,9 +35,12 @@
 
 #include <cinttypes>
 
+#include "buffer.h"
 #include "status.h"
 
 namespace tiledb {
+
+class Buffer;
 
 /** Enables reading from a constant buffer. */
 class ConstBuffer {
@@ -53,6 +56,15 @@ class ConstBuffer {
    * @param size The size of the buffer.
    */
   ConstBuffer(const void* data, uint64_t size);
+
+  /**
+   * Constructor.
+   *
+   * @param buff The buffer the object will encapsulate, working on its
+   *     data and size, but using a separate local offset, without affecting
+   *     the input buffer.
+   */
+  explicit ConstBuffer(Buffer* buff);
 
   /** Destructor. */
   ~ConstBuffer() = default;

@@ -118,6 +118,18 @@ const char* file_suffix = ".tdb";
 /** The fragment file name. */
 const char* fragment_filename = "__tiledb_fragment.tdb";
 
+/** Default datatype for a generic tile. */
+const Datatype generic_tile_datatype = Datatype::CHAR;
+
+/** Default compressor for a generic tile. */
+Compressor generic_tile_compressor = Compressor::BLOSC_ZSTD;
+
+/** Default compression level for a generic tile. */
+int generic_tile_compression_level = -1;
+
+/** Default cell size for a generic tile. */
+uint64_t generic_tile_cell_size = sizeof(char);
+
 /** The group file name. */
 const char* group_filename = "__tiledb_group.tdb";
 

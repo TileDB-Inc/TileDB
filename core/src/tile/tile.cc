@@ -47,7 +47,25 @@ Tile::Tile(unsigned int dim_num) {
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
   dim_num_ = dim_num;
+  owns_buff_ = true;
   type_ = Datatype::INT32;
+}
+
+Tile::Tile(
+    Datatype type,
+    Compressor compressor,
+    int compression_level,
+    uint64_t cell_size,
+    unsigned int dim_num,
+    Buffer* buff,
+    bool owns_buff)
+    : buffer_(buff)
+    , cell_size_(cell_size)
+    , compressor_(compressor)
+    , compression_level_(compression_level)
+    , dim_num_(dim_num)
+    , owns_buff_(owns_buff)
+    , type_(type) {
 }
 
 Tile::Tile(
@@ -64,6 +82,7 @@ Tile::Tile(
     , type_(type) {
   buffer_ = new Buffer();
   buffer_->realloc(tile_size);
+  owns_buff_ = true;
 }
 
 Tile::Tile(
@@ -77,10 +96,12 @@ Tile::Tile(
     , type_(type) {
   buffer_ = new Buffer();
   compression_level_ = -1;
+  owns_buff_ = true;
 }
 
 Tile::~Tile() {
-  delete buffer_;
+  if (owns_buff_)
+    delete buffer_;
 }
 
 /* ****************************** */
@@ -116,7 +137,8 @@ bool Tile::empty() const {
 }
 
 bool Tile::full() const {
-  return (buffer_->size() != 0) && (buffer_->offset() == buffer_->alloced_size());
+  return (buffer_->size() != 0) &&
+         (buffer_->offset() == buffer_->alloced_size());
 }
 
 uint64_t Tile::offset() const {

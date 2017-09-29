@@ -31,13 +31,14 @@
  * This file implements the ArrayMetadata class.
  */
 
+#include "array_metadata.h"
+#include "const_buffer.h"
+#include "logger.h"
+
 #include <cassert>
 #include <cinttypes>
 #include <cmath>
 #include <iostream>
-
-#include "array_metadata.h"
-#include "logger.h"
 
 namespace tiledb {
 

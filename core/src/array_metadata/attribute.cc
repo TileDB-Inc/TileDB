@@ -31,6 +31,7 @@
  */
 
 #include "attribute.h"
+#include "const_buffer.h"
 #include "utils.h"
 
 #include <cassert>
