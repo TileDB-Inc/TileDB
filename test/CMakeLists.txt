@@ -66,7 +66,7 @@ set_target_properties(
 
 target_link_libraries(
     ${TILEDB_UNITTEST_TARGET_NAME}
-    tiledb_static ${TILEDB_LIB_DEPENDENCIES}
+    tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES}
 )
 
 target_include_directories(
