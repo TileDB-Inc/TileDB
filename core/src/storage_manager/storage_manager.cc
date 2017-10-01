@@ -346,9 +346,8 @@ Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
 }
 
-Status StorageManager::write_to_file(
-    const URI& uri, const void* buffer, uint64_t buffer_size) const {
-  return vfs_->write_to_file(uri, buffer, buffer_size);
+Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
+  return vfs_->write_to_file(uri, buffer->data(), buffer->size());
 }
 
 /* ****************************** */

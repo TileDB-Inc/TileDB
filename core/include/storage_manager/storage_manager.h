@@ -226,11 +226,9 @@ class StorageManager {
    *
    * @param uri The file to write into.
    * @param buffer The buffer to write.
-   * @param buffer_size The buffer size.
    * @return Status.
    */
-  Status write_to_file(
-      const URI& uri, const void* buffer, uint64_t buffer_size) const;
+  Status write_to_file(const URI& uri, Buffer* buffer) const;
 
  private:
   /* ********************************* */

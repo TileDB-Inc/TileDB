@@ -161,14 +161,11 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
 
   // Prepare to write
   Compressor compressor = tile->compressor();
-  void* buffer = (compressor == Compressor::NO_COMPRESSION) ? tile->data() :
-                                                              buffer_->data();
-  uint64_t buffer_size = (compressor == Compressor::NO_COMPRESSION) ?
-                             tile->size() :
-                             buffer_->size();
-  *bytes_written = buffer_size;
+  auto buffer =
+      (compressor == Compressor::NO_COMPRESSION) ? tile->buffer() : buffer_;
+  *bytes_written = buffer->size();
 
-  return storage_manager_->write_to_file(uri_, buffer, buffer_size);
+  return storage_manager_->write_to_file(uri_, buffer);
 }
 
 Status TileIO::write_generic(Tile* tile) {
@@ -184,15 +181,13 @@ Status TileIO::write_generic(Tile* tile) {
 
   // Prepare to write
   Compressor compressor = tile->compressor();
-  void* buffer = (compressor == Compressor::NO_COMPRESSION) ? tile->data() :
-                                                              buffer_->data();
-  uint64_t buffer_size = (compressor == Compressor::NO_COMPRESSION) ?
-                             tile->size() :
-                             buffer_->size();
 
-  RETURN_NOT_OK(write_generic_tile_header(tile, buffer_size));
+  auto buffer =
+      (compressor == Compressor::NO_COMPRESSION) ? tile->buffer() : buffer_;
 
-  return storage_manager_->write_to_file(uri_, buffer, buffer_size);
+  RETURN_NOT_OK(write_generic_tile_header(tile, buffer->size()));
+
+  return storage_manager_->write_to_file(uri_, buffer);
 }
 
 Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
@@ -214,7 +209,7 @@ Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
   RETURN_NOT_OK_ELSE(buff->write(&compression_level, sizeof(int)), delete buff);
 
   // Write to file
-  Status st = storage_manager_->write_to_file(uri_, buff->data(), buff->size());
+  Status st = storage_manager_->write_to_file(uri_, buff);
 
   delete buff;
 
