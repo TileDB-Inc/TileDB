@@ -71,28 +71,17 @@ Status TileIO::read(
     uint64_t file_offset,
     uint64_t compressed_size,
     uint64_t tile_size) {
-  // Allocate the proper space in tile
-  RETURN_NOT_OK(tile->realloc(tile_size));
-
   // No compression
-  if (tile->compressor() == Compressor::NO_COMPRESSION) {
-    // TODO: put all in the storage manager function
-    RETURN_NOT_OK(storage_manager_->read_from_file(
-        uri_, file_offset, tile->data(), tile_size));
-    tile->set_size(tile_size);
-    tile->reset_offset();
-    return Status::Ok();
-  }
+  if (tile->compressor() == Compressor::NO_COMPRESSION)
+    return storage_manager_->read_from_file(
+        uri_, file_offset, tile->buffer(), tile_size);
 
   // Compression
-  // TODO: put all in the storage manager function
-  buffer_->realloc(compressed_size);
   RETURN_NOT_OK(storage_manager_->read_from_file(
-      uri_, file_offset, buffer_->data(), compressed_size));
-  buffer_->set_size(compressed_size);
-  buffer_->reset_offset();
+      uri_, file_offset, buffer_, compressed_size));
 
   // Decompress tile
+  RETURN_NOT_OK(tile->realloc(tile_size));
   RETURN_NOT_OK(decompress_tile(tile));
 
   // Zip coordinates if this is a coordinates tile
@@ -133,12 +122,10 @@ Status TileIO::read_generic_tile_header(
 
   // Read header from file
   auto header_buff = new Buffer();
-  RETURN_NOT_OK_ELSE(header_buff->realloc(*header_size), delete header_buff);
   RETURN_NOT_OK_ELSE(
       storage_manager_->read_from_file(
-          uri_, file_offset, header_buff->data(), *header_size),
+          uri_, file_offset, header_buff, *header_size),
       delete header_buff);
-  header_buff->set_size(*header_size);
 
   // Read header individual values
   RETURN_NOT_OK_ELSE(

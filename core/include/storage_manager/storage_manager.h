@@ -191,12 +191,13 @@ class StorageManager {
    *
    * @param uri The URI file to read from.
    * @param offset The offset in the file the read will start from.
-   * @param buffer The buffer to write into.
+   * @param buffer The buffer to write into. The function reallocates memory
+   *     for the buffer, sets its size to *nbytes* and resets its offset.
    * @param nbytes The number of bytes to read.
    * @return Status.
    */
   Status read_from_file(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+      const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
 
   /**
    * Stores an array metadata into persistent storage.
