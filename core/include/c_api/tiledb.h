@@ -961,6 +961,15 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     void* (*callback)(void*),
     void* callback_data);
 
+/**
+ * Resets the query buffers.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query whose buffers are to be se.
+ * @param buffers The buffers to be set.
+ * @param buffer_sizes The corresponding buffer sizes.
+ * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
+ */
 TILEDB_EXPORT int tiledb_query_reset_buffers(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
