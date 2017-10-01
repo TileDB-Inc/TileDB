@@ -54,24 +54,24 @@ class RLE {
   /**
    * Compression function.
    *
-   * @param type_size The size of the data type.
+   * @param value_size The size of a single value.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the compressed data to.
    * @return Status
    */
   static Status compress(
-      uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);
+      uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
    *
-   * @param type_size The size of the data type.
+   * @param value_size The size of a single.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the decompressed data.
    * @return Status
    */
   static Status decompress(
-      uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);
+      uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer);
 };
 
 }  // namespace tiledb

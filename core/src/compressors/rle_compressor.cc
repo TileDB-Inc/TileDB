@@ -38,63 +38,49 @@
 
 namespace tiledb {
 
-uint64_t RLE::compress_bound(uint64_t nbytes, uint64_t type_size) {
+uint64_t RLE::compress_bound(uint64_t nbytes, uint64_t value_size) {
   // In the worst case, RLE adds two bytes per every value in the buffer.
-  uint64_t value_num = nbytes / type_size;
+  uint64_t value_num = nbytes / value_size;
   return nbytes + value_num * 2;
 }
 
 Status RLE::compress(
-    uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer) {
+    uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
-  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+  if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
-        "Failed compressing with RLE; invalid buffer format"));
+        "Failed compressing with RLE; null input buffer"));
 
   unsigned int cur_run_len = 1;
   unsigned int max_run_len = 65535;
   const unsigned char* input_cur =
-      static_cast<unsigned char*>(input_buffer->data()) + type_size;
+      static_cast<unsigned char*>(input_buffer->data()) + value_size;
   auto input_prev = static_cast<const unsigned char*>(input_buffer->data());
-  auto output_cur = static_cast<unsigned char*>(output_buffer->data());
-  uint64_t value_num = input_buffer->size() / type_size;
-  uint64_t _output_size = 0;
-  uint64_t run_size = type_size + 2 * sizeof(char);
+  uint64_t value_num = input_buffer->size() / value_size;
   unsigned char byte;
 
   // Trivial case
-  if (value_num == 0) {
+  if (value_num == 0)
     return Status::Ok();
-  }
 
   // Sanity check on input buffer
-  if (input_buffer->size() % type_size != 0) {
+  if (input_buffer->size() % value_size != 0) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; invalid input buffer format"));
   }
 
   // Make runs
   for (uint64_t i = 1; i < value_num; ++i) {
-    if (std::memcmp(input_cur, input_prev, type_size) == 0 &&
+    if (std::memcmp(input_cur, input_prev, value_size) == 0 &&
         cur_run_len < max_run_len) {  // Expand the run
       ++cur_run_len;
     } else {  // Save the run
-      // Sanity check on output size
-      if (_output_size + run_size > output_buffer->alloced_size()) {
-        return LOG_STATUS(Status::CompressionError(
-            "Failed compressing with RLE; output buffer overflow"));
-      }
-
       // Copy to output buffer
-      std::memcpy(output_cur, input_prev, type_size);
-      output_cur += type_size;
+      RETURN_NOT_OK(output_buffer->write(input_prev, value_size));
       byte = (unsigned char)(cur_run_len >> 8);
-      std::memcpy(output_cur, &byte, sizeof(char));
-      output_cur += sizeof(char);
+      RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
       byte = (unsigned char)(cur_run_len % 256);
-      std::memcpy(output_cur, &byte, sizeof(char));
-      output_cur += sizeof(char);
-      _output_size += run_size;
+      RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
 
       // Reset current run length
       cur_run_len = 1;
@@ -102,49 +88,34 @@ Status RLE::compress(
 
     // Update run info
     input_prev = input_cur;
-    input_cur = input_prev + type_size;
+    input_cur = input_prev + value_size;
   }
 
   // Save final run
-  // --- Sanity check on size
-  if (_output_size + run_size > output_buffer->alloced_size()) {
-    return LOG_STATUS(Status::CompressionError(
-        "Failed compressing with RLE; output buffer overflow"));
-  }
-
-  // --- Copy to output buffer
-  std::memcpy(output_cur, input_prev, type_size);
-  output_cur += type_size;
+  RETURN_NOT_OK(output_buffer->write(input_prev, value_size));
   byte = (unsigned char)(cur_run_len >> 8);
-  std::memcpy(output_cur, &byte, sizeof(char));
-  output_cur += sizeof(char);
+  RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
   byte = (unsigned char)(cur_run_len % 256);
-  std::memcpy(output_cur, &byte, sizeof(char));
-  _output_size += run_size;
-
-  // Set size of compressed data
-  output_buffer->set_size(_output_size);
+  RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
 
   return Status::Ok();
 }
 
 Status RLE::decompress(
-    uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer) {
+    uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
-  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+  if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
-        "Failed decompressing with RLE; invalid buffer format"));
+        "Failed decompressing with RLE; null input buffer"));
 
   auto input_cur = static_cast<const unsigned char*>(input_buffer->data());
-  auto output_cur = static_cast<unsigned char*>(output_buffer->data());
   uint64_t run_len;
-  uint64_t run_size = type_size + 2 * sizeof(char);
+  uint64_t run_size = value_size + 2 * sizeof(char);
   uint64_t run_num = input_buffer->size() / run_size;
   unsigned char byte;
-  uint64_t decompressed_size = 0;
 
   // Trivial case
-  if (input_buffer->size() == 0)
+  if (run_num == 0)
     return Status::Ok();
 
   // Sanity check on input buffer format
@@ -156,32 +127,18 @@ Status RLE::decompress(
   // Decompress runs
   for (uint64_t i = 0; i < run_num; ++i) {
     // Retrieve the current run length
-    std::memcpy(&byte, input_cur + type_size, sizeof(char));
+    std::memcpy(&byte, input_cur + value_size, sizeof(char));
     run_len = (((uint64_t)byte) << 8);
-    std::memcpy(&byte, input_cur + type_size + sizeof(char), sizeof(char));
+    std::memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
     run_len += (uint64_t)byte;
 
-    // Sanity check on size
-    if (type_size * run_len > output_buffer->alloced_size()) {
-      return LOG_STATUS(Status::CompressionError(
-          "Failed decompressing with RLE; output buffer overflow"));
-    }
-
     // Copy to output buffer
-    for (uint64_t j = 0; j < run_len; ++j) {
-      std::memcpy(output_cur, input_cur, type_size);
-      output_cur += type_size;
-    }
+    for (uint64_t j = 0; j < run_len; ++j)
+      RETURN_NOT_OK(output_buffer->write(input_cur, value_size))
 
     // Update input/output tracking info
     input_cur += run_size;
-
-    // Update decompressed size
-    decompressed_size += run_len * type_size;
   }
-
-  // Set the size of the decompressed data
-  output_buffer->set_size(decompressed_size);
 
   return Status::Ok();
 }

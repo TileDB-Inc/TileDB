@@ -65,14 +65,6 @@ TEST_CASE("Compression-RLE: Test invalid format and compress bound", "[rle]") {
   input->clear();
   compressed->clear();
 
-  // Test output buffer overflow
-  int vec[16];  // Arbirtrary vec
-  st = input->write(vec, sizeof(vec));
-  REQUIRE(st.ok());
-  compressed->realloc(4);
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
-  CHECK(!st.ok());
-
   // Test compress bound
   uint64_t compress_bound =
       tiledb::RLE::compress_bound(input->size(), sizeof(int));
