@@ -98,7 +98,7 @@ int main() {
   tiledb_attribute_t* a2;
   tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_DOUBLE_DELTA, -1);
-  tiledb_attribute_set_cell_val_num(ctx, a2, tiledb_var_num());
+  tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
   tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_BLOSC_SNAPPY, -1);

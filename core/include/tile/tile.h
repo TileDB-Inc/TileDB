@@ -128,6 +128,9 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
+  /** Advances the buffer offset. */
+  void advance_offset(uint64_t nbytes);
+
   /** Returns the internal buffer. */
   Buffer* buffer() const;
 
@@ -139,6 +142,9 @@ class Tile {
 
   /** Returns the tile compression level. */
   int compression_level() const;
+
+  /** Returns the buffer data pointer at the current offset. */
+  void* cur_data() const;
 
   /** Returns the tile data. */
   void* data() const;
@@ -163,6 +169,9 @@ class Tile {
 
   /** Resets the tile offset. */
   void reset_offset();
+
+  /** Resets the tile size. */
+  void reset_size();
 
   /** Sets the tile offset. */
   void set_offset(uint64_t offset);

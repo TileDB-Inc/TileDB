@@ -137,7 +137,7 @@ const char* group_filename = "__tiledb_group.tdb";
 const uint64_t internal_buffer_size = 10000000;
 
 /** The maximum number of bytes written in a single I/O. */
-const uint64_t max_write_bytes = 1500000000;
+const uint64_t max_write_bytes = INT_MAX;
 
 /** The maximum name length. */
 const unsigned name_max_len = 256;
@@ -246,6 +246,9 @@ const char* null_str = "null";
 
 /** The version in format { major, minor, revision }. */
 const int version[3] = {1, 0, 0};
+
+/** The size of a tile chunk. */
+const uint64_t tile_chunk_size = INT_MAX;
 
 }  // namespace constants
 

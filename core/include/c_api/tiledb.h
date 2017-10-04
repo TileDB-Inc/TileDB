@@ -70,24 +70,17 @@ extern "C" {
 #define TILEDB_OOM (-2)  // Out of memory
 /**@}*/
 
-/**@{*/
-/** MAC address interface. */
-#if defined(__APPLE__) && defined(__MACH__)
-#ifndef TILEDB_MAC_ADDRESS_INTERFACE
-#define TILEDB_MAC_ADDRESS_INTERFACE en0
-#endif
-#else
-#ifndef TILEDB_MAC_ADDRESS_INTERFACE
-#define TILEDB_MAC_ADDRESS_INTERFACE eth0
-#endif
-#endif
-/**@}*/
-
 /** Returns a special name indicating the coordinates attribute. */
 TILEDB_EXPORT const char* tiledb_coords();
 
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT unsigned int tiledb_var_num();
+
+/**@{*/
+/** Constants wrapping special functions. */
+#define TILEDB_COORDS tiledb_coords()
+#define TILEDB_VAR_NUM tiledb_var_num()
+/**@}*/
 
 /* ****************************** */
 /*          TILEDB ENUMS          */
@@ -371,7 +364,7 @@ TILEDB_EXPORT int tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out);
 
 /* ********************************* */
-/*            HYPERSPACE             */
+/*               DOMAIN              */
 /* ********************************* */
 
 /**
@@ -435,6 +428,10 @@ TILEDB_EXPORT int tiledb_domain_add_dimension(
 TILEDB_EXPORT int tiledb_domain_dump(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out);
 
+/* ********************************* */
+/*             DIMENSION             */
+/* ********************************* */
+
 /**
  * Retrieves the dimension name.
  *
@@ -447,7 +444,7 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name);
 
 /**
- * Returns the domain of the dimension.
+ * Retrieves the domain of the dimension.
  *
  * @param ctx The TileDB context.
  * @param dim The dimension.
@@ -458,7 +455,7 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain);
 
 /**
- * Returns the tile extent of the dimension.
+ * Retrieves the tile extent of the dimension.
  *
  * @param ctx The TileDB context.
  * @param dim The dimension.
@@ -479,6 +476,10 @@ TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
  */
 TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
+
+/* ********************************* */
+/*        DIMENSION ITERATOR         */
+/* ********************************* */
 
 /**
  * Creates a dimensions iterator for the input domain.
@@ -665,7 +666,7 @@ TILEDB_EXPORT int tiledb_array_metadata_check(
     tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata);
 
 /**
- * Retrieves the metadata of an array from disk, creating an array metadata
+ * Retrieves the metadata of an array from the disk, creating an array metadata
  * struct.
  *
  * @param ctx The TileDB context.
@@ -937,7 +938,7 @@ TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @note This function essentially opens the array associated with the query.
  *     Some bookkeeping structures are loaded in main-memory for this array.
  *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_array_close*.
+ *     *tiledb_query_free*.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
@@ -953,7 +954,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @note This function essentially opens the array associated with the query.
  *     Some bookkeeping structures are loaded in main-memory for this array.
  *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_array_close*.
+ *     *tiledb_query_free*.
  */
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
@@ -961,6 +962,15 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     void* (*callback)(void*),
     void* callback_data);
 
+/**
+ * Resets the query buffers.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query whose buffers are to be se.
+ * @param buffers The buffers to be set.
+ * @param buffer_sizes The corresponding buffer sizes.
+ * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
+ */
 TILEDB_EXPORT int tiledb_query_reset_buffers(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,

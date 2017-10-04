@@ -73,6 +73,9 @@ class ConstBuffer {
   /*                API                */
   /* ********************************* */
 
+  /** Advances the offset by *nbytes*. */
+  void advance_offset(uint64_t nbytes);
+
   /** Returns the buffer data. */
   const void* data() const;
 

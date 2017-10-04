@@ -263,8 +263,13 @@ Status StorageManager::query_submit_async(
 }
 
 Status StorageManager::read_from_file(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
-  return vfs_->read_from_file(uri, offset, buffer, nbytes);
+    const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
+  RETURN_NOT_OK(buffer->realloc(nbytes));
+  RETURN_NOT_OK(vfs_->read_from_file(uri, offset, buffer->data(), nbytes));
+  buffer->set_size(nbytes);
+  buffer->reset_offset();
+
+  return Status::Ok();
 }
 
 Status StorageManager::store(ArrayMetadata* array_metadata) {
@@ -341,9 +346,8 @@ Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
 }
 
-Status StorageManager::write_to_file(
-    const URI& uri, const void* buffer, uint64_t buffer_size) const {
-  return vfs_->write_to_file(uri, buffer, buffer_size);
+Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
+  return vfs_->write_to_file(uri, buffer->data(), buffer->size());
 }
 
 /* ****************************** */

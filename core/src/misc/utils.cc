@@ -126,7 +126,7 @@ int cmp_col_order(
 
 template <class T>
 int cmp_row_order(const T* coords_a, const T* coords_b, unsigned int dim_num) {
-  for (int i = 0; i < dim_num; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     // a precedes b
     if (coords_a[i] < coords_b[i])
       return -1;
@@ -155,7 +155,7 @@ int cmp_row_order(
     return 1;
 
   // ids are equal, check the coordinates
-  for (int i = 0; i < dim_num; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     // a precedes b
     if (coords_a[i] < coords_b[i])
       return -1;

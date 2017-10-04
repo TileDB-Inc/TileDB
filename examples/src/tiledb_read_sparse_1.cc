@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
       &query,
       "my_sparse_array",
       TILEDB_READ,
-      TILEDB_ROW_MAJOR,
+      TILEDB_GLOBAL_ORDER,
       nullptr,
       nullptr,
       0,

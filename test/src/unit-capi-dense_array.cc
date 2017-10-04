@@ -390,7 +390,7 @@ struct DenseArrayFx {
     auto buffer_coords = (int64_t*)buffers[1];
 
     // Specify attributes to be written
-    const char* attributes[] = {ATTR_NAME, tiledb_coords()};
+    const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
 
     // Populate buffers with random updates
     std::srand(seed);

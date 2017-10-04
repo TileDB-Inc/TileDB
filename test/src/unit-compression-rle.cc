@@ -39,76 +39,64 @@
 
 using namespace tiledb;
 
-TEST_CASE("Compression-RLE: Test invalid format and compress bound", "[rle]") {
+TEST_CASE("Compression-RLE: Test invalid format", "[rle]") {
   // Initializations
-  auto input = new Buffer();
+  auto input = new ConstBuffer(nullptr, 0);
   auto compressed = new Buffer();
   tiledb::Status st;
 
   // Test empty buffer
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(!st.ok());
+  delete input;
 
   // Test input buffer invalid format
+  auto buff = new Buffer();
   int int_v = 0;
-  st = input->write(&int_v, sizeof(int));
+  st = buff->write(&int_v, sizeof(int));
   REQUIRE(st.ok());
   char char_v = 'a';
-  st = input->write(&char_v, sizeof(char));
+  st = buff->write(&char_v, sizeof(char));
   REQUIRE(st.ok());
-  CHECK(input->size() == 5);
+  CHECK(buff->size() == 5);
   st = compressed->realloc(1000000);
   REQUIRE(st.ok());
+  input = new ConstBuffer(buff->data(), buff->size());
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(!st.ok());
-
-  input->clear();
-  compressed->clear();
-
-  // Test output buffer overflow
-  int vec[16];  // Arbirtrary vec
-  st = input->write(vec, sizeof(vec));
-  REQUIRE(st.ok());
-  compressed->realloc(4);
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
-  CHECK(!st.ok());
-
-  // Test compress bound
-  uint64_t compress_bound =
-      tiledb::RLE::compress_bound(input->size(), sizeof(int));
-  CHECK(compress_bound == input->size() + ((input->size() / sizeof(int)) * 2));
 
   delete input;
   delete compressed;
+  delete buff;
 }
 
 TEST_CASE("Compression-RLE: Test all values unique", "[rle]") {
-  // Initializations
-  auto input = new Buffer();
-  auto compressed = new Buffer();
-  auto decompressed = new Buffer();
-  tiledb::Status st;
+  // Populate data
+  int data[100];
+  for (int i = 0; i < 100; ++i)
+    data[i] = i;
 
-  st = input->realloc(100 * sizeof(int));
-  REQUIRE(st.ok());
+  // Allocate space for the compressed buffer
   uint64_t compressed_size =
-      tiledb::RLE::compress_bound(input->alloced_size(), sizeof(int));
-  st = compressed->realloc(compressed_size);
+      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+  auto compressed = new Buffer();
+  Status st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
 
-  for (int i = 0; i < 100; ++i) {
-    st = input->write(&i, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  input->reset_offset();
+  // Create an input buffer and compress
+  auto input = new ConstBuffer(data, sizeof(data));
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
-  st = decompressed->realloc(100 * sizeof(int));
+  delete input;
+
+  // Decompress
+  input = new ConstBuffer(compressed->data(), compressed->size());
+  auto decompressed = new Buffer();
+  st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  compressed->reset_offset();
-  st = tiledb::RLE::decompress(sizeof(int), compressed, decompressed);
+  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
-  CHECK_FALSE(memcmp(input->data(), decompressed->data(), 100 * sizeof(int)));
+  CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
   delete input;
   delete compressed;
@@ -118,33 +106,35 @@ TEST_CASE("Compression-RLE: Test all values unique", "[rle]") {
 TEST_CASE("Compression-RLE: Test all values the same", "[rle]") {
   // Initializations
   uint64_t run_size = 6;
-  auto input = new Buffer();
   auto compressed = new Buffer();
   auto decompressed = new Buffer();
   tiledb::Status st;
 
-  st = input->realloc(100 * sizeof(int));
+  int data[100];
   REQUIRE(st.ok());
   uint64_t compressed_size =
-      tiledb::RLE::compress_bound(input->alloced_size(), sizeof(int));
+      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
 
-  int v = 111;
-  for (int i = 0; i < 100; ++i) {
-    st = input->write(&v, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  input->reset_offset();
+  // Prepare data
+  for (int i = 0; i < 100; ++i)
+    data[i] = 111;
+
+  // Compress data
+  auto input = new ConstBuffer(data, sizeof(data));
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == run_size);
-  compressed->reset_offset();
-  st = decompressed->realloc(100 * sizeof(int));
+  delete input;
+
+  // Decompress data
+  st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  st = tiledb::RLE::decompress(sizeof(int), compressed, decompressed);
+  input = new ConstBuffer(compressed->data(), compressed->size());
+  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
-  CHECK_FALSE(memcmp(input->data(), decompressed->data(), input->size()));
+  CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
   delete input;
   delete compressed;
@@ -154,40 +144,37 @@ TEST_CASE("Compression-RLE: Test all values the same", "[rle]") {
 TEST_CASE("Compression-RLE: Test a mix of short and long runs", "[rle]") {
   // Initializations
   uint64_t run_size = 6;
-  auto input = new Buffer();
-  auto compressed = new Buffer();
-  auto decompressed = new Buffer();
   tiledb::Status st;
 
-  st = input->realloc(110 * sizeof(int));
-  REQUIRE(st.ok());
+  // Prepare data
+  int data[110];
+  for (int i = 0; i < 10; ++i)
+    data[i] = i;
+  for (int i = 10; i < 100; ++i)
+    data[i] = 110;
+  for (int i = 100; i < 110; ++i)
+    data[i] = i;
+
+  // Compress
   uint64_t compressed_size =
-      tiledb::RLE::compress_bound(input->alloced_size(), sizeof(int));
+      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+  auto compressed = new Buffer();
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
-  for (int i = 0; i < 10; ++i) {
-    st = input->write(&i, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  int v = 110;
-  for (int i = 10; i < 100; ++i) {
-    st = input->write(&v, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  for (int i = 100; i < 110; ++i) {
-    input->write(&i, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  input->reset_offset();
+  auto input = new ConstBuffer(data, sizeof(data));
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 21 * run_size);
-  st = decompressed->realloc(input->size());
+  delete input;
+
+  // Decompress data
+  auto decompressed = new Buffer();
+  st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  compressed->reset_offset();
-  st = tiledb::RLE::decompress(sizeof(int), compressed, decompressed);
+  input = new ConstBuffer(compressed->data(), compressed->size());
+  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
-  CHECK_FALSE(memcmp(input->data(), decompressed->data(), sizeof(int)));
+  CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(int)));
 
   delete input;
   delete compressed;
@@ -197,39 +184,37 @@ TEST_CASE("Compression-RLE: Test a mix of short and long runs", "[rle]") {
 TEST_CASE("Compression-RLE: Test when a run exceeds max run length", "[rle]") {
   // Initializations
   uint64_t run_size = 6;
-  auto input = new Buffer();
-  auto compressed = new Buffer();
   auto decompressed = new Buffer();
   tiledb::Status st;
 
-  st = input->realloc(70030 * sizeof(int));
+  // Prepare data
+  int data[70030];
+  for (int i = 0; i < 10; ++i)
+    data[i] = i;
+  for (int i = 10; i < 70010; ++i)
+    data[i] = 20;
+  for (int i = 70010; i < 70030; ++i)
+    data[i] = i;
+
+  // Compress data
   uint64_t compressed_size =
-      tiledb::RLE::compress_bound(input->alloced_size(), sizeof(int));
+      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+  auto compressed = new Buffer();
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
-  for (int i = 0; i < 10; ++i) {
-    st = input->write(&i, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  int v = 20;
-  for (int i = 10; i < 70010; ++i) {
-    st = input->write(&v, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  for (int i = 70010; i < 70030; ++i) {
-    input->write(&i, sizeof(int));
-    REQUIRE(st.ok());
-  }
-  input->reset_offset();
+  auto input = new ConstBuffer(data, sizeof(data));
   st = tiledb::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 32 * run_size);
-  st = decompressed->realloc(input->size());
+  delete input;
+
+  // Decompress data
+  st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  compressed->reset_offset();
-  st = tiledb::RLE::decompress(sizeof(int), compressed, decompressed);
+  input = new ConstBuffer(compressed->data(), compressed->size());
+  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
-  CHECK_FALSE(memcmp(input->data(), decompressed->data(), input->size()));
+  CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
   delete input;
   delete compressed;
@@ -240,55 +225,52 @@ TEST_CASE(
     "Compression-RLE: Test compression/decompression with type double:2",
     "[rle]") {
   // Initializations
-  auto input = new Buffer();
-  auto compressed = new Buffer();
-  auto decompressed = new Buffer();
   tiledb::Status st;
   uint64_t value_size = 2 * sizeof(double);
   uint64_t run_size = value_size + 2;
 
-  st = input->realloc(110 * value_size);
-  REQUIRE(st.ok());
-  uint64_t compressed_size =
-      tiledb::RLE::compress_bound(input->alloced_size(), value_size);
-  st = compressed->realloc(compressed_size);
-  REQUIRE(st.ok());
-
-  // Test a mix of short and long runs
+  // Prepare data
+  double data[220];
   double j = 0.1, k = 0.2;
   for (int i = 0; i < 10; ++i) {
     j += 10000.12;
-    st = input->write(&j, sizeof(double));
-    REQUIRE(st.ok());
     k += 1000.12;
-    st = input->write(&k, sizeof(double));
+    data[2 * i] = j;
+    data[2 * i + 1] = k;
   }
   j += 10000.12;
   k += 1000.12;
   for (int i = 10; i < 100; ++i) {
-    st = input->write(&j, sizeof(double));
-    REQUIRE(st.ok());
-    st = input->write(&k, sizeof(double));
-    REQUIRE(st.ok());
+    data[2 * i] = j;
+    data[2 * i + 1] = j;
   }
   for (int i = 100; i < 110; ++i) {
     j += 10000.12;
-    st = input->write(&j, sizeof(double));
-    REQUIRE(st.ok());
     k += 1000.12;
-    st = input->write(&k, sizeof(double));
-    REQUIRE(st.ok());
+    data[2 * i] = j;
+    data[2 * i + 1] = k;
   }
-  input->reset_offset();
+
+  // Compress data
+  uint64_t compressed_size =
+      tiledb::RLE::overhead(sizeof(data), value_size) + sizeof(data);
+  auto compressed = new Buffer();
+  st = compressed->realloc(compressed_size);
+  REQUIRE(st.ok());
+  auto input = new ConstBuffer(data, sizeof(data));
   st = tiledb::RLE::compress(value_size, input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 21 * run_size);
-  st = decompressed->realloc(input->size());
+  delete input;
+
+  // Decompress data
+  auto decompressed = new Buffer();
+  st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  compressed->reset_offset();
-  st = tiledb::RLE::decompress(value_size, compressed, decompressed);
+  input = new ConstBuffer(compressed->data(), compressed->size());
+  st = tiledb::RLE::decompress(value_size, input, decompressed);
   CHECK(st.ok());
-  CHECK_FALSE(memcmp(input->data(), decompressed->data(), input->size()));
+  CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
   delete input;
   delete compressed;

@@ -34,6 +34,7 @@
 #define TILEDB_GZIP_H
 
 #include "buffer.h"
+#include "const_buffer.h"
 #include "status.h"
 
 #include <cmath>
@@ -52,7 +53,7 @@ class GZip {
    * @return Status
    */
   static Status compress(
-      int level, const Buffer* input_buffer, Buffer* output_buffer);
+      int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -61,17 +62,10 @@ class GZip {
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
-  static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
+  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
-  /**
-   * Extra overhead of GZip given a buffer size.
-   *
-   * @param buffer_size The size to calculate the overhead on.
-   * @return The computed overhead.
-   */
-  static uint64_t overhead(uint64_t buffer_size) {
-    return 6 + 5 * uint64_t((ceil(buffer_size / 16834.0)));
-  }
+  /** Returns the compression overhead for the given input. */
+  static uint64_t overhead(uint64_t buffer_size);
 
   /** Returns the default compression level. */
   static int default_level() {
