@@ -108,6 +108,10 @@ Tile::~Tile() {
 /*               API              */
 /* ****************************** */
 
+void Tile::advance_offset(uint64_t nbytes) {
+  buffer_->advance_offset(nbytes);
+}
+
 Buffer* Tile::buffer() const {
   return buffer_;
 }
@@ -122,6 +126,10 @@ Compressor Tile::compressor() const {
 
 int Tile::compression_level() const {
   return compression_level_;
+}
+
+void* Tile::cur_data() const {
+  return buffer_->cur_data();
 }
 
 void* Tile::data() const {
@@ -157,6 +165,10 @@ Status Tile::read(void* buffer, uint64_t nbytes) {
 
 void Tile::reset_offset() {
   buffer_->reset_offset();
+}
+
+void Tile::reset_size() {
+  buffer_->reset_size();
 }
 
 void Tile::set_offset(uint64_t offset) {

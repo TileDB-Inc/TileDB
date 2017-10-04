@@ -30,7 +30,7 @@
  * This file includes enum types.
  */
 
-/** TileDB array mode */
+/** TileDB query type */
 #ifdef TILEDB_QUERY_TYPE_ENUM
 TILEDB_QUERY_TYPE_ENUM(READ),
 TILEDB_QUERY_TYPE_ENUM(WRITE),
@@ -42,7 +42,7 @@ TILEDB_OBJECT_ENUM(GROUP),
 TILEDB_OBJECT_ENUM(ARRAY),
 #endif
 
-/** TileDB data type */
+/** TileDB datatype */
 #ifdef TILEDB_DATATYPE_ENUM
 TILEDB_DATATYPE_ENUM(INT32),
 TILEDB_DATATYPE_ENUM(INT64),
@@ -63,7 +63,7 @@ TILEDB_ARRAY_TYPE_ENUM(DENSE),
 TILEDB_ARRAY_TYPE_ENUM(SPARSE),
 #endif
 
-/** TileDB Layout method */
+/** TileDB layout */
 #ifdef TILEDB_LAYOUT_ENUM
 TILEDB_LAYOUT_ENUM(ROW_MAJOR),
 TILEDB_LAYOUT_ENUM(COL_MAJOR),

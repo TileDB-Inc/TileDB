@@ -34,6 +34,7 @@
 #define TILEDB_BLOSC_COMPRESSOR_H
 
 #include "buffer.h"
+#include "const_buffer.h"
 #include "status.h"
 
 namespace tiledb {
@@ -51,9 +52,6 @@ class Blosc {
     ZStd,
   };
 
-  /** Returns the maximum compression size for the given input. */
-  static uint64_t compress_bound(uint64_t nbytes);
-
   /**
    * Compression function.
    *
@@ -68,7 +66,7 @@ class Blosc {
       const char* compressor,
       uint64_t type_size,
       int level,
-      const Buffer* input_buffer,
+      ConstBuffer* input_buffer,
       Buffer* output_buffer);
 
   /**
@@ -78,12 +76,15 @@ class Blosc {
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
-  static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
+  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {
     return 5;
   }
+
+  /** Returns the compression overhead for the given input. */
+  static uint64_t overhead(uint64_t nbytes);
 };
 
 }  // namespace tiledb

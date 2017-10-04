@@ -34,6 +34,7 @@
 #define TILEDB_RLE_COMPRESSOR_H
 
 #include "buffer.h"
+#include "const_buffer.h"
 #include "status.h"
 
 namespace tiledb {
@@ -41,16 +42,6 @@ namespace tiledb {
 /** Handles compression/decompression Run-Length-Encoding. */
 class RLE {
  public:
-  /**
-   * Returns the maximum size of the output of RLE compression.
-   *
-   * @param nbytes The input buffer size in bytes.
-   * @param type_size The size of a single value type in the input buffer.
-   * @return The maximum size of the output after RLE-compressing the input with
-   *     size input_size.
-   */
-  static uint64_t compress_bound(uint64_t nbytes, uint64_t type_size);
-
   /**
    * Compression function.
    *
@@ -60,7 +51,7 @@ class RLE {
    * @return Status
    */
   static Status compress(
-      uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer);
+      uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -71,7 +62,10 @@ class RLE {
    * @return Status
    */
   static Status decompress(
-      uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer);
+      uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer);
+
+  /** Returns the compression overhead for the given input. */
+  static uint64_t overhead(uint64_t nbytes, uint64_t value_size);
 };
 
 }  // namespace tiledb

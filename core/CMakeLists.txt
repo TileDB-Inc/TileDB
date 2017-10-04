@@ -56,5 +56,5 @@ install(
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
-file(GLOB TILEDB_HEADERS "include/c_api/*.h")
+file(GLOB TILEDB_HEADERS "include/c_api/*")
 install(FILES ${TILEDB_HEADERS} DESTINATION include)

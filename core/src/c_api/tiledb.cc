@@ -544,6 +544,10 @@ int tiledb_domain_dump(
   return TILEDB_OK;
 }
 
+/* ********************************* */
+/*             DIMENSION             */
+/* ********************************* */
+
 int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
@@ -577,6 +581,10 @@ int tiledb_dimension_dump(
   dim->dim_->dump(out);
   return TILEDB_OK;
 }
+
+/* ********************************* */
+/*        DIMENSION ITERATOR         */
+/* ********************************* */
 
 int tiledb_dimension_iter_create(
     tiledb_ctx_t* ctx,

@@ -246,6 +246,9 @@ extern const char* null_str;
 /** The version in format { major, minor, revision }. */
 extern const int version[3];
 
+/** The size of a tile chunk. */
+extern const uint64_t tile_chunk_size;
+
 }  // namespace constants
 
 }  // namespace tiledb

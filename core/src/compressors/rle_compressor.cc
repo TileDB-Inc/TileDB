@@ -38,24 +38,16 @@
 
 namespace tiledb {
 
-uint64_t RLE::compress_bound(uint64_t nbytes, uint64_t value_size) {
-  // In the worst case, RLE adds two bytes per every value in the buffer.
-  uint64_t value_num = nbytes / value_size;
-  return nbytes + value_num * 2;
-}
-
 Status RLE::compress(
-    uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer) {
+    uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; null input buffer"));
-
   unsigned int cur_run_len = 1;
   unsigned int max_run_len = 65535;
-  const unsigned char* input_cur =
-      static_cast<unsigned char*>(input_buffer->data()) + value_size;
-  auto input_prev = static_cast<const unsigned char*>(input_buffer->data());
+  auto input_cur = (const unsigned char*)input_buffer->data() + value_size;
+  auto input_prev = (const unsigned char*)input_buffer->data();
   uint64_t value_num = input_buffer->size() / value_size;
   unsigned char byte;
 
@@ -102,7 +94,7 @@ Status RLE::compress(
 }
 
 Status RLE::decompress(
-    uint64_t value_size, Buffer* input_buffer, Buffer* output_buffer) {
+    uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -141,6 +133,12 @@ Status RLE::decompress(
   }
 
   return Status::Ok();
+}
+
+uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
+  // In the worst case, RLE adds two bytes per every value in the buffer.
+  uint64_t value_num = nbytes / value_size;
+  return value_num * 2;
 }
 
 }  // namespace tiledb

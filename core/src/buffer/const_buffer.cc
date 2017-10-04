@@ -56,6 +56,10 @@ ConstBuffer::ConstBuffer(const void* data, uint64_t size)
 /*               API              */
 /* ****************************** */
 
+void ConstBuffer::advance_offset(uint64_t nbytes) {
+  offset_ += nbytes;
+}
+
 const void* ConstBuffer::data() const {
   return data_;
 }

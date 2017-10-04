@@ -51,6 +51,68 @@ const uint64_t DoubleDelta::OVERHEAD = 17;
 /*               API              */
 /* ****************************** */
 
+Status DoubleDelta::compress(
+    Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  switch (type) {
+    case Datatype::CHAR:
+      return DoubleDelta::compress<char>(input_buffer, output_buffer);
+    case Datatype::INT8:
+      return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
+    case Datatype::UINT8:
+      return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
+    case Datatype::INT16:
+      return DoubleDelta::compress<int16_t>(input_buffer, output_buffer);
+    case Datatype::UINT16:
+      return DoubleDelta::compress<uint16_t>(input_buffer, output_buffer);
+    case Datatype::INT32:
+      return DoubleDelta::compress<int>(input_buffer, output_buffer);
+    case Datatype::UINT32:
+      return DoubleDelta::compress<uint32_t>(input_buffer, output_buffer);
+    case Datatype::INT64:
+      return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
+    case Datatype::UINT64:
+      return DoubleDelta::compress<uint64_t>(input_buffer, output_buffer);
+    default:
+      return LOG_STATUS(Status::TileIOError(
+          "Cannot compress tile with DoubleDelta; Not supported datatype"));
+  }
+}
+
+Status DoubleDelta::decompress(
+    Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  switch (type) {
+    case Datatype::CHAR:
+      return DoubleDelta::decompress<char>(input_buffer, output_buffer);
+    case Datatype::INT8:
+      return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
+    case Datatype::UINT8:
+      return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
+    case Datatype::INT16:
+      return DoubleDelta::decompress<int16_t>(input_buffer, output_buffer);
+    case Datatype::UINT16:
+      return DoubleDelta::decompress<uint16_t>(input_buffer, output_buffer);
+    case Datatype::INT32:
+      return DoubleDelta::decompress<int>(input_buffer, output_buffer);
+    case Datatype::UINT32:
+      return DoubleDelta::decompress<uint32_t>(input_buffer, output_buffer);
+    case Datatype::INT64:
+      return DoubleDelta::decompress<int64_t>(input_buffer, output_buffer);
+    case Datatype::UINT64:
+      return DoubleDelta::decompress<uint64_t>(input_buffer, output_buffer);
+    default:
+      return LOG_STATUS(Status::TileIOError(
+          "Cannot decompress tile with DoubleDelta; Not supported datatype"));
+  }
+}
+
+uint64_t DoubleDelta::overhead(uint64_t nbytes) {
+  return DoubleDelta::OVERHEAD;
+}
+
+/* ****************************** */
+/*         PRIVATE METHODS        */
+/* ****************************** */
+
 template <class T>
 Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate number of values and handle trivial case
@@ -61,7 +123,7 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
   int bitsize;
-  RETURN_NOT_OK(calculate_bitsize(in, num, &bitsize));
+  RETURN_NOT_OK(compute_bitsize(in, num, &bitsize));
   auto bitsize_c = (char)bitsize;
 
   // Write bitsize and number of values
@@ -105,6 +167,39 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 }
 
 template <class T>
+Status DoubleDelta::compute_bitsize(T* in, uint64_t num, int* bitsize) {
+  // Find maximum absolute double delta
+  int64_t max = 0;
+  int64_t prev_delta = in[1] - in[0];
+  int64_t cur_delta, dd;
+  char delta_out_of_bounds = 0;
+  for (uint64_t i = 2; i < num; ++i) {
+    cur_delta = in[i] - in[i - 1];
+    dd = cur_delta - prev_delta;
+    delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
+    delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
+    max = MAX(ABS(dd), max);
+    prev_delta = cur_delta;
+  }
+
+  // Handle error
+  if (delta_out_of_bounds) {
+    return LOG_STATUS(
+        Status::CompressionError("Cannot compress with DoubleDelta; Some "
+                                 "negative double delta is out of bounds"));
+  }
+
+  // Calculate bitsize of the maximum absolute double delta
+  *bitsize = 0;
+  do {
+    ++(*bitsize);
+    max >>= 1;
+  } while (max);
+
+  return Status::Ok();
+}
+
+template <class T>
 Status DoubleDelta::decompress(
     ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Read bitsize and number of values
@@ -114,7 +209,7 @@ Status DoubleDelta::decompress(
   RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(char)));
   RETURN_NOT_OK(input_buffer->read(&num, sizeof(uint64_t)));
   auto bitsize = (int)bitsize_c;
-  uint64_t output_offset = output_buffer->offset();
+  auto out = (T*)output_buffer->cur_data();
 
   // Trivial case - no compression
   if (bitsize >= sizeof(T) * 8 - 1) {
@@ -143,53 +238,12 @@ Status DoubleDelta::decompress(
 
   // Decompress rest of the values
   int64_t dd;
-  T* out;
   for (uint64_t i = 2; i < num; ++i) {
     RETURN_NOT_OK(
         read_double_delta(input_buffer, &dd, bitsize, &chunk, &bit_in_chunk));
-    // The following is very important! Proper start of values for this batch.
-    // Also the buffer may be realloced.
-    out = (T*)((char*)output_buffer->data() + output_offset);
     value = (T)(dd + 2 * (int64_t)out[i - 1] - (int64_t)out[i - 2]);
     RETURN_NOT_OK(output_buffer->write(&value, value_size));
   }
-
-  return Status::Ok();
-}
-
-/* ****************************** */
-/*         PRIVATE METHODS        */
-/* ****************************** */
-
-template <class T>
-Status DoubleDelta::calculate_bitsize(T* in, uint64_t num, int* bitsize) {
-  // Find maximum absolute double delta
-  int64_t max = 0;
-  int64_t prev_delta = in[1] - in[0];
-  int64_t cur_delta, dd;
-  char delta_out_of_bounds = 0;
-  for (uint64_t i = 2; i < num; ++i) {
-    cur_delta = in[i] - in[i - 1];
-    dd = cur_delta - prev_delta;
-    delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
-    delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
-    max = MAX(ABS(dd), max);
-    prev_delta = cur_delta;
-  }
-
-  // Handle error
-  if (delta_out_of_bounds) {
-    return LOG_STATUS(
-        Status::CompressionError("Cannot compress with DoubleDelta; Some "
-                                 "negative double delta is out of bounds"));
-  }
-
-  // Calculate bitsize of the maximum absolute double delta
-  *bitsize = 0;
-  do {
-    ++(*bitsize);
-    max >>= 1;
-  } while (max);
 
   return Status::Ok();
 }
@@ -229,7 +283,7 @@ Status DoubleDelta::read_double_delta(
     }
 
     // Read chunk and reset
-    if (*bit_in_chunk < 0) {
+    if (*bit_in_chunk < 0 && buff->offset() != buff->size()) {
       RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
       bits_to_read_from_chunk = MIN(*bit_in_chunk + 1, bits_left_to_read);

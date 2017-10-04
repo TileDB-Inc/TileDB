@@ -171,6 +171,9 @@ class TileIO {
 
   /**
    * Compresses a tile. The compressed data are written in buffer_.
+   * Note that a coordinates tile must be split into one tile per
+   * dimension. In that case *compress_one_tile* will be invoked
+   * for each dimension sub-tile.
    *
    * @param tile The tile to be compressed.
    * @return Status
@@ -178,72 +181,34 @@ class TileIO {
   Status compress_tile(Tile* tile);
 
   /**
-   * Compresses a tile with gzip. The compressed data are written in buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @param level The compression level.
-   * @return Status
-   */
-  Status compress_tile_gzip(Tile* tile, int level);
-
-  /**
-   * Compresses a tile with zstd. The compressed data are written in buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @param level The compression level.
-   * @return Status
-   */
-  Status compress_tile_zstd(Tile* tile, int level);
-
-  /**
-   * Compresses a tile with lz4. The compressed data are written in buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @param level The compression level.
-   * @return Status
-   */
-  Status compress_tile_lz4(Tile* tile, int level);
-
-  /**
-   * Compresses a tile with blosc. The compressed data are written in buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @param level The compression level.
-   * @return Status
-   */
-  Status compress_tile_blosc(Tile* tile, int level, const char* compressor);
-
-  /**
-   * Compresses a tile with RLE. The compressed data are written in buffer_.
+   * Compresses a single tile. The compressed data are written in buffer_.
    *
    * @param tile The tile to be compressed.
    * @return Status
    */
-  Status compress_tile_rle(Tile* tile);
+  Status compress_one_tile(Tile* tile);
 
   /**
-   * Compresses a tile with bzip2. The compressed data are written in buffer_.
+   * Computes necessary info for chunking a tile upon compression.
    *
-   * @param tile The tile to be compressed.
-   * @param level The compression level.
-   * @return Status
+   * @param tile The tile whose chunking info is being computed.
+   * @param chunk_num The number of chunks to compute.
+   * @param max_chunk_size The maximum chunk size to compute.
+   * @param overhead The total compression overhead.
    */
-  Status compress_tile_bzip2(Tile* tile, int level);
+  void compute_chunking_info(
+      Tile* tile,
+      uint64_t* chunk_num,
+      uint64_t* max_chunk_size,
+      uint64_t* overhead);
 
   /**
-   * Compresses a tile with double delta. The compressed data are written in
-   * buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @return Status
-   */
-  Status compress_tile_double_delta(Tile* tile);
-
-  /**
-   * Decompresses buffer_ into a tile. .
+   * Decompresses buffer_ into a tile.
+   * Note that a coordinates tile was split into one tile per
+   * dimension. In that case *decompress_one_tile* will be invoked
+   * for each dimension sub-tile.
    *
    * @param tile The tile where the decompressed data will be stored.
-   * @param tile_size The original size of the (decompressed) tile.
    * @return Status
    */
   Status decompress_tile(Tile* tile);
@@ -252,10 +217,12 @@ class TileIO {
    * Decompresses buffer_ into a tile.
    *
    * @param tile The tile where the decompressed data will be stored.
-   * @param tile_size The original size of the (decompressed) tile.
    * @return Status
    */
-  Status decompress_tile_double_delta(Tile* tile);
+  Status decompress_one_tile(Tile* tile);
+
+  /** Computes the compression overhead on *nbytes* of the input tile. */
+  uint64_t overhead(Tile* tile, uint64_t nbytes) const;
 };
 
 }  // namespace tiledb

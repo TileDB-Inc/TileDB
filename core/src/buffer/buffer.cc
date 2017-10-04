@@ -53,6 +53,16 @@ Buffer::Buffer() {
   data_ = nullptr;
   size_ = 0;
   offset_ = 0;
+  owns_data_ = true;
+}
+
+Buffer::Buffer(void* data, uint64_t size, bool owns_data)
+    : data_(data)
+    , owns_data_(owns_data)
+    , size_(size) {
+  offset_ = 0;
+  alloced_size_ = 0;
+  owns_data_ = false;
 }
 
 Buffer::~Buffer() {
@@ -63,12 +73,20 @@ Buffer::~Buffer() {
 /*               API              */
 /* ****************************** */
 
+void Buffer::advance_offset(uint64_t nbytes) {
+  offset_ += nbytes;
+}
+
+void Buffer::advance_size(uint64_t nbytes) {
+  size_ += nbytes;
+}
+
 uint64_t Buffer::alloced_size() const {
   return alloced_size_;
 }
 
 void Buffer::clear() {
-  if (data_ != nullptr)
+  if (data_ != nullptr && owns_data_)
     std::free(data_);
 
   data_ = nullptr;
@@ -77,8 +95,21 @@ void Buffer::clear() {
   alloced_size_ = 0;
 }
 
+void* Buffer::cur_data() const {
+  return (char*)data_ + offset_;
+}
+
 void* Buffer::data() const {
   return data_;
+}
+
+void* Buffer::data(uint64_t offset) const {
+  return (char*)data_ + offset;
+}
+
+uint64_t Buffer::free_space() const {
+  assert(alloced_size_ >= size_);
+  return alloced_size_ - size_;
 }
 
 uint64_t Buffer::offset() const {
@@ -96,6 +127,11 @@ Status Buffer::read(void* buffer, uint64_t nbytes) {
 }
 
 Status Buffer::realloc(uint64_t nbytes) {
+  if (!owns_data_) {
+    return LOG_STATUS(Status::BufferError(
+        "Cannot reallocate buffer; Buffer does not own data"));
+  }
+
   if (data_ == nullptr) {
     data_ = std::malloc(nbytes);
   } else {
@@ -116,6 +152,11 @@ Status Buffer::realloc(uint64_t nbytes) {
 
 void Buffer::reset_offset() {
   offset_ = 0;
+}
+
+void Buffer::reset_size() {
+  offset_ = 0;
+  size_ = 0;
 }
 
 void Buffer::set_offset(uint64_t offset) {

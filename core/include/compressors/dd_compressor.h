@@ -35,6 +35,7 @@
 
 #include "buffer.h"
 #include "const_buffer.h"
+#include "datatype.h"
 #include "status.h"
 
 namespace tiledb {
@@ -81,7 +82,7 @@ class DoubleDelta {
    *  overhead of 1 (bitsize) + 8 (n) + 8 (last, potentially almost empty chunk)
    *  bytes.
    *
-   * @tparam The datatype of the values.
+   * @param type The type of the input values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
@@ -95,24 +96,31 @@ class DoubleDelta {
    *     resulting in a positive number. However, both these two cases are
    *     extreme.
    */
-  template <class T>
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static Status compress(
+      Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
    *
-   * @tparam The datatype of the values.
+   * @param type The type of the original decompressed values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
-  template <class T>
-  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static Status decompress(
+      Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
+
+  /** Returns the compression overhead for the given input. */
+  static uint64_t overhead(uint64_t nbytes);
 
  private:
   /* ****************************** */
   /*         PRIVATE METHODS        */
   /* ****************************** */
+
+  /** Templated version of *compress* on the type of buffer values. */
+  template <class T>
+  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Calculates the bitsize all the double deltas will have. Note that
@@ -125,7 +133,18 @@ class DoubleDelta {
    * @return Status
    */
   template <class T>
-  static Status calculate_bitsize(T* in, uint64_t num, int* bitsize);
+  static Status compute_bitsize(T* in, uint64_t num, int* bitsize);
+
+  /**
+   * Decompression function.
+   *
+   * @tparam The datatype of the values.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write the decompressed data to.
+   * @return Status
+   */
+  template <class T>
+  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Reads/reconstructs a double delta value from a compressed buffer.
