@@ -88,6 +88,14 @@ class VFS {
   Status create_file(const URI& uri) const;
 
   /**
+   * Deletes a directory.
+   *
+   * @param uri The URI of the directory to be deleted.
+   * @return Status
+   */
+  Status delete_dir(const URI& uri) const;
+
+  /**
    * Deletes a file.
    *
    * @param uri The URI of the file.

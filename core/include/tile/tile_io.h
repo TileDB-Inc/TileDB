@@ -195,8 +195,9 @@ class TileIO {
    * @param chunk_num The number of chunks to compute.
    * @param max_chunk_size The maximum chunk size to compute.
    * @param overhead The total compression overhead.
+   * @return Status
    */
-  void compute_chunking_info(
+  Status compute_chunking_info(
       Tile* tile,
       uint64_t* chunk_num,
       uint64_t* max_chunk_size,

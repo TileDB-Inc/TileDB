@@ -155,6 +155,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Domain:
       type = "[TileDB::Domain] Error";
       break;
+    case StatusCode::Consolidation:
+      type = "[TileDB::Consolidation] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

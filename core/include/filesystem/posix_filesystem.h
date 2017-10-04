@@ -81,6 +81,14 @@ Status create_file(const std::string& filename);
  */
 std::string current_dir();
 
+/**
+ * Deletes a directory.
+ *
+ * @param path The URI of the directory to be deleted.
+ * @return Status
+ */
+Status delete_dir(const std::string& path);
+
 /** Deletes the file in the input path. */
 Status delete_file(const std::string& path);
 

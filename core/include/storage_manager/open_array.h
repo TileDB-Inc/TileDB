@@ -73,12 +73,6 @@ class OpenArray {
   /** Returns the open array query counter. */
   uint64_t cnt() const;
 
-  /** Returns the filelock descriptor. */
-  int filelock_fd() const;
-
-  /** True if the array filelock is locked. */
-  bool filelocked() const;
-
   /** Adds a new entry to the fragment metadata map. */
   void fragment_metadata_add(FragmentMetadata* metadata);
 
@@ -107,9 +101,6 @@ class OpenArray {
   /** Sets an array metadata. */
   void set_array_metadata(const ArrayMetadata* array_metadata);
 
-  /** Sets the filelock descriptor. */
-  void set_filelock_fd(int fd);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -127,9 +118,6 @@ class OpenArray {
    */
   std::map<std::string, std::pair<FragmentMetadata*, uint64_t>>
       fragment_metadata_;
-
-  /** Descriptor for the filelock. */
-  int filelock_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

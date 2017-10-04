@@ -1026,10 +1026,8 @@ TILEDB_EXPORT int tiledb_array_create(
  * @param array_name The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-/* TODO
 TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_name);
-*/
 
 /* ********************************* */
 /*       DIRECTORY MANAGEMENT        */

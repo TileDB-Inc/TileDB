@@ -48,6 +48,7 @@ StorageManager::StorageManager() {
   async_done_ = false;
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
+  consolidator_ = new Consolidator(this);
   vfs_ = nullptr;
   blosc_init();
 }
@@ -63,6 +64,10 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+Status StorageManager::array_consolidate(const char* array_name) {
+  return consolidator_->consolidate(array_name);
+}
 
 Status StorageManager::array_create(ArrayMetadata* array_metadata) {
   // Check array_metadata metadata
@@ -83,6 +88,60 @@ Status StorageManager::array_create(ArrayMetadata* array_metadata) {
   RETURN_NOT_OK(vfs_->create_file(filelock_uri));
 
   // Success
+  return Status::Ok();
+}
+
+Status StorageManager::array_lock(const URI& array_uri, bool shared) {
+  // Lock mutex
+  locked_array_mtx_.lock();
+
+  // Create a new locked array entry or retrieve an existing one
+  LockedArray* locked_array;
+  auto it = locked_arrays_.find(array_uri.to_string());
+  if (it == locked_arrays_.end()) {
+    locked_array = new LockedArray();
+    locked_arrays_[array_uri.to_string()] = locked_array;
+  } else {
+    locked_array = it->second;
+  }
+
+  locked_array->incr_total_locks();
+
+  // Unlock the mutex
+  locked_array_mtx_.unlock();
+
+  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
+  RETURN_NOT_OK(locked_array->lock(vfs_, filelock_uri, shared));
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_unlock(const URI& array_uri, bool shared) {
+  // Lock the array mutex
+  locked_array_mtx_.lock();
+
+  // Find the locked array entry
+  auto it = locked_arrays_.find(array_uri.to_string());
+  if (it == locked_arrays_.end()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot shared-unlock array; Array not locked"));
+  }
+  auto locked_array = it->second;
+
+  // Unlock the array
+  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
+  RETURN_NOT_OK(locked_array->unlock(vfs_, filelock_uri, shared));
+
+  // Decrement total locks and delete entry if necessary
+  locked_array->decr_total_locks();
+  if (locked_array->no_locks()) {
+    delete it->second;
+    locked_arrays_.erase(it);
+  }
+
+  // Unlock the open array mutex
+  locked_array_mtx_.unlock();
+
   return Status::Ok();
 }
 
@@ -112,6 +171,16 @@ Status StorageManager::create_file(const URI& uri) {
 
 Status StorageManager::delete_file(const URI& uri) const {
   return vfs_->delete_file(uri);
+}
+
+Status StorageManager::delete_fragment(const URI& uri) const {
+  if (!is_fragment(uri)) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot delete fragment directory; input "
+                                    "directory is not a TileDB fragment"));
+  }
+
+  return vfs_->delete_dir(uri);
 }
 
 Status StorageManager::file_size(const URI& uri, uint64_t* size) const {
@@ -149,6 +218,10 @@ bool StorageManager::is_dir(const URI& uri) {
 
 bool StorageManager::is_file(const URI& uri) {
   return vfs_->is_file(uri);
+}
+
+bool StorageManager::is_fragment(const URI& uri) const {
+  return vfs_->is_file(uri.join_path(constants::fragment_filename));
 }
 
 Status StorageManager::load(
@@ -226,7 +299,8 @@ Status StorageManager::query_init(
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
-    uint64_t* buffer_sizes) {
+    uint64_t* buffer_sizes,
+    const URI& consolidation_fragment_uri) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_metadata = (const ArrayMetadata*)nullptr;
@@ -244,7 +318,8 @@ Status StorageManager::query_init(
       attributes,
       attribute_num,
       buffers,
-      buffer_sizes);
+      buffer_sizes,
+      consolidation_fragment_uri);
 }
 
 Status StorageManager::query_submit(Query* query) {
@@ -355,8 +430,7 @@ Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
 /* ****************************** */
 
 Status StorageManager::array_close(
-    const URI& array_uri,
-    const std::vector<FragmentMetadata*>& fragment_metadata) {
+    URI array_uri, const std::vector<FragmentMetadata*>& fragment_metadata) {
   // Lock mutex
   open_array_mtx_.lock();
 
@@ -383,12 +457,8 @@ Status StorageManager::array_close(
     open_array->fragment_metadata_rm(metadata->fragment_uri());
 
   // Potentially remove open array entry
-  Status st = Status::Ok();
   if (open_array->cnt() == 0) {
     // TODO: we may want to leave this to a cache manager
-    st = vfs_->filelock_unlock(
-        array_uri.join_path(constants::array_filelock_name),
-        open_array->filelock_fd());
     open_array->mtx_unlock();
     delete open_array;
     open_arrays_.erase(it);
@@ -400,7 +470,10 @@ Status StorageManager::array_close(
   // Unlock mutex
   open_array_mtx_.unlock();
 
-  return st;
+  // Unlock the array
+  RETURN_NOT_OK(array_unlock(array_uri, true));
+
+  return Status::Ok();
 }
 
 Status StorageManager::array_open(
@@ -409,6 +482,12 @@ Status StorageManager::array_open(
     const void* subarray,
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
+  // Lock the array in shared mode
+  RETURN_NOT_OK(array_lock(array_uri, true));
+
+  // Lock mutex
+  open_array_mtx_.lock();
+
   // Get the open array entry
   OpenArray* open_array;
   RETURN_NOT_OK(open_array_get_entry(array_uri, &open_array));
@@ -416,18 +495,11 @@ Status StorageManager::array_open(
   // Lock the mutex of the array
   open_array->mtx_lock();
 
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
   // Increment counter
   open_array->incr_cnt();
-
-  // Lock the filelock of the array
-  if (!open_array->filelocked()) {
-    int fd;
-    RETURN_NOT_OK_ELSE(
-        vfs_->filelock_lock(
-            array_uri.join_path(constants::array_filelock_name), &fd, true),
-        array_open_error(open_array, *fragment_metadata));
-    open_array->set_filelock_fd(fd);
-  }
 
   // Load array metadata
   RETURN_NOT_OK_ELSE(
@@ -499,6 +571,8 @@ Status StorageManager::get_fragment_uris(
   // Get only the fragment uris
   for (auto& uri : uris) {
     // TODO: check here if the fragment overlaps subarray
+    if (utils::starts_with(uri.last_path_part(), "."))
+      continue;
     if (vfs_->is_file(uri.join_path(constants::fragment_filename)))
       fragment_uris->push_back(uri);
   }
@@ -508,9 +582,6 @@ Status StorageManager::get_fragment_uris(
 
 Status StorageManager::open_array_get_entry(
     const URI& array_uri, OpenArray** open_array) {
-  // Lock mutex
-  open_array_mtx_.lock();
-
   // Find the open array entry
   auto it = open_arrays_.find(array_uri.to_string());
   // Create and init entry if it does not exist
@@ -520,9 +591,6 @@ Status StorageManager::open_array_get_entry(
   } else {
     *open_array = it->second;
   }
-
-  // Unlock mutex
-  open_array_mtx_.unlock();
 
   return Status::Ok();
 }
