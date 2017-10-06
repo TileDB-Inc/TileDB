@@ -108,13 +108,17 @@ Status Consolidator::consolidate(const char* array_name) {
 
   // Delete old fragments
   st = delete_old_fragments(old_fragment_uris);
-  if (!st.ok())
+  if (!st.ok()) {
+    storage_manager_->array_unlock(array_uri, false);
     goto clean_up;
+  }
 
   // Rename new fragment
   st = rename_new_fragment(new_fragment_uri);
-  if (!st.ok())
+  if (!st.ok()) {
+    st = storage_manager_->array_unlock(array_uri, false);
     goto clean_up;
+  }
 
   // Unlock the array
   st = storage_manager_->array_unlock(array_uri, false);
