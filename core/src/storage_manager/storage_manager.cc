@@ -110,8 +110,13 @@ Status StorageManager::array_lock(const URI& array_uri, bool shared) {
   // Unlock the mutex
   locked_array_mtx_.unlock();
 
+  // Lock the filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  RETURN_NOT_OK(locked_array->lock(vfs_, filelock_uri, shared));
+  Status st = locked_array->lock(vfs_, filelock_uri, shared);
+  if(!st.ok()) {
+    array_unlock(array_uri, shared);
+    return st;
+  }
 
   return Status::Ok();
 }
@@ -123,6 +128,7 @@ Status StorageManager::array_unlock(const URI& array_uri, bool shared) {
   // Find the locked array entry
   auto it = locked_arrays_.find(array_uri.to_string());
   if (it == locked_arrays_.end()) {
+    locked_array_mtx_.unlock();
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot shared-unlock array; Array not locked"));
   }
@@ -130,7 +136,7 @@ Status StorageManager::array_unlock(const URI& array_uri, bool shared) {
 
   // Unlock the array
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  RETURN_NOT_OK(locked_array->unlock(vfs_, filelock_uri, shared));
+  Status st = locked_array->unlock(vfs_, filelock_uri, shared);
 
   // Decrement total locks and delete entry if necessary
   locked_array->decr_total_locks();
@@ -142,7 +148,7 @@ Status StorageManager::array_unlock(const URI& array_uri, bool shared) {
   // Unlock the open array mutex
   locked_array_mtx_.unlock();
 
-  return Status::Ok();
+  return st;
 }
 
 Status StorageManager::async_push_query(Query* query, int i) {
@@ -439,6 +445,7 @@ Status StorageManager::array_close(
 
   // Sanity check
   if (it == open_arrays_.end()) {
+    open_array_mtx_.unlock();
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot close array; Open array entry not found"));
   }
@@ -490,7 +497,11 @@ Status StorageManager::array_open(
 
   // Get the open array entry
   OpenArray* open_array;
-  RETURN_NOT_OK(open_array_get_entry(array_uri, &open_array));
+  Status st = open_array_get_entry(array_uri, &open_array);
+  if(!st.ok()) {
+    open_array_mtx_.unlock();
+    return st;
+  }
 
   // Lock the mutex of the array
   open_array->mtx_lock();
