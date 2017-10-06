@@ -97,7 +97,8 @@ enum class StatusCode : char {
   VFS,
   ConstBuffer,
   Dimension,
-  Domain
+  Domain,
+  Consolidation
 };
 
 class Status {
@@ -234,14 +235,19 @@ class Status {
     return Status(StatusCode::ConstBuffer, msg, -1);
   }
 
-  /** Return a Dimension Error error class Status with a given message **/
+  /** Return a DimensionError error class Status with a given message **/
   static Status DimensionError(const std::string& msg) {
     return Status(StatusCode::Dimension, msg, -1);
   }
 
-  /** Return a Domain Error error class Status with a given message **/
+  /** Return a DomainError error class Status with a given message **/
   static Status DomainError(const std::string& msg) {
     return Status(StatusCode::Domain, msg, -1);
+  }
+
+  /** Return a ConsolidationError error class Status with a given message **/
+  static Status ConsolidationError(const std::string& msg) {
+    return Status(StatusCode::Consolidation, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

@@ -267,7 +267,8 @@ Status TileIO::compress_one_tile(Tile* tile) {
 
   // Compute necessary info for chunking
   uint64_t chunk_num, max_chunk_size, overhead;
-  compute_chunking_info(tile, &chunk_num, &max_chunk_size, &overhead);
+  RETURN_NOT_OK(
+      compute_chunking_info(tile, &chunk_num, &max_chunk_size, &overhead));
 
   // Properly reallocate buffer
   RETURN_NOT_OK(buffer_->realloc(buffer_->size() + tile_size + overhead));
@@ -358,7 +359,7 @@ Status TileIO::compress_one_tile(Tile* tile) {
   return Status::Ok();
 }
 
-void TileIO::compute_chunking_info(
+Status TileIO::compute_chunking_info(
     Tile* tile,
     uint64_t* chunk_num,
     uint64_t* max_chunk_size,
@@ -367,16 +368,24 @@ void TileIO::compute_chunking_info(
   auto cell_size = tile->cell_size();
   auto tile_size = tile->size();
 
-  // Compute max chunk size. Along with the overhead, this should not
-  // exceed constants::tile_chunk_size.
+  // Compute max chunk size
   *max_chunk_size = MIN(constants::tile_chunk_size, tile_size);
   *max_chunk_size = *max_chunk_size / cell_size * cell_size;
   uint64_t chunk_overhead = this->overhead(tile, *max_chunk_size);
-  assert(chunk_overhead + cell_size <= constants::tile_chunk_size);
-  *max_chunk_size -= chunk_overhead;
-  *max_chunk_size = (*max_chunk_size) / cell_size * cell_size;
-  chunk_overhead = this->overhead(tile, *max_chunk_size);
-  assert(*max_chunk_size + chunk_overhead <= constants::tile_chunk_size);
+
+  // Adjust max chunk size
+  if (*max_chunk_size + chunk_overhead > constants::tile_chunk_size) {
+    *max_chunk_size -= chunk_overhead;
+    *max_chunk_size = (*max_chunk_size) / cell_size * cell_size;
+    chunk_overhead = this->overhead(tile, *max_chunk_size);
+  }
+
+  // Handle special error
+  if (*max_chunk_size + chunk_overhead > constants::tile_chunk_size) {
+    return LOG_STATUS(
+        Status::TileIOError("Compute chunking info failed; Consider adjusting "
+                            "constants::tile_chunk_size"));
+  }
 
   // Compute number of chunks
   *chunk_num = tile_size / (*max_chunk_size) +
@@ -387,6 +396,8 @@ void TileIO::compute_chunking_info(
   // plus a single value in the beginning for the total number of chunks.
   *overhead =
       (*chunk_num) * chunk_overhead * 2 * sizeof(uint64_t) + sizeof(uint64_t);
+
+  return Status::Ok();
 }
 
 Status TileIO::decompress_tile(Tile* tile) {

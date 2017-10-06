@@ -110,6 +110,9 @@ class Query {
   /** Returns the metadata of the fragments involved in the query. */
   const std::vector<FragmentMetadata*>& fragment_metadata() const;
 
+  /** Returns a vector with the fragment URIs. */
+  std::vector<URI> fragment_uris() const;
+
   /** Returns the number of fragments involved in the query. */
   unsigned int fragment_num() const;
 
@@ -130,6 +133,9 @@ class Query {
    *     populated with the query results. In a write query, the buffer
    *     contents will be appropriately written in a new fragment.
    * @param buffer_sizes The corresponding buffer sizes.
+   * @param consolidation_fragment_uri This is used only in write queries.
+   *     If it is different than empty, then it indicates that the query will
+   *     be writing into a consolidation fragment with the input name.
    * @return Status
    */
   Status init(
@@ -142,7 +148,8 @@ class Query {
       const char** attributes,
       unsigned int attribute_num,
       void** buffers,
-      uint64_t* buffer_sizes);
+      uint64_t* buffer_sizes,
+      const URI& consolidation_fragment_uri = URI(""));
 
   /**
    * Initializes the query. This is invoked for an internal async query.
@@ -183,6 +190,9 @@ class Query {
       void** buffers,
       uint64_t* buffer_sizes,
       bool add_coords = false);
+
+  /** Returns the lastly created fragment uri. */
+  URI last_fragment_uri() const;
 
   /** Returns the cell layout. */
   Layout layout() const;
@@ -304,6 +314,12 @@ class Query {
    * continues to write/append to the *common_query_*'s new fragment.
    */
   Query* common_query_;
+
+  /**
+   * If non-empty, then this holds the name of the consolidation fragment to be
+   * created by this query. This also implies that the query type is WRITE.
+   */
+  URI consolidation_fragment_uri_;
 
   /** The query status. */
   QueryStatus status_;

@@ -129,6 +129,17 @@ std::string current_dir() {
   return dir;
 }
 
+Status delete_dir(const std::string& path) {
+  std::string cmd = "rm -rf " + path;
+  int rc = system(cmd.c_str());
+  if (rc != 0) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to delete directory '") + path + "'"));
+  }
+
+  return Status::Ok();
+}
+
 Status delete_file(const std::string& path) {
   if (remove(path.c_str()) != 0) {
     return LOG_STATUS(
@@ -405,49 +416,3 @@ Status write_to_file(
 }  // namespace posix
 
 }  // namespace tiledb
-
-/*
-  // TODO: will add this back
-Status delete_dir(const URI& uri) {
-return delete_dir(uri.to_posix_path());
-}
-
-Status delete_dir(const std::string& path) {
-// Get real path
-std::string dirname_real = posix::real_dir(path);
-
-// Delete the contents of the directory
-std::string filename;
-struct dirent* next_file;
-DIR* dir = opendir(dirname_real.c_str());
-
-if (dir == nullptr) {
-return LOG_STATUS(Status::IOError(
-    std::string("Cannot open directory; ") + strerror(errno)));
-}
-
-while ((next_file = readdir(dir))) {
-if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
-  continue;
-filename = dirname_real + "/" + next_file->d_name;
-if (remove(filename.c_str())) {
-  return LOG_STATUS(Status::IOError(
-      std::string("Cannot delete file; ") + strerror(errno)));
-}
-}
-
-// Close directory
-if (closedir(dir)) {
-return LOG_STATUS(Status::IOError(
-    std::string("Cannot close directory; ") + strerror(errno)));
-}
-
-// Remove directory
-if (rmdir(dirname_real.c_str())) {
-return LOG_STATUS(Status::IOError(
-    std::string("Cannot delete directory; ") + strerror(errno)));
-}
-return Status::Ok();
-}
-
-*/

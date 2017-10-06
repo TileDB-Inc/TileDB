@@ -136,6 +136,9 @@ const char* group_filename = "__tiledb_group.tdb";
 /** The initial internal buffer size for the case of sparse arrays. */
 const uint64_t internal_buffer_size = 10000000;
 
+/** The buffer size for each attribute used in consolidation. */
+const uint64_t consolidation_buffer_size = 10000000;
+
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = INT_MAX;
 

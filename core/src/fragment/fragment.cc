@@ -49,6 +49,7 @@ Fragment::Fragment(Query* query)
   read_state_ = nullptr;
   write_state_ = nullptr;
   metadata_ = nullptr;
+  consolidation_ = false;
 }
 
 Fragment::~Fragment() {
@@ -96,12 +97,14 @@ Status Fragment::finalize() {
     Status st_bk = storage_manager->store(metadata_);
     Status st_rn;
 
-    // Rename fragment URI
-    if (storage_manager->is_dir(fragment_uri_)) {
-      URI parent = fragment_uri_.parent();
-      std::string last = fragment_uri_.last_path_part();
-      URI new_fragment_uri = parent.join_path(last.substr(1));
-      st_rn = storage_manager->move_dir(fragment_uri_, new_fragment_uri);
+    // Rename fragment URI if it is not the result of consolidation
+    if (!consolidation_) {
+      if (storage_manager->is_dir(fragment_uri_)) {
+        URI parent = fragment_uri_.parent();
+        std::string last = fragment_uri_.last_path_part();
+        URI new_fragment_uri = parent.join_path(last.substr(1));
+        st_rn = storage_manager->move_dir(fragment_uri_, new_fragment_uri);
+      }
     }
 
     // Errors
@@ -121,9 +124,11 @@ const URI& Fragment::fragment_uri() const {
   return fragment_uri_;
 }
 
-Status Fragment::init(const URI& uri, const void* subarray) {
-  // Set fragment name and mode
+Status Fragment::init(
+    const URI& uri, const void* subarray, bool consolidation) {
+  // Set fragment name and consolidation
   fragment_uri_ = uri;
+  consolidation_ = consolidation;
 
   // Check if the fragment is dense or not
   dense_ = true;

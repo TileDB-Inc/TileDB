@@ -42,6 +42,8 @@
 #include <thread>
 
 #include "array_metadata.h"
+#include "consolidator.h"
+#include "locked_array.h"
 #include "open_array.h"
 #include "query.h"
 #include "status.h"
@@ -68,12 +70,38 @@ class StorageManager {
   /* ********************************* */
 
   /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @return Status
+   */
+  Status array_consolidate(const char* array_name);
+
+  /**
    * Creates a TileDB array storing its metadata.
    *
    * @param array_metadata The array metadata.
    * @return Status
    */
   Status array_create(ArrayMetadata* array_metadata);
+
+  /**
+   * Locks the array.
+   *
+   * @param array_uri The array to be locked
+   * @param shared True if this is a shared lock, false if it is exclusive.
+   * @return Status
+   */
+  Status array_lock(const URI& array_uri, bool shared);
+
+  /**
+   * Unlocks the array.
+   *
+   * @param array_uri The array to be unlocked
+   * @param shared True if this was a shared lock, false if it was exclusive.
+   * @return Status
+   */
+  Status array_unlock(const URI& array_uri, bool shared);
 
   /**
    * Pushes an async query to the queue.
@@ -95,6 +123,9 @@ class StorageManager {
   /** Deletes a file with the input URI. */
   Status delete_file(const URI& uri) const;
 
+  /** Deletes a fragment directory. */
+  Status delete_fragment(const URI& uri) const;
+
   /** Retrieves the size of the input URI file. */
   Status file_size(const URI& uri, uint64_t* size) const;
 
@@ -115,6 +146,9 @@ class StorageManager {
    * @return Status
    */
   Status init();
+
+  /** Returns true if the input URI is a fragment directory. */
+  bool is_fragment(const URI& uri) const;
 
   /** Checks if the input URI is a directory. */
   bool is_dir(const URI& uri);
@@ -159,6 +193,9 @@ class StorageManager {
    * @param buffers The buffers that will hold the cells to write, or will
    *     hold the cells that will be read.
    * @param buffer_sizes The corresponding buffer sizes.
+   * @param consolidation_fragment_uri This is used only in write queries.
+   *     If it is different than empty, then it indicates that the query will
+   *     be writing into a consolidation fragment with the input name.
    * @return Status
    */
   Status query_init(
@@ -170,7 +207,8 @@ class StorageManager {
       const char** attributes,
       unsigned int attribute_num,
       void** buffers,
-      uint64_t* buffer_sizes);
+      uint64_t* buffer_sizes,
+      const URI& consolidation_fragment_uri = URI(""));
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
@@ -262,6 +300,21 @@ class StorageManager {
    */
   std::thread* async_thread_[2];
 
+  /** Object that handles array consolidation. */
+  Consolidator* consolidator_;
+
+  /** Used for array shared and exclusive locking. */
+  std::mutex locked_array_mtx_;
+
+  /** Used for array shared and exclusive locking. */
+  std::condition_variable locked_array_cv_;
+
+  /**
+   * Stores locked array entries. The map is indexed by the array URI string
+   * and stores the number of **shared** locks.
+   */
+  std::map<std::string, LockedArray*> locked_arrays_;
+
   /** Mutex for managing OpenArray objects. */
   std::mutex open_array_mtx_;
 
@@ -283,8 +336,7 @@ class StorageManager {
 
   /** Closes an array, properly managing the opened fragment metadata. */
   Status array_close(
-      const URI& array,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
+      URI array, const std::vector<FragmentMetadata*>& fragment_metadata);
 
   /**
    * Opens an array, retrieving its metadata and fragment metadata.

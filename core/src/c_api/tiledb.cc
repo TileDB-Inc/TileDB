@@ -1353,17 +1353,16 @@ int tiledb_array_create(
   return TILEDB_OK;
 }
 
-/*
 int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_name) {
-  // TODO: sanity checks here
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
 
-  auto array_uri = tiledb::uri::URI(array_name);
-  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_uri)))
+  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_name)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
-*/
 
 /* ****************************** */
 /*       DIRECTORY MANAGEMENT     */

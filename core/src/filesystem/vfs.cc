@@ -83,6 +83,14 @@ Status VFS::delete_file(const URI& uri) const {
   return Status::Ok();
 }
 
+Status VFS::delete_dir(const URI& uri) const {
+  if (uri.is_posix())
+    return posix::delete_dir(uri.to_path());
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
 Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
   if (uri.is_posix())
     return posix::filelock_lock(uri.to_path(), fd, shared);

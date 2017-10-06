@@ -47,7 +47,10 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  uri_ = VFS::abs_path(path);
+  if (path == "")
+    uri_ = "";
+  else
+    uri_ = VFS::abs_path(path);
 }
 
 URI::~URI() = default;

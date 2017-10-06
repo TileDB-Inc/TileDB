@@ -135,6 +135,9 @@ extern const char* group_filename;
 /** The initial internal buffer size for the case of sparse arrays. */
 extern const uint64_t internal_buffer_size;
 
+/** The buffer size for each attribute used in consolidation. */
+extern const uint64_t consolidation_buffer_size;
+
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 

@@ -94,9 +94,14 @@ class Fragment {
    * @param uri The URI of the fragment directory.
    * @param subarray The subarray this fragment is constrained on. A *nullptr*
    *     implies the entire domain.
+   * @param consolidation If true, then this fragment is the result of
+   *     consolidation and, thus, it should not be renamed upon finalization.
    * @return Status
    */
-  Status init(const URI& uri, const void* subarray = nullptr);
+  Status init(
+      const URI& uri,
+      const void* subarray = nullptr,
+      bool consolidation = false);
 
   /**
    * Initializes the fragment.
@@ -134,6 +139,12 @@ class Fragment {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /**
+   * If true, then this fragment is the result of consolidation and, thus, it
+   * should not be renamed upon finalization.
+   */
+  bool consolidation_;
 
   /** Indicates whether the fragment is dense or sparse. */
   bool dense_;

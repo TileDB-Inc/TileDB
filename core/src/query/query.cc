@@ -54,6 +54,7 @@ Query::Query() {
   fragments_init_ = false;
   storage_manager_ = nullptr;
   fragments_borrowed_ = false;
+  consolidation_fragment_uri_ = URI("");
 }
 
 Query::Query(Query* common_query) {
@@ -71,6 +72,7 @@ Query::Query(Query* common_query) {
   type_ = common_query->type();
   layout_ = common_query->layout();
   status_ = QueryStatus::INPROGRESS;
+  consolidation_fragment_uri_ = common_query->consolidation_fragment_uri_;
 }
 
 Query::~Query() {
@@ -200,6 +202,14 @@ const std::vector<FragmentMetadata*>& Query::fragment_metadata() const {
   return fragment_metadata_;
 }
 
+std::vector<URI> Query::fragment_uris() const {
+  std::vector<URI> uris;
+  for (auto fragment : fragments_)
+    uris.emplace_back(fragment->fragment_uri());
+
+  return uris;
+}
+
 unsigned int Query::fragment_num() const {
   return (unsigned int)fragments_.size();
 }
@@ -214,7 +224,8 @@ Status Query::init(
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
-    uint64_t* buffer_sizes) {
+    uint64_t* buffer_sizes,
+    const URI& consolidation_fragment_uri) {
   storage_manager_ = storage_manager;
   array_metadata_ = array_metadata;
   type_ = type;
@@ -223,6 +234,7 @@ Status Query::init(
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
   fragment_metadata_ = fragment_metadata;
+  consolidation_fragment_uri_ = consolidation_fragment_uri;
 
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
   RETURN_NOT_OK(set_subarray(subarray));
@@ -261,6 +273,12 @@ Status Query::init(
   RETURN_NOT_OK(set_subarray(subarray));
 
   return Status::Ok();
+}
+
+URI Query::last_fragment_uri() const {
+  if (fragments_.empty())
+    return URI("");
+  return fragments_.back()->fragment_uri();
 }
 
 Layout Query::layout() const {
@@ -489,27 +507,31 @@ Status Query::init_states() {
 
 Status Query::new_fragment() {
   // Get new fragment name
-  std::string new_fragment_name = this->new_fragment_name();
+  auto consolidation = !consolidation_fragment_uri_.is_invalid();
+  auto array_name = array_metadata_->array_uri().to_string();
+  std::string new_fragment_name =
+      consolidation ?
+          (array_name + "/." + consolidation_fragment_uri_.last_path_part()) :
+          this->new_fragment_name();
+
   if (new_fragment_name.empty())
     return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
 
   // Create new fragment
   auto fragment = new Fragment(this);
   RETURN_NOT_OK_ELSE(
-      fragment->init(URI(new_fragment_name), subarray_), delete fragment);
+      fragment->init(URI(new_fragment_name), subarray_, consolidation),
+      delete fragment);
   fragments_.push_back(fragment);
 
   return Status::Ok();
 }
 
 std::string Query::new_fragment_name() const {
-  // For easy reference
-  unsigned name_max_len = constants::name_max_len;
-
   struct timeval tp = {};
   gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
-  char fragment_name[name_max_len];
+  char fragment_name[constants::name_max_len];
 
   std::stringstream ss;
   ss << std::this_thread::get_id();

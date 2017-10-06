@@ -42,7 +42,6 @@ namespace tiledb {
 OpenArray::OpenArray() {
   array_metadata_ = nullptr;
   cnt_ = 0;
-  filelock_ = -1;
 }
 
 OpenArray::~OpenArray() {
@@ -67,14 +66,6 @@ uint64_t OpenArray::cnt() const {
 
 void OpenArray::decr_cnt() {
   --cnt_;
-}
-
-int OpenArray::filelock_fd() const {
-  return filelock_;
-}
-
-bool OpenArray::filelocked() const {
-  return filelock_ != -1;
 }
 
 void OpenArray::fragment_metadata_add(FragmentMetadata* metadata) {
@@ -122,10 +113,6 @@ void OpenArray::mtx_unlock() {
 
 void OpenArray::set_array_metadata(const ArrayMetadata* array_metadata) {
   array_metadata_ = array_metadata;
-}
-
-void OpenArray::set_filelock_fd(int fd) {
-  filelock_ = fd;
 }
 
 /* ****************************** */
