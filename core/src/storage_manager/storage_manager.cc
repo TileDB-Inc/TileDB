@@ -113,7 +113,7 @@ Status StorageManager::array_lock(const URI& array_uri, bool shared) {
   // Lock the filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
   Status st = locked_array->lock(vfs_, filelock_uri, shared);
-  if(!st.ok()) {
+  if (!st.ok()) {
     array_unlock(array_uri, shared);
     return st;
   }
@@ -498,7 +498,7 @@ Status StorageManager::array_open(
   // Get the open array entry
   OpenArray* open_array;
   Status st = open_array_get_entry(array_uri, &open_array);
-  if(!st.ok()) {
+  if (!st.ok()) {
     open_array_mtx_.unlock();
     return st;
   }
