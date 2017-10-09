@@ -1533,8 +1533,8 @@ Status ArrayReadState::read_sparse(void** buffers, uint64_t* buffer_sizes) {
   auto attribute_id_num = (int)attribute_ids.size();
 
   // Find the coordinates buffer
-  int coords_buffer_i = INVALID_UINT;
-  int buffer_i = 0;
+  unsigned int coords_buffer_i = INVALID_UINT;
+  unsigned int buffer_i = 0;
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
     if (attribute_ids[i] == attribute_num_) {
       coords_buffer_i = buffer_i;
@@ -1789,7 +1789,8 @@ Status ArrayReadState::sort_fragment_cell_ranges(
   }
 
   // Sanity check
-  assert(non_empty > 0);
+  if (non_empty == 0)
+    return Status::Ok();
 
   // Trivial case - single fragment
   if (fragment_num == 1) {
