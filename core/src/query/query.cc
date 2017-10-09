@@ -54,7 +54,7 @@ Query::Query() {
   fragments_init_ = false;
   storage_manager_ = nullptr;
   fragments_borrowed_ = false;
-  consolidation_fragment_uri_ = URI("");
+  consolidation_fragment_uri_ = URI();
 }
 
 Query::Query(Query* common_query) {
@@ -277,7 +277,7 @@ Status Query::init(
 
 URI Query::last_fragment_uri() const {
   if (fragments_.empty())
-    return URI("");
+    return URI();
   return fragments_.back()->fragment_uri();
 }
 
@@ -399,7 +399,6 @@ QueryType Query::type() const {
 
 Status Query::write() {
   status_ = QueryStatus::INPROGRESS;
-
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers_, buffer_sizes_));

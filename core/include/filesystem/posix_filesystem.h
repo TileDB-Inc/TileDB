@@ -76,8 +76,8 @@ Status create_file(const std::string& filename);
 /**
  * Returns the directory where the program is executed.
  *
- * @return The directory where the program is executed. If the program cannot
- *     retrieve the current working directory, the empty string is returned.
+ * @return The directory path where the program is executed. If the program
+ * cannot retrieve the current working directory, the empty string is returned.
  */
 std::string current_dir();
 
@@ -96,6 +96,7 @@ Status delete_file(const std::string& path);
  * Returns the size of the input file.
  *
  * @param path The name of the file whose size is to be retrieved.
+ * @param nbytes Pointer to a value
  * @return Status
  */
 Status file_size(const std::string& path, uint64_t* size);
@@ -141,7 +142,7 @@ bool is_file(const std::string& path);
  *
  * @param path  The parent path to list sub-paths.
  * @param paths Pointer to a vector of strings to store the retrieved paths.
- * @return
+ * @return Status
  */
 Status ls(const std::string& path, std::vector<std::string>* paths);
 
@@ -180,16 +181,6 @@ Status read_from_file(
     const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes);
 
 /**
- * Read contents of a file into a (growable) byte buffer. The function
- * creates the buffer *buff* so the caller must de-allocated it later.
- *
- * @param path  The name of a file.
- * @param buff A pointer to the buffer to be allocated.
- * @return Status
- */
-// Status read_from_file(const std::string& path, Buffer** buff);
-
-/**
  * Syncs a file or directory.
  *
  * @param path The name of the file.
@@ -199,6 +190,9 @@ Status sync(const std::string& path);
 
 /**
  * Writes the input buffer to a file.
+ *
+ * If the file exists than it is created.
+ * If the file does not exist than it is appended to.
  *
  * @param path The name of the file.
  * @param buffer The input buffer.

@@ -1212,7 +1212,8 @@ int tiledb_query_create(
               attributes,
               attribute_num,
               buffers,
-              buffer_sizes))) {
+              buffer_sizes,
+              tiledb::URI()))) {
     delete (*query)->query_;
     std::free(*query);
     *query = nullptr;

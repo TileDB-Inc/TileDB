@@ -40,6 +40,10 @@
 #include <string>
 #include <vector>
 
+#ifdef HAVE_HDFS
+#include "hdfs.h"
+#endif
+
 namespace tiledb {
 
 /**
@@ -211,6 +215,9 @@ class VFS {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+#ifdef HAVE_HDFS
+  hdfsFS hdfs_;
+#endif
 };
 
 }  // namespace tiledb

@@ -53,7 +53,13 @@ struct SparseArrayFx {
   int COMPRESSION_LEVEL = -1;
 
   // Workspace folder name
+#ifdef HAVE_HDFS
+  const std::string URI_PREFIX = "hdfs://";
+  const std::string TEMP_DIR = "/tiledb_test/";
+#else
   const std::string URI_PREFIX = "file://";
+  const std::string TEMP_DIR = "";
+#endif
   const std::string GROUP = "my_group/";
 
   // Array name
@@ -71,16 +77,11 @@ struct SparseArrayFx {
     assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "test -d " + GROUP;
-    rc = system(cmd.c_str());
-    if (rc == 0) {
-      cmd = "rm -rf " + GROUP;
-      rc = system(cmd.c_str());
-      assert(rc == 0);
+    if (dir_exists(TEMP_DIR + GROUP)) {
+      bool success = remove_dir(TEMP_DIR + GROUP);
+      assert(success == true);
     }
-    rc = tiledb_group_create(ctx_, (URI_PREFIX + GROUP).c_str());
+    rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -89,11 +90,26 @@ struct SparseArrayFx {
     tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "rm -rf " + GROUP;
-    int rc = system(cmd.c_str());
-    assert(rc == 0);
+    bool success = remove_dir(TEMP_DIR + GROUP);
+    assert(success == true);
+  }
+
+  bool dir_exists(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -test -d ") + path;
+#else
+    std::string cmd = std::string("test -d ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
+  }
+
+  bool remove_dir(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+#else
+    std::string cmd = std::string("rm -r -f ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
   }
 
   /**
@@ -205,6 +221,7 @@ struct SparseArrayFx {
     // Error code
     int rc;
 
+    // assert(0);
     // Initialize a subarray
     const int64_t subarray[] = {
         domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
@@ -261,7 +278,7 @@ struct SparseArrayFx {
 
   /** Sets the array name for the current test. */
   void set_array_name(const char* name) {
-    array_name_ = URI_PREFIX + GROUP + name;
+    array_name_ = URI_PREFIX + TEMP_DIR + GROUP + name;
   }
 
   /**
@@ -379,7 +396,6 @@ struct SparseArrayFx {
         return false;
       }
     }
-
     return true;
   }
 };
@@ -392,7 +408,7 @@ struct SparseArrayFx {
  * width and height of the sub-regions
  */
 TEST_CASE_METHOD(
-    SparseArrayFx, "C API: Test random sparse sorted reads", "[capi]") {
+    SparseArrayFx, "C API: Test random sparse sorted reads", "[sparse]") {
   // error code
   int rc;
 
@@ -405,7 +421,7 @@ TEST_CASE_METHOD(
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  int64_t capacity = 1000;
+  int64_t capacity = 100000;
   int ntests = 5;
 
   // set array_metadata name
