@@ -47,10 +47,12 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  if (path == "")
-    uri_ = "";
-  else
+  if (URI::is_posix(path))
     uri_ = VFS::abs_path(path);
+  else if (URI::is_hdfs(path) || URI::is_s3(path))
+    uri_ = path;
+  else
+    uri_ = "";
 }
 
 URI::~URI() = default;
@@ -93,31 +95,18 @@ bool URI::is_s3() const {
 }
 
 URI URI::join_path(const std::string& path) const {
-  if (is_posix())
-    return URI(uri_ + "/" + path);
-
-  // TODO: handle the other file systems here
-  return URI();
+  return URI(uri_ + "/" + path);
 }
 
 std::string URI::last_path_part() const {
-  if (is_posix())
-    return uri_.substr(uri_.find_last_of('/') + 1);
-
-  // TODO: handle the other file systems here
-  return "";
+  return uri_.substr(uri_.find_last_of('/') + 1);
 }
 
 URI URI::parent() const {
-  if (is_posix()) {
-    uint64_t pos = uri_.find_last_of('/');
-    if (pos == std::string::npos)
-      return URI();
-    return URI(uri_.substr(0, pos));
-  }
-
-  // TODO: handle the other file systems here
-  return URI();
+  uint64_t pos = uri_.find_last_of('/');
+  if (pos == std::string::npos)
+    return URI();
+  return URI(uri_.substr(0, pos));
 }
 
 std::string URI::to_path() const {

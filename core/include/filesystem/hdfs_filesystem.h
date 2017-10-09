@@ -29,15 +29,19 @@
  *
  * This file includes declarations of HDFS filesystem functions.
  */
-#ifdef HAVE_HDFS
+
 #ifndef TILEDB_FILESYSTEM_HDFS_H
 #define TILEDB_FILESYSTEM_HDFS_H
+
+#ifdef HAVE_HDFS
 
 #include <sys/types.h>
 #include <string>
 #include <vector>
 
+#include "buffer.h"
 #include "status.h"
+#include "uri.h"
 
 #include "hdfs.h"
 
@@ -45,66 +49,139 @@ namespace tiledb {
 
 namespace hdfs {
 
-// create a connection to hdfs
+/**
+ * Connects to an HDFS filesystem
+ *
+ * @param fs Reference to a hdfsFS filesystem handle.
+ * @return Status
+ */
 Status connect(hdfsFS& fs);
 
-// disconnect hdfs connection
+/**
+ * Disconnects an HDFS filesystem
+ *
+ * @param fs Reference to an hdfsFS filesystem handle.
+ * @return Status
+ */
 Status disconnect(hdfsFS& fs);
 
-// create a directory with the given path
-Status create_dir(const std::string& path, hdfsFS fs);
+/**
+ * Creates a new directory.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the directory resource to be created.
+ * @return Status
+ */
+Status create_dir(hdfsFS fs, const URI& uri);
 
-// delete the directory with the given path
-Status delete_dir(const std::string& path, hdfsFS fs);
+/**
+ * Deletes a given directory.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the directory resource to be deleted.
+ * @return Status
+ */
+Status delete_dir(hdfsFS fs, const URI& uri);
 
-// Is the given path a valid directory
-bool is_dir(const std::string& path, hdfsFS fs);
+/**
+ * Checks if the URI is an existing HDFS directory.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the directory to be checked
+ * @return *True* if *uri* is an existing directory, *False* otherwise.
+ */
+bool is_dir(hdfsFS fs, const URI& uri);
 
-// Is the given path a valid file
-bool is_file(const std::string& path, hdfsFS fs);
+/**
+ * Move a given filesystem directory path.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param old_uri The URI of the old directory.
+ * @param new_uri The URI of the new directory.
+ * @return Status
+ */
+Status move_dir(hdfsFS fs, const URI& old_uri, const URI& new_uri);
 
-// create a file with the given path
-Status create_file(const std::string& path, hdfsFS fs);
+/**
+ * Checks if the given URI is an existing HDFS directory.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the file to be checked.
+ * @return *True* if the *file* is an existing file, and *false* otherwise.
+ */
+bool is_file(hdfsFS fs, const URI& uri);
 
-// delete a file with the given path
-Status delete_file(const std::string& path, hdfsFS fs);
+/**
+ * Creates an empty file.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the file to be created.
+ * @return Status
+ */
+Status create_file(hdfsFS fs, const URI& uri);
 
-// Read length bytes from file give by path from byte offset offset into pre
-// allocated buffer buffer.
+/**
+ * Delete a file with a given URI.
+ *
+ * @param fs Connected hdfsFS filesystem handle.
+ * @param uri The URI of the file to be deleted.
+ * @return Status
+ */
+Status delete_file(hdfsFS fs, const URI& uri);
+
+/**
+ *  Reads data from a file into a buffer.
+ *
+ * @param fs Connected hdfsFS filesystem handle.
+ * @param uri The URI of the file to be read.
+ * @param offset The offset in the file from which the read will start.
+ * @param buffer The buffer into which the data will be written.
+ * @param length The size of the data to be read from the file.
+ * @return Status
+ */
 Status read_from_file(
-    const std::string& path,
-    off_t offset,
-    void* buffer,
-    size_t length,
-    hdfsFS fs);
+    hdfsFS fs, const URI& uri, off_t offset, void* buffer, uint64_t length);
 
-// Write length bytes of buffer to a given path
+/**
+ * Writes the input buffer to a file.
+ *
+ * If the file exists than it is created.
+ * If the file does not exist than it is appended to.
+ *
+ * @param fs Connected hdfsFS filesystem handle.
+ * @param uri The URI of the file to be written to.
+ * @param buffer The input buffer.
+ * @param length The size of the input buffer.
+ * @return Status
+ */
 Status write_to_file(
-    const std::string& path,
-    const void* buffer,
-    const size_t length,
-    hdfsFS fs);
+    hdfsFS fs, const URI& uri, const void* buffer, const uint64_t length);
 
-// List all subdirectories and files for a given path, appending them to paths.
-// Ordering does not matter.
-Status ls(const std::string& path, std::vector<std::string>& paths, hdfsFS fs);
+/**
+ * Lists the files one level deep under a given path.
+ *
+ * @param fs Connected hdfsFS filesystem handle.
+ * @param uri The URI of the parent directory path.
+ * @param paths Pointer ot a vector of URIs to store the retrieved paths.
+ * @return Status
+ */
+Status ls(hdfsFS fs, const URI& uri, std::vector<std::string>* paths);
 
-// List all subfiles (1 level deep) for a given path, appending them to fpaths.
-// Ordering does not matter.
-Status ls_files(
-    const std::string& path, std::vector<std::string>& fpaths, hdfsFS fs);
-
-// List all subdirectories (1 level deep) for a given path, appending them to
-// dpaths.  Ordering does not matter.
-Status ls_dirs(
-    const std::string& path, std::vector<std::string>& fpaths, hdfsFS fs);
-
+/**
+ * Returns the size of the input file with a given URI in bytes.
+ *
+ * @param fs Reference to a connected hdfsFS filesystem handle.
+ * @param uri The URI of the file.
+ * @param nbytes Pointer to unint64_t bytes to return.
+ * @return Status
+ */
 // File size in bytes for a given path
-Status filesize(const std::string& path, size_t* nbytes, hdfsFS fs);
+Status file_size(hdfsFS fs, const URI& uri, uint64_t* nbytes);
 
 }  // namespace hdfs
 
 }  // namespace tiledb
 
 #endif
+
 #endif  // TILEDB_FILESYSTEM_HDFS_H

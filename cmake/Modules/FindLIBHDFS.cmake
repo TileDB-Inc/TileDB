@@ -25,22 +25,22 @@
 # THE SOFTWARE.
 #
 # Finds the HDFS native library. This module defines:
-#   - HDFS_INCLUDE_DIR, directory containing the hdfs.h header
-#   - HDFS_LIBRARY, the libhdfs library path
-#   - HDFS_FOUND, the hdfs.h header, libjvm and libhdfs libraries have been found
+#   - LIBHDFS_INCLUDE_DIR, directory containing the hdfs.h header
+#   - LIBHDFS_LIBRARY, the libhdfs library path
+#   - LIBHDFS_FOUND, the hdfs.h header, libjvm and libhdfs libraries have been found
 
 
-if(NOT HDFS_FOUND)
-    message("Searching for libhdfs")
+if(NOT LIBHDFS_FOUND)
+    message(STATUS "Searching for libhdfs")
     if(NOT DEFINED ${HADOOP_HOME})
         if (DEFINED ENV{HADOOP_HOME})
             set(HADOOP_HOME "$ENV{HADOOP_HOME}")
 	endif()
     endif()
     if( "${HADOOP_HOME}" STREQUAL "" )
-        message("HADOOP_HOME not specified")
+	message(STATUS "HADOOP_HOME not specified")
     else()
-        message("HADOOP_HOME is set to ${HADOOP_HOME}")
+	message(STATUS "HADOOP_HOME is set to ${HADOOP_HOME}")
         list(APPEND POSSILE_PATHS
              "${HADOOP_HOME}"
              "${HADOOP_HOME}/lib"
@@ -49,7 +49,7 @@ if(NOT HDFS_FOUND)
 	     "/usr/include")
     endif()
 
-    message("Searching for JVM and JNI paths")
+    message(STATUS "Searching for JVM and JNI paths")
     find_package(JNI)
 
     if(JAVA_JVM_LIBRARY)
@@ -58,35 +58,33 @@ if(NOT HDFS_FOUND)
         message(STATUS "libjvm library not found")
     endif()
 
-    message("Exploring these paths to find libhdfs and hdfs.h: ${POSSILE_PATHS}.")
+    find_path(LIBHDFS_INCLUDE_DIR NAMES hdfs.h PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
 
-    find_path(HDFS_INCLUDE_DIR NAMES hdfs.h PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
-
-    find_library(HDFS_LIBRARY NAMES
+    find_library(LIBHDFS_LIBRARY NAMES
         libhdfs${CMAKE_SHARED_LIBRARY_SUFFIX}
 	libhdfs${CMAKE_STATIC_LIBRARY_SUFFIX}
-        PATHS ${POSSILE_PATHS}
+	PATHS ${POSSILE_PATHS}
         NO_DEFAULT_PATH)
 
-    if(HDFS_SHARED_LIB)
-	message(STATUS "Found libhdfs library: ${HDFS_LIBRARY}")
+    if(LIBHDFS_LIBRARY)
+	message(STATUS "Found libhdfs library: ${LIBHDFS_LIBRARY}")
     else()
         message(STATUS "libhdfs library not found")
     endif()
 
-    if(HDFS_INCLUDE_DIR)
-        message(STATUS "Found hdfs.h header file: ${HDFS_INCLUDE_PATH}")
+    if(LIBHDFS_INCLUDE_DIR)
+	message(STATUS "Found hdfs.h header file: ${LIBHDFS_INCLUDE_DIR}")
     else()
         message(STATUS "hdfs.h header file not found")
     endif()
 
-    if(JAVA_JVM_LIBRARY AND HDFS_LIBRARY AND HDFS_INCLUDE_DIR)
-        set(HDFS_FOUND TRUE)
+    if(JAVA_JVM_LIBRARY AND LIBHDFS_LIBRARY AND LIBHDFS_INCLUDE_DIR)
+        set(LIBHDFS_FOUND TRUE)
     else()
-        set(HDFS_FOUND FALSE)
+	set(LIBHDFS_FOUND FALSE)
     endif()
 endif()
 
-if(HDFS_FIND_REQUIRED AND NOT HDFS_FOUND)
+if(LIBHDFS_FIND_REQUIRED AND NOT LIBHDFS_FOUND)
     message(FATAL_ERROR "Could not find the libhdfs library.")
 endif()

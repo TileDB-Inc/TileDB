@@ -5,6 +5,7 @@ function update_apt_repo  {
   sudo add-apt-repository -y ppa:webupd8team/java
   sudo apt-get update -y
 } 
+
 function install_java {
   sudo apt-get install -y oracle-java8-installer
   sudo apt-get install -y oracle-java8-set-default
@@ -42,14 +43,14 @@ function setup_core_xml {
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <configuration>
 <property>
-    <name>hadoop.tmp.dir</name>
-    <value>/tmp/hadooop</value>
-    <description>Temporary directories.</description>
+<name>hadoop.tmp.dir</name>
+<value>/tmp/hadooop</value>
+<description>Temporary directories.</description>
 </property>
 <property>
-    <name>fs.default.name</name>
-    <value>hdfs://localhost:54310</value>
-    <description>A URI whose scheme and authority determine the FileSystem implementation. </description>
+<name>fs.default.name</name>
+<value>hdfs://localhost:54310</value>
+<description>A URI whose scheme and authority determine the FileSystem implementation. </description>
 </property>
 </configuration>
 EOF
@@ -67,9 +68,9 @@ function setup_mapred_xml {
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <configuration>
 <property>
-  <name>mapred.job.tracker</name>
-  <value>localhost:54311</value>
-  <description>The tracker of MapReduce</description>
+<name>mapred.job.tracker</name>
+<value>localhost:54311</value>
+<description>The tracker of MapReduce</description>
 </property>
 </configuration>
 EOT
@@ -86,11 +87,44 @@ function setup_hdfs_xml {
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <configuration>
+
 <property>
-  <name>dfs.replication</name>
-  <value>1</value>
-  <description>Number of replication of hdfs</description>
+<name>dfs.replication</name>
+<value>1</value>
 </property>
+
+<!-- libhdfs3 -->
+
+<property>
+<name>dfs.default.replica</name>
+<value>1</value>
+</property>
+
+<property>
+<name>output.replace-datanode-on-failure</name>
+<value>false</value>
+</property>
+
+<property>
+<name>dfs.client.read.shortcircuit</name>
+<value>false</value>
+</property>
+
+<property>
+<name>rpc.client.connect.retry</name>
+<value>10</value>
+</property>
+
+<property>
+<name>rpc.client.read.timeout</name>
+<value>3600000</value>
+</property>
+
+<property>
+<name>rpc.client.write.timeout</name>
+<value>3600000</value>
+</property>
+
 </configuration>
 EOF
   tmpfile=/tmp/hadoop_hdfs.xml

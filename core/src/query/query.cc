@@ -399,7 +399,6 @@ QueryType Query::type() const {
 
 Status Query::write() {
   status_ = QueryStatus::INPROGRESS;
-
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers_, buffer_sizes_));

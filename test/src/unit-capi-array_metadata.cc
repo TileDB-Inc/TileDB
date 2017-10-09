@@ -43,13 +43,19 @@
 #include "uri.h"
 
 struct ArraySchemaFx {
-  // Constant parameters
+// Constant parameters
+#ifdef HAVE_HDFS
+  const std::string URI_PREFIX = "hdfs://";
+  const std::string TEMP_DIR = "/tiledb_test/";
+#else
   const std::string URI_PREFIX = "file://";
+  const std::string TEMP_DIR = "";
+#endif
   const std::string GROUP = "test_group/";
   const std::string ARRAY_NAME = "dense_test_100x100_10x10";
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
   const char* ARRAY_TYPE_STR = "dense";
-  const std::string ARRAY_PATH = URI_PREFIX + GROUP + ARRAY_NAME;
+  const std::string ARRAY_PATH = URI_PREFIX + TEMP_DIR + GROUP + ARRAY_NAME;
   const std::string ARRAY_PATH_REAL = tiledb::URI(ARRAY_PATH).to_string();
   const uint64_t CAPACITY = 500;
   const char* CAPACITY_STR = "500";
@@ -98,16 +104,10 @@ struct ArraySchemaFx {
     assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "test -d " + GROUP;
-    rc = system(cmd.c_str());
-    if (rc == 0) {
-      cmd = "rm -rf " + GROUP;
-      rc = system(cmd.c_str());
-      assert(rc == 0);
+    if (dir_exists(TEMP_DIR + GROUP)) {
+      assert(remove_dir(TEMP_DIR + GROUP));
     }
-    rc = tiledb_group_create(ctx_, (URI_PREFIX + GROUP).c_str());
+    rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -120,11 +120,25 @@ struct ArraySchemaFx {
     tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "rm -rf " + GROUP;
-    int rc = system(cmd.c_str());
-    assert(rc == 0);
+    assert(remove_dir(TEMP_DIR + GROUP));
+  }
+
+  bool dir_exists(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -test -d ") + path;
+#else
+    std::string cmd = std::string("test -d ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
+  }
+
+  bool remove_dir(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+#else
+    std::string cmd = std::string("rm -r -f ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
   }
 
   void create_dense_array() {
@@ -179,7 +193,7 @@ struct ArraySchemaFx {
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata creation and retrieval",
-    "[capi]") {
+    "[metadata]") {
   create_dense_array();
 
   // Load array_metadata metadata from the disk
