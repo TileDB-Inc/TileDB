@@ -33,8 +33,6 @@
 #ifndef TILEDB_FILESYSTEM_HDFS_H
 #define TILEDB_FILESYSTEM_HDFS_H
 
-#ifdef HAVE_HDFS
-
 #include <sys/types.h>
 #include <string>
 #include <vector>
@@ -43,12 +41,15 @@
 #include "status.h"
 #include "uri.h"
 
+#ifdef HAVE_HDFS
 #include "hdfs.h"
+#endif
 
 namespace tiledb {
 
 namespace hdfs {
 
+#ifdef HAVE_HDFS
 /**
  * Connects to an HDFS filesystem
  *
@@ -75,15 +76,6 @@ Status disconnect(hdfsFS& fs);
 Status create_dir(hdfsFS fs, const URI& uri);
 
 /**
- * Deletes a given directory.
- *
- * @param fs Reference to a connected hdfsFS filesystem handle.
- * @param uri The URI of the directory resource to be deleted.
- * @return Status
- */
-Status delete_dir(hdfsFS fs, const URI& uri);
-
-/**
  * Checks if the URI is an existing HDFS directory.
  *
  * @param fs Reference to a connected hdfsFS filesystem handle.
@@ -93,14 +85,14 @@ Status delete_dir(hdfsFS fs, const URI& uri);
 bool is_dir(hdfsFS fs, const URI& uri);
 
 /**
- * Move a given filesystem directory path.
+ * Move a given filesystem path.
  *
  * @param fs Reference to a connected hdfsFS filesystem handle.
  * @param old_uri The URI of the old directory.
  * @param new_uri The URI of the new directory.
  * @return Status
  */
-Status move_dir(hdfsFS fs, const URI& old_uri, const URI& new_uri);
+Status move_path(hdfsFS fs, const URI& old_uri, const URI& new_uri);
 
 /**
  * Checks if the given URI is an existing HDFS directory.
@@ -127,7 +119,16 @@ Status create_file(hdfsFS fs, const URI& uri);
  * @param uri The URI of the file to be deleted.
  * @return Status
  */
-Status delete_file(hdfsFS fs, const URI& uri);
+Status remove_file(hdfsFS fs, const URI& uri);
+
+/**
+ * Remove a path with a given URI (recursively)
+ *
+ * @param fs Connected hdfsFS filesystem handle.
+ * @param uri The URI of the path to be removed.
+ * @return Status
+ */
+Status remove_path(hdfsFS fs, const URI& uri);
 
 /**
  *  Reads data from a file into a buffer.
@@ -178,10 +179,14 @@ Status ls(hdfsFS fs, const URI& uri, std::vector<std::string>* paths);
 // File size in bytes for a given path
 Status file_size(hdfsFS fs, const URI& uri, uint64_t* nbytes);
 
+#endif
+
+Status put_path(const URI& fs_path, const URI& hdfs_path);
+
+Status get_path(const URI& hdfs_path, const URI& fs_path);
+
 }  // namespace hdfs
 
 }  // namespace tiledb
-
-#endif
 
 #endif  // TILEDB_FILESYSTEM_HDFS_H

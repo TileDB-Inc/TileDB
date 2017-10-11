@@ -36,12 +36,29 @@
 #include "utils.h"
 
 #include <dirent.h>
+
+#include <ftw.h>
+
 #include <fstream>
 #include <iostream>
 
 namespace tiledb {
 
 namespace posix {
+
+bool both_slashes(char a, char b) {
+  return a == '/' && b == '/';
+}
+
+void adjacent_slashes_dedup(std::string* path) {
+  assert(utils::starts_with(*path, "file://"));
+  path->erase(
+      std::unique(
+          path->begin() + std::string("file://").size(),
+          path->end(),
+          both_slashes),
+      path->end());
+}
 
 std::string abs_path(const std::string& path) {
   // Initialize current, home and root
@@ -76,21 +93,6 @@ std::string abs_path(const std::string& path) {
   purge_dots_from_path(&ret_dir);
 
   return ret_dir;
-}
-
-void adjacent_slashes_dedup(std::string* path) {
-  assert(utils::starts_with(*path, "file://"));
-
-  path->erase(
-      std::unique(
-          path->begin() + std::string("file://").size(),
-          path->end(),
-          both_slashes),
-      path->end());
-}
-
-bool both_slashes(char a, char b) {
-  return a == '/' && b == '/';
 }
 
 Status create_dir(const std::string& path) {
@@ -129,18 +131,39 @@ std::string current_dir() {
   return dir;
 }
 
-Status delete_dir(const std::string& path) {
-  std::string cmd = "rm -rf " + path;
-  int rc = system(cmd.c_str());
-  if (rc != 0) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to delete directory '") + path + "'"));
-  }
+// TODO: it maybe better to use unlinkat for deeply nested recursive directories
+// but the path name length limit in TileDB may make this uncessary
+int unlink_cb(
+    const char* fpath,
+    const struct stat* sb,
+    int typeflag,
+    struct FTW* ftwbuf) {
+  int rc = remove(fpath);
+  if (rc)
+    perror(fpath);
+  return rc;
+}
 
+Status remove_path(const std::string& path) {
+  int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+  if (rc)
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to delete path '") + path + "';  " +
+        strerror(errno)));
   return Status::Ok();
 }
 
-Status delete_file(const std::string& path) {
+Status delete_dir(const std::string& path) {
+  std::string cmd = "rm -rf " + path;
+  int rc = system(cmd.c_str());
+  if (rc) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to delete directory '") + path + "'"));
+  }
+  return Status::Ok();
+}
+
+Status remove_file(const std::string& path) {
   if (remove(path.c_str()) != 0) {
     return LOG_STATUS(
         Status::IOError(std::string("Cannot delete file; ") + strerror(errno)));
@@ -224,7 +247,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-Status move_dir(const std::string& old_path, const std::string& new_path) {
+Status move_path(const std::string& old_path, const std::string& new_path) {
   if (rename(old_path.c_str(), new_path.c_str()) != 0) {
     return LOG_STATUS(
         Status::IOError(std::string("Cannot move path: ") + strerror(errno)));
@@ -309,34 +332,6 @@ Status read_from_file(
   }
   return Status::Ok();
 }
-
-/*
-Status read_from_file(const std::string& path, Buffer** buff) {
-// Open file
-int fd = open(path.c_str(), O_RDONLY);
-if (fd == -1) {
-return LOG_STATUS(Status::IOError(
-    std::string("Cannot read file '") + path + "'; File open error"));
-}
-
-// Get file size
-uint64_t nbytes;
-RETURN_NOT_OK(file_size(path, &nbytes));
-
-// Create new buffer
-*buff = new Buffer(nbytes);
-
-// Read contents
-int64_t bytes_read = ::read(fd, static_cast<char*>((*buff)->data()), nbytes);
-if (bytes_read != int64_t(nbytes)) {
-delete *buff;
-return LOG_STATUS(
-    Status::IOError("Cannot read from file; File reading error"));
-}
-
-return Status::Ok();
-}
- */
 
 Status sync(const std::string& path) {
   // Open file

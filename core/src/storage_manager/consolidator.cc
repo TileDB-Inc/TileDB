@@ -287,7 +287,7 @@ Status Consolidator::rename_new_fragment(const URI& uri) const {
   }
   URI new_uri = URI(new_name);
 
-  return storage_manager_->move_dir(uri, new_uri);
+  return storage_manager_->move_path(uri, new_uri);
 }
 
 }  // namespace tiledb

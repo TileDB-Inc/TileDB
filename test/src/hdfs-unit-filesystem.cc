@@ -89,7 +89,7 @@ TEST_CASE_METHOD(HDFSFx, "Test HDFS filesystem", "[hdfs]") {
   CHECK(st.ok());
   CHECK(hdfs::is_file(fs, URI("hdfs:///tiledb_test_file")));
 
-  st = hdfs::delete_file(fs, URI("hdfs:///tiledb_test_file"));
+  st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test_file"));
   CHECK(st.ok());
 
   st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
@@ -145,13 +145,13 @@ TEST_CASE_METHOD(HDFSFx, "Test HDFS filesystem", "[hdfs]") {
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
-  st = hdfs::delete_dir(fs, URI("hdfs:///tiledb_test_dir/i_dont_exist"));
+  st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test_dir/i_dont_exist"));
   CHECK(!st.ok());
 
-  st = hdfs::delete_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
+  st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
   CHECK(st.ok());
 
-  st = hdfs::delete_dir(fs, URI("hdfs:///tiledb_test_dir"));
+  st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test_dir"));
   CHECK(st.ok());
 
   st = hdfs::disconnect(fs);

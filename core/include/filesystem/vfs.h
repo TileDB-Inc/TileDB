@@ -92,12 +92,11 @@ class VFS {
   Status create_file(const URI& uri) const;
 
   /**
-   * Deletes a directory.
-   *
-   * @param uri The URI of the directory to be deleted.
+   * Removes a given path (recursive)
+   * @param uri The uri of the path to be removed
    * @return Status
    */
-  Status delete_dir(const URI& uri) const;
+  Status remove_path(const URI& uri) const;
 
   /**
    * Deletes a file.
@@ -105,7 +104,7 @@ class VFS {
    * @param uri The URI of the file.
    * @return Status
    */
-  Status delete_file(const URI& uri) const;
+  Status remove_file(const URI& uri) const;
 
   /**
    * Locks a filelock.
@@ -163,13 +162,13 @@ class VFS {
   Status ls(const URI& parent, std::vector<URI>* uris) const;
 
   /**
-   * Renames a directory.
+   * Renames a TileDB resource path.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  Status move_path(const URI& old_uri, const URI& new_uri);
 
   /**
    * Reads the entire file into a buffer.
