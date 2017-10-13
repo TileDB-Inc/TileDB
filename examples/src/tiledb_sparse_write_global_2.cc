@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_sparse_3.cc
+ * @file   tiledb_sparse_write_global_2.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,32 +28,38 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unsorted cells to a sparse array.
+ * It shows how to write to a sparse array with two write queries, assuming
+ * that the user provides the cells ordered in the array global cell order.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_global_2
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare cell buffers
+  // Prepare cell buffers - #1
   // clang-format off
-  int buffer_a1[] = { 7, 5, 0, 6, 4, 3, 1, 2 };
-  uint64_t buffer_a2[] = { 0, 4, 6, 7, 10, 11, 15, 17 };
-  char buffer_var_a2[] = "hhhhffagggeddddbbccc";
-  float buffer_a3[] =
+  int buffer_a1[] = { 0, 1, 2 };
+  uint64_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
+  char buffer_var_a2[] = "abbcccddddeffggghhhh";
+  float buffer_a3[] = 
   {
-      7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
-      4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2
+      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
+      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2 
   };
-  int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
+  uint64_t buffer_coords[] = { 1, 1, 1, 2 };
   void* buffers[] =
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   uint64_t buffer_sizes[] =
-  {
-      sizeof(buffer_a1),
+  { 
+      sizeof(buffer_a1),  
       sizeof(buffer_a2),
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
@@ -67,14 +74,31 @@ int main() {
       &query,
       "my_sparse_array",
       TILEDB_WRITE,
-      TILEDB_UNORDERED,
+      TILEDB_GLOBAL_ORDER,
       nullptr,
       nullptr,
       0,
       buffers,
       buffer_sizes);
 
-  // Submit query
+  // Submit query - #1
+  tiledb_query_submit(ctx, query);
+
+  // Prepare cell buffers - #2
+  int buffer_a1_2[] = {3, 4, 5, 6, 7};
+  uint64_t* buffer_a2_2 = nullptr;
+  char* buffer_var_a2_2 = nullptr;
+  float* buffer_a3_2 = nullptr;
+  uint64_t buffer_coords_2[] = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  void* buffers_2[] = {
+      buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
+  uint64_t buffer_sizes_2[] = {
+      sizeof(buffer_a1_2), 0, 0, 0, sizeof(buffer_coords_2)};
+
+  // Reset buffers
+  tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
+
+  // Submit query - #2
   tiledb_query_submit(ctx, query);
 
   // Clean up

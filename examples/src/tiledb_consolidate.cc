@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,19 +29,30 @@
  * @section DESCRIPTION
  *
  * It shows how to consolidate arrays.
+ *
+ * One way to make this work is:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_write_global_subarray
+ * $ ./tiledb_dense_write_unordered
+ * $ ./tiledb_consolidate
+ *
+ * The first three programs create three different fragments. The last program
+ * consolidates the three fragments in a single one.
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Consolidate the dense array_metadata
+  // Consolidate the input array
   tiledb_array_consolidate(ctx, "my_dense_array");
 
-  // Finalize context
+  // Clean up
   tiledb_ctx_free(ctx);
 
   return 0;

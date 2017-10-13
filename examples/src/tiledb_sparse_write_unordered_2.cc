@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_update_dense_1.cc
+ * @file   tiledb_sparse_write_unordered_2.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,47 +28,73 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to update a dense array, writing into a subarray of the
- * array domain. Observe that updates are carried out as simple writes.
+ * It shows how to write unordered cells to a sparse array with two write
+ * queries.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_unordered_2
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare subarray
-  int64_t subarray[] = {3, 4, 3, 4};
-
-  // Prepare cell buffers
-  int buffer_a1[] = {112, 113, 114, 115};
-  uint64_t buffer_a2[] = {0, 1, 3, 6};
-  char buffer_var_a2[] = "MNNOOOPPPP";
-  float buffer_a3[] = {112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  // Prepare cell buffers - #1
+  int buffer_a1[] = {7, 5, 0};
+  uint64_t buffer_a2[] = {0, 4, 6};
+  char buffer_var_a2[] = "hhhhffa";
+  float buffer_a3[] = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
+  uint64_t buffer_coords[] = {3, 4, 4, 2, 1, 1};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
-      sizeof(buffer_a3)};
+      sizeof(buffer_a3),
+      sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
       ctx,
       &query,
-      "my_dense_array",
+      "my_sparse_array",
       TILEDB_WRITE,
-      TILEDB_GLOBAL_ORDER,
-      subarray,
+      TILEDB_UNORDERED,
+      nullptr,
       nullptr,
       0,
       buffers,
       buffer_sizes);
 
-  // Submit query
+  // Submit query - #1
+  tiledb_query_submit(ctx, query);
+
+  // Prepare cell buffers - #2
+  int buffer_a1_2[] = {6, 4, 3, 1, 2};
+  uint64_t buffer_a2_2[] = {0, 3, 4, 8, 10};
+  char buffer_var_a2_2[] = "gggeddddbbccc";
+  float buffer_a3_2[] = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
+  uint64_t buffer_coords_2[] = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
+  void* buffers_2[] = {
+      buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
+  uint64_t buffer_sizes_2[] = {
+      sizeof(buffer_a1_2),
+      sizeof(buffer_a2_2),
+      sizeof(buffer_var_a2_2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3_2),
+      sizeof(buffer_coords_2)};
+
+  // Reset buffers
+  tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
+
+  // Submit query - #2
   tiledb_query_submit(ctx, query);
 
   // Clean up

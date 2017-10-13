@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_update_dense_2.cc
+ * @file   tiledb_sparse_read_subset_incomplete.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,47 +28,59 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to update a dense array, writing random sparse updates.
+ * It shows how to read from a sparse array, constraining the read
+ * to a specific subarray and a subset of attributes. Moreover, the
+ * program shows how to handle incomplete queries that did not complete
+ * because the input buffers were not big enough to hold the entire
+ * result.
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+#include <cstdio>
 
-int main() {
-  // Initialize context with the default configuration parameters
+int main(int argc, char** argv) {
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
+  // Attributes to subset on
+  const char* attributes[] = {"a1"};
+
   // Prepare cell buffers
-  int buffer_a1[] = {211, 213, 212, 208};
-  uint64_t buffer_a2[] = {0, 4, 6, 7};
-  char buffer_var_a2[] = "wwwwyyxu";
-  float buffer_a3[] = {211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
-  int64_t buffer_coords[] = {4, 2, 3, 4, 3, 3, 3, 1};
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+  int buffer_a1[2];
+  void* buffers[] = {buffer_a1};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
   // Create query
+  int64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
   tiledb_query_create(
       ctx,
       &query,
-      "my_dense_array",
-      TILEDB_WRITE,
-      TILEDB_UNORDERED,
-      nullptr,
-      nullptr,
-      0,
+      "my_sparse_array",
+      TILEDB_READ,
+      TILEDB_COL_MAJOR,
+      subarray,
+      attributes,
+      1,
       buffers,
       buffer_sizes);
 
-  // Submit query
-  tiledb_query_submit(ctx, query);
+  // Loop until the query is completed
+  printf(" a1\n----\n");
+  tiledb_query_status_t status;
+  do {
+    printf("Reading cells...\n");
+    tiledb_query_submit(ctx, query);
+
+    // Print cell values
+    uint64_t result_num = buffer_sizes[0] / sizeof(int);
+    for (uint64_t i = 0; i < result_num; ++i)
+      printf("%3d\n", buffer_a1[i]);
+
+    // Get status
+    tiledb_query_get_attribute_status(ctx, query, "a1", &status);
+  } while (status == TILEDB_INCOMPLETE);
 
   // Clean up
   tiledb_query_free(ctx, query);

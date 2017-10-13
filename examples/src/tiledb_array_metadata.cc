@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,92 +28,12 @@
  *
  * @section DESCRIPTION
  *
- * Explores the C API for the array metadata.
+ * This example explores the C API for the array metadata.
  *
- * Program output:
- *      $ ./tiledb_array_metadata
- *      First dump:
- *      - Array name: <current_working_dir>/my_array
- *      - Array type: dense
- *      - Cell order: row-major
- *      - Tile order: row-major
- *      - Capacity: 10000
- *      - Coordinates compressor: BLOSC_ZSTD
- *      - Coordinates compression level: -1
- *
- *      Second dump:
- *      - Array name: <current_working_dir>/my_array
- *      - Array type: sparse
- *      - Cell order: col-major
- *      - Tile order: col-major
- *      - Capacity: 10
- *      - Coordinates compressor: BLOSC_ZSTD
- *      - Coordinates compression level: -1
- *
- *      Third dump:
- *      - Array name: <current_working_dir>/my_array
- *      - Array type: sparse
- *      - Cell order: col-major
- *      - Tile order: col-major
- *      - Capacity: 10
- *      - Coordinates compressor: BLOSC_ZSTD
- *      - Coordinates compression level: -1
- *
- *      === Hyperspace ===
- *      - Dimensions type: UINT64
- *
- *      ### Dimension ###
- *      - Name: d1
- *      - Domain: [0,1000]
- *      - Tile extent: 10
- *
- *      ### Dimension ###
- *      - Name: d2
- *      - Domain: [100,10000]
- *      - Tile extent: 100
- *
- *      ### Attribute ###
- *      - Name: a1
- *      - Type: INT32
- *      - Compressor: NO_COMPRESSION
- *      - Compression level: -1
- *      - Cell val num: 3
- *
- *      ### Attribute ###
- *      - Name: a2
- *      - Type: FLOAT32
- *      - Compressor: GZIP
- *      - Compression level: -1
- *      - Cell val num: 1
- *
- *      From getters:
- *      - Array name: <current_working_dir>/my_array
- *      - Array type: sparse
- *      - Cell order: col-major
- *      - Tile order: col-major
- *      - Capacity: 10
- *      - Coordinates compressor: BLOSC_ZSTD
- *      - Coordinates compression level: -1
- *
- *      Array metadata attribute names:
- *      * a1
- *      * a2
- *
- *      === Hyperspace ===
- *      - Dimensions type: UINT64
- *
- *      ### Dimension ###
- *      - Name: d1
- *      - Domain: [0,1000]
- *      - Tile extent: 10
- *
- *      ### Dimension ###
- *      - Name: d2
- *      - Domain: [100,10000]
- *      - Tile extent: 100
+ * Simply run the following to make it work.
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
@@ -129,22 +50,13 @@ int main() {
 
   // Set some values
   tiledb_array_metadata_set_array_type(ctx, array_metadata, TILEDB_SPARSE);
-  tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_COL_MAJOR);
+  tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
   tiledb_array_metadata_set_cell_order(ctx, array_metadata, TILEDB_COL_MAJOR);
   tiledb_array_metadata_set_capacity(ctx, array_metadata, 10);
 
   // Print array metadata contents again
   printf("\nSecond dump:\n");
   tiledb_array_metadata_dump(ctx, array_metadata, stdout);
-
-  // Add attributes
-  tiledb_attribute_t *a1, *a2;
-  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
-  tiledb_attribute_set_cell_val_num(ctx, a1, 3);
-  tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
-  tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
-  tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
 
   // Set domain
   uint64_t d1_domain[] = {0, 1000};
@@ -156,6 +68,15 @@ int main() {
   tiledb_domain_add_dimension(ctx, domain, "d1", d1_domain, &d1_extent);
   tiledb_domain_add_dimension(ctx, domain, "d2", d2_domain, &d2_extent);
   tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
+
+  // Add attributes
+  tiledb_attribute_t *a1, *a2;
+  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
+  tiledb_attribute_set_cell_val_num(ctx, a1, 3);
+  tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
+  tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
+  tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
 
   // Print array metadata contents again
   printf("\nThird dump:\n");
@@ -190,7 +111,7 @@ int main() {
   printf("- Capacity: %llu\n", capacity);
   printf(
       "- Coordinates compressor: %s\n",
-      (coords_compressor == TILEDB_BLOSC_ZSTD) ? "BLOSC_ZSTD" : "error");
+      (coords_compressor == TILEDB_DOUBLE_DELTA) ? "DOUBLE_DELTA" : "error");
   printf("- Coordinates compression level: %d\n", coords_compression_level);
 
   // Print the attribute names using iterators
@@ -215,10 +136,27 @@ int main() {
   tiledb_array_metadata_get_domain(ctx, array_metadata, &got_domain);
   tiledb_domain_dump(ctx, got_domain, stdout);
 
+  // Print the dimension names using iterators
+  printf("\nArray metadata dimension names: \n");
+  tiledb_dimension_iter_t* dim_iter;
+  const tiledb_dimension_t* dim;
+  const char* dim_name;
+  tiledb_dimension_iter_create(ctx, got_domain, &dim_iter);
+  tiledb_dimension_iter_done(ctx, dim_iter, &done);
+  while (done != 1) {
+    tiledb_dimension_iter_here(ctx, dim_iter, &dim);
+    tiledb_dimension_get_name(ctx, dim, &dim_name);
+    printf("* %s\n", dim_name);
+    tiledb_dimension_iter_next(ctx, dim_iter);
+    tiledb_dimension_iter_done(ctx, dim_iter, &done);
+  }
+  printf("\n");
+
   // Clean up
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
   tiledb_attribute_iter_free(ctx, attr_iter);
+  tiledb_dimension_iter_free(ctx, dim_iter);
   tiledb_domain_free(ctx, domain);
   tiledb_domain_free(ctx, got_domain);
   tiledb_array_metadata_free(ctx, array_metadata);

@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_sparse_2.cc
+ * @file   tiledb_dense_write_global_2.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,10 +28,16 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array with two sorted batch writes.
+ * It shows how to write to a dense array invoking the write function
+ * twice. This will have the same effect as program
+ * tiledb_dense_write_entire_1.cc.
+ *
+ * You need to run the following to make this work:
+ * ./tiledb_dense_create
+ * ./tiledb_dense_write_global_2
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
   // Initialize context with the default configuration parameters
@@ -38,34 +45,24 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers - #1
-  // clang-format off
-  int buffer_a1[] = { 0, 1, 2 };
-  uint64_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
+  int buffer_a1[] = {0, 1, 2, 3, 4, 5};
+  uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = 
-  {
-      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2 
+  float* buffer_a3 = nullptr;
+  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  uint64_t buffer_sizes[] = {
+      6 * sizeof(int),  // 6 cells on a1
+      8 * sizeof(uint64_t),
+      20,  // 8 cells on a2
+      0    // no cells on a3
   };
-  int64_t buffer_coords[] = { 1, 1, 1, 2 };
-  void* buffers[] =
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  uint64_t buffer_sizes[] =
-  { 
-      sizeof(buffer_a1),  
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)
-  };
-  // clang-format on
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
       ctx,
       &query,
-      "my_group/sparse_arrays/my_array_B",
+      "my_dense_array",
       TILEDB_WRITE,
       TILEDB_GLOBAL_ORDER,
       nullptr,
@@ -78,25 +75,31 @@ int main() {
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
-  int buffer_a1_2[] = {3, 4, 5, 6, 7};
-  uint64_t* buffer_a2_2 = nullptr;
-  char* buffer_var_a2_2 = nullptr;
-  float* buffer_a3_2 = nullptr;
-  int64_t buffer_coords_2[] = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
-  void* buffers_2[] = {
-      buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
+  int buffer_a1_2[] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  uint64_t buffer_a2_2[] = {0, 1, 3, 6, 10, 11, 13, 16};
+  char buffer_var_a2_2[] = "ijjkkkllllmnnooopppp";
+  float buffer_a3_2[] = {
+      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,   // Upper left tile
+      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,   // Upper right tile
+      8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,  // Lower left tile
+      12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,  // Lower right tile
+  };
+  void* buffers_2[] = {buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2};
   uint64_t buffer_sizes_2[] = {
-      sizeof(buffer_a1_2), 0, 0, 0, sizeof(buffer_coords_2)};
+      10 * sizeof(int),  // 6 cels on a1
+      8 * sizeof(uint64_t),
+      20,                 // 8 cells on a2
+      32 * sizeof(float)  // 16 cells on a3 (2 values each)
+  };
+
+  // Reset buffers
+  tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
 
   // Submit query - #2
-  tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
   tiledb_query_submit(ctx, query);
 
   // Clean up
   tiledb_query_free(ctx, query);
-  tiledb_ctx_free(ctx);
-
-  // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;

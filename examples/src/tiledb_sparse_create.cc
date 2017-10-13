@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_array_create_sparse.cc
+ * @file   tiledb_sparse_create.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,98 +28,47 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a sparse array.
- *
- * Program output:
- *            $ ./tiledb_array_create_sparse
- *            - Array name: <current_working_dir>/my_sparse_array
- *            - Array type: sparse
- *            - Cell order: row-major
- *            - Tile order: row-major
- *            - Capacity: 2
- *
- *            ### Dimension ###
- *            - Name: d1
- *            - Type: INT64
- *            - Compressor: GZIP
- *            - Compression level: -1
- *            - Domain: [1,4]
- *            - Tile extent: 2
- *
- *            ### Dimension ###
- *            - Name: d2
- *            - Type: INT64
- *            - Compressor: GZIP
- *            - Compression level: -1
- *            - Domain: [1,4]
- *            - Tile extent: 2
- *
- *            ### Attribute ###
- *            - Name: a1
- *            - Type: INT32
- *            - Compressor: RLE
- *            - Compression level: -1
- *            - Cell val num: 1
- *
- *            ### Attribute ###
- *            - Name: a2
- *            - Type: CHAR
- *            - Compressor: BZIP2
- *            - Compression level: -1
- *            - Cell val num: var
- *
- *            ### Attribute ###
- *            - Name: a3
- *            - Type: FLOAT32
- *            - Compressor: BLOSC_SNAPPY
- *            - Compression level: -1
- *            - Cell val num: 2
+ * It shows how to create a dense array. Make sure that no directory exists
+ * with the name "my_sparse_array" in the current working directory.
  */
 
-#include "tiledb.h"
-
-#include <cstdlib>
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Delete existing array
-  system("rm -rf my_sparse_array");
-
-  // Prepare parameters for array_metadata metadata
-  const char* array_name = "my_sparse_array";
-
-  // Attributes
-  tiledb_attribute_t* a1;
-  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_set_compressor(ctx, a1, TILEDB_DOUBLE_DELTA, -1);
-  tiledb_attribute_set_cell_val_num(ctx, a1, 1);
-  tiledb_attribute_t* a2;
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
-  tiledb_attribute_set_compressor(ctx, a2, TILEDB_DOUBLE_DELTA, -1);
-  tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
-  tiledb_attribute_t* a3;
-  tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
-  tiledb_attribute_set_compressor(ctx, a3, TILEDB_BLOSC_SNAPPY, -1);
-  tiledb_attribute_set_cell_val_num(ctx, a3, 2);
-
-  // Domain and tile extents
-  int64_t dim_domain[] = {1, 4, 1, 4};
-  int64_t tile_extents[] = {2, 2};
-
-  // Hyperspace
+  // Create domain
+  uint64_t dim_domain[] = {1, 4, 1, 4};
+  uint64_t tile_extents[] = {2, 2};
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx, &domain, TILEDB_INT64);
+  tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
   tiledb_domain_add_dimension(
       ctx, domain, "d1", &dim_domain[0], &tile_extents[0]);
   tiledb_domain_add_dimension(
       ctx, domain, "d2", &dim_domain[2], &tile_extents[1]);
 
-  // Create array_metadata metadata
+  // Create attributes
+  tiledb_attribute_t* a1;
+  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a1, 1);
+  tiledb_attribute_t* a2;
+  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
+  tiledb_attribute_t* a3;
+  tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
+  tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a3, 2);
+
+  // Create array metadata
+  const char* array_name = "my_sparse_array";
   tiledb_array_metadata_t* array_metadata;
   tiledb_array_metadata_create(ctx, &array_metadata, array_name);
+  tiledb_array_metadata_set_cell_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
+  tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
   tiledb_array_metadata_set_array_type(ctx, array_metadata, TILEDB_SPARSE);
   tiledb_array_metadata_set_capacity(ctx, array_metadata, 2);
   tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
@@ -134,11 +84,6 @@ int main() {
 
   // Create array
   tiledb_array_create(ctx, array_metadata);
-
-  // Load and dump array metadata to make sure the array was created correctly
-  tiledb_array_metadata_t* loaded_array_metadata;
-  tiledb_array_metadata_load(ctx, &loaded_array_metadata, array_name);
-  tiledb_array_metadata_dump(ctx, loaded_array_metadata, stdout);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);

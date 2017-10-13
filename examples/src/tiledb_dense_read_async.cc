@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_async_write_dense.cc
+ * @file   tiledb_dense_read_async.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,61 +28,37 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write asynchronoulsy to a dense array. The case of sparse
- * array is similar.
+ * It shows how to read asynchronoulsy from a dense array. The case of sparse
+ * arrays is similar.
+ *
+ * You need to run the following to make this work:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_async
+ * $ ./tiledb_dense_read_async
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+#include <cstdio>
 
 // Simply prints the input string to stdout
-void* print_upon_completion(void* s) {
-  printf("%s\n", (char*)s);
-
-  return nullptr;
-}
+void* print_upon_completion(void* s);
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  // clang-format off
-  int buffer_a1[] =
-  {
-      0,  1,  2,  3,                                     // Upper left tile
-      4,  5,  6,  7,                                     // Upper right tile
-      8,  9,  10, 11,                                    // Lower left tile
-      12, 13, 14, 15                                     // Lower right tile
-  };
-  uint64_t buffer_a2[] =
-  {
-      0,  1,  3,  6,                                     // Upper left tile
-      10, 11, 13, 16,                                    // Upper right tile
-      20, 21, 23, 26,                                    // Lower left tile
-      30, 31, 33, 36                                     // Lower right tile
-  };
-  char buffer_var_a2[] =
-      "abbcccdddd"                                       // Upper left tile
-      "effggghhhh"                                       // Upper right tile
-      "ijjkkkllll"                                       // Lower left tile
-      "mnnooopppp";                                      // Lower right tile
-  float buffer_a3[] =
-  {
-      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,     // Upper left tile
-      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,     // Upper right tile
-      8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,    // Lower left tile
-      12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,    // Lower right tile
-  };
-  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
-  uint64_t buffer_sizes[] =
-  {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
-      sizeof(buffer_a3)
-  };
-  // clang-format on
+  int buffer_a1[16];
+  uint64_t buffer_a2[16];
+  char buffer_var_a2[40];
+  float buffer_a3[32];
+  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_var_a2),
+                             sizeof(buffer_a3)};
 
   // Create query
   tiledb_query_t* query;
@@ -89,7 +66,7 @@ int main() {
       ctx,
       &query,
       "my_dense_array",
-      TILEDB_WRITE,
+      TILEDB_READ,
       TILEDB_GLOBAL_ORDER,
       nullptr,
       nullptr,
@@ -108,9 +85,28 @@ int main() {
     tiledb_query_get_status(ctx, query, &status);
   } while (status != TILEDB_COMPLETED);
 
+  // Print cell values
+  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  printf("result num: %llu\n\n", result_num);
+  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
+  printf("-----------------------------------------\n");
+  for (uint64_t i = 0; i < result_num; ++i) {
+    printf("%3d", buffer_a1[i]);
+    size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
+                                              buffer_sizes[2] - buffer_a2[i];
+    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
+  }
+
   // Clean up
   tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void* print_upon_completion(void* s) {
+  printf("%s\n", (char*)s);
+
+  return nullptr;
 }
