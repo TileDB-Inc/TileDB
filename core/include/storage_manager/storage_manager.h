@@ -44,6 +44,7 @@
 #include "array_metadata.h"
 #include "consolidator.h"
 #include "locked_array.h"
+#include "object_type.h"
 #include "open_array.h"
 #include "query.h"
 #include "status.h"
@@ -120,11 +121,14 @@ class StorageManager {
   /** Creates a file with the input URI. */
   Status create_file(const URI& uri);
 
-  /** Deletes a file with the input URI. */
-  Status delete_file(const URI& uri) const;
-
   /** Deletes a fragment directory. */
   Status delete_fragment(const URI& uri) const;
+
+  /** Safely removes a TileDB resource. */
+  Status remove_path(const URI& uri) const;
+
+  /** Safely moves a TileDB resource. */
+  Status move(const URI& old_uri, const URI& new_uri, bool force = false) const;
 
   /** Retrieves the size of the input URI file. */
   Status file_size(const URI& uri, uint64_t* size) const;
@@ -174,8 +178,14 @@ class StorageManager {
    */
   Status load(FragmentMetadata* metadata);
 
-  /** Renames a directory. */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  /**
+   * TODO: DOC
+   * @param old_uri
+   * @param new_uri
+   * @param force
+   * @return
+   */
+  Status move_path(const URI& old_uri, const URI& new_uri, bool force = false);
 
   /** Finalizes a query. */
   Status query_finalize(Query* query);
@@ -267,6 +277,13 @@ class StorageManager {
    * @return Status.
    */
   Status write_to_file(const URI& uri, Buffer* buffer) const;
+
+  /**
+   * Returns the tiledb object type
+   * @param uri Path to tiledb object resource
+   * @return ObjectType
+   */
+  ObjectType object_type(const URI& uri) const;
 
  private:
   /* ********************************* */

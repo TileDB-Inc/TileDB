@@ -100,27 +100,32 @@ Status VFS::create_file(const URI& uri) const {
       std::string("Unsupported URI scheme: ") + uri.to_string());
 }
 
-Status VFS::delete_file(const URI& uri) const {
+Status VFS::remove_path(const URI& uri) const {
   if (uri.is_posix()) {
-    return posix::delete_file(uri.to_path());
+    return posix::remove_path(uri.to_path());
+  } else if (uri.is_hdfs()) {
+#ifdef HAVE_HDFS
+    return hdfs::remove_path(hdfs_, uri);
+#else
+    return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  } else {
+    return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
+  }
+}
+
+Status VFS::remove_file(const URI& uri) const {
+  if (uri.is_posix()) {
+    return posix::remove_file(uri.to_path());
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::delete_file(hdfs_, uri);
+    return hdfs::remove_file(hdfs_, uri);
 #else
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI scheme: ") + uri.to_string());
-}
-
-Status VFS::delete_dir(const URI& uri) const {
-  if (uri.is_posix())
-    return posix::delete_dir(uri.to_path());
-
-  // TODO: Handle all other file systems here !
-  return Status::Ok();
+  return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
 Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
@@ -133,8 +138,7 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI scheme: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
 Status VFS::filelock_unlock(const URI& uri, int fd) const {
@@ -148,8 +152,7 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI scheme: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
@@ -163,8 +166,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI scheme: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
 bool VFS::is_dir(const URI& uri) const {
@@ -206,8 +208,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   } else {
-    return Status::VFSError(
-        std::string("Unsupported URI scheme: ") + parent.to_string());
+    return Status::VFSError("Unsupported URI scheme: " + parent.to_string());
   }
   for (auto& file : files) {
     uris->push_back(URI(file));
@@ -215,32 +216,31 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
-  if (old_uri.is_posix() && new_uri.is_posix()) {
-    return posix::move_dir(old_uri.to_path(), new_uri.to_path());
+Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
+  if (old_uri.is_posix()) {
+    if (new_uri.is_posix()) {
+      return posix::move_path(old_uri.to_path(), new_uri.to_path());
+    }
+    if (new_uri.is_hdfs()) {
+      return hdfs::put_path(old_uri, new_uri);
+    }
   }
-  if (old_uri.is_hdfs() && new_uri.is_hdfs()) {
+  if (old_uri.is_hdfs()) {
+    if (new_uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::move_dir(hdfs_, old_uri, new_uri);
+      return hdfs::move_path(hdfs_, old_uri, new_uri);
 #else
-    return Status::VFSError("TileDB was built without HDFS support");
+      return Status::VFSError("TileDB was built without HDFS support");
 #endif
+    }
+    if (new_uri.is_posix()) {
+      return hdfs::get_path(old_uri, new_uri);
+    }
   }
   return Status::VFSError(
-      std::string("Unsupported URI schemes: ") + old_uri.to_string() + ", " +
+      "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string());
 }
-
-/*
-Status VFS::read_from_file(const URI& uri, Buffer** buff) {
-  if (uri.is_posix())
-    return posix::read_from_file(uri.to_path(), buff);
-  if (uri.is_hdfs())
-    return hdfs::read_from_file(uri.to_path(), buff);
-  // TODO: Handle all other file systems here !
-  return Status::Ok();
-}
- */
 
 Status VFS::read_from_file(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
@@ -254,8 +254,7 @@ Status VFS::read_from_file(
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI schemes: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
 }
 
 Status VFS::sync(const URI& uri) const {
@@ -269,8 +268,7 @@ Status VFS::sync(const URI& uri) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI schemes: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
 }
 
 Status VFS::write_to_file(
@@ -285,8 +283,7 @@ Status VFS::write_to_file(
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
-  return Status::VFSError(
-      std::string("Unsupported URI schemes: ") + uri.to_string());
+  return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
 }
 
 }  // namespace tiledb

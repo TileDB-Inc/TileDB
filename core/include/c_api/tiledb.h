@@ -88,9 +88,9 @@ TILEDB_EXPORT unsigned int tiledb_var_num();
 
 /** TileDB object type. */
 typedef enum {
-#define TILEDB_OBJECT_ENUM(id) TILEDB_##id
+#define TILEDB_OBJECT_TYPE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.inc"
-#undef TILEDB_OBJECT_ENUM
+#undef TILEDB_OBJECT_TYPE_ENUM
 } tiledb_object_t;
 
 /** Query mode. */
@@ -1034,94 +1034,36 @@ TILEDB_EXPORT int tiledb_array_consolidate(
 /* ********************************* */
 
 /**
- * Returns the type of the input directory.
+ * Returns the tiledb object type for a given resource path.
  *
  * @param ctx The TileDB context.
- * @param dir The input directory.
- * @return It can be one of the following:
- *    - TILEDB_GROUP
- *    - TILEDB_ARRAY
- *    - TILEDB_METADATA
- *    - -1 (none of the above)
+ * @param path The URI path to the tiledb resource.
+ * @return TILEDB_OK on success, TILEDB_ERR on error.
  */
-// TODO TILEDB_EXPORT int tiledb_dir_type(tiledb_ctx_t* ctx, const char* dir);
+TILEDB_EXPORT int tiledb_object_type(
+    tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type);
 
 /**
- * Clears a TileDB directory. The corresponding TileDB object
- * (group, array, or metadata) will still exist after the execution of the
- * function, but it will be empty (i.e., as if it was just created).
+ * Deletes a TileDB resource (group or array).
  *
  * @param ctx The TileDB context.
- * @param dir The TileDB directory to be cleared.
+ * @param path The URI path to the tiledb resource.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-// TODO TILEDB_EXPORT int tiledb_clear(tiledb_ctx_t* ctx, const char* dir);
+TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
 
 /**
- * Deletes a TileDB directory (group, array, or metadata) entirely.
+ * Moves a TileDB resource (group or array).
  *
  * @param ctx The TileDB context.
- * @param dir The TileDB directory to be deleted.
+ * @param old_path The old TileDB directory.
+ * @param new_path The new TileDB directory.
+ * @param force Move resource even if an existing resource exists at the given
+ * path
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-// TODO TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* dir);
-
-/**
- * Moves a TileDB directory (group, array or metadata).
- *
- * @param ctx The TileDB context.
- * @param old_dir The old TileDB directory.
- * @param new_dir The new TileDB directory.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-/* TODO
- TILEDB_EXPORT int tiledb_move(
-    tiledb_ctx_t* ctx, const char* old_dir, const char* new_dir);
-    */
-
-/**
- * Lists all the TileDB objects in a directory, copying their names into the
- * input string buffers.
- *
- * @param ctx The TileDB context.
- * @param parent_dir The parent directory of the TileDB objects to be listed.
- * @param dirs An array of strings that will store the listed TileDB objects.
- *     Note that the user is responsible for allocating the appropriate memory
- *     space for this array of strings. A good idea is to allocate for each
- *     string TILEDB_NAME_MAX_LEN characters.
- * @param dir_types The types of the corresponding TileDB objects in *dirs*,
- *    which can be the following:
- *    - TILEDB_GROUP
- *    - TILEDB_ARRAY
- *    - TILEDB_METADATA
- * @param dir_num The number of elements allocated by the user for *dirs*. After
- *     the function terminates, this will hold the actual number of TileDB
- *     objects that were stored in *dirs*. If the number of
- *     allocated elements is smaller than the number of existing TileDB objects
- *     in the parent directory, the function will return an error.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- /*/
-/* TODO
- TILEDB_EXPORT int tiledb_ls(
-    tiledb_ctx_t* ctx,
-    const char* parent_dir,
-    char** dirs,
-    tiledb_object_t* dir_types,
-    int* dir_num);
-    */
-
-/**
- * Counts the TileDB objects in a directory.
- *
- * @param ctx The TileDB context.
- * @param parent_dir The parent directory of the TileDB objects to be listed.
- * @param dir_num The number of TileDB objects to be returned.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-/* TODO
-TILEDB_EXPORT int tiledb_ls_c(
-    tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num);
-    */
+TILEDB_EXPORT int tiledb_move(
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

@@ -103,7 +103,7 @@ Status Fragment::finalize() {
         URI parent = fragment_uri_.parent();
         std::string last = fragment_uri_.last_path_part();
         URI new_fragment_uri = parent.join_path(last.substr(1));
-        st_rn = storage_manager->move_dir(fragment_uri_, new_fragment_uri);
+        st_rn = storage_manager->move_path(fragment_uri_, new_fragment_uri);
       }
     }
 

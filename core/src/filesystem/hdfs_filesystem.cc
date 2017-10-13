@@ -31,8 +31,8 @@
  */
 
 #ifdef HAVE_HDFS
-
 #include "hdfs_filesystem.h"
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -45,6 +45,7 @@ namespace tiledb {
 
 namespace hdfs {
 
+#ifdef HAVE_HDFS
 Status connect(hdfsFS& fs) {
   struct hdfsBuilder* builder = hdfsNewBuilder();
   if (builder == nullptr) {
@@ -67,6 +68,16 @@ Status disconnect(hdfsFS& fs) {
   if (hdfsDisconnect(fs) != 0) {
     return LOG_STATUS(
         Status::IOError(std::string("Failed to disconnect hdfs")));
+  }
+  return Status::Ok();
+}
+
+// remove a path (recursive)
+Status remove_path(hdfsFS fs, const URI& uri) {
+  int rc = hdfsDelete(fs, uri.to_path().c_str(), 1);
+  if (rc < 0) {
+    return LOG_STATUS(
+        Status::IOError("Cannot remove path: " + uri.to_string()));
   }
   return Status::Ok();
 }
@@ -96,12 +107,17 @@ Status delete_dir(hdfsFS fs, const URI& uri) {
   return Status::Ok();
 }
 
-Status move_dir(hdfsFS fs, const URI& old_uri, const URI& new_uri) {
+Status move_path(hdfsFS fs, const URI& old_uri, const URI& new_uri) {
+  if (hdfsExists(fs, new_uri.to_path().c_str()) == 0) {
+    return LOG_STATUS(Status::IOError(
+        "Cannot move path " + old_uri.to_string() + " to " +
+        new_uri.to_string() + "; path exists."));
+  }
   int ret =
       hdfsRename(fs, old_uri.to_path().c_str(), new_uri.to_path().c_str());
   if (ret < 0) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot move directory ") + old_uri.to_string() + " to " +
+        "Error moving path " + old_uri.to_string() + " to " +
         new_uri.to_string()));
   }
   return Status::Ok();
@@ -164,7 +180,7 @@ Status create_file(hdfsFS fs, const URI& uri) {
 }
 
 // delete a file with the given path
-Status delete_file(hdfsFS fs, const URI& uri) {
+Status remove_file(hdfsFS fs, const URI& uri) {
   int ret = hdfsDelete(fs, uri.to_path().c_str(), 0);
   if (ret < 0) {
     return LOG_STATUS(
@@ -307,8 +323,32 @@ Status file_size(hdfsFS fs, const URI& uri, uint64_t* nbytes) {
   return Status::Ok();
 }
 
+#endif
+
+Status put_path(const URI& fs_path, const URI& hdfs_path) {
+  std::string cmd = std::string("hadoop fs -put ") + fs_path.to_path() + " " +
+                    hdfs_path.to_string();
+  int rc = system(cmd.c_str());
+  if (rc) {
+    return LOG_STATUS(Status::IOError(
+        "Could not put path " + fs_path.to_path() + " to " +
+        hdfs_path.to_string()));
+  }
+  return Status::Ok();
+}
+
+Status get_path(const URI& hdfs_path, const URI& fs_path) {
+  std::string cmd = std::string("hadoop fs -get ") + hdfs_path.to_string() +
+                    " " + fs_path.to_path();
+  int rc = system(cmd.c_str());
+  if (rc) {
+    return LOG_STATUS(Status::IOError(
+        "Could not get path " + hdfs_path.to_string() + " to " +
+        fs_path.to_path()));
+  }
+  return Status::Ok();
+}
+
 }  // namespace hdfs
 
 }  // namespace tiledb
-
-#endif

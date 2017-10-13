@@ -51,12 +51,6 @@ namespace posix {
  */
 std::string abs_path(const std::string& path);
 
-/** Removes redundant adjacent slashed from the input path. */
-void adjacent_slashes_dedup(std::string* path);
-
-/** Returns *true* if a == b == '/'. */
-bool both_slashes(char a, char b);
-
 /**
  * Creates a new directory.
  *
@@ -82,15 +76,22 @@ Status create_file(const std::string& filename);
 std::string current_dir();
 
 /**
- * Deletes a directory.
+ * Removes a given path recursively.
  *
- * @param path The URI of the directory to be deleted.
+ * @param path The path of the file / directory to be deleted.
  * @return Status
  */
-Status delete_dir(const std::string& path);
+Status remove_path(const std::string& path);
 
 /** Deletes the file in the input path. */
-Status delete_file(const std::string& path);
+
+/**
+ * Removes a given path.
+ *
+ * @param path The path of the file / empty directory to be deleted.
+ * @return Status
+ */
+Status remove_file(const std::string& path);
 
 /**
  * Returns the size of the input file.
@@ -153,7 +154,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths);
  * @param new_path The new path.
  * @return Status
  */
-Status move_dir(const std::string& old_path, const std::string& new_path);
+Status move_path(const std::string& old_path, const std::string& new_path);
 
 /**
  * It takes as input an **absolute** path, and returns it in its canonicalized
