@@ -16,6 +16,7 @@ install:
     - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
     - if [ "$USE_HDFS" == "ON" ]; then export LIBHDFS3_CONF=$HADOOP_HOME/etc/hadoop/hdfs-site.xml; fi
     # Install lcov to coveralls conversion + upload tool
+    - sudo apt-get install lcov
     - gem install coveralls-lcov
     # Build TileDB
     - mkdir -p $TRAVIS_BUILD_DIR/build
