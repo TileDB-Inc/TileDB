@@ -33,9 +33,9 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include "array_ordered_read_state.h"
+#include "array_ordered_write_state.h"
 #include "array_read_state.h"
-#include "array_sorted_read_state.h"
-#include "array_sorted_write_state.h"
 #include "fragment.h"
 #include "query_status.h"
 #include "query_type.h"
@@ -47,8 +47,8 @@
 namespace tiledb {
 
 class ArrayReadState;
-class ArraySortedReadState;
-class ArraySortedWriteState;
+class ArrayOrderedReadState;
+class ArrayOrderedWriteState;
 class Fragment;
 class StorageManager;
 
@@ -278,18 +278,18 @@ class Query {
   ArrayReadState* array_read_state_;
 
   /**
-   * The array sorted read state. It handles read queries that must
+   * The array ordered read state. It handles read queries that must
    * return the results ordered in a particular layout other than
    * the global cell order.
    */
-  ArraySortedReadState* array_sorted_read_state_;
+  ArrayOrderedReadState* array_ordered_read_state_;
 
   /**
-   * The araay sorted write state. It handles write queries that
+   * The araay ordered write state. It handles write queries that
    * must write cells provided in a layout that is different
    * than the global cell order.
    */
-  ArraySortedWriteState* array_sorted_write_state_;
+  ArrayOrderedWriteState* array_ordered_write_state_;
 
   /** The ids of the attributes involved in the query. */
   std::vector<unsigned int> attribute_ids_;

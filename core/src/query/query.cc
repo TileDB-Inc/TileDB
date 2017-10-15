@@ -47,8 +47,8 @@ Query::Query() {
   common_query_ = nullptr;
   subarray_ = nullptr;
   array_read_state_ = nullptr;
-  array_sorted_read_state_ = nullptr;
-  array_sorted_write_state_ = nullptr;
+  array_ordered_read_state_ = nullptr;
+  array_ordered_write_state_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   fragments_init_ = false;
@@ -61,8 +61,8 @@ Query::Query(Query* common_query) {
   common_query_ = common_query;
   subarray_ = nullptr;
   array_read_state_ = nullptr;
-  array_sorted_read_state_ = nullptr;
-  array_sorted_write_state_ = nullptr;
+  array_ordered_read_state_ = nullptr;
+  array_ordered_write_state_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   fragments_init_ = false;
@@ -80,8 +80,8 @@ Query::~Query() {
     std::free(subarray_);
 
   delete array_read_state_;
-  delete array_sorted_read_state_;
-  delete array_sorted_write_state_;
+  delete array_ordered_read_state_;
+  delete array_ordered_write_state_;
 
   clear_fragments();
 }
@@ -121,7 +121,7 @@ Status Query::async_process() {
     if (type_ == QueryType::READ &&
         ((layout_ == Layout::GLOBAL_ORDER && array_read_state_->overflow()) ||
          ((layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) &&
-          array_sorted_read_state_->overflow())))
+          array_ordered_read_state_->overflow())))
       set_status(QueryStatus::INCOMPLETE);
     else  // Completion
       set_status(QueryStatus::COMPLETED);
@@ -179,16 +179,16 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
 
 Status Query::finalize() {
   // Clear sorted read state
-  if (array_sorted_read_state_ != nullptr)
-    RETURN_NOT_OK(array_sorted_read_state_->finalize());
-  delete array_sorted_read_state_;
-  array_sorted_read_state_ = nullptr;
+  if (array_ordered_read_state_ != nullptr)
+    RETURN_NOT_OK(array_ordered_read_state_->finalize());
+  delete array_ordered_read_state_;
+  array_ordered_read_state_ = nullptr;
 
   // Clear sorted write state
-  if (array_sorted_write_state_ != nullptr)
-    RETURN_NOT_OK(array_sorted_write_state_->finalize());
-  delete array_sorted_write_state_;
-  array_sorted_write_state_ = nullptr;
+  if (array_ordered_write_state_ != nullptr)
+    RETURN_NOT_OK(array_ordered_write_state_->finalize());
+  delete array_ordered_write_state_;
+  array_ordered_write_state_ = nullptr;
 
   // Clear fragments
   return clear_fragments();
@@ -291,8 +291,8 @@ bool Query::overflow() const {
     return false;
 
   // Check overflow
-  if (array_sorted_read_state_ != nullptr)
-    return array_sorted_read_state_->overflow();
+  if (array_ordered_read_state_ != nullptr)
+    return array_ordered_read_state_->overflow();
 
   return array_read_state_->overflow();
 }
@@ -305,8 +305,8 @@ bool Query::overflow(unsigned int attribute_id) const {
     return false;
 
   // Check overflow
-  if (array_sorted_read_state_ != nullptr)
-    return array_sorted_read_state_->overflow(attribute_id);
+  if (array_ordered_read_state_ != nullptr)
+    return array_ordered_read_state_->overflow(attribute_id);
 
   return array_read_state_->overflow(attribute_id);
 }
@@ -340,7 +340,7 @@ Status Query::read() {
   // Perform query
   Status st;
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)
-    st = array_sorted_read_state_->read(buffers_, buffer_sizes_);
+    st = array_ordered_read_state_->read(buffers_, buffer_sizes_);
   else  // layout = Layout::GLOBAL_ORDER
     st = array_read_state_->read(buffers_, buffer_sizes_);
 
@@ -401,7 +401,7 @@ Status Query::write() {
   status_ = QueryStatus::INPROGRESS;
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
-    RETURN_NOT_OK(array_sorted_write_state_->write(buffers_, buffer_sizes_));
+    RETURN_NOT_OK(array_ordered_write_state_->write(buffers_, buffer_sizes_));
   } else if (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) {
     RETURN_NOT_OK(write(buffers_, buffer_sizes_));
   } else {
@@ -479,11 +479,11 @@ Status Query::init_states() {
   // Initialize new fragment if needed
   if (type_ == QueryType::WRITE &&
       (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
-    array_sorted_write_state_ = new ArraySortedWriteState(this);
-    Status st = array_sorted_write_state_->init();
+    array_ordered_write_state_ = new ArrayOrderedWriteState(this);
+    Status st = array_ordered_write_state_->init();
     if (!st.ok()) {
-      delete array_sorted_write_state_;
-      array_sorted_write_state_ = nullptr;
+      delete array_ordered_write_state_;
+      array_ordered_write_state_ = nullptr;
       return st;
     }
   } else if (type_ == QueryType::READ && layout_ == Layout::GLOBAL_ORDER) {
@@ -492,11 +492,11 @@ Status Query::init_states() {
       type_ == QueryType::READ &&
       (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
     array_read_state_ = new ArrayReadState(this);
-    array_sorted_read_state_ = new ArraySortedReadState(this);
-    Status st = array_sorted_read_state_->init();
+    array_ordered_read_state_ = new ArrayOrderedReadState(this);
+    Status st = array_ordered_read_state_->init();
     if (!st.ok()) {
-      delete array_sorted_read_state_;
-      array_sorted_read_state_ = nullptr;
+      delete array_ordered_read_state_;
+      array_ordered_read_state_ = nullptr;
       return st;
     }
   }
