@@ -1,11 +1,12 @@
 /**
- * @file   tiledb_update_sparse_1.cc
+ * @file   tiledb_object_type.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,52 +28,47 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to update a sparse array. Observe that this is simply
- * a write operation.
+ * It shows how to get the type of a TileDB object (resource).
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+
+void print_object_type(tiledb_object_t type);
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare cell buffers
-  int buffer_a1[] = {107, 104, 106, 105};
-  uint64_t buffer_a2[] = {0, 3, 4, 5};
-  char buffer_var_a2[] = "yyyuwvvvv";
-  float buffer_a3[] = {107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
-  int64_t buffer_coords[] = {3, 4, 3, 2, 3, 3, 4, 1};
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+  // Get object type for group
+  tiledb_object_t type;
+  tiledb_object_type(ctx, "my_group", &type);
+  print_object_type(type);
 
-  // Create query
-  tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_sparse_array",
-      TILEDB_WRITE,
-      TILEDB_UNORDERED,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
+  // Get object type for array
+  tiledb_object_type(ctx, "my_dense_array", &type);
+  print_object_type(type);
 
-  // Submit query
-  tiledb_query_submit(ctx, query);
+  // Get invalid object type
+  tiledb_object_type(ctx, "some_invalid_path", &type);
+  print_object_type(type);
 
   // Clean up
-  tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void print_object_type(tiledb_object_t type) {
+  switch (type) {
+    case TILEDB_ARRAY:
+      printf("ARRAY\n");
+      break;
+    case TILEDB_GROUP:
+      printf("GROUP\n");
+      break;
+    case TILEDB_INVALID:
+      printf("INVALID\n");
+      break;
+  }
 }

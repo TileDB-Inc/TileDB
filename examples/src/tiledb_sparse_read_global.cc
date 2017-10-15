@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_sparse_1.cc
+ * @file   tiledb_read_global.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,38 +28,36 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array.
+ * It shows how to read a complete sparse array in the global cell order.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_sparse_create
+ * $ ./tiledb_sparse_write_global_1
+ * $ ./tiledb_sparse_read_global
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+#include <cstdlib>
 
-int main() {
-  // Initialize context with the default configuration parameters
+int main(int argc, char** argv) {
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  // clang-format off
-  int buffer_a1[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-  uint64_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
-  char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] =
-  {
-      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2
-  };
-  int64_t buffer_coords[] = { 1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
-  void* buffers[] =
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  uint64_t buffer_sizes[] =
-  {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)
-  };
-  // clang-format on
+  int buffer_a1[10];
+  uint64_t buffer_a2[10];
+  char buffer_var_a2[30];
+  float buffer_a3[20];
+  uint64_t buffer_coords[20];
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_var_a2),
+                             sizeof(buffer_a3),
+                             sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;
@@ -66,7 +65,7 @@ int main() {
       ctx,
       &query,
       "my_sparse_array",
-      TILEDB_WRITE,
+      TILEDB_READ,
       TILEDB_GLOBAL_ORDER,
       nullptr,
       nullptr,
@@ -76,6 +75,20 @@ int main() {
 
   // Submit query
   tiledb_query_submit(ctx, query);
+
+  // Print cell values
+  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  printf("result num: %llu\n\n", result_num);
+  printf("coords\t  a1\t   a2\t      (a3.first, a3.second)\n");
+  printf("---------------------------------------------------\n");
+  for (uint64_t i = 0; i < result_num; ++i) {
+    printf("(%lld, %lld)", buffer_coords[2 * i], buffer_coords[2 * i + 1]);
+    printf("\t %3d", buffer_a1[i]);
+    size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
+                                              buffer_sizes[2] - buffer_a2[i];
+    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
+  }
 
   // Clean up
   tiledb_query_free(ctx, query);

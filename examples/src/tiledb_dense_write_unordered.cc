@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_read_dense_1.cc
+ * @file   tiledb_dense_write_unordered.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,29 +28,38 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read a complete dense array.
+ * It shows how to write random (unordered) cells to a dense array.
+ *
+ * Make sure that there is no directory named "my_dense_array" in your
+ * current working directory.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_dense_create
+ * ./tiledb_dense_write_unordered
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
-#include <cstdio>
-#include <iostream>
-
-int main(int argc, char** argv) {
+int main() {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  int buffer_a1[16];
-  uint64_t buffer_a2[16];
-  char buffer_var_a2[40];
-  float buffer_a3[32];
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2),
-                             sizeof(buffer_a3)};
+  int buffer_a1[] = {211, 213, 212, 208};
+  uint64_t buffer_a2[] = {0, 4, 6, 7};
+  char buffer_var_a2[] = "wwwwyyxu";
+  float buffer_a3[] = {211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
+  uint64_t buffer_coords[] = {4, 2, 3, 4, 3, 3, 3, 1};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;
@@ -57,8 +67,8 @@ int main(int argc, char** argv) {
       ctx,
       &query,
       "my_dense_array",
-      TILEDB_READ,
-      TILEDB_GLOBAL_ORDER,
+      TILEDB_WRITE,
+      TILEDB_UNORDERED,
       nullptr,
       nullptr,
       0,
@@ -67,20 +77,6 @@ int main(int argc, char** argv) {
 
   // Submit query
   tiledb_query_submit(ctx, query);
-
-  // Print only non-empty cell values
-  int64_t result_num = buffer_sizes[0] / sizeof(int);
-  std::cout << "result num: " << result_num << "\n";
-  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
-  printf("-----------------------------------------\n");
-  for (int i = 0; i < result_num; ++i) {
-    printf("%3d", buffer_a1[i]);
-    uint64_t var_size = (i != result_num - 1) ?
-                            buffer_a2[i + 1] - buffer_a2[i] :
-                            buffer_sizes[2] - buffer_a2[i];
-    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
-  }
 
   // Clean up
   tiledb_query_free(ctx, query);

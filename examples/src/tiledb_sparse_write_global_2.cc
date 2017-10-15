@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_sparse_2.cc
+ * @file   tiledb_sparse_write_global_2.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,13 +28,19 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array with two sorted batch writes.
+ * It shows how to write to a sparse array with two write queries, assuming
+ * that the user provides the cells ordered in the array global cell order.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_global_2
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
@@ -47,7 +54,7 @@ int main() {
       0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
       4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2 
   };
-  int64_t buffer_coords[] = { 1, 1, 1, 2 };
+  uint64_t buffer_coords[] = { 1, 1, 1, 2 };
   void* buffers[] =
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   uint64_t buffer_sizes[] =
@@ -65,7 +72,7 @@ int main() {
   tiledb_query_create(
       ctx,
       &query,
-      "my_group/sparse_arrays/my_array_B",
+      "my_sparse_array",
       TILEDB_WRITE,
       TILEDB_GLOBAL_ORDER,
       nullptr,
@@ -82,21 +89,20 @@ int main() {
   uint64_t* buffer_a2_2 = nullptr;
   char* buffer_var_a2_2 = nullptr;
   float* buffer_a3_2 = nullptr;
-  int64_t buffer_coords_2[] = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t buffer_coords_2[] = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
   void* buffers_2[] = {
       buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
   uint64_t buffer_sizes_2[] = {
       sizeof(buffer_a1_2), 0, 0, 0, sizeof(buffer_coords_2)};
 
-  // Submit query - #2
+  // Reset buffers
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
+
+  // Submit query - #2
   tiledb_query_submit(ctx, query);
 
   // Clean up
   tiledb_query_free(ctx, query);
-  tiledb_ctx_free(ctx);
-
-  // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;

@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_sparse_3.cc
+ * @file   tiledb_sparse_write_unordered_1_again.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,38 +28,36 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unsorted cells to a sparse array.
+ * It shows how to write unordered cells to a sparse array in a single write.
+ * This time we write 4 cells.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_unordered_1_again
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  // clang-format off
-  int buffer_a1[] = { 7, 5, 0, 6, 4, 3, 1, 2 };
-  uint64_t buffer_a2[] = { 0, 4, 6, 7, 10, 11, 15, 17 };
-  char buffer_var_a2[] = "hhhhffagggeddddbbccc";
-  float buffer_a3[] =
-  {
-      7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
-      4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2
-  };
-  int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
-  void* buffers[] =
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  uint64_t buffer_sizes[] =
-  {
+  int buffer_a1[] = {107, 104, 106, 105};
+  uint64_t buffer_a2[] = {0, 3, 4, 5};
+  char buffer_var_a2[] = "yyyuwvvvv";
+  float buffer_a3[] = {107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
+  int64_t buffer_coords[] = {3, 4, 3, 2, 3, 3, 4, 1};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)
-  };
-  // clang-format on
+      sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;

@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_3d_sparse_read.cc
+ * @file   tiledb_dense_read_ordered_subarray.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,38 +28,43 @@
  *
  * @section DESCRIPTION
  *
- * It reads a subarray from the 3d sparse array ARRAYNAME.
+ * It shows how to read from a dense array, constraining the read
+ * to a specific subarray. The cells are copied to the
+ * input buffers sorted in row-major order within the selected subarray.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_read_ordered_subarray
  */
 
-#include "tiledb.h"
-
-#include <iostream>
-
-#define MAX_CELL_NUM 1000
-#define DIM_NUM 3
-#define ARRAYNAME "3d_sparse_array"
+#include <tiledb.h>
+#include <cstdio>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  int64_t* coords = new int64_t[DIM_NUM * MAX_CELL_NUM];
-  int* a1 = new int[MAX_CELL_NUM];
-  void* buffers[] = {a1, coords};
-  uint64_t buffer_sizes[] = {DIM_NUM * MAX_CELL_NUM * sizeof(int64_t),
-                             MAX_CELL_NUM * sizeof(int)};
-
-  // Choose a subarray in (low, high) pairs per dimension
-  int64_t subarray[] = {1, 10000, 5000, 10000, 1, 10000};
+  int buffer_a1[16];
+  uint64_t buffer_a2[16];
+  char buffer_var_a2[40];
+  float buffer_a3[32];
+  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_var_a2),
+                             sizeof(buffer_a3)};
 
   // Create query
+  uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
   tiledb_query_create(
       ctx,
       &query,
-      ARRAYNAME,
+      "my_dense_array",
       TILEDB_READ,
       TILEDB_ROW_MAJOR,
       subarray,
@@ -71,21 +77,22 @@ int main() {
   tiledb_query_submit(ctx, query);
 
   // Print cell values
-  int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("coords\t\t         a1\n");
-  printf("-----------------------------\n");
-  for (int i = 0; i < result_num; ++i) {
-    printf(
-        "(%lld, %lld, %lld)",
-        coords[3 * i],
-        coords[3 * i + 1],
-        coords[3 * i + 2]);
-    printf("\t %3d\n", a1[i]);
+  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  printf("result num: %llu\n\n", result_num);
+  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
+  printf("-----------------------------------------\n");
+  for (uint64_t i = 0; i < result_num; ++i) {
+    printf("%3d", buffer_a1[i]);
+    uint64_t var_size = (i != result_num - 1) ?
+                            buffer_a2[i + 1] - buffer_a2[i] :
+                            buffer_sizes[2] - buffer_a2[i];
+    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
   // Clean up
+  tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
-  delete[] coords;
-  delete[] a1;
+
   return 0;
 }

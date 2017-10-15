@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,7 +34,8 @@
  *     TileDB v<major>.<minor>.<rev>
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+#include <iostream>
 
 int main() {
   // Get version
@@ -41,7 +43,7 @@ int main() {
   tiledb_version(&major, &minor, &rev);
 
   // Print version
-  printf("TileDB v%d.%d.%d\n", major, minor, rev);
+  std::cout << "TileDB v" << major << "." << minor << "." << rev << "\n";
 
   return 0;
 }

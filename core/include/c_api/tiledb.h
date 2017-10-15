@@ -1030,14 +1030,15 @@ TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_name);
 
 /* ********************************* */
-/*       DIRECTORY MANAGEMENT        */
+/*        RESOURCE MANAGEMENT        */
 /* ********************************* */
 
 /**
- * Returns the tiledb object type for a given resource path.
+ * Returns the TileDB object type for a given resource path.
  *
  * @param ctx The TileDB context.
- * @param path The URI path to the tiledb resource.
+ * @param path The URI path to the TileDB resource.
+ * @param type The type to be retrieved.
  * @return TILEDB_OK on success, TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_object_type(
@@ -1059,7 +1060,7 @@ TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
  * @param old_path The old TileDB directory.
  * @param new_path The new TileDB directory.
  * @param force Move resource even if an existing resource exists at the given
- * path
+ *     path
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_move(

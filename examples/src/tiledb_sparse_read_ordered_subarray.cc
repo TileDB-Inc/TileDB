@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_async_read_dense.cc
+ * @file   tiledb_sparse_read_ordered_subarray.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,45 +28,46 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read asynchronously from a dense array.
+ * It shows how to read from a sparse array, constraining the read
+ * to a specific subarray and subset of attributes. This time the cells are
+ * returned in row-major order within the specified subarray.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_sparse_create
+ * $ ./tiledb_sparse_write_global_1
+ * $ ./tiledb_sparse_read_ordered_subarray
  */
 
+#include <tiledb.h>
 #include <cstdio>
-#include <cstring>
-#include "tiledb.h"
-
-// Simply prints the input string to stdout
-void* print_upon_completion(void* s) {
-  printf("%s\n", (char*)s);
-
-  return nullptr;
-}
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
-  int buffer_a1[16];
-  uint64_t buffer_a2[16];
-  char buffer_var_a2[40];
-  float buffer_a3[32];
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  int buffer_a1[10];
+  uint64_t buffer_a2[10];
+  char buffer_var_a2[30];
+  float buffer_a3[20];
+  uint64_t buffer_coords[20];
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1),
                              sizeof(buffer_a2),
                              sizeof(buffer_var_a2),
-                             sizeof(buffer_a3)};
-
-  // Prepare subarray
-  int64_t subarray[] = {2, 4, 2, 4};  // [3,4] on first dim, [2,4] on second
+                             sizeof(buffer_a3),
+                             sizeof(buffer_coords)};
 
   // Create query
+  uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
   tiledb_query_create(
       ctx,
       &query,
-      "my_dense_array",
+      "my_sparse_array",
       TILEDB_READ,
       TILEDB_ROW_MAJOR,
       subarray,
@@ -74,23 +76,17 @@ int main() {
       buffers,
       buffer_sizes);
 
-  // Submit query asynchronously
-  char s[100] = "Query completed";
-  tiledb_query_submit_async(ctx, query, print_upon_completion, s);
-
-  // Wait for query to complete
-  printf("Query in progress\n");
-  tiledb_query_status_t status;
-  do {
-    tiledb_query_get_status(ctx, query, &status);
-  } while (status != TILEDB_COMPLETED);
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
   // Print cell values
-  int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
-  printf("-----------------------------------------\n");
-  for (int i = 0; i < result_num; ++i) {
-    printf("%3d", buffer_a1[i]);
+  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  printf("result num: %llu\n\n", result_num);
+  printf("coords\t  a1\t   a2\t      (a3.first, a3.second)\n");
+  printf("---------------------------------------------------\n");
+  for (uint64_t i = 0; i < result_num; ++i) {
+    printf("(%lld, %lld)", buffer_coords[2 * i], buffer_coords[2 * i + 1]);
+    printf("\t %3d", buffer_a1[i]);
     size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
                                               buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);

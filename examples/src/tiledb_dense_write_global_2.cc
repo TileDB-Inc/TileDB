@@ -1,10 +1,11 @@
 /**
- * @file   tiledb_write_dense_2.cc
+ * @file   tiledb_dense_write_global_2.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,13 +29,15 @@
  * @section DESCRIPTION
  *
  * It shows how to write to a dense array invoking the write function
- * multiple times. This will have the same effect as program
- * tiledb_array_write_dense_1.cc.
+ * twice. This will have the same effect as program
+ * tiledb_dense_write_entire_1.cc.
+ *
+ * You need to run the following to make this work:
+ * ./tiledb_dense_create
+ * ./tiledb_dense_write_global_2
  */
 
-#include "tiledb.h"
-
-#include <iostream>
+#include <tiledb.h>
 
 int main() {
   // Initialize context with the default configuration parameters
@@ -48,8 +51,8 @@ int main() {
   float* buffer_a3 = nullptr;
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
   uint64_t buffer_sizes[] = {
-      6 * sizeof(int),  // 6 cels on a1
-      8 * sizeof(size_t),
+      6 * sizeof(int),  // 6 cells on a1
+      8 * sizeof(uint64_t),
       20,  // 8 cells on a2
       0    // no cells on a3
   };
@@ -84,13 +87,15 @@ int main() {
   void* buffers_2[] = {buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2};
   uint64_t buffer_sizes_2[] = {
       10 * sizeof(int),  // 6 cels on a1
-      8 * sizeof(size_t),
+      8 * sizeof(uint64_t),
       20,                 // 8 cells on a2
       32 * sizeof(float)  // 16 cells on a3 (2 values each)
   };
 
-  // Submit query - #2
+  // Reset buffers
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
+
+  // Submit query - #2
   tiledb_query_submit(ctx, query);
 
   // Clean up

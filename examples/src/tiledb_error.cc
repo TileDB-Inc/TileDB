@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,34 +28,22 @@
  *
  * @section DESCRIPTION
  *
- * This examples shows how to catch errors. Program output:
+ * This example shows how to catch errors. Program output:
  *
- *     $ ./tiledb_error
- *     Group created successfully!
- *     [TileDB::OS] Error: Cannot create directory \
- *     '<current_working_dir>/my_group'; Directory already exists
+ * $ ./tiledb_error
+ * Group created successfully!
+ * [TileDB::OS] Error: Cannot create directory \
+ * '<current_working_dir>/my_group'; Directory already exists
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
 
-#include <cstdlib>
-
-void print_error(tiledb_ctx_t* ctx) {
-  tiledb_error_t* err;
-  tiledb_error_last(ctx, &err);
-  const char* msg;
-  tiledb_error_message(ctx, err, &msg);
-  printf("%s\n", msg);
-  tiledb_error_free(ctx, err);
-}
+void print_error(tiledb_ctx_t* ctx);
 
 int main() {
-  // Create context
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
-
-  // Delete group if it exists
-  system("rm -rf my_group");
 
   // Create a group
   int rc = tiledb_group_create(ctx, "my_group");
@@ -74,4 +63,13 @@ int main() {
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void print_error(tiledb_ctx_t* ctx) {
+  tiledb_error_t* err;
+  tiledb_error_last(ctx, &err);
+  const char* msg;
+  tiledb_error_message(ctx, err, &msg);
+  printf("%s\n", msg);
+  tiledb_error_free(ctx, err);
 }

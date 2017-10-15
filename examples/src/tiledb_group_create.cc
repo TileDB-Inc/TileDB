@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,19 +32,17 @@
  *     my_group
  *        |_ dense_arrays
  *        |_ sparse_arrays
+ *
+ * Make sure that no folder with name "my_group" exists in the working
+ * directory before running this example.
  */
 
-#include "tiledb.h"
-
-#include <cstdlib>
+#include <tiledb.h>
 
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
-
-  // Delete group if it exists
-  system("rm -rf my_group");
 
   // Create a group
   tiledb_group_create(ctx, "my_group");

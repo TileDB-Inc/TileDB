@@ -1,11 +1,12 @@
 /**
- * @file   tiledb_3d_create_csv.cc
+ * @file   tiledb_move.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,36 +28,29 @@
  *
  * @section DESCRIPTION
  *
- * Creates a CSV file FILENAME, where each line in the CSV file must be of
- * the form:
- *
- * <coord_1> <coord_2> <coord_3> <attribute_value>
- *
- * CELL_NUM random tuples with the above format are generated.
+ * It shows how to move/rename a TileDB resource.
  */
 
-#include <fstream>
-#include <random>
-
-#define CELL_NUM 10
-#define DIM_NUM 3
-#define FILENAME "file.csv"
-#define COORD_MAX 10000
-#define ATTR_MAX 10000
+#include <tiledb.h>
+#include <iostream>
 
 int main() {
-  std::random_device rd;
-  std::default_random_engine gen(rd());
-  std::uniform_int_distribution<long long unsigned> dist(1, 10000000000);
+  // Create context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
-  std::ofstream file(FILENAME);
-  for (uint64_t i = 0; i < CELL_NUM; ++i) {
-    for (int i = 0; i < DIM_NUM; ++i)
-      file << (dist(gen) % COORD_MAX) << " ";
-    file << (dist(gen) % ATTR_MAX) << "\n";
-  }
+  // Rename a valid group and array
+  tiledb_move(ctx, "my_group", "my_group_2", true);
+  tiledb_move(
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
 
-  file.close();
+  // Rename an invalid path
+  int rc = tiledb_move(ctx, "some_invalid_path", "path", false);
+  if (rc == TILEDB_ERR)
+    std::cout << "Failed moving invalid path\n";
+
+  // Clean up
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

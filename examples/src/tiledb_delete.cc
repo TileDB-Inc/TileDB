@@ -1,11 +1,12 @@
 /**
- * @file   tiledb_update_dense_2.cc
+ * @file   tiledb_delete.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,50 +28,27 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to update a dense array, writing random sparse updates.
+ * It shows how to move/rename a TileDB resource.
  */
 
-#include "tiledb.h"
+#include <tiledb.h>
+#include <iostream>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare cell buffers
-  int buffer_a1[] = {211, 213, 212, 208};
-  uint64_t buffer_a2[] = {0, 4, 6, 7};
-  char buffer_var_a2[] = "wwwwyyxu";
-  float buffer_a3[] = {211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
-  int64_t buffer_coords[] = {4, 2, 3, 4, 3, 3, 3, 1};
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+  // Deletes a valid group and array
+  tiledb_delete(ctx, "my_group");
+  tiledb_delete(ctx, "my_dense_array");
 
-  // Create query
-  tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_dense_array",
-      TILEDB_WRITE,
-      TILEDB_UNORDERED,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
-
-  // Submit query
-  tiledb_query_submit(ctx, query);
+  // Deletes an invalid path
+  int rc = tiledb_delete(ctx, "some_invalid_path");
+  if (rc == TILEDB_ERR)
+    std::cout << "Failed deleting invalid path\n";
 
   // Clean up
-  tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
 
   return 0;
