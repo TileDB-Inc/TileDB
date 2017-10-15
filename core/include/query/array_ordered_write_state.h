@@ -1,5 +1,5 @@
 /**
- * @file   array_sorted_read_state.h
+ * @file   array_ordered_write_state.h
  *
  * @section LICENSE
  *
@@ -28,51 +28,53 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class ArraySortedReadState.
+ * This file defines class ArrayOrderedWriteState.
  */
 
-#ifndef TILEDB_ARRAY_SORTED_READ_STATE_H
-#define TILEDB_ARRAY_SORTED_READ_STATE_H
+#ifndef TILEDB_ARRAY_ORDERED_WRITE_STATE_H
+#define TILEDB_ARRAY_ORDERED_WRITE_STATE_H
+
+#include "query.h"
+#include "status.h"
 
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <vector>
 
-#include "query.h"
-
 namespace tiledb {
 
 class Query;
 
 /**
- * Stores the state necessary when reading cells from the array fragments,
- * sorted in a way different to the global cell order.
+ * It is responsible for re-arranging the cells ordered in column- or row-major
+ * order within the user subarray, such that they are ordered along the array
+ * global cell order, and writes them into a new fragment.
  */
-class ArraySortedReadState {
+class ArrayOrderedWriteState {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** Used in functors. */
-  struct ASRS_Data {
-    /** An id (typically an attribute id or a tile slab id. */
+  /** Used in callback functions in an internal async query. */
+  struct ASWS_Data {
+    /** An id (typically an attribute id or a tile slab id.) */
     unsigned int id_;
     /** Another id (typically a tile id). */
     uint64_t id_2_;
     /** The calling object. */
-    ArraySortedReadState* asrs_;
+    ArrayOrderedWriteState* asws_;
   };
 
-  /** Stores state about the current read/copy request. */
+  /** Stores local state about the current write/copy request. */
   struct CopyState {
-    /** Current offsets in user buffers. */
-    uint64_t* buffer_offsets_;
-    /** User buffer sizes. */
-    uint64_t* buffer_sizes_;
-    /** User buffers. */
-    void** buffers_;
+    /** Local buffer offsets. */
+    uint64_t* buffer_offsets_[2];
+    /** Local buffer sizes. */
+    uint64_t* buffer_sizes_[2];
+    /** Local buffers. */
+    void** buffers_[2];
   };
 
   /** Info about a tile slab. */
@@ -89,7 +91,7 @@ class ArraySortedReadState {
      */
     void** range_overlap_;
     /**
-     * Start offsets of each tile in the local buffer, per attribute per tile.
+     * Start offsets of each tile in the user buffer, per attribute per tile.
      */
     uint64_t** start_offsets_;
     /** Number of tiles in the tile slab. */
@@ -102,11 +104,6 @@ class ArraySortedReadState {
   struct TileSlabState {
     /** Keeps track of whether a tile slab copy for an attribute id done. */
     bool* copy_tile_slab_done_;
-    /**
-     * Applicable only to the sparse case. It holds the current cell position
-     * to be considered, per attribute.
-     */
-    uint64_t* current_cell_pos_;
     /** Current coordinates in tile slab per attribute. */
     void** current_coords_;
     /**
@@ -127,22 +124,16 @@ class ArraySortedReadState {
   /**
    * Constructor.
    *
-   * @param array The query this array sorted read state belongs to.
+   * @param query The query this array sorted read state belongs to.
    */
-  explicit ArraySortedReadState(Query* query);
+  explicit ArrayOrderedWriteState(Query* query);
 
   /** Destructor. */
-  ~ArraySortedReadState();
+  ~ArrayOrderedWriteState();
 
   /* ********************************* */
-  /*             ACCESSORS             */
+  /*               API                 */
   /* ********************************* */
-
-  /** Returns true if the current slab is finished being copied. */
-  bool copy_tile_slab_done() const;
-
-  /** True if read is done for all attributes. */
-  bool done() const;
 
   /**
    * Finalizes the object, and particularly the internal async queries.
@@ -152,30 +143,22 @@ class ArraySortedReadState {
   Status finalize();
 
   /**
-   * Initializes the array sorted read state.
+   * Initializes the array sorted write state.
    *
    * @return Status
    */
   Status init();
 
-  /** Returns true if copying into the user buffers resulted in overflow. */
-  bool overflow() const;
-
   /**
-   * Returns true if copying into the user buffers resulted in overflow, for
-   * the input attribute id.
-   */
-  bool overflow(unsigned int attribute_id) const;
-
-  /**
-   * The read operation. It will store the results in the input
-   * buffers in sorted row- or column-major order.
+   * The write function. The cells are ordered in row- or column-major order
+   * and the function will re-order them along the global cell order before
+   * writing them to a new fragment.
    *
-   * @param buffers The input buffers.
+   * @param buffers The buffers that hold the input cells to be written.
    * @param buffer_sizes The corresponding buffer sizes.
    * @return Status
    */
-  Status read(void** buffers, uint64_t* buffer_sizes);
+  Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -185,23 +168,23 @@ class ArraySortedReadState {
   /** Function for advancing a cell slab during a copy operation. */
   void* (*advance_cell_slab_)(void*);
 
-  /** Condition variables used in internal async queries. */
+  /** Condition variables used for the internal async queries. */
   std::condition_variable async_cv_[2];
 
   /** Data for the internal async queries. */
-  ASRS_Data async_data_[2];
+  ASWS_Data async_data_[2];
 
-  /** Mutexes used in internal async queries. */
+  /** Mutexes used in async queries. */
   std::mutex async_mtx_[2];
 
-  /** The internal async queries. */
+  /** The async queries. */
   Query* async_query_[2];
 
-  /** Wait for async conditions, one for each local buffer. */
+  /** Wait for async flags, one for each local buffer. */
   bool async_wait_[2];
 
   /** The ids of the attributes the array was initialized with. */
-  std::vector<unsigned int> attribute_ids_;
+  const std::vector<unsigned int> attribute_ids_;
 
   /**
    * The sizes of the attributes. For variable-length attributes,
@@ -212,20 +195,14 @@ class ArraySortedReadState {
   /** Number of allocated buffers. */
   unsigned int buffer_num_;
 
-  /** Allocated sizes for buffers_. */
-  uint64_t* buffer_sizes_[2];
+  /** The user buffer offsets. */
+  uint64_t* buffer_offsets_;
 
-  /** Temporary buffer sizes used in internal async queries. */
-  uint64_t* buffer_sizes_tmp_[2];
+  /** The user buffer sizes. */
+  uint64_t* buffer_sizes_;
 
-  /**
-   * Backup of temporary buffer sizes used in async queries (used when there is
-   * overflow).
-   */
-  uint64_t* buffer_sizes_tmp_bak_[2];
-
-  /** Local buffers. */
-  void** buffers_[2];
+  /** The user buffers. */
+  void** buffers_;
 
   /** Function for calculating cell slab info during a copy operation. */
   void* (*calculate_cell_slab_info_)(void*);
@@ -233,64 +210,23 @@ class ArraySortedReadState {
   /** Function for calculating tile slab info during a copy operation. */
   void* (*calculate_tile_slab_info_)(void*);
 
-  /**
-   * Used only in the sparse case. Holds the sorted positions of the cells
-   * for the current tile slab to be copied.
-   */
-  std::vector<uint64_t> cell_pos_;
-
-  /**
-   * Used only in the sparse case. It is the element index in attribute_ids_
-   * that represents the coordinates attribute.
-   */
-  unsigned int coords_attr_i_;
-
-  /**
-   * Used only in the sparse case. It is the element index in buffers_
-   * that represents the coordinates attribute.
-   */
-  unsigned int coords_buf_i_;
-
   /** The coordinates size of the array. */
   uint64_t coords_size_;
 
   /** The current id of the buffers the next copy will occur from. */
   unsigned int copy_id_;
 
-  /** The copy state. */
+  /** The copy state, one per tile slab. */
   CopyState copy_state_;
 
   /** The number of dimensions in the array. */
   unsigned int dim_num_;
 
-  /**
-   * Used only in the sparse case. It is true if the coordinates are not asked
-   * by the user and, thus, TileDB had to append them as an extra attribute
-   * to facilitate sorting the cell positions.
-   *
-   */
-  bool extra_coords_;
+  /** The expanded subarray, such that it coincides with tile boundaries. */
+  void* expanded_subarray_;
 
-  /** Overflow flag for each attribute. */
-  bool* overflow_;
-
-  /**
-   * Overflow flag for each attribute. It starts with *true* for all
-   * attributes, and becomes false once an attribute does not overflow any more.
-   */
-  bool* overflow_still_;
-
-  /** The query the array sorted read state belongs to. */
+  /** The array this sorted read state belongs to. */
   Query* query_;
-
-  /** True if no more tile slabs to read. */
-  bool read_tile_slabs_done_;
-
-  /** Used to handle overflow. */
-  bool resume_copy_;
-
-  /** Used to handle overflow. */
-  bool resume_copy_2_;
 
   /** The query subarray. */
   void* subarray_;
@@ -320,11 +256,8 @@ class ArraySortedReadState {
   /*          STATIC CONSTANTS         */
   /* ********************************* */
 
-  /** Indicates an invalid uint64 value. */
+  /** Indicates an invalid value. */
   static const uint64_t INVALID_UINT64;
-
-  /** Indicates an invalid unsigned int value. */
-  static const unsigned int INVALID_UNIT;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -336,7 +269,7 @@ class ArraySortedReadState {
    * Used in copy_tile_slab().
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -348,7 +281,7 @@ class ArraySortedReadState {
    * Used in copy_tile_slab().
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -375,32 +308,26 @@ class ArraySortedReadState {
   void advance_cell_slab_row(unsigned int aid);
 
   /**
-   * Called when an AIO completes.
+   * Called when an async query completes.
    *
-   * @param data A ASRS_Request object.
+   * @param data A ASWS_Request object.
    * @return void
    */
   static void* async_done(void* data);
 
-  /** Notifies async conditions on the input tile slab id. */
+  /** Notifies an async condition on the input tile slab id. */
   void async_notify(unsigned int id);
 
   /**
-   * Submits an internal async query.
+   * Sends an async query.
    *
-   * @param id The id of the tile slab the AIO request focuses on.
+   * @param async_id The id of the tile slab the AIO request focuses on.
    * @return Status
    */
-  Status async_submit_query(unsigned int id);
+  Status async_submit_query(unsigned int async_id);
 
-  /** Waits for async conditions on the input tile slab id. */
+  /** Waits on an async condition on the input tile slab id. */
   void async_wait(unsigned int id);
-
-  /**
-   * Calculate the attribute ids specified by the user upon array
-   * initialization.
-   */
-  void calculate_attribute_ids();
 
   /**
    * Calculates the number of buffers to be allocated, based on the number
@@ -411,35 +338,12 @@ class ArraySortedReadState {
   void calculate_buffer_num();
 
   /**
-   * Calculates the buffer sizes based on the array type.
-   *
-   * @return void
-   */
-  void calculate_buffer_sizes();
-
-  /**
-   * Calculates the buffer sizes based on the subarray and the number of cells
-   * in a (full) tile slab. Applicable to dense arrays.
-   *
-   * @return void
-   */
-  void calculate_buffer_sizes_dense();
-
-  /**
-   * Calculates the buffer sizes based on configurable parameters. Applicable to
-   * sparse arrays.
-   *
-   * @return void
-   */
-  void calculate_buffer_sizes_sparse();
-
-  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **user** cell order is column-major and the **array** cell
    * order is column-major.
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -451,7 +355,7 @@ class ArraySortedReadState {
    * order is row-major.
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -463,7 +367,7 @@ class ArraySortedReadState {
    * order is column-major.
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a AWRS_Data object.
    * @return void
    */
   template <class T>
@@ -475,7 +379,7 @@ class ArraySortedReadState {
    * order is row-major.
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a AWRS_Data object.
    * @return void
    */
   template <class T>
@@ -559,7 +463,7 @@ class ArraySortedReadState {
    * column-major
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -581,7 +485,7 @@ class ArraySortedReadState {
    * row-major
    *
    * @tparam T The domain type.
-   * @param data Essentially a pointer to a ASRS_Data object.
+   * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
   template <class T>
@@ -599,77 +503,79 @@ class ArraySortedReadState {
   void calculate_tile_slab_info_row(unsigned int id);
 
   /**
-   * Copies a tile slab from the local buffers into the user buffers,
-   * properly re-organizing the cell order to fit the targeted order.
-   * Applicable to dense arrays.
+   * Copies a tile slab from the user buffers into the local buffers,
+   * properly re-organizing the cell order to follow the array global
+   * cell order.
    *
    * @return void.
    */
-  void copy_tile_slab_dense();
-
-  /**
-   * Copies a tile slab from the local buffers into the user buffers,
-   * properly re-organizing the cell order to fit the targeted order.
-   * Applicable to sparse arrays.
-   *
-   * @return void.
-   */
-  void copy_tile_slab_sparse();
+  void copy_tile_slab();
 
   /**
    * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular fixed-length attribute.
-   * Applicable to dense arrays.
    *
+   * @tparam T The attribute type.
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
-  void copy_tile_slab_dense(unsigned int aid, unsigned int bid);
-
-  /**
-   * Copies a tile slab from the local buffers into the user buffers,
-   * properly re-organizing the cell order to fit the targeted order,
-   * focusing on a particular fixed-length attribute.
-   * Applicable to sparse arrays.
-   *
-   * @param aid The index on attribute_ids_ to focus on.
-   * @param bid The index on the copy state buffers to focus on.
-   * @return void.
-   */
-  void copy_tile_slab_sparse(unsigned int aid, unsigned int bid);
+  template <class T>
+  void copy_tile_slab(unsigned int aid, unsigned int bid);
 
   /**
    * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular variable-length attribute.
-   * Applicable to dense arrays.
    *
+   * @tparam T The attribute type.
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
-  void copy_tile_slab_dense_var(unsigned int aid, unsigned int bid);
+  template <class T>
+  void copy_tile_slab_var(unsigned int aid, unsigned int bid);
 
   /**
-   * Copies a tile slab from the local buffers into the user buffers,
-   * properly re-organizing the cell order to fit the targeted order,
-   * focusing on a particular variable-length attribute.
-   * Applicable to sparse arrays.
-   *
-   * @param aid The index on attribute_ids_ to focus on.
-   * @param bid The index on the copy state buffers to focus on.
-   * @return void.
-   */
-  void copy_tile_slab_sparse_var(unsigned int aid, unsigned int bid);
-
-  /**
-   * Creates the buffers based on the calculated buffer sizes.
+   * Creates the copy state buffers.
    *
    * @return Status
    */
-  Status create_buffers();
+  Status create_copy_state_buffers();
+
+  /**
+   * Creates the user buffers.
+   *
+   * @param buffers The user buffers that hold the input cells to be written.
+   * @param buffer_sizes The corresponding buffer sizes.
+   * @return void
+   */
+  void create_user_buffers(void** buffers, uint64_t* buffer_sizes);
+
+  /**
+   * Fills the **entire** buffer of the current copy tile slab with the input id
+   * with empty values, based on the template type. Applicable only to
+   * fixed-sized attributes.
+   *
+   * @tparam T The attribute type.
+   * @param bid The buffer id corresponding to the targeted attribute.
+   * @return void
+   */
+  template <class T>
+  void fill_with_empty(unsigned int bid);
+
+  /**
+   * Fills the **a single** cell in a variable-sized buffer of the current copy
+   * tile slab with the input id with an empty value, based on the template
+   * type. Applicable only to variable-sized attributes.
+   *
+   * @tparam T The attribute type.
+   * @param bid The buffer id corresponding to the targeted attribute.
+   * @return void
+   */
+  template <class T>
+  void fill_with_empty_var(unsigned int bid);
 
   /** Frees the copy state. */
   void free_copy_state();
@@ -723,107 +629,63 @@ class ArraySortedReadState {
   void init_tile_slab_state();
 
   /**
-   * Retrieves the next column tile slab to be processed. Applicable to dense
-   * arrays.
+   * Retrieves the next column tile slab to be processed.
    *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template <class T>
-  bool next_tile_slab_dense_col();
+  bool next_tile_slab_col();
 
   /**
-   * Retrieves the next row tile slab to be processed. Applicable to dense
-   * arrays.
+   * Retrieves the next row tile slab to be processed.
    *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template <class T>
-  bool next_tile_slab_dense_row();
+  bool next_tile_slab_row();
 
   /**
-   * Retrieves the next column tile slab to be processed. Applicable to sparse
-   * arrays.
-   *
-   * @tparam T The domain type.
-   * @return True if the next tile slab was retrieved, and false otherwise.
+   * Returns true if every async write should create a separate fragment.
+   * This happens when the cells in two different writes do not appear
+   * contiguous along the global cell order.
    */
-  template <class T>
-  bool next_tile_slab_sparse_col();
+  bool separate_fragments() const;
 
   /**
-   * Retrieves the next row tile slab to be processed. Applicable to sparse
-   * arrays.
-   *
-   * @tparam T The domain type.
-   * @return True if the next tile slab was retrieved, and false otherwise.
-   */
-  template <class T>
-  bool next_tile_slab_sparse_row();
-
-  /**
-   * The read operation. It will store the results in the input
-   * buffers in sorted row- or column-major order.
+   * The write function. The cells are ordered in row- or column-major order
+   * and the function will re-order them along the global cell order before
+   * writing them to a new fragment.
    *
    * @tparam T The domain type.
    * @return Status
    */
   template <class T>
-  Status read();
+  Status write();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * Same as write(), but the cells are provided by the user sorted in
    * column-major order with respect to the selected subarray.
-   * Applicable only to dense arrays.
    *
    * @tparam T The domain type.
    * @return Status
    */
   template <class T>
-  Status read_dense_sorted_col();
+  Status write_sorted_col();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * Same as write(), but the cells are provided by the user sorted in
    * row-major order with respect to the selected subarray.
-   * Applicable only to dense arrays.
    *
    * @tparam T The domain type.
    * @return Status
    */
   template <class T>
-  Status read_dense_sorted_row();
+  Status write_sorted_row();
 
-  /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in
-   * column-major order with respect to the selected subarray.
-   * Applicable only to sparse arrays.
-   *
-   * @tparam T The domain type.
-   * @return Status
-   */
-  template <class T>
-  Status read_sparse_sorted_col();
-
-  /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in
-   * row-major order with respect to the selected subarray.
-   * Applicable only to sparse arrays.
-   *
-   * @tparam T The domain type.
-   * @return Status
-   */
-  template <class T>
-  Status read_sparse_sorted_row();
-
-  /** Resets the temporary buffer sizes for the input tile slab id. */
-  void reset_buffer_sizes_tmp(unsigned int id);
-
-  /** Resets the copy state using the input buffer info. */
-  void reset_copy_state(void** buffers, uint64_t* buffer_sizes);
-
-  /** Resets the oveflow flags to **false**. */
-  void reset_overflow();
+  /** Resets the copy state for the current copy id. */
+  void reset_copy_state();
 
   /**
    * Resets the tile_coords_ auxiliary variable.
@@ -844,11 +706,13 @@ class ArraySortedReadState {
   void reset_tile_slab_state();
 
   /**
-   * It sorts the positions of the cells based on the coordinates
-   * of the current tile slab to be copied.
+   * Calculates the new tile and local buffer offset for the new (already
+   * computed) current cell coordinates in the tile slab.
+   *
+   * @param aid The attribute id to focus on.
+   * @return void.
    */
-  template <class T>
-  void sort_cell_pos();
+  void update_current_tile_and_offset(unsigned int aid);
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
@@ -864,4 +728,4 @@ class ArraySortedReadState {
 
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_SORTED_READ_STATE_H
+#endif  // TILEDB_ARRAY_ORDERED_WRITE_STATE_H
