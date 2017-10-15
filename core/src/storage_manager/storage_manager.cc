@@ -239,7 +239,7 @@ bool StorageManager::is_file(const URI& uri) {
 }
 
 bool StorageManager::is_fragment(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::fragment_filename));
+  return vfs_->is_file(uri.join_path(constants::fragment_metadata_filename));
 }
 
 Status StorageManager::load(
@@ -604,7 +604,7 @@ Status StorageManager::get_fragment_uris(
     // TODO: check here if the fragment overlaps subarray
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
-    if (vfs_->is_file(uri.join_path(constants::fragment_filename)))
+    if (vfs_->is_file(uri.join_path(constants::fragment_metadata_filename)))
       fragment_uris->push_back(uri);
   }
 

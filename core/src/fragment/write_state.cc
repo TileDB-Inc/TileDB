@@ -155,11 +155,8 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   auto& fragment_uri = fragment_->fragment_uri();
   auto storage_manager = fragment_->query()->storage_manager();
-  if (!storage_manager->is_dir(fragment_uri)) {
+  if (!storage_manager->is_dir(fragment_uri))
     RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
-    RETURN_NOT_OK(storage_manager->create_file(
-        fragment_uri.join_path(std::string(constants::fragment_filename))));
-  }
 
   Layout layout = fragment_->query()->layout();
 
