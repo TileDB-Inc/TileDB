@@ -32,6 +32,7 @@
  */
 
 #include "catch.hpp"
+#include "posix_filesystem.h"
 #include "tiledb.h"
 
 #include <sys/time.h>
@@ -58,7 +59,7 @@ struct SparseArrayFx {
   const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
-  const std::string TEMP_DIR = "";
+  const std::string TEMP_DIR = tiledb::posix::current_dir() + "/";
 #endif
   const std::string GROUP = "my_group/";
 

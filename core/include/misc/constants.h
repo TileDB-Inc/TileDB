@@ -69,6 +69,9 @@ extern int cell_var_offsets_compression_level;
 /** The default compressor for the coordinates. */
 extern Compressor coords_compression;
 
+/** The default compressor for real coordinates. */
+extern Compressor real_coords_compression;
+
 /** The default compression level for the coordinates. */
 extern int coords_compression_level;
 

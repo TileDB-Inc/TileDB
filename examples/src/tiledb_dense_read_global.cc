@@ -38,8 +38,9 @@
  */
 
 #include <tiledb.h>
-
 #include <cstdio>
+
+#include <cstdlib>
 
 int main(int argc, char** argv) {
   // Create TileDB context

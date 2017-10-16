@@ -39,6 +39,7 @@
 #include <sstream>
 
 #include "catch.hpp"
+#include "posix_filesystem.h"
 #include "tiledb.h"
 #include "uri.h"
 
@@ -49,7 +50,7 @@ struct ArraySchemaFx {
   const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
-  const std::string TEMP_DIR = "";
+  const std::string TEMP_DIR = tiledb::posix::current_dir() + "/";
 #endif
   const std::string GROUP = "test_group/";
   const std::string ARRAY_NAME = "dense_test_100x100_10x10";
@@ -146,26 +147,17 @@ struct ArraySchemaFx {
   void create_dense_array() {
     int rc;
 
-    // Attributes
-    tiledb_attribute_t* attr;
-    rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Hyperspace
-    tiledb_domain_t* domain;
-    rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
-    REQUIRE(rc == TILEDB_OK);
+    // Create array metadata with invalid URI
+    rc =
+        tiledb_array_metadata_create(ctx_, &array_metadata_, "file://my_array");
+    REQUIRE(rc != TILEDB_OK);
 
     // Create array metadata
     rc = tiledb_array_metadata_create(
         ctx_, &array_metadata_, ARRAY_PATH.c_str());
     REQUIRE(rc == TILEDB_OK);
+
+    // Set metadata members
     rc =
         tiledb_array_metadata_set_array_type(ctx_, array_metadata_, ARRAY_TYPE);
     REQUIRE(rc == TILEDB_OK);
@@ -177,16 +169,44 @@ struct ArraySchemaFx {
     rc =
         tiledb_array_metadata_set_tile_order(ctx_, array_metadata_, TILE_ORDER);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr);
+
+    // Check for invalid array metadata
+    rc = tiledb_array_metadata_check(ctx_, array_metadata_);
+    REQUIRE(rc != TILEDB_OK);
+    rc = tiledb_array_create(ctx_, array_metadata_);
+    REQUIRE(rc != TILEDB_OK);
+
+    // Set domain
+    tiledb_domain_t* domain;
+    rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check for invalid array metadata
+    rc = tiledb_array_metadata_check(ctx_, array_metadata_);
+    REQUIRE(rc != TILEDB_OK);
+    rc = tiledb_array_create(ctx_, array_metadata_);
+    REQUIRE(rc != TILEDB_OK);
+
+    // Set attribute
+    tiledb_attribute_t* attr;
+    rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr);
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
     tiledb_domain_free(ctx_, domain);
 
-    // Create the array_metadata
+    // Create the array
     rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc == TILEDB_OK);
   }

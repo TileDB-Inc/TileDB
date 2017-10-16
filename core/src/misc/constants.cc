@@ -70,6 +70,9 @@ int cell_var_offsets_compression_level = -1;
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::DOUBLE_DELTA;
 
+/** The default compressor for real coordinates. */
+Compressor real_coords_compression = Compressor::BLOSC_ZSTD;
+
 /** The default compression level for the coordinates. */
 int coords_compression_level = -1;
 

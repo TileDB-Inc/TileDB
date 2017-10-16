@@ -66,26 +66,41 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 Status StorageManager::array_consolidate(const char* array_name) {
+  // Check array URI
+  URI array_uri(array_name);
+  if (array_uri.is_invalid()) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
+  }
+
+  // Check if array exists
+  if (object_type(array_uri) != ObjectType::ARRAY) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot consolidate array; Array does not exist"));
+  }
+
   return consolidator_->consolidate(array_name);
 }
 
 Status StorageManager::array_create(ArrayMetadata* array_metadata) {
-  // Check array_metadata metadata
+  // Check array metadata
   if (array_metadata == nullptr) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot create array; Empty array metadata"));
   }
+  RETURN_NOT_OK(array_metadata->check());
 
   // Create array directory
   const URI& array_uri = array_metadata->array_uri();
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Store array metadata
-  RETURN_NOT_OK(store(array_metadata));
+  RETURN_NOT_OK_ELSE(store(array_metadata), vfs_->remove_path(array_uri));
 
   // Create array filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  RETURN_NOT_OK(vfs_->create_file(filelock_uri));
+  RETURN_NOT_OK_ELSE(
+      vfs_->create_file(filelock_uri), vfs_->remove_path(array_uri));
 
   // Success
   return Status::Ok();
@@ -210,7 +225,7 @@ Status StorageManager::group_create(const std::string& group) const {
   URI uri(group);
   if (uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot create group; '" + uri.to_string() + "' invalid group URI"));
+        "Cannot create group; '" + group + "' invalid group URI"));
 
   // Create group directory
   RETURN_NOT_OK(vfs_->create_dir(uri));
@@ -367,8 +382,6 @@ Status StorageManager::read_from_file(
 }
 
 Status StorageManager::store(ArrayMetadata* array_metadata) {
-  RETURN_NOT_OK(array_metadata->check());
-
   URI array_metadata_uri =
       array_metadata->array_uri().join_path(constants::array_metadata_filename);
 
@@ -509,6 +522,12 @@ Status StorageManager::array_open(
     const void* subarray,
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
+  // Check if array exists
+  if (object_type(array_uri) != ObjectType::ARRAY) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot open array; Array does not exist"));
+  }
+
   // Lock the array in shared mode
   RETURN_NOT_OK(array_lock(array_uri, true));
 

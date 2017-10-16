@@ -39,6 +39,7 @@
 #include <cinttypes>
 #include <cmath>
 #include <iostream>
+#include <set>
 
 namespace tiledb {
 
@@ -198,25 +199,28 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Invalid array URI"));
 
+  if (domain_ == nullptr) {
+    return LOG_STATUS(Status::ArrayMetadataError(
+        "Array metadata check failed; Domain not set"));
+  }
+
   if (dim_num() == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No dimensions provided"));
 
-  if (attribute_num_ == 0)
+  if (array_type_ == ArrayType ::DENSE && attribute_num_ == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No attributes provided"));
 
-  // TODO: Double delta does not work with float and double datatypes
+  if (!check_double_delta_compressor())
+    return LOG_STATUS(Status::ArrayMetadataError(
+        "Array metadata check failed; Double delta compression can be used "
+        "only with integer values"));
 
-  // TODO: all tile extents null, or all should have values
-  // TODO: alternatively, null extents should be handled in Dimension
-  // TODO: and set equal to the domain range
-
-  // TODO: attribute and dimension names must be unique and not
-  // TODO: equal to reserved names
-
-  // TODO: attribute and dimension names must be valid names
-  // TODO: (e.g., not URIs)
+  if (!check_attribute_dimension_names())
+    return LOG_STATUS(
+        Status::ArrayMetadataError("Array metadata check failed; Attributes "
+                                   "and dimensions must have unique names"));
 
   // Success
   return Status::Ok();
@@ -507,8 +511,14 @@ void ArrayMetadata::set_cell_order(Layout cell_order) {
 }
 
 void ArrayMetadata::set_domain(Domain* domain) {
+  // Set domain
   delete domain_;
   domain_ = new Domain(domain);
+
+  // Potentially change the default coordinates compressor
+  if (domain_->type() == Datatype::FLOAT32 ||
+      domain_->type() == Datatype::FLOAT64)
+    coords_compression_ = constants::real_coords_compression;
 }
 
 void ArrayMetadata::set_tile_order(Layout tile_order) {
@@ -518,6 +528,36 @@ void ArrayMetadata::set_tile_order(Layout tile_order) {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
+
+bool ArrayMetadata::check_attribute_dimension_names() const {
+  std::set<std::string> names;
+  auto dim_num = this->dim_num();
+
+  for (auto attr : attributes_)
+    names.insert(attr->name());
+  for (unsigned int i = 0; i < dim_num; ++i)
+    names.insert(domain_->dimension(i)->name());
+
+  return (names.size() == attribute_num_ + dim_num);
+}
+
+bool ArrayMetadata::check_double_delta_compressor() const {
+  // Check coordinates
+  if ((domain_->type() == Datatype::FLOAT32 ||
+       domain_->type() == Datatype::FLOAT64) &&
+      coords_compression_ == Compressor::DOUBLE_DELTA)
+    return false;
+
+  // Check attributes
+  for (auto attr : attributes_) {
+    if ((attr->type() == Datatype::FLOAT32 ||
+         attr->type() == Datatype::FLOAT64) &&
+        attr->compressor() == Compressor::DOUBLE_DELTA)
+      return false;
+  }
+
+  return true;
+}
 
 void ArrayMetadata::clear() {
   array_uri_ = URI();
