@@ -44,7 +44,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Attributes to subset on
-  const char* attributes[] = {"a1"};
+  const char* attributes[] = {"a5"};
 
   // Prepare cell buffers
   int buffer_a1[2];

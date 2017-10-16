@@ -303,6 +303,18 @@ class ArrayMetadata {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
+  /**
+   * Returns false if the union of attribute and dimension names contain
+   * duplicates.
+   */
+  bool check_attribute_dimension_names() const;
+
+  /**
+   * Returns false if double delta compression is used with real attributes
+   * or coordinates and true otherwise.
+   */
+  bool check_double_delta_compressor() const;
+
   /** Clears all members. Use with caution! */
   void clear();
 

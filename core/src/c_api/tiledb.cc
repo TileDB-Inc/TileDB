@@ -731,21 +731,24 @@ int tiledb_array_metadata_create(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check for error
-  if (array_name == nullptr) {
+  // Check array name
+  tiledb::URI array_uri(array_name);
+  if (array_uri.is_invalid()) {
     save_error(
-        ctx, tiledb::Status::Error("Invalid array directory argument is NULL"));
+        ctx,
+        tiledb::Status::Error(
+            "Failed to create array metadata; Invalid array URI"));
     return TILEDB_ERR;
   }
 
-  // Create array_metadata metadata struct
+  // Create array metadata struct
   *array_metadata =
       (tiledb_array_metadata_t*)std::malloc(sizeof(tiledb_array_metadata_t));
   if (*array_metadata == nullptr) {
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array_metadata metadata struct"));
+            "Failed to allocate TileDB array metadata metadata struct"));
     return TILEDB_OOM;
   }
 
@@ -757,8 +760,8 @@ int tiledb_array_metadata_create(
     *array_metadata = nullptr;
     save_error(
         ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array_metadata "
-                              "metadata object in struct"));
+        tiledb::Status::Error("Failed to allocate TileDB array metadata "
+                              "object in struct"));
     return TILEDB_OOM;
   }
 
@@ -853,6 +856,7 @@ int tiledb_array_metadata_check(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
+
   if (save_error(ctx, array_metadata->array_metadata_->check()))
     return TILEDB_ERR;
 
