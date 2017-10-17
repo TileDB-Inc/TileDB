@@ -9,19 +9,21 @@ env:
 install:
     # Install library dependencies
     - sudo scripts/install-deps.sh
+
     # Install clangformat (v5.0)
     # - sudo scripts/install-clangformat.sh
+
     # Install hadoop and libhdfs3
-    - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-libhdfs3.sh; fi
     - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
-    - if [ "$USE_HDFS" == "ON" ]; then export LIBHDFS3_CONF=$HADOOP_HOME/etc/hadoop/hdfs-site.xml; fi
+
     # Install lcov to coveralls conversion + upload tool
     - sudo apt-get install lcov
     - gem install coveralls-lcov
-    # Build TileDB
+
+    # Build TileDB library and examples
     - mkdir -p $TRAVIS_BUILD_DIR/build
     - cd $TRAVIS_BUILD_DIR/build
-    - cmake -DCMAKE_BUILD_TYPE=Coverage -DTILEDB_VERBOSE=1 -DUSE_HDFS3=$USE_HDFS ..
+    - cmake -DCMAKE_BUILD_TYPE=Coverage -DTILEDB_VERBOSE=1 -DUSE_HDFS=$USE_HDFS ..
     - make -j4
     - make examples -j4
     
