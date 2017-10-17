@@ -1,9 +1,10 @@
 #!/bin/bash
 
 function update_apt_repo  {
+  sudo apt-get install software-properties-common curl
   sudo apt-get purge -y openjdk*
   sudo add-apt-repository -y ppa:webupd8team/java
-  sudo apt-get update -y
+  suod apt-get update -y
 } 
 
 function install_java {

@@ -31,18 +31,6 @@ cmake_minimum_required(VERSION 2.8)
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-# Set shared library suffix
-if(APPLE)
-  set(SHARED_LIB_SUFFIX ".dylib")
-else()
-  set(SHARED_LIB_SUFFIX ".so")
-endif()
-
-# Only for Mac OS X warnings
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-endif()
-
 # Default user definitions
 set(USE_HDFS False CACHE BOOL "Enables HDFS support using the official Hadoop JNI bindings")
 set(USE_HDFS3 False CACHE BOOL "Enables HDFS support using libhdfs3")
@@ -51,10 +39,17 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Only for Mac OS X warnings
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+endif()
+
+set(TILEDB_LIB_DEPENDENCIES)
+
 # Find required library dependencies
 find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${ZLIB_LIBRARIES})
+set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${ZLIB_LIBRARIES})
 find_package(LZ4 REQUIRED)
 include_directories(${LZ4_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LZ4_LIBRARIES})
@@ -73,6 +68,7 @@ if(USE_HDFS AND USE_HDFS3)
   message(FATAL_ERROR "HDFS support must be provided through libhdfs or libhdfs3 exclusively")
 endif()
 
+
 if(USE_HDFS3)
   find_package(LIBHDFS3 REQUIRED)
   include_directories(${LIBHDFS3_INCLUDE_DIR})
@@ -80,10 +76,12 @@ if(USE_HDFS3)
 endif()
 
 if(USE_HDFS)
+  find_package(LIBJVM REQUIRED)
+  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBJVM_LIBRARIES})
+  
   find_package(LIBHDFS REQUIRED)
   include_directories(${LIBHDFS_INCLUDE_DIR})
   # This variable is defined in FindJNI module included in the FindHDFS.cmake file
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${JAVA_JVM_LIBRARY})
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBHDFS_LIBRARY})
 endif()
 

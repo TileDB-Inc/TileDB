@@ -30,18 +30,18 @@ file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
 
 # catch unit-test library
 add_library(
-    catch_main EXCLUDE_FROM_ALL
-    OBJECT "src/unit.cc"
+  catch_main EXCLUDE_FROM_ALL
+  OBJECT "src/unit.cc"
 )
 
 set_target_properties(catch_main PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED ON
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED ON
 )
 
 target_include_directories(
-    catch_main PRIVATE 
-    ${CMAKE_SOURCE_DIR}/external/catch
+  catch_main PRIVATE
+  ${CMAKE_SOURCE_DIR}/external/catch
 )
 
 # Gather the test source files
@@ -52,36 +52,47 @@ if(USE_HDFS OR USE_HDFS3)
 endif()
 
 # unit test executable
-set(TILEDB_UNITTEST_TARGET_NAME "tiledb_unit")
 add_executable(
-    ${TILEDB_UNITTEST_TARGET_NAME} EXCLUDE_FROM_ALL
-    $<TARGET_OBJECTS:catch_main>
-    ${TILEDB_TEST_SOURCES})
+  tiledb_unit EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  $<TARGET_OBJECTS:catch_main>
+  ${TILEDB_TEST_SOURCES}
+)
 
 set_target_properties(
-    ${TILEDB_UNITTEST_TARGET_NAME} PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED ON
+  tiledb_unit PROPERTIES
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED ON
 )
 
 target_link_libraries(
-    ${TILEDB_UNITTEST_TARGET_NAME}
-    tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES}
+  tiledb_unit
+  ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared
 )
 
 target_include_directories(
-    ${TILEDB_UNITTEST_TARGET_NAME} PRIVATE
-    ${TILEDB_CORE_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/external/catch
+  tiledb_unit PRIVATE
+  ${TILEDB_CORE_INCLUDE_DIRS}
+  ${CMAKE_SOURCE_DIR}/external/catch
 )
 
-add_test(
-    NAME ${TILEDB_UNITTEST_TARGET_NAME}
-    COMMAND ${TILEDB_UNITTEST_TARGET_NAME} --durations=yes
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test)
+if (APPLE)
+  add_test(
+    NAME "tiledb_unit"
+    COMMAND env DYLD_FORCE_FLAT_NAMESPACE=1 $<TARGET_FILE:tiledb_unit> --durations=yes
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
+  )
+else()
+   add_test(
+    NAME "tiledb_unit"
+    COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
+  )
+endif()
+
 
 # Add custom target 'check'
 add_custom_target(
-    check COMMAND ${CMAKE_CTEST_COMMAND} -V 
-    DEPENDS ${TILEDB_UNITTEST_TARGET_NAME}
+  check COMMAND ${CMAKE_CTEST_COMMAND} -V
+  DEPENDS tiledb_unit
 )
