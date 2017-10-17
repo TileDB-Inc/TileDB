@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# Adapted from Pivotals libhdfs3 native c++ hdfs client project
+# https://github.com/Pivotal-Data-Attic/pivotalrd-libhdfs3
+
+die() {
+    echo "$@" 1>&2 ; exit 1
+}
+
+arg() {
+    echo "$1" | sed "s/^${2-[^=]*=}//" | sed "s/:/;/g"
+}
+
+# Detect directory information.
+source_dir=`cd "\`dirname \"$0\"\`";pwd`
+binary_dir=`pwd`
+
+# Choose the default install prefix.
+default_prefix=${source_dir}/dist
+
+# Choose the default dependency install prefix
+default_dependency=${DEPENDENCY_INSTALL_PREFIX}
+
+if [ x"${default_dependency}" = x"" ]; then
+    default_dependency="/opt/dependency"
+fi
+
+# Display bootstrap usage
+usage() {
+echo '
+Usage: '"$0"' [<options>]
+Options: [defaults in brackets after descriptions]
+Configuration:
+    --help                          print this message
+    --prefix=PREFIX                 install files in tree rooted at PREFIX
+                                    ['"${default_prefix}"']
+    --dependency=DIRs               specify the dependencies at DIRs, separated by colon 
+                                    ['"${default_dependency}"']
+    --enable-debug                  enable debug build
+    --enable-coverage               enable build with code coverage support
+    --enable-verbose                enable verbose status messages
+    --enable-hdfs                   enables the hdfs storage backend
+    
+Dependencies:
+    c/c++ compiler
+    GNU make
+    cmake           http://www.cmake.org/
+
+Example:
+    mkdir build
+    cd build
+    ../bootstrap --prefix=/path/to/install --dependency=/path/to/dep1:path/to/dep2...
+    make
+    make install                  
+'
+    exit 10
+}
+
+# Parse arguments
+prefix_dirs="${default_prefix}"
+dependency_dir="${default_dependency}"
+build_type="Release"
+enable_coverage="OFF"
+tiledb_verbose="OFF"
+tiledb_hdfs="OFF"
+while test $# != 0; do
+    case "$1" in
+    --prefix=*) dir=`arg "$1"`
+                prefix_dirs="$dir";;
+    --dependency=*) dir=`arg "$1"`
+                dependency_dir="$dir";;
+    --enable-debug) build_type="Debug";;
+    --enable-coverage) build_type="Coverage";;
+    --enable-verbose) tiledb_verbose="ON";;
+    --enable-hdfs) tiledb_hdfs="ON";;
+    --help) usage ;;
+    *) die "Unknown option: $1" ;;
+    esac
+    shift
+done
+
+if [ ${source_dir} = ${binary_dir} ]; then
+    die "cannot build the project in the source directory! Out-of-source build is enforced!"
+fi
+
+# Check clang compiler
+if [[ x"${CC}" = x"" ]]; then
+    CC=gcc
+fi
+
+if [[ x"${CXX}" = x"" ]]; then
+    CXX=g++
+fi
+
+c_compiler=`which ${CC}`
+cxx_compiler=`which ${CXX}`
+cmake=`which cmake`
+
+if [[ ! -x ${c_compiler} ]]; then
+    die "cannot find c compiler"
+fi
+
+if [[ ! -x ${cxx_compiler} ]]; then
+    die "cannot find cplusplus compiler"
+fi
+
+if [[ ! -x ${cmake} ]]; then
+    die "cannot find cmake"
+fi
+
+# Configure 
+${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
+    -DCMAKE_INSTALL_PREFIX=${prefix_dirs} \
+    -DCMAKE_C_COMPILER=${c_compiler} \
+    -DCMAKE_CXX_COMPILER=${cxx_compiler} \
+    -DCMAKE_PREFIX_PATH=${dependency_dir} \
+    -DTILEDB_VERBOSE=${tiledb_verbose} \
+    -DUSE_HDFS=${tiledb_hdfs} \
+    ${source_dir} || die "failed to configure the project"
+
+echo 'bootstrap success. Run "make" to build, "make check" to test.'
