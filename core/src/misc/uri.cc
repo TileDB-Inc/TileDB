@@ -79,19 +79,19 @@ bool URI::is_posix() const {
 }
 
 bool URI::is_hdfs(const std::string& path) {
-  return utils::starts_with(path, "hdfs:///");
+  return utils::starts_with(path, "hdfs://");
 }
 
 bool URI::is_hdfs() const {
-  return utils::starts_with(uri_, "hdfs:///");
+  return utils::starts_with(uri_, "hdfs://");
 }
 
 bool URI::is_s3(const std::string& path) {
-  return utils::starts_with(path, "s3:///");
+  return utils::starts_with(path, "s3://");
 }
 
 bool URI::is_s3() const {
-  return utils::starts_with(uri_, "s3:///");
+  return utils::starts_with(uri_, "s3://");
 }
 
 URI URI::join_path(const std::string& path) const {
