@@ -33,7 +33,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Default user definitions
 set(USE_HDFS False CACHE BOOL "Enables HDFS support using the official Hadoop JNI bindings")
-set(USE_HDFS3 False CACHE BOOL "Enables HDFS support using libhdfs3")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -64,17 +63,6 @@ include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
 # Find optional library dependencies
-if(USE_HDFS AND USE_HDFS3)
-  message(FATAL_ERROR "HDFS support must be provided through libhdfs or libhdfs3 exclusively")
-endif()
-
-
-if(USE_HDFS3)
-  find_package(LIBHDFS3 REQUIRED)
-  include_directories(${LIBHDFS3_INCLUDE_DIR})
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBHDFS3_LIBRARY})
-endif()
-
 if(USE_HDFS)
   find_package(LIBJVM REQUIRED)
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBJVM_LIBRARIES})
@@ -86,7 +74,7 @@ if(USE_HDFS)
 endif()
 
 # Set C++ 2011 flag
-include(SetCXX2011Flag)
+include(SetCXX2011Flag REQUIRED)
 
 # Set compiler flags
 set(CMAKE_CXX_FLAGS_DEBUG 
@@ -99,7 +87,7 @@ endif()
 
 # Add definitions
 add_definitions(-D_FILE_OFFSET_BITS=64)
-if(USE_HDFS OR USE_HDFS3)
+if(USE_HDFS)
   add_definitions(-DHAVE_HDFS)
   message(STATUS "The TileDB library is compiled with HDFS support.")
 endif()
