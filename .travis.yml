@@ -7,23 +7,23 @@ env:
         - USE_HDFS="OFF"
 
 install:
-    # Install library dependencies
-    - sudo scripts/install-deps.sh
-
-    # Install clangformat (v5.0)
-    # - sudo scripts/install-clangformat.sh
-
-    # Install hadoop and libhdfs3
-    - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
-
     # Install lcov to coveralls conversion + upload tool
     - sudo apt-get install lcov
     - gem install coveralls-lcov
 
-    # Build TileDB library and examples
-    - mkdir -p $TRAVIS_BUILD_DIR/build
-    - cd $TRAVIS_BUILD_DIR/build
-    - cmake -DCMAKE_BUILD_TYPE=Coverage -DTILEDB_VERBOSE=1 -DUSE_HDFS=$USE_HDFS ..
+    # Install clangformat (v5.0)
+    # - sudo scripts/install-clangformat.sh
+
+    # Install library dependencies
+    - sudo scripts/install-deps.sh
+
+    # Install hadoop if HDFS is enabled
+    - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
+
+    # Build TileDB
+    - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build
+    - if [ "$USE_HDFS" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-hdfs; fi
+    - if [ "$USE_HDFS" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
     - make -j4
     - make examples -j4
     
