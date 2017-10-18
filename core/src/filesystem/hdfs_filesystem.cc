@@ -296,7 +296,7 @@ Status ls(hdfsFS fs, const URI& uri, std::vector<std::string>* paths) {
   }
   for (int i = 0; i < numEntries; ++i) {
     auto path = std::string(fileList[i].mName);
-    if (!utils::starts_with("hdfs://", path)) {
+    if (!utils::starts_with(path, "hdfs://")) {
       path = std::string("hdfs://") + path;
     }
     paths->push_back(path);

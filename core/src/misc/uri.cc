@@ -113,11 +113,8 @@ std::string URI::to_path() const {
   if (is_posix())
     return uri_.substr(std::string("file://").size());
 
-  if (is_hdfs())
-    return uri_.substr(std::string("hdfs://").size());
-
-  if (is_s3())
-    return uri_.substr(std::string("s3://").size());
+  if (is_hdfs() || is_s3())
+    return uri_;
 
   // Error
   return "";

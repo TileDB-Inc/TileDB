@@ -213,6 +213,7 @@ Status StorageManager::move(
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));
   }
+
   return vfs_->move_path(old_uri, new_uri);
 }
 
@@ -314,6 +315,129 @@ Status StorageManager::load(FragmentMetadata* fragment_metadata) {
 Status StorageManager::move_path(
     const URI& old_uri, const URI& new_uri, bool force) {
   return vfs_->move_path(old_uri, new_uri);
+}
+
+ObjectType StorageManager::object_type(const URI& uri) const {
+  if (vfs_->is_file(uri.join_path(constants::group_filename)))
+    return ObjectType::GROUP;
+  if (vfs_->is_file(uri.join_path(constants::array_metadata_filename)))
+    return ObjectType::ARRAY;
+  return ObjectType::INVALID;
+}
+
+Status StorageManager::object_iter_begin(
+    ObjectIter** obj_iter, const char* path, WalkOrder order) {
+  // Sanity check
+  URI path_uri(path);
+  if (path_uri.is_invalid()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot create object iterator; Invalid input path"));
+  }
+
+  // Get all contents of path
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(path_uri, &uris));
+
+  // Create a new object iterator
+  *obj_iter = new ObjectIter();
+  (*obj_iter)->order_ = order;
+
+  // Include the uris that are TileDB objects in the iterator state
+  for (auto& uri : uris) {
+    if (object_type(uri) != ObjectType::INVALID) {
+      (*obj_iter)->objs_.push_back(uri);
+      if (order == WalkOrder::POSTORDER)
+        (*obj_iter)->expanded_.push_back(false);
+    }
+  }
+
+  return Status::Ok();
+}
+
+void StorageManager::object_iter_free(ObjectIter* obj_iter) {
+  delete obj_iter;
+}
+
+Status StorageManager::object_iter_next(
+    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
+  // Handle case there is no next
+  if (obj_iter->objs_.empty()) {
+    *has_next = false;
+    return Status::Ok();
+  }
+
+  // Retrieve next object
+  switch (obj_iter->order_) {
+    case WalkOrder::PREORDER:
+      RETURN_NOT_OK(object_iter_next_preorder(obj_iter, path, type, has_next));
+      break;
+    case WalkOrder::POSTORDER:
+      RETURN_NOT_OK(object_iter_next_postorder(obj_iter, path, type, has_next));
+      break;
+  }
+
+  return Status::Ok();
+}
+
+Status StorageManager::object_iter_next_postorder(
+    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
+  // Get all contents of the next URI recursively till the bottom,
+  // if the front of the list has not been expanded
+  if (obj_iter->expanded_.front() == false) {
+    uint64_t obj_num;
+    do {
+      obj_num = obj_iter->objs_.size();
+      std::vector<URI> uris;
+      RETURN_NOT_OK(vfs_->ls(obj_iter->objs_.front(), &uris));
+      obj_iter->expanded_.front() = true;
+
+      // Push the new TileDB objects in the front of the iterator's list
+      for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
+        if (object_type(*it) != ObjectType::INVALID) {
+          obj_iter->objs_.push_front(*it);
+          obj_iter->expanded_.push_front(false);
+        }
+      }
+    } while (obj_num != obj_iter->objs_.size());
+  }
+
+  // Prepare the values to be returned
+  URI front_uri = obj_iter->objs_.front();
+  obj_iter->next_ = front_uri.to_string();
+  *type = object_type(front_uri);
+  *path = obj_iter->next_.c_str();
+  *has_next = true;
+
+  // Pop the front (next URI) of the iterator's object list
+  obj_iter->objs_.pop_front();
+  obj_iter->expanded_.pop_front();
+
+  return Status::Ok();
+}
+
+Status StorageManager::object_iter_next_preorder(
+    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
+  // Prepare the values to be returned
+  URI front_uri = obj_iter->objs_.front();
+  obj_iter->next_ = front_uri.to_string();
+  *type = object_type(front_uri);
+  *path = obj_iter->next_.c_str();
+  *has_next = true;
+
+  // Pop the front (next URI) of the iterator's object list
+  obj_iter->objs_.pop_front();
+
+  // Get all contents of the next URI
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(front_uri, &uris));
+
+  // Push the new TileDB objects in the front of the iterator's list
+  for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
+    if (object_type(*it) != ObjectType::INVALID)
+      obj_iter->objs_.push_front(*it);
+  }
+
+  return Status::Ok();
 }
 
 Status StorageManager::query_finalize(Query* query) {
@@ -452,16 +576,6 @@ Status StorageManager::sync(const URI& uri) {
 
 Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
   return vfs_->write_to_file(uri, buffer->data(), buffer->size());
-}
-
-ObjectType StorageManager::object_type(const URI& uri) const {
-  if (vfs_->is_file(uri.join_path(constants::group_filename))) {
-    return ObjectType::GROUP;
-  } else if (vfs_->is_file(uri.join_path(constants::array_metadata_filename))) {
-    return ObjectType::ARRAY;
-  } else {
-    return ObjectType::INVALID;
-  }
 }
 
 /* ****************************** */

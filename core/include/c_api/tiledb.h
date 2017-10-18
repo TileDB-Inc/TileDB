@@ -135,6 +135,13 @@ typedef enum {
 #undef TILEDB_COMPRESSOR_ENUM
 } tiledb_compressor_t;
 
+/** Walk traversal order. */
+typedef enum {
+#define TILEDB_WALK_ORDER_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_WALK_ORDER_ENUM
+} tiledb_walk_order_t;
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
@@ -1065,6 +1072,34 @@ TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
  */
 TILEDB_EXPORT int tiledb_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
+
+/**
+ * Walks (iterates) over the TileDB objects contained in *path*. The traversal
+ * is done recursively in the order defined by the user. The user provides
+ * a callback function which is applied on each of the visited TileDB objects.
+ * The iteration continues for as long the callback returns non-zero, and stops
+ * when the callback returns 0. Note that this function ignores any object
+ * (e.g., file or directory) that is not TileDB-related.
+ *
+ * @param ctx The TileDB context.
+ * @param path The path in which the traversal will occur.
+ * @param order The order of the recursive traversal (e.g., pre-order or
+ *     post-order.
+ * @param callback The callback function to be applied on every visited object.
+ *     The callback should return 0 if the iteration must stop, and 1
+ *     if the iteration must continue. It takes as input the currently visited
+ *     path, the type of that path (e.g., array or group), and the data
+ *     provided by the user for the callback. The callback returns -1 upon
+ *     error. Note that `path` in the callback will be an **absolute** path.
+ * @param data The data passed in the callback as the last argument.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_walk(
+    tiledb_ctx_t* ctx,
+    const char* path,
+    tiledb_walk_order_t order,
+    int (*callback)(const char*, tiledb_object_t, void*),
+    void* data);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus
