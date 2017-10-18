@@ -26,12 +26,12 @@ build_install_blosc() {
 }
 
 install_apt_pkgs() {
-  apt-get -y install g++ wget cmake \
+  apt-get -y install gcc g++ wget cmake \
     zlib1g-dev libbz2-dev liblz4-dev || die "could not install apt pkg dependencies"
 }
 
 install_yum_pkgs() {
-  yum -y install g++ wget cmake \
+  yum -y install gcc g++ wget cmake \
     zlib-devel bzip2-devel lz4-devel || die "could not install yum pkg dependencies"
 }
 
