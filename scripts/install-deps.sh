@@ -31,7 +31,7 @@ install_apt_pkgs() {
 
 install_yum_pkgs() {
   yum -y install epel-release &&
-  yum -y install gcc g++ wget cmake \
+  yum -y install gcc gcc-c++ which wget cmake \
     zlib-devel bzip2-devel lz4-devel || die "could not install yum pkg dependencies"
 }
 
