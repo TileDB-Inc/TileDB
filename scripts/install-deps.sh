@@ -8,9 +8,8 @@ build_install_zstd() {
   TEMP=`mktemp -d` || die "failed to create zstd tmp build dir"
   pushd $TEMP
   wget https://github.com/facebook/zstd/archive/v1.3.2.tar.gz
-  tar xzvf v1.3.2.tar.gz || die "failed to uncompress zstd repo"
-  cd zstd-1.3.2 && mkdir build && cd build
-  make install PREFIX='/usr' || die "zstd build install failed"
+  tar xzf v1.3.2.tar.gz || die "failed to uncompress zstd repo"
+  cd zstd-1.3.2/lib  && make install PREFIX='/usr' || die "zstd build install failed"
   popd && rm -rf $TEMP
 }
 
@@ -18,7 +17,7 @@ build_install_blosc() {
   TEMP=`mktemp -d` || die "failed to create blosc tmp build dir"
   pushd $TEMP
   wget https://github.com/Blosc/c-blosc/archive/v1.12.1.tar.gz
-  tar xvzf v1.12.1.tar.gz || die "failed to uncompress blosc repo"
+  tar xzf v1.12.1.tar.gz || die "failed to uncompress blosc repo"
   cd c-blosc-1.12.1 && mkdir build && cd build
   cmake -DCMAKE_INSTALL_PREFIX='/usr' .. || die "blosc cmake failed"
   cmake --build . --target install || die "bloc build install failed"
@@ -31,6 +30,7 @@ install_apt_pkgs() {
 }
 
 install_yum_pkgs() {
+  yum -y install epel-release &&
   yum -y install gcc g++ wget cmake \
     zlib-devel bzip2-devel lz4-devel || die "could not install yum pkg dependencies"
 }
