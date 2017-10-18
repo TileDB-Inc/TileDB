@@ -1,6 +1,6 @@
 *.swp
 build/*
-dev/*
+dist/*
 cmake-build-default/*
 cmake-build-debug/*
 cmake-build-release/*
