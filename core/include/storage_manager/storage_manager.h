@@ -35,6 +35,7 @@
 #define TILEDB_STORAGE_MANAGER_H
 
 #include <condition_variable>
+#include <list>
 #include <map>
 #include <mutex>
 #include <queue>
@@ -50,12 +51,34 @@
 #include "status.h"
 #include "uri.h"
 #include "vfs.h"
+#include "walk_order.h"
 
 namespace tiledb {
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
  public:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  class ObjectIter {
+   public:
+    /**
+     * There is a one-to-one correspondence between `expanded_` and `objs_`.
+     * An `expanded_` value is `true` if the corresponding `objs_` path
+     * has been expanded to the paths it contains in a post ored traversal.
+     * This is not used in a preorder traversal.
+     */
+    std::list<bool> expanded_;
+    /** The next URI in string format. */
+    std::string next_;
+    /** The next objects to be visited. */
+    std::list<URI> objs_;
+    /** The traversal order of the iterator. */
+    WalkOrder order_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -187,6 +210,73 @@ class StorageManager {
    */
   Status move_path(const URI& old_uri, const URI& new_uri, bool force = false);
 
+  /**
+   * Creates a new object iterator for the input path.
+   *
+   * @param obj_iter The object iterator to be created (memory is allocated for
+   *     it by the function).
+   * @param path The path the iterator will target at.
+   * @param order The traversal order of the iterator.
+   * @return Status
+   */
+  Status object_iter_begin(
+      ObjectIter** obj_iter, const char* path, WalkOrder order);
+
+  /** Frees the object iterator. */
+  void object_iter_free(ObjectIter* obj_iter);
+
+  /**
+   * Retrieves the next object path and type.
+   *
+   * @param obj_iter The object iterator.
+   * @param path The object path that is retrieved.
+   * @param type The object type that is retrieved.
+   * @param has_next True if an object path was retrieved and false otherwise.
+   * @return Status
+   */
+  Status object_iter_next(
+      ObjectIter* obj_iter,
+      const char** path,
+      ObjectType* type,
+      bool* has_next);
+
+  /**
+   * Retrieves the next object in the post-order traversal.
+   *
+   * @param obj_iter The object iterator.
+   * @param path The object path that is retrieved.
+   * @param type The object type that is retrieved.
+   * @param has_next True if an object path was retrieved and false otherwise.
+   * @return Status
+   */
+  Status object_iter_next_postorder(
+      ObjectIter* obj_iter,
+      const char** path,
+      ObjectType* type,
+      bool* has_next);
+
+  /**
+   * Retrieves the next object in the post-order traversal.
+   *
+   * @param obj_iter The object iterator.
+   * @param path The object path that is retrieved.
+   * @param type The object type that is retrieved.
+   * @param has_next True if an object path was retrieved and false otherwise.
+   * @return Status
+   */
+  Status object_iter_next_preorder(
+      ObjectIter* obj_iter,
+      const char** path,
+      ObjectType* type,
+      bool* has_next);
+
+  /**
+   * Returns the tiledb object type
+   * @param uri Path to tiledb object resource
+   * @return ObjectType
+   */
+  ObjectType object_type(const URI& uri) const;
+
   /** Finalizes a query. */
   Status query_finalize(Query* query);
 
@@ -277,13 +367,6 @@ class StorageManager {
    * @return Status.
    */
   Status write_to_file(const URI& uri, Buffer* buffer) const;
-
-  /**
-   * Returns the tiledb object type
-   * @param uri Path to tiledb object resource
-   * @return ObjectType
-   */
-  ObjectType object_type(const URI& uri) const;
 
  private:
   /* ********************************* */

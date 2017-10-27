@@ -1,11 +1,11 @@
 /**
- * @file   unit-capi-error.cc
+ * @file   tiledb_walk.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,34 +28,46 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API error return code.
+ * It shows how to explore the contents of a TileDB directory.
  */
 
-#include "catch.hpp"
-#include "tiledb.h"
-
+#include <tiledb.h>
 #include <iostream>
 
-TEST_CASE("C API: Test error and error message", "[capi]") {
+int print_path(const char* path, tiledb_object_t type, void* data);
+
+int main() {
+  // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_create(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_create(&ctx);
 
-  const char* bad_path = nullptr;
-  rc = tiledb_group_create(ctx, bad_path);
-  CHECK(rc == TILEDB_ERR);
+  // Walk in a path with a pre- and post-order traversal
+  std::cout << "Preorder traversal:\n";
+  tiledb_walk(ctx, "my_group", TILEDB_PREORDER, print_path, nullptr);
+  std::cout << "\nPostorder traversal:\n";
+  tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, nullptr);
 
-  tiledb_error_t* err;
-  rc = tiledb_error_last(ctx, &err);
-  CHECK(rc == TILEDB_OK);
-
-  const char* errmsg;
-  rc = tiledb_error_message(ctx, err, &errmsg);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(
-      errmsg, Catch::Equals("Error: Invalid group directory argument is NULL"));
-
-  // Clean up
-  tiledb_error_free(ctx, err);
+  // Finalize context
   tiledb_ctx_free(ctx);
+
+  return 0;
+}
+
+int print_path(const char* path, tiledb_object_t type, void* data) {
+  // Simply print the path and type
+  std::cout << path << " ";
+  switch (type) {
+    case TILEDB_ARRAY:
+      std::cout << "ARRAY";
+      break;
+    case TILEDB_GROUP:
+      std::cout << "GROUP";
+      break;
+    default:
+      std::cout << "INVALID";
+  }
+  std::cout << "\n";
+
+  // Always iterate till the end
+  return 1;
 }

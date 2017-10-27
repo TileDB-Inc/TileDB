@@ -236,6 +236,8 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
     return Status::Ok();
   }
   while ((next_path = readdir(dir)) != 0) {
+    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
+      continue;
     auto abspath = path + "/" + next_path->d_name;
     paths->push_back(abspath);
   }

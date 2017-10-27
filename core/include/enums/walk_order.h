@@ -1,12 +1,11 @@
 /**
- * @file   unit-capi-error.cc
+ * @file walk_order.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,34 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API error return code.
+ * This file defines the tiledb WalkOrder enum that maps to the
+ * tiledb_walk_order_t C-api enum
  */
 
-#include "catch.hpp"
-#include "tiledb.h"
+#ifndef TILEDB_WALK_ORDER_H
+#define TILEDB_WALK_ORDER_H
 
-#include <iostream>
+namespace tiledb {
 
-TEST_CASE("C API: Test error and error message", "[capi]") {
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_create(&ctx);
-  CHECK(rc == TILEDB_OK);
+enum class WalkOrder : char {
+#define TILEDB_WALK_ORDER_ENUM(id) id
+#include "tiledb_enum.inc"
+#undef TILEDB_WALK_ORDER_ENUM
+};
 
-  const char* bad_path = nullptr;
-  rc = tiledb_group_create(ctx, bad_path);
-  CHECK(rc == TILEDB_ERR);
+}  // namespace tiledb
 
-  tiledb_error_t* err;
-  rc = tiledb_error_last(ctx, &err);
-  CHECK(rc == TILEDB_OK);
-
-  const char* errmsg;
-  rc = tiledb_error_message(ctx, err, &errmsg);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(
-      errmsg, Catch::Equals("Error: Invalid group directory argument is NULL"));
-
-  // Clean up
-  tiledb_error_free(ctx, err);
-  tiledb_ctx_free(ctx);
-}
+#endif  // TILEDB_WALK_ORDER_H

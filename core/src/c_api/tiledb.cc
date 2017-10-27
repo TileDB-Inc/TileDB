@@ -85,8 +85,8 @@ struct tiledb_array_metadata_t {
 struct tiledb_attribute_iter_t {
   const tiledb_array_metadata_t* array_metadata_;
   tiledb_attribute_t* attr_;
-  int attr_num_;
-  int current_attr_;
+  unsigned int attr_num_;
+  unsigned int current_attr_;
 };
 
 struct tiledb_dimension_t {
@@ -96,8 +96,8 @@ struct tiledb_dimension_t {
 struct tiledb_dimension_iter_t {
   const tiledb_domain_t* domain_;
   tiledb_dimension_t* dim_;
-  int dim_num_;
-  int current_dim_;
+  unsigned int dim_num_;
+  unsigned int current_dim_;
 };
 
 struct tiledb_domain_t {
@@ -608,7 +608,7 @@ int tiledb_dimension_iter_create(
   (*dim_it)->domain_ = domain;
   (*dim_it)->dim_num_ = domain->domain_->dim_num();
   (*dim_it)->current_dim_ = 0;
-  if ((*dim_it)->dim_num_ <= 0) {
+  if ((*dim_it)->dim_num_ == 0) {
     (*dim_it)->dim_ = nullptr;
   } else {
     // Create a dimension struct inside the iterator struct
@@ -681,7 +681,7 @@ int tiledb_dimension_iter_next(
   if (dim_it->dim_ != nullptr) {
     delete dim_it->dim_->dim_;
 
-    if (dim_it->current_dim_ >= 0 && dim_it->current_dim_ < dim_it->dim_num_)
+    if (dim_it->current_dim_ < dim_it->dim_num_)
       dim_it->dim_->dim_ = new tiledb::Dimension(
           dim_it->domain_->domain_->dimension(dim_it->current_dim_));
     else
@@ -1053,7 +1053,7 @@ int tiledb_attribute_iter_create(
 
   // Initialize the rest members of the iterator
   (*attr_it)->current_attr_ = 0;
-  if ((*attr_it)->attr_num_ <= 0) {
+  if ((*attr_it)->attr_num_ == 0) {
     (*attr_it)->attr_ = nullptr;
   } else {
     // Create an attribute struct inside the iterator struct
@@ -1124,8 +1124,7 @@ int tiledb_attribute_iter_next(
   ++(attr_it->current_attr_);
   if (attr_it->attr_ != nullptr) {
     delete attr_it->attr_->attr_;
-    if (attr_it->current_attr_ >= 0 &&
-        attr_it->current_attr_ < attr_it->attr_num_) {
+    if (attr_it->current_attr_ < attr_it->attr_num_) {
       attr_it->attr_->attr_ = new tiledb::Attribute(
           attr_it->array_metadata_->array_metadata_->attribute(
               attr_it->current_attr_));
@@ -1375,7 +1374,7 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_name) {
 
 int tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
-  if (sanity_check(ctx))
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto uri = tiledb::URI(path);
   *type = static_cast<tiledb_object_t>(ctx->storage_manager_->object_type(uri));
@@ -1383,7 +1382,7 @@ int tiledb_object_type(
 }
 
 int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
-  if (sanity_check(ctx))
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto uri = tiledb::URI(path);
   if (save_error(ctx, ctx->storage_manager_->remove_path(uri)))
@@ -1393,11 +1392,63 @@ int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
 
 int tiledb_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force) {
-  if (sanity_check(ctx))
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto old_uri = tiledb::URI(old_path);
   auto new_uri = tiledb::URI(new_path);
   if (save_error(ctx, ctx->storage_manager_->move(old_uri, new_uri, force)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int tiledb_walk(
+    tiledb_ctx_t* ctx,
+    const char* path,
+    tiledb_walk_order_t order,
+    int (*callback)(const char*, tiledb_object_t, void*),
+    void* data) {
+  // Sanity checks
+  if (sanity_check(ctx))
+    return TILEDB_ERR;
+  if (callback == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error(
+            "Cannot initiate walk; Invalid callback function"));
+    return TILEDB_ERR;
+  }
+
+  // Create an object iterator
+  tiledb::StorageManager::ObjectIter* obj_iter;
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->object_iter_begin(
+              &obj_iter, path, (tiledb::WalkOrder)order)))
+    return TILEDB_ERR;
+
+  // For as long as there is another object and the callback indicates to
+  // continue, walk over the TileDB objects in the path
+  const char* obj_name;
+  tiledb::ObjectType obj_type;
+  bool has_next;
+  int rc = 0;
+  do {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->object_iter_next(
+                obj_iter, &obj_name, &obj_type, &has_next))) {
+      ctx->storage_manager_->object_iter_free(obj_iter);
+      return TILEDB_ERR;
+    }
+    if (!has_next)
+      break;
+    rc = callback(obj_name, tiledb_object_t(obj_type), data);
+  } while (rc == 1);
+
+  // Clean up
+  ctx->storage_manager_->object_iter_free(obj_iter);
+
+  if (rc == -1)
     return TILEDB_ERR;
   return TILEDB_OK;
 }
