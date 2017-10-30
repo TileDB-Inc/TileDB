@@ -37,6 +37,7 @@ install_yum_pkgs() {
 
 install_brew_pkgs() {
   brew install wget cmake lzlib lz4 bzip2 zstd || die "could not install brew pkg dependencies"
+  brew install tiledb-inc/stable/blosc || die "could not install blosc pkg dependency"
 }
 
 install_deps() {
@@ -58,7 +59,6 @@ install_deps() {
   elif [[ $OSTYPE == darwin* ]]; then
     if [ -n "$(command -v brew)" ]; then
       install_brew_pkgs
-      build_install_blosc
     else
       die "homebrew is not installed!"
     fi
