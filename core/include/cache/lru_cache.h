@@ -80,6 +80,23 @@ class LRUCache {
   /*                API                */
   /* ********************************* */
 
+  /** Clears the cache, deleting all cached items. */
+  void clear();
+
+  /**
+   * Returns a constant iterator at the beginning of the linked list of
+   * cached items, where items closest to the head (beginning) are going
+   * to be evicted from the cache sooner.
+   */
+  std::list<LRUCacheItem>::const_iterator item_iter_begin() const;
+
+  /**
+   * Returns a constant iterator at the end of the linked list of
+   * cached items, where items closest to the head (beginning) are going
+   * to be evicted from the cache sooner.
+   */
+  std::list<LRUCacheItem>::const_iterator item_iter_end() const;
+
   /**
    * Inserts an object with a given key and size into the cache. If an object
    * exists with the same key, the new object overwrites the old one.
@@ -113,9 +130,6 @@ class LRUCache {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** A logical clock, which ticks upon every object insertion or reference. */
-  uint64_t clock_;
 
   /**
    * Doubly-connected linked list of cache items. The head of the list is the
