@@ -89,6 +89,22 @@ bool Fragment::dense() const {
   return dense_;
 }
 
+uint64_t Fragment::file_coords_size() const {
+  assert(metadata_ != nullptr);
+  auto attribute_num = query_->array_metadata()->attribute_num();
+  return metadata_->file_sizes(attribute_num);
+}
+
+uint64_t Fragment::file_size(unsigned int attribute_id) const {
+  assert(metadata_ != nullptr);
+  return metadata_->file_sizes(attribute_id);
+}
+
+uint64_t Fragment::file_var_size(unsigned int attribute_id) const {
+  assert(metadata_ != nullptr);
+  return metadata_->file_var_sizes(attribute_id);
+}
+
 Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
     assert(metadata_ != NULL);

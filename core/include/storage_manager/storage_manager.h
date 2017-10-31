@@ -153,9 +153,6 @@ class StorageManager {
   /** Safely moves a TileDB resource. */
   Status move(const URI& old_uri, const URI& new_uri, bool force = false) const;
 
-  /** Retrieves the size of the input URI file. */
-  Status file_size(const URI& uri, uint64_t* size) const;
-
   /**
    * Creates a TileDB group.
    *

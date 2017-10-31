@@ -51,6 +51,7 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri) {
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
+  std::memcpy(version_, constants::version, sizeof(version_));
 }
 
 FragmentMetadata::~FragmentMetadata() {
@@ -135,6 +136,7 @@ bool FragmentMetadata::dense() const {
 }
 
 Status FragmentMetadata::deserialize(ConstBuffer* buf) {
+  RETURN_NOT_OK(load_version(buf));
   RETURN_NOT_OK(load_non_empty_domain(buf));
   RETURN_NOT_OK(load_mbrs(buf));
   RETURN_NOT_OK(load_bounding_coords(buf));
@@ -142,12 +144,24 @@ Status FragmentMetadata::deserialize(ConstBuffer* buf) {
   RETURN_NOT_OK(load_tile_var_offsets(buf));
   RETURN_NOT_OK(load_tile_var_sizes(buf));
   RETURN_NOT_OK(load_last_tile_cell_num(buf));
+  RETURN_NOT_OK(load_file_sizes(buf));
+  RETURN_NOT_OK(load_file_var_sizes(buf));
 
   return Status::Ok();
 }
 
 const void* FragmentMetadata::domain() const {
   return domain_;
+}
+
+uint64_t FragmentMetadata::file_sizes(unsigned int attribute_id) const {
+  assert(attribute_id < file_sizes_.size());
+  return file_sizes_[attribute_id];
+}
+
+uint64_t FragmentMetadata::file_var_sizes(unsigned int attribute_id) const {
+  assert(attribute_id < file_var_sizes_.size());
+  return file_var_sizes_[attribute_id];
 }
 
 const URI& FragmentMetadata::fragment_uri() const {
@@ -210,6 +224,7 @@ const void* FragmentMetadata::non_empty_domain() const {
 }
 
 Status FragmentMetadata::serialize(Buffer* buf) {
+  RETURN_NOT_OK(write_version(buf));
   RETURN_NOT_OK(write_non_empty_domain(buf));
   RETURN_NOT_OK(write_mbrs(buf));
   RETURN_NOT_OK(write_bounding_coords(buf));
@@ -217,6 +232,8 @@ Status FragmentMetadata::serialize(Buffer* buf) {
   RETURN_NOT_OK(write_tile_var_offsets(buf));
   RETURN_NOT_OK(write_tile_var_sizes(buf));
   RETURN_NOT_OK(write_last_tile_cell_num(buf));
+  RETURN_NOT_OK(write_file_sizes(buf));
+  RETURN_NOT_OK(write_file_var_sizes(buf));
 
   return Status::Ok();
 }
@@ -279,6 +296,42 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
     }
     bounding_coords_[i] = bounding_coords;
   }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_sizes_attr#0 (uint64_t)
+// ...
+// file_sizes_attr#attribute_num (uint64_t)
+Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
+  unsigned int attribute_num = array_metadata_->attribute_num();
+  file_sizes_.resize(attribute_num + 1);
+  Status st =
+      buff->read(&file_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
+
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading tile offsets failed"));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_sizes_attr#0 (uint64_t)
+// ...
+// file_sizes_attr#attribute_num (uint64_t)
+Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
+  unsigned int attribute_num = array_metadata_->attribute_num();
+  file_var_sizes_.resize(attribute_num + 1);
+  Status st =
+      buff->read(&file_var_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
+
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading tile offsets failed"));
+  }
+
   return Status::Ok();
 }
 
@@ -484,6 +537,13 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
 }
 
 // ===== FORMAT =====
+// version (int[3])
+Status FragmentMetadata::load_version(ConstBuffer* buff) {
+  RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
 // bounding_coords_num(uint64_t)
 // bounding_coords_#1(void*) bounding_coords_#2(void*) ...
 Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
@@ -507,6 +567,38 @@ Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
                                         "Writing bounding coordinates failed"));
     }
   }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_sizes_attr#0 (uint64_t)
+// ...
+// file_sizes_attr#attribute_num (uint64_t)
+Status FragmentMetadata::write_file_sizes(Buffer* buff) {
+  unsigned int attribute_num = array_metadata_->attribute_num();
+  Status st = buff->write(
+      &next_tile_offsets_[0], (attribute_num + 1) * sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing file sizes failed"));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_var_sizes_attr#0 (uint64_t)
+// ...
+// file_var_sizes_attr#attribute_num (uint64_t)
+Status FragmentMetadata::write_file_var_sizes(Buffer* buff) {
+  unsigned int attribute_num = array_metadata_->attribute_num();
+  Status st = buff->write(
+      &next_tile_var_offsets_[0], (attribute_num + 1) * sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing file sizes failed"));
+  }
+
   return Status::Ok();
 }
 
@@ -689,6 +781,13 @@ Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
                                         "Writing variable tile sizes failed"));
     }
   }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// version (int[3])
+Status FragmentMetadata::write_version(Buffer* buff) {
+  RETURN_NOT_OK(buff->write(constants::version, sizeof(constants::version)));
   return Status::Ok();
 }
 

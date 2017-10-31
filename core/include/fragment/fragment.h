@@ -78,6 +78,15 @@ class Fragment {
   /** Returns true if the fragment is dense, and false if it is sparse. */
   bool dense() const;
 
+  /** Returns the size of the coordinates file. */
+  uint64_t file_coords_size() const;
+
+  /** Returns the size of the file of attribute with the input id. */
+  uint64_t file_size(unsigned int attribute_id) const;
+
+  /** Returns the size of the file of variable attribute with the input id. */
+  uint64_t file_var_size(unsigned int attribute_id) const;
+
   /**
    * Finalizes the fragment, properly freeing up memory space.
    *

@@ -55,8 +55,17 @@ namespace tiledb {
 /* ****************************** */
 
 TileIO::TileIO(StorageManager* storage_manager, const URI& uri)
-    : uri_(uri)
-    , storage_manager_(storage_manager) {
+    : storage_manager_(storage_manager)
+    , uri_(uri) {
+  file_size_ = 0;
+  buffer_ = new Buffer();
+}
+
+TileIO::TileIO(
+    StorageManager* storage_manager, const URI& uri, uint64_t file_size)
+    : file_size_(file_size)
+    , storage_manager_(storage_manager)
+    , uri_(uri) {
   buffer_ = new Buffer();
 }
 
@@ -68,8 +77,8 @@ TileIO::~TileIO() {
 /*               API              */
 /* ****************************** */
 
-Status TileIO::file_size(uint64_t* size) const {
-  return storage_manager_->file_size(uri_, size);
+uint64_t TileIO::file_size() const {
+  return file_size_;
 }
 
 Status TileIO::read(
