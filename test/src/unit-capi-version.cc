@@ -31,18 +31,18 @@
  * Tests for the C API library version
  */
 
+#include "constants.h"
 #include "tiledb.h"
-
 #include "catch.hpp"
 
-TEST_CASE("C API: Test version", "[capi]") {
+TEST_CASE("C API: Test version", "[capi] [version]")  {
   int major = -1;
   int minor = -1;
   int rev = -1;
 
   tiledb_version(&major, &minor, &rev);
 
-  CHECK(major == 1);
-  CHECK(minor == 0);
-  CHECK(rev == 0);
+  CHECK(major == tiledb::constants::version[0]);
+  CHECK(minor == tiledb::constants::version[1]);
+  CHECK(rev == tiledb::constants::version[2]);
 }
