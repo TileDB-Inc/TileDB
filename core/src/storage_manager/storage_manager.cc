@@ -217,10 +217,6 @@ Status StorageManager::move(
   return vfs_->move_path(old_uri, new_uri);
 }
 
-Status StorageManager::file_size(const URI& uri, uint64_t* size) const {
-  return vfs_->file_size(uri, size);
-}
-
 Status StorageManager::group_create(const std::string& group) const {
   // Create group URI
   URI uri(group);
@@ -269,8 +265,8 @@ Status StorageManager::load(
       array_uri.join_path(constants::array_metadata_filename);
 
   // Read from file
-  auto tile_io = new TileIO(this, array_metadata_uri);
   auto tile = (Tile*)nullptr;
+  auto tile_io = new TileIO(this, array_metadata_uri);
   RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
 
   // Deserialize

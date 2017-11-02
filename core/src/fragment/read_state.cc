@@ -959,15 +959,13 @@ Status ReadState::compute_bytes_to_copy(
 Status ReadState::compute_tile_compressed_size(
     uint64_t tile_i,
     unsigned int attribute_id,
-    TileIO* tile_io,
+    uint64_t file_size,
     uint64_t* tile_compressed_size) const {
   auto& tile_offsets = metadata_->tile_offsets();
   uint64_t tile_num = metadata_->tile_num();
-  uint64_t file_size = 0;
 
   assert(tile_num != 0);
-
-  RETURN_NOT_OK(tile_io->file_size(&file_size));
+  assert(file_size != 0);
 
   *tile_compressed_size = (tile_i == tile_num - 1) ?
                               file_size - tile_offsets[attribute_id][tile_i] :
@@ -980,15 +978,13 @@ Status ReadState::compute_tile_compressed_size(
 Status ReadState::compute_tile_compressed_var_size(
     uint64_t tile_i,
     unsigned int attribute_id,
-    TileIO* tile_io,
+    uint64_t file_size,
     uint64_t* tile_compressed_size) const {
   auto& tile_var_offsets = metadata_->tile_var_offsets();
-  uint64_t file_size = 0;
   uint64_t tile_num = metadata_->tile_num();
 
   assert(tile_num != 0);
-
-  RETURN_NOT_OK(tile_io->file_size(&file_size));
+  assert(file_size != 0);
 
   *tile_compressed_size =
       (tile_i == tile_num - 1) ?
@@ -1361,18 +1357,26 @@ void ReadState::init_tile_io() {
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_metadata_->attribute(i);
     bool var_size = attr->var_size();
-    tile_io_.emplace_back(
-        new TileIO(query_->storage_manager(), fragment_->attr_uri(i)));
+    tile_io_.emplace_back(new TileIO(
+        query_->storage_manager(),
+        fragment_->attr_uri(i),
+        fragment_->file_size(i)));
     if (var_size)
-      tile_io_var_.emplace_back(
-          new TileIO(query_->storage_manager(), fragment_->attr_var_uri(i)));
+      tile_io_var_.emplace_back(new TileIO(
+          query_->storage_manager(),
+          fragment_->attr_var_uri(i),
+          fragment_->file_var_size(i)));
     else
       tile_io_var_.emplace_back(nullptr);
   }
-  tile_io_.emplace_back(
-      new TileIO(query_->storage_manager(), fragment_->coords_uri()));
-  tile_io_.emplace_back(
-      new TileIO(query_->storage_manager(), fragment_->coords_uri()));
+  tile_io_.emplace_back(new TileIO(
+      query_->storage_manager(),
+      fragment_->coords_uri(),
+      fragment_->file_coords_size()));
+  tile_io_.emplace_back(new TileIO(
+      query_->storage_manager(),
+      fragment_->coords_uri(),
+      fragment_->file_coords_size()));
 }
 
 bool ReadState::is_empty_attribute(unsigned int attribute_id) const {
@@ -1410,7 +1414,7 @@ Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {
 
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
-      tile_i, attribute_id_real, tile_io, &tile_compressed_size));
+      tile_i, attribute_id_real, tile_io->file_size(), &tile_compressed_size));
 
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id_real][tile_i];
   uint64_t tile_size = metadata_->cell_num(tile_i) *
@@ -1439,7 +1443,7 @@ Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
 
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
-      tile_i, attribute_id, tile_io, &tile_compressed_size));
+      tile_i, attribute_id, tile_io->file_size(), &tile_compressed_size));
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id][tile_i];
   uint64_t tile_size =
       metadata_->cell_num(tile_i) * constants::cell_var_offset_size;
@@ -1453,7 +1457,10 @@ Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
   // Get size of decompressed tile
   uint64_t tile_compressed_var_size;
   RETURN_NOT_OK(compute_tile_compressed_var_size(
-      tile_i, attribute_id, tile_io_var, &tile_compressed_var_size));
+      tile_i,
+      attribute_id,
+      tile_io_var->file_size(),
+      &tile_compressed_var_size));
   uint64_t tile_var_size = metadata_->tile_var_sizes()[attribute_id][tile_i];
   uint64_t file_var_offset =
       metadata_->tile_var_offsets()[attribute_id][tile_i];

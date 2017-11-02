@@ -248,7 +248,7 @@ const char* unordered_str = "unordered";
 const char* null_str = "null";
 
 /** The version in format { major, minor, revision }. */
-const int version[3] = {1, 0, 0};
+const int version[3] = {1, 2, 0};
 
 /** The size of a tile chunk. */
 const uint64_t tile_chunk_size = INT_MAX;

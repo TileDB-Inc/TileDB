@@ -59,6 +59,15 @@ class TileIO {
    */
   TileIO(StorageManager* storage_manager, const URI& uri);
 
+  /**
+   * Constructor.
+   *
+   * @param storage_manager The storage manager.
+   * @param uri The name of the file that stores data.
+   * @param file_size The size of the file pointed by `uri`.
+   */
+  TileIO(StorageManager* storage_manager, const URI& uri, uint64_t file_size);
+
   /** Destructor. */
   ~TileIO();
 
@@ -66,8 +75,8 @@ class TileIO {
   /*                API                */
   /* ********************************* */
 
-  /** Retrieves the size of the file. */
-  Status file_size(uint64_t* size) const;
+  /** Returns the size of the file. */
+  uint64_t file_size() const;
 
   /**
    * Reads into a tile from the file.
@@ -153,17 +162,20 @@ class TileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The file URI. */
-  URI uri_;
-
   /**
    * An internal buffer used to facilitate compression/decompression (or
    * other future filters).
    */
   Buffer* buffer_;
 
+  /** The size of the file pointed by `uri_`. */
+  uint64_t file_size_;
+
   /** The storage manager object. */
   StorageManager* storage_manager_;
+
+  /** The file URI. */
+  URI uri_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

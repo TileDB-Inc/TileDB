@@ -454,14 +454,14 @@ class ReadState {
    *
    * @param tile_i The tile index.
    * @param attribute_id The attribute id.
-   * @param tile_io The tile I/O object.
+   * @param file_size The size of the file the input tile belongs to.
    * @param tile_compressed_size The size to be retrieved.
    * @return Status
    */
   Status compute_tile_compressed_size(
       uint64_t tile_i,
       unsigned int attribute_id,
-      TileIO* tile_io,
+      uint64_t file_size,
       uint64_t* tile_compressed_size) const;
 
   /**
@@ -470,14 +470,14 @@ class ReadState {
    *
    * @param tile_i The tile index.
    * @param attribute_id The attribute id.
-   * @param tile_io The tile I/O object.
+   * @param file_size The size of the file the input tile belongs to.
    * @param tile_compressed_size The size to be retrieved.
    * @return Status
    */
   Status compute_tile_compressed_var_size(
       uint64_t tile_i,
       unsigned int attribute_id,
-      TileIO* tile_io,
+      uint64_t file_size,
       uint64_t* tile_compressed_size) const;
 
   /**
