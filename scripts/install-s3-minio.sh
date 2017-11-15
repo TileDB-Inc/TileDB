@@ -10,6 +10,7 @@ mkdir build
 cd build
 export AWS_SDK_CPP=$(pwd)
 #cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;core;transfer;config" ..
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3" ..
 make
 sudo make install
+sed -i 's/-fno-exceptions;//g' aws-cpp-sdk-core/aws-cpp-sdk-core-targets.cmake
