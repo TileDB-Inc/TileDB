@@ -459,7 +459,7 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain);
 
 /**
  * Retrieves the tile extent of the dimension.
@@ -470,7 +470,7 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** tile_extent);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent);
 
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,

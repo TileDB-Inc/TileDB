@@ -338,12 +338,12 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
-  const void* dim_domain;
+  void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(dim_domain, &DIM_DOMAIN[0], DIM_DOMAIN_SIZE));
 
-  const void* tile_extent;
+  void* tile_extent;
   rc = tiledb_dimension_get_tile_extent(ctx_, dim, &tile_extent);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
