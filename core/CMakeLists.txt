@@ -27,7 +27,7 @@
 
 # Include core header directories
 file(GLOB TILEDB_CORE_INCLUDE_DIRS "include/*")
-include_directories(${TILEDB_CORE_INCLUDE_DIRS})
+include_directories(BEFORE ${TILEDB_CORE_INCLUDE_DIRS})
 
 # Gather the core source files
 file(GLOB_RECURSE TILEDB_CORE_HEADERS "include/*")
