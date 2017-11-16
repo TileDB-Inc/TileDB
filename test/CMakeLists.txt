@@ -71,7 +71,7 @@ target_link_libraries(
 )
 
 target_include_directories(
-  tiledb_unit PRIVATE
+  tiledb_unit BEFORE PRIVATE
   ${TILEDB_CORE_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/external/catch
 )
