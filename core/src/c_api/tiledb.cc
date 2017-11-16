@@ -557,7 +557,7 @@ int tiledb_dimension_get_name(
 }
 
 int tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain) {
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
   *domain = dim->dim_->domain();
@@ -565,9 +565,7 @@ int tiledb_dimension_get_domain(
 }
 
 int tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    const void** tile_extent) {
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
   *tile_extent = dim->dim_->tile_extent();
