@@ -1421,7 +1421,7 @@ int tiledb_walk(
   if (save_error(
           ctx,
           ctx->storage_manager_->object_iter_begin(
-              &obj_iter, path, (tiledb::WalkOrder)order)))
+              &obj_iter, path, static_cast<tiledb::WalkOrder>(order))))
     return TILEDB_ERR;
 
   // For as long as there is another object and the callback indicates to
