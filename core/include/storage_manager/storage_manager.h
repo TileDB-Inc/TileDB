@@ -147,6 +147,10 @@ class StorageManager {
   /** Deletes a fragment directory. */
   Status delete_fragment(const URI& uri) const;
 
+  /** Move (rename) a resource, skips check that resource is a valid TileDB
+   * object */
+  Status move_path(const URI& old_uri, const URI& new_uri);
+
   /** Safely removes a TileDB resource. */
   Status remove_path(const URI& uri) const;
 
@@ -197,15 +201,6 @@ class StorageManager {
    * @return Status
    */
   Status load(FragmentMetadata* metadata);
-
-  /**
-   * TODO: DOC
-   * @param old_uri
-   * @param new_uri
-   * @param force
-   * @return
-   */
-  Status move_path(const URI& old_uri, const URI& new_uri, bool force = false);
 
   /**
    * Creates a new object iterator for the input path.

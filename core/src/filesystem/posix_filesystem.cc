@@ -132,7 +132,7 @@ std::string current_dir() {
 }
 
 // TODO: it maybe better to use unlinkat for deeply nested recursive directories
-// but the path name length limit in TileDB may make this uncessary
+// but the path name length limit in TileDB may make this unnecessary
 int unlink_cb(
     const char* fpath,
     const struct stat* sb,

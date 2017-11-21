@@ -241,6 +241,14 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Move", "[capi]") {
           group_path("old_group2").c_str(),
           false) == TILEDB_ERR);
 
+  // Check force move works on name conflict
+  CHECK(
+      tiledb_move(
+          ctx_,
+          group_path("new_group1").c_str(),
+          group_path("old_group2").c_str(),
+          true) == TILEDB_OK);
+
   // Check move array
   create_test_array(group_path("test_array").c_str());
   CHECK(
