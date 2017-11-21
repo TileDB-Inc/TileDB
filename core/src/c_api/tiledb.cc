@@ -1170,13 +1170,7 @@ int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
     const char* array_name,
-    tiledb_query_type_t type,
-    tiledb_layout_t layout,
-    const void* subarray,
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes) {
+    tiledb_query_type_t type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1207,14 +1201,7 @@ int tiledb_query_create(
           ctx->storage_manager_->query_init(
               ((*query)->query_),
               array_name,
-              static_cast<tiledb::QueryType>(type),
-              static_cast<tiledb::Layout>(layout),
-              subarray,
-              attributes,
-              attribute_num,
-              buffers,
-              buffer_sizes,
-              tiledb::URI()))) {
+              static_cast<tiledb::QueryType>(type)))) {
     delete (*query)->query_;
     std::free(*query);
     *query = nullptr;
@@ -1222,6 +1209,58 @@ int tiledb_query_create(
   }
 
   // Success
+  return TILEDB_OK;
+}
+
+int tiledb_query_by_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* subarray,
+    tiledb_datatype_t type) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set subarray
+  if (save_error(
+          ctx,
+          query->query_->set_subarray(
+              subarray, static_cast<tiledb::Datatype>(type))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_set_buffers(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char** attributes,
+    unsigned int attribute_num,
+    void** buffers,
+    uint64_t* buffer_sizes) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set buffers
+  if (save_error(
+          ctx,
+          query->query_->set_buffers(
+              attributes, attribute_num, buffers, buffer_sizes)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_set_layout(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set layout
+  query->query_->set_layout(static_cast<tiledb::Layout>(layout));
+
   return TILEDB_OK;
 }
 

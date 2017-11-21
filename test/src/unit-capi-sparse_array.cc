@@ -242,17 +242,23 @@ struct SparseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(
-        ctx_,
-        &query,
-        array_name_.c_str(),
-        query_type,
-        query_layout,
-        subarray,
-        attributes,
-        1,
-        buffers,
-        buffer_sizes);
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_set_buffers(
+        ctx_, query, attributes, 1, buffers, buffer_sizes);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_set_layout(ctx_, query, query_layout);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;
@@ -315,19 +321,19 @@ struct SparseArrayFx {
     buffer_sizes[0] = cell_num * sizeof(int);
     buffer_sizes[1] = 2 * cell_num * sizeof(int64_t);
 
+    // Set attributes
+    const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
+
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(
-        ctx_,
-        &query,
-        array_name_.c_str(),
-        TILEDB_WRITE,
-        TILEDB_UNORDERED,
-        nullptr,
-        nullptr,
-        0,
-        buffers,
-        buffer_sizes);
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+    rc = tiledb_query_set_buffers(
+        ctx_, query, attributes, 2, buffers, buffer_sizes);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 

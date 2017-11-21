@@ -51,20 +51,15 @@ int main(int argc, char** argv) {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Set subarray
+  uint64_t subarray[] = {3, 4, 2, 4};
+
   // Create query
-  int64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_sparse_array",
-      TILEDB_READ,
-      TILEDB_COL_MAJOR,
-      subarray,
-      attributes,
-      1,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_by_subarray(ctx, query, subarray, TILEDB_UINT64);
+  tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
 
   // Loop until the query is completed
   printf(" a1\n----\n");

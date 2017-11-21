@@ -877,8 +877,43 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  * @param type The query type, which must be one of the following:
  *    - TILEDB_WRITE
  *    - TILEDB_READ
- * @param layout For a write query, this indicates the order of the cells
- *     provided by the user in the buffers. For a read query, this indicates
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_create(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t** query,
+    const char* array_name,
+    tiledb_query_type_t type);
+
+/**
+ * Indicates that the query will write or read a subarray, and provides
+ * the appropriate information.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param subarray The subarray in which the array read/write will be
+ *     constrained on. It should be a sequence of [low, high] pairs (one
+ *     pair per dimension). For the case of writes, this is meaningful only
+ *     for dense arrays, and specifically dense writes.
+ * @param type The data type of `subarray`. TileDB will internally convert
+ *     `subarray` so that its type is the same as the domain/coordinates.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_by_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* subarray,
+    tiledb_datatype_t type);
+
+/**
+ * Sets the buffers to the query, which will either hold the attribute
+ * values to be written (if it is a write query), or will hold the
+ * results from a read query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
  *     the order of the cells that will be retrieved as results and stored
  *     in the user buffers. The layout can be one of the following:
  *    - TILEDB_COL_MAJOR <br>
@@ -889,42 +924,61 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  *      This means that cells are stored or retrieved in the array global
  *      cell order.
  *    - TILEDB_UNORDERED <br>
- *      This is applicable only to writes for sparse arrays, which indicates
- *      that the cells are unordered and, hence, TileDB must sort the cells
- *      in the global cell order.
- * @param subarray The subarray in which the array read/write will be
- *     constrained on. It should be a sequence of [low, high] pairs (one
- *     pair per dimension), whose type should be the same as that of the
- *     coordinates. If it is NULL, then the subarray is set to the entire
- *     array domain. For the case of writes, this is meaningful only for
- *     dense arrays, and specifically dense writes.
- * @param attributes A subset of the array attributes the read/write will be
+ *      This is applicable only to writes for sparse arrays, or for sparse
+ *      writes to dense arrays. It specifies that the cells are unordered and,
+ *      hence, TileDB must sort the cells in the global cell order prior to
+ *      writing.
+ * @param attributes A set of the array attributes the read/write will be
  *     constrained on. Note that the coordinates have special attribute name
- *     tiledb_coords(). A NULL value indicates **all** attributes (including
- *     the coordinates as the last attribute in the case of sparse arrays).
- * @param attribute_num The number of the input attributes. If *attributes* is
- *     NULL, then this should be set to 0.
+ *     TILEDB_COORDS. If it is set to `NULL`, then this means **all**
+ *     attributes, in the way they were defined upon the array creation,
+ *     including the special attributes of coordinates and keys.
+ * @param attribute_num The number of the input attributes.
  * @param buffers The buffers that either have the input data to be written,
- *     or will hold the data to be read. There must be an one-to-one
- *     correspondence with *attributes*.
+ *     or will hold the data to be read. Note that there is one buffer per
+ *     fixed-sized attribute, and two buffers for each variable-sized
+ *     attribute (the first holds the offsets, and the second the actual
+ *     values).
  * @param buffer_sizes There must be an one-to-one correspondence with
  *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
  *     In the case of reads, they initially contain the allocated sizes of
  *     *buffers*, but after the termination of the function they will contain
  *     the sizes of the useful (read) data in the buffers.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_query_create(
+TILEDB_EXPORT int tiledb_query_set_buffers(
     tiledb_ctx_t* ctx,
-    tiledb_query_t** query,
-    const char* array_name,
-    tiledb_query_type_t type,
-    tiledb_layout_t layout,
-    const void* subarray,
+    tiledb_query_t* query,
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes);
+
+/**
+ * Sets the layout of the cells to be written or read.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - TILEDB_COL_MAJOR <br>
+ *      This means column-major order with respect to the subarray.
+ *    - TILEDB_ROW_MAJOR <br>
+ *      This means row-major order with respect to the subarray.
+ *    - TILEDB_GLOBAL_ORDER <br>
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - TILEDB_UNORDERED <br>
+ *      This is applicable only to writes for sparse arrays, or for sparse
+ *      writes to dense arrays. It specifies that the cells are unordered and,
+ *      hence, TileDB must sort the cells in the global cell order prior to
+ *      writing.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_set_layout(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
  * Deletes a TileDB query object.

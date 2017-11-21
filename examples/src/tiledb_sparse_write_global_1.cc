@@ -45,6 +45,9 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+
   // Prepare cell buffers
   // clang-format off
   int buffer_a1[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -70,17 +73,9 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_sparse_array",
-      TILEDB_WRITE,
-      TILEDB_GLOBAL_ORDER,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_WRITE);
+  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
   // Submit query
   tiledb_query_submit(ctx, query);

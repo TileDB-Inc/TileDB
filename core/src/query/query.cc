@@ -49,12 +49,16 @@ Query::Query() {
   array_read_state_ = nullptr;
   array_ordered_read_state_ = nullptr;
   array_ordered_write_state_ = nullptr;
+  array_metadata_ = nullptr;
+  buffers_ = nullptr;
+  buffer_sizes_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   fragments_init_ = false;
   storage_manager_ = nullptr;
   fragments_borrowed_ = false;
   consolidation_fragment_uri_ = URI();
+  status_ = QueryStatus::INPROGRESS;
 }
 
 Query::Query(Query* common_query) {
@@ -107,7 +111,6 @@ Status Query::async_process() {
   if (!fragments_init_) {
     RETURN_NOT_OK(init_fragments(fragment_metadata_));
     RETURN_NOT_OK(init_states());
-    fragments_init_ = true;
   }
 
   Status st;
@@ -214,6 +217,33 @@ unsigned int Query::fragment_num() const {
   return (unsigned int)fragments_.size();
 }
 
+Status Query::init() {
+  // Sanity checks
+  if (storage_manager_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot initialize query; Storage manager not set"));
+  if (array_metadata_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot initialize query; Array metadata not set"));
+  if (buffers_ == nullptr || buffer_sizes_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot initialize query; Buffers not set"));
+  if (attribute_ids_.empty())
+    return LOG_STATUS(
+        Status::QueryError("Cannot initialize query; Attributes not set"));
+
+  // Set query status
+  status_ = QueryStatus::INPROGRESS;
+
+  // Initializations
+  if (subarray_ == nullptr)
+    RETURN_NOT_OK(set_subarray(nullptr));
+  RETURN_NOT_OK(init_fragments(fragment_metadata_));
+  RETURN_NOT_OK(init_states());
+
+  return Status::Ok();
+}
+
 Status Query::init(
     StorageManager* storage_manager,
     const ArrayMetadata* array_metadata,
@@ -239,9 +269,6 @@ Status Query::init(
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
   RETURN_NOT_OK(set_subarray(subarray));
   RETURN_NOT_OK(init_fragments(fragment_metadata_));
-  RETURN_NOT_OK(init_states());
-
-  fragments_init_ = true;
 
   return Status::Ok();
 }
@@ -367,6 +394,46 @@ Status Query::read(void** buffers, uint64_t* buffer_sizes) {
   return array_read_state_->read(buffers, buffer_sizes);
 }
 
+void Query::set_array_metadata(const ArrayMetadata* array_metadata) {
+  array_metadata_ = array_metadata;
+}
+
+Status Query::set_buffers(
+    const char** attributes,
+    unsigned int attribute_num,
+    void** buffers,
+    uint64_t* buffer_sizes) {
+  // Sanity check
+  if (attributes == nullptr || attribute_num == 0)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set buffers; Attributes not provided"));
+
+  // Get attributes
+  std::vector<std::string> attributes_vec;
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    // Check attribute name length
+    if (attributes[i] == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Cannot set buffers; Attributes cannot be null"));
+    attributes_vec.emplace_back(attributes[i]);
+  }
+
+  // Sanity check on duplicates
+  if (utils::has_duplicates(attributes_vec))
+    return LOG_STATUS(
+        Status::QueryError("Cannot set buffers; Duplicate attributes given"));
+
+  // Set attribute ids
+  RETURN_NOT_OK(
+      array_metadata_->get_attribute_ids(attributes_vec, attribute_ids_));
+
+  // Set buffers and buffer sizes
+  buffers_ = buffers;
+  buffer_sizes_ = buffer_sizes;
+
+  return Status::Ok();
+}
+
 void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
@@ -377,8 +444,125 @@ void Query::set_callback(void* (*callback)(void*), void* callback_data) {
   callback_data_ = callback_data;
 }
 
+Status Query::set_fragment_metadata(
+    const std::vector<FragmentMetadata*>& fragment_metadata) {
+  fragment_metadata_ = fragment_metadata;
+  return Status::Ok();
+}
+
+void Query::set_layout(Layout layout) {
+  layout_ = layout;
+}
+
 void Query::set_status(QueryStatus status) {
   status_ = status;
+}
+
+void Query::set_storage_manager(StorageManager* storage_manager) {
+  storage_manager_ = storage_manager;
+}
+
+Status Query::set_subarray(const void* subarray, Datatype type) {
+  if (subarray == nullptr)
+    set_subarray(subarray);
+
+  switch (type) {
+    case Datatype::CHAR:
+      return set_subarray<char>((const char*)subarray);
+    case Datatype::INT8:
+      return set_subarray<int8_t>((const int8_t*)subarray);
+    case Datatype::UINT8:
+      return set_subarray<uint8_t>((const uint8_t*)subarray);
+    case Datatype::INT16:
+      return set_subarray<int16_t>((const int16_t*)subarray);
+    case Datatype::UINT16:
+      return set_subarray<uint16_t>((const uint16_t*)subarray);
+    case Datatype::INT32:
+      return set_subarray<int>((const int*)subarray);
+    case Datatype::UINT32:
+      return set_subarray<unsigned int>((const unsigned int*)subarray);
+    case Datatype::INT64:
+      return set_subarray<int64_t>((const int64_t*)subarray);
+    case Datatype::UINT64:
+      return set_subarray<uint64_t>((const uint64_t*)subarray);
+    case Datatype::FLOAT32:
+      return set_subarray<float>((const float*)subarray);
+    case Datatype::FLOAT64:
+      return set_subarray<double>((const double*)subarray);
+  }
+}
+
+template <class T>
+Status Query::set_subarray(const T* subarray) {
+  // Sanity check
+  if (array_metadata_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Array metadata not set"));
+
+  // For easy reference
+  auto subarray_len = 2 * array_metadata_->dim_num();
+  auto coords_type = array_metadata_->coords_type();
+  void* new_subarray = nullptr;
+
+  // Convert subarray to the coordinates type
+  switch (coords_type) {
+    case Datatype::CHAR:
+      new_subarray = std::malloc(subarray_len * sizeof(char));
+      std::copy(subarray, subarray + subarray_len, (char*)new_subarray);
+      break;
+    case Datatype::INT8:
+      new_subarray = std::malloc(subarray_len * sizeof(int8_t));
+      std::copy(subarray, subarray + subarray_len, (int8_t*)new_subarray);
+      break;
+    case Datatype::UINT8:
+      new_subarray = std::malloc(subarray_len * sizeof(uint8_t));
+      std::copy(subarray, subarray + subarray_len, (uint8_t*)new_subarray);
+      break;
+    case Datatype::INT16:
+      new_subarray = std::malloc(subarray_len * sizeof(int16_t));
+      std::copy(subarray, subarray + subarray_len, (int16_t*)new_subarray);
+      break;
+    case Datatype::UINT16:
+      new_subarray = std::malloc(subarray_len * sizeof(uint16_t));
+      std::copy(subarray, subarray + subarray_len, (uint16_t*)new_subarray);
+      break;
+    case Datatype::INT32:
+      new_subarray = std::malloc(subarray_len * sizeof(int));
+      std::copy(subarray, subarray + subarray_len, (int*)new_subarray);
+      break;
+    case Datatype::UINT32:
+      new_subarray = std::malloc(subarray_len * sizeof(unsigned int));
+      std::copy(subarray, subarray + subarray_len, (unsigned int*)new_subarray);
+      break;
+    case Datatype::INT64:
+      new_subarray = std::malloc(subarray_len * sizeof(int64_t));
+      std::copy(subarray, subarray + subarray_len, (int64_t*)new_subarray);
+      break;
+    case Datatype::UINT64:
+      new_subarray = std::malloc(subarray_len * sizeof(uint64_t));
+      std::copy(subarray, subarray + subarray_len, (uint64_t*)new_subarray);
+      break;
+    case Datatype::FLOAT32:
+      new_subarray = std::malloc(subarray_len * sizeof(float));
+      std::copy(subarray, subarray + subarray_len, (float*)new_subarray);
+      break;
+    case Datatype::FLOAT64:
+      new_subarray = std::malloc(subarray_len * sizeof(double));
+      std::copy(subarray, subarray + subarray_len, (double*)new_subarray);
+      break;
+  }
+
+  // Set new subarray
+  assert(new_subarray != nullptr);
+  Status st = set_subarray(new_subarray);
+
+  // Clean up and return
+  std::free(new_subarray);
+  return st;
+}
+
+void Query::set_type(QueryType type) {
+  type_ = type;
 }
 
 QueryStatus Query::status() const {
@@ -466,11 +650,17 @@ void Query::add_coords() {
 
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
+  // Do nothing if the fragments are already initialized
+  if (fragments_init_)
+    return Status::Ok();
+
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(new_fragment());
   } else if (type_ == QueryType::READ) {
     RETURN_NOT_OK(open_fragments(fragment_metadata));
   }
+
+  fragments_init_ = true;
 
   return Status::Ok();
 }

@@ -117,6 +117,12 @@ class Query {
   unsigned int fragment_num() const;
 
   /**
+   * Initializes the query states. This must be called before the query is
+   * submitted.
+   */
+  Status init();
+
+  /**
    * Initializes the query.
    *
    * @param storage_manager The storage manager.
@@ -226,8 +232,35 @@ class Query {
    * Executes a read query, but the query retrieves cells in the global
    * cell order, and also the results are written in the input buffers,
    * not the internal buffers.
+   * DD
    */
   Status read(void** buffers, uint64_t* buffer_sizes);
+
+  /** Sets the array metadata. */
+  void set_array_metadata(const ArrayMetadata* array_metadata);
+
+  /**
+   * Sets the buffers to the query for a set of attributes.
+   *
+   * @param attributes The attributes the query will focus on.
+   * @param attribute_num The number of attributes.
+   * @param buffers The buffers that either have the input data to be written,
+   *     or will hold the data to be read. Note that there is one buffer per
+   *     fixed-sized attribute, and two buffers for each variable-sized
+   *     attribute (the first holds the offsets, and the second the actual
+   *     values).
+   * @param buffer_sizes There must be an one-to-one correspondence with
+   *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
+   *     In the case of reads, they initially contain the allocated sizes of
+   *     *buffers*, but after the termination of the function they will contain
+   *     the sizes of the useful (read) data in the buffers.
+   * @return Status
+   */
+  Status set_buffers(
+      const char** attributes,
+      unsigned int attribute_num,
+      void** buffers,
+      uint64_t* buffer_sizes);
 
   /** Sets the query buffers. */
   void set_buffers(void** buffers, uint64_t* buffer_sizes);
@@ -238,8 +271,44 @@ class Query {
    */
   void set_callback(void* (*callback)(void*), void* callback_data);
 
+  /** Sets and initializes the fragment metadata. */
+  Status set_fragment_metadata(
+      const std::vector<FragmentMetadata*>& fragment_metadata);
+
+  /** Sets the cell layout of the query. */
+  void set_layout(Layout layout);
+
   /** Sets the query status. */
   void set_status(QueryStatus status);
+
+  /** Sets the storage manager. */
+  void set_storage_manager(StorageManager* storage_manager);
+
+  /**
+   * Sets the query subarray. If it is null, then the subarray will be set to
+   * the entire domain. Otherwise, the subarray will be converted to a type
+   * that matches the array domain/coordinates type.
+   *
+   * @param subarray The subarray to be set.
+   * @param type The type of the subarray values.
+   * @return Status
+   */
+  Status set_subarray(const void* subarray, Datatype type);
+
+  /**
+   * Sets the query subarray. If it is null, then the subarray will be set to
+   * the entire domain. Otherwise, the subarray will be converted to a type
+   * that matches the array domain/coordinates type.
+   *
+   * @tparam T The type of subarray.
+   * @param subarray The subarray to be set.
+   * @return Status
+   */
+  template <class T>
+  Status set_subarray(const T* subarray);
+
+  /** Sets the query type. */
+  void set_type(QueryType type);
 
   /** Returns the query status. */
   QueryStatus status() const;
