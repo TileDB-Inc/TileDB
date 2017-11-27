@@ -33,17 +33,12 @@
 #ifndef TILEDB_FILESYSTEM_S3_H
 #define TILEDB_FILESYSTEM_S3_H
 
-#ifdef HAVE_S3
-
 #include <sys/types.h>
 #include <string>
 #include <vector>
 
-#include "buffer.h"
 #include "status.h"
 #include "uri.h"
-
-#endif
 
 namespace tiledb {
 
@@ -63,6 +58,14 @@ Status connect();
  * @return Status
  */
 Status disconnect();
+
+/**
+ * Check if a bucket exists.
+ *
+ * @param bucket The name of the bucket.
+ * @return bool
+ */
+bool bucket_exists(const char* bucket);
 
 /**
  * Creates a bucket.
@@ -107,6 +110,8 @@ bool is_dir(const URI& uri);
  * @return Status
  */
 Status move_path(const URI& old_uri, const URI& new_uri);
+
+Status copy_path(const URI& old_uri, const URI& new_uri);
 
 /**
  * Checks if the given URI is an existing S3 object.
@@ -162,6 +167,20 @@ Status read_from_file(
 
 /**
  * Writes the input buffer to a file.
+ *
+ * If the file does not  exists than it is created.
+ * If the file exist then it is appended to.
+ *
+ * @param uri The URI of the file to be written to.
+ * @param buffer The input buffer.
+ * @param length The size of the input buffer.
+ * @return Status
+ */
+Status write_to_file_no_cache(
+    const URI& uri, const void* buffer, const uint64_t length);
+
+/**
+ * Writes the input buffer using write cache
  *
  * If the file does not  exists than it is created.
  * If the file exist then it is appended to.

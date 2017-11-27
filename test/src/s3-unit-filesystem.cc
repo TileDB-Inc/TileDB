@@ -46,6 +46,7 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
   CHECK(st.ok());
 
   std::string bucket = "test";
+  s3::delete_bucket(bucket.c_str());
 
   st = s3::create_bucket(bucket.c_str());
   CHECK(st.ok());
@@ -169,7 +170,7 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
 
   auto read_buffer = new char[26];
   st = s3::read_from_file(
-      URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"),
+      URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       0,
       read_buffer,
       26);
@@ -185,7 +186,7 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
   CHECK(allok == true);
 
   st = s3::read_from_file(
-      URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"),
+      URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       11,
       read_buffer,
       26);
@@ -214,6 +215,6 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
     std::cout << "New file in folder /tiledb_test_dir: " << path << std::endl;
   }
 
-  st = s3::disconnect();
-  CHECK(st.ok());
+  // st = s3::disconnect();
+  // CHECK(st.ok());
 }

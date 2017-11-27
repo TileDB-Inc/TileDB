@@ -34,6 +34,7 @@
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
+#include "s3_filesystem.h"
 
 #include <iostream>
 
@@ -47,6 +48,10 @@ VFS::VFS() {
 #ifdef HAVE_HDFS
   Status st = hdfs::connect(hdfs_);
 #endif
+
+#ifdef HAVE_S3
+  Status st = s3::connect();
+#endif
 }
 
 VFS::~VFS() {
@@ -54,6 +59,9 @@ VFS::~VFS() {
   if (hdfs_ != nullptr) {
     // Status st = hdfs::disconnect(hdfs_);
   }
+#endif
+#ifdef HAVE_S3
+    // Status st = s3::disconnect();
 #endif
 }
 
@@ -65,6 +73,8 @@ std::string VFS::abs_path(const std::string& path) {
   if (URI::is_posix(path))
     return posix::abs_path(path);
   if (URI::is_hdfs(path))
+    return path;
+  if (URI::is_s3(path))
     return path;
   // Certainly starts with "<resource>://" other than "file://"
   return path;
@@ -79,6 +89,13 @@ Status VFS::create_dir(const URI& uri) const {
     return hdfs::create_dir(hdfs_, uri);
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::create_dir(uri);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   }
   return Status::Error(
@@ -96,6 +113,13 @@ Status VFS::create_file(const URI& uri) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::create_file(uri);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
+#endif
+  }
   return Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string());
 }
@@ -108,6 +132,12 @@ Status VFS::remove_path(const URI& uri) const {
     return hdfs::remove_path(hdfs_, uri);
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  } else if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::remove_path(uri);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   } else {
     return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
@@ -125,6 +155,13 @@ Status VFS::remove_file(const URI& uri) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::remove_file(uri);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
+#endif
+  }
   return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
@@ -136,6 +173,13 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
     return Status::Ok();
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return Status::Ok();
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   }
   return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
@@ -152,6 +196,13 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return Status::Ok();
+#else
+    return Status::VFSError("TileDB was built without S3 support");
+#endif
+  }
   return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
@@ -166,6 +217,13 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::file_size(uri, size);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
+#endif
+  }
   return Status::VFSError("Unsupported URI scheme: " + uri.to_string());
 }
 
@@ -176,6 +234,13 @@ bool VFS::is_dir(const URI& uri) const {
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
     return hdfs::is_dir(hdfs_, uri);
+#else
+    return false;
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::is_dir(uri);
 #else
     return false;
 #endif
@@ -194,6 +259,13 @@ bool VFS::is_file(const URI& uri) const {
     return false;
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::is_file(uri);
+#else
+    return false;
+#endif
+  }
   return false;
 }
 
@@ -206,6 +278,12 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     RETURN_NOT_OK(hdfs::ls(hdfs_, parent, &files));
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  } else if (parent.is_s3()) {
+#ifdef HAVE_S3
+    RETURN_NOT_OK(s3::ls(parent, &files));
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   } else {
     return Status::VFSError("Unsupported URI scheme: " + parent.to_string());
@@ -237,6 +315,15 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
       return hdfs::get_path(old_uri, new_uri);
     }
   }
+  if (old_uri.is_s3()) {
+    if (new_uri.is_s3()) {
+#ifdef HAVE_S3
+      return s3::move_path(old_uri, new_uri);
+#else
+      return Status::VFSError("TileDB was built without S3 support");
+#endif
+    }
+  }
   return Status::VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string());
@@ -254,6 +341,13 @@ Status VFS::read_from_file(
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::read_from_file(uri, offset, buffer, nbytes);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
+#endif
+  }
   return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
 }
 
@@ -266,6 +360,13 @@ Status VFS::sync(const URI& uri) const {
     return Status::Ok();
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::flush_file(uri);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   }
   return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
@@ -281,6 +382,13 @@ Status VFS::write_to_file(
     return hdfs::write_to_file(hdfs_, uri, buffer, buffer_size);
 #else
     return Status::VFSError("TileDB was built without HDFS support");
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3::write_to_file(uri, buffer, buffer_size);
+#else
+    return Status::VFSError("TileDB was built without S3 support");
 #endif
   }
   return Status::VFSError("Unsupported URI schemes: " + uri.to_string());

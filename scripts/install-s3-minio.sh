@@ -10,7 +10,7 @@ git checkout 1.2.0
 mkdir build
 cd build
 export AWS_SDK_CPP=$(pwd)
-#cmake -DCMAKE_BUILD_TYPE=Release ..
+
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;core;transfer;config" ..
 make
 sudo make install
