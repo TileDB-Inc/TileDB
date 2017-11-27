@@ -234,6 +234,26 @@ Status emptyBucket(const Aws::String& bucketName) {
   return Status::Ok();
 }
 
+bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& objectKey)
+{
+  unsigned timeoutCount = 0;
+  while (timeoutCount++ < TIMEOUT_MAX)
+  {
+    HeadObjectRequest headObjectRequest;
+    headObjectRequest.SetBucket(bucketName);
+    headObjectRequest.SetKey(objectKey);
+    HeadObjectOutcome headObjectOutcome = client->HeadObject(headObjectRequest);
+    if (headObjectOutcome.IsSuccess())
+    {
+        return true;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  return false;
+}
+
 Status waitForBucketToEmpty(const Aws::String& bucketName) {
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(bucketName);
@@ -306,6 +326,7 @@ Status create_dir(const URI& uri) {
         std::string("\nError message:  ") +
         putObjectOutcome.GetError().GetMessage().c_str()));
   }
+  waitForObjectToPropagate(putObjectRequest.GetBucket(), putObjectRequest.GetKey());
   return Status::Ok();
 }
 
@@ -389,6 +410,7 @@ Status copy_path(const URI& old_uri, const URI& new_uri) {
           std::string("\nError message:  ") +
           copyObjectOutcome.GetError().GetMessage().c_str()));
     }
+    waitForObjectToPropagate(copyObjectRequest.GetBucket(), copyObjectRequest.GetKey());
   }
   return Status::Ok();
 }
@@ -460,6 +482,7 @@ Status create_file(const URI& uri) {
     return LOG_STATUS(Status::IOError(
         std::string("S3 object is already open for write ") + uri.c_str()));
   }
+  waitForObjectToPropagate(putObjectRequest.GetBucket(), putObjectRequest.GetKey());
   return Status::Ok();
 }
 
@@ -478,6 +501,7 @@ Status remove_file(const URI& uri) {
         std::string("\nError message:  ") +
         deleteObjectOutcome.GetError().GetMessage().c_str()));
   }
+  waitForObjectToPropagate(deleteObjectRequest.GetBucket(), deleteObjectRequest.GetKey());
   return Status::Ok();
 }
 
@@ -613,6 +637,7 @@ Status write_to_file_no_cache(
   completedPart.SetPartNumber(multipartUploadPartNumber[path_c_str]);
   multipartCompleteMultipartUpload[path_c_str].AddParts(completedPart);
 
+  waitForObjectToPropagate(uploadPartRequest.GetBucket(), uploadPartRequest.GetKey());
   return Status::Ok();
 }
 
