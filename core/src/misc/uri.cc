@@ -99,7 +99,18 @@ bool URI::is_s3() const {
 }
 
 URI URI::join_path(const std::string& path) const {
-  return URI(uri_ + "/" + path);
+  if (uri_.back() == '/') {
+    if (path.front() == '/') {
+      return URI(uri_ + path.substr(1, path.size()));
+    }
+    return URI(uri_ + path);
+  } else {
+    if (path.front() == '/') {
+      return URI(uri_ + path);
+    } else {
+      return URI(uri_ + "/" + path);
+    }
+  }
 }
 
 std::string URI::last_path_part() const {

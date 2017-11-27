@@ -553,6 +553,7 @@ Status StorageManager::store(ArrayMetadata* array_metadata) {
   auto tile_io = new TileIO(this, array_metadata_uri);
   Status st = tile_io->write_generic(tile);
 
+  sync(array_metadata_uri);
   delete tile;
   delete tile_io;
   delete buff;
@@ -586,6 +587,7 @@ Status StorageManager::store(FragmentMetadata* metadata) {
   auto tile_io = new TileIO(this, fragment_metadata_uri);
   Status st = tile_io->write_generic(tile);
 
+  sync(fragment_metadata_uri);
   delete tile;
   delete tile_io;
   delete buff;
