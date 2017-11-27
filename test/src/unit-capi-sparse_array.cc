@@ -108,6 +108,8 @@ struct SparseArrayFx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
+    if(!tiledb::s3::bucket_exists(S3_BUCKET))
+      tiledb::s3::create_bucket(S3_BUCKET);
     bool ret = tiledb::s3::is_dir(tiledb::URI(URI_PREFIX + path));
     return ret;
 #else
@@ -121,8 +123,6 @@ struct SparseArrayFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if(!tiledb::s3::bucket_exists(S3_BUCKET))
-      tiledb::s3::create_bucket(S3_BUCKET);
     tiledb::s3::remove_path(tiledb::URI(URI_PREFIX + path));
     return true;
 #else

@@ -564,7 +564,7 @@ Status read_from_file(
   getObjectRequest.WithBucket(aws_uri.GetAuthority())
       .WithKey(aws_uri.GetPath());
   getObjectRequest.SetRange(("bytes=" + std::to_string(offset) + "-" +
-                             std::to_string(offset + length))
+                             std::to_string(offset + length - 1))
                                 .c_str());
   getObjectRequest.SetResponseStreamFactory([buffer, length]() {
     std::unique_ptr<Aws::StringStream> stream(
@@ -580,6 +580,10 @@ Status read_from_file(
         getObjectOutcome.GetError().GetExceptionName().c_str() +
         std::string("\nError message:  ") +
         getObjectOutcome.GetError().GetMessage().c_str()));
+  }
+  if(getObjectOutcome.GetResult().GetContentLength()!=length){
+    std::cout<< "Requested: " << length << " Received: " << getObjectOutcome.GetResult().GetContentLength()<<std::endl;
+    return LOG_STATUS(Status::IOError(std::string("Read returned different size of bytes.")));
   }
   return Status::Ok();
 }
