@@ -123,7 +123,9 @@ struct SparseArrayFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
+    
     tiledb::s3::remove_path(tiledb::URI(URI_PREFIX + path));
+    tiledb::s3::delete_bucket(S3_BUCKET);
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
