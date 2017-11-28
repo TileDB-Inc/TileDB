@@ -24,6 +24,7 @@ $InstallPrefix = Join-Path $TileDBRootDirectory "deps-install"
 $DownloadDirectory = Get-ScriptsDirectory
 $DownloadZlibDest = Join-Path $DownloadDirectory "zlib.zip"
 $DownloadLz4Dest = Join-Path $DownloadDirectory "lz4.zip"
+$DownloadBloscDest = Join-Path $DownloadDirectory "blosc.zip"
 
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
@@ -73,9 +74,27 @@ function Install-LZ4 {
     Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
 }
 
+function Install-Blosc {
+    $BloscRoot = (Join-Path $DownloadDirectory "c-blosc-1.12.1")
+    if (!(Test-Path $BloscRoot)) {
+	DownloadIfNotExists $DownloadBloscDest "https://github.com/Blosc/c-blosc/archive/v1.12.1.zip"
+	Unzip $DownloadBloscDest $DownloadDirectory
+    }
+    Push-Location
+    Set-Location $BloscRoot
+    if (!(Test-Path build)) {
+	New-Item -ItemType Directory -Path build
+    }
+    Set-Location build
+    cmake -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
+    cmake --build . --config Release --target INSTALL
+    Pop-Location
+}
+
 function Install-All-Deps {
     Install-Zlib
     Install-LZ4
+    Install-Blosc
 }
 
 Install-All-Deps
