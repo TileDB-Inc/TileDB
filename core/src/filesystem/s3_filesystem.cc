@@ -146,7 +146,7 @@ Status disconnect() {
 }
 
 Status flush_file(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"flush: "<<uri.c_str()<<std::endl;
   buffer_cache.flush_file(uri);
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -308,7 +308,7 @@ Status delete_bucket(const char* bucket) {
 }
 
 Status create_dir(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"create_dir: "<<uri.c_str()<<std::endl;
   std::string directory = uri.to_string();
   if (directory.back() == '/')
     directory.pop_back();
@@ -333,7 +333,7 @@ Status create_dir(const URI& uri) {
 }
 
 bool is_dir(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"is_dir: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
@@ -352,8 +352,7 @@ bool is_dir(const URI& uri) {
 }
 
 Status move_path(const URI& old_uri, const URI& new_uri) {
-  std::cout<<old_uri.c_str()<<std::endl;
-  std::cout<<new_uri.c_str()<<std::endl;
+  std::cout<<"move_path: "<<old_uri.c_str()<<"->"<<new_uri.c_str()<<std::endl;
   if (is_dir(new_uri)) {
     return LOG_STATUS(Status::IOError(
         std::string("Failed to move s3 path: ") + old_uri.c_str() +
@@ -421,7 +420,7 @@ Status copy_path(const URI& old_uri, const URI& new_uri) {
 }
 
 bool is_file(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"is_file: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
@@ -475,7 +474,7 @@ Status initiate_multipart_request(Aws::Http::URI aws_uri) {
 }
 
 Status create_file(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"create_file: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = uri.c_str();
   PutObjectRequest putObjectRequest;
   putObjectRequest.WithKey(aws_uri.GetPath())
@@ -494,7 +493,7 @@ Status create_file(const URI& uri) {
 }
 
 Status remove_file(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"remove_file: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   DeleteObjectRequest deleteObjectRequest;
   deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
@@ -514,7 +513,7 @@ Status remove_file(const URI& uri) {
 }
 
 Status remove_path(const URI& uri) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"remove_path: "<<uri.c_str()<<std::endl;
   std::string directory = uri.to_string();
   if (directory.back() != '/')
     directory.push_back('/');
@@ -568,7 +567,7 @@ Status remove_path(const URI& uri) {
 
 Status read_from_file(
     const URI& uri, off_t offset, void* buffer, uint64_t length) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"read: "<<uri.c_str()<<" offset: "<<offset<<" length: "<<length<<std::endl;
   Aws::Http::URI aws_uri = uri.c_str();
   GetObjectRequest getObjectRequest;
   getObjectRequest.WithBucket(aws_uri.GetAuthority())
@@ -600,14 +599,14 @@ Status read_from_file(
 
 Status write_to_file(
     const URI& uri, const void* buffer, const uint64_t length) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"write: "<<uri.c_str()<<" length: "<<length<<std::endl;
   buffer_cache.write_to_file(uri, buffer, length);
   return Status::Ok();
 }
 
 Status write_to_file_no_cache(
     const URI& uri, const void* buffer, const uint64_t length) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"write no cache: "<<uri.c_str()<<" length: "<<length<<std::endl;
   // length should be larger than 5MB
   Aws::Http::URI aws_uri = uri.c_str();
   String path = aws_uri.GetPath();
@@ -658,7 +657,7 @@ Status write_to_file_no_cache(
 }
 
 Status ls(const URI& uri, std::vector<std::string>* paths) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"ls: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = (uri.to_path() + std::string("/")).c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
@@ -681,7 +680,7 @@ Status ls(const URI& uri, std::vector<std::string>* paths) {
 }
 
 Status file_size(const URI& uri, uint64_t* nbytes) {
-  std::cout<<uri.c_str()<<std::endl;
+  std::cout<<"file_size: "<<uri.c_str()<<std::endl;
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
