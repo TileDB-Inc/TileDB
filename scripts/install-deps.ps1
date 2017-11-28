@@ -25,6 +25,7 @@ $DownloadDirectory = Get-ScriptsDirectory
 $DownloadZlibDest = Join-Path $DownloadDirectory "zlib.zip"
 $DownloadLz4Dest = Join-Path $DownloadDirectory "lz4.zip"
 $DownloadBloscDest = Join-Path $DownloadDirectory "blosc.zip"
+$DownloadZstdDest = Join-Path $DownloadDirectory "zstd.zip"
 
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
@@ -91,10 +92,25 @@ function Install-Blosc {
     Pop-Location
 }
 
+function Install-Zstd {
+    $ZstdRoot = (Join-Path $DownloadDirectory "zstd")
+    if (!(Test-Path $ZstdRoot)) {
+	DownloadIfNotExists $DownloadZstdDest "https://github.com/facebook/zstd/releases/download/v1.3.2/zstd-v1.3.2-win64.zip"
+	New-Item -ItemType Directory -Path $ZstdRoot
+	Unzip $DownloadZstdDest $ZstdRoot
+    }
+    $DllDir = Join-Path $ZstdRoot "dll"
+    Copy-Item (Join-Path $DllDir "libzstd.lib") (Join-Path (Join-Path $InstallPrefix "lib") "zstd.lib")
+    Copy-Item (Join-Path $DllDir "libzstd.dll") (Join-Path (Join-Path $InstallPrefix "bin") "zstd.dll")
+    $IncDir = Join-Path $ZstdRoot "include"
+    Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
+}
+
 function Install-All-Deps {
     Install-Zlib
     Install-LZ4
     Install-Blosc
+    Install-Zstd
 }
 
 Install-All-Deps
