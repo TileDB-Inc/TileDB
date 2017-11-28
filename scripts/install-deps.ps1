@@ -26,6 +26,7 @@ $DownloadZlibDest = Join-Path $DownloadDirectory "zlib.zip"
 $DownloadLz4Dest = Join-Path $DownloadDirectory "lz4.zip"
 $DownloadBloscDest = Join-Path $DownloadDirectory "blosc.zip"
 $DownloadZstdDest = Join-Path $DownloadDirectory "zstd.zip"
+$DownloadBzip2Dest = Join-Path $DownloadDirectory "bzip2.zip"
 
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
@@ -106,11 +107,28 @@ function Install-Zstd {
     Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
 }
 
+function Install-Bzip2 {
+    $Bzip2Root = (Join-Path $DownloadDirectory "bzip2")
+    if (!(Test-Path $Bzip2Root)) {
+	# Have to use a mirror URL directly, unless we handle the redirect.
+	DownloadIfNotExists $DownloadBzip2Dest "https://ayera.dl.sourceforge.net/project/gnuwin32/bzip2/1.0.5/bzip2-1.0.5-bin.zip"
+	New-Item -ItemType Directory -Path $Bzip2Root
+	Unzip $DownloadBzip2Dest $Bzip2Root
+    }
+    $LibDir = Join-Path $Bzip2Root "lib"
+    $BinDir = Join-Path $Bzip2Root "bin"
+    Copy-Item (Join-Path $LibDir "bzip2.lib") (Join-Path (Join-Path $InstallPrefix "lib") "bz2.lib")
+    Copy-Item (Join-Path $BinDir "bzip2.dll") (Join-Path (Join-Path $InstallPrefix "bin") "bz2.dll")
+    $IncDir = Join-Path $Bzip2Root "include"
+    Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
+}
+
 function Install-All-Deps {
     Install-Zlib
     Install-LZ4
     Install-Blosc
     Install-Zstd
+    Install-Bzip2
 }
 
 Install-All-Deps
