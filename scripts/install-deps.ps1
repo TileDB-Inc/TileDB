@@ -75,6 +75,7 @@ function Install-LZ4 {
 
 function Install-All-Deps {
     Install-Zlib
+    Install-LZ4
 }
 
 Install-All-Deps
