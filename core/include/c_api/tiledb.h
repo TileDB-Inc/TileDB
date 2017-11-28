@@ -411,17 +411,11 @@ TILEDB_EXPORT int tiledb_domain_get_type(
  *
  * @param ctx The TileDB context.
  * @param domain The domain to add the dimension to.
- * @param name The dimension name.
- * @param dim_domain The dimension domain.
- * @param tile_extent The dimension tile extent.
+ * @param dim The dimension to be added.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
-    const char* name,
-    const void* dim_domain,
-    const void* tile_extent);
+    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim);
 
 /**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
@@ -440,6 +434,35 @@ TILEDB_EXPORT int tiledb_domain_dump(
 /* ********************************* */
 
 /**
+ * Creates a dimension.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension to be created.
+ * @param name The dimension name.
+ * @param type The dimension type.
+ * @param dim_domain The dimension domain.
+ * @param tile_extent The dimension tile extent.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_create(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t** dim,
+    const char* name,
+    tiledb_datatype_t type,
+    const void* dim_domain,
+    const void* tile_extent);
+
+/**
+ * Destroys a TileDB dimension, freeing-up memory.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim);
+
+/**
  * Retrieves the dimension name.
  *
  * @param ctx The TileDB context.
@@ -449,6 +472,17 @@ TILEDB_EXPORT int tiledb_domain_dump(
  */
 TILEDB_EXPORT int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name);
+
+/**
+ * Retrieves the dimension type.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension.
+ * @param type The type to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_get_type(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type);
 
 /**
  * Retrieves the domain of the dimension.

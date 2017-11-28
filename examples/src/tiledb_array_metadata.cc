@@ -31,6 +31,8 @@
  * This example explores the C API for the array metadata.
  *
  * Simply run the following to make it work.
+ *
+ * $ ./tiledb_array_metadata
  */
 
 #include <tiledb.h>
@@ -58,15 +60,21 @@ int main() {
   printf("\nSecond dump:\n");
   tiledb_array_metadata_dump(ctx, array_metadata, stdout);
 
-  // Set domain
-  uint64_t d1_domain[] = {0, 1000};
+  // Create dimensions
+  int d1_domain[] = {0, 1000};
+  int d1_extent = 10;
+  tiledb_dimension_t* d1;
+  tiledb_dimension_create(ctx, &d1, "d1", TILEDB_INT32, d1_domain, &d1_extent);
   uint64_t d2_domain[] = {100, 10000};
-  uint64_t d1_extent = 10;
   uint64_t d2_extent = 100;
+  tiledb_dimension_t* d2;
+  tiledb_dimension_create(ctx, &d2, "d2", TILEDB_UINT64, d2_domain, &d2_extent);
+
+  // Set domain
   tiledb_domain_t* domain;
   tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
-  tiledb_domain_add_dimension(ctx, domain, "d1", d1_domain, &d1_extent);
-  tiledb_domain_add_dimension(ctx, domain, "d2", d2_domain, &d2_extent);
+  tiledb_domain_add_dimension(ctx, domain, d1);
+  tiledb_domain_add_dimension(ctx, domain, d2);
   tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
 
   // Add attributes
@@ -155,6 +163,8 @@ int main() {
   // Clean up
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
+  tiledb_dimension_free(ctx, d1);
+  tiledb_dimension_free(ctx, d2);
   tiledb_attribute_iter_free(ctx, attr_iter);
   tiledb_dimension_iter_free(ctx, dim_iter);
   tiledb_domain_free(ctx, domain);

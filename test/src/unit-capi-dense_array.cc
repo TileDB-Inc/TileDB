@@ -206,15 +206,23 @@ struct DenseArrayFx {
     //    rc = tiledb_attribute_set_compressor(ctx_, a, TILEDB_GZIP, -1);
     //    REQUIRE(rc == TILEDB_OK);
 
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, TILEDB_INT64, &dim_domain[0], &tile_extent_0);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, TILEDB_INT64, &dim_domain[2], &tile_extent_1);
+    REQUIRE(rc == TILEDB_OK);
+
     // Create domain
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &dim_domain[0], &tile_extent_0);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &dim_domain[2], &tile_extent_1);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d2);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array metadata
@@ -240,6 +248,10 @@ struct DenseArrayFx {
 
     // Clean up
     rc = tiledb_attribute_free(ctx_, a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d1);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_domain_free(ctx_, domain);
     REQUIRE(rc == TILEDB_OK);

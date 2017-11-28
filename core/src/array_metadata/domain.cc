@@ -76,12 +76,12 @@ Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
   dim_num_ = domain->dim_num_;
-  for (auto dim : domain->dimensions_)
-    dimensions_.emplace_back(new Dimension(dim));
   type_ = domain->type_;
 
-  uint64_t coords_size = dim_num_ * datatype_size(type_);
+  for (auto dim : domain->dimensions_)
+    dimensions_.emplace_back(new Dimension(dim));
 
+  uint64_t coords_size = dim_num_ * datatype_size(type_);
   tile_order_ = domain->tile_order_;
   tile_offsets_col_ = domain->tile_offsets_col_;
   tile_offsets_row_ = domain->tile_offsets_row_;
@@ -129,6 +129,20 @@ Domain::~Domain() {
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+Status Domain::add_dimension(Dimension* dim) {
+  auto new_dim = new Dimension(dim->name().c_str(), type_);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_domain(dim->domain(), dim->type()), delete new_dim);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_tile_extent(dim->tile_extent(), dim->type()),
+      delete new_dim);
+
+  dimensions_.emplace_back(new_dim);
+  ++dim_num_;
+
+  return Status::Ok();
+}
 
 Status Domain::add_dimension(
     const char* name, const void* domain, const void* tile_extent) {

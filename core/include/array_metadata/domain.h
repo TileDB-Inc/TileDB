@@ -77,6 +77,14 @@ class Domain {
   /**
    * Adds a dimension to the domain.
    *
+   * @param dim The dimension to be added.
+   * @return Status
+   */
+  Status add_dimension(Dimension* dim);
+
+  /**
+   * Adds a dimension to the domain.
+   *
    * @param name The dimension name.
    * @param domain The dimension domain.
    * @param tile_extent The dimension tile extent.

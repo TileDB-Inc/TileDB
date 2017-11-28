@@ -176,15 +176,23 @@ struct ArraySchemaFx {
     rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc != TILEDB_OK);
 
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    REQUIRE(rc == TILEDB_OK);
+
     // Set domain
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
     REQUIRE(rc == TILEDB_OK);
@@ -204,6 +212,8 @@ struct ArraySchemaFx {
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
+    tiledb_dimension_free(ctx_, d1);
+    tiledb_dimension_free(ctx_, d2);
     tiledb_domain_free(ctx_, domain);
 
     // Create the array

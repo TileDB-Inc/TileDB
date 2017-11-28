@@ -519,17 +519,12 @@ int tiledb_domain_get_type(
 }
 
 int tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
-    const char* name,
-    const void* dim_domain,
-    const void* tile_extent) {
+    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(
-          ctx, domain->domain_->add_dimension(name, dim_domain, tile_extent)))
+  if (save_error(ctx, domain->domain_->add_dimension(dim->dim_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -548,11 +543,81 @@ int tiledb_domain_dump(
 /*             DIMENSION             */
 /* ********************************* */
 
+int tiledb_dimension_create(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t** dim,
+    const char* name,
+    tiledb_datatype_t type,
+    const void* dim_domain,
+    const void* tile_extent) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a dimension struct
+  *dim = (tiledb_dimension_t*)std::malloc(sizeof(tiledb_dimension_t));
+  if (*dim == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    return TILEDB_OOM;
+  }
+
+  // Create a new Dimension object
+  (*dim)->dim_ =
+      new tiledb::Dimension(name, static_cast<tiledb::Datatype>(type));
+  if ((*dim)->dim_ == nullptr) {
+    std::free(*dim);
+    *dim = nullptr;
+    save_error(
+        ctx,
+        tiledb::Status::Error(
+            "Failed to allocate TileDB dimension object in struct"));
+    return TILEDB_OOM;
+  }
+
+  // Set domain
+  if (save_error(ctx, (*dim)->dim_->set_domain(dim_domain))) {
+    delete (*dim)->dim_;
+    std::free(*dim);
+    *dim = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Set tile extent
+  if (save_error(ctx, (*dim)->dim_->set_tile_extent(tile_extent))) {
+    delete (*dim)->dim_;
+    std::free(*dim);
+    *dim = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_free(tiledb_ctx_t* ctx, tiledb_dimension_t* dim) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  delete dim->dim_;
+  std::free(dim);
+
+  return TILEDB_OK;
+}
+
 int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
   *name = dim->dim_->name().c_str();
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_get_type(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *type = static_cast<tiledb_datatype_t>(dim->dim_->type());
   return TILEDB_OK;
 }
 
