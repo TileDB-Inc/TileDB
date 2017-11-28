@@ -506,6 +506,22 @@ void ArrayMetadata::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
+void ArrayMetadata::set_coords_compressor(Compressor compressor) {
+  coords_compression_ = compressor;
+}
+
+void ArrayMetadata::set_coords_compression_level(int compression_level) {
+  coords_compression_level_ = compression_level;
+}
+
+void ArrayMetadata::set_cell_var_offsets_compressor(Compressor compressor) {
+  cell_var_offsets_compression_ = compressor;
+}
+
+void ArrayMetadata::set_cell_var_offsets_compression_level(int compression_level) {
+  cell_var_offsets_compression_level_ = compression_level;
+}
+
 void ArrayMetadata::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
 }
@@ -516,8 +532,9 @@ void ArrayMetadata::set_domain(Domain* domain) {
   domain_ = new Domain(domain);
 
   // Potentially change the default coordinates compressor
-  if (domain_->type() == Datatype::FLOAT32 ||
-      domain_->type() == Datatype::FLOAT64)
+  if ((domain_->type() == Datatype::FLOAT32 ||
+       domain_->type() == Datatype::FLOAT64) &&
+      coords_compression_ == Compressor::DOUBLE_DELTA)
     coords_compression_ = constants::real_coords_compression;
 }
 

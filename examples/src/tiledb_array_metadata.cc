@@ -55,6 +55,8 @@ int main() {
   tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
   tiledb_array_metadata_set_cell_order(ctx, array_metadata, TILEDB_COL_MAJOR);
   tiledb_array_metadata_set_capacity(ctx, array_metadata, 10);
+  tiledb_array_metadata_set_coords_compressor(ctx, array_metadata, TILEDB_ZSTD, 4);
+  tiledb_array_metadata_set_offsets_compressor(ctx, array_metadata, TILEDB_BLOSC, 5);
 
   // Print array metadata contents again
   printf("\nSecond dump:\n");
@@ -94,8 +96,8 @@ int main() {
   const char* array_name;
   tiledb_array_type_t array_type;
   uint64_t capacity;
-  tiledb_compressor_t coords_compressor;
-  int coords_compression_level;
+  tiledb_compressor_t coords_compressor, offsets_compressor;
+  int coords_compression_level, offsets_compression_level;
   tiledb_layout_t tile_order, cell_order;
   tiledb_array_metadata_get_array_name(ctx, array_metadata, &array_name);
   tiledb_array_metadata_get_array_type(ctx, array_metadata, &array_type);
@@ -104,6 +106,8 @@ int main() {
   tiledb_array_metadata_get_cell_order(ctx, array_metadata, &cell_order);
   tiledb_array_metadata_get_coords_compressor(
       ctx, array_metadata, &coords_compressor, &coords_compression_level);
+  tiledb_array_metadata_get_offsets_compressor(
+          ctx, array_metadata, &offsets_compressor, &offsets_compression_level);
 
   // Print from getters
   printf("\nFrom getters:\n");
@@ -119,8 +123,12 @@ int main() {
   printf("- Capacity: %llu\n", capacity);
   printf(
       "- Coordinates compressor: %s\n",
-      (coords_compressor == TILEDB_DOUBLE_DELTA) ? "DOUBLE_DELTA" : "error");
+      (coords_compressor == TILEDB_ZSTD) ? "ZSTD" : "error");
   printf("- Coordinates compression level: %d\n", coords_compression_level);
+    printf(
+      "- Offsets compressor: %s\n",
+      (offsets_compressor == TILEDB_BLOSC) ? "BLOSC" : "error");
+  printf("- Offsets compression level: %d\n", offsets_compression_level);
 
   // Print the attribute names using iterators
   printf("\nArray metadata attribute names: \n");

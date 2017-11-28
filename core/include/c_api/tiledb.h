@@ -696,6 +696,36 @@ TILEDB_EXPORT int tiledb_array_metadata_set_array_type(
     tiledb_array_type_t array_type);
 
 /**
+ * Sets the coordinates compressor.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The coordinates compressor.
+ * @param compression_level The coordinates compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_coords_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t compressor,
+    int compression_level);
+
+/**
+ * Sets the offsets compressor.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The coordinates compressor.
+ * @param compression_level The coordinates compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_offsets_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t compressor,
+    int compression_level);
+
+/**
  * Checks the correctness of the array metadata.
  *
  * @param ctx The TileDB context.
@@ -777,15 +807,30 @@ TILEDB_EXPORT int tiledb_array_metadata_get_cell_order(
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param coords_compressor The compressor to be retrieved.
- * @param coords_compression_level The compression level to be retrieved.
+ * @param compressor The compressor to be retrieved.
+ * @param compression_level The compression level to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_metadata_get_coords_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
-    tiledb_compressor_t* coords_compressor,
-    int* coords_compression_level);
+    tiledb_compressor_t* compressor,
+    int* compression_level);
+
+/**
+ * Retrieves the compressor info of the offsets.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The compressor to be retrieved.
+ * @param compression_level The compression level to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_offsets_compressor(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t* compressor,
+    int* compression_level);
 
 /**
  * Retrieves the array domain.
