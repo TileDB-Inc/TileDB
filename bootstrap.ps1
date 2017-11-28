@@ -17,9 +17,8 @@ Installs files in tree rooted at PREFIX (defaults to TileDB\dist).
 Semicolon separated list to binary dependencies.
 
 .PARAMETER CMakeGenerator 
-The CMake generator string, e.g. "Visual Studio 15 2017". Check 'cmake
---help' for a list of supported generators. Defaults to "Visual Studio
-14 2015".
+Optionally specify the CMake generator string, e.g. "Visual Studio 15
+2017". Check 'cmake --help' for a list of supported generators.
 
 .PARAMETER Debug
 Enable Debug build.
@@ -102,9 +101,9 @@ if ($Dependency.IsPresent) {
 }
 
 # Set CMake generator type.
-$Generator = "Visual Studio 14 2015"
+$GeneratorFlag = ""
 if ($CMakeGenerator.IsPresent) {
-    $Generator = $CMakeGenerator
+    $GeneratorFlag = "-G ""$CMakeGenerator"""
 }
 
 # Enforce out-of-source build
@@ -122,7 +121,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs -G ""$Generator"" ""$SourceDirectory"""
+$CommandString = "cmake -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
