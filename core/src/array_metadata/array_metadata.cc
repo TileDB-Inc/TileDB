@@ -408,7 +408,7 @@ void ArrayMetadata::add_attribute(const Attribute* attr) {
   // Create new attribute and potentially set a default name
   auto new_attr = new Attribute(attr);
   if (new_attr->name().empty())
-    new_attr->set_name(default_attribute_name(attribute_num_));
+    new_attr->set_name(constants::default_attr_name);
 
   attributes_.emplace_back(new_attr);
   ++attribute_num_;
@@ -663,12 +663,6 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
   }
 
   return size;
-}
-
-std::string ArrayMetadata::default_attribute_name(unsigned int i) const {
-  std::stringstream ss;
-  ss << constants::default_attr_name << "_" << i;
-  return ss.str();
 }
 
 }  // namespace tiledb

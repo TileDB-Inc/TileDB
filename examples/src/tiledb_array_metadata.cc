@@ -83,8 +83,8 @@ int main() {
 
   // Add attributes
   tiledb_attribute_t *a1, *a2;
-  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_create(ctx, &a2, "", TILEDB_FLOAT32);
+  tiledb_attribute_create(ctx, &a1, "", TILEDB_INT32);
+  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
   tiledb_attribute_set_cell_val_num(ctx, a1, 3);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);

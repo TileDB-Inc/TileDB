@@ -332,9 +332,6 @@ class ArrayMetadata {
 
   /** Computes and returns the size of an attribute (or coordinates). */
   uint64_t compute_cell_size(unsigned int attribute_id) const;
-
-  /** Returns the default name of the i-th attribute. */
-  std::string default_attribute_name(unsigned int i) const;
 };
 
 }  // namespace tiledb
