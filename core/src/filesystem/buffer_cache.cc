@@ -77,7 +77,7 @@ Status BufferCache::flush_file(const URI& uri) {
 #ifdef HAVE_S3
   std::string path = uri.c_str();
   if (file_buffers.find(path) == file_buffers.end()) {
-    return Status::IOError("error");
+    return Status::IOError("No buffer found for file.");
   }
   s3::write_to_file_no_cache(
       uri, file_buffers[path].data(), file_buffers[path].size());
