@@ -36,6 +36,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 /* ****************************** */
 /*             MACROS             */
@@ -131,7 +132,12 @@ Domain::~Domain() {
 /* ********************************* */
 
 Status Domain::add_dimension(Dimension* dim) {
-  auto new_dim = new Dimension(dim->name().c_str(), type_);
+  // Compute new dimension name
+  std::string new_dim_name = dim->name();
+  if (new_dim_name.empty())
+    new_dim_name = default_dimension_name(dim_num_);
+
+  auto new_dim = new Dimension(new_dim_name.c_str(), type_);
   RETURN_NOT_OK_ELSE(
       new_dim->set_domain(dim->domain(), dim->type()), delete new_dim);
   RETURN_NOT_OK_ELSE(
@@ -139,18 +145,6 @@ Status Domain::add_dimension(Dimension* dim) {
       delete new_dim);
 
   dimensions_.emplace_back(new_dim);
-  ++dim_num_;
-
-  return Status::Ok();
-}
-
-Status Domain::add_dimension(
-    const char* name, const void* domain, const void* tile_extent) {
-  auto dim = new Dimension(name, type_);
-  RETURN_NOT_OK_ELSE(dim->set_domain(domain), delete dim);
-  RETURN_NOT_OK_ELSE(dim->set_tile_extent(tile_extent), delete dim);
-
-  dimensions_.emplace_back(dim);
   ++dim_num_;
 
   return Status::Ok();
@@ -1024,6 +1018,12 @@ void Domain::compute_tile_offsets() {
     }
   }
   std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
+}
+
+std::string Domain::default_dimension_name(unsigned int i) const {
+  std::stringstream ss;
+  ss << constants::default_dim_name << "_" << i;
+  return ss.str();
 }
 
 template <class T>

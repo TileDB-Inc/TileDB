@@ -55,8 +55,10 @@ int main() {
   tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
   tiledb_array_metadata_set_cell_order(ctx, array_metadata, TILEDB_COL_MAJOR);
   tiledb_array_metadata_set_capacity(ctx, array_metadata, 10);
-  tiledb_array_metadata_set_coords_compressor(ctx, array_metadata, TILEDB_ZSTD, 4);
-  tiledb_array_metadata_set_offsets_compressor(ctx, array_metadata, TILEDB_BLOSC, 5);
+  tiledb_array_metadata_set_coords_compressor(
+      ctx, array_metadata, TILEDB_ZSTD, 4);
+  tiledb_array_metadata_set_offsets_compressor(
+      ctx, array_metadata, TILEDB_BLOSC, 5);
 
   // Print array metadata contents again
   printf("\nSecond dump:\n");
@@ -66,7 +68,7 @@ int main() {
   int d1_domain[] = {0, 1000};
   int d1_extent = 10;
   tiledb_dimension_t* d1;
-  tiledb_dimension_create(ctx, &d1, "d1", TILEDB_INT32, d1_domain, &d1_extent);
+  tiledb_dimension_create(ctx, &d1, "", TILEDB_INT32, d1_domain, &d1_extent);
   uint64_t d2_domain[] = {100, 10000};
   uint64_t d2_extent = 100;
   tiledb_dimension_t* d2;
@@ -82,7 +84,7 @@ int main() {
   // Add attributes
   tiledb_attribute_t *a1, *a2;
   tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
+  tiledb_attribute_create(ctx, &a2, "", TILEDB_FLOAT32);
   tiledb_attribute_set_cell_val_num(ctx, a1, 3);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
@@ -107,7 +109,7 @@ int main() {
   tiledb_array_metadata_get_coords_compressor(
       ctx, array_metadata, &coords_compressor, &coords_compression_level);
   tiledb_array_metadata_get_offsets_compressor(
-          ctx, array_metadata, &offsets_compressor, &offsets_compression_level);
+      ctx, array_metadata, &offsets_compressor, &offsets_compression_level);
 
   // Print from getters
   printf("\nFrom getters:\n");
@@ -125,7 +127,7 @@ int main() {
       "- Coordinates compressor: %s\n",
       (coords_compressor == TILEDB_ZSTD) ? "ZSTD" : "error");
   printf("- Coordinates compression level: %d\n", coords_compression_level);
-    printf(
+  printf(
       "- Offsets compressor: %s\n",
       (offsets_compressor == TILEDB_BLOSC) ? "BLOSC" : "error");
   printf("- Offsets compression level: %d\n", offsets_compression_level);

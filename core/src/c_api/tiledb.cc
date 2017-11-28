@@ -924,7 +924,8 @@ int tiledb_array_metadata_set_coords_compressor(
     return TILEDB_ERR;
   array_metadata->array_metadata_->set_coords_compressor(
       static_cast<tiledb::Compressor>(compressor));
-  array_metadata->array_metadata_->set_coords_compression_level(compression_level);
+  array_metadata->array_metadata_->set_coords_compression_level(
+      compression_level);
   return TILEDB_OK;
 }
 
@@ -938,7 +939,8 @@ int tiledb_array_metadata_set_offsets_compressor(
     return TILEDB_ERR;
   array_metadata->array_metadata_->set_cell_var_offsets_compressor(
       static_cast<tiledb::Compressor>(compressor));
-  array_metadata->array_metadata_->set_cell_var_offsets_compression_level(compression_level);
+  array_metadata->array_metadata_->set_cell_var_offsets_compression_level(
+      compression_level);
   return TILEDB_OK;
 }
 

@@ -40,6 +40,7 @@
 #include <cmath>
 #include <iostream>
 #include <set>
+#include <sstream>
 
 namespace tiledb {
 
@@ -404,7 +405,12 @@ bool ArrayMetadata::var_size(unsigned int attribute_id) const {
 }
 
 void ArrayMetadata::add_attribute(const Attribute* attr) {
-  attributes_.emplace_back(new Attribute(attr));
+  // Create new attribute and potentially set a default name
+  auto new_attr = new Attribute(attr);
+  if (new_attr->name().empty())
+    new_attr->set_name(default_attribute_name(attribute_num_));
+
+  attributes_.emplace_back(new_attr);
   ++attribute_num_;
 }
 
@@ -518,7 +524,8 @@ void ArrayMetadata::set_cell_var_offsets_compressor(Compressor compressor) {
   cell_var_offsets_compression_ = compressor;
 }
 
-void ArrayMetadata::set_cell_var_offsets_compression_level(int compression_level) {
+void ArrayMetadata::set_cell_var_offsets_compression_level(
+    int compression_level) {
   cell_var_offsets_compression_level_ = compression_level;
 }
 
@@ -656,6 +663,12 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
   }
 
   return size;
+}
+
+std::string ArrayMetadata::default_attribute_name(unsigned int i) const {
+  std::stringstream ss;
+  ss << constants::default_attr_name << "_" << i;
+  return ss.str();
 }
 
 }  // namespace tiledb

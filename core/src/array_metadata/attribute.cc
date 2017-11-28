@@ -186,6 +186,10 @@ void Attribute::set_compression_level(int compression_level) {
   compression_level_ = compression_level;
 }
 
+void Attribute::set_name(const std::string& name) {
+  name_ = name;
+}
+
 Datatype Attribute::type() const {
   return type_;
 }

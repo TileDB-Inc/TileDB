@@ -82,17 +82,6 @@ class Domain {
    */
   Status add_dimension(Dimension* dim);
 
-  /**
-   * Adds a dimension to the domain.
-   *
-   * @param name The dimension name.
-   * @param domain The dimension domain.
-   * @param tile_extent The dimension tile extent.
-   * @return Status
-   */
-  Status add_dimension(
-      const char* name, const void* domain, const void* tile_extent);
-
   /** Returns the number of cells per tile (only for the dense case). */
   uint64_t cell_num_per_tile() const;
 
@@ -542,6 +531,9 @@ class Domain {
    */
   template <class T>
   void compute_tile_offsets();
+
+  /** Returns the default name constructed for the i-th dimension. */
+  std::string default_dimension_name(unsigned int i) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding

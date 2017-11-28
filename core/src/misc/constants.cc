@@ -253,6 +253,12 @@ const int version[3] = {1, 2, 0};
 /** The size of a tile chunk. */
 const uint64_t tile_chunk_size = INT_MAX;
 
+/** The default attribute name prefix. */
+const char* default_attr_name = "__attr";
+
+/** The default dimension name prefix. */
+const char* default_dim_name = "__dim";
+
 }  // namespace constants
 
 }  // namespace tiledb
