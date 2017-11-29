@@ -700,7 +700,7 @@ Status Query::new_fragment() {
   auto array_name = array_metadata_->array_uri().to_string();
   std::string new_fragment_name =
       consolidation ?
-          (array_name + "/." + consolidation_fragment_uri_.last_path_part()) :
+          (array_name + "/" + consolidation_fragment_uri_.last_path_part()) :
           this->new_fragment_name();
 
   if (new_fragment_name.empty())
@@ -729,7 +729,7 @@ std::string Query::new_fragment_name() const {
   // Generate fragment name
   int n = sprintf(
       fragment_name,
-      "%s/.__%s_%llu",
+      "%s/__%s_%llu",
       array_metadata_->array_uri().to_string().c_str(),
       tid.c_str(),
       ms);

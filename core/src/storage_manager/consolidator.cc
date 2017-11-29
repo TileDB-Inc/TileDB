@@ -34,6 +34,7 @@
 #include "logger.h"
 #include "storage_manager.h"
 
+#include <sys/time.h>
 #include <sstream>
 #include <thread>
 
@@ -92,9 +93,8 @@ Status Consolidator::consolidate(const char* array_name) {
   if (!st.ok())
     goto clean_up;
 
-  // Get new and old fragment uris
+  // Get old fragment uris
   old_fragment_uris = query_r->fragment_uris();
-  new_fragment_uri = query_w->last_fragment_uri();
 
   // Finalize both queries
   st = finalize_queries(query_r, query_w);
@@ -110,13 +110,6 @@ Status Consolidator::consolidate(const char* array_name) {
   st = delete_old_fragments(old_fragment_uris);
   if (!st.ok()) {
     storage_manager_->array_unlock(array_uri, false);
-    goto clean_up;
-  }
-
-  // Rename new fragment
-  st = rename_new_fragment(new_fragment_uri);
-  if (!st.ok()) {
-    st = storage_manager_->array_unlock(array_uri, false);
     goto clean_up;
   }
 
@@ -220,7 +213,8 @@ Status Consolidator::create_queries(
     return Status::Ok();
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
-  const URI& new_fragment_uri = query_r->last_fragment_uri();
+  URI new_fragment_uri = query_r->last_fragment_uri();
+  RETURN_NOT_OK(rename_new_fragment_uri(&new_fragment_uri));
 
   // Create write query
   RETURN_NOT_OK(storage_manager_->query_init(
@@ -262,13 +256,18 @@ void Consolidator::free_buffers(
   delete[] buffer_sizes;
 }
 
-Status Consolidator::rename_new_fragment(const URI& uri) const {
+Status Consolidator::rename_new_fragment_uri(URI* uri) const {
   // Get timestamp
   std::string t_str;
   uint64_t t;
-  std::string name = uri.last_path_part();
+  std::string name = uri->last_path_part();
   t_str = name.substr(name.find_last_of('_') + 1);
-  sscanf(t_str.c_str(), "%lld", (long long int*)&t);
+  sscanf(t_str.c_str(), "%llu", (long long int*)&t);
+
+  // Get current time
+  struct timeval tp = {};
+  gettimeofday(&tp, nullptr);
+  uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
 
   // Create new URI
   char new_name[constants::name_max_len];
@@ -277,17 +276,18 @@ Status Consolidator::rename_new_fragment(const URI& uri) const {
   std::string tid = ss.str();
   int n = sprintf(
       new_name,
-      "%s/__%s_%llu",
-      uri.parent().to_string().c_str(),
+      "%s/__%s_%llu_%llu",
+      uri->parent().to_string().c_str(),
       tid.c_str(),
+      ms,
       t);
   if (n < 0) {
     return LOG_STATUS(
-        Status::ConsolidationError("Cannot create new fragment name"));
+        Status::ConsolidationError("Cannot rename new fragment URI"));
   }
-  URI new_uri = URI(new_name);
+  *uri = URI(new_name);
 
-  return storage_manager_->move_path(uri, new_uri);
+  return Status::Ok();
 }
 
 }  // namespace tiledb
