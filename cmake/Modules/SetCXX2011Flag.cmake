@@ -29,11 +29,13 @@
 
 include(CheckCXXCompilerFlag)
 
-# Set support for C++ 2011
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if(COMPILER_SUPPORTS_CXX11)
-  message(STATUS "Compiler supports C++ 2011.")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-else()
-  message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+# Set support for C++ 2011. MSVC does not allow you to enforce a
+# standard pre-C++14.
+if (NOT WIN32)
+  if(COMPILER_SUPPORTS_CXX11)
+    message(STATUS "Compiler supports C++ 2011.")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  else()
+    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+  endif()
 endif()

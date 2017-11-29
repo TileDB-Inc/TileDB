@@ -126,4 +126,4 @@ Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
 
-Write-Host "Bootstrap success. Run TODO to build, TODO to test."
+Write-Host "Bootstrap success. Run 'cmake --build .' to build, TODO to test."

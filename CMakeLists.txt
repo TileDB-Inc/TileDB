@@ -77,12 +77,23 @@ endif()
 include(SetCXX2011Flag REQUIRED)
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS_DEBUG 
-    "-DDEBUG -g3 -ggdb3 -gdwarf-3 -Wall -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage")
-if(NOT APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+if (WIN32)
+  # MSVC has the behavior of -fvisibility=hidden by default (you must
+  # explicitly export all symbols you want exported).
+  set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4")
+  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /Ox")
+  # Force compile as C++ (/TP) and disable GDI (which we don't need,
+  # and causes some macro re-definition issues if wingdi.h is
+  # included)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOGDI /MP1 /TP")
+else()
+  set(CMAKE_CXX_FLAGS_DEBUG 
+      "-DDEBUG -g3 -ggdb3 -gdwarf-3 -Wall -fvisibility=hidden")
+  set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden")
+  set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage")
+  if(NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+  endif()
 endif()
 
 # Add definitions
