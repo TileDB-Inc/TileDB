@@ -71,7 +71,6 @@ Status BufferCache::write_to_file(
     file_buffers[path].clear();
     file_buffers.erase(path);
     file_buffers[path] = (*new_buffer); 
-    std::cout<<file_buffers[path].size()<<std::endl;
   }
 #endif
   return Status::Ok();

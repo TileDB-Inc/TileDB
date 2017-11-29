@@ -465,127 +465,127 @@ TEST_CASE_METHOD(
   // set array_metadata name
   set_array_name("sparse_test_5000x1000_100x100");
 
-//  SECTION("- no compression row-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_NO_COMPRESSION,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_ROW_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- no compression col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_NO_COMPRESSION,
-//        TILEDB_COL_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- no compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_NO_COMPRESSION,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- gzip compression row-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_GZIP,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_ROW_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- gzip compression col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_GZIP,
-//        TILEDB_COL_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- gzip compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_GZIP,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- blosc compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_BLOSC,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- bzip compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_BZIP2,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    // Only run 1 randomized trial here as Bzip is ~10x slower than other
-//    // compressors
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
+  SECTION("- no compression row-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- no compression col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_COL_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- no compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- gzip compression row-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- gzip compression col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_COL_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- gzip compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- blosc compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_BLOSC,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- bzip compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_BZIP2,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    // Only run 1 randomized trial here as Bzip is ~10x slower than other
+    // compressors
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
 
   SECTION("- lz4 compression row/col-major") {
     create_sparse_array_2D(
@@ -602,48 +602,48 @@ TEST_CASE_METHOD(
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
-//  SECTION("- rle compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_RLE,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- zstd compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_ZSTD,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
-//
-//  SECTION("- double delta compression row/col-major") {
-//    create_sparse_array_2D(
-//        tile_extent_0,
-//        tile_extent_1,
-//        domain_0_lo,
-//        domain_0_hi,
-//        domain_1_lo,
-//        domain_1_hi,
-//        capacity,
-//        TILEDB_DOUBLE_DELTA,
-//        TILEDB_ROW_MAJOR,
-//        TILEDB_COL_MAJOR);
-//    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
-//  }
+  SECTION("- rle compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_RLE,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- zstd compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_ZSTD,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("- double delta compression row/col-major") {
+    create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_DOUBLE_DELTA,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
 }

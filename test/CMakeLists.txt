@@ -56,8 +56,7 @@ if(USE_S3)
   find_package(aws-sdk-cpp)
   add_definitions(-DUSE_IMPORT_EXPORT)
   file(GLOB_RECURSE TILEDB_TEST_S3_SOURCES "src/s3-unit-*.cc")
-  #set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_S3_SOURCES})
-  set(TILEDB_TEST_SOURCES "src/unit-capi-sparse_array.cc")
+  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_S3_SOURCES})
 endif()
 
 # unit test executable
