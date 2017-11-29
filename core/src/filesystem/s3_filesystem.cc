@@ -66,7 +66,7 @@ using namespace Aws::Utils;
 using namespace Aws;
 
 static const char* DIR_SUFFIX = ".dir";
-static const int TIMEOUT_MAX = 10;
+static const int TIMEOUT_MAX = 1000;
 static const char* ALLOCATION_TAG = "TileDB";
 static const char* ENDPOINT = "localhost:9000";
 static const int MUlTIPART_MINIMUM_SIZE = 5 * 1024 * 1024;
@@ -145,7 +145,34 @@ Status disconnect() {
   return Status::Ok();
 }
 
+
+bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& objectKey)
+{
+  std::cout<<"wait for object: "<<objectKey;
+  unsigned timeoutCount = 0;
+  while (timeoutCount++ < TIMEOUT_MAX)
+  {
+    HeadObjectRequest headObjectRequest;
+    headObjectRequest.SetBucket(bucketName);
+    headObjectRequest.SetKey(objectKey);
+    HeadObjectOutcome headObjectOutcome = client->HeadObject(headObjectRequest);
+    if (headObjectOutcome.IsSuccess())
+    {
+      std::cout<<" OK!"<<std::endl;
+      return true;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  std::cout<<" Not OK!"<<std::endl;
+  return false;
+}
+
 Status flush_file(const URI& uri) {
+  if(is_dir(uri))
+    return Status::Ok();
+  
   std::cout<<"flush: "<<uri.c_str()<<std::endl;
   buffer_cache.flush_file(uri);
 
@@ -161,19 +188,20 @@ Status flush_file(const URI& uri) {
   CompleteMultipartUploadOutcome completeMultipartUploadOutcome =
       client->CompleteMultipartUpload(completeMultipartUploadRequest);
 
+  waitForObjectToPropagate(completeMultipartUploadRequest.GetBucket(), completeMultipartUploadRequest.GetKey());
   multipartUploadIDs.erase(path_c_str);
   multipartUploadPartNumber.erase(path_c_str);
   multipartCompleteMultipartUploadRequest.erase(path_c_str);
   multipartCompleteMultipartUpload.erase(path_c_str);
-  //  Not working when flushing directories
-  //  if (!completeMultipartUploadOutcome.IsSuccess()) {
-  //    return LOG_STATUS(Status::IOError(
-  //        std::string("Failed to flush s3 object ") + uri.c_str() +
-  //        std::string("\nException:  ") +
-  //        completeMultipartUploadOutcome.GetError().GetExceptionName().c_str()
-  //        + std::string("\nError message:  ") +
-  //        completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
-  //  }
+  
+  if (!completeMultipartUploadOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to flush s3 object ") + uri.c_str() +
+        std::string("\nException:  ") +
+        completeMultipartUploadOutcome.GetError().GetExceptionName().c_str()
+        + std::string("\nError message:  ") +
+        completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
+  }
 
   return Status::Ok();
 }
@@ -233,26 +261,6 @@ Status emptyBucket(const Aws::String& bucketName) {
     }
   }
   return Status::Ok();
-}
-
-bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& objectKey)
-{
-  unsigned timeoutCount = 0;
-  while (timeoutCount++ < TIMEOUT_MAX)
-  {
-    HeadObjectRequest headObjectRequest;
-    headObjectRequest.SetBucket(bucketName);
-    headObjectRequest.SetKey(objectKey);
-    HeadObjectOutcome headObjectOutcome = client->HeadObject(headObjectRequest);
-    if (headObjectOutcome.IsSuccess())
-    {
-        return true;
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  return false;
 }
 
 Status waitForBucketToEmpty(const Aws::String& bucketName) {
@@ -652,7 +660,6 @@ Status write_to_file_no_cache(
   completedPart.SetPartNumber(multipartUploadPartNumber[path_c_str]);
   multipartCompleteMultipartUpload[path_c_str].AddParts(completedPart);
 
-  waitForObjectToPropagate(uploadPartRequest.GetBucket(), uploadPartRequest.GetKey());
   return Status::Ok();
 }
 
