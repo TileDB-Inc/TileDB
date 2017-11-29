@@ -420,7 +420,6 @@ Status ReadState::get_fragment_cell_ranges_dense(
       cell_range_T[i] = search_tile_overlap_subarray[2 * i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2 * i + 1];
     }
-
     // Insert the new range into the result vector
     fragment_cell_ranges->emplace_back(fragment_info, cell_range);
   } else {  // Non-contiguous cells, multiple ranges
@@ -430,7 +429,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
       coords[i] = search_tile_overlap_subarray[2 * i];
 
     // Handle the different cell orders
-    unsigned int i;
+    unsigned int i = 0;
     if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= search_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
@@ -449,7 +448,9 @@ Status ReadState::get_fragment_cell_ranges_dense(
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
-        if (dim_num > 1) {
+        if (dim_num == 1) {
+          break;
+        } else {
           i = dim_num - 2;
           ++coords[i];
           while (i > 0 && coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
@@ -474,13 +475,17 @@ Status ReadState::get_fragment_cell_ranges_dense(
         // Insert the new range into the result vector
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
-        // Advance coordinates
-        i = 1;
-        ++coords[i];
-        while (i < dim_num - 1 &&
-               coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
-          coords[i] = search_tile_overlap_subarray[2 * i];
-          ++coords[++i];
+        if (dim_num == 1) {
+          break;
+        } else {
+          // Advance coordinates
+          i = 1;
+          ++coords[i];
+          while (i < dim_num - 1 &&
+                 coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
+            coords[i] = search_tile_overlap_subarray[2 * i];
+            ++coords[++i];
+          }
         }
       }
     } else {
