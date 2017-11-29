@@ -240,13 +240,9 @@ bool VFS::is_dir(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-<<<<<<< HEAD
-    bool ret = s3::is_dir(uri);
-    std::cout<<ret<<std::endl;
-    return ret;
-=======
-    return s3::is_dir(uri);
->>>>>>> 6f084d6a01ba3429b0e88f115ec906f3974b17b6
+  bool ret = s3::is_dir(uri);
+  std::cout<<ret<<std::endl;
+  return ret;
 #else
     return false;
 #endif
@@ -267,13 +263,9 @@ bool VFS::is_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-<<<<<<< HEAD
-    bool ret = s3::is_file(uri);
-    std::cout<<ret<<std::endl;
-    return ret;
-=======
-    return s3::is_file(uri);
->>>>>>> 6f084d6a01ba3429b0e88f115ec906f3974b17b6
+  bool ret = s3::is_file(uri);
+  std::cout<<ret<<std::endl;
+  return ret;
 #else
     return false;
 #endif
