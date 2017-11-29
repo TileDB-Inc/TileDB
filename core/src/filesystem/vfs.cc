@@ -285,11 +285,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 #endif
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-<<<<<<< HEAD
-    RETURN_NOT_OK(s3::ls(parent, &paths));
-=======
-    RETURN_NOT_OK(s3::ls(parent, &files));
->>>>>>> 6f084d6a01ba3429b0e88f115ec906f3974b17b6
+  RETURN_NOT_OK(s3::ls(parent, &paths));
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
