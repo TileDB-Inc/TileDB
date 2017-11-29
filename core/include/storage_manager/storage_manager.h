@@ -141,6 +141,9 @@ class StorageManager {
   /** Creates a directory with the input URI. */
   Status create_dir(const URI& uri);
 
+  /** Creates a special fragment file name inside the `uri` directory. */
+  Status create_fragment_file(const URI& uri);
+
   /** Creates a file with the input URI. */
   Status create_file(const URI& uri);
 

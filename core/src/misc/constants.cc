@@ -46,6 +46,9 @@ namespace constants {
 /** The array metadata file name. */
 const char* array_metadata_filename = "__array_metadata.tdb";
 
+/** The fragment file name. */
+const char* fragment_filename = "__fragment.tdb";
+
 /** The fragment metadata file name. */
 const char* fragment_metadata_filename = "__fragment_metadata.tdb";
 

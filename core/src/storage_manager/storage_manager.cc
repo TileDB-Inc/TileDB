@@ -186,6 +186,10 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
+Status StorageManager::create_fragment_file(const URI& uri) {
+  return create_file(uri.join_path(constants::fragment_filename));
+}
+
 Status StorageManager::create_file(const URI& uri) {
   return vfs_->create_file(uri);
 }
@@ -253,7 +257,7 @@ bool StorageManager::is_file(const URI& uri) {
 }
 
 bool StorageManager::is_fragment(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::fragment_metadata_filename));
+  return vfs_->is_file(uri.join_path(constants::fragment_filename));
 }
 
 Status StorageManager::load(
@@ -552,6 +556,8 @@ Status StorageManager::store(ArrayMetadata* array_metadata) {
       false);
   auto tile_io = new TileIO(this, array_metadata_uri);
   Status st = tile_io->write_generic(tile);
+  if (st.ok())
+    st = sync(array_metadata_uri);
 
   delete tile;
   delete tile_io;
@@ -585,6 +591,8 @@ Status StorageManager::store(FragmentMetadata* metadata) {
 
   auto tile_io = new TileIO(this, fragment_metadata_uri);
   Status st = tile_io->write_generic(tile);
+  if (st.ok())
+    st = sync(fragment_metadata_uri);
 
   delete tile;
   delete tile_io;
@@ -755,7 +763,7 @@ Status StorageManager::get_fragment_uris(
   for (auto& uri : uris) {
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
-    if (vfs_->is_file(uri.join_path(constants::fragment_metadata_filename)))
+    if (is_fragment(uri))
       fragment_uris->push_back(uri);
   }
 
