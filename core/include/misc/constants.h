@@ -252,6 +252,12 @@ extern const int version[3];
 /** The size of a tile chunk. */
 extern const uint64_t tile_chunk_size;
 
+/** The default attribute name prefix. */
+extern const char* default_attr_name;
+
+/** The default dimension name prefix. */
+extern const char* default_dim_name;
+
 }  // namespace constants
 
 }  // namespace tiledb

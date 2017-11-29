@@ -120,6 +120,9 @@ class Attribute {
   /** Sets the attribute compression level. */
   void set_compression_level(int compression_level);
 
+  /** Sets the attribute name. */
+  void set_name(const std::string& name);
+
   /** Returns the attribute type. */
   Datatype type() const;
 

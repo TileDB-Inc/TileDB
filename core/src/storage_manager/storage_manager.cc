@@ -446,6 +446,23 @@ Status StorageManager::query_finalize(Query* query) {
 }
 
 Status StorageManager::query_init(
+    Query* query, const char* array_name, QueryType type) {
+  // Open the array
+  std::vector<FragmentMetadata*> fragment_metadata;
+  auto array_metadata = (const ArrayMetadata*)nullptr;
+  RETURN_NOT_OK(
+      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
+
+  // Set basic query members
+  query->set_storage_manager(this);
+  query->set_type(type);
+  query->set_array_metadata(array_metadata);
+  query->set_fragment_metadata(fragment_metadata);
+
+  return Status::Ok();
+}
+
+Status StorageManager::query_init(
     Query* query,
     const char* array_name,
     QueryType type,
@@ -459,8 +476,8 @@ Status StorageManager::query_init(
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_metadata = (const ArrayMetadata*)nullptr;
-  RETURN_NOT_OK(array_open(
-      URI(array_name), type, subarray, &array_metadata, &fragment_metadata));
+  RETURN_NOT_OK(
+      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
 
   // Initialize query
   return query->init(
@@ -478,6 +495,11 @@ Status StorageManager::query_init(
 }
 
 Status StorageManager::query_submit(Query* query) {
+  // Initialize query
+  if (query->status() != QueryStatus::INCOMPLETE)
+    RETURN_NOT_OK(query->init());
+
+  // Based on the query type, invoke the appropriate call
   QueryType query_type = query->type();
   if (query_type == QueryType::READ)
     return query->read();
@@ -487,6 +509,10 @@ Status StorageManager::query_submit(Query* query) {
 
 Status StorageManager::query_submit_async(
     Query* query, void* (*callback)(void*), void* callback_data) {
+  // Initialize query
+  if (query->status() != QueryStatus::INCOMPLETE)
+    RETURN_NOT_OK(query->init());
+
   // Push the query into the async queue
   query->set_callback(callback, callback_data);
   return async_push_query(query, 0);
@@ -630,7 +656,6 @@ Status StorageManager::array_close(
 Status StorageManager::array_open(
     const URI& array_uri,
     QueryType type,
-    const void* subarray,
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
@@ -671,8 +696,7 @@ Status StorageManager::array_open(
   // Get fragment metadata only in read mode
   if (type == QueryType::READ)
     RETURN_NOT_OK_ELSE(
-        open_array_load_fragment_metadata(
-            open_array, subarray, fragment_metadata),
+        open_array_load_fragment_metadata(open_array, fragment_metadata),
         array_open_error(open_array, *fragment_metadata));
 
   // Unlock the array mutex
@@ -722,16 +746,13 @@ void StorageManager::async_stop() {
 }
 
 Status StorageManager::get_fragment_uris(
-    const URI& array_uri,
-    const void* subarray,
-    std::vector<URI>* fragment_uris) const {
+    const URI& array_uri, std::vector<URI>* fragment_uris) const {
   // Get all uris in the array directory
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri, &uris));
 
   // Get only the fragment uris
   for (auto& uri : uris) {
-    // TODO: check here if the fragment overlaps subarray
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
     if (vfs_->is_file(uri.join_path(constants::fragment_metadata_filename)))
@@ -771,13 +792,11 @@ Status StorageManager::open_array_load_metadata(
 }
 
 Status StorageManager::open_array_load_fragment_metadata(
-    OpenArray* open_array,
-    const void* subarray,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    OpenArray* open_array, std::vector<FragmentMetadata*>* fragment_metadata) {
   // Get all the fragment uris, sorted by timestamp
   std::vector<URI> fragment_uris;
   const URI& array_uri = open_array->array_uri();
-  RETURN_NOT_OK(get_fragment_uris(array_uri, subarray, &fragment_uris));
+  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
   sort_fragment_uris(&fragment_uris);
 
   if (fragment_uris.empty())

@@ -36,6 +36,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 /* ****************************** */
 /*             MACROS             */
@@ -76,12 +77,12 @@ Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
   dim_num_ = domain->dim_num_;
-  for (auto dim : domain->dimensions_)
-    dimensions_.emplace_back(new Dimension(dim));
   type_ = domain->type_;
 
-  uint64_t coords_size = dim_num_ * datatype_size(type_);
+  for (auto dim : domain->dimensions_)
+    dimensions_.emplace_back(new Dimension(dim));
 
+  uint64_t coords_size = dim_num_ * datatype_size(type_);
   tile_order_ = domain->tile_order_;
   tile_offsets_col_ = domain->tile_offsets_col_;
   tile_offsets_row_ = domain->tile_offsets_row_;
@@ -130,13 +131,20 @@ Domain::~Domain() {
 /*                API                */
 /* ********************************* */
 
-Status Domain::add_dimension(
-    const char* name, const void* domain, const void* tile_extent) {
-  auto dim = new Dimension(name, type_);
-  RETURN_NOT_OK_ELSE(dim->set_domain(domain), delete dim);
-  RETURN_NOT_OK_ELSE(dim->set_tile_extent(tile_extent), delete dim);
+Status Domain::add_dimension(Dimension* dim) {
+  // Compute new dimension name
+  std::string new_dim_name = dim->name();
+  if (new_dim_name.empty())
+    new_dim_name = default_dimension_name(dim_num_);
 
-  dimensions_.emplace_back(dim);
+  auto new_dim = new Dimension(new_dim_name.c_str(), type_);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_domain(dim->domain(), dim->type()), delete new_dim);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_tile_extent(dim->tile_extent(), dim->type()),
+      delete new_dim);
+
+  dimensions_.emplace_back(new_dim);
   ++dim_num_;
 
   return Status::Ok();
@@ -1010,6 +1018,12 @@ void Domain::compute_tile_offsets() {
     }
   }
   std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
+}
+
+std::string Domain::default_dimension_name(unsigned int i) const {
+  std::stringstream ss;
+  ss << constants::default_dim_name << "_" << i;
+  return ss.str();
 }
 
 template <class T>

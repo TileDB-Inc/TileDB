@@ -278,6 +278,16 @@ class StorageManager {
    * @param query The query to initialize.
    * @param array_name The name of the array the query targets at.
    * @param type The query type.
+   * @return Status
+   */
+  Status query_init(Query* query, const char* array_name, QueryType type);
+
+  /**
+   * Initializes a query.
+   *
+   * @param query The query to initialize.
+   * @param array_name The name of the array the query targets at.
+   * @param type The query type.
    * @param layout The cell layout.
    * @param subarray The subarray the query will be constrained on.
    * @param attributes The attributes the query will be constrained on.
@@ -435,7 +445,6 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param query_type The query type.
-   * @param subarray The subarray the query is constrained on.
    * @param array_metadata The array metadata to be retrieved.
    * @param fragment_metadata The fragment metadat to be retrieved.
    * @return
@@ -443,7 +452,6 @@ class StorageManager {
   Status array_open(
       const URI& array_uri,
       QueryType query_type,
-      const void* subarray,
       const ArrayMetadata** array_metadata,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -480,16 +488,9 @@ class StorageManager {
    */
   void async_process_queries(int i);
 
-  /**
-   * Retrieves the fragment URI's of an array that overlap with a give
-   * subarray.
-   */
-  // TODO: Currently, no overlap check is performed with the subarray
-  // TODO: and all fragments are retrieved. To be fixed soon.
+  /** Retrieves all the fragment URI's of an array. */
   Status get_fragment_uris(
-      const URI& array_uri,
-      const void* subarray,
-      std::vector<URI>* fragment_uris) const;
+      const URI& array_uri, std::vector<URI>* fragment_uris) const;
 
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
@@ -499,9 +500,7 @@ class StorageManager {
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
   Status open_array_load_fragment_metadata(
-      OpenArray* open_array,
-      const void* subarray,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      OpenArray* open_array, std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Sorts the input fragment URIs in ascending timestamp order, breaking

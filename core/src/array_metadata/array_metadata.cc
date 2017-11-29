@@ -40,6 +40,7 @@
 #include <cmath>
 #include <iostream>
 #include <set>
+#include <sstream>
 
 namespace tiledb {
 
@@ -404,7 +405,12 @@ bool ArrayMetadata::var_size(unsigned int attribute_id) const {
 }
 
 void ArrayMetadata::add_attribute(const Attribute* attr) {
-  attributes_.emplace_back(new Attribute(attr));
+  // Create new attribute and potentially set a default name
+  auto new_attr = new Attribute(attr);
+  if (new_attr->name().empty())
+    new_attr->set_name(constants::default_attr_name);
+
+  attributes_.emplace_back(new_attr);
   ++attribute_num_;
 }
 
@@ -506,6 +512,23 @@ void ArrayMetadata::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
+void ArrayMetadata::set_coords_compressor(Compressor compressor) {
+  coords_compression_ = compressor;
+}
+
+void ArrayMetadata::set_coords_compression_level(int compression_level) {
+  coords_compression_level_ = compression_level;
+}
+
+void ArrayMetadata::set_cell_var_offsets_compressor(Compressor compressor) {
+  cell_var_offsets_compression_ = compressor;
+}
+
+void ArrayMetadata::set_cell_var_offsets_compression_level(
+    int compression_level) {
+  cell_var_offsets_compression_level_ = compression_level;
+}
+
 void ArrayMetadata::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
 }
@@ -516,8 +539,9 @@ void ArrayMetadata::set_domain(Domain* domain) {
   domain_ = new Domain(domain);
 
   // Potentially change the default coordinates compressor
-  if (domain_->type() == Datatype::FLOAT32 ||
-      domain_->type() == Datatype::FLOAT64)
+  if ((domain_->type() == Datatype::FLOAT32 ||
+       domain_->type() == Datatype::FLOAT64) &&
+      coords_compression_ == Compressor::DOUBLE_DELTA)
     coords_compression_ = constants::real_coords_compression;
 }
 

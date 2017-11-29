@@ -228,6 +228,18 @@ class ArrayMetadata {
   /** Sets the array type. */
   void set_array_type(ArrayType array_type);
 
+  /** Sets the variable cell offsets compressor. */
+  void set_cell_var_offsets_compressor(Compressor compressor);
+
+  /** Sets the variable cell offsets compression level. */
+  void set_cell_var_offsets_compression_level(int compression_level);
+
+  /** Sets the coordinates compressor. */
+  void set_coords_compressor(Compressor compressor);
+
+  /** Sets the coordinates compression level. */
+  void set_coords_compression_level(int compression_level);
+
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 

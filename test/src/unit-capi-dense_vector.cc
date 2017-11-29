@@ -122,8 +122,11 @@ struct DenseVectorFx {
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM0_NAME, &dim_domain, &tile_extent);
+    tiledb_dimension_t* dim;
+    rc = tiledb_dimension_create(
+        ctx_, &dim, DIM0_NAME, TILEDB_INT64, dim_domain, &tile_extent);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx_, domain, dim);
     REQUIRE(rc == TILEDB_OK);
 
     // Create attribute
@@ -157,6 +160,10 @@ struct DenseVectorFx {
     // Create array
     rc = tiledb_array_create(ctx_, array_metadata);
     REQUIRE(rc == TILEDB_OK);
+    tiledb_attribute_free(ctx_, attr);
+    tiledb_dimension_free(ctx_, dim);
+
+    const char* attributes[] = {ATTR_NAME};
 
     int64_t buffer_val[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     // Write array
@@ -168,16 +175,12 @@ struct DenseVectorFx {
     };
     tiledb_query_t* write_query;
     rc = tiledb_query_create(
-        ctx_,
-        &write_query,
-        array_name_.c_str(),
-        TILEDB_WRITE,
-        TILEDB_ROW_MAJOR,
-        nullptr,
-        nullptr,
-        0,
-        write_buffers,
-        write_buffer_sizes);
+        ctx_, &write_query, array_name_.c_str(), TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, write_query, attributes, 1, write_buffers, write_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, write_query, TILEDB_ROW_MAJOR);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_submit(ctx_, write_query);
     REQUIRE(rc == TILEDB_OK);
@@ -185,7 +188,10 @@ struct DenseVectorFx {
   }
 };
 
-TEST_CASE_METHOD(DenseVectorFx, "C API: Test 1d dense vector read row-major") {
+TEST_CASE_METHOD(
+    DenseVectorFx,
+    "C API: Test 1d dense vector read row-major",
+    "[dense-vector]") {
   // Read subset of array val[0:2]
   int rc;
   uint64_t subarray[] = {0, 2};
@@ -201,18 +207,18 @@ TEST_CASE_METHOD(DenseVectorFx, "C API: Test 1d dense vector read row-major") {
   write_dense_vector("foo");
   tiledb_query_t* read_query = nullptr;
 
+  const char* attributes[] = {ATTR_NAME};
+
   SECTION("row-major") {
     rc = tiledb_query_create(
-        ctx_,
-        &read_query,
-        array_name_.c_str(),
-        TILEDB_READ,
-        TILEDB_ROW_MAJOR,
-        subarray,
-        nullptr,
-        0,
-        read_buffers,
-        read_buffer_sizes);
+        ctx_, &read_query, array_name_.c_str(), TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_submit(ctx_, read_query);
     REQUIRE(rc == TILEDB_OK);
@@ -225,17 +231,16 @@ TEST_CASE_METHOD(DenseVectorFx, "C API: Test 1d dense vector read row-major") {
 
   SECTION("col-major") {
     rc = tiledb_query_create(
-        ctx_,
-        &read_query,
-        array_name_.c_str(),
-        TILEDB_READ,
-        TILEDB_COL_MAJOR,
-        subarray,
-        nullptr,
-        0,
-        read_buffers,
-        read_buffer_sizes);
+        ctx_, &read_query, array_name_.c_str(), TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+    REQUIRE(rc == TILEDB_OK);
+
     rc = tiledb_query_submit(ctx_, read_query);
     REQUIRE(rc == TILEDB_OK);
     tiledb_query_free(ctx_, read_query);
@@ -246,7 +251,7 @@ TEST_CASE_METHOD(DenseVectorFx, "C API: Test 1d dense vector read row-major") {
   }
 
   int64_t update_buffer[] = {9, 8, 7};
-   void* update_buffers[] = {
+  void* update_buffers[] = {
       update_buffer,
   };
   uint64_t update_buffer_sizes[] = {
@@ -256,33 +261,31 @@ TEST_CASE_METHOD(DenseVectorFx, "C API: Test 1d dense vector read row-major") {
   SECTION("update") {
     tiledb_query_t* update_query;
     rc = tiledb_query_create(
-        ctx_,
-        &update_query,
-        array_name_.c_str(),
-        TILEDB_WRITE,
-        TILEDB_ROW_MAJOR,
-        subarray,
-        nullptr,
-        0,
-        update_buffers,
-        update_buffer_sizes);
+        ctx_, &update_query, array_name_.c_str(), TILEDB_WRITE);
     REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, update_query, attributes, 1, update_buffers, update_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_by_subarray(ctx_, update_query, subarray, TILEDB_INT64);
+    REQUIRE(rc == TILEDB_OK);
+
     rc = tiledb_query_submit(ctx_, update_query);
     REQUIRE(rc == TILEDB_OK);
     tiledb_query_free(ctx_, update_query);
 
     rc = tiledb_query_create(
-        ctx_,
-        &read_query,
-        array_name_.c_str(),
-        TILEDB_READ,
-        TILEDB_COL_MAJOR,
-        subarray,
-        nullptr,
-        0,
-        read_buffers,
-        read_buffer_sizes);
+        ctx_, &read_query, array_name_.c_str(), TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+    REQUIRE(rc == TILEDB_OK);
+
     rc = tiledb_query_submit(ctx_, read_query);
     REQUIRE(rc == TILEDB_OK);
     tiledb_query_free(ctx_, read_query);

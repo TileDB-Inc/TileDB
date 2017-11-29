@@ -106,11 +106,15 @@ struct ResourceMgmtRx {
         1,
     };
 
+    // Create dimension
+    tiledb_dimension_t* d1;
+    tiledb_dimension_create(
+        ctx_, &d1, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0]);
+
     // Domain
     tiledb_domain_t* domain;
     tiledb_domain_create(ctx_, &domain, TILEDB_INT64);
-    tiledb_domain_add_dimension(
-        ctx_, domain, "d1", &dim_domain[0], &tile_extents[0]);
+    tiledb_domain_add_dimension(ctx_, domain, d1);
 
     // Create array_metadata metadata
     tiledb_array_metadata_t* array_metadata;
@@ -124,6 +128,8 @@ struct ResourceMgmtRx {
 
     // Create array
     REQUIRE(tiledb_array_create(ctx_, array_metadata) == TILEDB_OK);
+
+    tiledb_dimension_free(ctx_, d1);
   }
 
   const char* error_message() {
