@@ -34,13 +34,8 @@
 #ifndef TILEDB_H
 #define TILEDB_H
 
-#include <unistd.h>
-#include <cfloat>
-#include <climits>
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <string>
 
 /* ********************************* */
 /*               MACROS              */
