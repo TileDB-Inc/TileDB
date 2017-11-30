@@ -303,6 +303,9 @@ class Domain {
   template <class T>
   bool is_contained_in_tile_slab_row(const T* range) const;
 
+  /** Returns true if at least one dimension has null tile extent. */
+  bool null_tile_extents() const;
+
   /**
    * Serializes the object members into a binary buffer.
    *

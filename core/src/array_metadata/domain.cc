@@ -428,7 +428,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set tile extents
   if (tile_extents_ != nullptr)
     std::free(tile_extents_);
-  if (tile_extent(0) == nullptr) {
+  if (null_tile_extents()) {
     tile_extents_ = nullptr;
   } else {
     tile_extents_ = std::malloc(coords_size);
@@ -544,6 +544,15 @@ bool Domain::is_contained_in_tile_slab_row(const T* range) const {
 
   // Range contained in the row tile slab
   return true;
+}
+
+bool Domain::null_tile_extents() const {
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    if (tile_extent(i) == nullptr)
+      return true;
+  }
+
+  return false;
 }
 
 // ===== FORMAT =====
@@ -876,9 +885,12 @@ void Domain::compute_cell_num_per_tile() {
 
 template <class T>
 void Domain::compute_cell_num_per_tile() {
-  auto tile_extents = static_cast<const T*>(tile_extents_);
-  cell_num_per_tile_ = 1;
+  // Applicable only to non-NULL space tiles
+  if (tile_extents_ == nullptr)
+    return;
 
+  cell_num_per_tile_ = 1;
+  auto tile_extents = static_cast<const T*>(tile_extents_);
   for (unsigned int i = 0; i < dim_num_; ++i)
     cell_num_per_tile_ *= tile_extents[i];
 }
