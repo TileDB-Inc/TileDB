@@ -33,6 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Default user definitions
 set(USE_HDFS False CACHE BOOL "Enables HDFS support using the official Hadoop JNI bindings")
+set(USE_S3 False CACHE BOOL "Enables S3/minio support using aws-cpp-sdk")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -73,6 +74,14 @@ if(USE_HDFS)
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBHDFS_LIBRARY})
 endif()
 
+if(USE_S3)  
+  set(aws-sdk-cpp_DIR $ENV{AWS_SDK_CPP})
+  find_package(aws-sdk-cpp)
+  #include_directories(${LIBAWS_CPP_SDK_S3_INCLUDE_DIR})
+  #set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_CPP_SDK_S3_LIBRARIES})
+  add_definitions(-DUSE_IMPORT_EXPORT)
+endif()
+
 # Set C++ 2011 flag
 include(SetCXX2011Flag REQUIRED)
 
@@ -90,6 +99,10 @@ add_definitions(-D_FILE_OFFSET_BITS=64)
 if(USE_HDFS)
   add_definitions(-DHAVE_HDFS)
   message(STATUS "The TileDB library is compiled with HDFS support.")
+endif()
+if(USE_S3)
+  add_definitions(-DHAVE_S3)
+  message(STATUS "The TileDB library is compiled with S3 support.")
 endif()
 if(TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)

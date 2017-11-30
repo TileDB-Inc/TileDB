@@ -35,37 +35,55 @@
 #include "constants.h"
 #include "posix_filesystem.h"
 #include "tiledb.h"
+#include "uri.h"
 
 #include <iostream>
+
+#ifdef HAVE_S3
+#include "s3_filesystem.h"
+#endif
 
 // Test directory
 #ifdef HAVE_HDFS
 const std::string TEMP_DIR = "hdfs:///tiledb_test/";
 const std::string FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test";
+#elif HAVE_S3
+const char* S3_BUCKET = "tiledb";
+const std::string TEMP_DIR = "s3://tiledb/tiledb_test/";
+const std::string FULL_TEMP_DIR = "s3://tiledb/tiledb_test";
 #else
 const std::string TEMP_DIR = "tiledb_test";
 const std::string FULL_TEMP_DIR =
     std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test";
 #endif
 
-// Returns true if the input path exists
 bool dir_exists(std::string path) {
 #ifdef HAVE_HDFS
   std::string cmd = std::string("hadoop fs -test -d ") + path;
+  return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+  tiledb::s3::connect();
+  if(!tiledb::s3::bucket_exists(S3_BUCKET))
+    tiledb::s3::create_bucket(S3_BUCKET);
+  bool ret = tiledb::s3::is_dir(tiledb::URI(path));
+  return ret;
 #else
   std::string cmd = std::string("test -d ") + path;
-#endif
   return (system(cmd.c_str()) == 0);
+#endif
 }
 
-// Deletes a directory
 bool remove_dir(std::string path) {
 #ifdef HAVE_HDFS
   std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
-#else
-  std::string cmd = std::string("rm -rf ") + path;
-#endif
   return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+  tiledb::s3::remove_path(tiledb::URI(path));
+  return true;
+#else
+  std::string cmd = std::string("rm -r -f ") + path;
+  return (system(cmd.c_str()) == 0);
+#endif
 }
 
 // Removes TEMP_DIR
@@ -124,6 +142,41 @@ void create_hierarchy() {
       std::string("hadoop fs -mkdir ") + TEMP_DIR + "/dense_arrays/kv";
   std::string cmd_15 = std::string("hadoop fs -touchz ") + TEMP_DIR +
                        "/dense_arrays/kv/__kv.tdb";
+  REQUIRE(system(cmd_1.c_str()) == 0);
+  REQUIRE(system(cmd_2.c_str()) == 0);
+  REQUIRE(system(cmd_3.c_str()) == 0);
+  REQUIRE(system(cmd_4.c_str()) == 0);
+  REQUIRE(system(cmd_5.c_str()) == 0);
+  REQUIRE(system(cmd_6.c_str()) == 0);
+  REQUIRE(system(cmd_7.c_str()) == 0);
+  REQUIRE(system(cmd_8.c_str()) == 0);
+  REQUIRE(system(cmd_9.c_str()) == 0);
+  REQUIRE(system(cmd_10.c_str()) == 0);
+  REQUIRE(system(cmd_11.c_str()) == 0);
+  REQUIRE(system(cmd_12.c_str()) == 0);
+  REQUIRE(system(cmd_13.c_str()) == 0);
+  REQUIRE(system(cmd_14.c_str()) == 0);
+  REQUIRE(system(cmd_15.c_str()) == 0);
+#elif HAVE_S3
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/dense_arrays/__tiledb_group.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_A"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/dense_arrays/array_A/__array_metadata.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_B"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/dense_arrays/array_B/__array_metadata.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/sparse_arrays/__tiledb_group.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_C"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/sparse_arrays/array_C/__array_metadata.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D"));
+  tiledb::s3::create_file(
+      tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D/__array_metadata.tdb"));
 #else
   std::string cmd_1 = std::string("mkdir ") + TEMP_DIR;
   std::string cmd_2 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays";
@@ -151,8 +204,6 @@ void create_hierarchy() {
   std::string cmd_14 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays/kv";
   std::string cmd_15 =
       std::string("touch ") + TEMP_DIR + "/dense_arrays/kv/__kv.tdb";
-#endif
-
   REQUIRE(system(cmd_1.c_str()) == 0);
   REQUIRE(system(cmd_2.c_str()) == 0);
   REQUIRE(system(cmd_3.c_str()) == 0);
@@ -168,6 +219,7 @@ void create_hierarchy() {
   REQUIRE(system(cmd_13.c_str()) == 0);
   REQUIRE(system(cmd_14.c_str()) == 0);
   REQUIRE(system(cmd_15.c_str()) == 0);
+#endif
 }
 
 void create_golden_output(std::string* golden) {

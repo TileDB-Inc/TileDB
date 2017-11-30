@@ -87,15 +87,30 @@ bool URI::is_hdfs() const {
 }
 
 bool URI::is_s3(const std::string& path) {
-  return utils::starts_with(path, "s3://");
+  return utils::starts_with(path, "s3://") ||
+         utils::starts_with(path, "http://") ||
+         utils::starts_with(path, "https://");
 }
 
 bool URI::is_s3() const {
-  return utils::starts_with(uri_, "s3://");
+  return utils::starts_with(uri_, "s3://") ||
+         utils::starts_with(uri_, "http://") ||
+         utils::starts_with(uri_, "https://");
 }
 
 URI URI::join_path(const std::string& path) const {
-  return URI(uri_ + "/" + path);
+  if (uri_.back() == '/') {
+    if (path.front() == '/') {
+      return URI(uri_ + path.substr(1, path.size()));
+    }
+    return URI(uri_ + path);
+  } else {
+    if (path.front() == '/') {
+      return URI(uri_ + path);
+    } else {
+      return URI(uri_ + "/" + path);
+    }
+  }
 }
 
 std::string URI::last_path_part() const {
