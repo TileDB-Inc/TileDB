@@ -200,10 +200,14 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Invalid array URI"));
 
-  if (domain_ == nullptr) {
+  if (domain_ == nullptr)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Domain not set"));
-  }
+
+  if (array_type_ == ArrayType::DENSE && domain_->null_tile_extents())
+    return LOG_STATUS(
+        Status::ArrayMetadataError("Array metadata check failed; Dense arrays "
+                                   "should not have null tile extents"));
 
   if (dim_num() == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
@@ -490,6 +494,9 @@ Status ArrayMetadata::init() {
   // Perform check of all members
   RETURN_NOT_OK(check());
 
+  // Initialize domain
+  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
+
   // Set cell sizes
   cell_sizes_.resize(attribute_num_ + 1);
   for (unsigned int i = 0; i <= attribute_num_; ++i)
@@ -497,8 +504,6 @@ Status ArrayMetadata::init() {
 
   auto dim_num = domain_->dim_num();
   coords_size_ = dim_num * datatype_size(coords_type());
-
-  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
 
   // Success
   return Status::Ok();

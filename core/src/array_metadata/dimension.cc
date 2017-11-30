@@ -94,6 +94,7 @@ Dimension::~Dimension() {
 // dimension_name_size (unsigned int)
 // dimension_name (string)
 // domain (void* - 2*type_size)
+// null_tile_extent (bool)
 // tile_extent (void* - type_size)
 Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   // Set type
@@ -118,11 +119,17 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   // Load tile extent
   if (tile_extent_ != nullptr)
     std::free(tile_extent_);
-  tile_extent_ = std::malloc(datatype_size(type_));
-  if (tile_extent_ == nullptr)
-    return LOG_STATUS(
-        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
-  RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
+  tile_extent_ = nullptr;
+  bool null_tile_extent;
+  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(bool)));
+  if (!null_tile_extent) {
+    tile_extent_ = std::malloc(datatype_size(type_));
+    if (tile_extent_ == nullptr) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot deserialize; Memory allocation failed"));
+    }
+    RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
+  }
 
   return Status::Ok();
 }
@@ -151,8 +158,15 @@ const std::string& Dimension::name() const {
 // dimension_name_size (unsigned int)
 // dimension_name (string)
 // domain (void* - 2*type_size)
+// null_tile_extent (bool)
 // tile_extent (void* - type_size)
 Status Dimension::serialize(Buffer* buff) {
+  // Sanity check
+  if (domain_ == nullptr) {
+    return LOG_STATUS(
+        Status::DimensionError("Cannot serialize dimension; Domain not set"));
+  }
+
   // Write dimension name
   auto dimension_name_size = (unsigned int)name_.size();
   RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(unsigned int)));
@@ -161,7 +175,11 @@ Status Dimension::serialize(Buffer* buff) {
   // Write domain and tile extent
   uint64_t domain_size = 2 * datatype_size(type_);
   RETURN_NOT_OK(buff->write(domain_, domain_size));
-  RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
+
+  bool null_tile_extent = (tile_extent_ == nullptr);
+  RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(bool)));
+  if (tile_extent_ != nullptr)
+    RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
 
   return Status::Ok();
 }
@@ -366,9 +384,10 @@ Status Dimension::set_tile_extent(const T* tile_extent) {
 
 Status Dimension::set_tile_extent(const void* tile_extent, Datatype type) {
   // Sanity check
-  if (tile_extent == nullptr)
-    return LOG_STATUS(Status::DimensionError(
-        "Cannot set tile extent; Input tile extent is nullptr"));
+  if (tile_extent == nullptr) {
+    tile_extent_ = nullptr;
+    return Status::Ok();
+  }
 
   // Type match
   if (type == type_)
