@@ -15,3 +15,4 @@ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;core;transfer;config" ..
 make
 sudo make install
 sed -i 's/-fno-exceptions;//g' aws-cpp-sdk-core/aws-cpp-sdk-core-targets.cmake
+sed -i 's/-Werror;//g' aws-cpp-sdk-core/aws-cpp-sdk-core-targets.cmake

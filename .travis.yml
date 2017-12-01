@@ -32,7 +32,7 @@ install:
     - if [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3; fi
     - if [ "$USE_HDFS" == "OFF" ] && [ "$USE_S3" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
     - make -j4
-    - if [ "$USE_S3" == "OFF" ]; then make examples -j4; fi
+    - make examples -j4
     
 before_script:
     - lcov --directory $TRAVIS_BUILD_DIR/build --zerocounters
