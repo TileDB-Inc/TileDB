@@ -78,7 +78,7 @@ if(USE_S3)
   set(aws-sdk-cpp_DIR $ENV{AWS_SDK_CPP})
   find_package(aws-sdk-cpp)
   #include_directories(${LIBAWS_CPP_SDK_S3_INCLUDE_DIR})
-  #set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_CPP_SDK_S3_LIBRARIES})
+  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} aws-cpp-sdk-s3)
   add_definitions(-DUSE_IMPORT_EXPORT)
 endif()
 
