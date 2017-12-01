@@ -249,33 +249,34 @@ Status read_from_file(hdfsFS fs, const URI& uri, Buffer** buff) {
 Status write_to_file(
     hdfsFS fs, const URI& uri, const void* buffer, const uint64_t length) {
   int flags = is_file(fs, uri) ? O_WRONLY | O_APPEND : O_WRONLY;
-  hdfsFile writeFile = hdfsOpenFile(
+  hdfsFile write_file = hdfsOpenFile(
       fs, uri.to_path().c_str(), flags, constants::max_write_bytes, 0, 0);
-  if (!writeFile) {
+  if (!write_file) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file ") + uri.to_string() +
         "; File opening error"));
   }
-  // Append data to the file in batches of Configurator::max_write_bytes()
-  // bytes at a time
-  // ssize_t bytes_written = 0;
-  off_t nrRemaining = 0;
-  tSize curSize = 0;
-  tSize written = 0;
-  for (nrRemaining = (off_t)length; nrRemaining > 0;
-       nrRemaining -= constants::max_write_bytes) {
-    curSize = (constants::max_write_bytes < nrRemaining) ?
-                  constants::max_write_bytes :
-                  static_cast<tSize>(nrRemaining);
-    if ((written = hdfsWrite(fs, writeFile, buffer, curSize)) != curSize) {
+  // Append data to the file in batches of
+  // constants::max_write_bytes bytes at a time
+  uint64_t nbytes_remaining = length;
+  while (true) {
+    tSize cur_size = (nbytes_remaining > constants::max_write_bytes) ?
+                         constants::max_write_bytes :
+                         nbytes_remaining;
+    tSize written = hdfsWrite(fs, write_file, buffer, cur_size);
+    if (written != cur_size) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file ") + uri.to_string() +
           "; File writing error"));
     }
-    hdfsFlush(fs, writeFile);
+    hdfsFlush(fs, write_file);
+    nbytes_remaining -= written;
+    if (nbytes_remaining == 0) {
+      break;
+    }
   }
   // Close file
-  if (hdfsCloseFile(fs, writeFile)) {
+  if (hdfsCloseFile(fs, write_file)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file ") + uri.to_string() +
         "; File closing error"));

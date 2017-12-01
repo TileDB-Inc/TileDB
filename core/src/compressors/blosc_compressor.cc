@@ -104,7 +104,8 @@ Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
 uint64_t Blosc::overhead(uint64_t nbytes) {
   // Blosc has a fixed overhead
+  (void)nbytes;
   return BLOSC_MAX_OVERHEAD;
 }
 
-};  // namespace tiledb
+}  // namespace tiledb

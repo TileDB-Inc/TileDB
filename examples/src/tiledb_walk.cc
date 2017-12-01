@@ -55,6 +55,7 @@ int main() {
 
 int print_path(const char* path, tiledb_object_t type, void* data) {
   // Simply print the path and type
+  (void)data;
   std::cout << path << " ";
   switch (type) {
     case TILEDB_ARRAY:

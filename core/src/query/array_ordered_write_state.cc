@@ -59,7 +59,7 @@ ArrayOrderedWriteState::ArrayOrderedWriteState(Query* query)
     , query_(query) {
   // For easy reference.
   auto array_metadata = query_->array_metadata();
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Initializations
   coords_size_ = array_metadata->coords_size();
@@ -495,7 +495,7 @@ void ArrayOrderedWriteState::calculate_buffer_num() {
 
   // Calculate number of buffers
   buffer_num_ = 0;
-  auto attribute_id_num = (unsigned int)attribute_ids_.size();
+  auto attribute_id_num = attribute_ids_.size();
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
     // Fix-sized attribute
     if (!array_metadata->var_size(attribute_ids_[i]))
@@ -545,7 +545,7 @@ template <class T>
 void ArrayOrderedWriteState::calculate_cell_slab_info_col_col(
     unsigned int id, uint64_t tid) {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
   auto tile_extents =
       (const T*)query_->array_metadata()->domain()->tile_extents();
@@ -556,7 +556,7 @@ void ArrayOrderedWriteState::calculate_cell_slab_info_col_col(
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute
-  for (int aid = 0; aid < anum; ++aid)
+  for (unsigned int aid = 0; aid < anum; ++aid)
     tile_slab_info_[id].cell_slab_size_[aid][tid] =
         tile_slab_info_[id].cell_slab_num_[tid] * attribute_sizes_[aid];
 
@@ -573,8 +573,9 @@ template <class T>
 void ArrayOrderedWriteState::calculate_cell_slab_info_row_row(
     unsigned int id, uint64_t tid) {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
-  auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
+  auto anum = attribute_ids_.size();
+  auto range_overlap =
+      static_cast<const T*>(tile_slab_info_[id].range_overlap_[tid]);
   auto tile_extents =
       (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t cell_num;
@@ -585,7 +586,7 @@ void ArrayOrderedWriteState::calculate_cell_slab_info_row_row(
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute
-  for (int aid = 0; aid < anum; ++aid)
+  for (unsigned int aid = 0; aid < anum; ++aid)
     tile_slab_info_[id].cell_slab_size_[aid][tid] =
         tile_slab_info_[id].cell_slab_num_[tid] * attribute_sizes_[aid];
 
@@ -606,7 +607,7 @@ template <class T>
 void ArrayOrderedWriteState::calculate_cell_slab_info_col_row(
     unsigned int id, uint64_t tid) {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   auto tile_extents =
       (const T*)query_->array_metadata()->domain()->tile_extents();
 
@@ -635,7 +636,7 @@ template <class T>
 void ArrayOrderedWriteState::calculate_cell_slab_info_row_col(
     unsigned int id, uint64_t tid) {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   auto tile_extents =
       (const T*)query_->array_metadata()->domain()->tile_extents();
 
@@ -650,7 +651,7 @@ void ArrayOrderedWriteState::calculate_cell_slab_info_row_col(
   // Calculate cell offset per dimension
   uint64_t cell_offset = 1;
   tile_slab_info_[id].cell_offset_per_dim_[tid][0] = cell_offset;
-  for (int i = 1; i < dim_num_; ++i) {
+  for (unsigned int i = 1; i < dim_num_; ++i) {
     cell_offset *= tile_extents[i - 1];
     tile_slab_info_[id].cell_offset_per_dim_[tid][i] = cell_offset;
   }
@@ -714,7 +715,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_col(unsigned int id) {
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
   uint64_t total_cell_num = 0;
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   unsigned int d;
 
   // Iterate over all tiles in the tile domain
@@ -785,7 +786,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_row(unsigned int id) {
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
   uint64_t total_cell_num = 0;
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   unsigned int d;
 
   // Iterate over all tiles in the tile domain
@@ -844,9 +845,10 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_row(unsigned int id) {
 void ArrayOrderedWriteState::copy_tile_slab() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
+  auto nattributes = attribute_ids_.size();
 
   // Copy tile slab for each attribute separately
-  for (unsigned int i = 0, b = 0; i < (int)attribute_ids_.size(); ++i) {
+  for (unsigned int i = 0, b = 0; i < nattributes; ++i) {
     Datatype type = array_metadata->type(attribute_ids_.at(i));
     if (!array_metadata->var_size(attribute_ids_[i])) {
       if (type == Datatype::INT32)
@@ -1063,7 +1065,7 @@ Status ArrayOrderedWriteState::create_copy_state_buffers() {
     assert(0);
 
   // Calculate buffer sizes
-  auto attribute_id_num = (unsigned int)attribute_ids_.size();
+  auto attribute_id_num = attribute_ids_.size();
   for (auto& buffer_size : copy_state_.buffer_sizes_) {
     buffer_size = new uint64_t[buffer_num_];
     for (unsigned int i = 0, b = 0; i < attribute_id_num; ++i) {
@@ -1412,7 +1414,7 @@ void ArrayOrderedWriteState::free_copy_state() {
 
 void ArrayOrderedWriteState::free_tile_slab_info() {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Free
   for (auto& info : tile_slab_info_) {
@@ -1424,7 +1426,7 @@ void ArrayOrderedWriteState::free_tile_slab_info() {
       delete[] info.cell_offset_per_dim_;
     }
 
-    for (unsigned int attr = 0; attr < anum; ++attr) {
+    for (size_t attr = 0; attr < anum; ++attr) {
       if (info.cell_slab_size_[attr] != nullptr)
         delete[] info.cell_slab_size_[attr];
     }
@@ -1438,7 +1440,7 @@ void ArrayOrderedWriteState::free_tile_slab_info() {
       delete[] info.range_overlap_;
     }
 
-    for (unsigned int attr = 0; attr < anum; ++attr) {
+    for (size_t attr = 0; attr < anum; ++attr) {
       if (info.start_offsets_[attr] != nullptr)
         delete[] info.start_offsets_[attr];
     }
@@ -1450,7 +1452,7 @@ void ArrayOrderedWriteState::free_tile_slab_info() {
 
 void ArrayOrderedWriteState::free_tile_slab_state() {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Clean up
   if (tile_slab_state_.current_coords_ != nullptr) {
@@ -1526,7 +1528,7 @@ void ArrayOrderedWriteState::init_copy_state() {
 
 void ArrayOrderedWriteState::init_tile_slab_info() {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Initialize
   for (auto& info : tile_slab_info_) {
@@ -1537,7 +1539,7 @@ void ArrayOrderedWriteState::init_tile_slab_info() {
     info.start_offsets_ = new uint64_t*[anum];
     info.tile_offset_per_dim_ = new uint64_t[dim_num_];
 
-    for (int attr = 0; attr < anum; ++attr) {
+    for (size_t attr = 0; attr < anum; ++attr) {
       info.cell_slab_size_[attr] = nullptr;
       info.start_offsets_[attr] = nullptr;
     }
@@ -1551,7 +1553,7 @@ void ArrayOrderedWriteState::init_tile_slab_info(unsigned int id) {
   assert(query_->array_metadata()->dense());
 
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Calculate tile number
   uint64_t tile_num =
@@ -1578,7 +1580,7 @@ void ArrayOrderedWriteState::init_tile_slab_info(unsigned int id) {
 
 void ArrayOrderedWriteState::init_tile_slab_state() {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
 
   // Allocations and initializations
   tile_slab_state_.copy_tile_slab_done_ = new bool[anum];
@@ -1820,7 +1822,7 @@ void ArrayOrderedWriteState::reset_tile_coords() {
 template <class T>
 void ArrayOrderedWriteState::reset_tile_slab_state() {
   // For easy reference
-  auto anum = (unsigned int)attribute_ids_.size();
+  auto anum = attribute_ids_.size();
   auto current_coords = (T**)tile_slab_state_.current_coords_;
   auto tile_slab = (const T*)tile_slab_norm_[copy_id_];
 

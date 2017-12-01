@@ -1246,11 +1246,9 @@ void ArrayReadState::init_subarray_tile_coords() {
   // For easy reference
   auto dim_num = array_metadata_->dim_num();
   auto domain = array_metadata_->domain();
-  auto tile_extents = static_cast<const T*>(domain->tile_extents());
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Sanity checks
-  assert(tile_extents != NULL);
   assert(subarray_tile_domain_ == NULL);
 
   // Allocate space for tile domain and subarray tile domain
@@ -1326,7 +1324,7 @@ Status ArrayReadState::read_dense(void** buffers, uint64_t* buffer_sizes) {
 
   // Read each attribute individually
   unsigned int buffer_i = 0;
-  for (unsigned int i = 0; i < attribute_id_num; ++i) {
+  for (int i = 0; i < attribute_id_num; ++i) {
     if (!array_metadata_->var_size(attribute_ids[i])) {  // FIXED CELLS
       RETURN_NOT_OK(read_dense_attr(
           attribute_ids[i], buffers[buffer_i], &(buffer_sizes[buffer_i])));
@@ -1530,12 +1528,12 @@ Status ArrayReadState::read_dense_attr_var(
 Status ArrayReadState::read_sparse(void** buffers, uint64_t* buffer_sizes) {
   // For easy reference
   auto attribute_ids = query_->attribute_ids();
-  auto attribute_id_num = (int)attribute_ids.size();
+  auto attribute_id_num = attribute_ids.size();
 
   // Find the coordinates buffer
   unsigned int coords_buffer_i = INVALID_UINT;
   unsigned int buffer_i = 0;
-  for (unsigned int i = 0; i < attribute_id_num; ++i) {
+  for (size_t i = 0; i < attribute_id_num; ++i) {
     if (attribute_ids[i] == attribute_num_) {
       coords_buffer_i = buffer_i;
       break;

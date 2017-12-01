@@ -124,7 +124,7 @@ const Attribute* ArrayMetadata::attribute(unsigned int id) const {
 
 const std::string& ArrayMetadata::attribute_name(
     unsigned int attribute_id) const {
-  assert(attribute_id >= 0 && attribute_id <= attribute_num_ + 1);
+  assert(attribute_id <= attribute_num_ + 1);
 
   // Special case for the search attribute (same as coordinates)
   if (attribute_id == attribute_num_ + 1)
@@ -232,7 +232,7 @@ Status ArrayMetadata::check() const {
 }
 
 Compressor ArrayMetadata::compression(unsigned int attr_id) const {
-  assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
+  assert(attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
     return coords_compression_;
@@ -241,7 +241,7 @@ Compressor ArrayMetadata::compression(unsigned int attr_id) const {
 }
 
 int ArrayMetadata::compression_level(unsigned int attr_id) const {
-  assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
+  assert(attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
     return coords_compression_level_;
@@ -666,7 +666,6 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
     else if (type == Datatype::UINT64)
       size = dim_num * sizeof(uint64_t);
   }
-
   return size;
 }
 

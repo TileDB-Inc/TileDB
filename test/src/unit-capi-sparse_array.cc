@@ -75,24 +75,39 @@ struct SparseArrayFx {
   SparseArrayFx() {
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      std::cerr << "SparseArrayFx() Error error creating tiledb_ctx_t"
+                << std::endl;
+      exit(1);
+    }
 
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "SparseArrayFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      tiledb_ctx_free(ctx_);
+      std::cerr << "SparseArrayFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~SparseArrayFx() {
     // Finalize TileDB context
     tiledb_ctx_free(ctx_);
-
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "~SparseArrayFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {

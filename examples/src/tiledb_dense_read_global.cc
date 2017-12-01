@@ -38,11 +38,8 @@
  */
 
 #include <tiledb.h>
-#include <cstdio>
 
-#include <cstdlib>
-
-int main(int argc, char** argv) {
+int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
@@ -72,7 +69,7 @@ int main(int argc, char** argv) {
 
   // Print cell values
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", result_num);
+  printf("result num: %llu\n\n", (unsigned long long)result_num);
   printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {

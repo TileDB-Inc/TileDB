@@ -705,6 +705,9 @@ uint64_t Domain::tile_num() const {
     case Datatype::FLOAT64:
       assert(false);
       return 0;
+    default:
+      assert(false);
+      return 0;
   }
 }
 
@@ -746,6 +749,9 @@ uint64_t Domain::tile_num(const void* range) const {
       assert(false);
       return 0;
     case Datatype::FLOAT64:
+      assert(false);
+      return 0;
+    default:
       assert(false);
       return 0;
   }
@@ -811,6 +817,9 @@ uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
     case Datatype::CHAR:
       assert(false);
       return 0;
+    default:
+      assert(false);
+      return 0;
   }
 }
 
@@ -838,6 +847,9 @@ uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
     case Datatype::UINT64:
       return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
     case Datatype::CHAR:
+      assert(false);
+      return 0;
+    default:
       assert(false);
       return 0;
   }

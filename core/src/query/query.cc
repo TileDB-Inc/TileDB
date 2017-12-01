@@ -158,9 +158,9 @@ Status Query::clear_fragments() {
 
 Status Query::coords_buffer_i(int* coords_buffer_i) const {
   int buffer_i = 0;
-  auto attribute_id_num = (int)attribute_ids_.size();
-  int attribute_num = array_metadata_->attribute_num();
-  for (int i = 0; i < attribute_id_num; ++i) {
+  auto attribute_id_num = attribute_ids_.size();
+  auto attribute_num = array_metadata_->attribute_num();
+  for (size_t i = 0; i < attribute_id_num; ++i) {
     if (attribute_ids_[i] == attribute_num) {
       *coords_buffer_i = buffer_i;
       break;
@@ -489,6 +489,8 @@ Status Query::set_subarray(const void* subarray, Datatype type) {
       return set_subarray<float>((const float*)subarray);
     case Datatype::FLOAT64:
       return set_subarray<double>((const double*)subarray);
+    default:
+      return Status::Error("unknown query subarray Datatype");
   }
 }
 
@@ -634,7 +636,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 /* ****************************** */
 
 void Query::add_coords() {
-  int attribute_num = array_metadata_->attribute_num();
+  size_t attribute_num = array_metadata_->attribute_num();
   bool has_coords = false;
 
   for (auto id : attribute_ids_) {
@@ -717,29 +719,14 @@ Status Query::new_fragment() {
 }
 
 std::string Query::new_fragment_name() const {
-  struct timeval tp = {};
+  struct timeval tp;
+  memset(&tp, 0, sizeof(struct timeval));
   gettimeofday(&tp, nullptr);
-  uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
-  char fragment_name[constants::name_max_len];
-
+  auto ms = static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
   std::stringstream ss;
-  ss << std::this_thread::get_id();
-  std::string tid = ss.str();
-
-  // Generate fragment name
-  int n = sprintf(
-      fragment_name,
-      "%s/__%s_%llu",
-      array_metadata_->array_uri().to_string().c_str(),
-      tid.c_str(),
-      ms);
-
-  // Handle error
-  if (n < 0)
-    return "";
-
-  // Return
-  return std::string(fragment_name);
+  ss << array_metadata_->array_uri().to_string() << "/__"
+     << std::this_thread::get_id() << "_" << ms;
+  return ss.str();
 }
 
 Status Query::open_fragments(const std::vector<FragmentMetadata*>& metadata) {
