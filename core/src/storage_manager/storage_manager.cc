@@ -33,6 +33,7 @@
 
 #include <blosc.h>
 #include <algorithm>
+#include <sstream>
 
 #include "logger.h"
 #include "storage_manager.h"
@@ -49,6 +50,7 @@ StorageManager::StorageManager() {
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
   consolidator_ = new Consolidator(this);
+  tile_cache_ = new LRUCache(constants::tile_cache_size);
   vfs_ = nullptr;
   blosc_init();
 }
@@ -57,6 +59,7 @@ StorageManager::~StorageManager() {
   async_stop();
   delete async_thread_[0];
   delete async_thread_[1];
+  delete tile_cache_;
   delete vfs_;
   blosc_destroy();
 }
@@ -522,6 +525,23 @@ Status StorageManager::query_submit_async(
   return async_push_query(query, 0);
 }
 
+Status StorageManager::read_from_cache(
+    const URI& uri,
+    uint64_t offset,
+    Buffer* buffer,
+    uint64_t nbytes,
+    bool* in_cache) const {
+  std::stringstream key;
+  key << uri.to_string() << "+" << offset;
+  RETURN_NOT_OK(buffer->realloc(nbytes));
+  RETURN_NOT_OK(
+      tile_cache_->read(key.str(), buffer->data(), 0, nbytes, in_cache));
+  buffer->set_size(nbytes);
+  buffer->reset_offset();
+
+  return Status::Ok();
+}
+
 Status StorageManager::read_from_file(
     const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
   RETURN_NOT_OK(buffer->realloc(nbytes));
@@ -603,6 +623,22 @@ Status StorageManager::store(FragmentMetadata* metadata) {
 
 Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
+}
+
+Status StorageManager::write_to_cache(
+    const URI& uri, uint64_t offset, Buffer* buffer) const {
+  std::stringstream key;
+  key << uri.to_string() << "+" << offset;
+
+  uint64_t object_size = buffer->size();
+  void* object = std::malloc(object_size);
+  if (object == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot write to cache; Object memory allocation failed"));
+  std::memcpy(object, buffer->data(), object_size);
+  RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size));
+
+  return Status::Ok();
 }
 
 Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {

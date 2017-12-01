@@ -45,6 +45,7 @@
 #include "array_metadata.h"
 #include "consolidator.h"
 #include "locked_array.h"
+#include "lru_cache.h"
 #include "object_type.h"
 #include "open_array.h"
 #include "query.h"
@@ -330,6 +331,29 @@ class StorageManager {
       Query* query, void* (*callback)(void*), void* callback_data);
 
   /**
+   * Reads from the cache into the input buffer. `uri` and `offset` collectively
+   * form the key of the cached object to be read. Essentially, this is used
+   * to read potentially cached tiles. `uri` is the URI of the attribute the
+   * tile belongs to, and `offset` is the offset in the attribute file where
+   * the tile is located. Observe that the `uri`, `offset` pair is unique.
+   *
+   * @param uri The URI of the cached object.
+   * @param offset The offset of the cached object.
+   * @param buffer The buffer to write into. The function reallocates memory
+   *     for the buffer, sets its size to *nbytes* and resets its offset.
+   * @param nbytes Number of bytes to be read.
+   * @param in_cache This is set to `true` if the object is in the cache,
+   *     and `false` otherwise.
+   * @return Status.
+   */
+  Status read_from_cache(
+      const URI& uri,
+      uint64_t offset,
+      Buffer* buffer,
+      uint64_t nbytes,
+      bool* in_cache) const;
+
+  /**
    * Reads from a file into the input buffer.
    *
    * @param uri The URI file to read from.
@@ -363,6 +387,20 @@ class StorageManager {
    * to persistent storage.
    */
   Status sync(const URI& uri);
+
+  /**
+   * Writes the contents of a buffer into the cache. `uri` and `offset`
+   * collectively form the key of the object to be cached. Essentially, this is
+   * used to cach tiles. `uri` is the URI of the attribute the
+   * tile belongs to, and `offset` is the offset in the attribute file where
+   * the tile is located. Observe that the `uri`, `offset` pair is unique.
+   *
+   * @param uri The URI of the cached object.
+   * @param offset The offset of the cached object.
+   * @param buffer The buffer whose contents will be cached.
+   * @return Status.
+   */
+  Status write_to_cache(const URI& uri, uint64_t offset, Buffer* buffer) const;
 
   /**
    * Writes the contents of a buffer into a URI file.
@@ -428,6 +466,9 @@ class StorageManager {
    * initialized via *query_init* for a particular array.
    */
   std::map<std::string, OpenArray*> open_arrays_;
+
+  /** A tile cache. */
+  LRUCache* tile_cache_;
 
   /**
    * Virtual filesystem handler. It directs queries to the appropriate

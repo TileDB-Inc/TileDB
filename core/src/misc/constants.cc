@@ -160,6 +160,9 @@ const unsigned int var_num = UINT_MAX;
 /** String describing no compression. */
 const char* no_compression_str = "NO_COMPRESSION";
 
+/** The tile cache size. */
+const uint64_t tile_cache_size = 100000000;
+
 /** String describing GZIP. */
 const char* gzip_str = "GZIP";
 

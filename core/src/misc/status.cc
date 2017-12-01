@@ -158,6 +158,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Consolidation:
       type = "[TileDB::Consolidation] Error";
       break;
+    case StatusCode::LRUCache:
+      type = "[TileDB::LRUCache] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }
