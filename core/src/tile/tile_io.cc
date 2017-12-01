@@ -86,24 +86,32 @@ Status TileIO::read(
     uint64_t file_offset,
     uint64_t compressed_size,
     uint64_t tile_size) {
+  // Try to read from cache
+  bool in_cache;
+  RETURN_NOT_OK(storage_manager_->read_from_cache(
+      uri_, file_offset, tile->buffer(), tile_size, &in_cache));
+  if (in_cache)
+    return Status::Ok();
+
   // No compression
-  if (tile->compressor() == Compressor::NO_COMPRESSION)
-    return storage_manager_->read_from_file(
-        uri_, file_offset, tile->buffer(), tile_size);
+  if (tile->compressor() == Compressor::NO_COMPRESSION) {
+    RETURN_NOT_OK(storage_manager_->read_from_file(
+        uri_, file_offset, tile->buffer(), tile_size));
+  } else {  // Compression
+    RETURN_NOT_OK(storage_manager_->read_from_file(
+        uri_, file_offset, buffer_, compressed_size));
 
-  // Compression
-  RETURN_NOT_OK(storage_manager_->read_from_file(
-      uri_, file_offset, buffer_, compressed_size));
+    // Decompress tile
+    tile->reset_offset();
+    tile->reset_size();
+    buffer_->reset_offset();
+    RETURN_NOT_OK(tile->realloc(tile_size));
+    RETURN_NOT_OK(decompress_tile(tile));
+    tile->reset_offset();
+  }
 
-  // Decompress tile
-  tile->reset_offset();
-  tile->reset_size();
-  buffer_->reset_offset();
-  RETURN_NOT_OK(tile->realloc(tile_size));
-  RETURN_NOT_OK(decompress_tile(tile));
-  tile->reset_offset();
-
-  return Status::Ok();
+  // Store tile in cache
+  return (storage_manager_->write_to_cache(uri_, file_offset, tile->buffer()));
 }
 
 Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {

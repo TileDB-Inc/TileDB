@@ -159,6 +159,9 @@ extern const unsigned int var_num;
 /** String describing no compression. */
 extern const char* no_compression_str;
 
+/** The tile cache size. */
+extern const uint64_t tile_cache_size;
+
 /** String describing GZIP. */
 extern const char* gzip_str;
 

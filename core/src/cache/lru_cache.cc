@@ -35,6 +35,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
 
 namespace tiledb {
 
@@ -62,10 +63,9 @@ void LRUCache::clear() {
 }
 
 Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
-  // Sanity checks
+  // Do nothing if the object size is bigger than the cache maximum size
   if (size > max_size_)
-    return LOG_STATUS(Status::LRUCacheError(
-        "Cannot insert into cache; Object size exceeds cache size"));
+    return Status::Ok();
 
   if (object == nullptr)
     return LOG_STATUS(Status::LRUCacheError(

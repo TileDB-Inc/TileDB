@@ -65,8 +65,12 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
 
   // Insert an object larger than CACHE_SIZE
   int v;
+  bool success;
   st = lru_cache_->insert("key", &v, CACHE_SIZE + 1);
-  CHECK(!st.ok());
+  CHECK(st.ok());
+  st = lru_cache_->read("key", &v, 0, sizeof(int), &success);
+  CHECK(st.ok());
+  CHECK(!success);
 
   // Prepare some vectors
   auto v1 = new int[3];
@@ -90,7 +94,6 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   CHECK(check_key_order("v1v2v3"));
 
   // Read non-existent item
-  bool success;
   st = lru_cache_->read("v", &v, 0, sizeof(int), &success);
   CHECK(st.ok());
   CHECK(!success);
@@ -116,7 +119,7 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   CHECK(check_key_order("v1v3v2"));
 
   // Read out of bounds
-  st = lru_cache_->read("v2", &b2, sizeof(int), 4*sizeof(int), &success);
+  st = lru_cache_->read("v2", &b2, sizeof(int), 4 * sizeof(int), &success);
   CHECK(!st.ok());
 
   // Test eviction
