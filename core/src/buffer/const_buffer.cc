@@ -32,8 +32,6 @@
 
 #include "const_buffer.h"
 
-#include <cstring>
-
 namespace tiledb {
 
 /* ****************************** */

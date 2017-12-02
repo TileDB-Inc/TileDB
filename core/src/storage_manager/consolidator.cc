@@ -36,7 +36,6 @@
 
 #include <sys/time.h>
 #include <sstream>
-#include <thread>
 
 /* ****************************** */
 /*             MACROS             */

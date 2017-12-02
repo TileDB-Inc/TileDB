@@ -1176,7 +1176,6 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1185,7 +1184,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1214,7 +1213,6 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
 
   while (min <= max && max != INVALID_UINT64) {
@@ -1224,7 +1222,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t))
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
@@ -1254,7 +1252,6 @@ Status ReadState::get_cell_pos_at_or_before(
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1263,7 +1260,7 @@ Status ReadState::get_cell_pos_at_or_before(
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;

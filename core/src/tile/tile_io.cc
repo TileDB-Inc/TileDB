@@ -40,8 +40,6 @@
 #include "rle_compressor.h"
 #include "zstd_compressor.h"
 
-#include <iostream>
-
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -296,14 +294,13 @@ Status TileIO::compress_one_tile(Tile* tile) {
   // Compress in chunks
   Status st;
   uint64_t compressed_chunk_size = 0;
-  uint64_t buffer_offset;
   uint64_t left_to_compress = tile_size;
   for (uint64_t i = 0; i < chunk_num; ++i) {
     // Write chunk info
     auto chunk_size = MIN(left_to_compress, max_chunk_size);
 
     RETURN_NOT_OK(buffer_->write(&chunk_size, sizeof(uint64_t)));
-    buffer_offset = buffer_->offset();  // Will be used later
+    uint64_t buffer_offset = buffer_->offset();  // Will be used later
     RETURN_NOT_OK(buffer_->write(&compressed_chunk_size, sizeof(uint64_t)));
 
     // Create const buffer

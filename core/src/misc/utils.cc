@@ -32,13 +32,8 @@
  */
 
 #include "utils.h"
-#include "constants.h"
 #include "logger.h"
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <cstring>
 #include <iostream>
 #include <set>
 #include <sstream>
