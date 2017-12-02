@@ -46,7 +46,7 @@
  */
 
 #include "status.h"
-#include <assert.h>
+#include <cassert>
 
 namespace tiledb {
 

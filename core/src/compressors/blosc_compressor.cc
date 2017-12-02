@@ -31,7 +31,6 @@
  */
 
 #include <blosc.h>
-#include <cassert>
 #include <limits>
 
 #include "blosc_compressor.h"

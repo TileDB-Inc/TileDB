@@ -35,7 +35,6 @@
 #include "logger.h"
 #include "pq_fragment_cell_range.h"
 #include "smaller_pq_fragment_cell_range.h"
-#include "utils.h"
 
 #include <cassert>
 
@@ -185,14 +184,13 @@ Status ArrayReadState::compute_fragment_cell_pos_ranges(
     FragmentCellPosRanges* fragment_cell_pos_ranges) const {
   // For easy reference
   auto dim_num = array_metadata_->dim_num();
-  unsigned int fragment_id;
   auto fragment_cell_ranges_num = (uint64_t)fragment_cell_ranges->size();
   Status st = Status::Ok();
   auto domain = array_metadata_->domain();
 
   // Compute fragment cell position ranges
   for (uint64_t i = 0; i < fragment_cell_ranges_num; ++i) {
-    fragment_id = (*fragment_cell_ranges)[i].first.first;
+    unsigned int fragment_id = (*fragment_cell_ranges)[i].first.first;
     if (fragment_id == INVALID_UINT ||
         fragment_read_states_[fragment_id]->dense()) {  // DENSE
       // Create a new fragment cell position range
@@ -525,16 +523,14 @@ Status ArrayReadState::copy_cells_generic(
   FragmentCellPosRanges& fragment_cell_pos_ranges =
       *fragment_cell_pos_ranges_vec_[pos];
   auto fragment_cell_pos_ranges_num = (uint64_t)fragment_cell_pos_ranges.size();
-  unsigned int fragment_id;  // Fragment id
-  uint64_t tile_pos;         // Tile position in the fragment
 
   // Sanity check
   assert(!array_metadata_->var_size(attribute_id));
 
   // Copy the cell ranges one by one
   for (uint64_t i = 0; i < fragment_cell_pos_ranges_num; ++i) {
-    fragment_id = fragment_cell_pos_ranges[i].first.first;
-    tile_pos = fragment_cell_pos_ranges[i].first.second;
+    unsigned int fragment_id = fragment_cell_pos_ranges[i].first.first;
+    uint64_t tile_pos = fragment_cell_pos_ranges[i].first.second;
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second;
 
     // Handle empty fragment
@@ -765,16 +761,14 @@ Status ArrayReadState::copy_cells_var_generic(
   FragmentCellPosRanges& fragment_cell_pos_ranges =
       *fragment_cell_pos_ranges_vec_[pos];
   auto fragment_cell_pos_ranges_num = (uint64_t)fragment_cell_pos_ranges.size();
-  unsigned int fragment_id;  // Fragment id
-  uint64_t tile_pos;         // Tile position in the fragment
 
   // Sanity check
   assert(array_metadata_->var_size(attribute_id));
 
   // Copy the cell ranges one by one
   for (uint64_t i = 0; i < fragment_cell_pos_ranges_num; ++i) {
-    tile_pos = fragment_cell_pos_ranges[i].first.second;
-    fragment_id = fragment_cell_pos_ranges[i].first.first;
+    unsigned int fragment_id = fragment_cell_pos_ranges[i].first.first;
+    uint64_t tile_pos = fragment_cell_pos_ranges[i].first.second;
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second;
 
     // Handle empty fragment

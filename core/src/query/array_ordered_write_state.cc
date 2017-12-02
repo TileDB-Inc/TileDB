@@ -360,10 +360,9 @@ void ArrayOrderedWriteState::advance_cell_slab_col(unsigned int aid) {
   // Advance cell slab coordinates
   unsigned int d = 0;
   current_coords[d] += cell_slab_num;
-  int64_t dim_overflow;
   for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
-    dim_overflow = (current_coords[i] - tile_slab[2 * i]) /
-                   (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
+    int64_t dim_overflow = (current_coords[i] - tile_slab[2 * i]) /
+                           (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
     current_coords[i + 1] += dim_overflow;
     current_coords[i] -=
         dim_overflow * (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
@@ -390,10 +389,9 @@ void ArrayOrderedWriteState::advance_cell_slab_row(unsigned int aid) {
   // Advance cell slab coordinates
   unsigned int d = dim_num_ - 1;
   current_coords[d] += cell_slab_num;
-  int64_t dim_overflow;
   for (unsigned int i = d; i > 0; --i) {
-    dim_overflow = (current_coords[i] - tile_slab[2 * i]) /
-                   (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
+    int64_t dim_overflow = (current_coords[i] - tile_slab[2 * i]) /
+                           (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
     current_coords[i - 1] += dim_overflow;
     current_coords[i] -=
         dim_overflow * (tile_slab[2 * i + 1] - tile_slab[2 * i] + 1);
@@ -433,7 +431,7 @@ Status ArrayOrderedWriteState::async_submit_query(unsigned int id) {
   bool separate_fragments = this->separate_fragments();
 
   // Sanity check
-  assert(storage_manager != NULL);
+  assert(storage_manager != nullptr);
   if (separate_fragments) {
     if (async_query_[id] != nullptr)
       RETURN_NOT_OK(async_query_[id]->finalize());
@@ -713,16 +711,14 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_col(unsigned int id) {
       (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
-  uint64_t tile_offset, tile_cell_num;
   uint64_t total_cell_num = 0;
   auto anum = attribute_ids_.size();
-  unsigned int d;
 
   // Iterate over all tiles in the tile domain
   uint64_t tid = 0;  // Tile id
   while (tile_coords[dim_num_ - 1] <= tile_domain[2 * (dim_num_ - 1) + 1]) {
     // Calculate range overlap, number of cells in the tile
-    tile_cell_num = 1;
+    uint64_t tile_cell_num = 1;
     for (unsigned int i = 0; i < dim_num_; ++i) {
       // Range overlap
       range_overlap[tid][2 * i] =
@@ -735,7 +731,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_col(unsigned int id) {
     }
 
     // Calculate tile offsets per dimension
-    tile_offset = 1;
+    uint64_t tile_offset = 1;
     tile_slab_info_[id].tile_offset_per_dim_[0] = tile_offset;
     for (unsigned int i = 1; i < dim_num_; ++i) {
       tile_offset *=
@@ -755,7 +751,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_col(unsigned int id) {
     total_cell_num += tile_cell_num;
 
     // Advance tile coordinates
-    d = 0;
+    unsigned int d = 0;
     ++tile_coords[d];
     while (d < dim_num_ - 1 && tile_coords[d] > tile_domain[2 * d + 1]) {
       tile_coords[d] = tile_domain[2 * d];
@@ -784,16 +780,14 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_row(unsigned int id) {
       (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
-  uint64_t tile_offset, tile_cell_num;
   uint64_t total_cell_num = 0;
   auto anum = attribute_ids_.size();
-  unsigned int d;
 
   // Iterate over all tiles in the tile domain
   uint64_t tid = 0;  // Tile id
   while (tile_coords[0] <= tile_domain[1]) {
     // Calculate range overlap, number of cells in the tile
-    tile_cell_num = 1;
+    uint64_t tile_cell_num = 1;
     for (unsigned int i = 0; i < dim_num_; ++i) {
       // Range overlap
       range_overlap[tid][2 * i] =
@@ -806,7 +800,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_row(unsigned int id) {
     }
 
     // Calculate tile offsets per dimension
-    tile_offset = 1;
+    uint64_t tile_offset = 1;
     tile_slab_info_[id].tile_offset_per_dim_[dim_num_ - 1] = tile_offset;
     if (dim_num_ > 1) {
       for (unsigned int i = dim_num_ - 2;; --i) {
@@ -830,7 +824,7 @@ void ArrayOrderedWriteState::calculate_tile_slab_info_row(unsigned int id) {
     total_cell_num += tile_cell_num;
 
     // Advance tile coordinates
-    d = dim_num_ - 1;
+    unsigned int d = dim_num_ - 1;
     ++tile_coords[d];
     while (d > 0 && tile_coords[d] > tile_domain[2 * d + 1]) {
       tile_coords[d] = tile_domain[2 * d];
@@ -861,8 +855,6 @@ void ArrayOrderedWriteState::copy_tile_slab() {
         copy_tile_slab<double>(i, b);
       else if (type == Datatype::CHAR)
         copy_tile_slab<char>(i, b);
-      else if (type == Datatype::INT8)
-        copy_tile_slab<int8_t>(i, b);
       else if (type == Datatype::INT8)
         copy_tile_slab<int8_t>(i, b);
       else if (type == Datatype::UINT8)
@@ -1062,7 +1054,7 @@ Status ArrayOrderedWriteState::create_copy_state_buffers() {
     tile_slab_cell_num =
         array_metadata->domain()->tile_slab_col_cell_num(expanded_subarray_);
   else
-    assert(0);
+    assert(false);
 
   // Calculate buffer sizes
   auto attribute_id_num = attribute_ids_.size();
@@ -1742,7 +1734,7 @@ Status ArrayOrderedWriteState::write() {
     case Layout::ROW_MAJOR:
       return write_sorted_row<T>();
     default:
-      assert(0);
+      assert(false);
       return LOG_STATUS(Status::Error("Cannot write; Invalid query layout"));
   }
 }
@@ -1861,7 +1853,7 @@ void ArrayOrderedWriteState::update_current_tile_and_offset(unsigned int aid) {
   else if (coords_type == Datatype::UINT64)
     update_current_tile_and_offset<uint64_t>(aid);
   else
-    assert(0);
+    assert(false);
 }
 
 template <class T>

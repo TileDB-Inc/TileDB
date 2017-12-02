@@ -178,7 +178,7 @@ void create_golden_output(std::string* golden) {
 /** Writes an object path and type to a file. */
 int write_path(const char* path, tiledb_object_t type, void* data) {
   // Cast data to string
-  std::string* str = static_cast<std::string*>(data);
+  auto* str = static_cast<std::string*>(data);
 
   // Simply print the path and type
   (*str) += (std::string(path) + " ");

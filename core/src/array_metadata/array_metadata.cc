@@ -36,8 +36,6 @@
 #include "logger.h"
 
 #include <cassert>
-#include <cinttypes>
-#include <cmath>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -381,7 +379,7 @@ Layout ArrayMetadata::tile_order() const {
 Datatype ArrayMetadata::type(unsigned int i) const {
   if (i > attribute_num_) {
     LOG_ERROR("Cannot retrieve type; Invalid attribute id");
-    assert(0);
+    assert(false);
   }
 
   if (i < attribute_num_)

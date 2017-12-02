@@ -33,8 +33,6 @@
 #include "dd_compressor.h"
 #include "logger.h"
 
-#include <cmath>
-
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -153,10 +151,9 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
   int bit_in_chunk = 63;  // Leftmost bit (MSB)
   uint64_t chunk = 0;
-  int64_t cur_delta, dd;
   for (uint64_t i = 2; i < num; ++i) {
-    cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
-    dd = cur_delta - prev_delta;
+    int64_t cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
+    int64_t dd = cur_delta - prev_delta;
     RETURN_NOT_OK(
         write_double_delta(output_buffer, dd, bitsize, &chunk, &bit_in_chunk));
     prev_delta = cur_delta;
@@ -176,11 +173,10 @@ Status DoubleDelta::compute_bitsize(
   *bitsize = 0;
   int64_t max = 0;
   int64_t prev_delta = in[1] - in[0];
-  int64_t cur_delta, dd;
   char delta_out_of_bounds = 0;
   for (uint64_t i = 2; i < num; ++i) {
-    cur_delta = in[i] - in[i - 1];
-    dd = cur_delta - prev_delta;
+    int64_t cur_delta = in[i] - in[i - 1];
+    int64_t dd = cur_delta - prev_delta;
     delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
     delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
     max = MAX(abs(dd), max);

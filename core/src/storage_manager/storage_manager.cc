@@ -870,7 +870,7 @@ Status StorageManager::open_array_load_fragment_metadata(
 void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
   // Do nothing if there are not enough fragments
   uint64_t fragment_num = fragment_uris->size();
-  if (fragment_num <= 0)
+  if (fragment_num == 0)
     return;
 
   // Initializations

@@ -99,7 +99,8 @@ Status LZ4::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
 uint64_t LZ4::overhead(uint64_t nbytes) {
   // So that we avoid overflow
-  uint64_t half_bound = (uint64_t)LZ4_compressBound((int)ceil(nbytes / 2.0));
+  auto half_bound =
+      static_cast<uint64_t>(LZ4_compressBound((int)ceil(nbytes / 2.0)));
   return 2 * half_bound - nbytes;
 }
 
