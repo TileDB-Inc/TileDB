@@ -861,8 +861,8 @@ bool ReadState::overflow(unsigned int attribute_id) const {
 }
 
 void ReadState::reset_overflow() {
-  for (unsigned int i = 0; i < overflow_.size(); ++i)
-    overflow_[i] = false;
+  for (auto&& i : overflow_)
+    i = false;
 }
 
 bool ReadState::subarray_area_covered() const {

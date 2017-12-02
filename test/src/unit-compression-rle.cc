@@ -118,8 +118,8 @@ TEST_CASE("Compression-RLE: Test all values the same", "[rle]") {
   REQUIRE(st.ok());
 
   // Prepare data
-  for (int i = 0; i < 100; ++i)
-    data[i] = 111;
+  for (int& i : data)
+    i = 111;
 
   // Compress data
   auto input = new ConstBuffer(data, sizeof(data));

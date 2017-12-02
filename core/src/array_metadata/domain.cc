@@ -485,10 +485,10 @@ bool Domain::is_contained_in_tile_slab_col(const T* range) const {
 
   // Check if range is not contained in a column tile slab
   for (unsigned int i = 1; i < dim_num_; ++i) {
-    uint64_t tile_l =
-        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    uint64_t tile_h = (uint64_t)floor(
-        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    auto tile_l = static_cast<uint64_t>(
+        floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]));
+    auto tile_h = static_cast<uint64_t>(
+        floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]));
     if (tile_l != tile_h)
       return false;
   }
@@ -531,10 +531,10 @@ bool Domain::is_contained_in_tile_slab_row(const T* range) const {
 
   // Check if range is not contained in a row tile slab
   for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
-    uint64_t tile_l =
-        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    uint64_t tile_h = (uint64_t)floor(
-        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    auto tile_l = static_cast<uint64_t>(
+        floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]));
+    auto tile_h = static_cast<uint64_t>(
+        floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]));
     if (tile_l != tile_h)
       return false;
   }
