@@ -74,6 +74,8 @@ inline const char* compressor_str(Compressor type) {
       return constants::bzip2_str;
     case Compressor::DOUBLE_DELTA:
       return constants::double_delta_str;
+    default:
+      return "";
   }
 }
 

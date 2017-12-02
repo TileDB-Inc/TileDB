@@ -299,6 +299,8 @@ Status Dimension::set_domain(const void* domain, Datatype type) {
       return set_domain<float>((const float*)domain);
     case Datatype::FLOAT64:
       return set_domain<double>((const double*)domain);
+    default:
+      return Status::Error("unknown domain Datatype");
   }
 }
 
@@ -417,6 +419,8 @@ Status Dimension::set_tile_extent(const void* tile_extent, Datatype type) {
       return set_tile_extent<float>((const float*)tile_extent);
     case Datatype::FLOAT64:
       return set_tile_extent<double>((const double*)tile_extent);
+    default:
+      return Status::Error("unknown tile extent Datatype");
   }
 }
 

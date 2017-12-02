@@ -500,8 +500,6 @@ Status TileIO::decompress_one_tile(Tile* tile) {
 
 uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {
   switch (tile->compressor()) {
-    case Compressor::NO_COMPRESSION:
-      return 0;
     case Compressor::GZIP:
       return GZip::overhead(nbytes);
     case Compressor::ZSTD:
@@ -526,6 +524,9 @@ uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {
       return BZip::overhead(nbytes);
     case Compressor::DOUBLE_DELTA:
       return DoubleDelta::overhead(nbytes);
+    default:
+      // No compression
+      return 0;
   }
 }
 

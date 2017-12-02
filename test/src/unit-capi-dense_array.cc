@@ -71,23 +71,30 @@ struct DenseArrayFx {
   tiledb_ctx_t* ctx_;
 
   DenseArrayFx() {
-    ctx_ = nullptr;
-    array_metadata_ = nullptr;
-
     // Reset the random number generator
     std::srand(0);
 
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      std::cerr << "DenseArrayFx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
 
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        std::cerr << "DenseArrayFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      std::cerr << "DenseArrayFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~DenseArrayFx() {
@@ -96,7 +103,10 @@ struct DenseArrayFx {
 
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "DenseArrayFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {

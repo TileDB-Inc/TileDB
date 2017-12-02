@@ -33,7 +33,7 @@
 #include "dd_compressor.h"
 #include "logger.h"
 
-#include <iostream>
+#include <cmath>
 
 /* ****************************** */
 /*             MACROS             */
@@ -106,6 +106,8 @@ Status DoubleDelta::decompress(
 }
 
 uint64_t DoubleDelta::overhead(uint64_t nbytes) {
+  // DoubleDelta has a fixed size overhead
+  (void)nbytes;
   return DoubleDelta::OVERHEAD;
 }
 
@@ -122,12 +124,13 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
-  int bitsize;
+  unsigned int bitsize;
   RETURN_NOT_OK(compute_bitsize(in, num, &bitsize));
-  auto bitsize_c = (char)bitsize;
+  assert(bitsize <= std::numeric_limits<uint8_t>::max());
+  auto bitsize_c = static_cast<uint8_t>(bitsize);
 
   // Write bitsize and number of values
-  RETURN_NOT_OK(output_buffer->write(&bitsize_c, sizeof(char)));
+  RETURN_NOT_OK(output_buffer->write(&bitsize_c, sizeof(uint8_t)));
   RETURN_NOT_OK(output_buffer->write(&num, sizeof(uint64_t)));
 
   // Trivial case - no compression
@@ -167,8 +170,10 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 }
 
 template <class T>
-Status DoubleDelta::compute_bitsize(T* in, uint64_t num, int* bitsize) {
+Status DoubleDelta::compute_bitsize(
+    T* in, uint64_t num, unsigned int* bitsize) {
   // Find maximum absolute double delta
+  *bitsize = 0;
   int64_t max = 0;
   int64_t prev_delta = in[1] - in[0];
   int64_t cur_delta, dd;
@@ -178,24 +183,20 @@ Status DoubleDelta::compute_bitsize(T* in, uint64_t num, int* bitsize) {
     dd = cur_delta - prev_delta;
     delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
     delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
-    max = MAX(ABS(dd), max);
+    max = MAX(abs(dd), max);
     prev_delta = cur_delta;
   }
-
   // Handle error
   if (delta_out_of_bounds) {
     return LOG_STATUS(
         Status::CompressionError("Cannot compress with DoubleDelta; Some "
                                  "negative double delta is out of bounds"));
   }
-
   // Calculate bitsize of the maximum absolute double delta
-  *bitsize = 0;
   do {
     ++(*bitsize);
     max >>= 1;
   } while (max);
-
   return Status::Ok();
 }
 
@@ -203,12 +204,12 @@ template <class T>
 Status DoubleDelta::decompress(
     ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Read bitsize and number of values
-  char bitsize_c;
-  uint64_t num;
+  uint8_t bitsize_c = 0;
+  uint64_t num = 0;
   uint64_t value_size = sizeof(T);
-  RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(char)));
+  RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(uint8_t)));
   RETURN_NOT_OK(input_buffer->read(&num, sizeof(uint64_t)));
-  auto bitsize = (int)bitsize_c;
+  auto bitsize = static_cast<unsigned int>(bitsize_c);
   auto out = (T*)output_buffer->cur_data();
 
   // Trivial case - no compression

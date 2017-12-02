@@ -54,12 +54,19 @@ struct ResourceMgmtRx {
   ResourceMgmtRx() {
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
-
+    if (rc != TILEDB_OK) {
+      std::cerr << "ResourceMgmtRx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
     // cleanup temporary test group if it exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "ResourceMgmtRx() Error existing deleting test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
   }
 
@@ -69,7 +76,10 @@ struct ResourceMgmtRx {
 
     // cleanup temporary test group if it exists
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "ResourceMgmtRx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {

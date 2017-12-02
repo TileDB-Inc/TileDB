@@ -76,7 +76,7 @@ int main() {
 
   // Print cell values
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", result_num);
+  printf("result num: %llu\n\n", (unsigned long long)result_num);
   printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {

@@ -646,7 +646,6 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   // For easy reference
   unsigned int dim_num = array_metadata_->dim_num();
   auto domain = array_metadata_->domain();
-  auto tile_extents = static_cast<const T*>(domain->tile_extents());
   auto array_domain = static_cast<const T*>(domain->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
   auto metadata_domain = static_cast<const T*>(metadata_->domain());
@@ -666,6 +665,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     subarray_area_covered_ = false;
   } else {  // Overlap with the input tile
     // Find the search tile position
+    auto tile_extents = static_cast<const T*>(domain->tile_extents());
     auto tile_coords_norm = new T[dim_num];
     for (unsigned int i = 0; i < dim_num; ++i)
       tile_coords_norm[i] =

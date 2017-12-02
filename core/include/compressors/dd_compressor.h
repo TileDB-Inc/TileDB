@@ -133,7 +133,7 @@ class DoubleDelta {
    * @return Status
    */
   template <class T>
-  static Status compute_bitsize(T* in, uint64_t num, int* bitsize);
+  static Status compute_bitsize(T* in, uint64_t num, unsigned int* bitsize);
 
   /**
    * Decompression function.

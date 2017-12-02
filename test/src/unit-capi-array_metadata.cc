@@ -94,36 +94,39 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
 
   ArraySchemaFx() {
-    // Error code
-    int rc;
-
-    // Array metadata not set yet
-    array_metadata_ = nullptr;
-
     // Initialize context
-    rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
-
+    int rc = tiledb_ctx_create(&ctx_);
+    if (rc != TILEDB_OK) {
+      std::cerr << "ArraySchemaFx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "ArraySchemaFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      tiledb_ctx_free(ctx_);
+      std::cerr << "ArraySchemaFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~ArraySchemaFx() {
-    // Free array_metadata metadata
-    if (array_metadata_ != nullptr)
-      tiledb_array_metadata_free(ctx_, array_metadata_);
-
-    // Free TileDB context
+    tiledb_array_metadata_free(ctx_, array_metadata_);
     tiledb_ctx_free(ctx_);
-
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "~ArraySchemaFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {
@@ -423,7 +426,7 @@ TEST_CASE_METHOD(
   tiledb_array_metadata_dump(ctx_, array_metadata, fout);
   fclose(fout);
   CHECK(!system("diff gold_fout.txt fout.txt"));
-  system("rm gold_fout.txt fout.txt");
+  CHECK(!system("rm gold_fout.txt fout.txt"));
 
   // Clean up
   rc = tiledb_attribute_iter_free(ctx_, attr_it);

@@ -122,7 +122,7 @@ int main() {
   printf(
       "- Tile order: %s\n",
       (tile_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
-  printf("- Capacity: %llu\n", capacity);
+  printf("- Capacity: %llu\n", (unsigned long long)capacity);
   printf(
       "- Coordinates compressor: %s\n",
       (coords_compressor == TILEDB_ZSTD) ? "ZSTD" : "error");

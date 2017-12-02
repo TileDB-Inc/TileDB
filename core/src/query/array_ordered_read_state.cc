@@ -137,7 +137,7 @@ ArrayOrderedReadState::~ArrayOrderedReadState() {
     if (buffer_sizes_tmp_bak_[i] != nullptr)
       delete[] buffer_sizes_tmp_bak_[i];
     if (buffers_[i] != nullptr) {
-      for (int b = 0; b < buffer_num_; ++b)
+      for (unsigned int b = 0; b < buffer_num_; ++b)
         std::free(buffers_[i][b]);
       free(buffers_[i]);
     }
@@ -601,7 +601,7 @@ void* ArrayOrderedReadState::async_done(void* data) {
     asrs->async_submit_query(id);
   } else {  // NO OVERFLOW
     // Restore backup temporary buffer sizes
-    for (int b = 0; b < asrs->buffer_num_; ++b) {
+    for (unsigned int b = 0; b < asrs->buffer_num_; ++b) {
       if (asrs->buffer_sizes_tmp_bak_[id][b] != 0)
         asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_tmp_bak_[id][b];
     }
@@ -1011,7 +1011,7 @@ void ArrayOrderedReadState::calculate_tile_slab_info_col(unsigned int id) {
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num, total_cell_num = 0;
-  auto anum = (int)attribute_ids_.size();
+  auto anum = static_cast<unsigned int>(attribute_ids_.size());
   unsigned int d;
 
   // Iterate over all tiles in the tile domain
@@ -1145,7 +1145,7 @@ void ArrayOrderedReadState::copy_tile_slab_dense() {
   auto array_metadata = query_->array_metadata();
 
   // Copy tile slab for each attribute separately
-  for (unsigned int i = 0, b = 0; i < (int)attribute_ids_.size(); ++i) {
+  for (unsigned int i = 0, b = 0; i < attribute_ids_.size(); ++i) {
     if (!array_metadata->var_size(attribute_ids_[i])) {
       copy_tile_slab_dense(i, b);
       ++b;
@@ -1978,7 +1978,7 @@ bool ArrayOrderedReadState::next_tile_slab_sparse_row() {
     tile_slab[copy_id_][1] = MIN(cropped_upper - 1, subarray[1]);
 
     // Leave the rest of the subarray extents intact
-    for (int i = 1; i < dim_num_; ++i) {
+    for (unsigned int i = 1; i < dim_num_; ++i) {
       tile_slab[copy_id_][2 * i] = subarray[2 * i];
       tile_slab[copy_id_][2 * i + 1] = subarray[2 * i + 1];
     }

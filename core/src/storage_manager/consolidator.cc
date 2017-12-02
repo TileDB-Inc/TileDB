@@ -258,35 +258,20 @@ void Consolidator::free_buffers(
 
 Status Consolidator::rename_new_fragment_uri(URI* uri) const {
   // Get timestamp
-  std::string t_str;
-  uint64_t t;
   std::string name = uri->last_path_part();
-  t_str = name.substr(name.find_last_of('_') + 1);
-  sscanf(t_str.c_str(), "%llu", (long long int*)&t);
+  auto timestamp_str = name.substr(name.find_last_of('_') + 1);
 
   // Get current time
-  struct timeval tp = {};
+  struct timeval tp;
+  memset(&tp, 0, sizeof(struct timeval));
   gettimeofday(&tp, nullptr);
-  uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
+  auto ms = static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
 
-  // Create new URI
-  char new_name[constants::name_max_len];
   std::stringstream ss;
-  ss << std::this_thread::get_id();
-  std::string tid = ss.str();
-  int n = sprintf(
-      new_name,
-      "%s/__%s_%llu_%llu",
-      uri->parent().to_string().c_str(),
-      tid.c_str(),
-      ms,
-      t);
-  if (n < 0) {
-    return LOG_STATUS(
-        Status::ConsolidationError("Cannot rename new fragment URI"));
-  }
-  *uri = URI(new_name);
+  ss << uri->parent().to_string() << "/__" << std::this_thread::get_id() << "_"
+     << ms << "_" << timestamp_str;
 
+  *uri = URI(ss.str());
   return Status::Ok();
 }
 

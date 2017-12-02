@@ -38,7 +38,7 @@
 #include <tiledb.h>
 #include <cstdio>
 
-int main(int argc, char** argv) {
+int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
