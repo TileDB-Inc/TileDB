@@ -179,7 +179,7 @@ Status DoubleDelta::compute_bitsize(
     int64_t dd = cur_delta - prev_delta;
     delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
     delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
-    max = MAX(abs(dd), max);
+    max = MAX(std::abs(dd), max);
     prev_delta = cur_delta;
   }
   // Handle error
