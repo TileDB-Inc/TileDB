@@ -59,6 +59,8 @@ StorageManager::~StorageManager() {
   delete async_thread_[1];
   delete tile_cache_;
   delete vfs_;
+  for(auto& open_array : open_arrays_)
+      delete open_array.second;
 }
 
 /* ****************************** */
@@ -443,8 +445,7 @@ Status StorageManager::object_iter_next_preorder(
 
 Status StorageManager::query_finalize(Query* query) {
   RETURN_NOT_OK(query->finalize());
-  RETURN_NOT_OK(array_close(
-      query->array_metadata()->array_uri(), query->fragment_metadata()));
+  RETURN_NOT_OK(array_close(query->array_metadata()->array_uri()));
 
   return Status::Ok();
 }
@@ -624,9 +625,18 @@ Status StorageManager::sync(const URI& uri) {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
+  // Do not write metadata to cache
+  std::string filename = uri.last_path_part();
+  if(filename == constants::fragment_metadata_filename ||
+     filename == constants::array_metadata_filename) {
+    return Status::Ok();
+  }
+
+  // Generate key (uri + offset)
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
 
+  // Insert to cache
   uint64_t object_size = buffer->size();
   void* object = std::malloc(object_size);
   if (object == nullptr)
@@ -646,8 +656,7 @@ Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-Status StorageManager::array_close(
-    URI array_uri, const std::vector<FragmentMetadata*>& fragment_metadata) {
+Status StorageManager::array_close(URI array_uri) {
   // Lock mutex
   open_array_mtx_.lock();
 
@@ -670,13 +679,8 @@ Status StorageManager::array_close(
   // Decrement counter
   open_array->decr_cnt();
 
-  // Remove fragment metadata
-  for (auto& metadata : fragment_metadata)
-    open_array->fragment_metadata_rm(metadata->fragment_uri());
-
   // Potentially remove open array entry
   if (open_array->cnt() == 0) {
-    // TODO: we may want to leave this to a cache manager
     open_array->mtx_unlock();
     delete open_array;
     open_arrays_.erase(it);
@@ -731,14 +735,14 @@ Status StorageManager::array_open(
   // Load array metadata
   RETURN_NOT_OK_ELSE(
       open_array_load_metadata(array_uri, open_array),
-      array_open_error(open_array, *fragment_metadata));
+      array_open_error(open_array));
   *array_metadata = open_array->array_metadata();
 
   // Get fragment metadata only in read mode
   if (type == QueryType::READ)
     RETURN_NOT_OK_ELSE(
         open_array_load_fragment_metadata(open_array, fragment_metadata),
-        array_open_error(open_array, *fragment_metadata));
+        array_open_error(open_array));
 
   // Unlock the array mutex
   open_array->mtx_unlock();
@@ -746,11 +750,9 @@ Status StorageManager::array_open(
   return Status::Ok();
 }
 
-Status StorageManager::array_open_error(
-    OpenArray* open_array,
-    const std::vector<FragmentMetadata*>& fragment_metadata) {
+Status StorageManager::array_open_error(OpenArray* open_array) {
   open_array->mtx_unlock();
-  return array_close(open_array->array_uri(), fragment_metadata);
+  return array_close(open_array->array_uri());
 }
 
 void StorageManager::async_process_query(Query* query) {

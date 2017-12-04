@@ -46,6 +46,8 @@ OpenArray::OpenArray() {
 
 OpenArray::~OpenArray() {
   delete array_metadata_;
+  for(auto& fragment : fragment_metadata_)
+    delete fragment.second;
 }
 
 /* ****************************** */
@@ -69,8 +71,7 @@ void OpenArray::decr_cnt() {
 }
 
 void OpenArray::fragment_metadata_add(FragmentMetadata* metadata) {
-  fragment_metadata_[metadata->fragment_uri().to_string()] =
-      std::pair<FragmentMetadata*, uint64_t>(metadata, 1);
+  fragment_metadata_[metadata->fragment_uri().to_string()] = metadata;
 }
 
 FragmentMetadata* OpenArray::fragment_metadata_get(const URI& fragment_uri) {
@@ -78,25 +79,7 @@ FragmentMetadata* OpenArray::fragment_metadata_get(const URI& fragment_uri) {
   if (it == fragment_metadata_.end())
     return nullptr;
 
-  ++(it->second.second);
-  return it->second.first;
-}
-
-void OpenArray::fragment_metadata_rm(const URI& fragment_uri) {
-  // Find metadata
-  auto it = fragment_metadata_.find(fragment_uri.to_string());
-  if (it == fragment_metadata_.end())
-    return;
-
-  // Decrement counter
-  --(it->second.second);
-
-  // Potentially remove metadata from main memory
-  // TODO: The following may be left to a cache manager
-  if (it->second.second == 0) {
-    delete it->second.first;
-    fragment_metadata_.erase(it);
-  }
+  return it->second;
 }
 
 void OpenArray::incr_cnt() {

@@ -63,6 +63,7 @@ class StorageManager {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  /** Enables iteration over TileDB objects in a path. */
   class ObjectIter {
    public:
     /**
@@ -449,9 +450,6 @@ class StorageManager {
   /** Used for array shared and exclusive locking. */
   std::mutex locked_array_mtx_;
 
-  /** Used for array shared and exclusive locking. */
-  std::condition_variable locked_array_cv_;
-
   /**
    * Stores locked array entries. The map is indexed by the array URI string
    * and stores the number of **shared** locks.
@@ -480,9 +478,8 @@ class StorageManager {
   /*         PRIVATE METHODS           */
   /* ********************************* */
 
-  /** Closes an array, properly managing the opened fragment metadata. */
-  Status array_close(
-      URI array, const std::vector<FragmentMetadata*>& fragment_metadata);
+  /** Closes an array. */
+  Status array_close(URI array);
 
   /**
    * Opens an array, retrieving its metadata and fragment metadata.
@@ -502,9 +499,7 @@ class StorageManager {
   /**
    * Invokes in case an error occurs in array_open. It is a clean-up function.
    */
-  Status array_open_error(
-      OpenArray* open_array,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
+  Status array_open_error(OpenArray* open_array);
 
   /**
    * Starts listening to async queries.

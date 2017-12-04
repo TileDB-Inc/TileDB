@@ -58,7 +58,7 @@ LRUCache::~LRUCache() {
 
 void LRUCache::clear() {
   for (auto &item : item_ll_)
-    std::free(item.object_);
+    std::free(item.object_); // TODO: call evict function on object
   item_ll_.clear();
 }
 
@@ -170,7 +170,7 @@ void LRUCache::evict() {
   assert(!item_ll_.empty());
 
   auto item = item_ll_.front();
-  std::free(item.object_);
+  std::free(item.object_); // TODO: call evict function on object
   item_map_.erase(item.key_);
   size_ -= item.size_;
   item_ll_.pop_front();
