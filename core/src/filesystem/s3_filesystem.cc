@@ -68,7 +68,6 @@ using namespace Aws;
 static const char* DIR_SUFFIX = ".dir";
 static const int TIMEOUT_MAX = 1000;
 static const char* ALLOCATION_TAG = "TileDB";
-static const char* ENDPOINT = "localhost:9000";
 static const int MUlTIPART_MINIMUM_SIZE = 5 * 1024 * 1024;
 
 static std::shared_ptr<S3Client> client = nullptr;
@@ -102,8 +101,14 @@ namespace s3 {
 Status connect() {
   InitAPI(options);
   ClientConfiguration config;
-  config.region = Aws::Region::US_EAST_1;
+  //s3 configuration
+//  config.region = "us-east-2";
+//  config.scheme = Scheme::HTTPS;
+  
+  //local minio configoration
   config.scheme = Scheme::HTTP;
+  config.endpointOverride = "localhost:9000";
+  
   //            config.connectTimeoutMs = 30000;
   //            config.requestTimeoutMs = 30000;
   //            config.readRateLimiter = Limiter;
@@ -111,7 +116,6 @@ Status connect() {
   //            config.executor =
   //            Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(ALLOCATION_TAG,
   //            4);
-  config.endpointOverride = ENDPOINT;
 
   client = Aws::MakeShared<S3Client>(
       ALLOCATION_TAG,
@@ -145,6 +149,10 @@ Status disconnect() {
   return Status::Ok();
 }
 
+Aws::String fixPath(const Aws::String& objectKey)
+{
+  return objectKey.substr(1,objectKey.length());
+}
 
 bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& objectKey)
 {
@@ -162,7 +170,7 @@ bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& 
       return true;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
 //  std::cout<<" Not OK!"<<std::endl;
@@ -348,7 +356,7 @@ bool is_dir(const URI& uri) {
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(aws_uri.GetPath() + DIR_SUFFIX);
+  listObjectsRequest.SetPrefix(fixPath(aws_uri.GetPath()) + DIR_SUFFIX);
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
 
@@ -357,7 +365,7 @@ bool is_dir(const URI& uri) {
   if (listObjectsOutcome.GetResult().GetContents().size() == 0)
     return false;
   if (listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
-      aws_uri.GetPath() + DIR_SUFFIX)
+      fixPath(aws_uri.GetPath()) + DIR_SUFFIX)
     return true;
   return false;
 }
@@ -393,7 +401,7 @@ Status copy_path(const URI& old_uri, const URI& new_uri) {
   Aws::Http::URI dst_uri = dst_dir.c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(src_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(src_uri.GetPath());
+  listObjectsRequest.SetPrefix(fixPath(src_uri.GetPath()));
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
 
@@ -409,8 +417,8 @@ Status copy_path(const URI& old_uri, const URI& new_uri) {
     // delete objects in directory
     Aws::S3::Model::CopyObjectRequest copyObjectRequest;
     copyObjectRequest.SetBucket(src_uri.GetAuthority());
-    copyObjectRequest.WithCopySource(src_uri.GetAuthority() + object.GetKey());
-    std::string new_file(object.GetKey().c_str());
+    copyObjectRequest.WithCopySource(src_uri.GetAuthority() + "/" +object.GetKey());
+    std::string new_file(("/"+object.GetKey()).c_str());
     replace(
         new_file,
         std::string(src_uri.GetPath().c_str()),
@@ -435,7 +443,7 @@ bool is_file(const URI& uri) {
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(aws_uri.GetPath());
+  listObjectsRequest.SetPrefix(fixPath(aws_uri.GetPath()));
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
 
@@ -444,7 +452,7 @@ bool is_file(const URI& uri) {
   if (listObjectsOutcome.GetResult().GetContents().size() == 0)
     return false;
   if (listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
-      aws_uri.GetPath())
+      fixPath(aws_uri.GetPath()))
     return true;
   return false;
 }
@@ -531,7 +539,7 @@ Status remove_path(const URI& uri) {
   Aws::Http::URI aws_uri = directory.c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(aws_uri.GetPath());
+  listObjectsRequest.SetPrefix(fixPath(aws_uri.GetPath()));
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
 
@@ -671,7 +679,7 @@ Status ls(const URI& uri, std::vector<std::string>* paths) {
   Aws::Http::URI aws_uri = (uri.to_path() + std::string("/")).c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(aws_uri.GetPath());
+  listObjectsRequest.SetPrefix(fixPath(aws_uri.GetPath()));
   listObjectsRequest.WithDelimiter("/");
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
@@ -683,8 +691,14 @@ Status ls(const URI& uri, std::vector<std::string>* paths) {
   for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
     std::string file(object.GetKey().c_str());
     replace(file, std::string(DIR_SUFFIX), std::string());
-    paths->push_back(
+    if(file.front() == '/') {
+      paths->push_back(
         "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
+    }
+    else{
+      paths->push_back(
+        "s3://" + std::string(aws_uri.GetAuthority().c_str()) + "/" + file);
+    }
   }
   return Status::Ok();
 }
