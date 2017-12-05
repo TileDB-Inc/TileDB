@@ -43,7 +43,12 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-LRUCache::LRUCache(uint64_t max_size) {
+LRUCache::LRUCache(
+    uint64_t max_size,
+    void *(*evict_callback)(LRUCacheItem *, void *),
+    void *evict_callback_data) {
+  evict_callback_ = evict_callback;
+  evict_callback_data_ = evict_callback_data;
   max_size_ = max_size;
   size_ = 0;
 }
@@ -57,8 +62,12 @@ LRUCache::~LRUCache() {
 /* ****************************** */
 
 void LRUCache::clear() {
-  for (auto &item : item_ll_)
-    std::free(item.object_); // TODO: call evict function on object
+  for (auto &item : item_ll_) {
+    if (evict_callback_ == nullptr)
+      std::free(item.object_);
+    else
+      (*evict_callback_)(&item, evict_callback_data_);
+  }
   item_ll_.clear();
 }
 
@@ -170,7 +179,10 @@ void LRUCache::evict() {
   assert(!item_ll_.empty());
 
   auto item = item_ll_.front();
-  std::free(item.object_); // TODO: call evict function on object
+  if (evict_callback_ == nullptr)
+    std::free(item.object_);
+  else
+    (*evict_callback_)(&item, evict_callback_data_);
   item_map_.erase(item.key_);
   size_ -= item.size_;
   item_ll_.pop_front();

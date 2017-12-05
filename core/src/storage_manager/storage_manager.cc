@@ -627,8 +627,8 @@ Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
-  if(filename == constants::fragment_metadata_filename ||
-     filename == constants::array_metadata_filename) {
+  if (filename == constants::fragment_metadata_filename ||
+      filename == constants::array_metadata_filename) {
     return Status::Ok();
   }
 

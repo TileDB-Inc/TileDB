@@ -70,8 +70,15 @@ class LRUCache {
   /** Constructor.
    *
    * @param size The maximum cache size.
+   * @param evict_callback The function to be called upon evicting a cache
+   *     object. It takes as input the cache object to be evicted, and
+   *     `evict_callback_data`.
+   * @param evict_callback_data The data input to `evict_callback`.
    */
-  explicit LRUCache(uint64_t max_size);
+  LRUCache(
+      uint64_t max_size,
+      void* (*evict_callback)(LRUCacheItem*, void*) = nullptr,
+      void* evict_callback_data = nullptr);
 
   /** Destructor. */
   ~LRUCache();
@@ -130,6 +137,15 @@ class LRUCache {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * A function that will be called upon evicting a cache object. I takes
+   * as input the cache object to be evicted and `evict_callback_data_`.
+   */
+  void* (*evict_callback_)(LRUCacheItem*, void*);
+
+  /** The data input to the evict callback function. */
+  void* evict_callback_data_;
 
   /**
    * Doubly-connected linked list of cache items. The head of the list is the

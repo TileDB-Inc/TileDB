@@ -46,7 +46,7 @@ OpenArray::OpenArray() {
 
 OpenArray::~OpenArray() {
   delete array_metadata_;
-  for(auto& fragment : fragment_metadata_)
+  for (auto& fragment : fragment_metadata_)
     delete fragment.second;
 }
 
