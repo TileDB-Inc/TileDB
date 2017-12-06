@@ -140,6 +140,10 @@ unsigned int Tile::dim_num() const {
   return dim_num_;
 }
 
+void Tile::disown_buff() {
+  owns_buff_ = false;
+}
+
 bool Tile::empty() const {
   return buffer_->size() == 0;
 }

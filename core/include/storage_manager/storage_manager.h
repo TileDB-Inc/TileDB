@@ -192,11 +192,12 @@ class StorageManager {
   /**
    * Loads the metadata of an array from persistent storage into memory.
    *
-   * @param array_name The name (URI path) of the array.
+   * @param array_uri The URI path of the array.
    * @param array_metadata The array metadata to be retrieved.
    * @return Status
    */
-  Status load(const std::string& array_name, ArrayMetadata* array_metadata);
+  Status load_array_metadata(
+      const URI& array_uri, ArrayMetadata** array_metadata);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -205,7 +206,7 @@ class StorageManager {
    * @param metadata The fragment metadata to be loaded.
    * @return Status
    */
-  Status load(FragmentMetadata* metadata);
+  Status load_fragment_metadata(FragmentMetadata* metadata);
 
   /**
    * Creates a new object iterator for the input path.
@@ -417,6 +418,9 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /** An array metadata cache. */
+  LRUCache* array_metadata_cache_;
+
   /**
    * Async condition variable. The first is for user async queries, the second
    * for internal async queries.
@@ -535,7 +539,8 @@ class StorageManager {
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 
   /** Loads the array metadata into an open array. */
-  Status open_array_load_metadata(const URI& array_uri, OpenArray* open_array);
+  Status open_array_load_array_metadata(
+      const URI& array_uri, OpenArray* open_array);
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
   Status open_array_load_fragment_metadata(

@@ -157,6 +157,9 @@ const unsigned int var_num = std::numeric_limits<unsigned int>::max();
 /** String describing no compression. */
 const char* no_compression_str = "NO_COMPRESSION";
 
+/** The array metadata cache size. */
+const uint64_t array_metadata_cache_size = 10000000;
+
 /** The tile cache size. */
 const uint64_t tile_cache_size = 100000000;
 

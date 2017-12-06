@@ -63,8 +63,8 @@ Status Consolidator::consolidate(const char* array_name) {
   URI array_uri = URI(array_name);
 
   // Get array metadata
-  auto array_meta = new ArrayMetadata(array_uri);
-  RETURN_NOT_OK(storage_manager_->load(array_name, array_meta));
+  auto array_meta = (ArrayMetadata*)nullptr;
+  RETURN_NOT_OK(storage_manager_->load_array_metadata(array_uri, &array_meta));
 
   // Prepare buffers
   void** buffers;

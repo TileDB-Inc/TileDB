@@ -952,25 +952,13 @@ int tiledb_array_metadata_load(
     return TILEDB_OOM;
   }
 
-  // Create ArrayMetadata object
-  (*array_metadata)->array_metadata_ =
-      new (std::nothrow) tiledb::ArrayMetadata(tiledb::URI(array_name));
-  if ((*array_metadata)->array_metadata_ == nullptr) {
-    delete *array_metadata;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB array_metadata object in struct"));
-    return TILEDB_OOM;
-  }
-
   // Load array metadata
   auto storage_manager = ctx->storage_manager_;
   if (save_error(
           ctx,
-          storage_manager->load(
-              array_name, (*array_metadata)->array_metadata_))) {
-    delete (*array_metadata)->array_metadata_;
+          storage_manager->load_array_metadata(
+              tiledb::URI(array_name),
+              &((*array_metadata)->array_metadata_)))) {
     delete *array_metadata;
     return TILEDB_ERR;
   }

@@ -93,7 +93,10 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
     // Replace cache item
     auto &node = item_it->second;
     auto &item = *node;
-    std::free((item.object_));
+    if (evict_callback_ == nullptr)
+      std::free(item.object_);
+    else
+      (*evict_callback_)(&item, evict_callback_data_);
     item.object_ = object;
     item.size_ = size;
 
@@ -120,6 +123,34 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
   // Unlock mutex
   mtx_.unlock();
 
+  return Status::Ok();
+}
+
+Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
+  // Lock mutex
+  mtx_.lock();
+
+  // Find cached item
+  auto item_it = item_map_.find(key);
+  if (item_it == item_map_.end()) {
+    mtx_.unlock();
+    *success = false;
+    return Status::Ok();
+  }
+
+  // Write item object to buffer
+  auto &item = item_it->second;
+  buffer->write(item->object_, item->size_);
+
+  // Move cache item node to the end of the list
+  if (std::next(item) != item_ll_.end()) {
+    item_ll_.splice(item_ll_.end(), item_ll_, item, std::next(item));
+  }
+
+  // Unlock mutex
+  mtx_.unlock();
+
+  *success = true;
   return Status::Ok();
 }
 

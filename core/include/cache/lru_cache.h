@@ -33,6 +33,7 @@
 #ifndef TILEDB_LRU_CACHE_H
 #define TILEDB_LRU_CACHE_H
 
+#include "buffer.h"
 #include "status.h"
 
 #include <list>
@@ -114,6 +115,18 @@ class LRUCache {
    * @return Status
    */
   Status insert(const std::string& key, void* object, uint64_t size);
+
+  /**
+   * Reads an entire cached object labeled by `key`.
+   *
+   * @param key The label of the object to be read.
+   * @param buffer The buffer that will store the data to be read. It will be
+   *     resized appropriately.
+   * @param success `true` if the data were read from the cache and `false`
+   *     otherwise.
+   * @return Status.
+   */
+  Status read(const std::string& key, Buffer* buffer, bool* success);
 
   /**
    * Reads a portion of the object labeled by `key`.

@@ -107,6 +107,10 @@ void* Buffer::data(uint64_t offset) const {
   return (char*)data_ + offset;
 }
 
+void Buffer::disown_data() {
+  owns_data_ = false;
+}
+
 uint64_t Buffer::free_space() const {
   assert(alloced_size_ >= size_);
   return alloced_size_ - size_;

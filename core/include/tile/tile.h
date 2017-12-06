@@ -149,6 +149,12 @@ class Tile {
   /** Returns the tile data. */
   void* data() const;
 
+  /**
+   * Sets `owns_buff_` to `false` and thus will not destroy the buffer
+   * in the destructor.
+   */
+  void disown_buff();
+
   /** Returns the number of dimensions (0 if this is an attribute tile). */
   unsigned int dim_num() const;
 
