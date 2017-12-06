@@ -31,7 +31,6 @@
  * This file implements the StorageManager class.
  */
 
-#include <blosc.h>
 #include <algorithm>
 #include <sstream>
 
@@ -52,7 +51,6 @@ StorageManager::StorageManager() {
   consolidator_ = new Consolidator(this);
   tile_cache_ = new LRUCache(constants::tile_cache_size);
   vfs_ = nullptr;
-  blosc_init();
 }
 
 StorageManager::~StorageManager() {
@@ -61,7 +59,6 @@ StorageManager::~StorageManager() {
   delete async_thread_[1];
   delete tile_cache_;
   delete vfs_;
-  blosc_destroy();
 }
 
 /* ****************************** */
