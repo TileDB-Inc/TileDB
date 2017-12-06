@@ -59,8 +59,8 @@ Status Blosc::compress(
       output_buffer->cur_data(),
       output_buffer->free_space(),
       compressor,
-      0, // blocksize (0 lets BLOSC choose automatically)
-      1  // disable BLOSC thread pool
+      0,  // blocksize (0 lets BLOSC choose automatically)
+      1   // disable BLOSC thread pool
   );
 
   // Handle error
@@ -85,7 +85,7 @@ Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
       input_buffer->data(),
       output_buffer->cur_data(),
       output_buffer->free_space(),
-      1 // disable BLOSC thread pool
+      1  // disable BLOSC thread pool
   );
 
   // Handle error

@@ -50,6 +50,8 @@ StorageManager::StorageManager() {
   async_thread_[1] = nullptr;
   consolidator_ = new Consolidator(this);
   array_metadata_cache_ = new LRUCache(constants::array_metadata_cache_size);
+  fragment_metadata_cache_ =
+      new LRUCache(constants::fragment_metadata_cache_size);
   tile_cache_ = new LRUCache(constants::tile_cache_size);
   vfs_ = nullptr;
 }
@@ -61,8 +63,8 @@ StorageManager::~StorageManager() {
   delete array_metadata_cache_;
   delete tile_cache_;
   delete vfs_;
-  for(auto& open_array : open_arrays_)
-      delete open_array.second;
+  for (auto& open_array : open_arrays_)
+    delete open_array.second;
 }
 
 /* ****************************** */
@@ -327,19 +329,39 @@ Status StorageManager::load_fragment_metadata(
   URI fragment_metadata_uri = fragment_uri.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  // Read from file
-  auto tile = (Tile*)nullptr;
-  auto tile_io = new TileIO(this, fragment_metadata_uri);
-  RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
+  // Try to read from cache
+  bool in_cache;
+  auto buff = new Buffer();
+  RETURN_NOT_OK_ELSE(
+      fragment_metadata_cache_->read(
+          fragment_metadata_uri.to_string(), buff, &in_cache),
+      delete buff);
+
+  // Read from file if not in cache
+  if (!in_cache) {
+    delete buff;
+    auto tile_io = new TileIO(this, fragment_metadata_uri);
+    auto tile = (Tile*)nullptr;
+    RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
+    tile->disown_buff();
+    buff = tile->buffer();
+    delete tile;
+    delete tile_io;
+  }
 
   // Deserialize
-  tile->reset_offset();
-  auto cbuff = new ConstBuffer(tile->buffer());
+  auto cbuff = new ConstBuffer(buff);
   Status st = fragment_metadata->deserialize(cbuff);
-
   delete cbuff;
-  delete tile;
-  delete tile_io;
+
+  // Store in cache
+  if (st.ok() && !in_cache) {
+    buff->disown_data();
+    st = fragment_metadata_cache_->insert(
+        fragment_metadata_uri.to_string(), buff->data(), buff->size());
+  }
+
+  delete buff;
 
   return st;
 }

@@ -451,6 +451,9 @@ class StorageManager {
   /** Object that handles array consolidation. */
   Consolidator* consolidator_;
 
+  /** A fragment metadata cache. */
+  LRUCache* fragment_metadata_cache_;
+
   /** Used for array shared and exclusive locking. */
   std::mutex locked_array_mtx_;
 

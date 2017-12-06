@@ -160,6 +160,9 @@ const char* no_compression_str = "NO_COMPRESSION";
 /** The array metadata cache size. */
 const uint64_t array_metadata_cache_size = 10000000;
 
+/** The fragment metadata cache size. */
+const uint64_t fragment_metadata_cache_size = 100000000;
+
 /** The tile cache size. */
 const uint64_t tile_cache_size = 100000000;
 
