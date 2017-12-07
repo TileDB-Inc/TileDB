@@ -103,14 +103,14 @@ Status connect() {
   ClientConfiguration config;
   //s3 configuration
 //  config.region = "us-east-2";
+//  config.endpointOverride = "s3-us-east-2.amazonaws.com";
 //  config.scheme = Scheme::HTTPS;
   
   //local minio configoration
   config.scheme = Scheme::HTTP;
   config.endpointOverride = "localhost:9000";
-  
-  //            config.connectTimeoutMs = 30000;
-  //            config.requestTimeoutMs = 30000;
+  config.connectTimeoutMs = 30000;
+  config.requestTimeoutMs = 30000;
   //            config.readRateLimiter = Limiter;
   //            config.writeRateLimiter = Limiter;
   //            config.executor =
@@ -151,7 +151,9 @@ Status disconnect() {
 
 Aws::String fixPath(const Aws::String& objectKey)
 {
-  return objectKey.substr(1,objectKey.length());
+  if(objectKey.front()=='/')
+    return objectKey.substr(1,objectKey.length());
+  return objectKey;
 }
 
 bool waitForObjectToPropagate(const Aws::String& bucketName, const Aws::String& objectKey)
@@ -708,7 +710,7 @@ Status file_size(const URI& uri, uint64_t* nbytes) {
   Aws::Http::URI aws_uri = uri.to_path().c_str();
   ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(aws_uri.GetPath());
+  listObjectsRequest.SetPrefix(fixPath(aws_uri.GetPath()));
   ListObjectsOutcome listObjectsOutcome =
       client->ListObjects(listObjectsRequest);
 
