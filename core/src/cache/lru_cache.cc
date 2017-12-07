@@ -43,7 +43,12 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-LRUCache::LRUCache(uint64_t max_size) {
+LRUCache::LRUCache(
+    uint64_t max_size,
+    void *(*evict_callback)(LRUCacheItem *, void *),
+    void *evict_callback_data) {
+  evict_callback_ = evict_callback;
+  evict_callback_data_ = evict_callback_data;
   max_size_ = max_size;
   size_ = 0;
 }
@@ -57,8 +62,12 @@ LRUCache::~LRUCache() {
 /* ****************************** */
 
 void LRUCache::clear() {
-  for (auto &item : item_ll_)
-    std::free(item.object_);
+  for (auto &item : item_ll_) {
+    if (evict_callback_ == nullptr)
+      std::free(item.object_);
+    else
+      (*evict_callback_)(&item, evict_callback_data_);
+  }
   item_ll_.clear();
 }
 
@@ -84,7 +93,10 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
     // Replace cache item
     auto &node = item_it->second;
     auto &item = *node;
-    std::free((item.object_));
+    if (evict_callback_ == nullptr)
+      std::free(item.object_);
+    else
+      (*evict_callback_)(&item, evict_callback_data_);
     item.object_ = object;
     item.size_ = size;
 
@@ -111,6 +123,34 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
   // Unlock mutex
   mtx_.unlock();
 
+  return Status::Ok();
+}
+
+Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
+  // Lock mutex
+  mtx_.lock();
+
+  // Find cached item
+  auto item_it = item_map_.find(key);
+  if (item_it == item_map_.end()) {
+    mtx_.unlock();
+    *success = false;
+    return Status::Ok();
+  }
+
+  // Write item object to buffer
+  auto &item = item_it->second;
+  buffer->write(item->object_, item->size_);
+
+  // Move cache item node to the end of the list
+  if (std::next(item) != item_ll_.end()) {
+    item_ll_.splice(item_ll_.end(), item_ll_, item, std::next(item));
+  }
+
+  // Unlock mutex
+  mtx_.unlock();
+
+  *success = true;
   return Status::Ok();
 }
 
@@ -170,7 +210,10 @@ void LRUCache::evict() {
   assert(!item_ll_.empty());
 
   auto item = item_ll_.front();
-  std::free(item.object_);
+  if (evict_callback_ == nullptr)
+    std::free(item.object_);
+  else
+    (*evict_callback_)(&item, evict_callback_data_);
   item_map_.erase(item.key_);
   size_ -= item.size_;
   item_ll_.pop_front();

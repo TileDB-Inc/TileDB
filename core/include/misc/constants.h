@@ -159,6 +159,12 @@ extern const unsigned int var_num;
 /** String describing no compression. */
 extern const char* no_compression_str;
 
+/** The array metadata cache size. */
+extern const uint64_t array_metadata_cache_size;
+
+/** The fragment metadata cache size. */
+extern const uint64_t fragment_metadata_cache_size;
+
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
