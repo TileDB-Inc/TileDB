@@ -41,7 +41,7 @@ set_target_properties(catch_main PROPERTIES
 
 target_include_directories(
   catch_main PRIVATE
-  ${CMAKE_SOURCE_DIR}/external/catch
+  ${CMAKE_SOURCE_DIR}/external/include/catch
 )
 
 # Gather the test source files
@@ -73,7 +73,7 @@ target_link_libraries(
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
   ${TILEDB_CORE_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/external/catch
+  ${CMAKE_SOURCE_DIR}/external/include/catch
 )
 
 if (APPLE)
