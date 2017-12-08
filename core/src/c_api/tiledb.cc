@@ -189,8 +189,7 @@ inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_metadata_t* array_metadata) {
   if (array_metadata == nullptr || array_metadata->array_metadata_ == nullptr) {
     save_error(
-        ctx,
-        tiledb::Status::Error("Invalid TileDB array_metadata metadata struct"));
+        ctx, tiledb::Status::Error("Invalid TileDB array metadata struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -880,7 +879,7 @@ int tiledb_array_metadata_create(
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array metadata metadata struct"));
+            "Failed to allocate TileDB array metadata struct"));
     return TILEDB_OOM;
   }
 
@@ -932,7 +931,19 @@ int tiledb_array_metadata_set_domain(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_metadata->array_metadata_->set_domain(domain->domain_);
+  if (save_error(
+          ctx, array_metadata->array_metadata_->set_domain(domain->domain_)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int tiledb_array_metadata_set_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (save_error(ctx, array_metadata->array_metadata_->set_as_kv()))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 
@@ -978,8 +989,12 @@ int tiledb_array_metadata_set_array_type(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_metadata->array_metadata_->set_array_type(
-      static_cast<tiledb::ArrayType>(array_type));
+  if (save_error(
+          ctx,
+          array_metadata->array_metadata_->set_array_type(
+              static_cast<tiledb::ArrayType>(array_type))))
+    return TILEDB_ERR;
+
   return TILEDB_OK;
 }
 
@@ -1031,7 +1046,7 @@ int tiledb_array_metadata_load(
     const char* array_name) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  // Create array_metadata metadata
+  // Create array metadata
   *array_metadata = new (std::nothrow) tiledb_array_metadata_t;
   if (*array_metadata == nullptr) {
     save_error(
@@ -1161,6 +1176,15 @@ int tiledb_array_metadata_get_domain(
             "Failed to allocate TileDB domain object in struct"));
     return TILEDB_OOM;
   }
+  return TILEDB_OK;
+}
+
+int tiledb_array_metadata_get_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata, int* as_kv) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *as_kv = array_metadata->array_metadata_->is_kv();
   return TILEDB_OK;
 }
 
@@ -1306,7 +1330,7 @@ int tiledb_attribute_iter_create(
     return TILEDB_OOM;
   }
 
-  // Initialize the iterator for the array_metadata metadata
+  // Initialize the iterator for the array metadata
   (*attr_it)->array_metadata_ = array_metadata;
   (*attr_it)->attr_num_ = array_metadata->array_metadata_->attribute_num();
 

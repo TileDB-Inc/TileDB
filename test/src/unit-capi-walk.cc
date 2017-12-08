@@ -82,7 +82,10 @@ void clean_up() {
  *    |       |_ array_A
  *    |       |     |_ __array_metadata.tdb
  *    |       |_ array_B
- *    |             |_ __array_metadata.tdb
+ *    |       |     |_ __array_metadata.tdb
+ *    |       |     |_ __array_metadata.tdb
+ *    |       |_ kv
+ *    |             |_ __kv.tdb
  *    |_ sparse_arrays
  *            |_ __tiledb_group.tdb
  *            |_ array_C
@@ -117,6 +120,10 @@ void create_hierarchy() {
       std::string("hadoop fs -mkdir ") + TEMP_DIR + "/sparse_arrays/array_D";
   std::string cmd_13 = std::string("hadoop fs -touchz ") + TEMP_DIR +
                        "/sparse_arrays/array_D/__array_metadata.tdb";
+  std::string cmd_14 =
+      std::string("hadoop fs -mkdir ") + TEMP_DIR + "/dense_arrays/kv";
+  std::string cmd_15 = std::string("hadoop fs -touchz ") + TEMP_DIR +
+                       "/dense_arrays/kv/__kv.tdb";
 #else
   std::string cmd_1 = std::string("mkdir ") + TEMP_DIR;
   std::string cmd_2 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays";
@@ -141,7 +148,11 @@ void create_hierarchy() {
       std::string("mkdir ") + TEMP_DIR + "/sparse_arrays/array_D";
   std::string cmd_13 = std::string("touch ") + TEMP_DIR +
                        "/sparse_arrays/array_D/__array_metadata.tdb";
+  std::string cmd_14 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays/kv";
+  std::string cmd_15 =
+      std::string("touch ") + TEMP_DIR + "/dense_arrays/kv/__kv.tdb";
 #endif
+
   REQUIRE(system(cmd_1.c_str()) == 0);
   REQUIRE(system(cmd_2.c_str()) == 0);
   REQUIRE(system(cmd_3.c_str()) == 0);
@@ -155,6 +166,8 @@ void create_hierarchy() {
   REQUIRE(system(cmd_11.c_str()) == 0);
   REQUIRE(system(cmd_12.c_str()) == 0);
   REQUIRE(system(cmd_13.c_str()) == 0);
+  REQUIRE(system(cmd_14.c_str()) == 0);
+  REQUIRE(system(cmd_15.c_str()) == 0);
 }
 
 void create_golden_output(std::string* golden) {
@@ -162,6 +175,7 @@ void create_golden_output(std::string* golden) {
   (*golden) += FULL_TEMP_DIR + "/dense_arrays GROUP\n";
   (*golden) += FULL_TEMP_DIR + "/dense_arrays/array_A ARRAY\n";
   (*golden) += FULL_TEMP_DIR + "/dense_arrays/array_B ARRAY\n";
+  (*golden) += FULL_TEMP_DIR + "/dense_arrays/kv KEY_VALUE\n";
   (*golden) += FULL_TEMP_DIR + "/sparse_arrays GROUP\n";
   (*golden) += FULL_TEMP_DIR + "/sparse_arrays/array_C ARRAY\n";
   (*golden) += FULL_TEMP_DIR + "/sparse_arrays/array_D ARRAY\n";
@@ -169,6 +183,7 @@ void create_golden_output(std::string* golden) {
   // Postorder traversal
   (*golden) += FULL_TEMP_DIR + "/dense_arrays/array_A ARRAY\n";
   (*golden) += FULL_TEMP_DIR + "/dense_arrays/array_B ARRAY\n";
+  (*golden) += FULL_TEMP_DIR + "/dense_arrays/kv KEY_VALUE\n";
   (*golden) += FULL_TEMP_DIR + "/dense_arrays GROUP\n";
   (*golden) += FULL_TEMP_DIR + "/sparse_arrays/array_C ARRAY\n";
   (*golden) += FULL_TEMP_DIR + "/sparse_arrays/array_D ARRAY\n";
@@ -188,6 +203,9 @@ int write_path(const char* path, tiledb_object_t type, void* data) {
       break;
     case TILEDB_GROUP:
       (*str) += "GROUP";
+      break;
+    case TILEDB_KEY_VALUE:
+      (*str) += "KEY_VALUE";
       break;
     default:
       (*str) += "INVALID";

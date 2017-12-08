@@ -186,6 +186,9 @@ class ArrayMetadata {
       const std::vector<std::string>& attributes,
       std::vector<unsigned int>& attribute_ids) const;
 
+  /** Checks if the array is defined as a key-value store. */
+  bool is_kv() const;
+
   /**
    * Serializes the array metadata object into a buffer.
    *
@@ -199,9 +202,6 @@ class ArrayMetadata {
 
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   Datatype type(unsigned int i) const;
-
-  /** Returns the type size of the i-th attribute. */
-  uint64_t type_size(unsigned int i) const;
 
   /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(unsigned int attribute_id) const;
@@ -228,8 +228,14 @@ class ArrayMetadata {
    */
   Status init();
 
-  /** Sets the array type. */
-  void set_array_type(ArrayType array_type);
+  /** Defines the array as a key-value store. */
+  Status set_as_kv();
+
+  /**
+   * Sets the array type. The function returns an error if the array has been
+   * defined as a key-value store (which by default is always sparse).
+   */
+  Status set_array_type(ArrayType array_type);
 
   /** Sets the variable cell offsets compressor. */
   void set_cell_var_offsets_compressor(Compressor compressor);
@@ -249,8 +255,11 @@ class ArrayMetadata {
   /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
 
-  /** Sets the domain. */
-  void set_domain(Domain* domain);
+  /**
+   * Sets the domain. The function returns an error if the array has been
+   * previously set to be a key-value store.
+   */
+  Status set_domain(Domain* domain);
 
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
@@ -304,6 +313,9 @@ class ArrayMetadata {
   /** The array domain. */
   Domain* domain_;
 
+  /** `true` if the array is a key-value store. */
+  bool is_kv_;
+
   /**
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
@@ -335,6 +347,12 @@ class ArrayMetadata {
 
   /** Computes and returns the size of an attribute (or coordinates). */
   uint64_t compute_cell_size(unsigned int attribute_id) const;
+
+  /** Sets the special key-value attributes. */
+  Status set_kv_attributes();
+
+  /** Sets the special key-value domain. */
+  Status set_kv_domain();
 };
 
 }  // namespace tiledb

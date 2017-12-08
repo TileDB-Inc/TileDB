@@ -616,6 +616,18 @@ TILEDB_EXPORT int tiledb_array_metadata_set_domain(
     tiledb_domain_t* domain);
 
 /**
+ * Sets the array as a key-value store. This function will create
+ * and set a default domain for the array, as well as some extra
+ * special attributes for the keys.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata);
+
+/**
  * Sets the tile capacity.
  *
  * @param ctx The TileDB context.
@@ -816,6 +828,18 @@ TILEDB_EXPORT int tiledb_array_metadata_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
     tiledb_domain_t** domain);
+
+/**
+ * Checks if the array is defined as a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param as_kv This will be set to `true` if the array is defined as
+ *     a key-value store, and `false` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata, int* as_kv);
 
 /**
  * Retrieves the tile order.

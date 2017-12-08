@@ -180,14 +180,23 @@ class StorageManager {
    */
   Status init();
 
+  /** Returns true if the input URI is an array directory. */
+  bool is_array(const URI& uri) const;
+
+  /** Checks if the input URI is a directory. */
+  bool is_dir(const URI& uri) const;
+
   /** Returns true if the input URI is a fragment directory. */
   bool is_fragment(const URI& uri) const;
 
-  /** Checks if the input URI is a directory. */
-  bool is_dir(const URI& uri);
+  /** Returns true if the input URI is a group directory. */
+  bool is_group(const URI& uri) const;
 
   /** Checks if the input URI is a file. */
-  bool is_file(const URI& uri);
+  bool is_file(const URI& uri) const;
+
+  /** Returns true if the input URI is a key-value array directory. */
+  bool is_kv(const URI& uri) const;
 
   /**
    * Loads the metadata of an array from persistent storage into memory.
@@ -374,7 +383,7 @@ class StorageManager {
    * @param array_metadata The array metadata to be stored.
    * @return Status
    */
-  Status store(ArrayMetadata* array_metadata);
+  Status store_array_metadata(ArrayMetadata* array_metadata);
 
   /**
    * Stores the fragment metadata into persistent storage.
@@ -382,7 +391,7 @@ class StorageManager {
    * @param metadata The fragment metadata to be stored.
    * @return Status
    */
-  Status store(FragmentMetadata* metadata);
+  Status store_fragment_metadata(FragmentMetadata* metadata);
 
   /**
    * Syncs a URI (file or directory), i.e., commits its contents

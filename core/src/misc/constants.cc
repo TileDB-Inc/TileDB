@@ -62,22 +62,22 @@ const Datatype cell_var_offset_type = Datatype::UINT64;
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
 /** The default compressor for the offsets of variable-sized cells. */
-Compressor cell_var_offsets_compression = Compressor::DOUBLE_DELTA;
+Compressor cell_var_offsets_compression = Compressor::BLOSC_ZSTD;
 
 /** The default compression level for the offsets of variable-sized cells. */
 int cell_var_offsets_compression_level = -1;
 
+/** Special name reserved for the coordinates attribute. */
+const char* coords = "__coords";
+
 /** The default compressor for the coordinates. */
-Compressor coords_compression = Compressor::DOUBLE_DELTA;
+Compressor coords_compression = Compressor::BLOSC_ZSTD;
 
 /** The default compressor for real coordinates. */
 Compressor real_coords_compression = Compressor::BLOSC_ZSTD;
 
 /** The default compression level for the coordinates. */
 int coords_compression_level = -1;
-
-/** Special name reserved for the coordinates attribute. */
-const char* coords = "__coords";
 
 /** The array filelock name. */
 const char* array_filelock_name = "__array_lock.tdb";
@@ -260,13 +260,42 @@ const char* null_str = "null";
 const int version[3] = {1, 2, 0};
 
 /** The size of a tile chunk. */
-const uint64_t tile_chunk_size = std::numeric_limits<int>::max();
+const uint64_t tile_chunk_size = (uint64_t)std::numeric_limits<int>::max();
 
 /** The default attribute name prefix. */
 const char* default_attr_name = "__attr";
 
 /** The default dimension name prefix. */
 const char* default_dim_name = "__dim";
+
+/** The key attribute name. */
+const char* key_attr_name = "__key";
+
+/** The key type attribute name. */
+const char* key_type_attr_name = "__key_type";
+
+/** The key attribute compressor. */
+Compressor key_attr_compressor = Compressor::BLOSC_ZSTD;
+
+/** The key type attribute compressor. */
+Compressor key_type_attr_compressor = Compressor::BLOSC_ZSTD;
+
+/**
+ * The name of the first key dimension (recall that a key in a
+ * key-value store is hashed into a 16-byte MD5 digest, which
+ * is represented as a 2-dimensional uint64_t value.
+ */
+const char* key_dim_1 = "__key_dim_1";
+
+/**
+ * The name of the second key dimension (recall that a key in a
+ * key-value store is hashed into a 16-byte MD5 digest, which
+ * is represented as a 2-dimensional uint64_t value.
+ */
+const char* key_dim_2 = "__key_dim_2";
+
+/** Name of special empty file that indicates a key-value store. */
+const char* kv_filename = "__kv.tdb";
 
 }  // namespace constants
 
