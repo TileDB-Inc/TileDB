@@ -297,6 +297,12 @@ const char* key_dim_2 = "__key_dim_2";
 /** Name of special empty file that indicates a key-value store. */
 const char* kv_filename = "__kv.tdb";
 
+/**
+ * Default size to be allocated for an internal key-value buffer when reading
+ * from a key-value store.
+ */
+uint64_t kv_buffer_size = 100000;
+
 }  // namespace constants
 
 }  // namespace tiledb

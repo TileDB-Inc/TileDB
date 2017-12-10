@@ -280,7 +280,7 @@ struct SparseArrayFx {
       delete[] buffer_a1;
       return nullptr;
     }
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;

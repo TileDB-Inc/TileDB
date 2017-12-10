@@ -33,6 +33,7 @@
 
 #include "tiledb.h"
 #include "array_metadata.h"
+#include "kv.h"
 #include "query.h"
 #include "utils.h"
 
@@ -108,6 +109,10 @@ struct tiledb_domain_t {
 
 struct tiledb_query_t {
   tiledb::Query* query_;
+};
+
+struct tiledb_kv_t {
+  tiledb::KV* kv_;
 };
 
 /* ********************************* */
@@ -206,6 +211,17 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
     save_error(ctx, tiledb::Status::Error("Invalid TileDB query struct"));
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
+  if (kv == nullptr || kv->kv_ == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error(
+            "Invalid TileDB in-memory key-value store struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -1184,7 +1200,7 @@ int tiledb_array_metadata_get_as_kv(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  *as_kv = array_metadata->array_metadata_->is_kv();
+  *as_kv = (int)array_metadata->array_metadata_->is_kv();
   return TILEDB_OK;
 }
 
@@ -1489,7 +1505,7 @@ int tiledb_query_create(
   return TILEDB_OK;
 }
 
-int tiledb_query_by_subarray(
+int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const void* subarray,
@@ -1519,7 +1535,7 @@ int tiledb_query_set_buffers(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Set buffers
+  // Set attributes and buffers
   if (save_error(
           ctx,
           query->query_->set_buffers(
@@ -1536,7 +1552,9 @@ int tiledb_query_set_layout(
     return TILEDB_ERR;
 
   // Set layout
-  query->query_->set_layout(static_cast<tiledb::Layout>(layout));
+  if (save_error(
+          ctx, query->query_->set_layout(static_cast<tiledb::Layout>(layout))))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }
@@ -1555,11 +1573,67 @@ int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (save_error(ctx, ctx->storage_manager_->query_finalize(query->query_)))
     rc = TILEDB_ERR;
 
-  // Clean up
   delete query->query_;
   delete query;
 
   return rc;
+}
+
+int tiledb_query_set_kv(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_kv_t* kv) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get key only in case they query reads the entire key-value store
+  bool get_key = (query->query_->subarray() == nullptr);
+  bool get_coords = (query->query_->type() == tiledb::QueryType::WRITE);
+
+  // Get query attributes
+  const char** attributes;
+  unsigned int attribute_num;
+  if (save_error(
+          ctx,
+          kv->kv_->get_array_attributes(
+              &attributes, &attribute_num, get_coords, get_key)))
+    return TILEDB_ERR;
+
+  // Get query buffers
+  void** buffers;
+  uint64_t* buffer_sizes;
+  if (save_error(ctx, kv->kv_->get_array_buffers(&buffers, &buffer_sizes)))
+    return TILEDB_ERR;
+
+  return tiledb_query_set_buffers(
+      ctx, query, attributes, attribute_num, buffers, buffer_sizes);
+}
+
+int tiledb_query_set_kv_key(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void* key,
+    tiledb_datatype_t type,
+    uint64_t key_size) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (!query->query_->array_metadata()->is_kv()) {
+    save_error(
+        ctx,
+        tiledb::Status::Error(
+            "Cannot query by key; The queried array is not a key-value store"));
+    return TILEDB_ERR;
+  }
+
+  // Set key
+  uint64_t subarray[4];
+  tiledb::KV::compute_subarray(
+      key, static_cast<tiledb::Datatype>(type), key_size, subarray);
+
+  // Set query subarray
+  return tiledb_query_set_subarray(ctx, query, subarray, TILEDB_UINT64);
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
@@ -1722,7 +1796,7 @@ int tiledb_walk(
     int (*callback)(const char*, tiledb_object_t, void*),
     void* data) {
   // Sanity checks
-  if (sanity_check(ctx))
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   if (callback == nullptr) {
     save_error(
@@ -1764,5 +1838,210 @@ int tiledb_walk(
 
   if (rc == -1)
     return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*             KEY-VALUE          */
+/* ****************************** */
+
+int tiledb_kv_create(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t** kv,
+    unsigned int attribute_num,
+    const char** attributes,
+    tiledb_datatype_t* types,
+    unsigned int* nitems) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create key-value store struct
+  *kv = new (std::nothrow) tiledb_kv_t;
+  if (*kv == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error(
+            "Failed to allocate TileDB in-memory key-value store struct"));
+    return TILEDB_OOM;
+  }
+
+  // Prepare attributes/types/nitems vectors
+  std::vector<std::string> attributes_vec;
+  std::vector<tiledb::Datatype> types_vec;
+  std::vector<unsigned int> nitems_vec;
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    attributes_vec.emplace_back(attributes[i]);
+    types_vec.emplace_back(static_cast<tiledb::Datatype>(types[i]));
+    nitems_vec.emplace_back(nitems[i]);
+  }
+
+  // Create a new KV object
+  (*kv)->kv_ = new tiledb::KV(attributes_vec, types_vec, nitems_vec);
+  if ((*kv)->kv_ == nullptr) {
+    delete *kv;
+    *kv = nullptr;
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB in-memory key-value "
+                              "store object in struct"));
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_kv_free(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  delete kv->kv_;
+  delete kv;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_add_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const void* key,
+    tiledb_datatype_t key_type,
+    uint64_t key_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set key
+  if (save_error(
+          ctx,
+          kv->kv_->add_key(
+              key, static_cast<tiledb::Datatype>(key_type), key_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_add_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set value
+  if (save_error(ctx, kv->kv_->add_value(attribute_idx, value)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_add_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value,
+    uint64_t value_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set value
+  if (save_error(ctx, kv->kv_->add_value(attribute_idx, value, value_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_get_key_num(tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* num) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *num = kv->kv_->key_num();
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_get_value_num(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    uint64_t* num) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, kv->kv_->value_num(attribute_idx, num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_get_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t key_idx,
+    void** key,
+    tiledb_datatype_t* key_type,
+    uint64_t* key_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get the key
+  tiledb::Datatype key_type_d;
+  if (save_error(ctx, kv->kv_->get_key(key_idx, key, &key_type_d, key_size)))
+    return TILEDB_ERR;
+  *key_type = static_cast<tiledb_datatype_t>(key_type_d);
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_get_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get the value
+  if (save_error(ctx, kv->kv_->get_value(obj_idx, attr_idx, value)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_get_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value,
+    uint64_t* value_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get the value
+  if (save_error(ctx, kv->kv_->get_value(obj_idx, attr_idx, value, value_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_set_buffer_size(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t nbytes) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set the buffer size
+  kv->kv_->set_buffer_alloc_size(nbytes);
+
   return TILEDB_OK;
 }

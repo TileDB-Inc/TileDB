@@ -166,7 +166,6 @@ std::vector<std::string> ArrayMetadata::attribute_names() const {
   std::vector<std::string> names;
   for (auto& attr : attributes_)
     names.emplace_back(attr->name());
-  names.emplace_back(constants::coords);
   return names;
 }
 
@@ -174,8 +173,37 @@ unsigned int ArrayMetadata::attribute_num() const {
   return attribute_num_;
 }
 
+std::vector<Datatype> ArrayMetadata::attribute_types() const {
+  std::vector<Datatype> types;
+  for (auto& attr : attributes_)
+    types.emplace_back(attr->type());
+
+  return types;
+}
+
 const std::vector<Attribute*>& ArrayMetadata::attributes() const {
   return attributes_;
+}
+
+Status ArrayMetadata::buffer_num(
+    const char** attributes,
+    unsigned int attribute_num,
+    unsigned int* buffer_num) const {
+  if (attributes == nullptr || attribute_num == 0)
+    return LOG_STATUS(Status::ArrayMetadataError(
+        "Cannot retrieve number of buffers; Attributes not provided"));
+
+  *buffer_num = 0;
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    unsigned int id;
+    RETURN_NOT_OK(attribute_id(attributes[i], &id));
+    if (var_size(id))
+      (*buffer_num) += 2;
+    else
+      ++(*buffer_num);
+  }
+
+  return Status::Ok();
 }
 
 uint64_t ArrayMetadata::capacity() const {
@@ -196,6 +224,14 @@ uint64_t ArrayMetadata::cell_size(unsigned int attribute_id) const {
 
 unsigned int ArrayMetadata::cell_val_num(unsigned int attribute_id) const {
   return attributes_[attribute_id]->cell_val_num();
+}
+
+std::vector<unsigned int> ArrayMetadata::cell_val_nums() const {
+  std::vector<unsigned int> cell_val_nums;
+  for (auto& attr : attributes_)
+    cell_val_nums.emplace_back(attr->cell_val_num());
+
+  return cell_val_nums;
 }
 
 Compressor ArrayMetadata::cell_var_offsets_compression() const {
@@ -530,6 +566,10 @@ Status ArrayMetadata::set_as_kv() {
 
   // Set the array as sparse
   array_type_ = ArrayType::SPARSE;
+
+  // Set layout
+  cell_order_ = Layout::ROW_MAJOR;
+  tile_order_ = Layout::ROW_MAJOR;
 
   // Set key-value special domain
   RETURN_NOT_OK(set_kv_domain());

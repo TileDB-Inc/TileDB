@@ -28,11 +28,12 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a key-value store.
+ * It shows how to create a key-value store. Simply run:
+ *
+ * $ ./tiledb_kv_create
  */
 
 #include <tiledb.h>
-#include <iostream>
 
 int main() {
   // Create TileDB context
@@ -66,7 +67,7 @@ int main() {
 
   // Check array metadata
   if (tiledb_array_metadata_check(ctx, array_metadata) != TILEDB_OK) {
-    std::cout << "Invalid array metadata\n";
+    printf("Invalid array metadata\n");
     return -1;
   }
 
@@ -74,7 +75,7 @@ int main() {
   int as_kv;
   tiledb_array_metadata_get_as_kv(ctx, array_metadata, &as_kv);
   if (as_kv)
-    std::cout << "Array in defined as a key-value store\n";
+    printf("Array in defined as a key-value store\n");
 
   // Create array (which is defined as a key-value store)
   tiledb_array_create(ctx, array_metadata);

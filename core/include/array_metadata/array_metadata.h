@@ -108,17 +108,32 @@ class ArrayMetadata {
    */
   Status attribute_id(const std::string& attribute, unsigned int* id) const;
 
-  /**
-   * Returns the attribute names, plus the coordinates spacial name
-   * in the back.
-   */
+  /** Returns the attribute names. */
   std::vector<std::string> attribute_names() const;
+
+  /** Returns the attribute types. */
+  std::vector<Datatype> attribute_types() const;
 
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;
 
   /** Returns the attributes. */
   const std::vector<Attribute*>& attributes() const;
+
+  /**
+   * Retrieves the number of buffers that correspond to the input attribute.
+   * The function counts one buffer per fixed-sized attribute and two buffers
+   * per variable-sized attribute.
+   *
+   * @param attributes The input attributes.
+   * @param attribute_num The number of attributes.
+   * @param buffer_num The number of buffers to be retrieved.
+   * @return Status
+   */
+  Status buffer_num(
+      const char** attributes,
+      unsigned int attribute_num,
+      unsigned int* buffer_num) const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -131,6 +146,9 @@ class ArrayMetadata {
 
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(unsigned int attribute_id) const;
+
+  /** Returns the number of values per cell for all attributes. */
+  std::vector<unsigned int> cell_val_nums() const;
 
   /** Returns the compression type used for offsets of variable-sized cells. */
   Compressor cell_var_offsets_compression() const;

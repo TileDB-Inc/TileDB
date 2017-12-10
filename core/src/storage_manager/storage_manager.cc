@@ -781,7 +781,7 @@ Status StorageManager::array_open(
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
-  if (object_type(array_uri) != ObjectType::ARRAY) {
+  if (!is_array(array_uri)) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }

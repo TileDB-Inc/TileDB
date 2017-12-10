@@ -99,7 +99,8 @@ enum class StatusCode : char {
   Dimension,
   Domain,
   Consolidation,
-  LRUCache
+  LRUCache,
+  KV
 };
 
 class Status {
@@ -254,6 +255,11 @@ class Status {
   /** Return a LRUCacheError error class Status with a given message **/
   static Status LRUCacheError(const std::string& msg) {
     return Status(StatusCode::LRUCache, msg, -1);
+  }
+
+  /** Return a KVError error class Status with a given message **/
+  static Status KVError(const std::string& msg) {
+    return Status(StatusCode::KV, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

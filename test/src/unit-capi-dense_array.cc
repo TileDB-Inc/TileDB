@@ -371,7 +371,7 @@ struct DenseArrayFx {
         ctx_, query, attributes, 1, buffers, buffer_sizes);
     if (rc != TILEDB_OK)
       return nullptr;
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK)
       return nullptr;
     rc = tiledb_query_set_layout(ctx_, query, query_layout);
@@ -605,7 +605,7 @@ struct DenseArrayFx {
         ctx_, query, attributes, 1, buffers, buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
     rc = tiledb_query_set_layout(ctx_, query, query_layout);

@@ -299,6 +299,12 @@ extern const char* key_dim_2;
 /** Name of special empty file that indicates a key-value store. */
 extern const char* kv_filename;
 
+/**
+ * Default size to be allocated for a key-value internal buffer when reading
+ * from a key-value store.
+ */
+extern uint64_t kv_buffer_size;
+
 }  // namespace constants
 
 }  // namespace tiledb
