@@ -77,7 +77,6 @@ endif()
 include(SetCXX2011Flag REQUIRED)
 
 # Set compiler flags
-<<<<<<< HEAD
 if (WIN32)
   # MSVC has the behavior of -fvisibility=hidden by default (you must
   # explicitly export all symbols you want exported). Also disable
