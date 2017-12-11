@@ -148,11 +148,11 @@ class Consolidator {
       unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes);
 
   /**
-   * Renames the new fragment URI. Effectively, it makes it visible by removing
-   * the "." from the fragment name, and changes the old thread id to the
-   * current thread id (for debugging), keeping the timestamp intact.
+   * Renames the new fragment URI. If the working thread id is different
+   * from the one that created the input URI, the function does nothing.
+   * Otherwise, it appends an extra `_` after the thread id.
    */
-  Status rename_new_fragment(const URI& uri) const;
+  Status rename_new_fragment_uri(URI* uri) const;
 };
 
 }  // namespace tiledb

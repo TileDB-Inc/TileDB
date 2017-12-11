@@ -114,6 +114,9 @@ extern const uint64_t empty_uint64;
 /** The file suffix used in TileDB. */
 extern const char* file_suffix;
 
+/** The fragment file name. */
+extern const char* fragment_filename;
+
 /** The fragment metadata file name. */
 extern const char* fragment_metadata_filename;
 
@@ -155,6 +158,9 @@ extern const unsigned int var_num;
 
 /** String describing no compression. */
 extern const char* no_compression_str;
+
+/** The tile cache size. */
+extern const uint64_t tile_cache_size;
 
 /** String describing GZIP. */
 extern const char* gzip_str;
@@ -251,6 +257,12 @@ extern const int version[3];
 
 /** The size of a tile chunk. */
 extern const uint64_t tile_chunk_size;
+
+/** The default attribute name prefix. */
+extern const char* default_attr_name;
+
+/** The default dimension name prefix. */
+extern const char* default_dim_name;
 
 }  // namespace constants
 

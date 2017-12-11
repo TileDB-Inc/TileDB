@@ -62,12 +62,12 @@ FragmentMetadata::~FragmentMetadata() {
     std::free(non_empty_domain_);
 
   auto mbr_num = (uint64_t)mbrs_.size();
-  for (int64_t i = 0; i < mbr_num; ++i)
+  for (uint64_t i = 0; i < mbr_num; ++i)
     if (mbrs_[i] != nullptr)
       std::free(mbrs_[i]);
 
   auto bounding_coords_num = (uint64_t)bounding_coords_.size();
-  for (int64_t i = 0; i < bounding_coords_num; ++i)
+  for (uint64_t i = 0; i < bounding_coords_num; ++i)
     if (bounding_coords_[i] != nullptr)
       std::free(bounding_coords_[i]);
 }

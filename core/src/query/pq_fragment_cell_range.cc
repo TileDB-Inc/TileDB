@@ -34,7 +34,6 @@
 #include "pq_fragment_cell_range.h"
 
 #include <cassert>
-#include <climits>
 
 namespace tiledb {
 

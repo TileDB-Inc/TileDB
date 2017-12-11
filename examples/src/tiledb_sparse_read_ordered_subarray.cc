@@ -29,8 +29,8 @@
  * @section DESCRIPTION
  *
  * It shows how to read from a sparse array, constraining the read
- * to a specific subarray and subset of attributes. This time the cells are
- * returned in row-major order within the specified subarray.
+ * to a specific subarray. This time the cells are returned in row-major order
+ * within the specified subarray.
  *
  * You need to run the following to make it work:
  *
@@ -47,6 +47,9 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+
   // Prepare cell buffers
   int buffer_a1[10];
   uint64_t buffer_a2[10];
@@ -61,31 +64,29 @@ int main() {
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
-  // Create query
+  // Set subarray
   uint64_t subarray[] = {3, 4, 2, 4};
+
+  // Create query
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_sparse_array",
-      TILEDB_READ,
-      TILEDB_ROW_MAJOR,
-      subarray,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_by_subarray(ctx, query, subarray, TILEDB_UINT64);
+  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
   // Print cell values
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", result_num);
+  printf("result num: %llu\n\n", (unsigned long long)result_num);
   printf("coords\t  a1\t   a2\t      (a3.first, a3.second)\n");
   printf("---------------------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {
-    printf("(%lld, %lld)", buffer_coords[2 * i], buffer_coords[2 * i + 1]);
+    printf(
+        "(%lld, %lld)",
+        (long long int)buffer_coords[2 * i],
+        (long long int)buffer_coords[2 * i + 1]);
     printf("\t %3d", buffer_a1[i]);
     size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
                                               buffer_sizes[2] - buffer_a2[i];

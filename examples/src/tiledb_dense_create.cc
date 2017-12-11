@@ -40,15 +40,21 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Create domain
+  // Create dimensions
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
+  tiledb_dimension_t* d1;
+  tiledb_dimension_create(
+      ctx, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
+  tiledb_dimension_t* d2;
+  tiledb_dimension_create(
+      ctx, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
+
+  // Create domain
   tiledb_domain_t* domain;
   tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
-  tiledb_domain_add_dimension(
-      ctx, domain, "d1", &dim_domain[0], &tile_extents[0]);
-  tiledb_domain_add_dimension(
-      ctx, domain, "d2", &dim_domain[2], &tile_extents[1]);
+  tiledb_domain_add_dimension(ctx, domain, d1);
+  tiledb_domain_add_dimension(ctx, domain, d2);
 
   // Create attributes
   tiledb_attribute_t* a1;
@@ -89,6 +95,8 @@ int main() {
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
   tiledb_attribute_free(ctx, a3);
+  tiledb_dimension_free(ctx, d1);
+  tiledb_dimension_free(ctx, d2);
   tiledb_domain_free(ctx, domain);
   tiledb_array_metadata_free(ctx, array_metadata);
   tiledb_ctx_free(ctx);

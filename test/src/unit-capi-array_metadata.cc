@@ -94,36 +94,39 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
 
   ArraySchemaFx() {
-    // Error code
-    int rc;
-
-    // Array metadata not set yet
-    array_metadata_ = nullptr;
-
     // Initialize context
-    rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
-
+    int rc = tiledb_ctx_create(&ctx_);
+    if (rc != TILEDB_OK) {
+      std::cerr << "ArraySchemaFx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "ArraySchemaFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      tiledb_ctx_free(ctx_);
+      std::cerr << "ArraySchemaFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~ArraySchemaFx() {
-    // Free array_metadata metadata
-    if (array_metadata_ != nullptr)
-      tiledb_array_metadata_free(ctx_, array_metadata_);
-
-    // Free TileDB context
+    tiledb_array_metadata_free(ctx_, array_metadata_);
     tiledb_ctx_free(ctx_);
-
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "~ArraySchemaFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {
@@ -176,15 +179,23 @@ struct ArraySchemaFx {
     rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc != TILEDB_OK);
 
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    REQUIRE(rc == TILEDB_OK);
+
     // Set domain
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
     REQUIRE(rc == TILEDB_OK);
@@ -204,6 +215,8 @@ struct ArraySchemaFx {
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
+    tiledb_dimension_free(ctx_, d1);
+    tiledb_dimension_free(ctx_, d2);
     tiledb_domain_free(ctx_, domain);
 
     // Create the array
@@ -338,12 +351,12 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
-  const void* dim_domain;
+  void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(dim_domain, &DIM_DOMAIN[0], DIM_DOMAIN_SIZE));
 
-  const void* tile_extent;
+  void* tile_extent;
   rc = tiledb_dimension_get_tile_extent(ctx_, dim, &tile_extent);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
@@ -413,7 +426,7 @@ TEST_CASE_METHOD(
   tiledb_array_metadata_dump(ctx_, array_metadata, fout);
   fclose(fout);
   CHECK(!system("diff gold_fout.txt fout.txt"));
-  system("rm gold_fout.txt fout.txt");
+  CHECK(!system("rm gold_fout.txt fout.txt"));
 
   // Clean up
   rc = tiledb_attribute_iter_free(ctx_, attr_it);

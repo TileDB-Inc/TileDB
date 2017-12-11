@@ -44,6 +44,9 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3"};
+
   // Prepare cell buffers - #1
   int buffer_a1[] = {0, 1, 2, 3, 4, 5};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
@@ -59,17 +62,9 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_dense_array",
-      TILEDB_WRITE,
-      TILEDB_GLOBAL_ORDER,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
+  tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
   // Submit query - #1
   tiledb_query_submit(ctx, query);

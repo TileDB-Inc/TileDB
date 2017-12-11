@@ -34,6 +34,8 @@
 #include "fragment.h"
 #include "logger.h"
 
+#include <iostream>
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -109,27 +111,13 @@ Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
     assert(metadata_ != NULL);
     auto storage_manager = query_->storage_manager();
-    Status st_ws = write_state_->finalize();
-    Status st_bk = storage_manager->store(metadata_);
-    Status st_rn;
+    Status st = write_state_->finalize();
+    if (st.ok())
+      st = storage_manager->store(metadata_);
+    if (st.ok() && storage_manager->is_dir(fragment_uri_))
+      st = storage_manager->create_fragment_file(fragment_uri_);
 
-    // Rename fragment URI if it is not the result of consolidation
-    if (!consolidation_) {
-      if (storage_manager->is_dir(fragment_uri_)) {
-        URI parent = fragment_uri_.parent();
-        std::string last = fragment_uri_.last_path_part();
-        URI new_fragment_uri = parent.join_path(last.substr(1));
-        st_rn = storage_manager->move_path(fragment_uri_, new_fragment_uri);
-      }
-    }
-
-    // Errors
-    if (!st_ws.ok())
-      return st_ws;
-    if (!st_bk.ok())
-      return st_bk;
-    if (!st_rn.ok())
-      return st_rn;
+    return st;
   }
 
   // READ - nothing to be done

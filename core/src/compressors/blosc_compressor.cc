@@ -31,7 +31,6 @@
  */
 
 #include <blosc.h>
-#include <cassert>
 #include <limits>
 
 #include "blosc_compressor.h"
@@ -50,23 +49,19 @@ Status Blosc::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with Blosc; invalid buffer format"));
 
-  // Initialize Blosc compressor
-  if (blosc_set_compressor(compressor) < 0) {
-    return LOG_STATUS(Status::CompressionError(
-        std::string(
-            "Blosc compression error, failed to set Blosc compressor ") +
-        compressor));
-  }
-
   // Compress
-  int rc = blosc_compress(
+  int rc = blosc_compress_ctx(
       level < 0 ? Blosc::default_level() : level,
       1,  // shuffle
       type_size,
       input_buffer->size(),
       input_buffer->data(),
       output_buffer->cur_data(),
-      output_buffer->free_space());
+      output_buffer->free_space(),
+      compressor,
+      0, // blocksize (0 lets BLOSC choose automatically)
+      1  // disable BLOSC thread pool
+  );
 
   // Handle error
   if (rc < 0)
@@ -86,10 +81,12 @@ Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
         "Failed decompressing with Blosc; invalid buffer format"));
 
   // Decompress
-  int rc = blosc_decompress(
+  int rc = blosc_decompress_ctx(
       input_buffer->data(),
       output_buffer->cur_data(),
-      output_buffer->free_space());
+      output_buffer->free_space(),
+      1 // disable BLOSC thread pool
+  );
 
   // Handle error
   if (rc <= 0)
@@ -104,7 +101,8 @@ Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
 uint64_t Blosc::overhead(uint64_t nbytes) {
   // Blosc has a fixed overhead
+  (void)nbytes;
   return BLOSC_MAX_OVERHEAD;
 }
 
-};  // namespace tiledb
+}  // namespace tiledb

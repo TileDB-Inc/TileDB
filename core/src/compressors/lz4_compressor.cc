@@ -45,9 +45,9 @@ Status LZ4::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with LZ4; invalid buffer format"));
 
-    // TODO: level is ignored using the simple api interface
-
-    // Compress
+  // TODO: level is ignored using the simple api interface
+  (void)level;
+  // Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(
       (char*)input_buffer->data(),
@@ -99,7 +99,8 @@ Status LZ4::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
 uint64_t LZ4::overhead(uint64_t nbytes) {
   // So that we avoid overflow
-  uint64_t half_bound = (uint64_t)LZ4_compressBound((int)ceil(nbytes / 2.0));
+  auto half_bound =
+      static_cast<uint64_t>(LZ4_compressBound((int)ceil(nbytes / 2.0)));
   return 2 * half_bound - nbytes;
 }
 

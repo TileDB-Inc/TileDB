@@ -45,6 +45,7 @@
 #include "array_metadata.h"
 #include "consolidator.h"
 #include "locked_array.h"
+#include "lru_cache.h"
 #include "object_type.h"
 #include "open_array.h"
 #include "query.h"
@@ -141,11 +142,18 @@ class StorageManager {
   /** Creates a directory with the input URI. */
   Status create_dir(const URI& uri);
 
+  /** Creates a special fragment file name inside the `uri` directory. */
+  Status create_fragment_file(const URI& uri);
+
   /** Creates a file with the input URI. */
   Status create_file(const URI& uri);
 
   /** Deletes a fragment directory. */
   Status delete_fragment(const URI& uri) const;
+
+  /** Move (rename) a resource, skips check that resource is a valid TileDB
+   * object */
+  Status move_path(const URI& old_uri, const URI& new_uri);
 
   /** Safely removes a TileDB resource. */
   Status remove_path(const URI& uri) const;
@@ -197,15 +205,6 @@ class StorageManager {
    * @return Status
    */
   Status load(FragmentMetadata* metadata);
-
-  /**
-   * TODO: DOC
-   * @param old_uri
-   * @param new_uri
-   * @param force
-   * @return
-   */
-  Status move_path(const URI& old_uri, const URI& new_uri, bool force = false);
 
   /**
    * Creates a new object iterator for the input path.
@@ -283,6 +282,16 @@ class StorageManager {
    * @param query The query to initialize.
    * @param array_name The name of the array the query targets at.
    * @param type The query type.
+   * @return Status
+   */
+  Status query_init(Query* query, const char* array_name, QueryType type);
+
+  /**
+   * Initializes a query.
+   *
+   * @param query The query to initialize.
+   * @param array_name The name of the array the query targets at.
+   * @param type The query type.
    * @param layout The cell layout.
    * @param subarray The subarray the query will be constrained on.
    * @param attributes The attributes the query will be constrained on.
@@ -322,6 +331,29 @@ class StorageManager {
       Query* query, void* (*callback)(void*), void* callback_data);
 
   /**
+   * Reads from the cache into the input buffer. `uri` and `offset` collectively
+   * form the key of the cached object to be read. Essentially, this is used
+   * to read potentially cached tiles. `uri` is the URI of the attribute the
+   * tile belongs to, and `offset` is the offset in the attribute file where
+   * the tile is located. Observe that the `uri`, `offset` pair is unique.
+   *
+   * @param uri The URI of the cached object.
+   * @param offset The offset of the cached object.
+   * @param buffer The buffer to write into. The function reallocates memory
+   *     for the buffer, sets its size to *nbytes* and resets its offset.
+   * @param nbytes Number of bytes to be read.
+   * @param in_cache This is set to `true` if the object is in the cache,
+   *     and `false` otherwise.
+   * @return Status.
+   */
+  Status read_from_cache(
+      const URI& uri,
+      uint64_t offset,
+      Buffer* buffer,
+      uint64_t nbytes,
+      bool* in_cache) const;
+
+  /**
    * Reads from a file into the input buffer.
    *
    * @param uri The URI file to read from.
@@ -355,6 +387,20 @@ class StorageManager {
    * to persistent storage.
    */
   Status sync(const URI& uri);
+
+  /**
+   * Writes the contents of a buffer into the cache. `uri` and `offset`
+   * collectively form the key of the object to be cached. Essentially, this is
+   * used to cach tiles. `uri` is the URI of the attribute the
+   * tile belongs to, and `offset` is the offset in the attribute file where
+   * the tile is located. Observe that the `uri`, `offset` pair is unique.
+   *
+   * @param uri The URI of the cached object.
+   * @param offset The offset of the cached object.
+   * @param buffer The buffer whose contents will be cached.
+   * @return Status.
+   */
+  Status write_to_cache(const URI& uri, uint64_t offset, Buffer* buffer) const;
 
   /**
    * Writes the contents of a buffer into a URI file.
@@ -421,6 +467,9 @@ class StorageManager {
    */
   std::map<std::string, OpenArray*> open_arrays_;
 
+  /** A tile cache. */
+  LRUCache* tile_cache_;
+
   /**
    * Virtual filesystem handler. It directs queries to the appropriate
    * filesystem backend. Note that this is stateful.
@@ -440,7 +489,6 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param query_type The query type.
-   * @param subarray The subarray the query is constrained on.
    * @param array_metadata The array metadata to be retrieved.
    * @param fragment_metadata The fragment metadat to be retrieved.
    * @return
@@ -448,7 +496,6 @@ class StorageManager {
   Status array_open(
       const URI& array_uri,
       QueryType query_type,
-      const void* subarray,
       const ArrayMetadata** array_metadata,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -485,16 +532,9 @@ class StorageManager {
    */
   void async_process_queries(int i);
 
-  /**
-   * Retrieves the fragment URI's of an array that overlap with a give
-   * subarray.
-   */
-  // TODO: Currently, no overlap check is performed with the subarray
-  // TODO: and all fragments are retrieved. To be fixed soon.
+  /** Retrieves all the fragment URI's of an array. */
   Status get_fragment_uris(
-      const URI& array_uri,
-      const void* subarray,
-      std::vector<URI>* fragment_uris) const;
+      const URI& array_uri, std::vector<URI>* fragment_uris) const;
 
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
@@ -504,9 +544,7 @@ class StorageManager {
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
   Status open_array_load_fragment_metadata(
-      OpenArray* open_array,
-      const void* subarray,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      OpenArray* open_array, std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Sorts the input fragment URIs in ascending timestamp order, breaking

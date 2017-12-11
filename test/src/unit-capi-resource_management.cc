@@ -54,12 +54,19 @@ struct ResourceMgmtRx {
   ResourceMgmtRx() {
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
-
+    if (rc != TILEDB_OK) {
+      std::cerr << "ResourceMgmtRx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
     // cleanup temporary test group if it exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "ResourceMgmtRx() Error existing deleting test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
   }
 
@@ -69,7 +76,10 @@ struct ResourceMgmtRx {
 
     // cleanup temporary test group if it exists
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "ResourceMgmtRx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {
@@ -106,11 +116,15 @@ struct ResourceMgmtRx {
         1,
     };
 
+    // Create dimension
+    tiledb_dimension_t* d1;
+    tiledb_dimension_create(
+        ctx_, &d1, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0]);
+
     // Domain
     tiledb_domain_t* domain;
     tiledb_domain_create(ctx_, &domain, TILEDB_INT64);
-    tiledb_domain_add_dimension(
-        ctx_, domain, "d1", &dim_domain[0], &tile_extents[0]);
+    tiledb_domain_add_dimension(ctx_, domain, d1);
 
     // Create array_metadata metadata
     tiledb_array_metadata_t* array_metadata;
@@ -124,6 +138,8 @@ struct ResourceMgmtRx {
 
     // Create array
     REQUIRE(tiledb_array_create(ctx_, array_metadata) == TILEDB_OK);
+
+    tiledb_dimension_free(ctx_, d1);
   }
 
   const char* error_message() {
@@ -240,6 +256,14 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Move", "[capi]") {
           group_path("new_group1").c_str(),
           group_path("old_group2").c_str(),
           false) == TILEDB_ERR);
+
+  // Check force move works on name conflict
+  CHECK(
+      tiledb_move(
+          ctx_,
+          group_path("new_group1").c_str(),
+          group_path("old_group2").c_str(),
+          true) == TILEDB_OK);
 
   // Check move array
   create_test_array(group_path("test_array").c_str());

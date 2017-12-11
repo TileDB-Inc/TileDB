@@ -31,8 +31,8 @@
  * This file implements the StorageManager class.
  */
 
-#include <blosc.h>
 #include <algorithm>
+#include <sstream>
 
 #include "logger.h"
 #include "storage_manager.h"
@@ -49,16 +49,16 @@ StorageManager::StorageManager() {
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
   consolidator_ = new Consolidator(this);
+  tile_cache_ = new LRUCache(constants::tile_cache_size);
   vfs_ = nullptr;
-  blosc_init();
 }
 
 StorageManager::~StorageManager() {
   async_stop();
   delete async_thread_[0];
   delete async_thread_[1];
+  delete tile_cache_;
   delete vfs_;
-  blosc_destroy();
 }
 
 /* ****************************** */
@@ -186,6 +186,10 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
+Status StorageManager::create_fragment_file(const URI& uri) {
+  return create_file(uri.join_path(constants::fragment_filename));
+}
+
 Status StorageManager::create_file(const URI& uri) {
   return vfs_->create_file(uri);
 }
@@ -213,7 +217,9 @@ Status StorageManager::move(
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));
   }
-
+  if (force && vfs_->is_dir(new_uri)) {
+    RETURN_NOT_OK(remove_path(new_uri));
+  }
   return vfs_->move_path(old_uri, new_uri);
 }
 
@@ -251,7 +257,7 @@ bool StorageManager::is_file(const URI& uri) {
 }
 
 bool StorageManager::is_fragment(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::fragment_metadata_filename));
+  return vfs_->is_file(uri.join_path(constants::fragment_filename));
 }
 
 Status StorageManager::load(
@@ -308,8 +314,7 @@ Status StorageManager::load(FragmentMetadata* fragment_metadata) {
   return st;
 }
 
-Status StorageManager::move_path(
-    const URI& old_uri, const URI& new_uri, bool force) {
+Status StorageManager::move_path(const URI& old_uri, const URI& new_uri) {
   return vfs_->move_path(old_uri, new_uri);
 }
 
@@ -445,6 +450,23 @@ Status StorageManager::query_finalize(Query* query) {
 }
 
 Status StorageManager::query_init(
+    Query* query, const char* array_name, QueryType type) {
+  // Open the array
+  std::vector<FragmentMetadata*> fragment_metadata;
+  auto array_metadata = (const ArrayMetadata*)nullptr;
+  RETURN_NOT_OK(
+      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
+
+  // Set basic query members
+  query->set_storage_manager(this);
+  query->set_type(type);
+  query->set_array_metadata(array_metadata);
+  query->set_fragment_metadata(fragment_metadata);
+
+  return Status::Ok();
+}
+
+Status StorageManager::query_init(
     Query* query,
     const char* array_name,
     QueryType type,
@@ -458,8 +480,8 @@ Status StorageManager::query_init(
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_metadata = (const ArrayMetadata*)nullptr;
-  RETURN_NOT_OK(array_open(
-      URI(array_name), type, subarray, &array_metadata, &fragment_metadata));
+  RETURN_NOT_OK(
+      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
 
   // Initialize query
   return query->init(
@@ -477,6 +499,11 @@ Status StorageManager::query_init(
 }
 
 Status StorageManager::query_submit(Query* query) {
+  // Initialize query
+  if (query->status() != QueryStatus::INCOMPLETE)
+    RETURN_NOT_OK(query->init());
+
+  // Based on the query type, invoke the appropriate call
   QueryType query_type = query->type();
   if (query_type == QueryType::READ)
     return query->read();
@@ -486,9 +513,30 @@ Status StorageManager::query_submit(Query* query) {
 
 Status StorageManager::query_submit_async(
     Query* query, void* (*callback)(void*), void* callback_data) {
+  // Initialize query
+  if (query->status() != QueryStatus::INCOMPLETE)
+    RETURN_NOT_OK(query->init());
+
   // Push the query into the async queue
   query->set_callback(callback, callback_data);
   return async_push_query(query, 0);
+}
+
+Status StorageManager::read_from_cache(
+    const URI& uri,
+    uint64_t offset,
+    Buffer* buffer,
+    uint64_t nbytes,
+    bool* in_cache) const {
+  std::stringstream key;
+  key << uri.to_string() << "+" << offset;
+  RETURN_NOT_OK(buffer->realloc(nbytes));
+  RETURN_NOT_OK(
+      tile_cache_->read(key.str(), buffer->data(), 0, nbytes, in_cache));
+  buffer->set_size(nbytes);
+  buffer->reset_offset();
+
+  return Status::Ok();
 }
 
 Status StorageManager::read_from_file(
@@ -525,6 +573,8 @@ Status StorageManager::store(ArrayMetadata* array_metadata) {
       false);
   auto tile_io = new TileIO(this, array_metadata_uri);
   Status st = tile_io->write_generic(tile);
+  if (st.ok())
+    st = sync(array_metadata_uri);
 
   delete tile;
   delete tile_io;
@@ -558,6 +608,8 @@ Status StorageManager::store(FragmentMetadata* metadata) {
 
   auto tile_io = new TileIO(this, fragment_metadata_uri);
   Status st = tile_io->write_generic(tile);
+  if (st.ok())
+    st = sync(fragment_metadata_uri);
 
   delete tile;
   delete tile_io;
@@ -568,6 +620,22 @@ Status StorageManager::store(FragmentMetadata* metadata) {
 
 Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
+}
+
+Status StorageManager::write_to_cache(
+    const URI& uri, uint64_t offset, Buffer* buffer) const {
+  std::stringstream key;
+  key << uri.to_string() << "+" << offset;
+
+  uint64_t object_size = buffer->size();
+  void* object = std::malloc(object_size);
+  if (object == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot write to cache; Object memory allocation failed"));
+  std::memcpy(object, buffer->data(), object_size);
+  RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size));
+
+  return Status::Ok();
 }
 
 Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
@@ -629,7 +697,6 @@ Status StorageManager::array_close(
 Status StorageManager::array_open(
     const URI& array_uri,
     QueryType type,
-    const void* subarray,
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
@@ -670,8 +737,7 @@ Status StorageManager::array_open(
   // Get fragment metadata only in read mode
   if (type == QueryType::READ)
     RETURN_NOT_OK_ELSE(
-        open_array_load_fragment_metadata(
-            open_array, subarray, fragment_metadata),
+        open_array_load_fragment_metadata(open_array, fragment_metadata),
         array_open_error(open_array, *fragment_metadata));
 
   // Unlock the array mutex
@@ -721,19 +787,16 @@ void StorageManager::async_stop() {
 }
 
 Status StorageManager::get_fragment_uris(
-    const URI& array_uri,
-    const void* subarray,
-    std::vector<URI>* fragment_uris) const {
+    const URI& array_uri, std::vector<URI>* fragment_uris) const {
   // Get all uris in the array directory
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri, &uris));
 
   // Get only the fragment uris
   for (auto& uri : uris) {
-    // TODO: check here if the fragment overlaps subarray
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
-    if (vfs_->is_file(uri.join_path(constants::fragment_metadata_filename)))
+    if (is_fragment(uri))
       fragment_uris->push_back(uri);
   }
 
@@ -770,13 +833,11 @@ Status StorageManager::open_array_load_metadata(
 }
 
 Status StorageManager::open_array_load_fragment_metadata(
-    OpenArray* open_array,
-    const void* subarray,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    OpenArray* open_array, std::vector<FragmentMetadata*>* fragment_metadata) {
   // Get all the fragment uris, sorted by timestamp
   std::vector<URI> fragment_uris;
   const URI& array_uri = open_array->array_uri();
-  RETURN_NOT_OK(get_fragment_uris(array_uri, subarray, &fragment_uris));
+  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
   sort_fragment_uris(&fragment_uris);
 
   if (fragment_uris.empty())
@@ -806,7 +867,7 @@ Status StorageManager::open_array_load_fragment_metadata(
 void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
   // Do nothing if there are not enough fragments
   uint64_t fragment_num = fragment_uris->size();
-  if (fragment_num <= 0)
+  if (fragment_num == 0)
     return;
 
   // Initializations

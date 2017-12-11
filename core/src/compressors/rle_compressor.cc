@@ -101,7 +101,6 @@ Status RLE::decompress(
         "Failed decompressing with RLE; null input buffer"));
 
   auto input_cur = static_cast<const unsigned char*>(input_buffer->data());
-  uint64_t run_len;
   uint64_t run_size = value_size + 2 * sizeof(char);
   uint64_t run_num = input_buffer->size() / run_size;
   unsigned char byte;
@@ -120,7 +119,7 @@ Status RLE::decompress(
   for (uint64_t i = 0; i < run_num; ++i) {
     // Retrieve the current run length
     std::memcpy(&byte, input_cur + value_size, sizeof(char));
-    run_len = (((uint64_t)byte) << 8);
+    uint64_t run_len = (((uint64_t)byte) << 8);
     std::memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
     run_len += (uint64_t)byte;
 

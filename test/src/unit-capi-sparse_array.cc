@@ -75,24 +75,39 @@ struct SparseArrayFx {
   SparseArrayFx() {
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      std::cerr << "SparseArrayFx() Error error creating tiledb_ctx_t"
+                << std::endl;
+      exit(1);
+    }
 
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "SparseArrayFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      tiledb_ctx_free(ctx_);
+      std::cerr << "SparseArrayFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~SparseArrayFx() {
     // Finalize TileDB context
     tiledb_ctx_free(ctx_);
-
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "~SparseArrayFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {
@@ -151,15 +166,23 @@ struct SparseArrayFx {
         tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
     REQUIRE(rc == TILEDB_OK);
 
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, TILEDB_INT64, &dim_domain[0], &tile_extent_0);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, TILEDB_INT64, &dim_domain[2], &tile_extent_1);
+    REQUIRE(rc == TILEDB_OK);
+
     // Create domain
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &dim_domain[0], &tile_extent_0);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &dim_domain[2], &tile_extent_1);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d2);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array_metadata metadata
@@ -188,6 +211,10 @@ struct SparseArrayFx {
 
     // Clean up
     rc = tiledb_attribute_free(ctx_, a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d1);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_domain_free(ctx_, domain);
     REQUIRE(rc == TILEDB_OK);
@@ -242,17 +269,23 @@ struct SparseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(
-        ctx_,
-        &query,
-        array_name_.c_str(),
-        query_type,
-        query_layout,
-        subarray,
-        attributes,
-        1,
-        buffers,
-        buffer_sizes);
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_set_buffers(
+        ctx_, query, attributes, 1, buffers, buffer_sizes);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    if (rc != TILEDB_OK) {
+      delete[] buffer_a1;
+      return nullptr;
+    }
+    rc = tiledb_query_set_layout(ctx_, query, query_layout);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;
@@ -315,19 +348,19 @@ struct SparseArrayFx {
     buffer_sizes[0] = cell_num * sizeof(int);
     buffer_sizes[1] = 2 * cell_num * sizeof(int64_t);
 
+    // Set attributes
+    const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
+
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(
-        ctx_,
-        &query,
-        array_name_.c_str(),
-        TILEDB_WRITE,
-        TILEDB_UNORDERED,
-        nullptr,
-        nullptr,
-        0,
-        buffers,
-        buffer_sizes);
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+    rc = tiledb_query_set_buffers(
+        ctx_, query, attributes, 2, buffers, buffer_sizes);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 

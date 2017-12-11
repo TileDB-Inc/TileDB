@@ -171,7 +171,10 @@ inline Status LOG_STATUS(const Status& st) {
 }
 #else
 /** Logs an error. */
-inline void LOG_ERROR(const std::string& msg){};
+inline void LOG_ERROR(const std::string& msg) {
+  (void)msg;
+  return;
+}
 
 /** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {

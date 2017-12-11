@@ -40,8 +40,6 @@
 #include "rle_compressor.h"
 #include "zstd_compressor.h"
 
-#include <iostream>
-
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -86,24 +84,32 @@ Status TileIO::read(
     uint64_t file_offset,
     uint64_t compressed_size,
     uint64_t tile_size) {
+  // Try to read from cache
+  bool in_cache;
+  RETURN_NOT_OK(storage_manager_->read_from_cache(
+      uri_, file_offset, tile->buffer(), tile_size, &in_cache));
+  if (in_cache)
+    return Status::Ok();
+
   // No compression
-  if (tile->compressor() == Compressor::NO_COMPRESSION)
-    return storage_manager_->read_from_file(
-        uri_, file_offset, tile->buffer(), tile_size);
+  if (tile->compressor() == Compressor::NO_COMPRESSION) {
+    RETURN_NOT_OK(storage_manager_->read_from_file(
+        uri_, file_offset, tile->buffer(), tile_size));
+  } else {  // Compression
+    RETURN_NOT_OK(storage_manager_->read_from_file(
+        uri_, file_offset, buffer_, compressed_size));
 
-  // Compression
-  RETURN_NOT_OK(storage_manager_->read_from_file(
-      uri_, file_offset, buffer_, compressed_size));
+    // Decompress tile
+    tile->reset_offset();
+    tile->reset_size();
+    buffer_->reset_offset();
+    RETURN_NOT_OK(tile->realloc(tile_size));
+    RETURN_NOT_OK(decompress_tile(tile));
+    tile->reset_offset();
+  }
 
-  // Decompress tile
-  tile->reset_offset();
-  tile->reset_size();
-  buffer_->reset_offset();
-  RETURN_NOT_OK(tile->realloc(tile_size));
-  RETURN_NOT_OK(decompress_tile(tile));
-  tile->reset_offset();
-
-  return Status::Ok();
+  // Store tile in cache
+  return (storage_manager_->write_to_cache(uri_, file_offset, tile->buffer()));
 }
 
 Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
@@ -288,14 +294,13 @@ Status TileIO::compress_one_tile(Tile* tile) {
   // Compress in chunks
   Status st;
   uint64_t compressed_chunk_size = 0;
-  uint64_t buffer_offset;
   uint64_t left_to_compress = tile_size;
   for (uint64_t i = 0; i < chunk_num; ++i) {
     // Write chunk info
     auto chunk_size = MIN(left_to_compress, max_chunk_size);
 
     RETURN_NOT_OK(buffer_->write(&chunk_size, sizeof(uint64_t)));
-    buffer_offset = buffer_->offset();  // Will be used later
+    uint64_t buffer_offset = buffer_->offset();  // Will be used later
     RETURN_NOT_OK(buffer_->write(&compressed_chunk_size, sizeof(uint64_t)));
 
     // Create const buffer
@@ -492,8 +497,6 @@ Status TileIO::decompress_one_tile(Tile* tile) {
 
 uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {
   switch (tile->compressor()) {
-    case Compressor::NO_COMPRESSION:
-      return 0;
     case Compressor::GZIP:
       return GZip::overhead(nbytes);
     case Compressor::ZSTD:
@@ -518,6 +521,9 @@ uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {
       return BZip::overhead(nbytes);
     case Compressor::DOUBLE_DELTA:
       return DoubleDelta::overhead(nbytes);
+    default:
+      // No compression
+      return 0;
   }
 }
 

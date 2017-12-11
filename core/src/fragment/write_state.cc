@@ -516,11 +516,12 @@ Status WriteState::write_attr_var(
   auto tile_io_var = tile_io_var_[attribute_id];
 
   // Fill tiles and dispatch them for writing
-  uint64_t bytes_written, bytes_written_var, bytes_to_write_var;
+  uint64_t bytes_written = 0;
+  uint64_t bytes_written_var = 0;
   do {
     RETURN_NOT_OK(tile->write_with_shift(buf, buffer_var_offset));
 
-    bytes_to_write_var =
+    uint64_t bytes_to_write_var =
         (buf->end()) ?
             buffer_var_offset + buffer_var_size - tile->value<uint64_t>(0) :
             buffer_var_offset + buf->value<uint64_t>() -
@@ -696,7 +697,6 @@ Status WriteState::write_sparse_unsorted_attr_var(
   // For easy reference
   auto array_metadata = fragment_->query()->array_metadata();
   uint64_t cell_size = constants::cell_var_offset_size;
-  uint64_t cell_var_size;
   auto buffer_s = static_cast<const uint64_t*>(buffer);
   auto buffer_var_c = static_cast<const char*>(buffer_var);
 
@@ -717,9 +717,10 @@ Status WriteState::write_sparse_unsorted_attr_var(
   uint64_t var_offset;
   for (uint64_t i = 0; i < buffer_cell_num; ++i) {
     // Calculate variable cell size
-    cell_var_size = (cell_pos[i] == buffer_cell_num - 1) ?
-                        buffer_var_size - buffer_s[cell_pos[i]] :
-                        buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
+    uint64_t cell_var_size =
+        (cell_pos[i] == buffer_cell_num - 1) ?
+            buffer_var_size - buffer_s[cell_pos[i]] :
+            buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
 
     // Write batch
     if (sorted_buf->offset() + cell_size > constants::sorted_buffer_size ||

@@ -161,7 +161,7 @@ TEST_CASE("Compression-DoubleDelta: Test 4-element case", "[double-delta]") {
 
 TEST_CASE("Compression-DoubleDelta: Test n-element case", "[double-delta]") {
   // Create random array
-  std::srand(std::time(0));
+  std::srand(std::time(nullptr));
   int n = 1000000;
   int max_value = 1000;
   auto data = new int[n];

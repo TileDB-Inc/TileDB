@@ -420,7 +420,6 @@ Status ReadState::get_fragment_cell_ranges_dense(
       cell_range_T[i] = search_tile_overlap_subarray[2 * i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2 * i + 1];
     }
-
     // Insert the new range into the result vector
     fragment_cell_ranges->emplace_back(fragment_info, cell_range);
   } else {  // Non-contiguous cells, multiple ranges
@@ -430,7 +429,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
       coords[i] = search_tile_overlap_subarray[2 * i];
 
     // Handle the different cell orders
-    unsigned int i;
+    unsigned int i = 0;
     if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= search_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
@@ -449,7 +448,9 @@ Status ReadState::get_fragment_cell_ranges_dense(
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
-        if (dim_num > 1) {
+        if (dim_num == 1) {
+          break;
+        } else {
           i = dim_num - 2;
           ++coords[i];
           while (i > 0 && coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
@@ -474,13 +475,17 @@ Status ReadState::get_fragment_cell_ranges_dense(
         // Insert the new range into the result vector
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
-        // Advance coordinates
-        i = 1;
-        ++coords[i];
-        while (i < dim_num - 1 &&
-               coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
-          coords[i] = search_tile_overlap_subarray[2 * i];
-          ++coords[++i];
+        if (dim_num == 1) {
+          break;
+        } else {
+          // Advance coordinates
+          i = 1;
+          ++coords[i];
+          while (i < dim_num - 1 &&
+                 coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
+            coords[i] = search_tile_overlap_subarray[2 * i];
+            ++coords[++i];
+          }
         }
       }
     } else {
@@ -641,7 +646,6 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   // For easy reference
   unsigned int dim_num = array_metadata_->dim_num();
   auto domain = array_metadata_->domain();
-  auto tile_extents = static_cast<const T*>(domain->tile_extents());
   auto array_domain = static_cast<const T*>(domain->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
   auto metadata_domain = static_cast<const T*>(metadata_->domain());
@@ -661,6 +665,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     subarray_area_covered_ = false;
   } else {  // Overlap with the input tile
     // Find the search tile position
+    auto tile_extents = static_cast<const T*>(domain->tile_extents());
     auto tile_coords_norm = new T[dim_num];
     for (unsigned int i = 0; i < dim_num; ++i)
       tile_coords_norm[i] =
@@ -856,8 +861,8 @@ bool ReadState::overflow(unsigned int attribute_id) const {
 }
 
 void ReadState::reset_overflow() {
-  for (unsigned int i = 0; i < overflow_.size(); ++i)
-    overflow_[i] = false;
+  for (auto&& i : overflow_)
+    i = false;
 }
 
 bool ReadState::subarray_area_covered() const {
@@ -1171,7 +1176,6 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1180,7 +1184,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1209,7 +1213,6 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
 
   while (min <= max && max != INVALID_UINT64) {
@@ -1219,7 +1222,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t))
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
@@ -1249,7 +1252,6 @@ Status ReadState::get_cell_pos_at_or_before(
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1258,7 +1260,7 @@ Status ReadState::get_cell_pos_at_or_before(
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;

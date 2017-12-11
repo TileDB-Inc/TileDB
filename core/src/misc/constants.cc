@@ -30,14 +30,11 @@
  * This file defines the TileDB constants.
  */
 
-#include <compressor.h>
-#include <datatype.h>
-#include <cfloat>
-#include <climits>
-#include <cstddef>
 #include <cstdint>
+#include <limits>
 
-#include "constants.h"
+#include "compressor.h"
+#include "datatype.h"
 
 namespace tiledb {
 
@@ -45,6 +42,9 @@ namespace constants {
 
 /** The array metadata file name. */
 const char* array_metadata_filename = "__array_metadata.tdb";
+
+/** The fragment file name. */
+const char* fragment_filename = "__fragment.tdb";
 
 /** The fragment metadata file name. */
 const char* fragment_metadata_filename = "__fragment_metadata.tdb";
@@ -59,7 +59,7 @@ const uint64_t cell_var_offset_size = sizeof(uint64_t);
 const Datatype cell_var_offset_type = Datatype::UINT64;
 
 /** A special value indicating varibale size. */
-const uint64_t var_size = UINT64_MAX;
+const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
 /** The default compressor for the offsets of variable-sized cells. */
 Compressor cell_var_offsets_compression = Compressor::DOUBLE_DELTA;
@@ -83,37 +83,37 @@ const char* coords = "__coords";
 const char* array_filelock_name = "__array_lock.tdb";
 
 /** The special value for an empty int32. */
-const int empty_int32 = INT_MAX;
+const int empty_int32 = std::numeric_limits<int32_t>::max();
 
 /** The special value for an empty int64. */
-const int64_t empty_int64 = INT64_MAX;
+const int64_t empty_int64 = std::numeric_limits<int64_t>::max();
 
 /** The special value for an empty float32. */
-const float empty_float32 = FLT_MAX;
+const float empty_float32 = std::numeric_limits<float>::max();
 
 /** The special value for an empty float64. */
-const double empty_float64 = DBL_MAX;
+const double empty_float64 = std::numeric_limits<double>::max();
 
 /** The special value for an empty char. */
-const char empty_char = CHAR_MAX;
+const char empty_char = std::numeric_limits<char>::max();
 
 /** The special value for an empty int8. */
-const int8_t empty_int8 = INT8_MAX;
+const int8_t empty_int8 = std::numeric_limits<int8_t>::max();
 
 /** The special value for an empty uint8. */
-const uint8_t empty_uint8 = UINT8_MAX;
+const uint8_t empty_uint8 = std::numeric_limits<uint8_t>::max();
 
 /** The special value for an empty int16. */
-const int16_t empty_int16 = INT16_MAX;
+const int16_t empty_int16 = std::numeric_limits<int16_t>::max();
 
 /** The special value for an empty uint16. */
-const uint16_t empty_uint16 = UINT16_MAX;
+const uint16_t empty_uint16 = std::numeric_limits<uint16_t>::max();
 
 /** The special value for an empty uint32. */
-const uint32_t empty_uint32 = UINT32_MAX;
+const uint32_t empty_uint32 = std::numeric_limits<uint32_t>::max();
 
 /** The special value for an empty uint64. */
-const uint64_t empty_uint64 = UINT64_MAX;
+const uint64_t empty_uint64 = std::numeric_limits<uint64_t>::max();
 
 /** The file suffix used in TileDB. */
 const char* file_suffix = ".tdb";
@@ -140,7 +140,7 @@ const uint64_t internal_buffer_size = 10000000;
 const uint64_t consolidation_buffer_size = 10000000;
 
 /** The maximum number of bytes written in a single I/O. */
-const uint64_t max_write_bytes = INT_MAX;
+const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
 /** The maximum name length. */
 const unsigned name_max_len = 256;
@@ -152,10 +152,13 @@ const uint64_t sorted_buffer_size = 10000000;
 const uint64_t sorted_buffer_var_size = 10000000;
 
 /** Special value indicating a variable number of elements. */
-const unsigned int var_num = UINT_MAX;
+const unsigned int var_num = std::numeric_limits<unsigned int>::max();
 
 /** String describing no compression. */
 const char* no_compression_str = "NO_COMPRESSION";
+
+/** The tile cache size. */
+const uint64_t tile_cache_size = 100000000;
 
 /** String describing GZIP. */
 const char* gzip_str = "GZIP";
@@ -251,7 +254,13 @@ const char* null_str = "null";
 const int version[3] = {1, 2, 0};
 
 /** The size of a tile chunk. */
-const uint64_t tile_chunk_size = INT_MAX;
+const uint64_t tile_chunk_size = std::numeric_limits<int>::max();
+
+/** The default attribute name prefix. */
+const char* default_attr_name = "__attr";
+
+/** The default dimension name prefix. */
+const char* default_dim_name = "__dim";
 
 }  // namespace constants
 
