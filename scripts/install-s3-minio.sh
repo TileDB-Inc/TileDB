@@ -6,7 +6,7 @@ export AWS_SECRET_ACCESS_KEY=miniosecretkey
 
 git clone https://github.com/aws/aws-sdk-cpp.git
 cd aws-sdk-cpp
-git checkout 1.2.0
+git checkout 1.3.21
 mkdir build
 cd build
 export AWS_SDK_CPP=$(pwd)
