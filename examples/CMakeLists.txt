@@ -25,13 +25,6 @@
 # THE SOFTWARE.
 #
 
-if(USE_S3)
-  set(aws-sdk-cpp_DIR $ENV{AWS_SDK_CPP})
-  set(S3_LIB_DEPENDENCIES "aws-cpp-sdk-s3")
-  find_package(aws-sdk-cpp)
-  add_definitions(-DUSE_IMPORT_EXPORT)
-endif()
-
 # Function that builds an executable per example
 function(build_TileDB_example TARGET)
   add_executable(${TARGET} EXCLUDE_FROM_ALL src/${TARGET}.cc)

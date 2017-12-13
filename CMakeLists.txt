@@ -75,11 +75,47 @@ if(USE_HDFS)
 endif()
 
 if(USE_S3)  
-  set(aws-sdk-cpp_DIR $ENV{AWS_SDK_CPP})
-  find_package(aws-sdk-cpp)
-  #include_directories(${LIBAWS_CPP_SDK_S3_INCLUDE_DIR})
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} aws-cpp-sdk-s3)
-  add_definitions(-DUSE_IMPORT_EXPORT)
+  cmake_minimum_required(VERSION 3.2)
+  find_package(AWSSDK)
+
+  message(STATUS "AWSSDK_LIB_DIR: ${AWSSDK_LIB_DIR}")
+  message(STATUS "AWSSDK_INC_DIR: ${AWSSDK_INCLUDE_DIR}")
+  message(STATUS "AWSSDK_BIN_DIR: ${AWSSDK_BIN_DIR}")
+ 
+  set(AWS_SERVICE s3)
+  AWSSDK_LIB_DEPS(AWS_SERVICE AWS_DEPS)
+ 
+  message(STATUS "AWS service ${AWS_SERVICE} depends on libs: ${AWS_DEPS}")
+  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICE AWS_LINKED_LIBS)
+  message(STATUS "AWS linked libs: ${AWS_LINKED_LIBS}")
+  
+  if (NOT WIN32)
+    find_package(PkgConfig)
+    pkg_check_modules(AWS_DEPS REQUIRED ${AWS_LINKED_LIBS})
+  endif()
+
+  set(AWS_LIBRARIES)
+  foreach(LIB ${AWS_LINKED_LIBS})
+    find_library("AWS_FOUND_${LIB}" NAMES ${LIB} PATHS ${AWSSDK_LIB_DIR} NO_DEFAULT_PATH)
+    message(STATUS "AWS LIB PATH: ${LIB} ${AWS_FOUND_${LIB}}")
+    set(AWS_LIBRARIES ${AWS_LIBRARIES} ${AWS_FOUND_${LIB}})
+  endforeach()
+
+  if (APPLE)
+    add_definitions(-DUNDER_MACOS)
+  endif()
+
+  if (WIN32)
+    add_definitions(-DUSE_IMPORT_EXPORT)
+    include_directories(${AWSSDK_INCLUDE_DIR})
+    set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_LIBRARIES})
+  else()
+    message(STATUS "AWS_DEPS_LIBRARIES: ${AWS_DEPS_LIBRARIES}")
+    message(STATUS "AWS_DEPS_INCLUDE_DIRS: ${AWS_DEPS_INCLUDE_DIRS}")
+    message(STATUS "AWS_DEPS_CFLAGS_OTHER: ${AWS_DEPS_CFLAGS_OTHER}")
+    include_directories(${AWS_DEPS_INCLUDE_DIRS})
+    set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_LIBRARIES})
+  endif()
 endif()
 
 # Set C++ 2011 flag

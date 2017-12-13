@@ -89,6 +89,7 @@ static std::unordered_map<std::string, CompletedMultipartUpload>
 #include "constants.h"
 #include "logger.h"
 #include "utils.h"
+#include "boost/bufferstream.h"
 
 static tiledb::BufferCache buffer_cache;
 
@@ -103,26 +104,26 @@ Status connect() {
   ClientConfiguration config;
   //s3 configuration
 //  config.region = "us-east-2";
-//  config.endpointOverride = "s3-us-east-2.amazonaws.com";
 //  config.scheme = Scheme::HTTPS;
   
   //local minio configoration
   config.scheme = Scheme::HTTP;
   config.endpointOverride = "localhost:9000";
-  config.connectTimeoutMs = 30000;
+  
+  config.connectTimeoutMs = 3000;
   config.requestTimeoutMs = 30000;
-  //            config.readRateLimiter = Limiter;
-  //            config.writeRateLimiter = Limiter;
-  //            config.executor =
-  //            Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(ALLOCATION_TAG,
-  //            4);
+  //config.readRateLimiter = Limiter;
+  //config.writeRateLimiter = Limiter;
+  //config.executor =
+  //Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(ALLOCATION_TAG,
+  //4);
 
   client = Aws::MakeShared<S3Client>(
       ALLOCATION_TAG,
-      Aws::MakeShared<DefaultAWSCredentialsProviderChain>(ALLOCATION_TAG),
       config,
-      false /*signPayloads*/,
-      false /*useVirtualAddressing*/);
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, /* sign payloads */
+      false /*useVirtualAddressing*/
+  );
   return Status::Ok();
 }
 
@@ -597,11 +598,10 @@ Status read_from_file(
                              std::to_string(offset + length - 1))
                                 .c_str());
   getObjectRequest.SetResponseStreamFactory([buffer, length]() {
-    std::unique_ptr<Aws::StringStream> stream(
-        Aws::New<Aws::StringStream>(ALLOCATION_TAG));
-    stream->rdbuf()->pubsetbuf(static_cast<char*>(buffer), length);
-    return stream.release();
+    auto streamBuf = new boost::interprocess::bufferbuf((char*)buffer, length);
+    return Aws::New<Aws::IOStream>(ALLOCATION_TAG, streamBuf);
   });
+
   auto getObjectOutcome = client->GetObject(getObjectRequest);
   if (!getObjectOutcome.IsSuccess()) {
     return LOG_STATUS(Status::IOError(
@@ -641,12 +641,14 @@ Status write_to_file_no_cache(
   }
   // upload a part of the file
   multipartUploadPartNumber[path_c_str]++;
-  std::shared_ptr<Aws::StringStream> stream =
-      Aws::MakeShared<Aws::StringStream>(ALLOCATION_TAG);
-  stream->rdbuf()->pubsetbuf(
-      static_cast<char*>(const_cast<void*>(buffer)), length);
-  stream->rdbuf()->pubseekpos(length);
-  stream->seekg(0);
+//  std::shared_ptr<Aws::StringStream> stream =
+//      Aws::MakeShared<Aws::StringStream>(ALLOCATION_TAG);
+//  stream->rdbuf()->pubsetbuf(
+//      static_cast<char*>(const_cast<void*>(buffer)), length);
+//  stream->rdbuf()->pubseekpos(length);
+//  stream->seekg(0);
+  std::shared_ptr<Aws::IOStream> stream =  std::shared_ptr<Aws::IOStream>(new boost::interprocess::bufferstream((char*)buffer, length));
+  
   UploadPartRequest uploadPartRequest;
   uploadPartRequest.SetBucket(aws_uri.GetAuthority());
   uploadPartRequest.SetKey(path);

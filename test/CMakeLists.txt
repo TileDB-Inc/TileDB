@@ -50,13 +50,10 @@ if(USE_HDFS OR USE_HDFS3)
   file(GLOB_RECURSE TILEDB_TEST_HDFS_SOURCES "src/hdfs-unit-*.cc")
   set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_HDFS_SOURCES})
 endif()
+
 if(USE_S3)
-  set(aws-sdk-cpp_DIR $ENV{AWS_SDK_CPP})
-  set(S3_LIB_DEPENDENCIES "aws-cpp-sdk-s3")
-  find_package(aws-sdk-cpp)
-  add_definitions(-DUSE_IMPORT_EXPORT)
   file(GLOB_RECURSE TILEDB_TEST_S3_SOURCES "src/s3-unit-*.cc")
-  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_S3_SOURCES})
+  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES} ${TILEDB_TEST_S3_SOURCES})
 endif()
 
 # unit test executable
