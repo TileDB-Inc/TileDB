@@ -51,8 +51,16 @@ extern "C" {
 #define TILEDB_EXPORT __attribute__((visibility("default")))
 #else
 #define TILEDB_EXPORT
+#pragma message("TILEDB_EXPORT is not defined for this compiler")
 #endif
 /**@}*/
+
+#if (defined __GNUC__) || defined __INTEL_COMPILER
+#define TILEDB_DEPRECATED __attribute__((deprecated, visibility("default")))
+#else
+#define DEPRECATED
+#pragma message("TILEDB_DEPRECATED is not defined for this compiler")
+#endif
 
 /* ****************************** */
 /*            CONSTANTS           */
@@ -391,7 +399,7 @@ TILEDB_EXPORT int tiledb_domain_free(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain);
 
 /**
- * Retrieves the dimensions type.
+ * Retrieves the domain's type.
  *
  * @param ctx The TileDB context.
  * @param domain The domain.
@@ -400,6 +408,17 @@ TILEDB_EXPORT int tiledb_domain_free(
  */
 TILEDB_EXPORT int tiledb_domain_get_type(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
+
+/**
+ * Retrieves the domain's rank (number of dimensions).
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain
+ * @param rank THe rank to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_domain_get_rank(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* rank);
 
 /**
  * Adds a dimension to a TileDB domain.
@@ -411,6 +430,36 @@ TILEDB_EXPORT int tiledb_domain_get_type(
  */
 TILEDB_EXPORT int tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim);
+
+/**
+ * Retrieves a dimension object from a domain by index
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain to add the dimension to.
+ * @param index The index of domain dimension
+ * @param dim The retrieved dimension object.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    unsigned int index,
+    tiledb_dimension_t** dim);
+
+/**
+ * Retrieves a dimension object from a domain by name (key)
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain to add the dimension to.
+ * @param index The name (key) of the requested dimension
+ * @param dim The retrieved dimension object.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    const char* name,
+    tiledb_dimension_t** dim);
 
 /**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
@@ -512,78 +561,6 @@ TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
  */
 TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
-
-/* ********************************* */
-/*        DIMENSION ITERATOR         */
-/* ********************************* */
-
-/**
- * Creates a dimensions iterator for the input domain.
- *
- * @param ctx The TileDB context.
- * @param domain The input array domain.
- * @param dim_it The dimension iterator to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_create(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    tiledb_dimension_iter_t** dim_it);
-
-/**
- * Frees a dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_free(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Checks if a dimension iterator has reached the end.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param done This is set to 1 if the iterator id done, and 0 otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_done(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
-
-/**
- * Advances the dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_next(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Retrieves a constant pointer to the current dimension pointed by the
- * iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param dim The dimension pointer to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_here(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_iter_t* dim_it,
-    const tiledb_dimension_t** dim);
-
-/**
- * Rewinds the iterator to point to the first dimension.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_first(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
 
 /* ********************************* */
 /*           ARRAY METADATA          */
@@ -854,6 +831,52 @@ TILEDB_EXPORT int tiledb_array_metadata_get_tile_order(
     tiledb_layout_t* tile_order);
 
 /**
+ * Retrieves the number of array attributes.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param num_attributes The number of attributes to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_num_attributes(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int* num_attributes);
+
+/**
+ * Retrieves a given attribute given it's index
+ *
+ * Attributes are ordered the same way they were defined
+ * when constructing the array metadata.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param index The index of the attribute to retrieve.
+ * @param attr The attribute object to retrieve.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int index,
+    tiledb_attribute_t** attr);
+
+/**
+ * Retrieves a given attribute given it's name (key)
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param name The name (key) of the attribute to retrieve.
+ * @param attr THe attribute object to retrieve.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    const char* name,
+    tiledb_attribute_t** attr);
+
+/**
  * Dumps the array metadata in ASCII format in the selected output.
  *
  * @param ctx The TileDB context.
@@ -865,78 +888,6 @@ TILEDB_EXPORT int tiledb_array_metadata_dump(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
     FILE* out);
-
-/* ********************************* */
-/*         ATTRIBUTE ITERATOR        */
-/* ********************************* */
-
-/**
- * Creates an attribute iterator for the input array metadata.
- *
- * @param ctx The TileDB context.
- * @param metadata The input array metadata.
- * @param attr_it The attribute iterator to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_create(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_metadata_t* metadata,
-    tiledb_attribute_iter_t** attr_it);
-
-/**
- * Frees an attribute iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_free(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/**
- * Checks if an attribute iterator has reached the end.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @param done This is set to 1 if the iterator is done, and 0 otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_done(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it, int* done);
-
-/**
- * Advances the attribute iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_next(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/**
- * Retrieves a constant pointer to the current attribute pointed by the
- * iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @param attr The attribute pointer to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_here(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_iter_t* attr_it,
-    const tiledb_attribute_t** attr);
-
-/**
- * Rewinds the iterator to point to the first attribute.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_first(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
 
 /* ********************************* */
 /*               QUERY               */
@@ -1228,6 +1179,146 @@ TILEDB_EXPORT int tiledb_walk(
     tiledb_walk_order_t order,
     int (*callback)(const char*, tiledb_object_t, void*),
     void* data);
+
+/* ********************************* */
+/*        DEPRECATED FUNCTIONS       */
+/* ********************************* */
+
+/**
+ * Creates a dimensions iterator for the input domain.
+ *
+ * @param ctx The TileDB context.
+ * @param domain The input array domain.
+ * @param dim_it The dimension iterator to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_dimension_iter_t** dim_it);
+
+/**
+ * Frees a dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Checks if a dimension iterator has reached the end.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param done This is set to 1 if the iterator id done, and 0 otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_done(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
+
+/**
+ * Advances the dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_next(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Retrieves a constant pointer to the current dimension pointed by the
+ * iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param dim The dimension pointer to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_iter_t* dim_it,
+    const tiledb_dimension_t** dim);
+
+/**
+ * Rewinds the iterator to point to the first dimension.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_first(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Creates an attribute iterator for the input array metadata.
+ *
+ * @param ctx The TileDB context.
+ * @param metadata The input array metadata.
+ * @param attr_it The attribute iterator to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* metadata,
+    tiledb_attribute_iter_t** attr_it);
+
+/**
+ * Frees an attribute iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_free(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/**
+ * Checks if an attribute iterator has reached the end.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @param done This is set to 1 if the iterator is done, and 0 otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_done(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it, int* done);
+
+/**
+ * Advances the attribute iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_next(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/**
+ * Retrieves a constant pointer to the current attribute pointed by the
+ * iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @param attr The attribute pointer to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_iter_t* attr_it,
+    const tiledb_attribute_t** attr);
+
+/**
+ * Rewinds the iterator to point to the first attribute.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_first(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

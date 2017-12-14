@@ -36,6 +36,8 @@
 #include "query.h"
 #include "utils.h"
 
+#include <sstream>
+
 /* ****************************** */
 /*            CONSTANTS           */
 /* ****************************** */
@@ -505,9 +507,16 @@ int tiledb_domain_get_type(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
-
   *type = static_cast<tiledb_datatype_t>(domain->domain_->type());
+  return TILEDB_OK;
+}
 
+int tiledb_domain_get_rank(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* rank) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, domain) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *rank = domain->domain_->dim_num();
   return TILEDB_OK;
 }
 
@@ -630,6 +639,86 @@ int tiledb_dimension_dump(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
   dim->dim_->dump(out);
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    unsigned int index,
+    tiledb_dimension_t** dim) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, domain) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  unsigned int ndim = domain->domain_->dim_num();
+  if (ndim == 0 && index == 0) {
+    *dim = nullptr;
+    return TILEDB_OK;
+  }
+  if (index > (ndim - 1)) {
+    std::ostringstream errmsg;
+    errmsg << "Dimesnion " << index << " out of bounds, domain has rank "
+           << ndim;
+    save_error(ctx, tiledb::Status::DomainError(errmsg.str()));
+    return TILEDB_ERR;
+  }
+  *dim = new (std::nothrow) tiledb_dimension_t;
+  if (*dim == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    return TILEDB_OOM;
+  }
+  (*dim)->dim_ =
+      new (std::nothrow) tiledb::Dimension(domain->domain_->dimension(index));
+  if ((*dim)->dim_ == nullptr) {
+    delete *dim;
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    return TILEDB_OOM;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    const char* name,
+    tiledb_dimension_t** dim) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, domain) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  unsigned int ndim = domain->domain_->dim_num();
+  if (ndim == 0) {
+    *dim = nullptr;
+    return TILEDB_OK;
+  }
+  auto found_dim = domain->domain_->dimension(std::string(name));
+  if (found_dim == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::DomainError(
+            std::string("Dimension \"") + name + "\" does not exist"));
+    return TILEDB_ERR;
+  }
+  *dim = new (std::nothrow) tiledb_dimension_t;
+  if (*dim == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    return TILEDB_OOM;
+  }
+  (*dim)->dim_ = new (std::nothrow) tiledb::Dimension(found_dim);
+  if ((*dim)->dim_ == nullptr) {
+    delete *dim;
+    save_error(
+        ctx,
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    return TILEDB_OOM;
+  }
   return TILEDB_OK;
 }
 
@@ -1087,6 +1176,17 @@ int tiledb_array_metadata_get_tile_order(
   return TILEDB_OK;
 }
 
+int tiledb_array_metadata_get_num_attributes(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int* num_attributes) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *num_attributes = array_metadata->array_metadata_->attribute_num();
+  return TILEDB_OK;
+}
+
 int tiledb_array_metadata_dump(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
@@ -1095,6 +1195,93 @@ int tiledb_array_metadata_dump(
       sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
   array_metadata->array_metadata_->dump(out);
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int index,
+    tiledb_attribute_t** attr) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  unsigned int attribute_num = array_metadata->array_metadata_->attribute_num();
+  if (attribute_num == 0) {
+    *attr = nullptr;
+    return TILEDB_OK;
+  }
+  if (index > attribute_num) {
+    std::ostringstream errmsg;
+    errmsg << "Attribute index: " << index << " exceeds number of attributes("
+           << attribute_num << ") for array "
+           << array_metadata->array_metadata_->array_uri().to_string();
+    save_error(ctx, tiledb::Status::ArrayMetadataError(errmsg.str()));
+    return TILEDB_ERR;
+  }
+  auto found_attr = array_metadata->array_metadata_->attribute(index);
+
+  *attr = new (std::nothrow) tiledb_attribute_t;
+  if (*attr == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    return TILEDB_OOM;
+  }
+
+  // Create an attribute object
+  (*attr)->attr_ = new (std::nothrow) tiledb::Attribute(found_attr);
+
+  // Check for allocation error
+  if ((*attr)->attr_ == nullptr) {
+    delete *attr;
+    save_error(
+        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    return TILEDB_OOM;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    const char* name,
+    tiledb_attribute_t** attr) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  unsigned int attribute_num = array_metadata->array_metadata_->attribute_num();
+  if (attribute_num == 0) {
+    *attr = nullptr;
+    return TILEDB_OK;
+  }
+  auto found_attr =
+      array_metadata->array_metadata_->attribute(std::string(name));
+  if (found_attr == nullptr) {
+    save_error(
+        ctx,
+        tiledb::Status::ArrayMetadataError(
+            std::string("Attribute name: ") + name +
+            " does not exist for array " +
+            array_metadata->array_metadata_->array_uri().to_string()));
+    return TILEDB_ERR;
+  }
+  *attr = new (std::nothrow) tiledb_attribute_t;
+  if (*attr == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    return TILEDB_OOM;
+  }
+  // Create an attribute object
+  (*attr)->attr_ = new (std::nothrow) tiledb::Attribute(found_attr);
+  // Check for allocation error
+  if ((*attr)->attr_ == nullptr) {
+    delete *attr;
+    save_error(
+        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    return TILEDB_OOM;
+  }
   return TILEDB_OK;
 }
 

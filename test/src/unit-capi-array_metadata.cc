@@ -277,20 +277,21 @@ TEST_CASE_METHOD(
   CHECK(coords_compression_level == -1);
 
   // Check attribute
-  int attr_it_done;
-  tiledb_attribute_iter_t* attr_it;
-  rc = tiledb_attribute_iter_create(ctx_, array_metadata, &attr_it);
-  REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!attr_it_done);
-
-  const tiledb_attribute_t* attr;
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
+  // get first attribute by index
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_from_index(ctx_, array_metadata, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attr_name;
+  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  tiledb_attribute_free(ctx_, attr);
+
+  // get first attribute by name
+  rc = tiledb_attribute_from_name(ctx_, array_metadata, ATTR_NAME, &attr);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
@@ -313,19 +314,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(cell_val_num == CELL_VAL_NUM);
 
-  rc = tiledb_attribute_iter_next(ctx_, attr_it);
+  unsigned int num_attributes = 0;
+  rc = tiledb_array_metadata_get_num_attributes(
+      ctx_, array_metadata, &num_attributes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(attr_it_done);
-
-  rc = tiledb_attribute_iter_first(ctx_, attr_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK(num_attributes == 1);
 
   // Get domain
   tiledb_domain_t* domain;
@@ -333,20 +326,21 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check first dimension
-  int dim_it_done;
-  tiledb_dimension_iter_t* dim_it;
-  rc = tiledb_dimension_iter_create(ctx_, domain, &dim_it);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-
-  const tiledb_dimension_t* dim;
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
+  // get first dimension by name
+  tiledb_dimension_t* dim;
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM1_NAME, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   const char* dim_name;
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+
+  tiledb_dimension_free(ctx_, dim);
+
+  // get first dimension by index
+  rc = tiledb_dimension_from_index(ctx_, domain, 0, &dim);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
@@ -361,15 +355,23 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(ctx_, dim);
 
   // Check second dimension
+  // get second dimension by name
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM2_NAME, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+
+  tiledb_dimension_free(ctx_, dim);
+
+  // get from index
+  rc = tiledb_dimension_from_index(ctx_, domain, 1, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
@@ -382,19 +384,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[1], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_it_done);
+  // check that indexing > 1 returns an error for this domain
+  rc = tiledb_dimension_from_index(ctx_, domain, 2, &dim);
+  CHECK(rc != TILEDB_OK);
 
-  rc = tiledb_dimension_iter_first(ctx_, dim_it);
+  // check that the rank of the domain is 2
+  unsigned int rank = 0;
+  rc = tiledb_domain_get_rank(ctx_, domain, &rank);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK(rank == 2);
 
   // Check dump
   std::string dump_str =
@@ -429,9 +427,9 @@ TEST_CASE_METHOD(
   CHECK(!system("rm gold_fout.txt fout.txt"));
 
   // Clean up
-  rc = tiledb_attribute_iter_free(ctx_, attr_it);
+  rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_free(ctx_, dim_it);
+  rc = tiledb_dimension_free(ctx_, dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);

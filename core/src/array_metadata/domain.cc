@@ -220,15 +220,23 @@ const void* Domain::domain() const {
 const void* Domain::domain(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-
   return dimensions_[i]->domain();
 }
 
 const Dimension* Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-
   return dimensions_[i];
+}
+
+const Dimension* Domain::dimension(std::string name) const {
+  for (unsigned int i = 0; i < dim_num_; i++) {
+    auto dim = dimensions_[i];
+    if (dim->name() == name) {
+      return dim;
+    }
+  }
+  return nullptr;
 }
 
 void Domain::dump(FILE* out) const {
