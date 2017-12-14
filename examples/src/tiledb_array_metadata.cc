@@ -134,18 +134,17 @@ int main() {
 
   // Print the attribute names using iterators
   printf("\nArray metadata attribute names: \n");
-  tiledb_attribute_iter_t* attr_iter;
-  const tiledb_attribute_t* attr;
-  const char* attr_name;
-  tiledb_attribute_iter_create(ctx, array_metadata, &attr_iter);
-  int done;
-  tiledb_attribute_iter_done(ctx, attr_iter, &done);
-  while (done != 1) {
-    tiledb_attribute_iter_here(ctx, attr_iter, &attr);
+
+  unsigned int nattr = 0;
+  tiledb_array_metadata_get_num_attributes(ctx, array_metadata, &nattr);
+
+  tiledb_attribute_t* attr = nullptr;
+  const char* attr_name = nullptr;
+  for (unsigned int i = 0; i < nattr; i++) {
+    tiledb_attribute_from_index(ctx, array_metadata, i, &attr);
     tiledb_attribute_get_name(ctx, attr, &attr_name);
     printf("* %s\n", attr_name);
-    tiledb_attribute_iter_next(ctx, attr_iter);
-    tiledb_attribute_iter_done(ctx, attr_iter, &done);
+    tiledb_attribute_free(ctx, attr);
   }
   printf("\n");
 
@@ -156,17 +155,16 @@ int main() {
 
   // Print the dimension names using iterators
   printf("\nArray metadata dimension names: \n");
-  tiledb_dimension_iter_t* dim_iter;
-  const tiledb_dimension_t* dim;
-  const char* dim_name;
-  tiledb_dimension_iter_create(ctx, got_domain, &dim_iter);
-  tiledb_dimension_iter_done(ctx, dim_iter, &done);
-  while (done != 1) {
-    tiledb_dimension_iter_here(ctx, dim_iter, &dim);
+  unsigned int rank = 0;
+  tiledb_domain_get_rank(ctx, domain, &rank);
+
+  tiledb_dimension_t* dim = nullptr;
+  const char* dim_name = nullptr;
+  for (unsigned int i = 0; i < rank; i++) {
+    tiledb_dimension_from_index(ctx, domain, i, &dim);
     tiledb_dimension_get_name(ctx, dim, &dim_name);
     printf("* %s\n", dim_name);
-    tiledb_dimension_iter_next(ctx, dim_iter);
-    tiledb_dimension_iter_done(ctx, dim_iter, &done);
+    tiledb_dimension_free(ctx, dim);
   }
   printf("\n");
 
@@ -175,12 +173,9 @@ int main() {
   tiledb_attribute_free(ctx, a2);
   tiledb_dimension_free(ctx, d1);
   tiledb_dimension_free(ctx, d2);
-  tiledb_attribute_iter_free(ctx, attr_iter);
-  tiledb_dimension_iter_free(ctx, dim_iter);
   tiledb_domain_free(ctx, domain);
   tiledb_domain_free(ctx, got_domain);
   tiledb_array_metadata_free(ctx, array_metadata);
   tiledb_ctx_free(ctx);
-
   return 0;
 }

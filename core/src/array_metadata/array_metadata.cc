@@ -116,7 +116,17 @@ const URI& ArrayMetadata::array_uri() const {
 const Attribute* ArrayMetadata::attribute(unsigned int id) const {
   if (id < attributes_.size())
     return attributes_[id];
+  return nullptr;
+}
 
+const Attribute* ArrayMetadata::attribute(std::string name) const {
+  unsigned int nattr = attribute_num();
+  for (unsigned int i = 0; i < nattr; i++) {
+    auto attr = attribute(i);
+    if (attr->name() == name) {
+      return attr;
+    }
+  }
   return nullptr;
 }
 

@@ -92,6 +92,9 @@ class ArrayMetadata {
   /** Returns a constant pointer to the selected attribute (NULL if error). */
   const Attribute* attribute(unsigned int id) const;
 
+  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  const Attribute* attribute(std::string name) const;
+
   /** Returns the name of the attribute with the input id. */
   const std::string& attribute_name(unsigned id) const;
 
