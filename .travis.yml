@@ -12,7 +12,7 @@ install:
     - gem install coveralls-lcov
 
     # Install clangformat (v5.0)
-    # - sudo scripts/install-clangformat.sh
+    - sudo scripts/install-clangformat.sh
 
     # Install library dependencies
     - sudo scripts/install-deps.sh
@@ -31,7 +31,7 @@ before_script:
     - lcov --directory $TRAVIS_BUILD_DIR/build --zerocounters
 
 script:
-    #- make check-format
+    - make check-format
     - make check
 
 after_success:
