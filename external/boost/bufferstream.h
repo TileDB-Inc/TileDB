@@ -35,16 +35,7 @@
 #ifndef BOOST_INTERPROCESS_BUFFERSTREAM_HPP
 #define BOOST_INTERPROCESS_BUFFERSTREAM_HPP
 
-#ifndef BOOST_CONFIG_HPP
-#  include <boost/config.hpp>
-#endif
-#
-#if defined(BOOST_HAS_PRAGMA_ONCE)
-#  pragma once
-#endif
-
-#include <boost/interprocess/detail/config_begin.hpp>
-#include <boost/interprocess/detail/workaround.hpp>
+#pragma once
 
 #include <iosfwd>
 #include <ios>
@@ -52,8 +43,6 @@
 #include <ostream>
 #include <string>    // char traits
 #include <cstddef>   // ptrdiff_t
-#include <boost/assert.hpp>
-#include <boost/interprocess/interprocess_fwd.hpp>
 
 namespace boost {  namespace interprocess {
 
@@ -473,19 +462,17 @@ class basic_bufferstream :
 };
 
 //Some typedefs to simplify usage
-typedef basic_bufferbuf<char>        bufferbuf;
-typedef basic_bufferstream<char>     bufferstream;
-typedef basic_ibufferstream<char>    ibufferstream;
-typedef basic_obufferstream<char>    obufferstream;
+typedef basic_bufferbuf<char, std::char_traits<char>>       bufferbuf;
+typedef basic_bufferstream<char, std::char_traits<char>>     bufferstream;
+typedef basic_ibufferstream<char, std::char_traits<char>>   ibufferstream;
+typedef basic_obufferstream<char, std::char_traits<char>>   obufferstream;
 
-typedef basic_bufferbuf<wchar_t>     wbufferbuf;
-typedef basic_bufferstream<wchar_t>  wbufferstream;
-typedef basic_ibufferstream<wchar_t> wibufferstream;
-typedef basic_obufferstream<wchar_t> wobufferstream;
+typedef basic_bufferbuf<wchar_t, std::char_traits<wchar_t>>     wbufferbuf;
+typedef basic_bufferstream<wchar_t, std::char_traits<wchar_t>>  wbufferstream;
+typedef basic_ibufferstream<wchar_t, std::char_traits<wchar_t>> wibufferstream;
+typedef basic_obufferstream<wchar_t, std::char_traits<wchar_t>> wobufferstream;
 
 
 }} //namespace boost {  namespace interprocess {
-
-#include <boost/interprocess/detail/config_end.hpp>
 
 #endif /* BOOST_INTERPROCESS_BUFFERSTREAM_HPP */
