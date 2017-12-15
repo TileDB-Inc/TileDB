@@ -211,9 +211,9 @@ class VFS {
       const URI& uri, const void* buffer, uint64_t buffer_size) const;
 
  private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
+/* ********************************* */
+/*         PRIVATE ATTRIBUTES        */
+/* ********************************* */
 #ifdef HAVE_HDFS
   hdfsFS hdfs_;
 #endif

@@ -53,7 +53,7 @@ struct SparseArrayFx {
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
 
-  // Workspace folder name
+// Workspace folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";

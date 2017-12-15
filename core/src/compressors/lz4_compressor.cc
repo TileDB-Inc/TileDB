@@ -47,7 +47,7 @@ Status LZ4::compress(
 
   // TODO: level is ignored using the simple api interface
   (void)level;
-  // Compress
+// Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(
       (char*)input_buffer->data(),

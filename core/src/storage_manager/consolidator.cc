@@ -115,7 +115,7 @@ Status Consolidator::consolidate(const char* array_name) {
   // Unlock the array
   st = storage_manager_->array_unlock(array_uri, false);
 
-  // Clean up
+// Clean up
 clean_up:
   delete array_meta;
   free_buffers(buffer_num, buffers, buffer_sizes);
