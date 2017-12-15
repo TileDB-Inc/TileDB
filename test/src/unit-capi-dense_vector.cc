@@ -45,7 +45,7 @@ struct DenseVectorFx {
   const char* DIM0_NAME = "dim0";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
 
-  // Group folder name
+// Group folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";
