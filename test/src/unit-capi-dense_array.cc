@@ -423,7 +423,7 @@ int* DenseArrayFx::read_dense_array_2D(
   // Error code
   int rc;
 
-  // Initialize a subarray
+  // Initialize a set_subarray
   const int64_t subarray[] = {
       domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
@@ -673,7 +673,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
     d1_hi = d1_lo + width;
     int64_t index = 0;
 
-    // Read subarray
+    // Read set_subarray
     int* buffer = read_dense_array_2D(
         array_name, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
     REQUIRE(buffer != NULL);
@@ -700,7 +700,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
     delete[] buffer;
   }
 
-  // Check out of bounds subarray
+  // Check out of bounds set_subarray
   tiledb_query_t* query;
   int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
@@ -751,10 +751,10 @@ void DenseArrayFx::check_sorted_writes(const std::string& path) {
       cell_order,
       tile_order);
 
-  // Write random subarray, then read it back and check
+  // Write random set_subarray, then read it back and check
   int64_t d0[2], d1[2];
   for (int i = 0; i < ITER_NUM; ++i) {
-    // Create subarray
+    // Create set_subarray
     d0[0] = std::rand() % domain_size_0;
     d1[0] = std::rand() % domain_size_1;
     d0[1] = d0[0] + std::rand() % (domain_size_0 - d0[0]);
@@ -772,7 +772,7 @@ void DenseArrayFx::check_sorted_writes(const std::string& path) {
       for (int64_t c = 0; c < subarray_length[1]; ++c)
         buffer[index++] = -(std::rand() % 999999);
 
-    // Write 2D subarray
+    // Write 2D set_subarray
     write_dense_subarray_2D(
         array_name,
         subarray,
@@ -781,7 +781,7 @@ void DenseArrayFx::check_sorted_writes(const std::string& path) {
         buffer,
         buffer_sizes);
 
-    // Read back the same subarray
+    // Read back the same set_subarray
     int* read_buffer = read_dense_array_2D(
         array_name,
         subarray[0],

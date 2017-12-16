@@ -328,7 +328,7 @@ int* SparseArrayFx::read_sparse_array_2D(
     const int64_t domain_1_hi,
     const tiledb_query_type_t query_type,
     const tiledb_layout_t query_layout) {
-  // Initialize a subarray
+  // Initialize a set_subarray
   const int64_t subarray[] = {
       domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
@@ -442,7 +442,7 @@ void SparseArrayFx::test_random_subarrays(
     d1_hi = d1_lo + width;
     int64_t index = 0;
 
-    // read subarray
+    // read set_subarray
     int* buffer = read_sparse_array_2D(
         array_name, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
     CHECK(buffer != NULL);

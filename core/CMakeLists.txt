@@ -60,6 +60,7 @@ target_include_directories(
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledb")
 
+
 # Create dynamic library
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 set_target_properties(tiledb_shared PROPERTIES OUTPUT_NAME "tiledb")
@@ -77,11 +78,25 @@ if (WIN32)
   endforeach()
 endif()
 
+# C++ library
+cmake_policy(SET CMP0063 NEW) # ALlow the VISIBLITY_PRESET for each c++ target to work
+file(GLOB CPPAPI_SOURCE "src/cpp_api/*")
+
+# C++ library, static
+add_library(tdbpp_static STATIC ${CPPAPI_SOURCE})
+set_target_properties(tdbpp_static PROPERTIES OUTPUT_NAME "tdbpp")
+set_target_properties(tdbpp_static PROPERTIES CXX_VISIBILITY_PRESET "default")
+
+# C++ library, dynamic
+add_library(tdbpp_shared SHARED ${CPPAPI_SOURCE})
+set_target_properties(tdbpp_shared PROPERTIES OUTPUT_NAME "tdbpp")
+set_target_properties(tdbpp_shared PROPERTIES CXX_VISIBILITY_PRESET "default")
+
 # Install libraries
 install(
-    TARGETS tiledb_static tiledb_shared 
+    TARGETS tiledb_static tiledb_shared
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
-file(GLOB TILEDB_HEADERS "include/c_api/*")
+file(GLOB TILEDB_HEADERS "include/c_api/*" "include/cpp_api/*")
 install(FILES ${TILEDB_HEADERS} DESTINATION include)
