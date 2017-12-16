@@ -34,7 +34,7 @@
 
 #include "tdbpp_dimension.h"
 
-void tdb::Dimension::_init(tiledb_dimension_t *dim) {
+void tdb::Dimension::_init(const tiledb_dimension_t *dim) {
   const char* name;
   tiledb_dimension_get_name(_ctx.get(), dim, &name);
   _name = std::string(name);

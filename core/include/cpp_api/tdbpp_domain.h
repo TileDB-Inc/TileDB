@@ -49,7 +49,7 @@ namespace tdb {
   class Domain {
   public:
     Domain(Context &ctx) : _ctx(ctx) {}
-    Domain(Context &ctx, tiledb_domain_t *domain) : _ctx(ctx){
+    Domain(Context &ctx, const tiledb_domain_t *domain) : _ctx(ctx){
       if (domain != nullptr) _init(domain);
     }
     Domain(const Domain&) = default;
@@ -62,7 +62,7 @@ namespace tdb {
     std::vector<Dimension> _dims;
     tiledb_datatype_t _type;
 
-    void _init(tiledb_domain_t *domain);
+    void _init(const tiledb_domain_t *domain);
   };
 }
 

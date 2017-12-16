@@ -38,8 +38,10 @@
 #include "tiledb.h"
 #include "tdbpp_domain.h"
 #include "tdbpp_context.h"
+#include "tdbpp_attribute.h"
 
 #include <sstream>
+#include <memory>
 
 namespace tdb {
 
@@ -54,6 +56,7 @@ namespace tdb {
     ArrayConfig(Context &ctx, const std::string &uri) : domain(ctx), _ctx(ctx) {
       _init(uri);
     }
+    ~ArrayConfig();
 
     Domain domain;
     tiledb_array_type_t type;
@@ -71,10 +74,15 @@ namespace tdb {
 
   private:
     friend class Array;
-    std::reference_wrapper<Context> _ctx;
 
     void _init(tiledb_array_metadata_t* meta);
     void _init(const std::string &uri);
+
+    std::reference_wrapper<Context> _ctx;
+    std::vector<Attribute> _attrs;
+    tiledb_array_metadata_t *_meta = nullptr;
+
+
   };
 
 

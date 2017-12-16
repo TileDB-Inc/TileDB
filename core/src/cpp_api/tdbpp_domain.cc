@@ -35,6 +35,20 @@
 #include "tdbpp_context.h"
 
 
-void tdb::Domain::_init(tiledb_domain_t *domain) {
-  tiledb_domain_get_type(_ctx.get(), domain, &_type);
+void tdb::Domain::_init(const tiledb_domain_t *domain) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_domain_get_type(ctx, domain, &_type));
+
+  tiledb_dimension_iter_t *iter;
+  const tiledb_dimension_t *curr;
+  ctx.handle_error(tiledb_dimension_iter_create(ctx, domain, &iter));
+  int done;
+  ctx.handle_error(tiledb_dimension_iter_done(ctx, iter, &done));
+  while(!done) {
+    ctx.handle_error(tiledb_dimension_iter_here(ctx, iter, &curr));
+    _dims.emplace_back(_ctx, curr);
+    ctx.handle_error(tiledb_dimension_iter_next(ctx, iter));
+  }
+
+  ctx.handle_error(tiledb_dimension_iter_free(ctx, iter));
 }

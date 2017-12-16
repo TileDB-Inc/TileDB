@@ -36,7 +36,16 @@
 #include "tdbpp_context.h"
 
 void tdb::Attribute::_init(tiledb_attribute_t *attr) {
+  _attr = attr;
   auto &ctx = _ctx.get();
   const char *name;
-  tiledb_attribute_get_name(ctx, attr, &name);
+  ctx.handle_error(tiledb_attribute_get_name(ctx, attr, &name));
+  _name = std::string(name);
+  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr, &_num));
+  ctx.handle_error(tiledb_attribute_get_type(ctx, attr, &_type));
+  ctx.handle_error(tiledb_attribute_get_compressor(ctx, attr, &(_compressor.compressor), &(_compressor.level)));
+}
+
+tdb::Attribute::~Attribute() {
+  if (_attr != nullptr) _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), _attr));
 }

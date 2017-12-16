@@ -68,7 +68,7 @@ namespace tdb {
     }
 
     std::string to_str() const {
-      std::string ret = uri + '\t';
+      std::string ret = uri + "\t";
       switch(type) {
         case Type::Array:
           ret += "ARRAY";

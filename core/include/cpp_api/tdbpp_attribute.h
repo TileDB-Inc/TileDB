@@ -50,13 +50,15 @@ namespace tdb {
     Attribute(Context &ctx, tiledb_attribute_t *attr) : _ctx(ctx) {
       if (attr) _init(attr);
     }
+    ~Attribute();
 
   private:
     std::reference_wrapper <Context> _ctx;
     tiledb_datatype_t _type;
     Compressor _compressor;
-    unsigned int num;
-    std::string name;
+    unsigned int _num;
+    std::string _name;
+    tiledb_attribute_t *_attr;
 
     void _init(tiledb_attribute_t *attr);
 

@@ -46,7 +46,7 @@ namespace tdb {
   class Dimension {
   public:
     Dimension(Context &ctx) : _ctx(ctx) {}
-    Dimension(Context &ctx, tiledb_dimension_t *dim) : _ctx(ctx){
+    Dimension(Context &ctx, const tiledb_dimension_t *dim) : _ctx(ctx){
         if (dim != nullptr) _init(dim);
     }
     Dimension(const Dimension&) = default;
@@ -57,11 +57,10 @@ namespace tdb {
   private:
     std::reference_wrapper<Context> _ctx;
     std::string _name;
-    // TODO what are these actual types?
     void *_domain, *_tile_extent;
 
 
-    void _init(tiledb_dimension_t *dim);
+    void _init(const tiledb_dimension_t *dim);
   };
 
 }
