@@ -1079,7 +1079,7 @@ TILEDB_EXPORT int tiledb_query_set_kv(
 TILEDB_EXPORT int tiledb_query_set_kv_key(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    void* key,
+    const void* key,
     tiledb_datatype_t type,
     uint64_t key_size);
 

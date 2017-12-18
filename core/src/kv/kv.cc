@@ -369,7 +369,7 @@ Status KV::value_num(unsigned int attribute_idx, uint64_t* num) const {
 /* ********************************* */
 
 void KV::compute_subarray(
-    void* key, Datatype key_type, uint64_t key_size, uint64_t* subarray) {
+    const void* key, Datatype key_type, uint64_t key_size, uint64_t* subarray) {
   // Compute an MD5 digest for the <key_type | key_size | key> tuple
   md5::MD5_CTX md5_ctx;
   uint64_t coord_size = sizeof(md5_ctx.digest) / 2;

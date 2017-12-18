@@ -47,7 +47,7 @@ int main() {
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
   tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-  unsigned int nitems[] = {1, tiledb_var_num(), 2};
+  unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
 
   // Prepare key
   int key = 100;

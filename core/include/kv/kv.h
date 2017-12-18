@@ -59,6 +59,9 @@ class KV {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Empty constructor. */
+  KV() = default;
+
   /**
    * Constructor.
    *
@@ -236,7 +239,10 @@ class KV {
    * @return void
    */
   static void compute_subarray(
-      void* key, Datatype key_type, uint64_t key_size, uint64_t* subarray);
+      const void* key,
+      Datatype key_type,
+      uint64_t key_size,
+      uint64_t* subarray);
 
  private:
   /* ********************************* */
