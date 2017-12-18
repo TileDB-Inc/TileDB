@@ -158,17 +158,6 @@ int cmp_row_order(
 std::string domain_str(const void* domain, Datatype type);
 
 /**
- * Checks if the input is a special TileDB empty value.
- *
- * @tparam T The type of the input value.
- * @param value The value to be checked.
- * @return *true* if the input value is a special TileDB empty value, and
- *     *false* otherwise.
- */
-template <class T>
-bool empty_value(T value);
-
-/**
  * Doubles the size of the buffer.
  *
  * @param buffer The buffer to be expanded.

@@ -132,12 +132,15 @@ std::string current_dir() {
 }
 
 // TODO: it maybe better to use unlinkat for deeply nested recursive directories
-// but the path name length limit in TileDB may make this uncessary
+// but the path name length limit in TileDB may make this unnecessary
 int unlink_cb(
     const char* fpath,
     const struct stat* sb,
     int typeflag,
     struct FTW* ftwbuf) {
+  (void)sb;
+  (void)typeflag;
+  (void)ftwbuf;
   int rc = remove(fpath);
   if (rc)
     perror(fpath);
@@ -178,7 +181,7 @@ Status file_size(const std::string& path, uint64_t* size) {
         Status::IOError("Cannot get file size; File opening error"));
   }
 
-  struct stat st = {};
+  struct stat st;
   fstat(fd, &st);
   *size = (uint64_t)st.st_size;
 
@@ -188,7 +191,8 @@ Status file_size(const std::string& path, uint64_t* size) {
 
 Status filelock_lock(const std::string& filename, int* fd, bool shared) {
   // Prepare the flock struct
-  struct flock fl = {};
+  struct flock fl;
+  memset(&fl, 0, sizeof(struct flock));
   if (shared)
     fl.l_type = F_RDLCK;
   else
@@ -220,12 +224,14 @@ Status filelock_unlock(int fd) {
 }
 
 bool is_dir(const std::string& path) {
-  struct stat st = {};
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
   return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 bool is_file(const std::string& path) {
-  struct stat st = {};
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
   return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
@@ -235,7 +241,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   if (dir == nullptr) {
     return Status::Ok();
   }
-  while ((next_path = readdir(dir)) != 0) {
+  while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     auto abspath = path + "/" + next_path->d_name;
@@ -379,7 +385,7 @@ Status write_to_file(
 
   // Append data to the file in batches of constants::max_write_bytes
   // bytes at a time
-  int64_t bytes_written;
+  uint64_t bytes_written = 0;
   while (buffer_size > constants::max_write_bytes) {
     bytes_written = ::write(fd, buffer, constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
@@ -390,7 +396,7 @@ Status write_to_file(
     buffer_size -= constants::max_write_bytes;
   }
   bytes_written = ::write(fd, buffer, buffer_size);
-  if (bytes_written != int64_t(buffer_size)) {
+  if (bytes_written != buffer_size) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
         "'; File writing error"));

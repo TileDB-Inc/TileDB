@@ -36,6 +36,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 /* ****************************** */
 /*             MACROS             */
@@ -76,12 +77,12 @@ Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
   dim_num_ = domain->dim_num_;
-  for (auto dim : domain->dimensions_)
-    dimensions_.emplace_back(new Dimension(dim));
   type_ = domain->type_;
 
-  uint64_t coords_size = dim_num_ * datatype_size(type_);
+  for (auto dim : domain->dimensions_)
+    dimensions_.emplace_back(new Dimension(dim));
 
+  uint64_t coords_size = dim_num_ * datatype_size(type_);
   tile_order_ = domain->tile_order_;
   tile_offsets_col_ = domain->tile_offsets_col_;
   tile_offsets_row_ = domain->tile_offsets_row_;
@@ -130,13 +131,20 @@ Domain::~Domain() {
 /*                API                */
 /* ********************************* */
 
-Status Domain::add_dimension(
-    const char* name, const void* domain, const void* tile_extent) {
-  auto dim = new Dimension(name, type_);
-  RETURN_NOT_OK_ELSE(dim->set_domain(domain), delete dim);
-  RETURN_NOT_OK_ELSE(dim->set_tile_extent(tile_extent), delete dim);
+Status Domain::add_dimension(Dimension* dim) {
+  // Compute new dimension name
+  std::string new_dim_name = dim->name();
+  if (new_dim_name.empty())
+    new_dim_name = default_dimension_name(dim_num_);
 
-  dimensions_.emplace_back(dim);
+  auto new_dim = new Dimension(new_dim_name.c_str(), type_);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_domain(dim->domain(), dim->type()), delete new_dim);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_tile_extent(dim->tile_extent(), dim->type()),
+      delete new_dim);
+
+  dimensions_.emplace_back(new_dim);
   ++dim_num_;
 
   return Status::Ok();
@@ -212,15 +220,23 @@ const void* Domain::domain() const {
 const void* Domain::domain(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-
   return dimensions_[i]->domain();
 }
 
 const Dimension* Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-
   return dimensions_[i];
+}
+
+const Dimension* Domain::dimension(std::string name) const {
+  for (unsigned int i = 0; i < dim_num_; i++) {
+    auto dim = dimensions_[i];
+    if (dim->name() == name) {
+      return dim;
+    }
+  }
+  return nullptr;
 }
 
 void Domain::dump(FILE* out) const {
@@ -420,7 +436,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set tile extents
   if (tile_extents_ != nullptr)
     std::free(tile_extents_);
-  if (tile_extent(0) == nullptr) {
+  if (null_tile_extents()) {
     tile_extents_ = nullptr;
   } else {
     tile_extents_ = std::malloc(coords_size);
@@ -474,18 +490,16 @@ bool Domain::is_contained_in_tile_slab_col(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
-  uint64_t tile_l, tile_h;
 
   // Check if range is not contained in a column tile slab
   for (unsigned int i = 1; i < dim_num_; ++i) {
-    tile_l =
-        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    tile_h = (uint64_t)floor(
-        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    auto tile_l = static_cast<uint64_t>(
+        floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]));
+    auto tile_h = static_cast<uint64_t>(
+        floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]));
     if (tile_l != tile_h)
       return false;
   }
-
   // Range contained in the column tile slab
   return true;
 }
@@ -522,20 +536,28 @@ bool Domain::is_contained_in_tile_slab_row(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
-  uint64_t tile_l, tile_h;
 
   // Check if range is not contained in a row tile slab
   for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
-    tile_l =
-        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    tile_h = (uint64_t)floor(
-        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    auto tile_l = static_cast<uint64_t>(
+        floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]));
+    auto tile_h = static_cast<uint64_t>(
+        floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]));
     if (tile_l != tile_h)
       return false;
   }
 
   // Range contained in the row tile slab
   return true;
+}
+
+bool Domain::null_tile_extents() const {
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    if (tile_extent(i) == nullptr)
+      return true;
+  }
+
+  return false;
 }
 
 // ===== FORMAT =====
@@ -688,6 +710,9 @@ uint64_t Domain::tile_num() const {
     case Datatype::FLOAT64:
       assert(false);
       return 0;
+    default:
+      assert(false);
+      return 0;
   }
 }
 
@@ -731,6 +756,9 @@ uint64_t Domain::tile_num(const void* range) const {
     case Datatype::FLOAT64:
       assert(false);
       return 0;
+    default:
+      assert(false);
+      return 0;
   }
 }
 
@@ -741,13 +769,11 @@ uint64_t Domain::tile_num(const T* range) const {
   auto domain = static_cast<const T*>(domain_);
 
   uint64_t ret = 1;
-  uint64_t start, end;
   for (unsigned int i = 0; i < dim_num_; ++i) {
-    start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
-    end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
+    uint64_t start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
+    uint64_t end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
     ret *= (end - start + 1);
   }
-
   return ret;
 }
 
@@ -794,6 +820,9 @@ uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
     case Datatype::CHAR:
       assert(false);
       return 0;
+    default:
+      assert(false);
+      return 0;
   }
 }
 
@@ -821,6 +850,9 @@ uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
     case Datatype::UINT64:
       return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
     case Datatype::CHAR:
+      assert(false);
+      return 0;
+    default:
       assert(false);
       return 0;
   }
@@ -868,9 +900,12 @@ void Domain::compute_cell_num_per_tile() {
 
 template <class T>
 void Domain::compute_cell_num_per_tile() {
-  auto tile_extents = static_cast<const T*>(tile_extents_);
-  cell_num_per_tile_ = 1;
+  // Applicable only to non-NULL space tiles
+  if (tile_extents_ == nullptr)
+    return;
 
+  cell_num_per_tile_ = 1;
+  auto tile_extents = static_cast<const T*>(tile_extents_);
   for (unsigned int i = 0; i < dim_num_; ++i)
     cell_num_per_tile_ *= tile_extents[i];
 }
@@ -1012,6 +1047,12 @@ void Domain::compute_tile_offsets() {
   std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
 }
 
+std::string Domain::default_dimension_name(unsigned int i) const {
+  std::stringstream ss;
+  ss << constants::default_dim_name << "_" << i;
+  return ss.str();
+}
+
 template <class T>
 uint64_t Domain::get_cell_pos_col(const T* coords) const {
   // For easy reference
@@ -1019,11 +1060,11 @@ uint64_t Domain::get_cell_pos_col(const T* coords) const {
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   // Calculate cell offsets
-  uint64_t cell_num;  // Per dimension
   std::vector<uint64_t> cell_offsets;
   cell_offsets.push_back(1);
   for (unsigned int i = 1; i < dim_num_; ++i) {
-    cell_num = tile_extents[i - 1];
+    // Per dimension
+    uint64_t cell_num = tile_extents[i - 1];
     cell_offsets.push_back(cell_offsets.back() * cell_num);
   }
 
@@ -1047,12 +1088,12 @@ uint64_t Domain::get_cell_pos_row(const T* coords) const {
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   // Calculate cell offsets
-  uint64_t cell_num;  // Per dimension
   std::vector<uint64_t> cell_offsets;
   cell_offsets.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned int i = dim_num_ - 2;; --i) {
-      cell_num = tile_extents[i + 1];
+      // Per dimension
+      uint64_t cell_num = tile_extents[i + 1];
       cell_offsets.push_back(cell_offsets.back() * cell_num);
       if (i == 0)
         break;
@@ -1165,12 +1206,12 @@ uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   // Calculate tile offsets
-  uint64_t tile_num;  // Per dimension
   std::vector<uint64_t> tile_offsets;
   tile_offsets.push_back(1);
   for (unsigned int i = 1; i < dim_num_; ++i) {
-    tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
-               tile_extents[i - 1];
+    // Per dimension
+    uint64_t tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
+                        tile_extents[i - 1];
     tile_offsets.push_back(tile_offsets.back() * tile_num);
   }
 
@@ -1200,13 +1241,13 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   // Calculate tile offsets
-  uint64_t tile_num;  // Per dimension
   std::vector<uint64_t> tile_offsets;
   tile_offsets.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned int i = dim_num_ - 2;; --i) {
-      tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
-                 tile_extents[i + 1];
+      // Per dimension
+      uint64_t tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
+                          tile_extents[i + 1];
       tile_offsets.push_back(tile_offsets.back() * tile_num);
       if (i == 0)
         break;

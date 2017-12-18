@@ -90,6 +90,12 @@ class Buffer {
   /** Returns the buffer data pointer at the input offset. */
   void* data(uint64_t offset) const;
 
+  /**
+   * Sets `owns_data_` to `false` and thus will not destroy the data
+   * in the destructor.
+   */
+  void disown_data();
+
   /** Returns the number of byte of free space in the buffer. */
   uint64_t free_space() const;
 
@@ -140,6 +146,16 @@ class Buffer {
     return ((T*)(((char*)data_) + offset))[0];
   }
 
+  /**
+   * Returns the pointer to the value the input offset.
+   *
+   * @param offset The offset from which to retrieve the value pointer.
+   * @return The requested pointer.
+   */
+  void* value_ptr(uint64_t offset) const {
+    return ((void*)(((char*)data_) + offset));
+  }
+
   /** Returns the value of type T at the current offset. */
   template <class T>
   T value() const {
@@ -151,9 +167,9 @@ class Buffer {
    * the input buffer. No new memory is allocated for the local buffer.
    *
    * @param buff The buffer to read from.
-   * @return void
+   * @return Status
    */
-  void write(ConstBuffer* buff);
+  Status write(ConstBuffer* buff);
 
   /**
    * Writes exactly *nbytes* into the local buffer by reading from the
@@ -183,8 +199,9 @@ class Buffer {
    *
    * @param buff The buffer to read from.
    * @param offset The offset value to be added to the read values.
+   * @return Status
    */
-  void write_with_shift(ConstBuffer* buff, uint64_t offset);
+  Status write_with_shift(ConstBuffer* buff, uint64_t offset);
 
  private:
   /* ********************************* */

@@ -46,7 +46,7 @@
  */
 
 #include "status.h"
-#include <assert.h>
+#include <cassert>
 
 namespace tiledb {
 
@@ -157,6 +157,12 @@ std::string Status::code_to_string() const {
       break;
     case StatusCode::Consolidation:
       type = "[TileDB::Consolidation] Error";
+      break;
+    case StatusCode::LRUCache:
+      type = "[TileDB::LRUCache] Error";
+      break;
+    case StatusCode::KV:
+      type = "[TileDB::KV] Error";
       break;
     default:
       type = "[TileDB::?] Error:";

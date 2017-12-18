@@ -98,7 +98,9 @@ enum class StatusCode : char {
   ConstBuffer,
   Dimension,
   Domain,
-  Consolidation
+  Consolidation,
+  LRUCache,
+  KV
 };
 
 class Status {
@@ -248,6 +250,16 @@ class Status {
   /** Return a ConsolidationError error class Status with a given message **/
   static Status ConsolidationError(const std::string& msg) {
     return Status(StatusCode::Consolidation, msg, -1);
+  }
+
+  /** Return a LRUCacheError error class Status with a given message **/
+  static Status LRUCacheError(const std::string& msg) {
+    return Status(StatusCode::LRUCache, msg, -1);
+  }
+
+  /** Return a KVError error class Status with a given message **/
+  static Status KVError(const std::string& msg) {
+    return Status(StatusCode::KV, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

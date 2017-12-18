@@ -70,6 +70,8 @@ inline uint64_t datatype_size(Datatype type) {
       return sizeof(uint32_t);
     case Datatype::UINT64:
       return sizeof(uint64_t);
+    default:
+      return 0;
   }
 }
 
@@ -98,6 +100,8 @@ inline const char* datatype_str(Datatype type) {
       return constants::uint32_str;
     case Datatype::UINT64:
       return constants::uint64_str;
+    default:
+      return "";
   }
 }
 

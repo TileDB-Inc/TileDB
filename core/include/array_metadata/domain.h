@@ -77,13 +77,10 @@ class Domain {
   /**
    * Adds a dimension to the domain.
    *
-   * @param name The dimension name.
-   * @param domain The dimension domain.
-   * @param tile_extent The dimension tile extent.
+   * @param dim The dimension to be added.
    * @return Status
    */
-  Status add_dimension(
-      const char* name, const void* domain, const void* tile_extent);
+  Status add_dimension(Dimension* dim);
 
   /** Returns the number of cells per tile (only for the dense case). */
   uint64_t cell_num_per_tile() const;
@@ -123,6 +120,9 @@ class Domain {
 
   /** Returns the i-th dimensions (nullptr upon error). */
   const Dimension* dimension(unsigned int i) const;
+
+  /** Returns the dimension given a name (nullptr upon error). */
+  const Dimension* dimension(std::string name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -305,6 +305,9 @@ class Domain {
    */
   template <class T>
   bool is_contained_in_tile_slab_row(const T* range) const;
+
+  /** Returns true if at least one dimension has null tile extent. */
+  bool null_tile_extents() const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -534,6 +537,9 @@ class Domain {
    */
   template <class T>
   void compute_tile_offsets();
+
+  /** Returns the default name constructed for the i-th dimension. */
+  std::string default_dimension_name(unsigned int i) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding

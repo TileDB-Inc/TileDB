@@ -198,20 +198,21 @@ bool VFS::is_file(const URI& uri) const {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
-  std::vector<std::string> files;
+  std::vector<std::string> paths;
   if (parent.is_posix()) {
-    RETURN_NOT_OK(posix::ls(parent.to_path(), &files));
+    RETURN_NOT_OK(posix::ls(parent.to_path(), &paths));
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
-    RETURN_NOT_OK(hdfs::ls(hdfs_, parent, &files));
+    RETURN_NOT_OK(hdfs::ls(hdfs_, parent, &paths));
 #else
     return Status::VFSError("TileDB was built without HDFS support");
 #endif
   } else {
     return Status::VFSError("Unsupported URI scheme: " + parent.to_string());
   }
-  for (auto& file : files) {
-    uris->push_back(URI(file));
+  std::sort(paths.begin(), paths.end());
+  for (auto& path : paths) {
+    uris->emplace_back(path);
   }
   return Status::Ok();
 }

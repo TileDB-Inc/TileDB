@@ -103,11 +103,42 @@ class Dimension {
   /** Sets the domain. */
   Status set_domain(const void* domain);
 
+  /** Sets the domain. */
+  template <class T>
+  Status set_domain(const T* domain);
+
+  /**
+   * Sets the dimension domain. If the input domain type does not match
+   * the dimension type, the function performs the appropriate conversion.
+   *
+   * @param domain The domain to be set.
+   * @param type The type of `domain`.
+   * @return Status
+   */
+  Status set_domain(const void* domain, Datatype type);
+
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
 
+  /** Sets the tile extent. */
+  template <class T>
+  Status set_tile_extent(const T* tile_extent);
+
+  /**
+   * Sets the dimension tile extent. If the input tile extent type does not
+   * match the dimension type, the function performs the appropriate conversion.
+   *
+   * @param tile_extent The tile extent to be set.
+   * @param type The type of `tile_extent`.
+   * @return Status
+   */
+  Status set_tile_extent(const void* tile_extent, Datatype type);
+
   /** Returns the tile extent. */
   void* tile_extent() const;
+
+  /** Returns the dimension type. */
+  Datatype type() const;
 
  private:
   /* ********************************* */

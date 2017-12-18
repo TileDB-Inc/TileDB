@@ -40,10 +40,13 @@
 #include <tiledb.h>
 #include <cstdlib>
 
-int main(int argc, char** argv) {
+int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
+
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
 
   // Prepare cell buffers
   int buffer_a1[10];
@@ -61,28 +64,23 @@ int main(int argc, char** argv) {
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_sparse_array",
-      TILEDB_READ,
-      TILEDB_GLOBAL_ORDER,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
   // Print cell values
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", result_num);
+  printf("result num: %llu\n\n", (unsigned long long)result_num);
   printf("coords\t  a1\t   a2\t      (a3.first, a3.second)\n");
   printf("---------------------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {
-    printf("(%lld, %lld)", buffer_coords[2 * i], buffer_coords[2 * i + 1]);
+    printf(
+        "(%lld, %lld)",
+        (long long int)buffer_coords[2 * i],
+        (long long int)buffer_coords[2 * i + 1]);
     printf("\t %3d", buffer_a1[i]);
     size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
                                               buffer_sizes[2] - buffer_a2[i];

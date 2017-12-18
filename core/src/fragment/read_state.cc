@@ -420,7 +420,6 @@ Status ReadState::get_fragment_cell_ranges_dense(
       cell_range_T[i] = search_tile_overlap_subarray[2 * i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2 * i + 1];
     }
-
     // Insert the new range into the result vector
     fragment_cell_ranges->emplace_back(fragment_info, cell_range);
   } else {  // Non-contiguous cells, multiple ranges
@@ -430,7 +429,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
       coords[i] = search_tile_overlap_subarray[2 * i];
 
     // Handle the different cell orders
-    unsigned int i;
+    unsigned int i = 0;
     if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= search_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
@@ -449,7 +448,9 @@ Status ReadState::get_fragment_cell_ranges_dense(
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
-        if (dim_num > 1) {
+        if (dim_num == 1) {
+          break;
+        } else {
           i = dim_num - 2;
           ++coords[i];
           while (i > 0 && coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
@@ -474,13 +475,17 @@ Status ReadState::get_fragment_cell_ranges_dense(
         // Insert the new range into the result vector
         fragment_cell_ranges->emplace_back(fragment_info, cell_range);
 
-        // Advance coordinates
-        i = 1;
-        ++coords[i];
-        while (i < dim_num - 1 &&
-               coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
-          coords[i] = search_tile_overlap_subarray[2 * i];
-          ++coords[++i];
+        if (dim_num == 1) {
+          break;
+        } else {
+          // Advance coordinates
+          i = 1;
+          ++coords[i];
+          while (i < dim_num - 1 &&
+                 coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
+            coords[i] = search_tile_overlap_subarray[2 * i];
+            ++coords[++i];
+          }
         }
       }
     } else {
@@ -641,7 +646,6 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   // For easy reference
   unsigned int dim_num = array_metadata_->dim_num();
   auto domain = array_metadata_->domain();
-  auto tile_extents = static_cast<const T*>(domain->tile_extents());
   auto array_domain = static_cast<const T*>(domain->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
   auto metadata_domain = static_cast<const T*>(metadata_->domain());
@@ -661,6 +665,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     subarray_area_covered_ = false;
   } else {  // Overlap with the input tile
     // Find the search tile position
+    auto tile_extents = static_cast<const T*>(domain->tile_extents());
     auto tile_coords_norm = new T[dim_num];
     for (unsigned int i = 0; i < dim_num; ++i)
       tile_coords_norm[i] =
@@ -856,8 +861,8 @@ bool ReadState::overflow(unsigned int attribute_id) const {
 }
 
 void ReadState::reset_overflow() {
-  for (unsigned int i = 0; i < overflow_.size(); ++i)
-    overflow_[i] = false;
+  for (auto&& i : overflow_)
+    i = false;
 }
 
 bool ReadState::subarray_area_covered() const {
@@ -959,15 +964,13 @@ Status ReadState::compute_bytes_to_copy(
 Status ReadState::compute_tile_compressed_size(
     uint64_t tile_i,
     unsigned int attribute_id,
-    TileIO* tile_io,
+    uint64_t file_size,
     uint64_t* tile_compressed_size) const {
   auto& tile_offsets = metadata_->tile_offsets();
   uint64_t tile_num = metadata_->tile_num();
-  uint64_t file_size = 0;
 
   assert(tile_num != 0);
-
-  RETURN_NOT_OK(tile_io->file_size(&file_size));
+  assert(file_size != 0);
 
   *tile_compressed_size = (tile_i == tile_num - 1) ?
                               file_size - tile_offsets[attribute_id][tile_i] :
@@ -980,15 +983,13 @@ Status ReadState::compute_tile_compressed_size(
 Status ReadState::compute_tile_compressed_var_size(
     uint64_t tile_i,
     unsigned int attribute_id,
-    TileIO* tile_io,
+    uint64_t file_size,
     uint64_t* tile_compressed_size) const {
   auto& tile_var_offsets = metadata_->tile_var_offsets();
-  uint64_t file_size = 0;
   uint64_t tile_num = metadata_->tile_num();
 
   assert(tile_num != 0);
-
-  RETURN_NOT_OK(tile_io->file_size(&file_size));
+  assert(file_size != 0);
 
   *tile_compressed_size =
       (tile_i == tile_num - 1) ?
@@ -1175,7 +1176,6 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1184,7 +1184,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1213,7 +1213,6 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
 
   while (min <= max && max != INVALID_UINT64) {
@@ -1223,7 +1222,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t))
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
@@ -1253,7 +1252,6 @@ Status ReadState::get_cell_pos_at_or_before(
   uint64_t min = 0;
   uint64_t max = cell_num - 1;
   uint64_t med = min + ((max - min) / 2);
-  int cmp;
   const void* coords_t;
   while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
@@ -1262,7 +1260,7 @@ Status ReadState::get_cell_pos_at_or_before(
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1361,18 +1359,26 @@ void ReadState::init_tile_io() {
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_metadata_->attribute(i);
     bool var_size = attr->var_size();
-    tile_io_.emplace_back(
-        new TileIO(query_->storage_manager(), fragment_->attr_uri(i)));
+    tile_io_.emplace_back(new TileIO(
+        query_->storage_manager(),
+        fragment_->attr_uri(i),
+        fragment_->file_size(i)));
     if (var_size)
-      tile_io_var_.emplace_back(
-          new TileIO(query_->storage_manager(), fragment_->attr_var_uri(i)));
+      tile_io_var_.emplace_back(new TileIO(
+          query_->storage_manager(),
+          fragment_->attr_var_uri(i),
+          fragment_->file_var_size(i)));
     else
       tile_io_var_.emplace_back(nullptr);
   }
-  tile_io_.emplace_back(
-      new TileIO(query_->storage_manager(), fragment_->coords_uri()));
-  tile_io_.emplace_back(
-      new TileIO(query_->storage_manager(), fragment_->coords_uri()));
+  tile_io_.emplace_back(new TileIO(
+      query_->storage_manager(),
+      fragment_->coords_uri(),
+      fragment_->file_coords_size()));
+  tile_io_.emplace_back(new TileIO(
+      query_->storage_manager(),
+      fragment_->coords_uri(),
+      fragment_->file_coords_size()));
 }
 
 bool ReadState::is_empty_attribute(unsigned int attribute_id) const {
@@ -1410,7 +1416,7 @@ Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {
 
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
-      tile_i, attribute_id_real, tile_io, &tile_compressed_size));
+      tile_i, attribute_id_real, tile_io->file_size(), &tile_compressed_size));
 
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id_real][tile_i];
   uint64_t tile_size = metadata_->cell_num(tile_i) *
@@ -1439,7 +1445,7 @@ Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
 
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
-      tile_i, attribute_id, tile_io, &tile_compressed_size));
+      tile_i, attribute_id, tile_io->file_size(), &tile_compressed_size));
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id][tile_i];
   uint64_t tile_size =
       metadata_->cell_num(tile_i) * constants::cell_var_offset_size;
@@ -1453,7 +1459,10 @@ Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
   // Get size of decompressed tile
   uint64_t tile_compressed_var_size;
   RETURN_NOT_OK(compute_tile_compressed_var_size(
-      tile_i, attribute_id, tile_io_var, &tile_compressed_var_size));
+      tile_i,
+      attribute_id,
+      tile_io_var->file_size(),
+      &tile_compressed_var_size));
   uint64_t tile_var_size = metadata_->tile_var_sizes()[attribute_id][tile_i];
   uint64_t file_var_offset =
       metadata_->tile_var_offsets()[attribute_id][tile_i];

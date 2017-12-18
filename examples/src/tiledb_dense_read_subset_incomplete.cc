@@ -44,7 +44,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Attributes to subset on
-  const char* attributes[] = {"a5"};
+  const char* attributes[] = {"a1"};
 
   // Prepare cell buffers
   int buffer_a1[2];
@@ -54,17 +54,10 @@ int main() {
   // Create query
   uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
-  tiledb_query_create(
-      ctx,
-      &query,
-      "my_dense_array",
-      TILEDB_READ,
-      TILEDB_COL_MAJOR,
-      subarray,
-      attributes,
-      1,
-      buffers,
-      buffer_sizes);
+  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
+  tiledb_query_set_subarray(ctx, query, subarray, TILEDB_UINT64);
+  tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
+  tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
 
   // Loop until the query is completed
   printf(" a1\n----\n");

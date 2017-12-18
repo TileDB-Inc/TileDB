@@ -94,36 +94,39 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
 
   ArraySchemaFx() {
-    // Error code
-    int rc;
-
-    // Array metadata not set yet
-    array_metadata_ = nullptr;
-
     // Initialize context
-    rc = tiledb_ctx_create(&ctx_);
-    assert(rc == TILEDB_OK);
-
+    int rc = tiledb_ctx_create(&ctx_);
+    if (rc != TILEDB_OK) {
+      std::cerr << "ArraySchemaFx() Error creating tiledb_ctx_t" << std::endl;
+      std::exit(1);
+    }
     // Create group, delete it if it already exists
     if (dir_exists(TEMP_DIR + GROUP)) {
       bool success = remove_dir(TEMP_DIR + GROUP);
-      assert(success == true);
+      if (!success) {
+        tiledb_ctx_free(ctx_);
+        std::cerr << "ArraySchemaFx() Error deleting existing test group"
+                  << std::endl;
+        std::exit(1);
+      }
     }
     rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    assert(rc == TILEDB_OK);
+    if (rc != TILEDB_OK) {
+      tiledb_ctx_free(ctx_);
+      std::cerr << "ArraySchemaFx() Error creating test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   ~ArraySchemaFx() {
-    // Free array_metadata metadata
-    if (array_metadata_ != nullptr)
-      tiledb_array_metadata_free(ctx_, array_metadata_);
-
-    // Free TileDB context
+    tiledb_array_metadata_free(ctx_, array_metadata_);
     tiledb_ctx_free(ctx_);
-
     // Remove the temporary group
     bool success = remove_dir(TEMP_DIR + GROUP);
-    assert(success == true);
+    if (!success) {
+      std::cerr << "~ArraySchemaFx() Error deleting test group" << std::endl;
+      std::exit(1);
+    }
   }
 
   bool dir_exists(std::string path) {
@@ -176,15 +179,23 @@ struct ArraySchemaFx {
     rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc != TILEDB_OK);
 
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    REQUIRE(rc == TILEDB_OK);
+
     // Set domain
     tiledb_domain_t* domain;
     rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(
-        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    rc = tiledb_domain_add_dimension(ctx_, domain, d2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
     REQUIRE(rc == TILEDB_OK);
@@ -204,6 +215,8 @@ struct ArraySchemaFx {
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
+    tiledb_dimension_free(ctx_, d1);
+    tiledb_dimension_free(ctx_, d2);
     tiledb_domain_free(ctx_, domain);
 
     // Create the array
@@ -260,24 +273,25 @@ TEST_CASE_METHOD(
   rc = tiledb_array_metadata_get_coords_compressor(
       ctx_, array_metadata, &coords_compression, &coords_compression_level);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_DOUBLE_DELTA);
+  CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
   CHECK(coords_compression_level == -1);
 
   // Check attribute
-  int attr_it_done;
-  tiledb_attribute_iter_t* attr_it;
-  rc = tiledb_attribute_iter_create(ctx_, array_metadata, &attr_it);
-  REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!attr_it_done);
-
-  const tiledb_attribute_t* attr;
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
+  // get first attribute by index
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_from_index(ctx_, array_metadata, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attr_name;
+  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  tiledb_attribute_free(ctx_, attr);
+
+  // get first attribute by name
+  rc = tiledb_attribute_from_name(ctx_, array_metadata, ATTR_NAME, &attr);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
@@ -300,19 +314,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(cell_val_num == CELL_VAL_NUM);
 
-  rc = tiledb_attribute_iter_next(ctx_, attr_it);
+  unsigned int num_attributes = 0;
+  rc = tiledb_array_metadata_get_num_attributes(
+      ctx_, array_metadata, &num_attributes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(attr_it_done);
-
-  rc = tiledb_attribute_iter_first(ctx_, attr_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK(num_attributes == 1);
 
   // Get domain
   tiledb_domain_t* domain;
@@ -320,17 +326,9 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check first dimension
-  int dim_it_done;
-  tiledb_dimension_iter_t* dim_it;
-  rc = tiledb_dimension_iter_create(ctx_, domain, &dim_it);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-
-  const tiledb_dimension_t* dim;
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
+  // get first dimension by name
+  tiledb_dimension_t* dim;
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM1_NAME, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   const char* dim_name;
@@ -338,25 +336,42 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
-  const void* dim_domain;
+  tiledb_dimension_free(ctx_, dim);
+
+  // get first dimension by index
+  rc = tiledb_dimension_from_index(ctx_, domain, 0, &dim);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+
+  void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(dim_domain, &DIM_DOMAIN[0], DIM_DOMAIN_SIZE));
 
-  const void* tile_extent;
+  void* tile_extent;
   rc = tiledb_dimension_get_tile_extent(ctx_, dim, &tile_extent);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(ctx_, dim);
 
   // Check second dimension
+  // get second dimension by name
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM2_NAME, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+
+  tiledb_dimension_free(ctx_, dim);
+
+  // get from index
+  rc = tiledb_dimension_from_index(ctx_, domain, 1, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
@@ -369,19 +384,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[1], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_it_done);
+  // check that indexing > 1 returns an error for this domain
+  rc = tiledb_dimension_from_index(ctx_, domain, 2, &dim);
+  CHECK(rc != TILEDB_OK);
 
-  rc = tiledb_dimension_iter_first(ctx_, dim_it);
+  // check that the rank of the domain is 2
+  unsigned int rank = 0;
+  rc = tiledb_domain_get_rank(ctx_, domain, &rank);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK(rank == 2);
 
   // Check dump
   std::string dump_str =
@@ -390,7 +401,7 @@ TEST_CASE_METHOD(
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
-      "- Coordinates compressor: DOUBLE_DELTA\n" +
+      "- Coordinates compressor: BLOSC_ZSTD\n" +
       "- Coordinates compression level: -1\n\n" +
       "=== Domain ===\n"
       "- Dimensions type: " +
@@ -413,12 +424,12 @@ TEST_CASE_METHOD(
   tiledb_array_metadata_dump(ctx_, array_metadata, fout);
   fclose(fout);
   CHECK(!system("diff gold_fout.txt fout.txt"));
-  system("rm gold_fout.txt fout.txt");
+  CHECK(!system("rm gold_fout.txt fout.txt"));
 
   // Clean up
-  rc = tiledb_attribute_iter_free(ctx_, attr_it);
+  rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_free(ctx_, dim_it);
+  rc = tiledb_dimension_free(ctx_, dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);

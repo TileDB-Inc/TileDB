@@ -138,6 +138,12 @@ class FragmentMetadata {
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
 
+  /** Returns the size of the attribute with the input id. */
+  uint64_t file_sizes(unsigned int attribute_id) const;
+
+  /** Returns the size of the variable attribute with the input id. */
+  uint64_t file_var_sizes(unsigned int attribute_id) const;
+
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
 
@@ -209,6 +215,12 @@ class FragmentMetadata {
    */
   void* domain_;
 
+  /** Stores the size of each attribute file. */
+  std::vector<uint64_t> file_sizes_;
+
+  /** Stores the size of each variable attribute file. */
+  std::vector<uint64_t> file_var_sizes_;
+
   /** The uri of the fragment the metadata belongs to. */
   URI fragment_uri_;
 
@@ -248,6 +260,9 @@ class FragmentMetadata {
    */
   std::vector<std::vector<uint64_t>> tile_var_sizes_;
 
+  /** The version of the library that created this metadata. */
+  int version_[3];
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -259,6 +274,12 @@ class FragmentMetadata {
    * @return Status
    */
   Status load_bounding_coords(ConstBuffer* buff);
+
+  /** Loads the sizes of each attribute file from the buffer. */
+  Status load_file_sizes(ConstBuffer* buff);
+
+  /** Loads the sizes of each variable attribute file from the buffer. */
+  Status load_file_var_sizes(ConstBuffer* buff);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
@@ -308,6 +329,9 @@ class FragmentMetadata {
    */
   Status load_tile_var_sizes(ConstBuffer* buff);
 
+  /** Loads the library version from the buffer. */
+  Status load_version(ConstBuffer* buff);
+
   /**
    * Writes the bounding coordinates to the fragment metadata buffer.
    *
@@ -315,6 +339,12 @@ class FragmentMetadata {
    * @return Status
    */
   Status write_bounding_coords(Buffer* buff);
+
+  /** Writes the sizes of each attribute file in the buffer. */
+  Status write_file_sizes(Buffer* buff);
+
+  /** Writes the sizes of each variable attribute file in the buffer. */
+  Status write_file_var_sizes(Buffer* buff);
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
@@ -363,6 +393,9 @@ class FragmentMetadata {
    * @return Status
    */
   Status write_tile_var_sizes(Buffer* buff);
+
+  /** Writes the library version to the buffer. */
+  Status write_version(Buffer* buff);
 };
 
 }  // namespace tiledb

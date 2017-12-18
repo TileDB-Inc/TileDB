@@ -34,13 +34,8 @@
 #ifndef TILEDB_H
 #define TILEDB_H
 
-#include <unistd.h>
-#include <cfloat>
-#include <climits>
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <string>
 
 /* ********************************* */
 /*               MACROS              */
@@ -56,8 +51,16 @@ extern "C" {
 #define TILEDB_EXPORT __attribute__((visibility("default")))
 #else
 #define TILEDB_EXPORT
+#pragma message("TILEDB_EXPORT is not defined for this compiler")
 #endif
 /**@}*/
+
+#if (defined __GNUC__) || defined __INTEL_COMPILER
+#define TILEDB_DEPRECATED __attribute__((deprecated, visibility("default")))
+#else
+#define DEPRECATED
+#pragma message("TILEDB_DEPRECATED is not defined for this compiler")
+#endif
 
 /* ****************************** */
 /*            CONSTANTS           */
@@ -185,6 +188,9 @@ typedef struct tiledb_domain_t tiledb_domain_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
+
+/** A key-value store object. */
+typedef struct tiledb_kv_t tiledb_kv_t;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -396,7 +402,7 @@ TILEDB_EXPORT int tiledb_domain_free(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain);
 
 /**
- * Retrieves the dimensions type.
+ * Retrieves the domain's type.
  *
  * @param ctx The TileDB context.
  * @param domain The domain.
@@ -407,21 +413,56 @@ TILEDB_EXPORT int tiledb_domain_get_type(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
 
 /**
+ * Retrieves the domain's rank (number of dimensions).
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain
+ * @param rank THe rank to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_domain_get_rank(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* rank);
+
+/**
  * Adds a dimension to a TileDB domain.
  *
  * @param ctx The TileDB context.
  * @param domain The domain to add the dimension to.
- * @param name The dimension name.
- * @param dim_domain The dimension domain.
- * @param tile_extent The dimension tile extent.
+ * @param dim The dimension to be added.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_domain_add_dimension(
+    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim);
+
+/**
+ * Retrieves a dimension object from a domain by index
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain to add the dimension to.
+ * @param index The index of domain dimension
+ * @param dim The retrieved dimension object.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_from_index(
     tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
+    const tiledb_domain_t* domain,
+    unsigned int index,
+    tiledb_dimension_t** dim);
+
+/**
+ * Retrieves a dimension object from a domain by name (key)
+ *
+ * @param ctx The TileDB context
+ * @param domain The domain to add the dimension to.
+ * @param index The name (key) of the requested dimension
+ * @param dim The retrieved dimension object.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
     const char* name,
-    const void* dim_domain,
-    const void* tile_extent);
+    tiledb_dimension_t** dim);
 
 /**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
@@ -440,6 +481,35 @@ TILEDB_EXPORT int tiledb_domain_dump(
 /* ********************************* */
 
 /**
+ * Creates a dimension.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension to be created.
+ * @param name The dimension name.
+ * @param type The dimension type.
+ * @param dim_domain The dimension domain.
+ * @param tile_extent The dimension tile extent.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_create(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t** dim,
+    const char* name,
+    tiledb_datatype_t type,
+    const void* dim_domain,
+    const void* tile_extent);
+
+/**
+ * Destroys a TileDB dimension, freeing-up memory.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim);
+
+/**
  * Retrieves the dimension name.
  *
  * @param ctx The TileDB context.
@@ -451,6 +521,17 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name);
 
 /**
+ * Retrieves the dimension type.
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension.
+ * @param type The type to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_get_type(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type);
+
+/**
  * Retrieves the domain of the dimension.
  *
  * @param ctx The TileDB context.
@@ -459,7 +540,7 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain);
 
 /**
  * Retrieves the tile extent of the dimension.
@@ -470,7 +551,7 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** tile_extent);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent);
 
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
@@ -483,78 +564,6 @@ TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
  */
 TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
-
-/* ********************************* */
-/*        DIMENSION ITERATOR         */
-/* ********************************* */
-
-/**
- * Creates a dimensions iterator for the input domain.
- *
- * @param ctx The TileDB context.
- * @param domain The input array domain.
- * @param dim_it The dimension iterator to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_create(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    tiledb_dimension_iter_t** dim_it);
-
-/**
- * Frees a dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_free(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Checks if a dimension iterator has reached the end.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param done This is set to 1 if the iterator id done, and 0 otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_done(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
-
-/**
- * Advances the dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_next(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Retrieves a constant pointer to the current dimension pointed by the
- * iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param dim The dimension pointer to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_here(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_iter_t* dim_it,
-    const tiledb_dimension_t** dim);
-
-/**
- * Rewinds the iterator to point to the first dimension.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_first(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
 
 /* ********************************* */
 /*           ARRAY METADATA          */
@@ -610,6 +619,18 @@ TILEDB_EXPORT int tiledb_array_metadata_set_domain(
     tiledb_domain_t* domain);
 
 /**
+ * Sets the array as a key-value store. This function will create
+ * and set a default domain for the array, as well as some extra
+ * special attributes for the keys.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata);
+
+/**
  * Sets the tile capacity.
  *
  * @param ctx The TileDB context.
@@ -660,6 +681,36 @@ TILEDB_EXPORT int tiledb_array_metadata_set_array_type(
     tiledb_ctx_t* ctx,
     tiledb_array_metadata_t* array_metadata,
     tiledb_array_type_t array_type);
+
+/**
+ * Sets the coordinates compressor.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The coordinates compressor.
+ * @param compression_level The coordinates compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_coords_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t compressor,
+    int compression_level);
+
+/**
+ * Sets the offsets compressor.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The coordinates compressor.
+ * @param compression_level The coordinates compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_offsets_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t compressor,
+    int compression_level);
 
 /**
  * Checks the correctness of the array metadata.
@@ -743,15 +794,30 @@ TILEDB_EXPORT int tiledb_array_metadata_get_cell_order(
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param coords_compressor The compressor to be retrieved.
- * @param coords_compression_level The compression level to be retrieved.
+ * @param compressor The compressor to be retrieved.
+ * @param compression_level The compression level to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_metadata_get_coords_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
-    tiledb_compressor_t* coords_compressor,
-    int* coords_compression_level);
+    tiledb_compressor_t* compressor,
+    int* compression_level);
+
+/**
+ * Retrieves the compressor info of the offsets.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param compressor The compressor to be retrieved.
+ * @param compression_level The compression level to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_offsets_compressor(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t* compressor,
+    int* compression_level);
 
 /**
  * Retrieves the array domain.
@@ -767,6 +833,18 @@ TILEDB_EXPORT int tiledb_array_metadata_get_domain(
     tiledb_domain_t** domain);
 
 /**
+ * Checks if the array is defined as a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param as_kv This will be set to `true` if the array is defined as
+ *     a key-value store, and `false` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata, int* as_kv);
+
+/**
  * Retrieves the tile order.
  *
  * @param ctx The TileDB context.
@@ -778,6 +856,52 @@ TILEDB_EXPORT int tiledb_array_metadata_get_tile_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
     tiledb_layout_t* tile_order);
+
+/**
+ * Retrieves the number of array attributes.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param num_attributes The number of attributes to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_num_attributes(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int* num_attributes);
+
+/**
+ * Retrieves a given attribute given it's index
+ *
+ * Attributes are ordered the same way they were defined
+ * when constructing the array metadata.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param index The index of the attribute to retrieve.
+ * @param attr The attribute object to retrieve.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    unsigned int index,
+    tiledb_attribute_t** attr);
+
+/**
+ * Retrieves a given attribute given it's name (key)
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param name The name (key) of the attribute to retrieve.
+ * @param attr THe attribute object to retrieve.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    const char* name,
+    tiledb_attribute_t** attr);
 
 /**
  * Dumps the array metadata in ASCII format in the selected output.
@@ -793,78 +917,6 @@ TILEDB_EXPORT int tiledb_array_metadata_dump(
     FILE* out);
 
 /* ********************************* */
-/*         ATTRIBUTE ITERATOR        */
-/* ********************************* */
-
-/**
- * Creates an attribute iterator for the input array metadata.
- *
- * @param ctx The TileDB context.
- * @param metadata The input array metadata.
- * @param attr_it The attribute iterator to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_create(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_metadata_t* metadata,
-    tiledb_attribute_iter_t** attr_it);
-
-/**
- * Frees an attribute iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_free(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/**
- * Checks if an attribute iterator has reached the end.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @param done This is set to 1 if the iterator is done, and 0 otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_done(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it, int* done);
-
-/**
- * Advances the attribute iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_next(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/**
- * Retrieves a constant pointer to the current attribute pointed by the
- * iterator.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @param attr The attribute pointer to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_here(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_iter_t* attr_it,
-    const tiledb_attribute_t** attr);
-
-/**
- * Rewinds the iterator to point to the first attribute.
- *
- * @param ctx The TileDB context.
- * @param attr_it The attribute iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_attribute_iter_first(
-    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/* ********************************* */
 /*               QUERY               */
 /* ********************************* */
 
@@ -877,8 +929,43 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  * @param type The query type, which must be one of the following:
  *    - TILEDB_WRITE
  *    - TILEDB_READ
- * @param layout For a write query, this indicates the order of the cells
- *     provided by the user in the buffers. For a read query, this indicates
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_create(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t** query,
+    const char* array_name,
+    tiledb_query_type_t type);
+
+/**
+ * Indicates that the query will write or read a subarray, and provides
+ * the appropriate information.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param subarray The subarray in which the array read/write will be
+ *     constrained on. It should be a sequence of [low, high] pairs (one
+ *     pair per dimension). For the case of writes, this is meaningful only
+ *     for dense arrays, and specifically dense writes.
+ * @param type The data type of `subarray`. TileDB will internally convert
+ *     `subarray` so that its type is the same as the domain/coordinates.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_set_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* subarray,
+    tiledb_datatype_t type);
+
+/**
+ * Sets the buffers to the query, which will either hold the attribute
+ * values to be written (if it is a write query), or will hold the
+ * results from a read query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
  *     the order of the cells that will be retrieved as results and stored
  *     in the user buffers. The layout can be one of the following:
  *    - TILEDB_COL_MAJOR <br>
@@ -889,42 +976,61 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  *      This means that cells are stored or retrieved in the array global
  *      cell order.
  *    - TILEDB_UNORDERED <br>
- *      This is applicable only to writes for sparse arrays, which indicates
- *      that the cells are unordered and, hence, TileDB must sort the cells
- *      in the global cell order.
- * @param subarray The subarray in which the array read/write will be
- *     constrained on. It should be a sequence of [low, high] pairs (one
- *     pair per dimension), whose type should be the same as that of the
- *     coordinates. If it is NULL, then the subarray is set to the entire
- *     array domain. For the case of writes, this is meaningful only for
- *     dense arrays, and specifically dense writes.
- * @param attributes A subset of the array attributes the read/write will be
+ *      This is applicable only to writes for sparse arrays, or for sparse
+ *      writes to dense arrays. It specifies that the cells are unordered and,
+ *      hence, TileDB must sort the cells in the global cell order prior to
+ *      writing.
+ * @param attributes A set of the array attributes the read/write will be
  *     constrained on. Note that the coordinates have special attribute name
- *     tiledb_coords(). A NULL value indicates **all** attributes (including
- *     the coordinates as the last attribute in the case of sparse arrays).
- * @param attribute_num The number of the input attributes. If *attributes* is
- *     NULL, then this should be set to 0.
+ *     TILEDB_COORDS. If it is set to `NULL`, then this means **all**
+ *     attributes, in the way they were defined upon the array creation,
+ *     including the special attributes of coordinates and keys.
+ * @param attribute_num The number of the input attributes.
  * @param buffers The buffers that either have the input data to be written,
- *     or will hold the data to be read. There must be an one-to-one
- *     correspondence with *attributes*.
+ *     or will hold the data to be read. Note that there is one buffer per
+ *     fixed-sized attribute, and two buffers for each variable-sized
+ *     attribute (the first holds the offsets, and the second the actual
+ *     values).
  * @param buffer_sizes There must be an one-to-one correspondence with
  *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
  *     In the case of reads, they initially contain the allocated sizes of
  *     *buffers*, but after the termination of the function they will contain
  *     the sizes of the useful (read) data in the buffers.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_query_create(
+TILEDB_EXPORT int tiledb_query_set_buffers(
     tiledb_ctx_t* ctx,
-    tiledb_query_t** query,
-    const char* array_name,
-    tiledb_query_type_t type,
-    tiledb_layout_t layout,
-    const void* subarray,
+    tiledb_query_t* query,
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes);
+
+/**
+ * Sets the layout of the cells to be written or read.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - TILEDB_COL_MAJOR <br>
+ *      This means column-major order with respect to the subarray.
+ *    - TILEDB_ROW_MAJOR <br>
+ *      This means row-major order with respect to the subarray.
+ *    - TILEDB_GLOBAL_ORDER <br>
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - TILEDB_UNORDERED <br>
+ *      This is applicable only to writes for sparse arrays, or for sparse
+ *      writes to dense arrays. It specifies that the cells are unordered and,
+ *      hence, TileDB must sort the cells in the global cell order prior to
+ *      writing.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_query_set_layout(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
  * Deletes a TileDB query object.
@@ -936,14 +1042,56 @@ TILEDB_EXPORT int tiledb_query_create(
 TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
+ * Sets a key-value store object to the query. A write query will write
+ * the contents of the key-value store into a sparse TileDB array. If it
+ * is a read query, it will retrieve the results into the key-value
+ * store object.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param kv They key-value store structure.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note If the query is a read query on a specific key, it is important
+ *     to call `tiledb_query_set_kv_key` **before** calling this function.
+ */
+TILEDB_EXPORT int tiledb_query_set_kv(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_kv_t* kv);
+
+/**
+ * Sets a key-value key for a read query. This will internally be converted
+ * into a unary subarray query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param key They key that is queried.
+ * @param type The type of the key.
+ * @param key_size The key size in bytes.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note If no key is set with this function for a query, then the query
+ * will retrieve **all** key-value items from the TileDB array into the
+ * set key-value object after query submission completes. On the other hand,
+ * if a key is set, note that the key itself will **not** be retrieved in
+ * the key-value store from the TileDB array after query completion (since
+ * it is redundant).
+ */
+TILEDB_EXPORT int tiledb_query_set_kv_key(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* key,
+    tiledb_datatype_t type,
+    uint64_t key_size);
+
+/**
  * Submits a TileDB query.
  *
  * @param ctx The TileDB context.
  * @param query The query to be submitted.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
  * @note This function essentially opens the array associated with the query.
- *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     Some metadata structures are loaded in main memory for this array.
  *     In order to flush these data structures and free up memory, invoke
  *     *tiledb_query_free*.
  */
@@ -956,10 +1104,10 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param query The query to be submitted.
  * @param callback The function to be called when the query completes.
  * @param callback_data The data to be passed to the callback function.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
  * @note This function essentially opens the array associated with the query.
- *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     Some metadata structures are loaded in main memory for this array.
  *     In order to flush these data structures and free up memory, invoke
  *     *tiledb_query_free*.
  */
@@ -1100,6 +1248,361 @@ TILEDB_EXPORT int tiledb_walk(
     tiledb_walk_order_t order,
     int (*callback)(const char*, tiledb_object_t, void*),
     void* data);
+
+/* ********************************* */
+/*        DEPRECATED FUNCTIONS       */
+/* ********************************* */
+
+/**
+ * Creates a dimensions iterator for the input domain.
+ *
+ * @param ctx The TileDB context.
+ * @param domain The input array domain.
+ * @param dim_it The dimension iterator to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_dimension_iter_t** dim_it);
+
+/**
+ * Frees a dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Checks if a dimension iterator has reached the end.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param done This is set to 1 if the iterator id done, and 0 otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_done(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
+
+/**
+ * Advances the dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_next(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Retrieves a constant pointer to the current dimension pointed by the
+ * iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param dim The dimension pointer to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_iter_t* dim_it,
+    const tiledb_dimension_t** dim);
+
+/**
+ * Rewinds the iterator to point to the first dimension.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_dimension_iter_first(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Creates an attribute iterator for the input array metadata.
+ *
+ * @param ctx The TileDB context.
+ * @param metadata The input array metadata.
+ * @param attr_it The attribute iterator to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* metadata,
+    tiledb_attribute_iter_t** attr_it);
+
+/**
+ * Frees an attribute iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_free(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/**
+ * Checks if an attribute iterator has reached the end.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @param done This is set to 1 if the iterator is done, and 0 otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_done(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it, int* done);
+
+/**
+ * Advances the attribute iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_next(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/**
+ * Retrieves a constant pointer to the current attribute pointed by the
+ * iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @param attr The attribute pointer to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_iter_t* attr_it,
+    const tiledb_attribute_t** attr);
+
+/**
+ * Rewinds the iterator to point to the first attribute.
+ *
+ * @param ctx The TileDB context.
+ * @param attr_it The attribute iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_DEPRECATED int tiledb_attribute_iter_first(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/* ****************************** */
+/*             KEY-VALUE          */
+/* ****************************** */
+
+/**
+ * Creates a key-value store object. This object is used
+ * to write/read key-values to/from a TileDB array. This key-value store
+ * has some schema defined by the input attribute names and types. One
+ * can add values to the object via the C-API and then set is into
+ * a query to be written to a TileDB array, or one can set it into
+ * a read query that retrieves the key-values from a TileDB array,
+ * and then use the C-API to get the various keys/values in the object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store to be created.
+ * @param attribute_num The number of attributes in the key-value store.
+ * @param attributes The attribute names.
+ * @param types The attribute types.
+ * @param nitems The number of items of (the attribute type) stored in a
+ *     single attribute value.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_create(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t** kv,
+    unsigned int attribute_num,
+    const char** attributes,
+    tiledb_datatype_t* types,
+    unsigned int* nitems);
+
+/**
+ * Frees a key-value store object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_free(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+
+/**
+ * Adds a key to a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param key The key to be added.
+ * @param key_type The key type.
+ * @param key_size The key size (in bytes).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const void* key,
+    tiledb_datatype_t key_type,
+    uint64_t key_size);
+
+/**
+ * Adds a value for a particular attribute index. Note that the target
+ * attribute must be receiving fixed-sized values. The size of the value
+ * will be inferred by the type and number of values the target attribute
+ * receives.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param attribute_idx The index of the attribute whose value is added.
+ * @param value The value to be added.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value);
+
+/**
+ * Adds a value for a particular attribute index. The target attribute must be
+ * accepting variable-sized values.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param attribute_idx The index of the attribute whose value is added.
+ * @param value The value to be added.
+ * @param value_size The size of `value` in bytes.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value,
+    uint64_t value_size);
+
+/**
+ * Retrieves the number of keys in a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object.
+ * @param num The number of keys to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_get_key_num(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* num);
+
+/**
+ * Retrieves the number of values on a particular attribute in a key-value
+ * store. Note that the attributes are ordered in the way they were defined
+ * upon creation of the key-value store object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object.
+ * @param attribute_idx The index of the attribute.
+ * @param num The number of values to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_get_value_num(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    uint64_t* num);
+
+/**
+ * Retrieves a key from a key-value store object, based on a provided
+ * index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param key_idx The index of the key to be retrieved.
+ * @param key The key to be retrieved. Note that only a pointer to the
+ *     internal key buffer of the key-value store is retrieved - no copy
+ *     is involved.
+ * @param key_type The key type.
+ * @param key_size The key size.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored keys.
+ *     No particular assumption must be made about the order of the keys
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t key_idx,
+    void** key,
+    tiledb_datatype_t* key_type,
+    uint64_t* key_size);
+
+/**
+ * Retrieves a value from a key-value store object, based on a provided
+ * attribute and key-value index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param obj_idx The index of the key-value object from which the value
+ *     will be retrieved.
+ * @param attr_idx The index of the attribute whose value is retrieved.
+ *     Note that the attributes are ordered in the way they were defined
+ *     upon creation of the key-value store object.
+ * @param value The value to be retrieved. Note that only a pointer to the
+ *     internal buffers of the key-value store is retrieved - no copy
+ *     is involved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored values.
+ *     No particular assumption must be made about the order of the values
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value);
+
+/**
+ * Retrieves a variable-sized value from a key-value store object, based
+ * on a provided attribute and key-value index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param obj_idx The index of the key-value object from which the value
+ *     will be retrieved.
+ * @param attr_idx The index of the attribute whose value is retrieved.
+ *     Note that the attributes are ordered in the way they were defined
+ *     upon creation of the key-value store object.
+ * @param value The value to be retrieved. Note that only a pointer to the
+ *     internal buffers of the key-value store is retrieved - no copy
+ *     is involved.
+ * @param value_size The size of the value to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored values.
+ *     No particular assumption must be made about the order of the values
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value,
+    uint64_t* value_size);
+
+/**
+ * Sets the size to be allocated for the internal buffers. This is useful
+ * when the key-value store object is used for reading from a TileDB array,
+ * so pre-allocation provides memory managment control.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param nbytes The number of bytes to be allocated per buffer.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_set_buffer_size(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t nbytes);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

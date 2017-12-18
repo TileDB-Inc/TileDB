@@ -32,13 +32,8 @@
  */
 
 #include "utils.h"
-#include "constants.h"
 #include "logger.h"
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <cstring>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -240,32 +235,6 @@ std::string domain_str(const void* domain, Datatype type) {
   return "";
 }
 
-template <class T>
-bool empty_value(T value) {
-  if (&typeid(T) == &typeid(int))
-    return value == constants::empty_int32;
-  if (&typeid(T) == &typeid(int64_t))
-    return value == constants::empty_int64;
-  if (&typeid(T) == &typeid(float))
-    return value == constants::empty_float32;
-  if (&typeid(T) == &typeid(double))
-    return value == constants::empty_float64;
-  if (&typeid(T) == &typeid(int8_t))
-    return value == constants::empty_int8;
-  if (&typeid(T) == &typeid(uint8_t))
-    return value == constants::empty_uint8;
-  if (&typeid(T) == &typeid(int16_t))
-    return value == constants::empty_int16;
-  if (&typeid(T) == &typeid(uint16_t))
-    return value == constants::empty_uint16;
-  if (&typeid(T) == &typeid(uint32_t))
-    return value == constants::empty_uint32;
-  if (&typeid(T) == &typeid(uint64_t))
-    return value == constants::empty_uint64;
-
-  return false;
-}
-
 Status expand_buffer(void*& buffer, uint64_t* buffer_allocated_size) {
   *buffer_allocated_size *= 2;
   buffer = std::realloc(buffer, *buffer_allocated_size);
@@ -321,7 +290,7 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
 
 template <class T>
 bool is_contained(const T* range_A, const T* range_B, unsigned int dim_num) {
-  for (int i = 0; i < dim_num; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     if (range_A[2 * i] < range_B[2 * i] ||
         range_A[2 * i + 1] > range_B[2 * i + 1])
       return false;
@@ -647,17 +616,6 @@ template int cmp_row_order<uint64_t>(
     uint64_t id_b,
     const uint64_t* coords_b,
     unsigned int dim_num);
-
-template bool empty_value<int>(int value);
-template bool empty_value<int64_t>(int64_t value);
-template bool empty_value<float>(float value);
-template bool empty_value<double>(double value);
-template bool empty_value<int8_t>(int8_t value);
-template bool empty_value<uint8_t>(uint8_t value);
-template bool empty_value<int16_t>(int16_t value);
-template bool empty_value<uint16_t>(uint16_t value);
-template bool empty_value<uint32_t>(uint32_t value);
-template bool empty_value<uint64_t>(uint64_t value);
 
 template void expand_mbr<int>(
     int* mbr, const int* coords, unsigned int dim_num);
