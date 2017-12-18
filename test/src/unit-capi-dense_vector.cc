@@ -229,7 +229,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_ROW_MAJOR);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, read_query, subarray, TILEDB_INT64);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_submit(ctx_, read_query);
     REQUIRE(rc == TILEDB_OK);
@@ -249,7 +249,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, read_query, subarray, TILEDB_INT64);
     REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, read_query);
@@ -279,7 +279,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_ROW_MAJOR);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_by_subarray(ctx_, update_query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, update_query, subarray, TILEDB_INT64);
     REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, update_query);
@@ -294,7 +294,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_by_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, read_query, subarray, TILEDB_INT64);
     REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, read_query);

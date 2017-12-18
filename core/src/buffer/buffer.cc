@@ -175,7 +175,12 @@ uint64_t Buffer::size() const {
   return size_;
 }
 
-void Buffer::write(ConstBuffer* buff) {
+Status Buffer::write(ConstBuffer* buff) {
+  // Sanity check
+  if (!owns_data_)
+    return LOG_STATUS(Status::BufferError(
+        "Cannot write to buffer; Buffer does not own the already stored data"));
+
   uint64_t bytes_left_to_write = alloced_size_ - offset_;
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
@@ -183,9 +188,16 @@ void Buffer::write(ConstBuffer* buff) {
   buff->read((char*)data_ + offset_, bytes_to_copy);
   offset_ += bytes_to_copy;
   size_ = offset_;
+
+  return Status::Ok();
 }
 
 Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
+  // Sanity check
+  if (!owns_data_)
+    return LOG_STATUS(Status::BufferError(
+        "Cannot write to buffer; Buffer does not own the already stored data"));
+
   while (offset_ + nbytes > alloced_size_)
     RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
 
@@ -197,6 +209,11 @@ Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
 }
 
 Status Buffer::write(const void* buffer, uint64_t nbytes) {
+  // Sanity check
+  if (!owns_data_)
+    return LOG_STATUS(Status::BufferError(
+        "Cannot write to buffer; Buffer does not own the already stored data"));
+
   while (offset_ + nbytes > alloced_size_)
     RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
 
@@ -207,7 +224,12 @@ Status Buffer::write(const void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-void Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
+Status Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
+  // Sanity check
+  if (!owns_data_)
+    return LOG_STATUS(Status::BufferError(
+        "Cannot write to buffer; Buffer does not own the already stored data"));
+
   uint64_t bytes_left_to_write = alloced_size_ - offset_;
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
@@ -215,6 +237,8 @@ void Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
   buff->read_with_shift(static_cast<uint64_t*>(data_), bytes_to_copy, offset);
   offset_ += bytes_to_copy;
   size_ = offset_;
+
+  return Status::Ok();
 }
 
 /* ****************************** */

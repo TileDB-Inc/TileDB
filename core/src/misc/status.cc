@@ -161,6 +161,9 @@ std::string Status::code_to_string() const {
     case StatusCode::LRUCache:
       type = "[TileDB::LRUCache] Error";
       break;
+    case StatusCode::KV:
+      type = "[TileDB::KV] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

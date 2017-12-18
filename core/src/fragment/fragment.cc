@@ -113,7 +113,7 @@ Status Fragment::finalize() {
     auto storage_manager = query_->storage_manager();
     Status st = write_state_->finalize();
     if (st.ok())
-      st = storage_manager->store(metadata_);
+      st = storage_manager->store_fragment_metadata(metadata_);
     if (st.ok() && storage_manager->is_dir(fragment_uri_))
       st = storage_manager->create_fragment_file(fragment_uri_);
 

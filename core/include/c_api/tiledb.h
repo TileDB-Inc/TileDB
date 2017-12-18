@@ -189,6 +189,9 @@ typedef struct tiledb_domain_t tiledb_domain_t;
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
 
+/** A key-value store object. */
+typedef struct tiledb_kv_t tiledb_kv_t;
+
 /* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
@@ -616,6 +619,18 @@ TILEDB_EXPORT int tiledb_array_metadata_set_domain(
     tiledb_domain_t* domain);
 
 /**
+ * Sets the array as a key-value store. This function will create
+ * and set a default domain for the array, as well as some extra
+ * special attributes for the keys.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_set_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata);
+
+/**
  * Sets the tile capacity.
  *
  * @param ctx The TileDB context.
@@ -818,6 +833,18 @@ TILEDB_EXPORT int tiledb_array_metadata_get_domain(
     tiledb_domain_t** domain);
 
 /**
+ * Checks if the array is defined as a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param as_kv This will be set to `true` if the array is defined as
+ *     a key-value store, and `false` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_as_kv(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata, int* as_kv);
+
+/**
  * Retrieves the tile order.
  *
  * @param ctx The TileDB context.
@@ -924,7 +951,7 @@ TILEDB_EXPORT int tiledb_query_create(
  *     `subarray` so that its type is the same as the domain/coordinates.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_query_by_subarray(
+TILEDB_EXPORT int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const void* subarray,
@@ -1015,14 +1042,56 @@ TILEDB_EXPORT int tiledb_query_set_layout(
 TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
+ * Sets a key-value store object to the query. A write query will write
+ * the contents of the key-value store into a sparse TileDB array. If it
+ * is a read query, it will retrieve the results into the key-value
+ * store object.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param kv They key-value store structure.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note If the query is a read query on a specific key, it is important
+ *     to call `tiledb_query_set_kv_key` **before** calling this function.
+ */
+TILEDB_EXPORT int tiledb_query_set_kv(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_kv_t* kv);
+
+/**
+ * Sets a key-value key for a read query. This will internally be converted
+ * into a unary subarray query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param key They key that is queried.
+ * @param type The type of the key.
+ * @param key_size The key size in bytes.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note If no key is set with this function for a query, then the query
+ * will retrieve **all** key-value items from the TileDB array into the
+ * set key-value object after query submission completes. On the other hand,
+ * if a key is set, note that the key itself will **not** be retrieved in
+ * the key-value store from the TileDB array after query completion (since
+ * it is redundant).
+ */
+TILEDB_EXPORT int tiledb_query_set_kv_key(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const void* key,
+    tiledb_datatype_t type,
+    uint64_t key_size);
+
+/**
  * Submits a TileDB query.
  *
  * @param ctx The TileDB context.
  * @param query The query to be submitted.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
  * @note This function essentially opens the array associated with the query.
- *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     Some metadata structures are loaded in main memory for this array.
  *     In order to flush these data structures and free up memory, invoke
  *     *tiledb_query_free*.
  */
@@ -1035,10 +1104,10 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param query The query to be submitted.
  * @param callback The function to be called when the query completes.
  * @param callback_data The data to be passed to the callback function.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
  * @note This function essentially opens the array associated with the query.
- *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     Some metadata structures are loaded in main memory for this array.
  *     In order to flush these data structures and free up memory, invoke
  *     *tiledb_query_free*.
  */
@@ -1319,6 +1388,221 @@ TILEDB_DEPRECATED int tiledb_attribute_iter_here(
  */
 TILEDB_DEPRECATED int tiledb_attribute_iter_first(
     tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
+
+/* ****************************** */
+/*             KEY-VALUE          */
+/* ****************************** */
+
+/**
+ * Creates a key-value store object. This object is used
+ * to write/read key-values to/from a TileDB array. This key-value store
+ * has some schema defined by the input attribute names and types. One
+ * can add values to the object via the C-API and then set is into
+ * a query to be written to a TileDB array, or one can set it into
+ * a read query that retrieves the key-values from a TileDB array,
+ * and then use the C-API to get the various keys/values in the object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store to be created.
+ * @param attribute_num The number of attributes in the key-value store.
+ * @param attributes The attribute names.
+ * @param types The attribute types.
+ * @param nitems The number of items of (the attribute type) stored in a
+ *     single attribute value.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_create(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t** kv,
+    unsigned int attribute_num,
+    const char** attributes,
+    tiledb_datatype_t* types,
+    unsigned int* nitems);
+
+/**
+ * Frees a key-value store object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_free(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+
+/**
+ * Adds a key to a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param key The key to be added.
+ * @param key_type The key type.
+ * @param key_size The key size (in bytes).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const void* key,
+    tiledb_datatype_t key_type,
+    uint64_t key_size);
+
+/**
+ * Adds a value for a particular attribute index. Note that the target
+ * attribute must be receiving fixed-sized values. The size of the value
+ * will be inferred by the type and number of values the target attribute
+ * receives.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param attribute_idx The index of the attribute whose value is added.
+ * @param value The value to be added.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value);
+
+/**
+ * Adds a value for a particular attribute index. The target attribute must be
+ * accepting variable-sized values.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param attribute_idx The index of the attribute whose value is added.
+ * @param value The value to be added.
+ * @param value_size The size of `value` in bytes.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_add_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    const void* value,
+    uint64_t value_size);
+
+/**
+ * Retrieves the number of keys in a key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object.
+ * @param num The number of keys to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_get_key_num(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* num);
+
+/**
+ * Retrieves the number of values on a particular attribute in a key-value
+ * store. Note that the attributes are ordered in the way they were defined
+ * upon creation of the key-value store object.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object.
+ * @param attribute_idx The index of the attribute.
+ * @param num The number of values to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_get_value_num(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    unsigned int attribute_idx,
+    uint64_t* num);
+
+/**
+ * Retrieves a key from a key-value store object, based on a provided
+ * index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param key_idx The index of the key to be retrieved.
+ * @param key The key to be retrieved. Note that only a pointer to the
+ *     internal key buffer of the key-value store is retrieved - no copy
+ *     is involved.
+ * @param key_type The key type.
+ * @param key_size The key size.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored keys.
+ *     No particular assumption must be made about the order of the keys
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t key_idx,
+    void** key,
+    tiledb_datatype_t* key_type,
+    uint64_t* key_size);
+
+/**
+ * Retrieves a value from a key-value store object, based on a provided
+ * attribute and key-value index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param obj_idx The index of the key-value object from which the value
+ *     will be retrieved.
+ * @param attr_idx The index of the attribute whose value is retrieved.
+ *     Note that the attributes are ordered in the way they were defined
+ *     upon creation of the key-value store object.
+ * @param value The value to be retrieved. Note that only a pointer to the
+ *     internal buffers of the key-value store is retrieved - no copy
+ *     is involved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored values.
+ *     No particular assumption must be made about the order of the values
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_value(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value);
+
+/**
+ * Retrieves a variable-sized value from a key-value store object, based
+ * on a provided attribute and key-value index.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param obj_idx The index of the key-value object from which the value
+ *     will be retrieved.
+ * @param attr_idx The index of the attribute whose value is retrieved.
+ *     Note that the attributes are ordered in the way they were defined
+ *     upon creation of the key-value store object.
+ * @param value The value to be retrieved. Note that only a pointer to the
+ *     internal buffers of the key-value store is retrieved - no copy
+ *     is involved.
+ * @param value_size The size of the value to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function provides a means of iterating over the stored values.
+ *     No particular assumption must be made about the order of the values
+ *     in the structure (it should be assumed as random).
+ */
+TILEDB_EXPORT int tiledb_kv_get_value_var(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    uint64_t obj_idx,
+    unsigned int attr_idx,
+    void** value,
+    uint64_t* value_size);
+
+/**
+ * Sets the size to be allocated for the internal buffers. This is useful
+ * when the key-value store object is used for reading from a TileDB array,
+ * so pre-allocation provides memory managment control.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param nbytes The number of bytes to be allocated per buffer.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_set_buffer_size(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t nbytes);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

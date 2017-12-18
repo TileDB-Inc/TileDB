@@ -101,7 +101,8 @@ Status StorageManager::array_create(ArrayMetadata* array_metadata) {
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Store array metadata
-  RETURN_NOT_OK_ELSE(store(array_metadata), vfs_->remove_path(array_uri));
+  RETURN_NOT_OK_ELSE(
+      store_array_metadata(array_metadata), vfs_->remove_path(array_uri));
 
   // Create array filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
@@ -254,16 +255,28 @@ Status StorageManager::init() {
   return Status::Ok();
 }
 
-bool StorageManager::is_dir(const URI& uri) {
+bool StorageManager::is_array(const URI& uri) const {
+  return vfs_->is_file(uri.join_path(constants::array_metadata_filename));
+}
+
+bool StorageManager::is_dir(const URI& uri) const {
   return vfs_->is_dir(uri);
 }
 
-bool StorageManager::is_file(const URI& uri) {
+bool StorageManager::is_file(const URI& uri) const {
   return vfs_->is_file(uri);
 }
 
 bool StorageManager::is_fragment(const URI& uri) const {
   return vfs_->is_file(uri.join_path(constants::fragment_filename));
+}
+
+bool StorageManager::is_group(const URI& uri) const {
+  return vfs_->is_file(uri.join_path(constants::group_filename));
+}
+
+bool StorageManager::is_kv(const URI& uri) const {
+  return vfs_->is_file(uri.join_path(constants::kv_filename));
 }
 
 Status StorageManager::load_array_metadata(
@@ -371,10 +384,13 @@ Status StorageManager::move_path(const URI& old_uri, const URI& new_uri) {
 }
 
 ObjectType StorageManager::object_type(const URI& uri) const {
-  if (vfs_->is_file(uri.join_path(constants::group_filename)))
+  if (is_group(uri))
     return ObjectType::GROUP;
-  if (vfs_->is_file(uri.join_path(constants::array_metadata_filename)))
+  if (is_kv(uri))
+    return ObjectType::KEY_VALUE;
+  if (is_array(uri))
     return ObjectType::ARRAY;
+
   return ObjectType::INVALID;
 }
 
@@ -600,9 +616,10 @@ Status StorageManager::read_from_file(
   return Status::Ok();
 }
 
-Status StorageManager::store(ArrayMetadata* array_metadata) {
+Status StorageManager::store_array_metadata(ArrayMetadata* array_metadata) {
+  URI array_uri = array_metadata->array_uri();
   URI array_metadata_uri =
-      array_metadata->array_uri().join_path(constants::array_metadata_filename);
+      array_uri.join_path(constants::array_metadata_filename);
 
   // Serialize
   auto buff = new Buffer();
@@ -631,10 +648,20 @@ Status StorageManager::store(ArrayMetadata* array_metadata) {
   delete tile_io;
   delete buff;
 
+  // If it is a key-value store, create a new key-value special file
+  if (st.ok() && array_metadata->is_kv()) {
+    URI kv_uri = array_uri.join_path(constants::kv_filename);
+    st = vfs_->create_file(kv_uri);
+    if (!st.ok()) {
+      vfs_->remove_path(array_metadata_uri);
+      vfs_->remove_path(kv_uri);
+    }
+  }
+
   return st;
 }
 
-Status StorageManager::store(FragmentMetadata* metadata) {
+Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   const URI& fragment_uri = metadata->fragment_uri();
 
   if (!vfs_->is_dir(fragment_uri))
@@ -754,7 +781,7 @@ Status StorageManager::array_open(
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
-  if (object_type(array_uri) != ObjectType::ARRAY) {
+  if (!is_array(array_uri)) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }

@@ -61,6 +61,9 @@ int print_path(const char* path, tiledb_object_t type, void* data) {
     case TILEDB_ARRAY:
       std::cout << "ARRAY";
       break;
+    case TILEDB_KEY_VALUE:
+      std::cout << "KEY_VALUE";
+      break;
     case TILEDB_GROUP:
       std::cout << "GROUP";
       break;

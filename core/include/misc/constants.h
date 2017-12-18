@@ -270,6 +270,41 @@ extern const char* default_attr_name;
 /** The default dimension name prefix. */
 extern const char* default_dim_name;
 
+/** The key attribute name. */
+extern const char* key_attr_name;
+
+/** The key type attribute name. */
+extern const char* key_type_attr_name;
+
+/** The key attribute compressor. */
+extern Compressor key_attr_compressor;
+
+/** The key type attribute compressor. */
+extern Compressor key_type_attr_compressor;
+
+/**
+ * The name of the first key dimension (recall that a key in a
+ * key-value store is hashed into a 16-byte MD5 digest, which
+ * is represented as a 2-dimensional uint64_t value.
+ */
+extern const char* key_dim_1;
+
+/**
+ * The name of the second key dimension (recall that a key in a
+ * key-value store is hashed into a 16-byte MD5 digest, which
+ * is represented as a 2-dimensional uint64_t value.
+ */
+extern const char* key_dim_2;
+
+/** Name of special empty file that indicates a key-value store. */
+extern const char* kv_filename;
+
+/**
+ * Default size to be allocated for a key-value internal buffer when reading
+ * from a key-value store.
+ */
+extern uint64_t kv_buffer_size;
+
 }  // namespace constants
 
 }  // namespace tiledb
