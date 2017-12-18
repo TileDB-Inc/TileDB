@@ -154,6 +154,11 @@ const std::string& Dimension::name() const {
   return name_;
 }
 
+bool Dimension::is_anonymous() const {
+  return (
+      name_.empty() || utils::starts_with(name_, constants::default_dim_name));
+}
+
 // ===== FORMAT =====
 // dimension_name_size (unsigned int)
 // dimension_name (string)

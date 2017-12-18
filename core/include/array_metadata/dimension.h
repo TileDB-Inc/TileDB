@@ -92,6 +92,9 @@ class Dimension {
   /** Returns the dimension name. */
   const std::string& name() const;
 
+  /** Returns true if this is an anonymous (unlabled) dimension **/
+  bool is_anonymous() const;
+
   /**
    * Serializes the object members into a binary buffer.
    *
