@@ -666,12 +666,11 @@ TEST_CASE_METHOD(
   rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr2);
-  REQUIRE(rc == TILEDB_OK);
+  CHECK(rc != TILEDB_OK);
 
   tiledb_attribute_t* get_attr = nullptr;
   rc = tiledb_attribute_from_name(ctx_, array_metadata_, "", &get_attr);
-  // from name when there are multiple anon attributes is an error
-  CHECK(rc != TILEDB_OK);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_attribute_from_index(ctx_, array_metadata_, 0, &get_attr);
   CHECK(rc == TILEDB_OK);

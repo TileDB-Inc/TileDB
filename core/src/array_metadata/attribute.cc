@@ -131,7 +131,7 @@ void Attribute::dump(FILE* out) const {
 
   // Dump
   fprintf(out, "### Attribute ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
+  fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
   fprintf(out, "- Type: %s\n", type_s);
   fprintf(out, "- Compressor: %s\n", compressor_s);
   fprintf(out, "- Compression level: %d\n", compression_level_);

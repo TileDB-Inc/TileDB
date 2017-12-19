@@ -1026,7 +1026,9 @@ int tiledb_array_metadata_add_attribute(
       sanity_check(ctx, array_metadata) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_metadata->array_metadata_->add_attribute(attr->attr_);
+  if (save_error(
+          ctx, array_metadata->array_metadata_->add_attribute(attr->attr_)))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 
@@ -1100,7 +1102,6 @@ int tiledb_array_metadata_set_array_type(
           array_metadata->array_metadata_->set_array_type(
               static_cast<tiledb::ArrayType>(array_type))))
     return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 
@@ -1387,27 +1388,7 @@ int tiledb_attribute_from_name(
     return TILEDB_OK;
   }
   std::string name_string(name);
-  const tiledb::Attribute* found_attr = nullptr;
-  if (name_string.empty()) {  // anonymous attribute
-    bool found_anonymous = false;
-    for (unsigned int i = 0; i < attribute_num; i++) {
-      auto attr = array_metadata->array_metadata_->attribute(i);
-      if (attr->is_anonymous()) {
-        if (found_anonymous) {
-          save_error(
-              ctx,
-              tiledb::Status::Error("attribute from name is ambiguous when "
-                                    "there are multiple anonymous "
-                                    "attributes, use index instead"));
-          return TILEDB_ERR;
-        }
-        found_anonymous = true;
-        found_attr = attr;
-      }
-    }
-  } else {
-    found_attr = array_metadata->array_metadata_->attribute(name_string);
-  }
+  auto found_attr = array_metadata->array_metadata_->attribute(name_string);
   if (found_attr == nullptr) {
     save_error(
         ctx,
