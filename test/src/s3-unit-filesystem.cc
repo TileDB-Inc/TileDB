@@ -31,28 +31,31 @@
  */
 
 #include "catch.hpp"
-#include "s3_filesystem.h"
+#include "s3.h"
 
 #include <fstream>
-#include <iostream>
 
 using namespace tiledb;
 
-TEST_CASE("Test S3 filesystem", "[s3]") {
-  Status st = s3::connect();
+struct S3Fx {
+  tiledb::S3 s3_;
+};
+
+TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
+  Status st = s3_.connect();
   CHECK(st.ok());
 
   std::string bucket = "tiledb";
-  if (!s3::bucket_exists(bucket.c_str())) {
-    st = s3::create_bucket(bucket.c_str());
+  if (!s3_.bucket_exists(bucket.c_str())) {
+    st = s3_.create_bucket(bucket.c_str());
     CHECK(st.ok());
   }
 
-  st = s3::create_dir(URI("s3://" + bucket + "/tiledb_test_dir"));
+  st = s3_.create_dir(URI("s3://" + bucket + "/tiledb_test_dir"));
   CHECK(st.ok());
-  st = s3::create_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
+  st = s3_.create_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
   CHECK(st.ok());
-  st = s3::create_dir(
+  st = s3_.create_dir(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/subfolder"));
   CHECK(st.ok());
 
@@ -61,7 +64,7 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = s3::write_to_file(
+  st = s3_.write_to_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       write_buffer,
       buffer_size);
@@ -73,72 +76,72 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
     write_buffer_small[i] = 'a' + (i % 26);
   }
 
-  st = s3::write_to_file(
+  st = s3_.write_to_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       write_buffer_small,
       buffer_size_small);
   CHECK(st.ok());
 
-  st = s3::write_to_file(
+  st = s3_.write_to_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"),
       write_buffer_small,
       buffer_size_small);
   CHECK(st.ok());
 
-  st = s3::flush_file(
+  st = s3_.flush_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"));
   CHECK(st.ok());
-  st = s3::flush_file(
+  st = s3_.flush_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"));
   CHECK(st.ok());
 
   uint64_t nbytes = 0;
-  st = s3::file_size(
+  st = s3_.file_size(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"), &nbytes);
   CHECK(st.ok());
   CHECK(nbytes == (buffer_size + buffer_size_small));
   nbytes = 0;
-  st = s3::file_size(
+  st = s3_.file_size(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"), &nbytes);
   CHECK(st.ok());
   CHECK(nbytes == (buffer_size_small));
 
-  st = s3::create_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder2"));
+  st = s3_.create_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder2"));
   CHECK(st.ok());
-  bool is_dir = s3::is_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder2"));
+  bool is_dir = s3_.is_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder2"));
   CHECK(is_dir);
 
-  st = s3::write_to_file(
+  st = s3_.write_to_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder2/file1"),
       write_buffer_small,
       buffer_size_small);
   CHECK(st.ok());
-  st = s3::write_to_file(
+  st = s3_.write_to_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder2/file2"),
       write_buffer_small,
       buffer_size_small);
   CHECK(st.ok());
 
-  st = s3::flush_file(URI("s3://" + bucket + "/tiledb_test_dir/folder2/file1"));
+  st = s3_.flush_file(URI("s3://" + bucket + "/tiledb_test_dir/folder2/file1"));
   CHECK(st.ok());
-  st = s3::flush_file(URI("s3://" + bucket + "/tiledb_test_dir/folder2/file2"));
+  st = s3_.flush_file(URI("s3://" + bucket + "/tiledb_test_dir/folder2/file2"));
   CHECK(st.ok());
 
   std::vector<std::string> paths;
-  st = s3::ls(URI("s3://" + bucket + "/tiledb_test_dir"), &paths);
+  st = s3_.ls(URI("s3://" + bucket + "/tiledb_test_dir"), &paths);
   CHECK(st.ok());
   CHECK(paths.size() == 2);
   std::vector<std::string> paths1;
-  st = s3::ls(URI("s3://" + bucket + "/tiledb_test_dir/folder"), &paths1);
+  st = s3_.ls(URI("s3://" + bucket + "/tiledb_test_dir/folder"), &paths1);
   CHECK(st.ok());
   CHECK(paths1.size() == 3);
   std::vector<std::string> paths2;
-  st = s3::ls(URI("s3://" + bucket + "/tiledb_test_dir/folder2"), &paths2);
+  st = s3_.ls(URI("s3://" + bucket + "/tiledb_test_dir/folder2"), &paths2);
   CHECK(st.ok());
   CHECK(paths2.size() == 2);
 
   auto read_buffer = new char[26];
-  st = s3::read_from_file(
+  st = s3_.read_from_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       0,
       read_buffer,
@@ -154,7 +157,7 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
   }
   CHECK(allok == true);
 
-  st = s3::read_from_file(
+  st = s3_.read_from_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"),
       11,
       read_buffer,
@@ -170,16 +173,16 @@ TEST_CASE("Test S3 filesystem", "[s3]") {
   }
   CHECK(allok == true);
 
-  st = s3::remove_path(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
+  st = s3_.remove_path(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
   CHECK(st.ok());
-  is_dir = s3::is_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
+  is_dir = s3_.is_dir(URI("s3://" + bucket + "/tiledb_test_dir/folder"));
   CHECK(!is_dir);
 
   std::vector<std::string> paths3;
-  st = s3::ls(URI("s3://" + bucket + "/tiledb_test_dir"), &paths3);
+  st = s3_.ls(URI("s3://" + bucket + "/tiledb_test_dir"), &paths3);
   CHECK(st.ok());
   CHECK(paths3.size() == 1);
 
-  st = s3::disconnect();
-  CHECK(st.ok());
+  //  st = s3_.disconnect();
+  //  CHECK(st.ok());
 }

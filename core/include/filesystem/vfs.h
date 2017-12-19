@@ -37,12 +37,16 @@
 #include "status.h"
 #include "uri.h"
 
-#include <string>
-#include <vector>
-
 #ifdef HAVE_HDFS
 #include "hdfs.h"
 #endif
+
+#ifdef HAVE_S3
+#include "s3.h"
+#endif
+
+#include <string>
+#include <vector>
 
 namespace tiledb {
 
@@ -197,7 +201,7 @@ class VFS {
    * @param uri The URI of the file.
    * @return Status
    */
-  Status sync(const URI& uri) const;
+  Status sync(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.
@@ -208,7 +212,7 @@ class VFS {
    * @return Status
    */
   Status write_to_file(
-      const URI& uri, const void* buffer, uint64_t buffer_size) const;
+      const URI& uri, const void* buffer, uint64_t buffer_size);
 
  private:
 /* ********************************* */
@@ -216,6 +220,10 @@ class VFS {
 /* ********************************* */
 #ifdef HAVE_HDFS
   hdfsFS hdfs_;
+#endif
+
+#ifdef HAVE_S3
+  S3 s3_;
 #endif
 };
 

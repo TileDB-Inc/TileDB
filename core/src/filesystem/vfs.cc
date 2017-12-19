@@ -34,7 +34,7 @@
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
-#include "s3_filesystem.h"
+#include "s3.h"
 
 #include <iostream>
 
@@ -50,18 +50,20 @@ VFS::VFS() {
 #endif
 
 #ifdef HAVE_S3
-  Status st = s3::connect();
+  Status st = s3_.connect();
 #endif
 }
 
 VFS::~VFS() {
 #ifdef HAVE_HDFS
   if (hdfs_ != nullptr) {
+    // Do not disconnect - may lead to problems
     // Status st = hdfs::disconnect(hdfs_);
   }
 #endif
 #ifdef HAVE_S3
-    // Status st = s3::disconnect();
+    // Do not disconnect - may lead to problems
+    // Status st = s3_.disconnect();
 #endif
 }
 
@@ -93,7 +95,7 @@ Status VFS::create_dir(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::create_dir(uri);
+    return s3_.create_dir(uri);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -115,7 +117,7 @@ Status VFS::create_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::create_file(uri);
+    return s3_.create_file(uri);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -135,7 +137,7 @@ Status VFS::remove_path(const URI& uri) const {
 #endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::remove_path(uri);
+    return s3_.remove_path(uri);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -157,7 +159,7 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::remove_file(uri);
+    return s3_.remove_file(uri);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -219,7 +221,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::file_size(uri, size);
+    return s3_.file_size(uri, size);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -240,7 +242,7 @@ bool VFS::is_dir(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    bool ret = s3::is_dir(uri);
+    bool ret = s3_.is_dir(uri);
     //  std::cout<<ret<<std::endl;
     return ret;
 #else
@@ -263,7 +265,7 @@ bool VFS::is_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    bool ret = s3::is_file(uri);
+    bool ret = s3_.is_file(uri);
     //  std::cout<<ret<<std::endl;
     return ret;
 #else
@@ -285,7 +287,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 #endif
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    RETURN_NOT_OK(s3::ls(parent, &paths));
+    RETURN_NOT_OK(s3_.ls(parent, &paths));
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -323,7 +325,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3()) {
 #ifdef HAVE_S3
-      return s3::move_path(old_uri, new_uri);
+      return s3_.move_path(old_uri, new_uri);
 #else
       return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -348,7 +350,7 @@ Status VFS::read_from_file(
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::read_from_file(uri, offset, buffer, nbytes);
+    return s3_.read_from_file(uri, offset, buffer, nbytes);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -356,7 +358,7 @@ Status VFS::read_from_file(
   return Status::VFSError("Unsupported URI schemes: " + uri.to_string());
 }
 
-Status VFS::sync(const URI& uri) const {
+Status VFS::sync(const URI& uri) {
   if (uri.is_posix()) {
     return posix::sync(uri.to_path());
   }
@@ -369,7 +371,7 @@ Status VFS::sync(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::flush_file(uri);
+    return s3_.flush_file(uri);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif
@@ -378,7 +380,7 @@ Status VFS::sync(const URI& uri) const {
 }
 
 Status VFS::write_to_file(
-    const URI& uri, const void* buffer, uint64_t buffer_size) const {
+    const URI& uri, const void* buffer, uint64_t buffer_size) {
   if (uri.is_posix()) {
     return posix::write_to_file(uri.to_path(), buffer, buffer_size);
   }
@@ -391,7 +393,7 @@ Status VFS::write_to_file(
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3::write_to_file(uri, buffer, buffer_size);
+    return s3_.write_to_file(uri, buffer, buffer_size);
 #else
     return Status::VFSError("TileDB was built without S3 support");
 #endif

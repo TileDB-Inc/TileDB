@@ -31,16 +31,16 @@
  */
 
 #include "buffer_cache.h"
-#include <iostream>
 #include "logger.h"
 
 #ifdef HAVE_S3
-#include "s3_filesystem.h"
+#include "s3.h"
 #endif
 
 namespace tiledb {
 
-BufferCache::BufferCache() {
+BufferCache::BufferCache(S3* s3) {
+  s3_ = s3;
 }
 
 BufferCache::~BufferCache() {
@@ -64,11 +64,11 @@ Status BufferCache::write_to_file(
   }
   file_buffers[path].write(buffer, length);
   if (file_buffers[path].size() >= BUFFER_SIZE) {
-    s3::write_to_file_no_cache(
+    s3_->write_to_file_no_cache(
         uri,
         file_buffers[path].data(),
         BUFFER_SIZE);  // file_buffers[path].size());
-    Buffer* new_buffer = new Buffer();
+    auto new_buffer = new Buffer();
     new_buffer->write(
         file_buffers[path].data(BUFFER_SIZE),
         file_buffers[path].size() - BUFFER_SIZE);
@@ -90,7 +90,7 @@ Status BufferCache::flush_file(const URI& uri) {
   if (file_buffers.find(path) == file_buffers.end()) {
     return Status::IOError("No buffer found for file.");
   }
-  s3::write_to_file_no_cache(
+  s3_->write_to_file_no_cache(
       uri, file_buffers[path].data(), file_buffers[path].size());
   file_buffers[path].clear();
   file_buffers.erase(path);

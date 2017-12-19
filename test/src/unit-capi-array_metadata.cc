@@ -44,7 +44,7 @@
 #include "uri.h"
 
 #ifdef HAVE_S3
-#include "s3_filesystem.h"
+#include "s3.h"
 #endif
 
 struct ArraySchemaFx {
@@ -53,6 +53,7 @@ struct ArraySchemaFx {
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";
 #elif HAVE_S3
+  tiledb::S3 s3_;
   const char* S3_BUCKET = "tiledb";
   const std::string URI_PREFIX = "s3://tiledb";
   const std::string TEMP_DIR = "/tiledb_test/";
@@ -102,6 +103,10 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
 
   ArraySchemaFx() {
+#if HAVE_S3
+    s3_.connect();
+#endif
+
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
     if (rc != TILEDB_OK) {
@@ -142,9 +147,9 @@ struct ArraySchemaFx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if (!tiledb::s3::bucket_exists(S3_BUCKET))
-      tiledb::s3::create_bucket(S3_BUCKET);
-    bool ret = tiledb::s3::is_dir(tiledb::URI(URI_PREFIX + path));
+    if (!s3_.bucket_exists(S3_BUCKET))
+      s3_.create_bucket(S3_BUCKET);
+    bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
     return ret;
 #else
     std::string cmd = std::string("test -d ") + path;
@@ -157,7 +162,7 @@ struct ArraySchemaFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    tiledb::s3::remove_path(tiledb::URI(URI_PREFIX + path));
+    s3_.remove_path(tiledb::URI(URI_PREFIX + path));
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;

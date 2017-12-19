@@ -33,15 +33,18 @@
 #ifndef TILEDB_BUFFER_CACHE_H
 #define TILEDB_BUFFER_CACHE_H
 
-#include <string>
+#include "buffer.h"
+#include "uri.h"
+
+#include "s3.h"
 
 #include <sys/types.h>
 #include <string>
 #include <unordered_map>
-#include "buffer.h"
-#include "uri.h"
 
 namespace tiledb {
+
+class S3;
 
 /** Specifies the buffer cache */
 class BufferCache {
@@ -51,7 +54,7 @@ class BufferCache {
   /* ********************************* */
 
   /** Constructor. */
-  BufferCache();
+  BufferCache(S3* s3);
 
   /** Destructor. */
   ~BufferCache();
@@ -72,13 +75,15 @@ class BufferCache {
    * @param length The size of the input buffer.
    * @return Status
    */
-  Status write_to_file(
-      const URI& uri, const void* buffer, const uint64_t length);
+  Status write_to_file(const URI& uri, const void* buffer, uint64_t length);
 
+  // TODO doc
   Status flush_file(const URI& uri);
 
+  // TODO doc
   uint64_t get_buffer_size();
 
+  // TODO doc
   void set_buffer_size(uint64_t buffer_size);
 
  private:
@@ -86,12 +91,15 @@ class BufferCache {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /* */
+  S3* s3_;
+
+  /* TODO: doc */
   uint64_t BUFFER_SIZE = 5 * 1024 * 1024;
+
   /** Map containing all open buffers for files. */
   std::unordered_map<std::string, Buffer> file_buffers;
 };
 
 }  // namespace tiledb
 
-#endif /* TILEDB_BUFFER_CACHE_H */
+#endif  // TILEDB_BUFFER_CACHE_H
