@@ -39,7 +39,7 @@ endfunction()
 file(GLOB TILEDB_EXAMPLE_SOURCES "src/*.cc")
 
 # Include TileDB C API headers
-include_directories(BEFORE "${CMAKE_SOURCE_DIR}/core/include/c_api/")
+include_directories(BEFORE "${CMAKE_SOURCE_DIR}/core/include/c_api/" "${CMAKE_SOURCE_DIR}/core/include/cpp_api/")
 
 # Initialize name for example binaries
 set(EXAMPLE_BINS)
@@ -58,5 +58,5 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES})
 endforeach()
 
 # Add custom target 'examples'
-add_custom_target(examples DEPENDS tiledb_static)
+add_custom_target(examples DEPENDS tiledb_static tdbpp_static)
 add_dependencies(examples ${EXAMPLE_BINS})

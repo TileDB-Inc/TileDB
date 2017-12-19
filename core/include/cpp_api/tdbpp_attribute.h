@@ -48,21 +48,50 @@ namespace tdb {
   public:
     Attribute(Context &ctx) : _ctx(ctx) {}
     Attribute(Context &ctx, tiledb_attribute_t *attr) : _ctx(ctx) {
-      if (attr) _init(attr);
+    if (attr) _init(attr);
     }
-    ~Attribute();
+    Attribute(const Attribute &attr) = delete;
+    Attribute(Attribute &&o) : _ctx(o._ctx) {
+      *this = std::move(o);
+    }
+    Attribute &operator=(const Attribute&) = delete;
+    Attribute &operator=(Attribute&& o) {
+      _ctx = o._ctx;
+      _type = o._type;
+      _compressor = std::move(o._compressor);
+      _num = o._num;
+      _name = o._name;
+      _attr = o._attr;
+      o._attr = nullptr;
+      return *this;
+    }
+    virtual ~Attribute();
 
-  private:
-    std::reference_wrapper <Context> _ctx;
+    const std::string &name() const {
+      return _name;
+    }
+
+    const tiledb_datatype_t &type() const {
+      return _type;
+    }
+
+    unsigned int num() const {
+      return _num;
+    }
+
+  protected:
+    void _init(tiledb_attribute_t *attr);
+
+    std::reference_wrapper<Context> _ctx;
     tiledb_datatype_t _type;
     Compressor _compressor;
     unsigned int _num;
     std::string _name;
     tiledb_attribute_t *_attr;
-
-    void _init(tiledb_attribute_t *attr);
-
   };
+
 }
+
+std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);
 
 #endif //TILEDB_GENOMICS_ATTRIBUTE_H

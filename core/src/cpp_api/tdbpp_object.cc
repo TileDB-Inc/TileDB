@@ -38,3 +38,19 @@ std::ostream &operator<<(std::ostream &os, const tdb::Object &obj) {
   os << obj.to_str();
   return os;
 }
+
+std::string tdb::Object::to_str() const {
+  std::string ret = "Obj<";
+  switch(type) {
+    case Type::Array:
+      ret += "ARRAY";
+      break;
+    case Type::Group:
+      ret += "GROUP";
+      break;
+    case Type::Invalid:
+      ret += "INVALID";
+  }
+  ret += " " + uri + '>';
+  return ret;
+}

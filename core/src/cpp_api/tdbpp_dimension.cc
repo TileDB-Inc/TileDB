@@ -34,10 +34,17 @@
 
 #include "tdbpp_dimension.h"
 
-void tdb::Dimension::_init(const tiledb_dimension_t *dim) {
+void tdb::Dimension::_init(tiledb_dimension_t *dim) {
   const char* name;
-  tiledb_dimension_get_name(_ctx.get(), dim, &name);
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_dimension_get_name(ctx, dim, &name));
   _name = std::string(name);
-  tiledb_dimension_get_domain(_ctx.get(), dim, &_domain);
-  tiledb_dimension_get_tile_extent(_ctx.get(), dim, &_tile_extent);
+  ctx.handle_error(tiledb_dimension_get_domain(ctx, dim, &_domain));
+  ctx.handle_error(tiledb_dimension_get_tile_extent(ctx, dim, &_tile_extent));
+  ctx.handle_error(tiledb_dimension_get_type(ctx, dim, &_type));
+}
+
+std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim) {
+  os << "Dim<" << dim.name() << '>';
+  return os;
 }

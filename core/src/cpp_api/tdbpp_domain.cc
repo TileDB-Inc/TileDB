@@ -35,20 +35,38 @@
 #include "tdbpp_context.h"
 
 
-void tdb::Domain::_init(const tiledb_domain_t *domain) {
+void tdb::Domain::_init(tiledb_domain_t *domain) {
+  _domain = domain;
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_domain_get_type(ctx, domain, &_type));
 
-  tiledb_dimension_iter_t *iter;
-  const tiledb_dimension_t *curr;
-  ctx.handle_error(tiledb_dimension_iter_create(ctx, domain, &iter));
-  int done;
-  ctx.handle_error(tiledb_dimension_iter_done(ctx, iter, &done));
-  while(!done) {
-    ctx.handle_error(tiledb_dimension_iter_here(ctx, iter, &curr));
-    _dims.emplace_back(_ctx, curr);
-    ctx.handle_error(tiledb_dimension_iter_next(ctx, iter));
+  unsigned int ndim;
+  tiledb_dimension_t *dimptr;
+  ctx.handle_error(tiledb_domain_get_rank(ctx, domain, &ndim));
+  for (unsigned int i = 0; i < ndim; ++i) {
+    ctx.handle_error(tiledb_dimension_from_index(ctx, domain, i, &dimptr));
+    Dimension *dim = new Dimension(_ctx, dimptr);
+    _dims[dim->name()] = dim;
   }
 
-  ctx.handle_error(tiledb_dimension_iter_free(ctx, iter));
+}
+
+tdb::Domain::~Domain() {
+  for (auto &d : _dims) {
+    delete d.second;
+  }
+  if (_domain != nullptr) {
+    _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), _domain));
+  }
+}
+
+std::ostream &operator<<(std::ostream &os, const tdb::Domain &d) {
+  os << "Domain<(" << tdb::type::from_tiledb(d.type()) << ")";
+  auto dims = d.dimension_names();
+  for (const auto &n : dims) {
+    const auto &dimension = d.get_dimension(n);
+    os << " " << dimension;
+  }
+  os << '>';
+  return os;
 }

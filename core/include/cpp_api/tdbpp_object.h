@@ -37,6 +37,7 @@
 
 #include "tiledb.h"
 #include <iostream>
+#include <type_traits>
 
 namespace tdb {
 
@@ -67,20 +68,7 @@ namespace tdb {
       }
     }
 
-    std::string to_str() const {
-      std::string ret = uri + "\t";
-      switch(type) {
-        case Type::Array:
-          ret += "ARRAY";
-          break;
-        case Type::Group:
-          ret += "GROUP";
-          break;
-        case Type::Invalid:
-          ret += "INVALID";
-      }
-      return ret;
-    }
+    std::string to_str() const;
   };
 
   struct Compressor {

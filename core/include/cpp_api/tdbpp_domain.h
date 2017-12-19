@@ -37,8 +37,9 @@
 
 #include "tiledb.h"
 #include "tdbpp_dimension.h"
+#include "tdbpp_type.h"
 
-#include <vector>
+#include <unordered_map>
 #include <functional>
 
 namespace tdb {
@@ -49,21 +50,52 @@ namespace tdb {
   class Domain {
   public:
     Domain(Context &ctx) : _ctx(ctx) {}
-    Domain(Context &ctx, const tiledb_domain_t *domain) : _ctx(ctx){
+    Domain(Context &ctx, tiledb_domain_t *domain) : _ctx(ctx){
       if (domain != nullptr) _init(domain);
     }
-    Domain(const Domain&) = default;
-    Domain(Domain&&) = default;
-    Domain &operator=(const Domain&) = default;
-    Domain &operator=(Domain&&) = default;
+    Domain(const Domain& o) = delete;
+    Domain(Domain&& o) : _ctx(o._ctx){
+      *this = std::move(o);
+    }
+    Domain &operator=(const Domain&) = delete;
+    Domain &operator=(Domain&& o) {
+      _ctx = o._ctx;
+      _dims = std::move(o._dims);
+      _type = o._type;
+      _domain = o._domain;
+      o._domain = nullptr;
+      return *this;
+    }
+    ~Domain();
+
+    const tiledb_datatype_t &type() const {
+      return _type;
+    }
+
+    std::vector<std::string> dimension_names() const {
+      std::vector<std::string> dims;
+      dims.reserve(_dims.size());
+      for (const auto &d : _dims) {
+        dims.push_back(d.first);
+      }
+      return dims;
+    }
+
+    const Dimension &get_dimension(const std::string &name) const {
+      return *_dims.at(name);
+    }
 
   private:
     std::reference_wrapper<Context> _ctx;
-    std::vector<Dimension> _dims;
+    // Note this is a ptr since maps don't support incomplete types, unlike vector
+    std::unordered_map<std::string, Dimension*> _dims;
     tiledb_datatype_t _type;
+    tiledb_domain_t *_domain;
 
-    void _init(const tiledb_domain_t *domain);
+    void _init(tiledb_domain_t *domain);
   };
 }
+
+std::ostream &operator<<(std::ostream &os, const tdb::Domain &d);
 
 #endif //TILEDB_GENOMICS_DOMAIN_H

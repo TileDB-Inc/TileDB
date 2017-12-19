@@ -42,34 +42,53 @@
 
 #include <sstream>
 #include <memory>
+#include <unordered_map>
 
 namespace tdb {
 
   class Context;
 
-  struct ArrayConfig {
+  class ArrayMetadata {
   public:
-    ArrayConfig(Context &ctx) : domain(ctx), _ctx(ctx) {};
-    ArrayConfig(Context &ctx, tiledb_array_metadata_t *meta) : domain(ctx), _ctx(ctx) {
+    ArrayMetadata(Context &ctx) : _domain(ctx), _ctx(ctx) {};
+    ArrayMetadata(Context &ctx, tiledb_array_metadata_t *meta) : _domain(ctx), _ctx(ctx) {
       _init(meta);
     };
-    ArrayConfig(Context &ctx, const std::string &uri) : domain(ctx), _ctx(ctx) {
+    ArrayMetadata(Context &ctx, const std::string &uri) : _domain(ctx), _ctx(ctx) {
       _init(uri);
     }
-    ~ArrayConfig();
+    ArrayMetadata(const ArrayMetadata&) = delete;
+    ArrayMetadata(ArrayMetadata&& o);
+    ArrayMetadata &operator=(ArrayMetadata&) = delete;
+    ArrayMetadata &operator=(ArrayMetadata &&o);
+    ~ArrayMetadata();
+    std::string to_str() const;
 
-    Domain domain;
-    tiledb_array_type_t type;
-    tiledb_layout_t tile_layout;
-    tiledb_layout_t cell_layout;
-    uint64_t capacity;
-    Compressor coords;
-    std::string uri;
+    const std::string &uri() const {
+      return _uri;
+    }
 
-    std::string to_str() const {
-      std::stringstream ss;
-      ss << (type == TILEDB_DENSE ? "Dense" : "Sparse") << " array: " << uri;
-      return ss.str();
+    void load(const std::string &uri) {
+      _init(uri);
+    }
+
+    const Domain &domain() const {
+      return _domain;
+    }
+
+    const Compressor &coord_compressor() const {
+      return _coords;
+    }
+
+    const std::unordered_map<std::string, Attribute> &attributes() const {
+      return _attrs;
+    };
+
+    std::vector<std::string> attribute_names() const {
+      std::vector<std::string> ret;
+      ret.reserve(_attrs.size());
+      for (const auto& a : _attrs) ret.push_back(a.first);
+      return ret;
     }
 
   private:
@@ -78,34 +97,61 @@ namespace tdb {
     void _init(tiledb_array_metadata_t* meta);
     void _init(const std::string &uri);
 
+    Domain _domain;
     std::reference_wrapper<Context> _ctx;
-    std::vector<Attribute> _attrs;
+    std::unordered_map<std::string, Attribute> _attrs;
     tiledb_array_metadata_t *_meta = nullptr;
-
-
+    tiledb_array_type_t _type;
+    tiledb_layout_t _tile_layout;
+    tiledb_layout_t _cell_layout;
+    uint64_t _capacity;
+    Compressor _coords;
+    std::string _uri;
   };
 
 
   class Array {
   public:
-    Array(ArrayConfig &config) : _ctx(config._ctx), _meta(config) {}
+    Array(ArrayMetadata &&meta) : _ctx(meta._ctx), _meta(std::move(meta)) {}
+    Array(Context &ctx) : _ctx(ctx), _meta(_ctx) {}
     Array(Context &ctx, const std::string &uri) : _ctx(ctx), _meta(_ctx, uri) {}
-    Array(const Array&) = default;
+    Array(const Array&) = delete;
     Array(Array&&) = default;
-    Array &operator=(const Array&) = default;
+    Array &operator=(const Array&) = delete;
     Array &operator=(Array&&) = default;
 
     const std::string &uri() const {
-      return _meta.uri;
+      return _meta._uri;
     }
 
     bool good() const {
       return !uri().empty();
     }
 
+    void load(const std::string &uri) {
+      _meta.load(uri);
+    }
+
+    Context &context() {
+      return _ctx.get();
+    }
+
+    const Context &context() const {
+      return _ctx.get();
+    }
+
+
+    ArrayMetadata &meta() {
+      return _meta;
+    }
+
+    const ArrayMetadata &meta() const {
+      return _meta;
+    }
+
   private:
     std::reference_wrapper<Context> _ctx;
-    ArrayConfig _meta;
+    ArrayMetadata _meta;
   };
 
 
@@ -113,7 +159,7 @@ namespace tdb {
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Array &array);
-std::ostream &operator<<(std::ostream &os, const tdb::ArrayConfig &config);
+std::ostream &operator<<(std::ostream &os, const tdb::ArrayMetadata &);
 
 
 #endif //TILEDB_GENOMICS_ARRAY_H

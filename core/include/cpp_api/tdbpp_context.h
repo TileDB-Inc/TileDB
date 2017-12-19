@@ -47,7 +47,7 @@
 namespace tdb {
 
   class Array;
-  struct ArrayConfig;
+  struct ArrayMetadata;
 
   class Context {
   public:
@@ -161,7 +161,7 @@ namespace tdb {
 
     Array array_get(const std::string &uri);
 
-    Array array_create(const ArrayConfig &meta);
+    Array array_create(const ArrayMetadata &meta);
 
 
     void handle_error(int ret);

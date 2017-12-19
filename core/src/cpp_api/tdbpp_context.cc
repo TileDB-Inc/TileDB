@@ -49,14 +49,14 @@ void tdb::Context::set_root(const std::string &root) {
 }
 
 tdb::Array tdb::Context::array_find(const std::string &name) {
-  auto ret = Array(*this, "");
+  auto ret = Array(*this);
   bool found = false;
   for (const auto &i : *this) {
     if (i.type != Object::Type::Array) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
       if (found) throw std::runtime_error("Multiple matches found, exctend search path.");
       found = true;
-      ret = Array(*this, i.uri);
+      ret.load(i.uri);
     }
   }
   return ret;
@@ -130,6 +130,6 @@ tdb::Array tdb::Context::array_get(const std::string &uri) {
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {
-  os << ctx.context_type();
+  os << "Ctx<" << ctx.context_type() << ">";
   return os;
 }
