@@ -711,7 +711,28 @@ int tiledb_dimension_from_name(
     *dim = nullptr;
     return TILEDB_OK;
   }
-  auto found_dim = domain->domain_->dimension(std::string(name));
+  std::string name_string(name);
+  const tiledb::Dimension* found_dim = nullptr;
+  if (name_string.empty()) {  // anonymous dimension
+    bool found_anonymous = false;
+    for (unsigned int i = 0; i < ndim; i++) {
+      auto dim = domain->domain_->dimension(i);
+      if (dim->is_anonymous()) {
+        if (found_anonymous) {
+          save_error(
+              ctx,
+              tiledb::Status::Error("dimension from name is ambiguous when "
+                                    "there are multiple anonymous "
+                                    "dimensions, use index instead"));
+          return TILEDB_ERR;
+        }
+        found_anonymous = true;
+        found_dim = dim;
+      }
+    }
+  } else {
+    found_dim = domain->domain_->dimension(name_string);
+  }
   if (found_dim == nullptr) {
     save_error(
         ctx,
@@ -1296,8 +1317,28 @@ int tiledb_attribute_from_name(
     *attr = nullptr;
     return TILEDB_OK;
   }
-  auto found_attr =
-      array_metadata->array_metadata_->attribute(std::string(name));
+  std::string name_string(name);
+  const tiledb::Attribute* found_attr = nullptr;
+  if (name_string.empty()) {  // anonymous attribute
+    bool found_anonymous = false;
+    for (unsigned int i = 0; i < attribute_num; i++) {
+      auto attr = array_metadata->array_metadata_->attribute(i);
+      if (attr->is_anonymous()) {
+        if (found_anonymous) {
+          save_error(
+              ctx,
+              tiledb::Status::Error("attribute from name is ambiguous when "
+                                    "there are multiple anonymous "
+                                    "attributes, use index instead"));
+          return TILEDB_ERR;
+        }
+        found_anonymous = true;
+        found_attr = attr;
+      }
+    }
+  } else {
+    found_attr = array_metadata->array_metadata_->attribute(name_string);
+  }
   if (found_attr == nullptr) {
     save_error(
         ctx,

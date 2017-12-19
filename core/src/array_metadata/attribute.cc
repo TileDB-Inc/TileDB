@@ -146,6 +146,11 @@ const std::string& Attribute::name() const {
   return name_;
 }
 
+bool Attribute::is_anonymous() const {
+  return name_.empty() ||
+         utils::starts_with(name_, constants::default_attr_name);
+}
+
 // ===== FORMAT =====
 // attribute_name_size (unsigned int)
 // attribute_name (string)
