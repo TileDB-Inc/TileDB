@@ -30,8 +30,8 @@
  * This file includes declarations of S3 filesystem functions.
  */
 
-#ifndef TILEDB_FILESYSTEM_S3_H
-#define TILEDB_FILESYSTEM_S3_H
+#ifndef TILEDB_S3_FILESYSTEM_H
+#define TILEDB_S3_FILESYSTEM_H
 
 #include <sys/types.h>
 #include <string>
@@ -212,8 +212,8 @@ Status file_size(const URI& uri, uint64_t* nbytes);
 
 #endif
 
-}  // namespace hdfs
+}  // namespace s3
 
 }  // namespace tiledb
 
-#endif  // TILEDB_FILESYSTEM_S3_H
+#endif  // TILEDB_S3_FILESYSTEM_H

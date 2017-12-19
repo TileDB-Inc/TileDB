@@ -65,13 +65,21 @@ Status BufferCache::write_to_file(
   file_buffers[path].write(buffer, length);
   if (file_buffers[path].size() >= BUFFER_SIZE) {
     s3::write_to_file_no_cache(
-        uri, file_buffers[path].data(), BUFFER_SIZE);//file_buffers[path].size());
+        uri,
+        file_buffers[path].data(),
+        BUFFER_SIZE);  // file_buffers[path].size());
     Buffer* new_buffer = new Buffer();
-    new_buffer->write(file_buffers[path].data(BUFFER_SIZE), file_buffers[path].size()-BUFFER_SIZE);
+    new_buffer->write(
+        file_buffers[path].data(BUFFER_SIZE),
+        file_buffers[path].size() - BUFFER_SIZE);
     file_buffers[path].clear();
     file_buffers.erase(path);
-    file_buffers[path] = (*new_buffer); 
+    file_buffers[path] = (*new_buffer);
   }
+#else
+  (void)uri;
+  (void)buffer;
+  (void)length;
 #endif
   return Status::Ok();
 }
@@ -86,6 +94,8 @@ Status BufferCache::flush_file(const URI& uri) {
       uri, file_buffers[path].data(), file_buffers[path].size());
   file_buffers[path].clear();
   file_buffers.erase(path);
+#else
+  (void)uri;
 #endif
   return Status::Ok();
 }

@@ -698,11 +698,11 @@ TILEDB_EXPORT int tiledb_array_metadata_set_coords_compressor(
     int compression_level);
 
 /**
- * Sets the offsets compressor.
+ * Sets the variable-sized attribute value offsets compressor.
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param compressor The coordinates compressor.
+ * @param compressor The offsets compressor.
  * @param compression_level The coordinates compression level.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */

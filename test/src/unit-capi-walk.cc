@@ -63,7 +63,7 @@ bool dir_exists(std::string path) {
   return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
   tiledb::s3::connect();
-  if(!tiledb::s3::bucket_exists(S3_BUCKET))
+  if (!tiledb::s3::bucket_exists(S3_BUCKET))
     tiledb::s3::create_bucket(S3_BUCKET);
   bool ret = tiledb::s3::is_dir(tiledb::URI(path));
   return ret;
@@ -177,6 +177,8 @@ void create_hierarchy() {
   tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D"));
   tiledb::s3::create_file(
       tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D/__array_metadata.tdb"));
+  tiledb::s3::create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/kv"));
+  tiledb::s3::create_file(tiledb::URI(TEMP_DIR + "/dense_arrays/kv/__kv.tdb"));
 #else
   std::string cmd_1 = std::string("mkdir ") + TEMP_DIR;
   std::string cmd_2 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays";

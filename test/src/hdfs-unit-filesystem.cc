@@ -1,5 +1,5 @@
 /**
- * @file   opt-unit_hdfs_fisystem.cc
+ * @file   hdfs-unit-filesystem.cc
  *
  * @section LICENSE
  *
