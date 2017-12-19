@@ -42,7 +42,7 @@
 namespace tdb {
 
   struct Object {
-    enum class Type {Array, Group, Invalid};
+    enum class Type {Array, Group, Invalid, KeyValue};
 
     Type type = Type::Invalid;
     std::string uri;
@@ -64,6 +64,9 @@ namespace tdb {
           break;
         case TILEDB_INVALID:
           type = Type::Invalid;
+          break;
+        case TILEDB_KEY_VALUE:
+          type = Type::KeyValue;
           break;
       }
     }

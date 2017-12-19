@@ -55,16 +55,7 @@ namespace tdb {
       *this = std::move(o);
     }
     Dimension &operator=(const Dimension&) = delete;
-    Dimension &operator=(Dimension&& o) {
-      _ctx = o._ctx;
-      _name = std::move(o._name);
-      _domain = o._domain;
-      _tile_extent = o._tile_extent;
-      _type = o._type;
-      o._domain = nullptr;
-      o._tile_extent = nullptr;
-      return *this;
-    }
+    Dimension &operator=(Dimension&& o);
 
     const std::string &name() const {
       return _name;

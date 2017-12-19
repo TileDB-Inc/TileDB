@@ -62,7 +62,7 @@ tdb::Query &tdb::Query::operator=(tdb::Query &&o) {
 template<typename T>
 tdb::Query &tdb::Query::subarray(const std::vector<typename T::type> &pairs) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_by_subarray(ctx, _query, pairs.data(), T::tiledb_datatype));
+  ctx.handle_error(tiledb_query_set_subarray(ctx, _query, pairs.data(), T::tiledb_datatype));
   return *this;
 }
 
@@ -87,6 +87,9 @@ const std::vector<uint64_t> &tdb::Query::submit() {
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_set_buffers(ctx, _query, _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
   ctx.handle_error(tiledb_query_submit(ctx, _query));
+  for (size_t i = 0; i < _attrs.size(); ++i) {
+    _buff_sizes[i] = _buff_sizes[i] / _sub_tsize[i];
+  }
   return _buff_sizes;
 }
 
@@ -94,6 +97,8 @@ void tdb::Query::_prepare_buffers() {
   _all_buff.clear();
   _buff_sizes.clear();
   _attr_names.clear();
+  _sub_tsize.clear();
+
   if (_attrs.empty()) {
     for (const auto &a : _array.get().attributes()) {
       _attrs.push_back(a.first);
@@ -104,13 +109,20 @@ void tdb::Query::_prepare_buffers() {
     if (_attr_buffs.count(a) == 0) {
       throw std::runtime_error("No buffer for attribute " + a);
     }
+    uint64_t bufsize;
+    size_t tsize;
+    void* ptr;
     if (_var_offsets.count(a)) {
-      _all_buff.push_back(_var_offsets[a].second);
-      _buff_sizes.push_back(_var_offsets[a].first);
+      std::tie(bufsize, tsize, ptr) = _var_offsets[a];
+      _all_buff.push_back(ptr);
+      _buff_sizes.push_back(bufsize*tsize);
+      _sub_tsize.push_back(tsize);
     }
-    _all_buff.push_back(_attr_buffs[a].second);
-    _buff_sizes.push_back(_attr_buffs[a].first);
+    std::tie(bufsize, tsize, ptr) = _attr_buffs[a];
+    _all_buff.push_back(ptr);
+    _buff_sizes.push_back(bufsize*tsize);
     _attr_names.push_back(a.data());
+    _sub_tsize.push_back(tsize);
   }
 
   _all_buff.shrink_to_fit();

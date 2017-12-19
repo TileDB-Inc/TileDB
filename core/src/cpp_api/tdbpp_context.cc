@@ -133,3 +133,8 @@ std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {
   os << "Ctx<" << ctx.context_type() << ">";
   return os;
 }
+
+void tdb::Context::iterator::_init(const std::string &root, tiledb_ctx_t *ctx) {
+  _ictx.handle_error(tiledb_walk(ctx, root.c_str(), TILEDB_PREORDER, _obj_getter, &_objs));
+  _curr = 0;
+}

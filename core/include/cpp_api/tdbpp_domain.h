@@ -58,28 +58,14 @@ namespace tdb {
       *this = std::move(o);
     }
     Domain &operator=(const Domain&) = delete;
-    Domain &operator=(Domain&& o) {
-      _ctx = o._ctx;
-      _dims = std::move(o._dims);
-      _type = o._type;
-      _domain = o._domain;
-      o._domain = nullptr;
-      return *this;
-    }
+    Domain &operator=(Domain&& o);
     ~Domain();
 
     const tiledb_datatype_t &type() const {
       return _type;
     }
 
-    std::vector<std::string> dimension_names() const {
-      std::vector<std::string> dims;
-      dims.reserve(_dims.size());
-      for (const auto &d : _dims) {
-        dims.push_back(d.first);
-      }
-      return dims;
-    }
+    std::vector<std::string> dimension_names() const;
 
     const Dimension &get_dimension(const std::string &name) const {
       return *_dims.at(name);

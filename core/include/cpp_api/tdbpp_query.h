@@ -80,7 +80,7 @@ namespace tdb {
       if (_array.get().attributes().at(attr).num() == TILEDB_VAR_NUM) {
         throw std::invalid_argument("Offsets must be provided for variable length attributes.");
       }
-      _attr_buffs[attr] = std::make_pair<uint64_t, void*>(buf.size(), buf.data());
+      _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
@@ -94,8 +94,8 @@ namespace tdb {
       if (_array.get().attributes().at(attr).num() != TILEDB_VAR_NUM) {
         throw std::invalid_argument("Offsets provided for non-variable length attributes.");
       }
-      _var_offsets[attr] = std::make_pair<uint64_t, void*>(offsets.size(), offsets.data());
-      _attr_buffs[attr] = std::make_pair<uint64_t, void*>(buf.size(), buf.data());
+      _var_offsets[attr] = std::make_tuple<uint64_t, size_t, void*>(offsets.size(), sizeof(V), offsets.data());
+      _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
@@ -108,9 +108,11 @@ namespace tdb {
     std::reference_wrapper<Context> _ctx;
     std::reference_wrapper<ArrayMetadata> _array;
     std::vector<std::string> _attrs;
-    std::unordered_map<std::string, std::pair<uint64_t, void*>> _var_offsets;
-    std::unordered_map<std::string, std::pair<uint64_t, void*>> _attr_buffs;
+    // Size of the vector, size of vector::value_type, vector.data()
+    std::unordered_map<std::string, std::tuple<uint64_t, size_t, void*>> _var_offsets;
+    std::unordered_map<std::string, std::tuple<uint64_t, size_t, void*>> _attr_buffs;
 
+    std::vector<uint64_t> _sub_tsize; // Keeps track of vector value_type sizes to convert back at return
     std::vector<const char*> _attr_names;
     std::vector<void*> _all_buff;
     std::vector<uint64_t> _buff_sizes;

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_type.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,60 +29,24 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This defines TileDB datatypes for the C++ API.
  */
 
-#ifndef TILEDB_GENOMICS_ATTRIBUTE_H
-#define TILEDB_GENOMICS_ATTRIBUTE_H
+#include "tdbpp_type.h"
 
-#include "tdbpp_object.h"
-#include "tiledb.h"
-
-#include <functional>
-
-namespace tdb {
-
-  class Context;
-
-  class Attribute {
-  public:
-    Attribute(Context &ctx) : _ctx(ctx) {}
-    Attribute(Context &ctx, tiledb_attribute_t *attr) : _ctx(ctx) {
-    if (attr) _init(attr);
-    }
-    Attribute(const Attribute &attr) = delete;
-    Attribute(Attribute &&o) : _ctx(o._ctx) {
-      *this = std::move(o);
-    }
-    Attribute &operator=(const Attribute&) = delete;
-    Attribute &operator=(Attribute&& o);
-    virtual ~Attribute();
-
-    const std::string &name() const {
-      return _name;
-    }
-
-    const tiledb_datatype_t &type() const {
-      return _type;
-    }
-
-    unsigned int num() const {
-      return _num;
-    }
-
-  protected:
-    void _init(tiledb_attribute_t *attr);
-
-    std::reference_wrapper<Context> _ctx;
-    tiledb_datatype_t _type;
-    Compressor _compressor;
-    unsigned int _num;
-    std::string _name;
-    tiledb_attribute_t *_attr;
-  };
-
+std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
+  switch(type) {
+    case TILEDB_CHAR: return "char";
+    case TILEDB_INT8: return "int8";
+    case TILEDB_UINT8: return "uint8";
+    case TILEDB_INT16: return "int16";
+    case TILEDB_UINT16: return "uint16";
+    case TILEDB_INT32: return "int32";
+    case TILEDB_UINT32: return "uint32";
+    case TILEDB_INT64: return "int64";
+    case TILEDB_UINT64: return "uint64";
+    case TILEDB_FLOAT32: return "float32";
+    case TILEDB_FLOAT64: return "float64";
+  }
+  return "";
 }
-
-std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);
-
-#endif //TILEDB_GENOMICS_ATTRIBUTE_H

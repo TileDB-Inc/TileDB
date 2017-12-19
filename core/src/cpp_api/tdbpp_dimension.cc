@@ -44,6 +44,17 @@ void tdb::Dimension::_init(tiledb_dimension_t *dim) {
   ctx.handle_error(tiledb_dimension_get_type(ctx, dim, &_type));
 }
 
+tdb::Dimension &tdb::Dimension::operator=(tdb::Dimension &&o) {
+  _ctx = o._ctx;
+  _name = std::move(o._name);
+  _domain = o._domain;
+  _tile_extent = o._tile_extent;
+  _type = o._type;
+  o._domain = nullptr;
+  o._tile_extent = nullptr;
+  return *this;
+}
+
 std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim) {
   os << "Dim<" << dim.name() << '>';
   return os;

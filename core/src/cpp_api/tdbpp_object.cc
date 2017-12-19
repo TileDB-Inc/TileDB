@@ -50,6 +50,10 @@ std::string tdb::Object::to_str() const {
       break;
     case Type::Invalid:
       ret += "INVALID";
+      break;
+    case Type::KeyValue:
+      ret += "KEYVALUE";
+      break;
   }
   ret += " " + uri + '>';
   return ret;

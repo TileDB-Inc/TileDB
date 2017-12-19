@@ -60,6 +60,24 @@ tdb::Domain::~Domain() {
   }
 }
 
+std::vector<std::string> tdb::Domain::dimension_names() const {
+  std::vector<std::string> dims;
+  dims.reserve(_dims.size());
+  for (const auto &d : _dims) {
+    dims.push_back(d.first);
+  }
+  return dims;
+}
+
+tdb::Domain &tdb::Domain::operator=(tdb::Domain &&o) {
+  _ctx = o._ctx;
+  _dims = std::move(o._dims);
+  _type = o._type;
+  _domain = o._domain;
+  o._domain = nullptr;
+  return *this;
+}
+
 std::ostream &operator<<(std::ostream &os, const tdb::Domain &d) {
   os << "Domain<(" << tdb::type::from_tiledb(d.type()) << ")";
   auto dims = d.dimension_names();

@@ -126,10 +126,7 @@ namespace tdb {
       std::vector<Object> _objs;
       Context &_ictx;
 
-      void _init(const std::string &root, tiledb_ctx_t *ctx) {
-        _ictx.handle_error(tiledb_walk(ctx, root.c_str(), TILEDB_PREORDER, _obj_getter, &_objs));
-        _curr = 0;
-      }
+      void _init(const std::string &root, tiledb_ctx_t *ctx);
 
       static int _obj_getter(const char* path, tiledb_object_t type, void *d) {
         Object obj;

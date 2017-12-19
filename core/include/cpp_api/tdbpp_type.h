@@ -88,22 +88,7 @@ namespace tdb {
     template<> struct type_from_tiledb<TILEDB_FLOAT32> {using type = FLOAT32;};
     template<> struct type_from_tiledb<TILEDB_FLOAT64> {using type = FLOAT64;};
 
-    inline std::string from_tiledb(const tiledb_datatype_t &type) {
-      switch(type) {
-        case TILEDB_CHAR: return "char";
-        case TILEDB_INT8: return "int8";
-        case TILEDB_UINT8: return "uint8";
-        case TILEDB_INT16: return "int16";
-        case TILEDB_UINT16: return "uint16";
-        case TILEDB_INT32: return "int32";
-        case TILEDB_UINT32: return "uint32";
-        case TILEDB_INT64: return "int64";
-        case TILEDB_UINT64: return "uint64";
-        case TILEDB_FLOAT32: return "float32";
-        case TILEDB_FLOAT64: return "float64";
-      }
-      return "";
-    }
+    std::string from_tiledb(const tiledb_datatype_t &type);
   }
 
   template <class T, template <class...> class Template>
