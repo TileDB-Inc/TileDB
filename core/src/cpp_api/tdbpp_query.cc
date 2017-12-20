@@ -68,6 +68,9 @@ tdb::Query &tdb::Query::subarray(const std::vector<typename T::type> &pairs) {
 
 tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
+  if (layout == TILEDB_UNORDERED && _array.get().type() == TILEDB_DENSE) {
+    throw std::invalid_argument("Unordered layout invalid for dense arrays.");
+  }
   ctx.handle_error(tiledb_query_set_layout(ctx, _query, layout));
   return *this;
 }
@@ -90,7 +93,7 @@ tdb::Query::Status tdb::Query::submit() {
   for (size_t i = 0; i < _attrs.size(); ++i) {
     _buff_sizes[i] = _buff_sizes[i] / _sub_tsize[i];
   }
-  return status();
+  return query_status();
 }
 
 void tdb::Query::_prepare_buffers() {
@@ -130,10 +133,21 @@ void tdb::Query::_prepare_buffers() {
   _attr_names.shrink_to_fit();
 }
 
-tdb::Query::Status tdb::Query::status() {
+tdb::Query::Status tdb::Query::query_status() {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_get_status(ctx, _query, &status));
+  return tiledb_to_status(status);
+}
+
+tdb::Query::Status tdb::Query::attribute_status(const std::string &attr) {
+  tiledb_query_status_t status;
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_query_get_attribute_status(ctx, _query, attr.c_str(), &status));
+  return tiledb_to_status(status);
+}
+
+tdb::Query::Status tdb::Query::tiledb_to_status(const tiledb_query_status_t &status) {
   switch (status) {
     case TILEDB_INCOMPLETE:
       return Status::INCOMPLETE;

@@ -58,3 +58,21 @@ std::string tdb::Object::to_str() const {
   ret += " " + uri + '>';
   return ret;
 }
+
+std::string tdb::from_tiledb(const tiledb_layout_t &layout) {
+  switch (layout) {
+    case TILEDB_GLOBAL_ORDER:
+      return "GLOBAL";
+    case TILEDB_ROW_MAJOR:
+      return "ROW-MAJOR";
+    case TILEDB_COL_MAJOR:
+      return "COL-MAJOR";
+    case TILEDB_UNORDERED:
+      return "UNORDERED";
+  }
+  return "";
+}
+
+std::string tdb::from_tiledb(const tiledb_array_type_t &type) {
+  return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
+}

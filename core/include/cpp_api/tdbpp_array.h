@@ -64,6 +64,10 @@ namespace tdb {
     ~ArrayMetadata();
     std::string to_str() const;
 
+    tiledb_array_type_t type() const {
+      return _type;
+    }
+
     const std::string &uri() const {
       return _uri;
     }

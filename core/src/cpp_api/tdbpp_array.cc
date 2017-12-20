@@ -75,7 +75,7 @@ tdb::ArrayMetadata::~ArrayMetadata() {
 std::string tdb::ArrayMetadata::to_str() const {
   std::stringstream ss;
   ss << "ArrayMetadata<";
-  ss << (_type == TILEDB_DENSE ? "DENSE" : "SPARSE");
+  ss << from_tiledb(_type);
   ss << ' ' << _domain;
   for (const auto &a : _attrs) {
     ss << ' ' << a.second;

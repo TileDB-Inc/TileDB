@@ -114,31 +114,22 @@ namespace tdb {
       auto num = _array.get().attributes().at(attr).num();
       if (num != TILEDB_VAR_NUM) throw std::runtime_error("Use resize_buffer for fixed size attributes.");
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
-      std::cout << num << '\n';
       offsets.resize(num / expected_size);
       set_buffer<DataT>(attr, buff, offsets);
       return *this;
     }
 
-    template <typename T>
-    static std::vector<std::vector<T>>
-    group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
-                  uint64_t num_offset, uint64_t num_buff) {
-      std::vector<std::vector<T>> ret;
-      ret.reserve(num_offset);
-      for (unsigned i = 0; i < num_offset; ++i) {
-        ret.emplace_back(buff.begin() + offsets[i], (i == num_offset - 1) ? buff.begin()+num_buff : buff.begin()+offsets[i+1]);
-      }
-      return ret;
-    }
+    static Status tiledb_to_status(const tiledb_query_status_t &status);
+
+    Status query_status();
+
+    Status attribute_status(const std::string &attr);
+
+    Status submit();
 
     const std::vector<uint64_t> &buff_sizes() const {
       return _buff_sizes;
     }
-
-    Status status();
-
-    Status submit();
 
   private:
     void _prepare_buffers();
@@ -171,6 +162,18 @@ namespace tdb {
     tiledb_query_t *_query;
 
   };
+
+  template <typename T>
+  std::vector<std::vector<T>>
+  group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
+                uint64_t num_offset, uint64_t num_buff) {
+    std::vector<std::vector<T>> ret;
+    ret.reserve(num_offset);
+    for (unsigned i = 0; i < num_offset; ++i) {
+      ret.emplace_back(buff.begin() + offsets[i], (i == num_offset - 1) ? buff.begin()+num_buff : buff.begin()+offsets[i+1]);
+    }
+    return ret;
+  }
 
 }
 

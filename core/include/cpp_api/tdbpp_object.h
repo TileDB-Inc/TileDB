@@ -81,6 +81,8 @@ namespace tdb {
     int level;
   };
 
+  std::string from_tiledb(const tiledb_layout_t &layout);
+  std::string from_tiledb(const tiledb_array_type_t &type);
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Object &obj);
