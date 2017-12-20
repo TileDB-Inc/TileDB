@@ -305,6 +305,17 @@ extern const char* kv_filename;
  */
 extern uint64_t kv_buffer_size;
 
+#ifdef HAVE_S3
+/** A directory file suffix (in S3, directories are also files). */
+extern const char* s3_dir_suffix;
+
+/** Maximum number of attempts to wait for an S3 response. */
+extern const unsigned int s3_max_attempts;
+
+/** An allocation tag used for logging. */
+extern const char* s3_allocation_tag;
+#endif
+
 }  // namespace constants
 
 }  // namespace tiledb

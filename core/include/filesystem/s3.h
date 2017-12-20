@@ -229,7 +229,7 @@ class S3 {
    * @param length The size of the input buffer.
    * @return Status
    */
-  Status write_to_file_no_cache(
+  Status write_multipart(
       const URI& uri, const void* buffer, const uint64_t length);
 
   /**
