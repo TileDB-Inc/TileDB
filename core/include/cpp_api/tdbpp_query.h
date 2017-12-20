@@ -57,7 +57,7 @@ namespace tdb {
     Query &operator=(Query&& o);
     ~Query();
 
-
+    enum class Status {FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF};
 
     /**
      * @tparam T should be a type from tdb::type::*
@@ -84,8 +84,8 @@ namespace tdb {
       return *this;
     }
 
-    template<typename T, typename V>
-    Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf, std::vector<V> &offsets) {
+    template<typename T>
+    Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf, std::vector<uint64_t> &offsets) {
       const auto &type = _array.get().attributes().at(attr).type();
       if (T::tiledb_datatype != type) {
         throw std::invalid_argument("Attempting to use buffer of type " + std::string(T::name) +
@@ -94,16 +94,56 @@ namespace tdb {
       if (_array.get().attributes().at(attr).num() != TILEDB_VAR_NUM) {
         throw std::invalid_argument("Offsets provided for non-variable length attributes.");
       }
-      _var_offsets[attr] = std::make_tuple<uint64_t, size_t, void*>(offsets.size(), sizeof(V), offsets.data());
+      _var_offsets[attr] = std::make_tuple<uint64_t, size_t, void*>(offsets.size(), sizeof(uint64_t), offsets.data());
       _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
-    const std::vector<uint64_t> &submit();
+    template<typename DataT, typename DomainT=type::UINT64>
+    Query &resize_buffer(const std::string &attr, std::vector<typename DataT::type> &buff, unsigned max_el=0) {
+      auto num = _array.get().attributes().at(attr).num();
+      if (num == TILEDB_VAR_NUM) throw std::runtime_error("Use resize_var_buffer for variable size attributes.");
+      _make_buffer_impl<DataT, DomainT>(attr, buff, 1, max_el);
+      set_buffer<DataT>(attr, buff);
+      return *this;
+    }
+
+    template<typename DataT, typename DomainT=type::UINT64>
+    Query &resize_var_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
+                             std::vector<typename DataT::type> &buff, unsigned expected_size=1, unsigned max_el=0) {
+      auto num = _array.get().attributes().at(attr).num();
+      if (num != TILEDB_VAR_NUM) throw std::runtime_error("Use resize_buffer for fixed size attributes.");
+      num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
+      std::cout << num << '\n';
+      offsets.resize(num / expected_size);
+      set_buffer<DataT>(attr, buff, offsets);
+      return *this;
+    }
+
+    const std::vector<uint64_t> &buff_sizes() const {
+      return _buff_sizes;
+    }
+
+    Status status();
+
+    Status submit();
 
   private:
+    void _prepare_buffers();
 
-   void _prepare_buffers();
+    template<typename DataT, typename DomainT=type::UINT64>
+    unsigned _make_buffer_impl(const std::string &attr, std::vector<typename DataT::type> &buff,
+                               unsigned expected_varnum=1, unsigned max_el=0) {
+      auto num = _array.get().attributes().at(attr).num();
+      if (num == TILEDB_VAR_NUM) num = expected_varnum;
+      for (const auto& n : _array.get().domain().dimension_names()) {
+        const auto &d = _array.get().domain().get_dimension(n).domain<DomainT>();
+        num = num * (d.second - d.first + 1);
+      }
+      if (max_el != 0 && num > max_el) num = max_el;
+      buff.resize(num);
+      return num;
+    }
 
     std::reference_wrapper<Context> _ctx;
     std::reference_wrapper<ArrayMetadata> _array;
@@ -118,11 +158,10 @@ namespace tdb {
     std::vector<uint64_t> _buff_sizes;
     tiledb_query_t *_query;
 
-
-
-
   };
 
 }
+
+std::ostream &operator<<(std::ostream &os, const tdb::Query::Status &stat);
 
 #endif //TILEDB_TDBPP_QUERY_H

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_kv.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,41 +29,6 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_type.h"
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-
-void tdb::Attribute::_init(tiledb_attribute_t *attr) {
-  _attr = attr;
-  auto &ctx = _ctx.get();
-  const char *name;
-  ctx.handle_error(tiledb_attribute_get_name(ctx, attr, &name));
-  _name = std::string(name);
-  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr, &_num));
-  ctx.handle_error(tiledb_attribute_get_type(ctx, attr, &_type));
-  ctx.handle_error(tiledb_attribute_get_compressor(ctx, attr, &(_compressor.compressor), &(_compressor.level)));
-}
-
-tdb::Attribute::~Attribute() {
-  if (_attr != nullptr) _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), _attr));
-}
-
-tdb::Attribute &tdb::Attribute::operator=(tdb::Attribute &&o) {
-  _ctx = o._ctx;
-  _type = o._type;
-  _compressor = std::move(o._compressor);
-  _num = o._num;
-  _name = o._name;
-  _attr = o._attr;
-  o._attr = nullptr;
-  return *this;
-}
-
-std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a) {
-  os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
-     << (a.num() == TILEDB_VAR_NUM ? "VAR" : std::to_string(a.num())) << '>';
-  return os;
-}
+#include "tdbpp_kv.h"

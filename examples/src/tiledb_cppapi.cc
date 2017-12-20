@@ -18,10 +18,12 @@ int main(int argc, char **argv) {
     auto &array = arrays[0];
     std::cout << array << '\n';
 
-    std::vector<int32_t> buff(64);
+    std::vector<char> buff;
+    std::vector<uint64_t> off;
     auto q = tdb::Query(array, TILEDB_READ);
-    auto sizes = q.attributes({"a1"}).set_buffer<tdb::type::INT32>("a1", buff).layout(TILEDB_ROW_MAJOR).submit();
-    std::cout << sizes[0] << "\n";
+    auto status = q.attributes({"a2"}).resize_var_buffer<tdb::type::CHAR>("a2", off, buff, 3).layout(TILEDB_GLOBAL_ORDER).submit();
+    auto sizes = q.buff_sizes();
+    std::cout << status << "," << sizes[0] << "," << sizes[1] << "\n";
     for (unsigned i = 0; i < 4; ++i) {
       for (unsigned j = 0; j < 4; ++j) {
         std::cout << buff[(i*4) + j] << " ";

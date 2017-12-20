@@ -82,7 +82,7 @@ tdb::Query &tdb::Query::attributes(const std::vector<std::string> &attrs) {
   return *this;
 }
 
-const std::vector<uint64_t> &tdb::Query::submit() {
+tdb::Query::Status tdb::Query::submit() {
   _prepare_buffers();
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_set_buffers(ctx, _query, _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
@@ -90,7 +90,7 @@ const std::vector<uint64_t> &tdb::Query::submit() {
   for (size_t i = 0; i < _attrs.size(); ++i) {
     _buff_sizes[i] = _buff_sizes[i] / _sub_tsize[i];
   }
-  return _buff_sizes;
+  return status();
 }
 
 void tdb::Query::_prepare_buffers() {
@@ -128,4 +128,42 @@ void tdb::Query::_prepare_buffers() {
   _all_buff.shrink_to_fit();
   _buff_sizes.shrink_to_fit();
   _attr_names.shrink_to_fit();
+}
+
+tdb::Query::Status tdb::Query::status() {
+  tiledb_query_status_t status;
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_query_get_status(ctx, _query, &status));
+  switch (status) {
+    case TILEDB_INCOMPLETE:
+      return Status::INCOMPLETE;
+    case TILEDB_COMPLETED:
+      return Status::COMPLETE;
+    case TILEDB_INPROGRESS:
+      return Status::INPROGRESS;
+    case TILEDB_FAILED:
+      return Status::FAILED;
+  }
+  return Status::UNDEF;
+}
+
+std::ostream &operator<<(std::ostream &os, const tdb::Query::Status &stat) {
+  switch (stat) {
+    case tdb::Query::Status::INCOMPLETE:
+      os << "INCOMPLETE";
+      break;
+    case tdb::Query::Status::INPROGRESS:
+      os << "INPROGRESS";
+      break;
+    case tdb::Query::Status::FAILED:
+      os << "FAILED";
+      break;
+    case tdb::Query::Status::COMPLETE:
+      os << "COMPLETE";
+      break;
+    case tdb::Query::Status::UNDEF:
+      os << "UNDEF";
+      break;
+  }
+  return os;
 }
