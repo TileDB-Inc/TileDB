@@ -4,6 +4,7 @@
 
 
 #include <tdbpp>
+#include <numeric>
 
 int main(int argc, char **argv) {
   if (argc < 2) {
@@ -24,6 +25,9 @@ int main(int argc, char **argv) {
     auto status = q.attributes({"a2"}).resize_var_buffer<tdb::type::CHAR>("a2", off, buff, 3).layout(TILEDB_GLOBAL_ORDER).submit();
     auto sizes = q.buff_sizes();
     std::cout << status << "," << sizes[0] << "," << sizes[1] << "\n";
+    auto  el = q.group_by_cell(off, buff, sizes[0], sizes[1]);
+    for (auto e : el) std::cout << std::accumulate(e.begin(), e.end(), std::string("")) << " ";
+    std::cout << "\n";
     for (unsigned i = 0; i < 4; ++i) {
       for (unsigned j = 0; j < 4; ++j) {
         std::cout << buff[(i*4) + j] << " ";

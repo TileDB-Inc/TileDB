@@ -100,7 +100,7 @@ namespace tdb {
     }
 
     template<typename DataT, typename DomainT=type::UINT64>
-    Query &resize_buffer(const std::string &attr, std::vector<typename DataT::type> &buff, unsigned max_el=0) {
+    Query &resize_buffer(const std::string &attr, std::vector<typename DataT::type> &buff, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num == TILEDB_VAR_NUM) throw std::runtime_error("Use resize_var_buffer for variable size attributes.");
       _make_buffer_impl<DataT, DomainT>(attr, buff, 1, max_el);
@@ -110,7 +110,7 @@ namespace tdb {
 
     template<typename DataT, typename DomainT=type::UINT64>
     Query &resize_var_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
-                             std::vector<typename DataT::type> &buff, unsigned expected_size=1, unsigned max_el=0) {
+                             std::vector<typename DataT::type> &buff, uint64_t expected_size=1, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num != TILEDB_VAR_NUM) throw std::runtime_error("Use resize_buffer for fixed size attributes.");
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
@@ -118,6 +118,18 @@ namespace tdb {
       offsets.resize(num / expected_size);
       set_buffer<DataT>(attr, buff, offsets);
       return *this;
+    }
+
+    template <typename T>
+    static std::vector<std::vector<T>>
+    group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
+                  uint64_t num_offset, uint64_t num_buff) {
+      std::vector<std::vector<T>> ret;
+      ret.reserve(num_offset);
+      for (unsigned i = 0; i < num_offset; ++i) {
+        ret.emplace_back(buff.begin() + offsets[i], (i == num_offset - 1) ? buff.begin()+num_buff : buff.begin()+offsets[i+1]);
+      }
+      return ret;
     }
 
     const std::vector<uint64_t> &buff_sizes() const {
@@ -133,7 +145,7 @@ namespace tdb {
 
     template<typename DataT, typename DomainT=type::UINT64>
     unsigned _make_buffer_impl(const std::string &attr, std::vector<typename DataT::type> &buff,
-                               unsigned expected_varnum=1, unsigned max_el=0) {
+                               uint64_t expected_varnum=1, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num == TILEDB_VAR_NUM) num = expected_varnum;
       for (const auto& n : _array.get().domain().dimension_names()) {
