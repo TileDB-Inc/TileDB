@@ -26,21 +26,22 @@ int main(int argc, char **argv) {
     std::string attr = "a2";
     tiledb_layout_t layout = TILEDB_GLOBAL_ORDER;
 
-    std::cout << "Attribute: " << attr << " Layout: " << tdb::from_tiledb(layout) << "\n\n";
+    std::cout << "Attribute: " << attr << ", Layout: " << tdb::from_tiledb(layout) << "\n\n";
+    q.attributes({attr}).resize_var_buffer<tdb::type::CHAR>(attr, off, buff, 1).layout(layout);
 
-    auto status = q.attributes({attr}).resize_var_buffer<tdb::type::CHAR>(attr, off, buff).layout(layout).submit();
+    auto status = q.submit();
     auto sizes = q.buff_sizes();
-    std::cout << status << "," << sizes[0] << "," << sizes[1] << "\n";
-    auto  el = tdb::group_by_cell(off, buff, sizes[0], sizes[1]);
-    for (auto e : el) std::cout << std::accumulate(e.begin(), e.end(), std::string()) << " ";
+    std::cout << "Submit 1: " << status << "," << sizes[0] << "," << sizes[1] << "\n";
+    auto  cells = tdb::group_by_cell(off, buff, sizes[0], sizes[1]);
+    for (auto &e : cells) std::cout << std::accumulate(e.begin(), e.end(), std::string()) << " ";
 
-    std::cout << "\n\nattr status: " << q.attribute_status(attr) <<  "\n\n";
+    std::cout << "\n\nattr " << attr << " status: " << q.attribute_status(attr) <<  "\n\n";
 
     status = q.submit();
     sizes = q.buff_sizes();
-    std::cout << status << "," << sizes[0] << "," << sizes[1] << "\n";
-    el = tdb::group_by_cell(off, buff, sizes[0], sizes[1]);
-    for (auto e : el) std::cout << std::accumulate(e.begin(), e.end(), std::string()) << " ";
+    std::cout << "Submit 2: " << status << "," << sizes[0] << "," << sizes[1] << "\n";
+    cells = tdb::group_by_cell(off, buff, sizes[0], sizes[1]);
+    for (auto &e : cells) std::cout << std::accumulate(e.begin(), e.end(), std::string()) << " ";
   }
   return 0;
 }
