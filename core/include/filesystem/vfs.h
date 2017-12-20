@@ -156,6 +156,9 @@ class VFS {
    */
   bool is_file(const URI& uri) const;
 
+  /** Initializes the virtual filesystem. */
+  Status init();
+
   /**
    * Retrieves all the URIs that have the first input as parent.
    *

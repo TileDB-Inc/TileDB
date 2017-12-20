@@ -48,16 +48,22 @@ static const char* ALLOCATION_TAG = "TileDB";
 namespace tiledb {
 
 /* ********************************* */
+/*         PRIVATE CONSTANTS         */
+/* ********************************* */
+
+const uint64_t S3::FILE_BUFFER_SIZE = 5 * 1024 * 1024;
+
+/* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
 S3::S3() {
   client_ = nullptr;
-  buffer_cache_ = new BufferCache(this);
 }
 
 S3::~S3() {
-  delete buffer_cache_;
+  for (auto& buff : file_buffers_)
+    delete buff.second;
 }
 
 /* ********************************* */
@@ -123,16 +129,23 @@ Status S3::flush_file(const URI& uri) {
   if (is_dir(uri))
     return Status::Ok();
 
-  Status st = buffer_cache_->flush_file(uri);
-  if (!st.ok())
-    return Status::Ok();
+  // Flush and delee file buffer
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+  RETURN_NOT_OK(flush_file_buffer(uri, buff));
+  delete buff;
+  file_buffers_.erase(uri.to_string());
 
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::String path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
+
+  // Do nothing - empty object
+  if (multipart_upload_.find(path_c_str) == multipart_upload_.end())
+    return Status::Ok();
+
   Aws::S3::Model::CompletedMultipartUpload completedMultipartUpload =
       multipart_upload_[path_c_str];
-
   Aws::S3::Model::CompleteMultipartUploadRequest
       completeMultipartUploadRequest = multipart_upload_request_[path_c_str];
   completeMultipartUploadRequest.WithMultipartUpload(completedMultipartUpload);
@@ -499,7 +512,50 @@ Status S3::read_from_file(
 
 Status S3::write_to_file(
     const URI& uri, const void* buffer, const uint64_t length) {
-  buffer_cache_->write_to_file(uri, buffer, length);
+  // Get file buffer
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+
+  // Fill file buffer
+  uint64_t nbytes_filled;
+  RETURN_NOT_OK(fill_file_buffer(buff, buffer, length, &nbytes_filled));
+
+  // Flush file buffer
+  if (buff->size() == FILE_BUFFER_SIZE)
+    RETURN_NOT_OK(flush_file_buffer(uri, buff));
+
+  // Write chunks
+  uint64_t new_length = length - nbytes_filled;
+  uint64_t offset = nbytes_filled;
+  while (new_length > 0) {
+    if (new_length >= FILE_BUFFER_SIZE) {
+      RETURN_NOT_OK(write_to_file_no_cache(
+          uri, (char*)buffer + offset, FILE_BUFFER_SIZE));
+      offset += FILE_BUFFER_SIZE;
+      new_length -= FILE_BUFFER_SIZE;
+    } else {
+      RETURN_NOT_OK(fill_file_buffer(
+          buff, (char*)buffer + offset, new_length, &nbytes_filled));
+      offset += nbytes_filled;
+      new_length -= nbytes_filled;
+    }
+  }
+  assert(offset == length);
+
+  /*
+
+    // Handle remaining data
+   uint64_t new_length = length - nbytes_filled;
+   if(new_length > 0) {
+     if (new_length >= FILE_BUFFER_SIZE) {
+       RETURN_NOT_OK(write_to_file_no_cache(uri, (char *) buffer +
+   nbytes_filled, new_length)); } else { RETURN_NOT_OK(fill_file_buffer(buff,
+   (char *) buffer + nbytes_filled, new_length, &nbytes_filled));
+     }
+   }
+
+   */
+
   return Status::Ok();
 }
 
@@ -641,10 +697,45 @@ Status S3::empty_bucket(const Aws::String& bucketName) {
   return Status::Ok();
 }
 
+Status S3::fill_file_buffer(
+    Buffer* buff,
+    const void* buffer,
+    uint64_t length,
+    uint64_t* nbytes_filled) {
+  *nbytes_filled = std::min(FILE_BUFFER_SIZE - buff->size(), length);
+  if (*nbytes_filled > 0)
+    RETURN_NOT_OK(buff->write(buffer, *nbytes_filled));
+
+  return Status::Ok();
+}
+
 Aws::String S3::fix_path(const Aws::String& objectKey) const {
   if (objectKey.front() == '/')
     return objectKey.substr(1, objectKey.length());
   return objectKey;
+}
+
+Status S3::flush_file_buffer(const URI& uri, Buffer* buff) {
+  if (buff->size() > 0) {
+    RETURN_NOT_OK(write_to_file_no_cache(uri, buff->data(), buff->size()));
+    buff->reset_size();
+  }
+
+  return Status::Ok();
+}
+
+Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
+  auto uri_str = uri.to_string();
+  auto it = file_buffers_.find(uri_str);
+  if (it == file_buffers_.end()) {
+    auto new_buff = new Buffer();
+    file_buffers_[uri_str] = new_buff;
+    *buff = new_buff;
+  } else {
+    *buff = it->second;
+  }
+
+  return Status::Ok();
 }
 
 bool S3::replace(

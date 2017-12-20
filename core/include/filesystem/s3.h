@@ -35,7 +35,7 @@
 #ifndef TILEDB_S3_H
 #define TILEDB_S3_H
 
-#include "buffer_cache.h"
+#include "buffer.h"
 #include "status.h"
 #include "uri.h"
 
@@ -288,8 +288,15 @@ class S3 {
   std::unordered_map<std::string, Aws::S3::Model::CompletedMultipartUpload>
       multipart_upload_;
 
+  // TODO: doc
+  std::unordered_map<std::string, Buffer*> file_buffers_;
+
+  /* ********************************* */
+  /*         PRIVATE CONSTANTS         */
+  /* ********************************* */
+
   // TODO: document
-  BufferCache* buffer_cache_;
+  static const uint64_t FILE_BUFFER_SIZE;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -298,12 +305,25 @@ class S3 {
   // TODO doc
   Status empty_bucket(const Aws::String& bucketName);
 
+  // TODO doc
+  Status fill_file_buffer(
+      Buffer* buff,
+      const void* buffer,
+      uint64_t length,
+      uint64_t* nbytes_filled);
+
   /**
-   * // TODO
+   * // TODO: doc
    * @param objectKey
    * @return
    */
   Aws::String fix_path(const Aws::String& objectKey) const;
+
+  // TODO: doc
+  Status flush_file_buffer(const URI& uri, Buffer* buff);
+
+  // TODO: doc
+  Status get_file_buffer(const URI& uri, Buffer** buff);
 
   // TODO
   Status initiate_multipart_request(Aws::Http::URI aws_uri);

@@ -59,7 +59,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
       URI("s3://" + bucket + "/tiledb_test_dir/folder/subfolder"));
   CHECK(st.ok());
 
-  int buffer_size = 5 * 1024 * 1024;
+  int buffer_size = 11 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);

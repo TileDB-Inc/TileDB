@@ -44,15 +44,7 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-VFS::VFS() {
-#ifdef HAVE_HDFS
-  Status st = hdfs::connect(hdfs_);
-#endif
-
-#ifdef HAVE_S3
-  Status st = s3_.connect();
-#endif
-}
+VFS::VFS() = default;
 
 VFS::~VFS() {
 #ifdef HAVE_HDFS
@@ -273,6 +265,16 @@ bool VFS::is_file(const URI& uri) const {
 #endif
   }
   return false;
+}
+
+Status VFS::init() {
+#ifdef HAVE_S3
+  return s3_.connect();
+#endif
+#ifdef HAVE_HDFS
+  return hdfs::connect(hdfs_);
+#endif
+  return Status::Ok();
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
