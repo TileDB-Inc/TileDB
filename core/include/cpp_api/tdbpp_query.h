@@ -59,16 +59,33 @@ namespace tdb {
 
     enum class Status {FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF};
 
-    /**
-     * @tparam T should be a type from tdb::type::*
-     * @param pair
-     */
-    template<typename T>
-    Query &subarray(const std::vector<typename T::type> &pairs);
 
     Query &layout(tiledb_layout_t layout);
 
     Query &attributes(const std::vector<std::string> &attrs);
+
+    /**
+ * @tparam T should be a type from tdb::type::*
+ * @param pair
+ */
+    template<typename T>
+    Query &subarray(const std::vector<typename T::type> &pairs) {
+      auto &ctx = _ctx.get();
+      auto type = _array.get().domain().type();
+      if (T::tiledb_datatype != type) {
+        throw std::invalid_argument("Attempting to use subarray of type " + std::string(T::name) +
+                                    " for domain of type " + type::from_tiledb(type));
+      }
+      if (pairs.size() != _array.get().domain().size() * 2) {
+        throw std::invalid_argument("Subarray should have num_dims * 2 values: (low, high) for each dimension.");
+      }
+      ctx.handle_error(tiledb_query_set_subarray(ctx, _query, pairs.data(), T::tiledb_datatype));
+      _subarray_cells = pairs[1] - pairs[0] + 1;
+      for (unsigned i = 2; i < pairs.size() - 1; i+= 2) {
+        _subarray_cells = _subarray_cells * (pairs[i+1] - pairs[i] + 1);
+      }
+      return *this;
+    }
 
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf) {
@@ -110,11 +127,13 @@ namespace tdb {
 
     template<typename DataT, typename DomainT=type::UINT64>
     Query &resize_var_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
-                             std::vector<typename DataT::type> &buff, uint64_t expected_size=1, uint64_t max_el=0) {
+                             std::vector<typename DataT::type> &buff, uint64_t expected_size=1, uint64_t max_offset=0, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num != TILEDB_VAR_NUM) throw std::runtime_error("Use resize_buffer for fixed size attributes.");
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
-      offsets.resize(num / expected_size);
+      uint64_t offset_size = num/expected_size;
+      if (max_offset != 0 && offset_size > max_offset) offset_size = max_offset;
+      offsets.resize(offset_size);
       set_buffer<DataT>(attr, buff, offsets);
       return *this;
     }
@@ -139,12 +158,17 @@ namespace tdb {
                                uint64_t expected_varnum=1, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num == TILEDB_VAR_NUM) num = expected_varnum;
-      for (const auto& n : _array.get().domain().dimension_names()) {
-        const auto &d = _array.get().domain().get_dimension(n).domain<DomainT>();
-        num = num * (d.second - d.first + 1);
+      if (_subarray_cells != 0) {
+        num = expected_varnum * _subarray_cells;
+      } else {
+        for (const auto &n : _array.get().domain().dimension_names()) {
+          const auto &d = _array.get().domain().get_dimension(n).domain<DomainT>();
+          num = num * (d.second - d.first + 1);
+        }
       }
-      if (max_el != 0 && num > max_el) num = max_el;
-      buff.resize(num);
+      auto constrained = num;
+      if (max_el != 0 && num > max_el) constrained = max_el;
+      buff.resize(constrained);
       return num;
     }
 
@@ -159,6 +183,7 @@ namespace tdb {
     std::vector<const char*> _attr_names;
     std::vector<void*> _all_buff;
     std::vector<uint64_t> _buff_sizes;
+    unsigned _subarray_cells = 0;
     tiledb_query_t *_query;
 
   };

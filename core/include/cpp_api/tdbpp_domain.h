@@ -71,6 +71,10 @@ namespace tdb {
       return *_dims.at(name);
     }
 
+    size_t size() const {
+      return _dims.size();
+    }
+
   private:
     std::reference_wrapper<Context> _ctx;
     // Note this is a ptr since maps don't support incomplete types, unlike vector

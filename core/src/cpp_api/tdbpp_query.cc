@@ -59,13 +59,6 @@ tdb::Query &tdb::Query::operator=(tdb::Query &&o) {
   return *this;
 }
 
-template<typename T>
-tdb::Query &tdb::Query::subarray(const std::vector<typename T::type> &pairs) {
-  auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_set_subarray(ctx, _query, pairs.data(), T::tiledb_datatype));
-  return *this;
-}
-
 tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
   if (layout == TILEDB_UNORDERED && _array.get().type() == TILEDB_DENSE) {
