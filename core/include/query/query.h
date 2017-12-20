@@ -434,6 +434,13 @@ class Query {
   /** Checks if attributes has been appropriately set for a query. */
   Status check_attributes();
 
+  /** Checks if `subarray` falls inside the array domain. */
+  Status check_subarray(const void* subarray) const;
+
+  /** Checks if `subarray` falls inside the array domain. */
+  template <class T>
+  Status check_subarray(const T* subarray) const;
+
   /** Initializes the fragments (for a read query). */
   Status init_fragments(
       const std::vector<FragmentMetadata*>& fragment_metadata);
