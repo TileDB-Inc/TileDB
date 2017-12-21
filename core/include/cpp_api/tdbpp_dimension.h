@@ -64,8 +64,9 @@ namespace tdb {
     }
 
     template<typename DataT, typename NativeT=typename DataT::type>
-    void create(const std::string &name, std::pair<NativeT, NativeT> domain, NativeT extent) {
+    Dimension &create(const std::string &name, std::pair<NativeT, NativeT> domain, NativeT extent) {
       _create(name, DataT::tiledb_datatype, &domain, &extent);
+      return *this;
     }
 
     const std::string name() const;

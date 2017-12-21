@@ -62,6 +62,7 @@ namespace tdb {
 
   struct Compressor {
     Compressor() = default;
+    Compressor(tiledb_compressor_t c) : compressor(c), level(-1) {}
     Compressor(tiledb_compressor_t compressor, int level) : compressor(compressor), level(level) {}
     tiledb_compressor_t compressor;
     int level;

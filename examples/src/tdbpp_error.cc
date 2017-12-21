@@ -1,12 +1,13 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file   tdbpp_error.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,9 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
  */
 
 #include <tdbpp>
@@ -38,29 +37,15 @@
 int main() {
   tdb::Context ctx;
 
-  // Can also do: domain.create<tdb::type::UINT64>();
-  tdb::Domain domain(ctx, TILEDB_UINT64);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<tdb::type::UINT64>("d1", {1,4}, 2);
-  d2.create<tdb::type::UINT64>("d2", {1,4}, 2);
-  domain << d1 << d2; // Add dims to domain
+  // default: throws runtime_error
+  try {
+    ctx.group_create("my_group");
+    ctx.group_create("my_group");
+  } catch (std::runtime_error &e) {
+    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
+  }
 
-  // Can also do: a1.create<tdb::type::INT32>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
-
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
-
-  tdb::ArrayMetadata meta(ctx);
-  meta.create("my_dense_array");
-  meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  meta << domain << a1 << a2 << a3; // Add attributes to array
-
-  // Check the metadata, and make the array.
-  tdb::Array array(meta);
-
-  std::cout << array << std::endl;
+  // Set a different handler
+  ctx.set_error_handler([](std::string msg){std::cout << "Callback:\n\t" << msg << "\n";});
+  ctx.group_create("my_group");
 }

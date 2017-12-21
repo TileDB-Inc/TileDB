@@ -51,6 +51,9 @@ namespace tdb {
     Attribute(Context &ctx, tiledb_attribute_t **attr) : Attribute(ctx) {
       load(attr);
     }
+    Attribute(Context &ctx, std::string name, tiledb_datatype_t type) : Attribute(ctx) {
+      create(name, type);
+    }
     Attribute(const Attribute &attr) = default;
     Attribute(Attribute &&o) = default;
     Attribute &operator=(const Attribute&) = default;
@@ -68,6 +71,12 @@ namespace tdb {
       _create(name, DataT::tiledb_datatype);
       return *this;
     }
+
+    Attribute &create(const std::string &name, tiledb_datatype_t type) {
+      _create(name, type);
+      return *this;
+    }
+
 
     std::string name() const;
 

@@ -40,3 +40,42 @@ std::ostream &operator<<(std::ostream &os, const tdb::Array &array) {
   os << "Array<" << array.context() << ' ' << array.meta() << ">";
   return os;
 }
+
+void tdb::Array::create(const tdb::ArrayMetadata &meta) {
+  meta.check();
+  auto &ctx = _ctx.get();
+  _meta = meta;
+  ctx.handle_error(tiledb_array_create(ctx, meta._meta.get()));
+}
+
+const std::string tdb::Array::name() const {
+  return _meta.name();
+}
+
+bool tdb::Array::good() const {
+  return _meta.good();
+}
+
+void tdb::Array::load(const std::string &uri) {
+  _meta.load(uri);
+}
+
+tdb::Context &tdb::Array::context() {
+  return _ctx.get();
+}
+
+const tdb::Context &tdb::Array::context() const {
+  return _ctx.get();
+}
+
+tdb::ArrayMetadata &tdb::Array::meta() {
+  return _meta;
+}
+
+const tdb::ArrayMetadata &tdb::Array::meta() const {
+  return _meta;
+}
+
+tdb::Array::Array(const tdb::ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {
+  create(meta);
+}

@@ -39,6 +39,7 @@
 #include "tdbpp_array.h"
 #include "tdbpp_type.h"
 #include "tiledb.h"
+#include "tdbpp_utils.h"
 
 #include <functional>
 #include <memory>
@@ -146,12 +147,13 @@ namespace tdb {
 
     Status submit();
 
-    const std::vector<uint64_t> &buff_sizes() const {
-      return _buff_sizes;
-    }
+    Status submit_async();
+
+    Status submit_async(void* (*callback)(void*), void* data);
+
+    std::vector<uint64_t> buff_sizes();
 
   private:
-
     struct _Deleter {
       _Deleter(Context& ctx) : _ctx(ctx) {}
       _Deleter(const _Deleter&) = default;
@@ -160,7 +162,8 @@ namespace tdb {
       std::reference_wrapper<Context> _ctx;
     };
 
-    void _prepare_buffers();
+    void _prepare_submission();
+
 
     template<typename DataT, typename DomainT=type::UINT64>
     unsigned _make_buffer_impl(const std::string &attr, std::vector<typename DataT::type> &buff,
@@ -206,6 +209,18 @@ namespace tdb {
     ret.reserve(num_offset);
     for (unsigned i = 0; i < num_offset; ++i) {
       ret.emplace_back(buff.begin() + offsets[i], (i == num_offset - 1) ? buff.begin()+num_buff : buff.begin()+offsets[i+1]);
+    }
+    return ret;
+  }
+
+  template<typename T>
+  std::vector<std::vector<T>>
+  group_by_cell(const std::vector<T> &buff, unsigned el_per_cell) {
+    std::vector<std::vector<T>> ret;
+    if (buff.size() % el_per_cell != 0) throw std::invalid_argument("Buffer is not a multiple of elements per cell.");
+    ret.reserve(buff.size()/el_per_cell);
+    for (unsigned i = 0; i < buff.size(); i+= el_per_cell) {
+      ret.emplace_back(buff.begin() + i, buff.begin() + i + el_per_cell);
     }
     return ret;
   }

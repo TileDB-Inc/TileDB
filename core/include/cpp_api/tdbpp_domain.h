@@ -53,6 +53,9 @@ namespace tdb {
     Domain(Context &ctx, tiledb_domain_t **domain) : Domain(ctx) {
       load(domain);
     }
+    Domain(Context &ctx, tiledb_datatype_t type) : Domain(ctx) {
+      create(type);
+    }
     Domain(const Domain& o) = default;
     Domain(Domain&& o) = default;
     Domain &operator=(const Domain&) = default;
@@ -68,6 +71,10 @@ namespace tdb {
     template<typename DataT>
     void create() {
       _create(DataT::tiledb_datatype);
+    }
+
+    void create(tiledb_datatype_t type) {
+      _create(type);
     }
 
     tiledb_datatype_t type() const;

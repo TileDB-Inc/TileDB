@@ -37,10 +37,12 @@
 
 #include "tdbpp_context.h"
 #include "tdbpp_array.h"
+#include "tdbpp_kv.h"
 #include "tdbpp_attribute.h"
 #include "tdbpp_dimension.h"
 #include "tdbpp_domain.h"
 #include "tdbpp_object.h"
 #include "tdbpp_query.h"
+#include "tdbpp_utils.h"
 
 #endif //TILEDB_TDBPP_H

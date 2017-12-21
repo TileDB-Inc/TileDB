@@ -48,54 +48,34 @@ namespace tdb {
   class Array {
   public:
     Array(Context &ctx) : _ctx(ctx), _meta(_ctx) {}
-    Array(const ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {
-      create(meta);
-    }
+    Array(const ArrayMetadata &meta);
     Array(Context &ctx, const std::string &uri) : _ctx(ctx), _meta(_ctx, uri) {}
     Array(const Array&) = delete;
     Array(Array&&) = default;
     Array &operator=(const Array&) = delete;
     Array &operator=(Array&&) = default;
 
-    const std::string name() const {
-      return _meta.name();
-    }
+    const std::string name() const;
 
-    bool good() const {
-      return _meta.good();
-    }
+    bool good() const;
 
-    void load(const std::string &uri) {
-      _meta.load(uri);
-    }
+    void load(const std::string &uri);
 
-    void create(const ArrayMetadata &meta) {
-      meta.check();
-      auto &ctx = _ctx.get();
-      _meta = meta;
-      ctx.handle_error(tiledb_array_create(ctx, meta._meta.get()));
-    }
+    void create(const ArrayMetadata &meta);
 
-    Context &context() {
-      return _ctx.get();
-    }
+    Context &context();
 
-    const Context &context() const {
-      return _ctx.get();
-    }
+    const Context &context() const;
 
-    ArrayMetadata &meta() {
-      return _meta;
-    }
+    ArrayMetadata &meta();
 
-    const ArrayMetadata &meta() const {
-      return _meta;
-    }
+    const ArrayMetadata &meta() const;
 
   private:
     std::reference_wrapper<Context> _ctx;
     ArrayMetadata _meta;
   };
+
 
 }
 

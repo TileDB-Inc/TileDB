@@ -54,14 +54,9 @@ tdb::Query &tdb::Query::attributes(const std::vector<std::string> &attrs) {
 }
 
 tdb::Query::Status tdb::Query::submit() {
-  if (query_status() == Status::COMPLETE) throw std::runtime_error("Cannot submit a completed query.");
-  _prepare_buffers();
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_set_buffers(ctx, _query.get(), _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
+  _prepare_submission();
   ctx.handle_error(tiledb_query_submit(ctx, _query.get()));
-  for (size_t i = 0; i < _attrs.size(); ++i) {
-    _buff_sizes[i] = _buff_sizes[i] / _sub_tsize[i];
-  }
   return query_status();
 }
 
@@ -69,7 +64,9 @@ void tdb::Query::_Deleter::operator()(tiledb_query_t *p) {
   _ctx.get().handle_error(tiledb_query_free(_ctx.get(), p));
 }
 
-void tdb::Query::_prepare_buffers() {
+void tdb::Query::_prepare_submission() {
+  if (query_status() == Status::COMPLETE) throw std::runtime_error("Cannot submit a completed query.");
+
   _all_buff.clear();
   _buff_sizes.clear();
   _attr_names.clear();
@@ -101,9 +98,8 @@ void tdb::Query::_prepare_buffers() {
     _sub_tsize.push_back(tsize);
   }
 
-  _all_buff.shrink_to_fit();
-  _buff_sizes.shrink_to_fit();
-  _attr_names.shrink_to_fit();
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_query_set_buffers(ctx, _query.get(), _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
 }
 
 tdb::Query::Status tdb::Query::query_status() {
@@ -132,6 +128,26 @@ tdb::Query::Status tdb::Query::tiledb_to_status(const tiledb_query_status_t &sta
       return Status::FAILED;
   }
   return Status::UNDEF;
+}
+
+tdb::Query::Status tdb::Query::submit_async(void* (*callback)(void*), void* data) {
+  auto &ctx = _ctx.get();
+  _prepare_submission();
+  ctx.handle_error(tiledb_query_submit_async(ctx, _query.get(), callback, data));
+  return query_status();
+}
+
+tdb::Query::Status tdb::Query::submit_async() {
+  submit_async(nullptr, nullptr);
+  return query_status();
+}
+
+std::vector<uint64_t> tdb::Query::buff_sizes() {
+  std::vector<uint64_t> buffsize(_buff_sizes.size());
+  for (size_t i = 0; i < _attrs.size(); ++i) {
+    buffsize[i] = _buff_sizes[i] / _sub_tsize[i];
+  }
+  return buffsize;
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Query::Status &stat) {

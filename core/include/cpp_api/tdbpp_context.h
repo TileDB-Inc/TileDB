@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_context.h
  *
  * @author Ravi Gaddipati
  *
@@ -43,6 +43,7 @@
 #include <iterator>
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace tdb {
 
@@ -55,11 +56,11 @@ namespace tdb {
     Context(const std::string &root) : Context() {
       set_root(root);
     }
-    Context(Context &ctx) : _ctx(ctx._ctx) {}
     Context(Context &ctx, const std::string &root) : _ctx(ctx._ctx) {
       set_root(root);
     }
     Context(Context &ctx, const Object obj) : _ctx(ctx._ctx), _curr_object(obj) {}
+    Context(const Context &ctx) = default;
     Context(Context &&o) = default;
     Context &operator=(const Context &o) = default;
     Context &operator=(Context &&o) = default;
@@ -84,8 +85,8 @@ namespace tdb {
 
     class iterator: public std::iterator<std::forward_iterator_tag, Object> {
     public:
-      iterator(Context &ctx, const std::string &root): _root(root), _ictx(ctx) {
-        _init(root, ctx);
+      iterator(Context &ctx, const std::string &root, tiledb_walk_order_t order): _root(root), _ictx(ctx) {
+        _init(root, ctx, order);
       }
 
       iterator(const iterator &o) : _ictx(o._ictx) {
@@ -126,7 +127,7 @@ namespace tdb {
       std::vector<Object> _objs;
       Context &_ictx;
 
-      void _init(const std::string &root, tiledb_ctx_t *ctx);
+      void _init(const std::string &root, tiledb_ctx_t *ctx, tiledb_walk_order_t order);
 
       static int _obj_getter(const char* path, tiledb_object_t type, void *d) {
         Object obj;
@@ -138,10 +139,11 @@ namespace tdb {
       }
     };
 
-    iterator begin();
+    iterator begin(tiledb_walk_order_t order=TILEDB_PREORDER);
 
     iterator end();
 
+    Object object_type(const std::string &uri);
 
     std::vector<Context> groups();
 
@@ -151,16 +153,36 @@ namespace tdb {
 
     Context group_create(const std::string &group);
 
-
     std::vector<Array> arrays();
 
     Array array_find(const std::string &name);
 
     Array array_get(const std::string &uri);
 
+    void consolidate(const std::string &name);
+
+    void del(std::string &name);
+
+    template<typename C>
+    void handle_error(int ret, C callback) {
+      if (ret != TILEDB_OK) {
+        auto msg = _handle_error();
+        callback(msg);
+      }
+    }
+
     void handle_error(int ret);
 
+    void set_error_handler(std::function<void(std::string)> fn) {
+      _handler = fn;
+    }
+
   private:
+    static void _default_handler(std::string msg) {
+      throw std::runtime_error(msg);
+    };
+    std::function<void(std::string)> _handler = _default_handler;
+    std::string _handle_error();
     std::shared_ptr<tiledb_ctx_t> _ctx;
     Object _curr_object;
 

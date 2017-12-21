@@ -75,18 +75,31 @@ namespace tdb {
 
     tiledb_array_type_t type() const;
 
-    uint64_t capacity() const {
+    ArrayMetadata &set_type(tiledb_array_type_t type) {
       auto &ctx = _ctx.get();
-      uint64_t capacity;
-      ctx.handle_error(tiledb_array_metadata_get_capacity(ctx, _meta.get(), &capacity));
-      return capacity;
+      ctx.handle_error(tiledb_array_metadata_set_array_type(ctx, _meta.get(), type));
+      return *this;
     }
 
-    tiledb_layout_t tile_layout() const;
+    uint64_t capacity() const;
 
-    tiledb_layout_t cell_layout() const;
+    ArrayMetadata &set_capacity(uint64_t capacity);
 
-    Compressor coords_compressor() const;
+    tiledb_layout_t tile_order() const;
+
+    ArrayMetadata &set_tile_order(tiledb_layout_t layout);
+
+    tiledb_layout_t cell_order() const;
+
+    ArrayMetadata &set_cell_order(tiledb_layout_t layout);
+
+    Compressor coord_compressor() const;
+
+    ArrayMetadata &set_coord_compressor(const Compressor c);
+
+    Compressor offset_compressor() const;
+
+    ArrayMetadata &set_offset_compressor(const Compressor c);
 
     std::string name() const;
 
@@ -96,17 +109,16 @@ namespace tdb {
 
     ArrayMetadata &add_attribute(const Attribute &attr);
 
+    ArrayMetadata &set_kv();
+
+    bool is_kv() const;
+
     void check() const;
 
     const std::unordered_map<std::string, Attribute> attributes() const;
 
-    bool good() const {
-      return _meta == nullptr;
-    }
-    std::shared_ptr<tiledb_array_metadata_t> ptr() const {
-      return _meta;
-    }
-
+    bool good() const;
+    std::shared_ptr<tiledb_array_metadata_t> ptr() const;
 
   private:
     friend class Array;

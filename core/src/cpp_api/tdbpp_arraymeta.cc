@@ -68,25 +68,30 @@ tiledb_array_type_t tdb::ArrayMetadata::type() const {
   return type;
 }
 
-tiledb_layout_t tdb::ArrayMetadata::tile_layout() const {
-  auto &ctx = _ctx.get();
-  tiledb_layout_t layout;
-  ctx.handle_error(tiledb_array_metadata_get_tile_order(ctx, _meta.get(), &layout));
-  return layout;
-}
-
-tiledb_layout_t tdb::ArrayMetadata::cell_layout() const {
-  auto &ctx = _ctx.get();
-  tiledb_layout_t layout;
-  ctx.handle_error(tiledb_array_metadata_get_cell_order(ctx, _meta.get(), &layout));
-  return layout;
-}
-
-tdb::Compressor tdb::ArrayMetadata::coords_compressor() const {
+tdb::Compressor tdb::ArrayMetadata::coord_compressor() const {
   auto &ctx = _ctx.get();
   Compressor cmp;
   ctx.handle_error(tiledb_array_metadata_get_coords_compressor(ctx, _meta.get(), &cmp.compressor, &cmp.level));
   return std::move(cmp);
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_coord_compressor(const tdb::Compressor c) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_coords_compressor(ctx, _meta.get(), c.compressor, c.level));
+  return *this;
+}
+
+tdb::Compressor tdb::ArrayMetadata::offset_compressor() const {
+  auto &ctx = _ctx.get();
+  Compressor c;
+  ctx.handle_error(tiledb_array_metadata_get_offsets_compressor(ctx, _meta.get(), &c.compressor, &c.level));
+  return c;
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_offset_compressor(const tdb::Compressor c) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_offsets_compressor(ctx, _meta.get(), c.compressor, c.level));
+  return *this;
 }
 
 std::string tdb::ArrayMetadata::name() const {
@@ -139,6 +144,66 @@ tdb::ArrayMetadata &tdb::ArrayMetadata::create(const std::string &uri) {
   ctx.handle_error(tiledb_array_metadata_create(ctx, &meta, uri.c_str()));
   _meta = std::shared_ptr<tiledb_array_metadata_t>(meta, _deleter);
   return *this;
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_cell_order(tiledb_layout_t layout) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_cell_order(ctx, _meta.get(), layout));
+  return *this;
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_tile_order(tiledb_layout_t layout) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_tile_order(ctx, _meta.get(), layout));
+  return *this;
+}
+
+tiledb_layout_t tdb::ArrayMetadata::cell_order() const {
+  auto &ctx = _ctx.get();
+  tiledb_layout_t layout;
+  ctx.handle_error(tiledb_array_metadata_get_cell_order(ctx, _meta.get(), &layout));
+  return layout;
+}
+
+tiledb_layout_t tdb::ArrayMetadata::tile_order() const {
+  auto &ctx = _ctx.get();
+  tiledb_layout_t layout;
+  ctx.handle_error(tiledb_array_metadata_get_tile_order(ctx, _meta.get(), &layout));
+  return layout;
+}
+
+uint64_t tdb::ArrayMetadata::capacity() const {
+  auto &ctx = _ctx.get();
+  uint64_t capacity;
+  ctx.handle_error(tiledb_array_metadata_get_capacity(ctx, _meta.get(), &capacity));
+  return capacity;
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_capacity(uint64_t capacity) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_capacity(ctx, _meta.get(), capacity));
+  return *this;
+}
+
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_kv() {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_metadata_set_as_kv(ctx, _meta.get()));
+  return *this;
+}
+
+bool tdb::ArrayMetadata::is_kv() const {
+  auto &ctx = _ctx.get();
+  int kv;
+  ctx.handle_error(tiledb_array_metadata_get_as_kv(ctx, _meta.get(), &kv));
+  return kv != 0;
+}
+
+std::shared_ptr<tiledb_array_metadata_t> tdb::ArrayMetadata::ptr() const {
+  return _meta;
+}
+
+bool tdb::ArrayMetadata::good() const {
+  return _meta == nullptr;
 }
 
 void tdb::ArrayMetadata::_Deleter::operator()(tiledb_array_metadata_t *p) {

@@ -55,7 +55,7 @@ std::string tdb::Object::to_str() const {
       ret += "KEYVALUE";
       break;
   }
-  ret += " " + uri + '>';
+  ret += " \"" + uri + "\"";
   return ret;
 }
 

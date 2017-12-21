@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_context.cc
  *
  * @author Ravi Gaddipati
  *
@@ -39,6 +39,7 @@ tdb::Context::Context() {
   tiledb_ctx_t *ctx;
   tiledb_ctx_create(&ctx);
   _ctx = std::shared_ptr<tiledb_ctx_t>(ctx, tiledb_ctx_free);
+  _curr_object.uri = ".";
 }
 
 void tdb::Context::set_root(const std::string &root) {
@@ -99,8 +100,7 @@ std::vector<tdb::Array> tdb::Context::arrays() {
   return ret;
 }
 
-void tdb::Context::handle_error(const int ret) {
-  if (ret != TILEDB_OK) {
+std::string tdb::Context::_handle_error() {
     tiledb_error_t *_err = nullptr;
     const char *_msg = nullptr;
     std::string _msg_str;
@@ -108,18 +108,17 @@ void tdb::Context::handle_error(const int ret) {
     tiledb_error_message(_ctx.get(), _err, &_msg);
     _msg_str = std::string(_msg);
     tiledb_error_free(_ctx.get(), _err);
-    throw std::runtime_error(_msg_str);
-  }
+    return _msg_str;
 }
 
 tdb::Context tdb::Context::group_create(const std::string &group) {
   handle_error(tiledb_group_create(_ctx.get(), group.c_str()));
-  return group_find(group); // TODO there should be better way to get abs path
+  return *this;
 }
 
-tdb::Context::iterator tdb::Context::begin() {
+tdb::Context::iterator tdb::Context::begin(tiledb_walk_order_t order) {
   if (_curr_object.uri.empty()) throw std::runtime_error("No root directory specified.");
-  return iterator(*this, _curr_object.uri);
+  return iterator(*this, _curr_object.uri, order);
 }
 
 tdb::Context::iterator tdb::Context::end() {
@@ -130,12 +129,34 @@ tdb::Array tdb::Context::array_get(const std::string &uri) {
   return Array(*this, uri);
 }
 
+tdb::Object tdb::Context::object_type(const std::string &uri) {
+  Object ret;
+  tiledb_object_t type;
+  handle_error(tiledb_object_type(_ctx.get(), uri.c_str(), &type));
+  ret.set(type);
+  return ret;
+}
+
+void tdb::Context::handle_error(int ret) {
+  if (ret != TILEDB_OK) {
+    handle_error(ret, _handler);
+  }
+}
+
+void tdb::Context::consolidate(const std::string &name) {
+  handle_error(tiledb_array_consolidate(_ctx.get(), name.c_str()));
+}
+
+void tdb::Context::del(std::string &name) {
+  handle_error(tiledb_delete(_ctx.get(), name.c_str()));
+}
+
 std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {
   os << "Ctx<" << ctx.context_type() << ">";
   return os;
 }
 
-void tdb::Context::iterator::_init(const std::string &root, tiledb_ctx_t *ctx) {
-  _ictx.handle_error(tiledb_walk(ctx, root.c_str(), TILEDB_PREORDER, _obj_getter, &_objs));
+void tdb::Context::iterator::_init(const std::string &root, tiledb_ctx_t *ctx, tiledb_walk_order_t order) {
+  _ictx.handle_error(tiledb_walk(ctx, root.c_str(), order, _obj_getter, &_objs));
   _curr = 0;
 }

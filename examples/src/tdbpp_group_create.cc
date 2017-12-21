@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file   tiledb_group_create.cc
  *
  * @section LICENSE
  *
@@ -28,39 +28,26 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * It creates a hierarchical directory structure with three groups:
+ *     my_group
+ *        |_ dense_arrays
+ *        |_ sparse_arrays
+ *
+ * Make sure that no folder with name "my_group" exists in the working
+ * directory before running this example.
  */
 
 #include <tdbpp>
 
 int main() {
   tdb::Context ctx;
-
-  // Can also do: domain.create<tdb::type::UINT64>();
-  tdb::Domain domain(ctx, TILEDB_UINT64);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<tdb::type::UINT64>("d1", {1,4}, 2);
-  d2.create<tdb::type::UINT64>("d2", {1,4}, 2);
-  domain << d1 << d2; // Add dims to domain
-
-  // Can also do: a1.create<tdb::type::INT32>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
-
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
-
-  tdb::ArrayMetadata meta(ctx);
-  meta.create("my_dense_array");
-  meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  meta << domain << a1 << a2 << a3; // Add attributes to array
-
-  // Check the metadata, and make the array.
-  tdb::Array array(meta);
-
-  std::cout << array << std::endl;
+  ctx.group_create("my_group");
+  ctx.group_create("my_group/dense_arrays");
+  ctx.group_create("my_group/sparse_arrays");
+  /**
+   * Or:
+   * ctx.set_root("my_group");
+   * ctx.group_create("dense_arrays");
+   * ctx.group_create("sparse_arrays")'
+   */
 }
