@@ -93,20 +93,6 @@ class S3 {
   /* ********************************* */
 
   /**
-   * Connects an S3 client.
-   *
-   * @return Status
-   */
-  Status connect();
-
-  /**
-   * Disconnects a S3 client.
-   *
-   * @return Status
-   */
-  Status disconnect();
-
-  /**
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
@@ -115,20 +101,19 @@ class S3 {
   bool bucket_exists(const char* bucket);
 
   /**
+   * Connects an S3 client.
+   *
+   * @return Status
+   */
+  Status connect();
+
+  /**
    * Creates a bucket.
    *
    * @param bucket The name of the bucket to be created.
    * @return Status
    */
   Status create_bucket(const char* bucket);
-
-  /**
-   * Deletes a bucket.
-   *
-   * @param bucket The name of the bucket to be deleted.
-   * @return Status
-   */
-  Status delete_bucket(const char* bucket);
 
   /**
    * Creates a new directory. Directories are not really supported in S3.
@@ -140,43 +125,6 @@ class S3 {
   Status create_dir(const URI& uri) const;
 
   /**
-   * Checks if the URI is an existing S3 directory. Checks if the ".dir" object
-   * exists
-   *
-   * @param uri The URI of the directory to be checked
-   * @return *True* if *uri* is an existing directory, *False* otherwise.
-   */
-  bool is_dir(const URI& uri) const;
-
-  /**
-   * Move a given filesystem path. This is a difficult task for S3 because we
-   * need to recursively rename all objects inside the directory
-   *
-   * @param old_uri The URI of the old directory.
-   * @param new_uri The URI of the new directory.
-   * @return Status
-   */
-  Status move_path(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Copies the object identified by `old_uri` to a new one identified by
-   * `new_uri`.
-   *
-   * @param old_uri The object to be copied.
-   * @param new_uri The newly created object.
-   * @return Status
-   */
-  Status copy_path(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Checks if the given URI is an existing S3 object.
-   *
-   * @param uri The URI of the file to be checked.
-   * @return *True* if the *file* is an existing file, and *false* otherwise.
-   */
-  bool is_file(const URI& uri) const;
-
-  /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
@@ -185,7 +133,31 @@ class S3 {
   Status create_file(const URI& uri) const;
 
   /**
-   * Flushes a file to s3.
+   * Disconnects a S3 client.
+   *
+   * @return Status
+   */
+  Status disconnect();
+
+  /**
+   * Deletes a bucket.
+   *
+   * @param bucket The name of the bucket to be deleted.
+   * @return Status
+   */
+  Status delete_bucket(const char* bucket);
+
+  /**
+   * Returns the size of the input file with a given URI in bytes.
+   *
+   * @param uri The URI of the file.
+   * @param nbytes Pointer to `uint64_t` bytes to return.
+   * @return Status
+   */
+  Status file_size(const URI& uri, uint64_t* nbytes) const;
+
+  /**
+   * Flushes a file to s3, finalizing the multpart upload.
    *
    * @param uri The URI of the object to be flushed.
    * @return Status
@@ -193,20 +165,41 @@ class S3 {
   Status flush_file(const URI& uri);
 
   /**
-   * Delete a file with a given URI.
+   * Checks if the URI is an existing S3 directory. Checks if the ".dir" object
+   * exists
    *
-   * @param uri The URI of the file to be deleted.
-   * @return Status
+   * @param uri The URI of the directory to be checked
+   * @return `True` if `uri` is an existing directory, `false` otherwise.
    */
-  Status remove_file(const URI& uri) const;
+  bool is_dir(const URI& uri) const;
 
   /**
-   * Remove a path with a given URI (recursively)
+   * Checks if the given URI is an existing S3 object.
    *
-   * @param uri The URI of the path to be removed.
+   * @param uri The URI of the file to be checked.
+   * @return `True` if `uri` is an existing file, and `false` otherwise.
+   */
+  bool is_file(const URI& uri) const;
+
+  /**
+   * Lists the files one level deep under a given path.
+   *
+   * @param uri The URI of the parent directory path.
+   * @param paths Pointer of a vector of URIs to store the retrieved paths.
    * @return Status
    */
-  Status remove_path(const URI& uri) const;
+  Status ls(const URI& uri, std::vector<std::string>* paths) const;
+
+  /**
+   * Move a given filesystem path. This is a difficult task for S3 if the
+   * path is a directory, because we need to recursively rename all objects
+   * inside the directory.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   * @return Status
+   */
+  Status move_path(const URI& old_uri, const URI& new_uri);
 
   /**
    *  Reads data from a file into a buffer.
@@ -221,46 +214,31 @@ class S3 {
       const URI& uri, off_t offset, void* buffer, uint64_t length) const;
 
   /**
-   * Writes the input buffer to a file. If the file does not exist then it is
-   * created. If the file exists then it is appended to.
+   * Deletes a file with a given URI.
    *
-   * @param uri The URI of the file to be written to.
+   * @param uri The URI of the file to be deleted.
+   * @return Status
+   */
+  Status remove_file(const URI& uri) const;
+
+  /**
+   * Removes a path with a given URI (recursively)
+   *
+   * @param uri The URI of the path to be removed.
+   * @return Status
+   */
+  Status remove_path(const URI& uri) const;
+
+  /**
+   * Writes the input buffer to an S3 object. Note that this is essentially
+   * an append operation implemented via multipart uploads.
+   *
+   * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
    * @return Status
    */
-  Status write_multipart(
-      const URI& uri, const void* buffer, const uint64_t length);
-
-  /**
-   * Writes the input buffer using write cache. If the file does not exist
-   * then it is created. If the file exist then it is appended to.
-   *
-   * @param uri The URI of the file to be written to.
-   * @param buffer The input buffer.
-   * @param length The size of the input buffer.
-   * @return Status
-   */
-  Status write_to_file(
-      const URI& uri, const void* buffer, const uint64_t length);
-
-  /**
-   * Lists the files one level deep under a given path.
-   *
-   * @param uri The URI of the parent directory path.
-   * @param paths Pointer of a vector of URIs to store the retrieved paths.
-   * @return Status
-   */
-  Status ls(const URI& uri, std::vector<std::string>* paths) const;
-
-  /**
-   * Returns the size of the input file with a given URI in bytes.
-   *
-   * @param uri The URI of the file.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
-   */
-  Status file_size(const URI& uri, uint64_t* nbytes) const;
+  Status write_to_file(const URI& uri, const void* buffer, uint64_t length);
 
  private:
   /* ********************************* */
@@ -302,10 +280,31 @@ class S3 {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  // TODO doc
+  /**
+   * Copies the object identified by `old_uri` to a new one identified by
+   * `new_uri`. In the case of directories, this is done recursively for
+   * all the objects that have as prefix the directory path.
+   *
+   * @param old_uri The object to be copied.
+   * @param new_uri The newly created object.
+   * @return Status
+   */
+  Status copy_path(const URI& old_uri, const URI& new_uri);
+
+  /** Removes the contents of an S3 bucker. */
   Status empty_bucket(const Aws::String& bucketName);
 
-  // TODO doc
+  /**
+   * Fills the file buffer (given as an input `Buffer` object) from the
+   * input binary `buffer`, up until the size of the file buffer becomes
+   * `FILE_BUFFER_SIZE`. It also retrieves the number of bytes filled.
+   *
+   * @param buff The destination file buffer to fill in.
+   * @param buffer The source binary buffer to fill the data from.
+   * @param length The length of `buffer`.
+   * @param nbytes_filled The number of bytes filled into `buff`.
+   * @return Status
+   */
   Status fill_file_buffer(
       Buffer* buff,
       const void* buffer,
@@ -313,31 +312,62 @@ class S3 {
       uint64_t* nbytes_filled);
 
   /**
-   * // TODO: doc
-   * @param objectKey
-   * @return
+   * Simply removes a potential `/` character from the front of `object_key`.
    */
-  Aws::String fix_path(const Aws::String& objectKey) const;
+  Aws::String fix_path(const Aws::String& object_key) const;
 
-  // TODO: doc
+  /**
+   * Writes the contents of the input buffer to the S3 object given by
+   * the input `uri` as a new series of multipart uploads. It then
+   * resets the buffer.
+   *
+   * @param uri The S3 object to write to.
+   * @param buff The input buffer to flust.
+   * @return Status
+   */
   Status flush_file_buffer(const URI& uri, Buffer* buff);
 
-  // TODO: doc
+  /**
+   * Gets the local file buffer of an S3 object with a given URI.
+   *
+   * @param uri The URI of the S3 object whose file buffer is retrieved.
+   * @param buff The local file buffer to be retrieved.
+   * @return Status
+   */
   Status get_file_buffer(const URI& uri, Buffer** buff);
 
-  // TODO
+  /** Initiates a new multipart upload request for the input URI. */
   Status initiate_multipart_request(Aws::Http::URI aws_uri);
 
-  // TODO doc
+  /**
+   * Replaces in the `str` string the string `from` with string `to`.
+   *
+   * @param str The target string.
+   * @param from The string to be replaced.
+   * @param to The new string that will substitute `from`.
+   * @return `true` if `from` exists in `str` and `false` otherwise.
+   */
   bool replace(
       std::string& str, const std::string& from, const std::string& to) const;
 
-  // TODO doc
+  /** Waits for the input bucket to be emptied. */
   Status wait_for_bucket_to_empty(const Aws::String& bucketName);
 
-  // TODO doc
+  /** Waits for the input object to be propagated. */
   bool wait_for_object_to_propagate(
       const Aws::String& bucketName, const Aws::String& objectKey) const;
+
+  /**
+   * Writes the input buffer to a file using a multipart upload. If the file
+   * does not exist, then it is created. If the file exists then it is appended
+   * to.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @return Status
+   */
+  Status write_multipart(const URI& uri, const void* buffer, uint64_t length);
 };
 
 }  // namespace tiledb

@@ -65,6 +65,13 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
+bool S3::bucket_exists(const char* bucket) {
+  Aws::S3::Model::HeadBucketRequest headBucketRequest;
+  headBucketRequest.SetBucket(bucket);
+  auto headBucketOutcome = client_->HeadBucket(headBucketRequest);
+  return headBucketOutcome.IsSuccess();
+}
+
 Status S3::connect() {
   Aws::InitAPI(options_);
   Aws::Client::ClientConfiguration config;
@@ -95,92 +102,10 @@ Status S3::connect() {
   return Status::Ok();
 }
 
-Status S3::disconnect() {
-  for (const auto& record : multipart_upload_request_) {
-    Aws::S3::Model::CompletedMultipartUpload completedMultipartUpload =
-        multipart_upload_[record.first];
-    Aws::S3::Model::CompleteMultipartUploadRequest
-        completeMultipartUploadRequest = record.second;
-    completeMultipartUploadRequest.WithMultipartUpload(
-        completedMultipartUpload);
-    Aws::S3::Model::CompleteMultipartUploadOutcome
-        completeMultipartUploadOutcome =
-            client_->CompleteMultipartUpload(completeMultipartUploadRequest);
-    if (!completeMultipartUploadOutcome.IsSuccess()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Failed to disconnect and flush s3 objects. ") +
-          std::string("\nException:  ") +
-          completeMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
-          std::string("\nError message:  ") +
-          completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
-    }
-  }
-  Aws::ShutdownAPI(options_);
-
-  return Status::Ok();
-}
-
-Status S3::flush_file(const URI& uri) {
-  if (is_dir(uri))
-    return Status::Ok();
-
-  // Flush and delee file buffer
-  auto buff = (Buffer*)nullptr;
-  RETURN_NOT_OK(get_file_buffer(uri, &buff));
-  RETURN_NOT_OK(flush_file_buffer(uri, buff));
-  delete buff;
-  file_buffers_.erase(uri.to_string());
-
-  Aws::Http::URI aws_uri = uri.c_str();
-  std::string path_c_str = aws_uri.GetPath().c_str();
-
-  // Do nothing - empty object
-  if (multipart_upload_.find(path_c_str) == multipart_upload_.end())
-    return Status::Ok();
-
-  Aws::S3::Model::CompletedMultipartUpload completedMultipartUpload =
-      multipart_upload_[path_c_str];
-  Aws::S3::Model::CompleteMultipartUploadRequest
-      completeMultipartUploadRequest = multipart_upload_request_[path_c_str];
-  completeMultipartUploadRequest.WithMultipartUpload(completedMultipartUpload);
-  Aws::S3::Model::CompleteMultipartUploadOutcome
-      completeMultipartUploadOutcome =
-          client_->CompleteMultipartUpload(completeMultipartUploadRequest);
-
-  wait_for_object_to_propagate(
-      completeMultipartUploadRequest.GetBucket(),
-      completeMultipartUploadRequest.GetKey());
-  multipart_upload_IDs_.erase(path_c_str);
-  multipart_upload_part_number_.erase(path_c_str);
-  multipart_upload_request_.erase(path_c_str);
-  multipart_upload_.erase(path_c_str);
-
-  //  fails when flushing directories or removed files
-  if (!completeMultipartUploadOutcome.IsSuccess()) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to flush s3 object ") + uri.c_str() +
-        std::string("\nException:  ") +
-        completeMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
-  }
-
-  return Status::Ok();
-}
-
-bool S3::bucket_exists(const char* bucket) {
-  Aws::S3::Model::HeadBucketRequest headBucketRequest;
-  headBucketRequest.SetBucket(bucket);
-  Aws::S3::Model::HeadBucketOutcome headBucketOutcome =
-      client_->HeadBucket(headBucketRequest);
-  return headBucketOutcome.IsSuccess();
-}
-
 Status S3::create_bucket(const char* bucket) {
   Aws::S3::Model::CreateBucketRequest createBucketRequest;
   createBucketRequest.SetBucket(bucket);
-  Aws::S3::Model::CreateBucketOutcome createBucketOutcome =
-      client_->CreateBucket(createBucketRequest);
+  auto createBucketOutcome = client_->CreateBucket(createBucketRequest);
   if (!createBucketOutcome.IsSuccess()) {
     return LOG_STATUS(Status::IOError(
         std::string("Failed to create s3 bucket ") + bucket +
@@ -188,41 +113,6 @@ Status S3::create_bucket(const char* bucket) {
         createBucketOutcome.GetError().GetExceptionName().c_str() +
         std::string("\nError message:  ") +
         createBucketOutcome.GetError().GetMessage().c_str()));
-  }
-  return Status::Ok();
-}
-
-Status S3::delete_bucket(const char* bucket) {
-  Aws::S3::Model::HeadBucketRequest headBucketRequest;
-  headBucketRequest.SetBucket(bucket);
-  Aws::S3::Model::HeadBucketOutcome bucketOutcome =
-      client_->HeadBucket(headBucketRequest);
-
-  if (!bucketOutcome.IsSuccess()) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to head s3 bucket ") + bucket +
-        std::string("\nException:  ") +
-        bucketOutcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        bucketOutcome.GetError().GetMessage().c_str()));
-  }
-  Status status = empty_bucket(bucket);
-  if (!status.ok()) {
-    return status;
-  }
-  wait_for_bucket_to_empty(bucket);
-
-  Aws::S3::Model::DeleteBucketRequest deleteBucketRequest;
-  deleteBucketRequest.SetBucket(bucket);
-  Aws::S3::Model::DeleteBucketOutcome deleteBucketOutcome =
-      client_->DeleteBucket(deleteBucketRequest);
-  if (!deleteBucketOutcome.IsSuccess()) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to delete s3 bucket ") + bucket +
-        std::string("\nException:  ") +
-        deleteBucketOutcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        deleteBucketOutcome.GetError().GetMessage().c_str()));
   }
   return Status::Ok();
 }
@@ -235,7 +125,8 @@ Status S3::create_dir(const URI& uri) const {
   Aws::S3::Model::PutObjectRequest putObjectRequest;
   putObjectRequest.WithKey(aws_uri.GetPath() + constants::s3_dir_suffix)
       .WithBucket(aws_uri.GetAuthority());
-  auto requestStream = Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag);
+  auto requestStream =
+      Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag);
   putObjectRequest.SetBody(requestStream);
   auto putObjectOutcome = client_->PutObject(putObjectRequest);
   if (!putObjectOutcome.IsSuccess()) {
@@ -251,141 +142,14 @@ Status S3::create_dir(const URI& uri) const {
   return Status::Ok();
 }
 
-bool S3::is_dir(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()) + constants::s3_dir_suffix);
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
-
-  if (!listObjectsOutcome.IsSuccess())
-    return false;
-  if (listObjectsOutcome.GetResult().GetContents().empty())
-    return false;
-  return listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
-      fix_path(aws_uri.GetPath()) + constants::s3_dir_suffix;
-}
-
-Status S3::move_path(const URI& old_uri, const URI& new_uri) {
-  if (is_dir(new_uri)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to move s3 path: ") + old_uri.c_str() +
-        std::string(" target path :  ") + new_uri.c_str() +
-        std::string("already exists")));
-  }
-  copy_path(old_uri, new_uri);
-  return remove_path(old_uri);
-}
-
-Status S3::copy_path(const URI& old_uri, const URI& new_uri) {
-  std::string src_dir = old_uri.to_string();
-  if (src_dir.back() != '/')
-    src_dir.push_back('/');
-  std::string dst_dir = new_uri.to_string();
-  if (dst_dir.back() != '/')
-    dst_dir.push_back('/');
-  Aws::Http::URI src_uri = src_dir.c_str();
-  Aws::Http::URI dst_uri = dst_dir.c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(src_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(src_uri.GetPath()));
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
-
-  if (!listObjectsOutcome.IsSuccess())
-    return LOG_STATUS(Status::IOError(
-        "Error while listing s3 directory " + old_uri.to_string()));
-
-  // create new directory
-  if (!listObjectsOutcome.GetResult().GetContents().empty())
-    create_dir(new_uri);
-
-  for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
-    // delete objects in directory
-    Aws::S3::Model::CopyObjectRequest copyObjectRequest;
-    copyObjectRequest.SetBucket(src_uri.GetAuthority());
-    copyObjectRequest.WithCopySource(
-        src_uri.GetAuthority() + "/" + object.GetKey());
-    std::string new_file(("/" + object.GetKey()).c_str());
-    replace(
-        new_file,
-        std::string(src_uri.GetPath().c_str()),
-        std::string(dst_uri.GetPath().c_str()));
-    copyObjectRequest.WithKey(new_file.c_str());
-    Aws::S3::Model::CopyObjectOutcome copyObjectOutcome =
-        client_->CopyObject(copyObjectRequest);
-    if (!copyObjectOutcome.IsSuccess()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Failed to copy s3 object ") + object.GetKey().c_str() +
-          " to " + new_file + std::string("\nException:  ") +
-          copyObjectOutcome.GetError().GetExceptionName().c_str() +
-          std::string("\nError message:  ") +
-          copyObjectOutcome.GetError().GetMessage().c_str()));
-    }
-    wait_for_object_to_propagate(
-        copyObjectRequest.GetBucket(), copyObjectRequest.GetKey());
-  }
-  return Status::Ok();
-}
-
-bool S3::is_file(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
-
-  if (!listObjectsOutcome.IsSuccess())
-    return false;
-  if (listObjectsOutcome.GetResult().GetContents().empty())
-    return false;
-  return listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
-      fix_path(aws_uri.GetPath());
-}
-
-Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
-  auto& path = aws_uri.GetPath();
-  std::string path_c_str = path.c_str();
-  Aws::S3::Model::CreateMultipartUploadRequest createMultipartUploadRequest;
-  createMultipartUploadRequest.SetBucket(aws_uri.GetAuthority());
-  createMultipartUploadRequest.SetKey(path);
-  createMultipartUploadRequest.SetContentType("application/octet-stream");
-
-  Aws::S3::Model::CreateMultipartUploadOutcome createMultipartUploadOutcome =
-      client_->CreateMultipartUpload(createMultipartUploadRequest);
-  if (!createMultipartUploadOutcome.IsSuccess()) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to create multipart request for object ") +
-        path_c_str + std::string("\nException:  ") +
-        createMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        createMultipartUploadOutcome.GetError().GetMessage().c_str()));
-  }
-
-  multipart_upload_IDs_[path_c_str] =
-      createMultipartUploadOutcome.GetResult().GetUploadId();
-  multipart_upload_part_number_[path_c_str] = 0;
-  Aws::S3::Model::CompleteMultipartUploadRequest completeMultipartUploadRequest;
-  completeMultipartUploadRequest.SetBucket(aws_uri.GetAuthority());
-  completeMultipartUploadRequest.SetKey(path);
-  completeMultipartUploadRequest.SetUploadId(multipart_upload_IDs_[path_c_str]);
-
-  Aws::S3::Model::CompletedMultipartUpload completedMultipartUpload;
-  multipart_upload_[path_c_str] = completedMultipartUpload;
-  multipart_upload_request_[path_c_str] = completeMultipartUploadRequest;
-
-  return Status::Ok();
-}
-
 Status S3::create_file(const URI& uri) const {
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::PutObjectRequest putObjectRequest;
   putObjectRequest.WithKey(aws_uri.GetPath())
       .WithBucket(aws_uri.GetAuthority());
 
-  auto requestStream = Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag);
+  auto requestStream =
+      Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag);
   putObjectRequest.SetBody(requestStream);
 
   auto putObjectOutcome = client_->PutObject(putObjectRequest);
@@ -398,76 +162,189 @@ Status S3::create_file(const URI& uri) const {
   return Status::Ok();
 }
 
-Status S3::remove_file(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
-  Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
-  deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
-  deleteObjectRequest.SetKey(aws_uri.GetPath());
-  Aws::S3::Model::DeleteObjectOutcome deleteObjectOutcome =
-      client_->DeleteObject(deleteObjectRequest);
-  if (!deleteObjectOutcome.IsSuccess()) {
+Status S3::delete_bucket(const char* bucket) {
+  Aws::S3::Model::HeadBucketRequest headBucketRequest;
+  headBucketRequest.SetBucket(bucket);
+  auto bucketOutcome = client_->HeadBucket(headBucketRequest);
+
+  if (!bucketOutcome.IsSuccess()) {
     return LOG_STATUS(Status::IOError(
-        std::string("Failed to delete s3 object ") + uri.c_str() +
+        std::string("Failed to head s3 bucket ") + bucket +
         std::string("\nException:  ") +
-        deleteObjectOutcome.GetError().GetExceptionName().c_str() +
+        bucketOutcome.GetError().GetExceptionName().c_str() +
         std::string("\nError message:  ") +
-        deleteObjectOutcome.GetError().GetMessage().c_str()));
+        bucketOutcome.GetError().GetMessage().c_str()));
   }
-  wait_for_object_to_propagate(
-      deleteObjectRequest.GetBucket(), deleteObjectRequest.GetKey());
+  RETURN_NOT_OK(empty_bucket(bucket));
+  wait_for_bucket_to_empty(bucket);
+
+  Aws::S3::Model::DeleteBucketRequest deleteBucketRequest;
+  deleteBucketRequest.SetBucket(bucket);
+  auto deleteBucketOutcome = client_->DeleteBucket(deleteBucketRequest);
+  if (!deleteBucketOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to delete s3 bucket ") + bucket +
+        std::string("\nException:  ") +
+        deleteBucketOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        deleteBucketOutcome.GetError().GetMessage().c_str()));
+  }
   return Status::Ok();
 }
 
-Status S3::remove_path(const URI& uri) const {
-  std::string directory = uri.to_string();
-  if (directory.back() != '/')
-    directory.push_back('/');
-  Aws::Http::URI aws_uri = directory.c_str();
+Status S3::disconnect() {
+  for (const auto& record : multipart_upload_request_) {
+    auto completedMultipartUpload = multipart_upload_[record.first];
+    auto completeMultipartUploadRequest = record.second;
+    completeMultipartUploadRequest.WithMultipartUpload(
+        completedMultipartUpload);
+    auto completeMultipartUploadOutcome =
+        client_->CompleteMultipartUpload(completeMultipartUploadRequest);
+    if (!completeMultipartUploadOutcome.IsSuccess()) {
+      return LOG_STATUS(Status::IOError(
+          std::string("Failed to disconnect and flush s3 objects. ") +
+          std::string("\nException:  ") +
+          completeMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
+          std::string("\nError message:  ") +
+          completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
+    }
+  }
+  Aws::ShutdownAPI(options_);
+
+  return Status::Ok();
+}
+
+Status S3::file_size(const URI& uri, uint64_t* nbytes) const {
+  Aws::Http::URI aws_uri = uri.to_path().c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
   listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
 
   if (!listObjectsOutcome.IsSuccess())
     return LOG_STATUS(
-        Status::IOError("Error while listing s3 directory " + uri.to_string()));
+        Status::IOError("Error while listing file " + uri.to_string()));
+  if (listObjectsOutcome.GetResult().GetContents().empty())
+    return LOG_STATUS(
+        Status::IOError(std::string("Not a file ") + uri.to_string()));
+  *nbytes = static_cast<uint64_t>(
+      listObjectsOutcome.GetResult().GetContents()[0].GetSize());
+  return Status::Ok();
+}
 
-  if (!listObjectsOutcome.GetResult().GetContents().empty()) {
-    // delete directory object
-    directory.pop_back();
-    Aws::Http::URI dir_uri = (directory + std::string(constants::s3_dir_suffix)).c_str();
-    Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
-    deleteObjectRequest.SetBucket(dir_uri.GetAuthority());
-    deleteObjectRequest.SetKey(dir_uri.GetPath());
-    Aws::S3::Model::DeleteObjectOutcome deleteObjectOutcome =
-        client_->DeleteObject(deleteObjectRequest);
-    if (!deleteObjectOutcome.IsSuccess()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Failed to delete s3 object ") +
-          dir_uri.GetPath().c_str() + std::string("\nException:  ") +
-          deleteObjectOutcome.GetError().GetExceptionName().c_str() +
-          std::string("\nError message:  ") +
-          deleteObjectOutcome.GetError().GetMessage().c_str()));
-    }
+Status S3::flush_file(const URI& uri) {
+  if (is_dir(uri))
+    return Status::Ok();
+
+  // Flush and delete file buffer
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+  RETURN_NOT_OK(flush_file_buffer(uri, buff));
+  delete buff;
+  file_buffers_.erase(uri.to_string());
+
+  Aws::Http::URI aws_uri = uri.c_str();
+  std::string path_c_str = aws_uri.GetPath().c_str();
+
+  // Do nothing - empty object
+  auto multipart_upload_it = multipart_upload_.find(path_c_str);
+  if (multipart_upload_it == multipart_upload_.end())
+    return Status::Ok();
+
+  auto completedMultipartUpload = multipart_upload_it->second;
+  auto multipart_upload_request_it = multipart_upload_request_.find(path_c_str);
+  auto completeMultipartUploadRequest = multipart_upload_request_it->second;
+  completeMultipartUploadRequest.WithMultipartUpload(completedMultipartUpload);
+  auto completeMultipartUploadOutcome =
+      client_->CompleteMultipartUpload(completeMultipartUploadRequest);
+
+  wait_for_object_to_propagate(
+      completeMultipartUploadRequest.GetBucket(),
+      completeMultipartUploadRequest.GetKey());
+  multipart_upload_IDs_.erase(path_c_str);
+  multipart_upload_part_number_.erase(path_c_str);
+  multipart_upload_request_.erase(multipart_upload_request_it);
+  multipart_upload_.erase(multipart_upload_it);
+
+  //  fails when flushing directories or removed files
+  if (!completeMultipartUploadOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to flush s3 object ") + uri.c_str() +
+        std::string("\nException:  ") +
+        completeMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        completeMultipartUploadOutcome.GetError().GetMessage().c_str()));
   }
+
+  return Status::Ok();
+}
+
+bool S3::is_dir(const URI& uri) const {
+  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(
+      fix_path(aws_uri.GetPath()) + constants::s3_dir_suffix);
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess())
+    return false;
+  if (listObjectsOutcome.GetResult().GetContents().empty())
+    return false;
+  return listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
+         fix_path(aws_uri.GetPath()) + constants::s3_dir_suffix;
+}
+
+bool S3::is_file(const URI& uri) const {
+  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess())
+    return false;
+  if (listObjectsOutcome.GetResult().GetContents().empty())
+    return false;
+  return listObjectsOutcome.GetResult().GetContents()[0].GetKey() ==
+         fix_path(aws_uri.GetPath());
+}
+
+Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
+  Aws::Http::URI aws_uri = (uri.to_path() + std::string("/")).c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
+  listObjectsRequest.WithDelimiter("/");
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess())
+    return LOG_STATUS(
+        Status::IOError("Error while listing directory " + uri.to_string()));
+
   for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
-    // delete objects in directory
-    Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
-    deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
-    deleteObjectRequest.SetKey(object.GetKey());
-    Aws::S3::Model::DeleteObjectOutcome deleteObjectOutcome =
-        client_->DeleteObject(deleteObjectRequest);
-    if (!deleteObjectOutcome.IsSuccess()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Failed to delete s3 object ") + object.GetKey().c_str() +
-          std::string("\nException:  ") +
-          deleteObjectOutcome.GetError().GetExceptionName().c_str() +
-          std::string("\nError message:  ") +
-          deleteObjectOutcome.GetError().GetMessage().c_str()));
+    std::string file(object.GetKey().c_str());
+    replace(file, std::string(constants::s3_dir_suffix), std::string());
+    if (file.front() == '/') {
+      paths->push_back(
+          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
+    } else {
+      paths->push_back(
+          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + "/" + file);
     }
   }
   return Status::Ok();
+}
+
+Status S3::move_path(const URI& old_uri, const URI& new_uri) {
+  if (is_dir(new_uri)) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to move s3 path: ") + old_uri.c_str() +
+        std::string(" target path :  ") + new_uri.c_str() +
+        std::string("already exists")));
+  }
+  copy_path(old_uri, new_uri);
+  return remove_path(old_uri);
 }
 
 Status S3::read_from_file(
@@ -497,11 +374,84 @@ Status S3::read_from_file(
     return LOG_STATUS(
         Status::IOError(std::string("Read returned different size of bytes.")));
   }
+
   return Status::Ok();
 }
 
-Status S3::write_to_file(
-    const URI& uri, const void* buffer, const uint64_t length) {
+Status S3::remove_file(const URI& uri) const {
+  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
+  deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
+  deleteObjectRequest.SetKey(aws_uri.GetPath());
+  auto deleteObjectOutcome = client_->DeleteObject(deleteObjectRequest);
+  if (!deleteObjectOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to delete s3 object ") + uri.c_str() +
+        std::string("\nException:  ") +
+        deleteObjectOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        deleteObjectOutcome.GetError().GetMessage().c_str()));
+  }
+
+  wait_for_object_to_propagate(
+      deleteObjectRequest.GetBucket(), deleteObjectRequest.GetKey());
+
+  return Status::Ok();
+}
+
+Status S3::remove_path(const URI& uri) const {
+  std::string directory = uri.to_string();
+  if (directory.back() != '/')
+    directory.push_back('/');
+  Aws::Http::URI aws_uri = directory.c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess())
+    return LOG_STATUS(
+        Status::IOError("Error while listing s3 directory " + uri.to_string()));
+
+  if (!listObjectsOutcome.GetResult().GetContents().empty()) {
+    // delete directory object
+    directory.pop_back();
+    Aws::Http::URI dir_uri =
+        (directory + std::string(constants::s3_dir_suffix)).c_str();
+    Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
+    deleteObjectRequest.SetBucket(dir_uri.GetAuthority());
+    deleteObjectRequest.SetKey(dir_uri.GetPath());
+    auto deleteObjectOutcome = client_->DeleteObject(deleteObjectRequest);
+    if (!deleteObjectOutcome.IsSuccess()) {
+      return LOG_STATUS(Status::IOError(
+          std::string("Failed to delete s3 object ") +
+          dir_uri.GetPath().c_str() + std::string("\nException:  ") +
+          deleteObjectOutcome.GetError().GetExceptionName().c_str() +
+          std::string("\nError message:  ") +
+          deleteObjectOutcome.GetError().GetMessage().c_str()));
+    }
+  }
+
+  for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
+    // delete objects in directory
+    Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
+    deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
+    deleteObjectRequest.SetKey(object.GetKey());
+    auto deleteObjectOutcome = client_->DeleteObject(deleteObjectRequest);
+    if (!deleteObjectOutcome.IsSuccess()) {
+      return LOG_STATUS(Status::IOError(
+          std::string("Failed to delete s3 object ") + object.GetKey().c_str() +
+          std::string("\nException:  ") +
+          deleteObjectOutcome.GetError().GetExceptionName().c_str() +
+          std::string("\nError message:  ") +
+          deleteObjectOutcome.GetError().GetMessage().c_str()));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status S3::write_to_file(const URI& uri, const void* buffer, uint64_t length) {
   // Get file buffer
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
@@ -519,7 +469,8 @@ Status S3::write_to_file(
   uint64_t offset = nbytes_filled;
   while (new_length > 0) {
     if (new_length >= FILE_BUFFER_SIZE) {
-      RETURN_NOT_OK(write_multipart(uri, (char*)buffer + offset, FILE_BUFFER_SIZE));
+      RETURN_NOT_OK(
+          write_multipart(uri, (char*)buffer + offset, FILE_BUFFER_SIZE));
       offset += FILE_BUFFER_SIZE;
       new_length -= FILE_BUFFER_SIZE;
     } else {
@@ -534,111 +485,65 @@ Status S3::write_to_file(
   return Status::Ok();
 }
 
-Status S3::write_multipart(
-    const URI& uri, const void* buffer, const uint64_t length) {
-  // length should be larger than 5MB
-  Aws::Http::URI aws_uri = uri.c_str();
-  auto& path = aws_uri.GetPath();
-  std::string path_c_str = path.c_str();
-  if (multipart_upload_IDs_.find(path_c_str) == multipart_upload_IDs_.end()) {
-    // If file not open initiate a multipart upload
-    Status st = initiate_multipart_request(aws_uri);
-    if (!st.ok()) {
-      return st;
-    }
-  }
-
-  // upload a part of the file
-  multipart_upload_part_number_[path_c_str]++;
-  std::shared_ptr<Aws::IOStream> stream = std::shared_ptr<Aws::IOStream>(
-      new boost::interprocess::bufferstream((char*)buffer, length));
-
-  Aws::S3::Model::UploadPartRequest uploadPartRequest;
-  uploadPartRequest.SetBucket(aws_uri.GetAuthority());
-  uploadPartRequest.SetKey(path);
-  uploadPartRequest.SetPartNumber(multipart_upload_part_number_[path_c_str]);
-  uploadPartRequest.SetUploadId(multipart_upload_IDs_[path_c_str]);
-  uploadPartRequest.SetBody(stream);
-  uploadPartRequest.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
-      Aws::Utils::HashingUtils::CalculateMD5(*stream)));
-  uploadPartRequest.SetContentLength(length);
-
-  Aws::S3::Model::UploadPartOutcomeCallable uploadPartOutcomeCallable =
-      client_->UploadPartCallable(uploadPartRequest);
-  Aws::S3::Model::UploadPartOutcome uploadPartOutcome =
-      uploadPartOutcomeCallable.get();
-  if (!uploadPartOutcome.IsSuccess()) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to upload part of s3 object ") + uri.c_str() +
-        std::string("\nException:  ") +
-        uploadPartOutcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        uploadPartOutcome.GetError().GetMessage().c_str()));
-  }
-  Aws::S3::Model::CompletedPart completedPart;
-  completedPart.SetETag(uploadPartOutcome.GetResult().GetETag());
-  completedPart.SetPartNumber(multipart_upload_part_number_[path_c_str]);
-  multipart_upload_[path_c_str].AddParts(completedPart);
-
-  return Status::Ok();
-}
-
-Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
-  Aws::Http::URI aws_uri = (uri.to_path() + std::string("/")).c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
-  listObjectsRequest.WithDelimiter("/");
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
-
-  if (!listObjectsOutcome.IsSuccess())
-    return LOG_STATUS(
-        Status::IOError("Error while listing directory " + uri.to_string()));
-
-  for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
-    std::string file(object.GetKey().c_str());
-    replace(file, std::string(constants::s3_dir_suffix), std::string());
-    if (file.front() == '/') {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
-    } else {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + "/" + file);
-    }
-  }
-  return Status::Ok();
-}
-
-Status S3::file_size(const URI& uri, uint64_t* nbytes) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
-
-  if (!listObjectsOutcome.IsSuccess())
-    return LOG_STATUS(
-        Status::IOError("Error while listing file " + uri.to_string()));
-  if (listObjectsOutcome.GetResult().GetContents().empty())
-    return LOG_STATUS(
-        Status::IOError(std::string("Not a file ") + uri.to_string()));
-  *nbytes = static_cast<uint64_t>(
-      listObjectsOutcome.GetResult().GetContents()[0].GetSize());
-  return Status::Ok();
-}
-
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
+Status S3::copy_path(const URI& old_uri, const URI& new_uri) {
+  std::string src_dir = old_uri.to_string();
+  if (src_dir.back() != '/')
+    src_dir.push_back('/');
+  std::string dst_dir = new_uri.to_string();
+  if (dst_dir.back() != '/')
+    dst_dir.push_back('/');
+  Aws::Http::URI src_uri = src_dir.c_str();
+  Aws::Http::URI dst_uri = dst_dir.c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(src_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(fix_path(src_uri.GetPath()));
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess())
+    return LOG_STATUS(Status::IOError(
+        "Error while listing s3 directory " + old_uri.to_string()));
+
+  // create new directory
+  if (!listObjectsOutcome.GetResult().GetContents().empty())
+    create_dir(new_uri);
+
+  for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
+    // delete objects in directory
+    Aws::S3::Model::CopyObjectRequest copyObjectRequest;
+    copyObjectRequest.SetBucket(src_uri.GetAuthority());
+    copyObjectRequest.WithCopySource(
+        src_uri.GetAuthority() + "/" + object.GetKey());
+    std::string new_file(("/" + object.GetKey()).c_str());
+    replace(
+        new_file,
+        std::string(src_uri.GetPath().c_str()),
+        std::string(dst_uri.GetPath().c_str()));
+    copyObjectRequest.WithKey(new_file.c_str());
+    auto copyObjectOutcome = client_->CopyObject(copyObjectRequest);
+    if (!copyObjectOutcome.IsSuccess()) {
+      return LOG_STATUS(Status::IOError(
+          std::string("Failed to copy s3 object ") + object.GetKey().c_str() +
+          " to " + new_file + std::string("\nException:  ") +
+          copyObjectOutcome.GetError().GetExceptionName().c_str() +
+          std::string("\nError message:  ") +
+          copyObjectOutcome.GetError().GetMessage().c_str()));
+    }
+
+    wait_for_object_to_propagate(
+        copyObjectRequest.GetBucket(), copyObjectRequest.GetKey());
+  }
+
+  return Status::Ok();
+}
+
 Status S3::empty_bucket(const Aws::String& bucketName) {
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(bucketName);
-
-  Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-      client_->ListObjects(listObjectsRequest);
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
 
   if (!listObjectsOutcome.IsSuccess()) {
     return LOG_STATUS(Status::IOError(
@@ -653,8 +558,7 @@ Status S3::empty_bucket(const Aws::String& bucketName) {
     Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
     deleteObjectRequest.SetBucket(bucketName);
     deleteObjectRequest.SetKey(object.GetKey());
-    Aws::S3::Model::DeleteObjectOutcome deleteObjectOutcome =
-        client_->DeleteObject(deleteObjectRequest);
+    auto deleteObjectOutcome = client_->DeleteObject(deleteObjectRequest);
     if (!deleteObjectOutcome.IsSuccess()) {
       return LOG_STATUS(Status::IOError(
           std::string("Failed to delete s3 object ") + object.GetKey().c_str() +
@@ -664,6 +568,7 @@ Status S3::empty_bucket(const Aws::String& bucketName) {
           deleteObjectOutcome.GetError().GetMessage().c_str()));
     }
   }
+
   return Status::Ok();
 }
 
@@ -679,10 +584,10 @@ Status S3::fill_file_buffer(
   return Status::Ok();
 }
 
-Aws::String S3::fix_path(const Aws::String& objectKey) const {
-  if (objectKey.front() == '/')
-    return objectKey.substr(1, objectKey.length());
-  return objectKey;
+Aws::String S3::fix_path(const Aws::String& object_key) const {
+  if (object_key.front() == '/')
+    return object_key.substr(1, object_key.length());
+  return object_key;
 }
 
 Status S3::flush_file_buffer(const URI& uri, Buffer* buff) {
@@ -708,9 +613,43 @@ Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
   return Status::Ok();
 }
 
+Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
+  auto& path = aws_uri.GetPath();
+  std::string path_c_str = path.c_str();
+  Aws::S3::Model::CreateMultipartUploadRequest createMultipartUploadRequest;
+  createMultipartUploadRequest.SetBucket(aws_uri.GetAuthority());
+  createMultipartUploadRequest.SetKey(path);
+  createMultipartUploadRequest.SetContentType("application/octet-stream");
+
+  auto createMultipartUploadOutcome =
+      client_->CreateMultipartUpload(createMultipartUploadRequest);
+  if (!createMultipartUploadOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to create multipart request for object ") +
+        path_c_str + std::string("\nException:  ") +
+        createMultipartUploadOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        createMultipartUploadOutcome.GetError().GetMessage().c_str()));
+  }
+
+  multipart_upload_IDs_[path_c_str] =
+      createMultipartUploadOutcome.GetResult().GetUploadId();
+  multipart_upload_part_number_[path_c_str] = 0;
+  Aws::S3::Model::CompleteMultipartUploadRequest completeMultipartUploadRequest;
+  completeMultipartUploadRequest.SetBucket(aws_uri.GetAuthority());
+  completeMultipartUploadRequest.SetKey(path);
+  completeMultipartUploadRequest.SetUploadId(multipart_upload_IDs_[path_c_str]);
+
+  Aws::S3::Model::CompletedMultipartUpload completedMultipartUpload;
+  multipart_upload_[path_c_str] = completedMultipartUpload;
+  multipart_upload_request_[path_c_str] = completeMultipartUploadRequest;
+
+  return Status::Ok();
+}
+
 bool S3::replace(
     std::string& str, const std::string& from, const std::string& to) const {
-  size_t start_pos = str.find(from);
+  auto start_pos = str.find(from);
   if (start_pos == std::string::npos)
     return false;
   str.replace(start_pos, from.length(), to);
@@ -723,8 +662,7 @@ Status S3::wait_for_bucket_to_empty(const Aws::String& bucketName) {
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
-    Aws::S3::Model::ListObjectsOutcome listObjectsOutcome =
-        client_->ListObjects(listObjectsRequest);
+    auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
 
     if (!listObjectsOutcome.GetResult().GetContents().empty()) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -742,8 +680,7 @@ bool S3::wait_for_object_to_propagate(
     Aws::S3::Model::HeadObjectRequest headObjectRequest;
     headObjectRequest.SetBucket(bucketName);
     headObjectRequest.SetKey(objectKey);
-    Aws::S3::Model::HeadObjectOutcome headObjectOutcome =
-        client_->HeadObject(headObjectRequest);
+    auto headObjectOutcome = client_->HeadObject(headObjectRequest);
     if (headObjectOutcome.IsSuccess())
       return true;
 
@@ -751,6 +688,54 @@ bool S3::wait_for_object_to_propagate(
   }
 
   return false;
+}
+
+Status S3::write_multipart(
+    const URI& uri, const void* buffer, uint64_t length) {
+  // length should be larger than 5MB
+  Aws::Http::URI aws_uri = uri.c_str();
+  auto& path = aws_uri.GetPath();
+  std::string path_c_str = path.c_str();
+  if (multipart_upload_IDs_.find(path_c_str) == multipart_upload_IDs_.end()) {
+    // If file not open initiate a multipart upload
+    Status st = initiate_multipart_request(aws_uri);
+    if (!st.ok()) {
+      return st;
+    }
+  }
+
+  // upload a part of the file
+  multipart_upload_part_number_[path_c_str]++;
+  auto stream = std::shared_ptr<Aws::IOStream>(
+      new boost::interprocess::bufferstream((char*)buffer, length));
+
+  Aws::S3::Model::UploadPartRequest uploadPartRequest;
+  uploadPartRequest.SetBucket(aws_uri.GetAuthority());
+  uploadPartRequest.SetKey(path);
+  uploadPartRequest.SetPartNumber(multipart_upload_part_number_[path_c_str]);
+  uploadPartRequest.SetUploadId(multipart_upload_IDs_[path_c_str]);
+  uploadPartRequest.SetBody(stream);
+  uploadPartRequest.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
+      Aws::Utils::HashingUtils::CalculateMD5(*stream)));
+  uploadPartRequest.SetContentLength(length);
+
+  auto uploadPartOutcomeCallable =
+      client_->UploadPartCallable(uploadPartRequest);
+  auto uploadPartOutcome = uploadPartOutcomeCallable.get();
+  if (!uploadPartOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Failed to upload part of s3 object ") + uri.c_str() +
+        std::string("\nException:  ") +
+        uploadPartOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        uploadPartOutcome.GetError().GetMessage().c_str()));
+  }
+  Aws::S3::Model::CompletedPart completedPart;
+  completedPart.SetETag(uploadPartOutcome.GetResult().GetETag());
+  completedPart.SetPartNumber(multipart_upload_part_number_[path_c_str]);
+  multipart_upload_[path_c_str].AddParts(completedPart);
+
+  return Status::Ok();
 }
 
 }  // namespace tiledb
