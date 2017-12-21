@@ -89,11 +89,6 @@ if(USE_S3)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICE AWS_LINKED_LIBS)
   message(STATUS "AWS linked libs: ${AWS_LINKED_LIBS}")
   
-  if (NOT WIN32)
-    find_package(PkgConfig)
-    pkg_check_modules(AWS_DEPS REQUIRED ${AWS_LINKED_LIBS})
-  endif()
-
   set(AWS_LIBRARIES)
   foreach(LIB ${AWS_LINKED_LIBS})
     find_library("AWS_FOUND_${LIB}" NAMES ${LIB} PATHS ${AWSSDK_LIB_DIR} NO_DEFAULT_PATH)

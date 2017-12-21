@@ -75,9 +75,10 @@ bool S3::bucket_exists(const char* bucket) {
 Status S3::connect() {
   Aws::InitAPI(options_);
   Aws::Client::ClientConfiguration config;
-  // s3 configuration
-  //  config.region = "us-east-2";
-  //  config.scheme = Scheme::HTTPS;
+
+  // AWS S3 configuration
+  // config.region = "us-east-2";
+  // config.scheme = Aws::Http::Scheme::HTTPS;
 
   // Local minio configuration
   config.scheme = Aws::Http::Scheme::HTTP;
@@ -89,15 +90,22 @@ Status S3::connect() {
   // config.readRateLimiter = Limiter;
   // config.writeRateLimiter = Limiter;
   // config.executor =
-  // Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(constants::s3_allocation_tag,
-  // 4);
+  //     Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(
+  //         constants::s3_allocation_tag, 4);
 
-  // Connect S3 client
+  // Connect S3 client - for local minio
   client_ = Aws::MakeShared<Aws::S3::S3Client>(
       constants::s3_allocation_tag,
       config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
       false);
+
+  // Connect S3 client - for AWS S3
+  // client_ = Aws::MakeShared<Aws::S3::S3Client>(
+  //    constants::s3_allocation_tag,
+  //    config,
+  //    Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+  //    true);
 
   return Status::Ok();
 }

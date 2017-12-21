@@ -43,9 +43,10 @@ struct S3Fx {
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   Status st = s3_.connect();
-  CHECK(st.ok());
+  REQUIRE(st.ok());
 
   std::string bucket = "tiledb";
+
   if (!s3_.bucket_exists(bucket.c_str())) {
     st = s3_.create_bucket(bucket.c_str());
     CHECK(st.ok());
@@ -59,7 +60,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
       URI("s3://" + bucket + "/tiledb_test_dir/folder/subfolder"));
   CHECK(st.ok());
 
-  int buffer_size = 11 * 1024 * 1024;
+  int buffer_size = 5 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
@@ -91,6 +92,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   st = s3_.flush_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/largefile"));
   CHECK(st.ok());
+
   st = s3_.flush_file(
       URI("s3://" + bucket + "/tiledb_test_dir/folder/smallfile"));
   CHECK(st.ok());
