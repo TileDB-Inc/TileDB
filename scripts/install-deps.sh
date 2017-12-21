@@ -4,6 +4,15 @@ die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
 
+build_install_cmake() {
+wget -P /tmp https://cmake.org/files/v3.9/cmake-3.9.4-Linux-x86_64.tar.gz \
+    && tar xzf /tmp/cmake-3.9.4-Linux-x86_64.tar.gz -C /tmp \
+    && rm /tmp/cmake-3.9.4-Linux-x86_64.tar.gz \
+    && cp /tmp/cmake-3.9.4-Linux-x86_64/bin/* /usr/local/bin \
+    && cp -r /tmp/cmake-3.9.4-Linux-x86_64/share/cmake-3.9 /usr/local/share \
+    && rm -rf /tmp/cmake-3.9.4-Linux-x86_64 || die "failed to build cmake"
+}
+
 build_install_zstd() {
   TEMP=`mktemp -d` || die "failed to create zstd tmp build dir"
   pushd $TEMP
@@ -44,6 +53,7 @@ install_deps() {
   if [[ $OSTYPE == linux* ]]; then
     if [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs 
+      build_install_cmake
       # zstd is in later versions of Ubuntu
       if [[ $(apt-cache search libzstd-dev) ]]; then
         apt-get -y install libzstd-dev
@@ -53,6 +63,7 @@ install_deps() {
       build_install_blosc
     elif [ -n "$(command -v yum)" ]; then
       install_yum_pkgs
+      build_install_cmake
       build_install_zstd
       build_install_blosc
     fi
