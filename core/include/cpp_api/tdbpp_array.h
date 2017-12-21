@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_array.h
  *
  * @author Ravi Gaddipati
  *
@@ -36,9 +36,8 @@
 #define TILEDB_GENOMICS_ARRAY_H
 
 #include "tiledb.h"
-#include "tdbpp_domain.h"
+#include "tdbpp_arraymeta.h"
 #include "tdbpp_context.h"
-#include "tdbpp_attribute.h"
 
 #include <sstream>
 #include <memory>
@@ -46,94 +45,35 @@
 
 namespace tdb {
 
-  class Context;
-
-  class ArrayMetadata {
-  public:
-    ArrayMetadata(Context &ctx) : _domain(ctx), _ctx(ctx) {};
-    ArrayMetadata(Context &ctx, tiledb_array_metadata_t *meta) : _domain(ctx), _ctx(ctx) {
-      _init(meta);
-    };
-    ArrayMetadata(Context &ctx, const std::string &uri) : _domain(ctx), _ctx(ctx) {
-      _init(uri);
-    }
-    ArrayMetadata(const ArrayMetadata&) = delete;
-    ArrayMetadata(ArrayMetadata&& o);
-    ArrayMetadata &operator=(ArrayMetadata&) = delete;
-    ArrayMetadata &operator=(ArrayMetadata &&o);
-    ~ArrayMetadata();
-    std::string to_str() const;
-
-    tiledb_array_type_t type() const {
-      return _type;
-    }
-
-    const std::string &uri() const {
-      return _uri;
-    }
-
-    void load(const std::string &uri) {
-      _init(uri);
-    }
-
-    const Domain &domain() const {
-      return _domain;
-    }
-
-    const Compressor &coord_compressor() const {
-      return _coords;
-    }
-
-    const std::unordered_map<std::string, Attribute> &attributes() const {
-      return _attrs;
-    };
-
-    std::vector<std::string> attribute_names() const {
-      std::vector<std::string> ret;
-      ret.reserve(_attrs.size());
-      for (const auto& a : _attrs) ret.push_back(a.first);
-      return ret;
-    }
-
-  private:
-    friend class Array;
-
-    void _init(tiledb_array_metadata_t* meta);
-    void _init(const std::string &uri);
-
-    Domain _domain;
-    std::reference_wrapper<Context> _ctx;
-    std::unordered_map<std::string, Attribute> _attrs;
-    tiledb_array_metadata_t *_meta = nullptr;
-    tiledb_array_type_t _type;
-    tiledb_layout_t _tile_layout;
-    tiledb_layout_t _cell_layout;
-    uint64_t _capacity;
-    Compressor _coords;
-    std::string _uri;
-  };
-
-
   class Array {
   public:
-    Array(ArrayMetadata &&meta) : _ctx(meta._ctx), _meta(std::move(meta)) {}
     Array(Context &ctx) : _ctx(ctx), _meta(_ctx) {}
+    Array(const ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {
+      create(meta);
+    }
     Array(Context &ctx, const std::string &uri) : _ctx(ctx), _meta(_ctx, uri) {}
     Array(const Array&) = delete;
     Array(Array&&) = default;
     Array &operator=(const Array&) = delete;
     Array &operator=(Array&&) = default;
 
-    const std::string &uri() const {
-      return _meta._uri;
+    const std::string name() const {
+      return _meta.name();
     }
 
     bool good() const {
-      return !uri().empty();
+      return _meta.good();
     }
 
     void load(const std::string &uri) {
       _meta.load(uri);
+    }
+
+    void create(const ArrayMetadata &meta) {
+      meta.check();
+      auto &ctx = _ctx.get();
+      _meta = meta;
+      ctx.handle_error(tiledb_array_create(ctx, meta._meta.get()));
     }
 
     Context &context() {
@@ -143,7 +83,6 @@ namespace tdb {
     const Context &context() const {
       return _ctx.get();
     }
-
 
     ArrayMetadata &meta() {
       return _meta;
@@ -158,12 +97,9 @@ namespace tdb {
     ArrayMetadata _meta;
   };
 
-
-
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Array &array);
-std::ostream &operator<<(std::ostream &os, const tdb::ArrayMetadata &);
 
 
 #endif //TILEDB_GENOMICS_ARRAY_H

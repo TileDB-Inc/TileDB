@@ -1,13 +1,12 @@
 /**
- * @file  tdbpp_array.cc
- *
- * @author Ravi Gaddipati
+ * @file   tdbpp_dense_create.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,14 +28,31 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * It shows how to create a dense array. Make sure that no directory exists
+ * with the name "my_dense_array" in the current working directory. Uses
+ * C++ API.
  */
 
-#include "tdbpp_context.h"
-#include "tdbpp_arraymeta.h"
-#include "tdbpp_array.h"
+#include <tdbpp>
 
-std::ostream &operator<<(std::ostream &os, const tdb::Array &array) {
-  os << "Array<" << array.context() << ' ' << array.meta() << ">";
-  return os;
+int main() {
+  tdb::Context ctx;
+  tdb::ArrayMetadata meta(ctx);
+
+  tdb::Domain domain(ctx);
+  domain.create<tdb::type::UINT64>();
+
+  tdb::Dimension d1(ctx), d2(ctx);
+  d1.create<tdb::type::UINT64>("d1", {1,4}, 2);
+  d2.create<tdb::type::UINT64>("d2", {1,4}, 2);
+
+  tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
+  a1.create<tdb::type::INT32>("a1").set_compressor({TILEDB_BLOSC, -1}).set_num(1);
+  a2.create<tdb::type::CHAR>("a2").set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
+  a3.create<tdb::type::FLOAT32>("a3").set_compressor({TILEDB_ZSTD, -1}).set_num(2);
+
+  meta.create("my_dense_array");
+  domain << d1 << d2;
+  meta << domain << a1 << a2 << a3;
+  tdb::Array array(meta);
 }

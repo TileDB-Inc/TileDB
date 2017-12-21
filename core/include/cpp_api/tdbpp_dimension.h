@@ -35,10 +35,11 @@
 #ifndef TILEDB_GENOMICS_DOMENSION_H
 #define TILEDB_GENOMICS_DOMENSION_H
 
-#include "tdbpp_context.h"
+#include "tiledb.h"
 #include "tdbpp_type.h"
 
 #include <functional>
+#include <memory>
 
 namespace tdb {
 
@@ -46,53 +47,85 @@ namespace tdb {
 
   class Dimension {
   public:
-    Dimension(Context &ctx) : _ctx(ctx) {}
-    Dimension(Context &ctx, tiledb_dimension_t *dim) : _ctx(ctx){
-        if (dim != nullptr) _init(dim);
+    Dimension(Context &ctx) : _ctx(ctx), _deleter(ctx) {}
+    Dimension(Context &ctx, tiledb_dimension_t **dim) : Dimension(ctx) {
+      load(dim);
     }
-    Dimension(const Dimension&) = delete;
-    Dimension(Dimension&& o) : _ctx(o._ctx) {
-      *this = std::move(o);
-    }
-    Dimension &operator=(const Dimension&) = delete;
-    Dimension &operator=(Dimension&& o);
+    Dimension(const Dimension &) = default;
+    Dimension(Dimension &&o) = default;
+    Dimension &operator=(const Dimension &) = default;
+    Dimension &operator=(Dimension &&o) = default;
 
-    const std::string &name() const {
-      return _name;
+    void load(tiledb_dimension_t **dim) {
+      if (dim != nullptr && *dim != nullptr) {
+        _init(*dim);
+        *dim = nullptr;
+      }
     }
 
-    tiledb_datatype_t type() const {
-      return _type;
+    template<typename DataT, typename NativeT=typename DataT::type>
+    void create(const std::string &name, std::pair<NativeT, NativeT> domain, NativeT extent) {
+      _create(name, DataT::tiledb_datatype, &domain, &extent);
     }
+
+    const std::string name() const;
+
+    tiledb_datatype_t type() const;
 
     template<typename T, typename NativeT=typename T::type>
     std::pair<NativeT, NativeT> domain() const {
-      if (T::tiledb_datatype != _type) {
+      auto tdbtype = type();
+      if (T::tiledb_datatype != tdbtype) {
         throw std::invalid_argument("Attempting to use domain of type " + std::string(T::name) +
-                                    " for attribute of type " + type::from_tiledb(_type));
+                                    " for attribute of type " + type::from_tiledb(tdbtype));
       }
-      NativeT* d = static_cast<NativeT*>(_domain);
+      NativeT *d = static_cast<NativeT *>(_domain());
       return std::pair<NativeT, NativeT>(d[0], d[1]);
     };
 
     template<typename T, typename NativeT=typename T::type>
     std::pair<NativeT, NativeT> extent() const {
-      if (T::tiledb_datatype != _type) {
+      auto tdbtype = type();
+      if (T::tiledb_datatype != tdbtype) {
         throw std::invalid_argument("Attempting to use extent of type " + std::string(T::name) +
-                                    " for attribute of type " + type::from_tiledb(_type));
+                                    " for attribute of type " + type::from_tiledb(tdbtype));
       }
-      NativeT* e = static_cast<NativeT*>(_tile_extent);
+      NativeT *e = static_cast<NativeT *>(_extent());
       return std::make_pair<NativeT, NativeT>(e[0], e[1]);
     };
 
-  private:
-    std::reference_wrapper<Context> _ctx;
-    std::string _name;
-    tiledb_datatype_t _type;
-    void *_domain, *_tile_extent;
+    const tiledb_dimension_t &dim() const {
+      return *_dim;
+    }
 
+    tiledb_dimension_t &dim() {
+      return *_dim;
+    }
+
+    std::shared_ptr<tiledb_dimension_t> ptr() const {
+      return _dim;
+    }
+
+  private:
+    struct _Deleter {
+      _Deleter(Context &ctx) : _ctx(ctx) {}
+
+      _Deleter(const _Deleter &) = default;
+
+      void operator()(tiledb_dimension_t *p);
+
+    private:
+      std::reference_wrapper<Context> _ctx;
+    };
+
+    std::reference_wrapper<Context> _ctx;
+    _Deleter _deleter;
+    std::shared_ptr<tiledb_dimension_t> _dim;
 
     void _init(tiledb_dimension_t *dim);
+    void _create(const std::string &name, tiledb_datatype_t type, const void *domain, const void *extent);
+    void *_domain() const;
+    void *_extent() const;
   };
 
 }

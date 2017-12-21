@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   std::cout << "Found " << arrays.size() << " array(s). ";
 
   if (arrays.size()) {
-    std::cout << "Using array: " << arrays[0].uri() << "\n";
+    std::cout << "Using array: " << arrays[0].name() << "\n";
     tdb::Array &array = arrays[0];
     std::cout << array << "\n\n";
 
@@ -31,9 +31,11 @@ int main(int argc, char **argv) {
     query.layout(layout);
     query.subarray<tdb::type::UINT64>({1,3,1,3});
     // Current limit to 10 el, change to 9 and doesn't fit cell (2,3)
-    query.resize_var_buffer<tdb::type::CHAR>(attr, offsets, buffer, 3, 0, 10);
+    query.resize_var_buffer<tdb::type::CHAR>(attr, offsets, buffer, 2, 0, 12);
 
     std::cout << "Allocated buffer sizes: offset=" << offsets.size() << ", data=" << buffer.size() << "\n\n";
+
+    std::cout << query.query_status() << "\n\n";
 
     tdb::Query::Status status = query.submit();
     auto sizes = query.buff_sizes();

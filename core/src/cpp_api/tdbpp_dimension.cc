@@ -33,29 +33,53 @@
  */
 
 #include "tdbpp_dimension.h"
+#include "tdbpp_context.h"
 
 void tdb::Dimension::_init(tiledb_dimension_t *dim) {
-  const char* name;
-  auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_dimension_get_name(ctx, dim, &name));
-  _name = std::string(name);
-  ctx.handle_error(tiledb_dimension_get_domain(ctx, dim, &_domain));
-  ctx.handle_error(tiledb_dimension_get_tile_extent(ctx, dim, &_tile_extent));
-  ctx.handle_error(tiledb_dimension_get_type(ctx, dim, &_type));
+  _dim = std::shared_ptr<tiledb_dimension_t>(dim, _deleter);
 }
 
-tdb::Dimension &tdb::Dimension::operator=(tdb::Dimension &&o) {
-  _ctx = o._ctx;
-  _name = std::move(o._name);
-  _domain = o._domain;
-  _tile_extent = o._tile_extent;
-  _type = o._type;
-  o._domain = nullptr;
-  o._tile_extent = nullptr;
-  return *this;
+void tdb::Dimension::_create(const std::string &name, tiledb_datatype_t type, const void *domain, const void *extent) {
+  auto &ctx = _ctx.get();
+  tiledb_dimension_t *d;
+  ctx.handle_error(tiledb_dimension_create(ctx, &d, name.c_str(), type, domain, extent));
+  _init(d);
+}
+
+const std::string tdb::Dimension::name() const {
+  const char* name;
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_dimension_get_name(ctx, _dim.get(), &name));
+  return name;
+}
+
+tiledb_datatype_t tdb::Dimension::type() const {
+  tiledb_datatype_t type;
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_dimension_get_type(ctx, _dim.get(), &type));
+  return type;
+}
+
+void *tdb::Dimension::_domain() const {
+  auto &ctx = _ctx.get();
+  void *domain;
+  ctx.handle_error(tiledb_dimension_get_domain(ctx, _dim.get(), &domain));
+  return domain;
+}
+
+void *tdb::Dimension::_extent() const {
+  void *extent;
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_dimension_get_tile_extent(ctx, _dim.get(), &extent));
+  return extent;
+}
+
+void tdb::Dimension::_Deleter::operator()(tiledb_dimension_t *p) {
+  _ctx.get().handle_error(tiledb_dimension_free(_ctx.get(), p));
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim) {
   os << "Dim<" << dim.name() << '>';
   return os;
 }
+

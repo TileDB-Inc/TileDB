@@ -37,33 +37,67 @@
 #include "tdbpp_context.h"
 
 void tdb::Attribute::_init(tiledb_attribute_t *attr) {
-  _attr = attr;
+  _attr = std::shared_ptr<tiledb_attribute_t>(attr, _deleter);
+}
+
+std::string tdb::Attribute::name() const {
   auto &ctx = _ctx.get();
   const char *name;
-  ctx.handle_error(tiledb_attribute_get_name(ctx, attr, &name));
-  _name = std::string(name);
-  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr, &_num));
-  ctx.handle_error(tiledb_attribute_get_type(ctx, attr, &_type));
-  ctx.handle_error(tiledb_attribute_get_compressor(ctx, attr, &(_compressor.compressor), &(_compressor.level)));
+  ctx.handle_error(tiledb_attribute_get_name(ctx, _attr.get(), &name));
+  return name;
 }
 
-tdb::Attribute::~Attribute() {
-  if (_attr != nullptr) _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), _attr));
+tiledb_datatype_t tdb::Attribute::type() const {
+  auto &ctx = _ctx.get();
+  tiledb_datatype_t type;
+  ctx.handle_error(tiledb_attribute_get_type(ctx, _attr.get(), &type));
+  return type;
 }
 
-tdb::Attribute &tdb::Attribute::operator=(tdb::Attribute &&o) {
-  _ctx = o._ctx;
-  _type = o._type;
-  _compressor = std::move(o._compressor);
-  _num = o._num;
-  _name = o._name;
-  _attr = o._attr;
-  o._attr = nullptr;
+unsigned tdb::Attribute::num() const {
+  auto &ctx = _ctx.get();
+  unsigned num;
+  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, _attr.get(), &num));
+  return num;
+}
+
+tdb::Attribute &tdb::Attribute::set_num(unsigned num) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, _attr.get(), num));
   return *this;
+}
+
+tdb::Compressor tdb::Attribute::compressor() const {
+  auto &ctx = _ctx.get();
+  Compressor cmp;
+  ctx.handle_error(tiledb_attribute_get_compressor(ctx, _attr.get(), &(cmp.compressor), &(cmp.level)));
+  return std::move(cmp);
+}
+
+tdb::Attribute &tdb::Attribute::set_compressor(tdb::Compressor c) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_attribute_set_compressor(ctx, _attr.get(), c.compressor, c.level));
+  return *this;
+}
+
+void tdb::Attribute::_create(const std::string &name, tiledb_datatype_t type) {
+  auto &ctx = _ctx.get();
+  tiledb_attribute_t *attr;
+  ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
+  _init(attr);
+}
+
+void tdb::Attribute::_Deleter::operator()(tiledb_attribute_t *p) {
+  _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), p));
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a) {
   os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
      << (a.num() == TILEDB_VAR_NUM ? "VAR" : std::to_string(a.num())) << '>';
   return os;
+}
+
+tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c) {
+  attr.set_compressor(c);
+  return attr;
 }

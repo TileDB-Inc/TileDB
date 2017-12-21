@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_domain.h
  *
  * @author Ravi Gaddipati
  *
@@ -39,8 +39,8 @@
 #include "tdbpp_dimension.h"
 #include "tdbpp_type.h"
 
-#include <unordered_map>
 #include <functional>
+#include <memory>
 
 namespace tdb {
 
@@ -49,43 +49,58 @@ namespace tdb {
 
   class Domain {
   public:
-    Domain(Context &ctx) : _ctx(ctx) {}
-    Domain(Context &ctx, tiledb_domain_t *domain) : _ctx(ctx){
-      if (domain != nullptr) _init(domain);
+    Domain(Context &ctx) : _ctx(ctx), _deleter(ctx) {}
+    Domain(Context &ctx, tiledb_domain_t **domain) : Domain(ctx) {
+      load(domain);
     }
-    Domain(const Domain& o) = delete;
-    Domain(Domain&& o) : _ctx(o._ctx){
-      *this = std::move(o);
-    }
-    Domain &operator=(const Domain&) = delete;
-    Domain &operator=(Domain&& o);
-    ~Domain();
+    Domain(const Domain& o) = default;
+    Domain(Domain&& o) = default;
+    Domain &operator=(const Domain&) = default;
+    Domain &operator=(Domain&& o) = default;
 
-    const tiledb_datatype_t &type() const {
-      return _type;
-    }
-
-    std::vector<std::string> dimension_names() const;
-
-    const Dimension &get_dimension(const std::string &name) const {
-      return *_dims.at(name);
+    void load(tiledb_domain_t **domain) {
+      if (domain && *domain) {
+        _init(*domain);
+        *domain = nullptr;
+      }
     }
 
-    size_t size() const {
-      return _dims.size();
+    template<typename DataT>
+    void create() {
+      _create(DataT::tiledb_datatype);
+    }
+
+    tiledb_datatype_t type() const;
+
+    const std::vector<Dimension> dimensions() const;
+
+    Domain &add_dimension(const Dimension &d);
+
+    unsigned size() const;
+
+    std::shared_ptr<tiledb_domain_t> ptr() const {
+      return _domain;
     }
 
   private:
-    std::reference_wrapper<Context> _ctx;
-    // Note this is a ptr since maps don't support incomplete types, unlike vector
-    std::unordered_map<std::string, Dimension*> _dims;
-    tiledb_datatype_t _type;
-    tiledb_domain_t *_domain;
-
     void _init(tiledb_domain_t *domain);
+    void _create(tiledb_datatype_t type);
+
+    struct _Deleter {
+      _Deleter(Context& ctx) : _ctx(ctx) {}
+      _Deleter(const _Deleter&) = default;
+      void operator()(tiledb_domain_t *p);
+    private:
+      std::reference_wrapper<Context> _ctx;
+    };
+
+    std::reference_wrapper<Context> _ctx;
+    _Deleter _deleter;
+    std::shared_ptr<tiledb_domain_t> _domain;
   };
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Domain &d);
+tdb::Domain &operator<<(tdb::Domain &d, const tdb::Dimension &dim);
 
 #endif //TILEDB_GENOMICS_DOMAIN_H

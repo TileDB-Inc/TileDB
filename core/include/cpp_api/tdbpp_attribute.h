@@ -36,53 +36,74 @@
 #define TILEDB_GENOMICS_ATTRIBUTE_H
 
 #include "tdbpp_object.h"
+#include "tdbpp_context.h"
+#include "tdbpp_type.h"
 #include "tiledb.h"
 
 #include <functional>
+#include <memory>
 
 namespace tdb {
 
-  class Context;
-
   class Attribute {
   public:
-    Attribute(Context &ctx) : _ctx(ctx) {}
-    Attribute(Context &ctx, tiledb_attribute_t *attr) : _ctx(ctx) {
-    if (attr) _init(attr);
+    Attribute(Context &ctx) : _ctx(ctx), _deleter(ctx) {}
+    Attribute(Context &ctx, tiledb_attribute_t **attr) : Attribute(ctx) {
+      load(attr);
     }
-    Attribute(const Attribute &attr) = delete;
-    Attribute(Attribute &&o) : _ctx(o._ctx) {
-      *this = std::move(o);
-    }
-    Attribute &operator=(const Attribute&) = delete;
-    Attribute &operator=(Attribute&& o);
-    virtual ~Attribute();
+    Attribute(const Attribute &attr) = default;
+    Attribute(Attribute &&o) = default;
+    Attribute &operator=(const Attribute&) = default;
+    Attribute &operator=(Attribute&& o) = default;
 
-    const std::string &name() const {
-      return _name;
-    }
-
-    const tiledb_datatype_t &type() const {
-      return _type;
+    void load(tiledb_attribute_t **attr) {
+      if (attr && *attr) {
+        _init(*attr);
+        *attr = nullptr;
+      }
     }
 
-    unsigned int num() const {
-      return _num;
+    template<typename DataT>
+    Attribute &create(const std::string &name) {
+      _create(name, DataT::tiledb_datatype);
+      return *this;
+    }
+
+    std::string name() const;
+
+    tiledb_datatype_t type() const;
+
+    unsigned num() const;
+
+    Attribute &set_num(unsigned num);
+
+    Compressor compressor() const;
+
+    Attribute &set_compressor(Compressor c);
+
+    std::shared_ptr<tiledb_attribute_t> ptr() const {
+      return _attr;
     }
 
   protected:
+    struct _Deleter {
+      _Deleter(Context& ctx) : _ctx(ctx) {}
+      _Deleter(const _Deleter&) = default;
+      void operator()(tiledb_attribute_t *p);
+    private:
+      std::reference_wrapper<Context> _ctx;
+    };
     void _init(tiledb_attribute_t *attr);
+    void _create(const std::string &name, tiledb_datatype_t type);
 
     std::reference_wrapper<Context> _ctx;
-    tiledb_datatype_t _type;
-    Compressor _compressor;
-    unsigned int _num;
-    std::string _name;
-    tiledb_attribute_t *_attr;
+    _Deleter _deleter;
+    std::shared_ptr<tiledb_attribute_t> _attr;
   };
 
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);
+tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c);
 
 #endif //TILEDB_GENOMICS_ATTRIBUTE_H

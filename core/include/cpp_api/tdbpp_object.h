@@ -38,6 +38,7 @@
 #include "tiledb.h"
 #include <iostream>
 #include <type_traits>
+#include <string>
 
 namespace tdb {
 
@@ -50,26 +51,11 @@ namespace tdb {
     Object() = default;
     Object(const Object &o) = default;
     Object(Object &&o) = default;
-    Object(const Type &type, std::string uri="") : type(type), uri(std::move(uri)) {}
+    Object(const Type &type, std::string uri="") : type(type), uri(uri) {}
     Object &operator=(const Object &o) = default;
     Object &operator=(Object &&o) = default;
 
-    void set(const tiledb_object_t t) {
-      switch(t) {
-        case TILEDB_ARRAY:
-          type = Type::Array;
-          break;
-        case TILEDB_GROUP:
-          type = Type::Group;
-          break;
-        case TILEDB_INVALID:
-          type = Type::Invalid;
-          break;
-        case TILEDB_KEY_VALUE:
-          type = Type::KeyValue;
-          break;
-      }
-    }
+    void set(const tiledb_object_t t);
 
     std::string to_str() const;
   };
@@ -83,6 +69,7 @@ namespace tdb {
 
   std::string from_tiledb(const tiledb_layout_t &layout);
   std::string from_tiledb(const tiledb_array_type_t &type);
+
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Object &obj);

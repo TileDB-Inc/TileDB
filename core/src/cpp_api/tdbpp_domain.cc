@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_domain.h
  *
  * @author Ravi Gaddipati
  *
@@ -32,59 +32,67 @@
  * This file declares the C++ API for TileDB.
  */
 
+#include "tdbpp_domain.h"
 #include "tdbpp_context.h"
 
 
 void tdb::Domain::_init(tiledb_domain_t *domain) {
-  _domain = domain;
-  auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_domain_get_type(ctx, domain, &_type));
+  _domain = std::shared_ptr<tiledb_domain_t>(domain, _deleter);
+}
 
+const std::vector<tdb::Dimension> tdb::Domain::dimensions() const {
+  auto &ctx = _ctx.get();
   unsigned int ndim;
   tiledb_dimension_t *dimptr;
-  ctx.handle_error(tiledb_domain_get_rank(ctx, domain, &ndim));
+  std::vector<Dimension> dims;
+  ctx.handle_error(tiledb_domain_get_rank(ctx, _domain.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
-    ctx.handle_error(tiledb_dimension_from_index(ctx, domain, i, &dimptr));
-    Dimension *dim = new Dimension(_ctx, dimptr);
-    _dims[dim->name()] = dim;
-  }
-
-}
-
-tdb::Domain::~Domain() {
-  for (auto &d : _dims) {
-    delete d.second;
-  }
-  if (_domain != nullptr) {
-    _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), _domain));
-  }
-}
-
-std::vector<std::string> tdb::Domain::dimension_names() const {
-  std::vector<std::string> dims;
-  dims.reserve(_dims.size());
-  for (const auto &d : _dims) {
-    dims.push_back(d.first);
+    ctx.handle_error(tiledb_dimension_from_index(ctx, _domain.get(), i, &dimptr));
+    dims.emplace_back(_ctx, &dimptr);
   }
   return dims;
 }
 
-tdb::Domain &tdb::Domain::operator=(tdb::Domain &&o) {
-  _ctx = o._ctx;
-  _dims = std::move(o._dims);
-  _type = o._type;
-  _domain = o._domain;
-  o._domain = nullptr;
+tiledb_datatype_t tdb::Domain::type() const {
+  auto &ctx = _ctx.get();
+  tiledb_datatype_t type;
+  ctx.handle_error(tiledb_domain_get_type(ctx, _domain.get(), &type));
+  return type;
+}
+
+unsigned tdb::Domain::size() const {
+  unsigned rank;
+  _ctx.get().handle_error(tiledb_domain_get_rank(_ctx.get(), _domain.get(), &rank));
+  return rank;
+}
+
+void tdb::Domain::_create(tiledb_datatype_t type) {
+  auto &ctx = _ctx.get();
+  tiledb_domain_t *d;
+  ctx.handle_error(tiledb_domain_create(ctx, &d, type));
+  _init(d);
+}
+
+tdb::Domain &tdb::Domain::add_dimension(const tdb::Dimension &d) {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_domain_add_dimension(ctx, _domain.get(), d.ptr().get()));
   return *this;
+}
+
+void tdb::Domain::_Deleter::operator()(tiledb_domain_t *p) {
+  _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), p));
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Domain &d) {
   os << "Domain<(" << tdb::type::from_tiledb(d.type()) << ")";
-  auto dims = d.dimension_names();
-  for (const auto &n : dims) {
-    const auto &dimension = d.get_dimension(n);
+  for (const auto &dimension : d.dimensions()) {
     os << " " << dimension;
   }
   os << '>';
   return os;
+}
+
+tdb::Domain &operator<<(tdb::Domain &d, const tdb::Dimension &dim) {
+  d.add_dimension(dim);
+  return d;
 }

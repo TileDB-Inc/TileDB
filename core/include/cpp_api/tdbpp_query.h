@@ -41,24 +41,24 @@
 #include "tiledb.h"
 
 #include <functional>
+#include <memory>
 
 namespace tdb {
 
-
   class Query {
   public:
-    Query(Context &ctx, ArrayMetadata &meta, tiledb_query_type_t type);
-    Query(Array &array, tiledb_query_type_t type=TILEDB_READ);
-    Query(const Query&) = delete;
-    Query(Query&& o) :_ctx(o._ctx), _array(o._array) {
-      *this = std::move(o);
-    }
-    Query &operator=(const Query&) = delete;
-    Query &operator=(Query&& o);
-    ~Query();
-
     enum class Status {FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF};
 
+    Query(Context &ctx, ArrayMetadata &meta, tiledb_query_type_t type) : _ctx(ctx), _array(meta), _deleter(ctx) {
+      tiledb_query_t *q;
+      ctx.handle_error(tiledb_query_create(ctx, &q, meta.name().c_str(), type));
+      _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
+    }
+    Query(Array &array, tiledb_query_type_t type=TILEDB_READ) : Query(array.context(), array.meta(), type) {}
+    Query(const Query&) = default;
+    Query(Query&& o) = default;
+    Query &operator=(const Query&) = default;
+    Query &operator=(Query&& o) = default;
 
     Query &layout(tiledb_layout_t layout);
 
@@ -79,7 +79,7 @@ namespace tdb {
       if (pairs.size() != _array.get().domain().size() * 2) {
         throw std::invalid_argument("Subarray should have num_dims * 2 values: (low, high) for each dimension.");
       }
-      ctx.handle_error(tiledb_query_set_subarray(ctx, _query, pairs.data(), T::tiledb_datatype));
+      ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data(), T::tiledb_datatype));
       _subarray_cells = pairs[1] - pairs[0] + 1;
       for (unsigned i = 2; i < pairs.size() - 1; i+= 2) {
         _subarray_cells = _subarray_cells * (pairs[i+1] - pairs[i] + 1);
@@ -126,8 +126,8 @@ namespace tdb {
     }
 
     template<typename DataT, typename DomainT=type::UINT64>
-    Query &resize_var_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
-                             std::vector<typename DataT::type> &buff, uint64_t expected_size=1, uint64_t max_offset=0, uint64_t max_el=0) {
+    Query &resize_var_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename DataT::type> &buff,
+                             uint64_t expected_size=1, uint64_t max_offset=0, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num != TILEDB_VAR_NUM) throw std::runtime_error("Use resize_buffer for fixed size attributes.");
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
@@ -151,6 +151,15 @@ namespace tdb {
     }
 
   private:
+
+    struct _Deleter {
+      _Deleter(Context& ctx) : _ctx(ctx) {}
+      _Deleter(const _Deleter&) = default;
+      void operator()(tiledb_query_t *p);
+    private:
+      std::reference_wrapper<Context> _ctx;
+    };
+
     void _prepare_buffers();
 
     template<typename DataT, typename DomainT=type::UINT64>
@@ -161,8 +170,8 @@ namespace tdb {
       if (_subarray_cells != 0) {
         num = expected_varnum * _subarray_cells;
       } else {
-        for (const auto &n : _array.get().domain().dimension_names()) {
-          const auto &d = _array.get().domain().get_dimension(n).domain<DomainT>();
+        for (const auto &dim : _array.get().domain().dimensions()) {
+          const auto &d = dim.domain<DomainT>();
           num = num * (d.second - d.first + 1);
         }
       }
@@ -174,6 +183,7 @@ namespace tdb {
 
     std::reference_wrapper<Context> _ctx;
     std::reference_wrapper<ArrayMetadata> _array;
+    _Deleter _deleter;
     std::vector<std::string> _attrs;
     // Size of the vector, size of vector::value_type, vector.data()
     std::unordered_map<std::string, std::tuple<uint64_t, size_t, void*>> _var_offsets;
@@ -184,7 +194,7 @@ namespace tdb {
     std::vector<void*> _all_buff;
     std::vector<uint64_t> _buff_sizes;
     unsigned _subarray_cells = 0;
-    tiledb_query_t *_query;
+    std::shared_ptr<tiledb_query_t> _query;
 
   };
 

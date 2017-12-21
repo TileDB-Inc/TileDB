@@ -59,6 +59,23 @@ std::string tdb::Object::to_str() const {
   return ret;
 }
 
+void tdb::Object::set(const tiledb_object_t t) {
+  switch(t) {
+    case TILEDB_ARRAY:
+      type = Type::Array;
+      break;
+    case TILEDB_GROUP:
+      type = Type::Group;
+      break;
+    case TILEDB_INVALID:
+      type = Type::Invalid;
+      break;
+    case TILEDB_KEY_VALUE:
+      type = Type::KeyValue;
+      break;
+  }
+}
+
 std::string tdb::from_tiledb(const tiledb_layout_t &layout) {
   switch (layout) {
     case TILEDB_GLOBAL_ORDER:

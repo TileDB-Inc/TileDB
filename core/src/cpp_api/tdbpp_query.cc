@@ -34,37 +34,12 @@
 
 #include "tdbpp_query.h"
 
-tdb::Query::~Query() {
-  if (_query != nullptr) {
-    _ctx.get().handle_error(tiledb_query_free(_ctx.get(), _query));
-  }
-}
-
-tdb::Query::Query(tdb::Context &ctx, tdb::ArrayMetadata &meta, tiledb_query_type_t type) : _ctx(ctx), _array(meta) {
-  ctx.handle_error(tiledb_query_create(ctx, &_query, meta.uri().c_str(), type));
-}
-
-tdb::Query::Query(tdb::Array &array, tiledb_query_type_t type) : Query(array.context(), array.meta(), type) {}
-
-tdb::Query &tdb::Query::operator=(tdb::Query &&o) {
-  _ctx = o._ctx;
-  _array = o._array;
-  _var_offsets = std::move(o._var_offsets);
-  _attr_buffs = std::move(o._attr_buffs);
-  _attr_names = std::move(o._attr_names);
-  _all_buff = std::move(o._all_buff);
-  _buff_sizes = std::move(o._buff_sizes);
-  _query = o._query;
-  o._query = nullptr;
-  return *this;
-}
-
 tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
   if (layout == TILEDB_UNORDERED && _array.get().type() == TILEDB_DENSE) {
     throw std::invalid_argument("Unordered layout invalid for dense arrays.");
   }
-  ctx.handle_error(tiledb_query_set_layout(ctx, _query, layout));
+  ctx.handle_error(tiledb_query_set_layout(ctx, _query.get(), layout));
   return *this;
 }
 
@@ -79,14 +54,19 @@ tdb::Query &tdb::Query::attributes(const std::vector<std::string> &attrs) {
 }
 
 tdb::Query::Status tdb::Query::submit() {
+  if (query_status() == Status::COMPLETE) throw std::runtime_error("Cannot submit a completed query.");
   _prepare_buffers();
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_set_buffers(ctx, _query, _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
-  ctx.handle_error(tiledb_query_submit(ctx, _query));
+  ctx.handle_error(tiledb_query_set_buffers(ctx, _query.get(), _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
+  ctx.handle_error(tiledb_query_submit(ctx, _query.get()));
   for (size_t i = 0; i < _attrs.size(); ++i) {
     _buff_sizes[i] = _buff_sizes[i] / _sub_tsize[i];
   }
   return query_status();
+}
+
+void tdb::Query::_Deleter::operator()(tiledb_query_t *p) {
+  _ctx.get().handle_error(tiledb_query_free(_ctx.get(), p));
 }
 
 void tdb::Query::_prepare_buffers() {
@@ -129,14 +109,14 @@ void tdb::Query::_prepare_buffers() {
 tdb::Query::Status tdb::Query::query_status() {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_get_status(ctx, _query, &status));
+  ctx.handle_error(tiledb_query_get_status(ctx, _query.get(), &status));
   return tiledb_to_status(status);
 }
 
 tdb::Query::Status tdb::Query::attribute_status(const std::string &attr) {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_get_attribute_status(ctx, _query, attr.c_str(), &status));
+  ctx.handle_error(tiledb_query_get_attribute_status(ctx, _query.get(), attr.c_str(), &status));
   return tiledb_to_status(status);
 }
 

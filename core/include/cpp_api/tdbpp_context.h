@@ -37,8 +37,8 @@
 
 #include "tiledb.h"
 #include "tdbpp_object.h"
-#include "tdbpp_array.h"
 
+#include <string>
 #include <iostream>
 #include <iterator>
 #include <vector>
@@ -59,7 +59,7 @@ namespace tdb {
     Context(Context &ctx, const std::string &root) : _ctx(ctx._ctx) {
       set_root(root);
     }
-    Context(Context &ctx, const Object obj) : _ctx(ctx._ctx), _obj(obj) {}
+    Context(Context &ctx, const Object obj) : _ctx(ctx._ctx), _curr_object(obj) {}
     Context(Context &&o) = default;
     Context &operator=(const Context &o) = default;
     Context &operator=(Context &&o) = default;
@@ -79,7 +79,7 @@ namespace tdb {
     }
 
     const Object &context_type() const {
-      return _obj;
+      return _curr_object;
     }
 
     class iterator: public std::iterator<std::forward_iterator_tag, Object> {
@@ -158,18 +158,16 @@ namespace tdb {
 
     Array array_get(const std::string &uri);
 
-    Array array_create(const ArrayMetadata &meta);
-
-
     void handle_error(int ret);
 
   private:
     std::shared_ptr<tiledb_ctx_t> _ctx;
-    Object _obj;
+    Object _curr_object;
 
   };
 
-} // namespace tiledb
+}
 
 std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx);
+
 #endif //TILEDB_GENOMICS_CONTEXT_H

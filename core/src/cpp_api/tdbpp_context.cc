@@ -33,6 +33,7 @@
  */
 
 #include "tdbpp_context.h"
+#include "tdbpp_array.h"
 
 tdb::Context::Context() {
   tiledb_ctx_t *ctx;
@@ -41,11 +42,11 @@ tdb::Context::Context() {
 }
 
 void tdb::Context::set_root(const std::string &root) {
-  _obj.uri = root;
+  _curr_object.uri = root;
   tiledb_object_t type;
   handle_error(tiledb_object_type(_ctx.get(), root.c_str(), &type));
-  _obj.set(type);
-  if (_obj.type == Object::Type::Array) throw std::runtime_error("Cannot move context to an Array.");
+  _curr_object.set(type);
+  if (_curr_object.type == Object::Type::Array) throw std::runtime_error("Cannot move context to an Array.");
 }
 
 tdb::Array tdb::Context::array_find(const std::string &name) {
@@ -117,8 +118,8 @@ tdb::Context tdb::Context::group_create(const std::string &group) {
 }
 
 tdb::Context::iterator tdb::Context::begin() {
-  if (_obj.uri.empty()) throw std::runtime_error("No root directory specified.");
-  return iterator(*this, _obj.uri);
+  if (_curr_object.uri.empty()) throw std::runtime_error("No root directory specified.");
+  return iterator(*this, _curr_object.uri);
 }
 
 tdb::Context::iterator tdb::Context::end() {
