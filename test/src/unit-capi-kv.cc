@@ -434,6 +434,10 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
   CHECK(rc == TILEDB_OK);
   CHECK(!memcmp(a3, &KEY4_A3, 2 * sizeof(float)));
 
+  // Check that we can consolidate kv-arrays
+  rc = tiledb_array_consolidate(ctx_, kv_name_.c_str());
+  CHECK(rc == TILEDB_OK);
+
   // Create key-values #5
   tiledb_kv_t* kv_5;
   rc = tiledb_kv_create(ctx_, &kv_5, 3, attributes, types, nitems);

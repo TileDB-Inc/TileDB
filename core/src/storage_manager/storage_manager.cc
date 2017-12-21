@@ -78,13 +78,12 @@ Status StorageManager::array_consolidate(const char* array_name) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
   }
-
   // Check if array exists
-  if (object_type(array_uri) != ObjectType::ARRAY) {
+  auto obj_type = object_type(array_uri);
+  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot consolidate array; Array does not exist"));
   }
-
   return consolidator_->consolidate(array_name);
 }
 
