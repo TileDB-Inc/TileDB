@@ -47,6 +47,8 @@ namespace tdb {
   /**
    * Open, create, and manage an Array. Arrays are read using tdb::Query's
    */
+  class Query;
+
   class Array {
   public:
     /**
@@ -89,6 +91,10 @@ namespace tdb {
      */
     void create(const ArrayMetadata &meta);
 
+    Query read();
+
+    Query write();
+
     Context &context();
 
     const Context &context() const;
@@ -101,6 +107,7 @@ namespace tdb {
     std::reference_wrapper<Context> _ctx;
     ArrayMetadata _meta;
   };
+
 
 
 }

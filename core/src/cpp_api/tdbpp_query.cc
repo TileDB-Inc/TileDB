@@ -36,19 +36,11 @@
 
 tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
-  if (layout == TILEDB_UNORDERED && _array.get().type() == TILEDB_DENSE) {
-    throw std::invalid_argument("Unordered layout invalid for dense arrays.");
-  }
   ctx.handle_error(tiledb_query_set_layout(ctx, _query.get(), layout));
   return *this;
 }
 
 tdb::Query &tdb::Query::attributes(const std::vector<std::string> &attrs) {
-  for (const auto &a : attrs) {
-    if (_array.get().attributes().count(a) == 0) {
-      throw std::runtime_error("Attribute does not exist in array: " + a);
-    }
-  }
   _attrs = attrs;
   return *this;
 }
@@ -78,13 +70,14 @@ void tdb::Query::_prepare_submission() {
     }
   }
 
+  uint64_t bufsize;
+  size_t tsize;
+  void* ptr;
+
   for (const auto &a : _attrs) {
     if (_attr_buffs.count(a) == 0) {
       throw std::runtime_error("No buffer for attribute " + a);
     }
-    uint64_t bufsize;
-    size_t tsize;
-    void* ptr;
     if (_var_offsets.count(a)) {
       std::tie(bufsize, tsize, ptr) = _var_offsets[a];
       _all_buff.push_back(ptr);

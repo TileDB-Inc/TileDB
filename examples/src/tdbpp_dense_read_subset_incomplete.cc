@@ -46,8 +46,8 @@ int main() {
   std::vector<int> a1_data;
 
   // Init the array & query for the array
-  tdb::Array array(ctx, "my_dense_array");
-  tdb::Query query(array, TILEDB_READ);
+  tdb::Array array = ctx.array_get("my_dense_array");
+  tdb::Query query = array.read();
 
   // Set subarray. Templated on domain type.
   query.subarray<tdb::type::UINT64>({3, 4, 2, 4});

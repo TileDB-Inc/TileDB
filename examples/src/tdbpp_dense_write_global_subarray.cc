@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_write_global_2.cc
+ * @file   tdbpp_dense_write_global_subarray.cc
  *
  * @section LICENSE
  *
@@ -28,51 +28,35 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a dense array invoking the write function
- * twice. This will have the same effect as program
- * tiledb_dense_write_entire_1.cc.
+ * It shows how to write a dense subarray in the global cell order.
+ * Make sure that there is not directory named "my_dense_array" in your current
+ * working directory.
  *
  * You need to run the following to make this work:
- * ./tdbpp_dense_create
- * ./tdbpp_dense_write_global_2
+ *
+ * ./tsbpp_dense_create
+ * ./tdbpp_dense_write_global_subarray
  */
 
 #include <tdbpp>
 
 int main() {
   tdb::Context ctx;
-
-  // Buffers
-  std::vector<int> a1_data = {0,  1,  2,  3, 4,  5};
-  std::string a2str = "abbcccddddeffggghhhh";
-  std::vector<char> a2_data(a2str.begin(), a2str.end());
-  std::vector<uint64_t> a2_offsets = {0,  1,  3,  6, 10, 11, 13, 16};
-  std::vector<float> a3_data = {};
-
-  // Init the array & query for the array
   tdb::Array array = ctx.array_get("my_dense_array");
   tdb::Query query = array.write();
 
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.attributes({"a1", "a2", "a3"});
+  query.attributes({"a1", "a2", "a3"}).subarray({3, 4, 3, 4}).layout(TILEDB_GLOBAL_ORDER);
+
+  std::vector<int> a1_data = {112, 113, 114, 115};
+  std::vector<uint64_t> a2_offsets = {0, 1, 3, 6};
+  const std::string a2str = "MNNOOOPPPP";
+  std::vector<char> a2_data{a2str.begin(), a2str.end()};
+  std::vector<float> a3_data = {112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
+
   query.set_buffer<tdb::type::INT32>("a1", a1_data);
   query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);
   query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
 
   query.submit();
-
-  a1_data = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-  a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
-  a2str = "abbcccddddeffggghhhh";
-  a2_data = std::vector<char>(a2str.begin(), a2str.end());
-  a3_data = {
-  0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,   // Upper left tile
-  4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,   // Upper right tile
-  8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,  // Lower left tile
-  12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,  // Lower right tile
-  };
-
-  query.submit();
-
   return 0;
 }

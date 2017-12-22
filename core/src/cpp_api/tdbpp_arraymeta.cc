@@ -206,6 +206,10 @@ bool tdb::ArrayMetadata::good() const {
   return _meta == nullptr;
 }
 
+std::reference_wrapper<tdb::Context> tdb::ArrayMetadata::context() {
+  return _ctx;
+}
+
 void tdb::ArrayMetadata::_Deleter::operator()(tiledb_array_metadata_t *p) {
   _ctx.get().handle_error(tiledb_array_metadata_free(_ctx.get(), p));
 }

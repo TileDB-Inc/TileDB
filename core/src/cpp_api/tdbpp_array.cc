@@ -35,6 +35,7 @@
 #include "tdbpp_context.h"
 #include "tdbpp_arraymeta.h"
 #include "tdbpp_array.h"
+#include "tdbpp_query.h"
 
 std::ostream &operator<<(std::ostream &os, const tdb::Array &array) {
   os << "Array<" << array.context() << ' ' << array.meta() << ">";
@@ -78,4 +79,12 @@ const tdb::ArrayMetadata &tdb::Array::meta() const {
 
 tdb::Array::Array(const tdb::ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {
   create(meta);
+}
+
+tdb::Query tdb::Array::read() {
+  return Query(*this, TILEDB_READ);
+}
+
+tdb::Query tdb::Array::write() {
+  return Query(*this, TILEDB_WRITE);
 }

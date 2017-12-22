@@ -109,7 +109,6 @@ namespace tdb {
     _Deleter _deleter;
     std::shared_ptr<tiledb_attribute_t> _attr;
   };
-
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);

@@ -147,6 +147,8 @@ namespace tdb {
     bool good() const;
     std::shared_ptr<tiledb_array_metadata_t> ptr() const;
 
+    std::reference_wrapper<Context> context();
+
   private:
     friend class Array;
 

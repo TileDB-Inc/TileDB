@@ -74,8 +74,8 @@ int main() {
     };
 
   // Init the array & query for the array
-  tdb::Array array(ctx, "my_dense_array");
-  tdb::Query query(array, TILEDB_WRITE);
+  tdb::Array array = ctx.array_get("my_dense_array");
+  tdb::Query query = array.write();
 
   query.layout(TILEDB_GLOBAL_ORDER);
   query.attributes({"a1", "a2", "a3"});

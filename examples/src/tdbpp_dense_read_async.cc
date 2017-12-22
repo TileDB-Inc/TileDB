@@ -47,8 +47,8 @@ int main() {
   std::vector<float> a3_data;
 
   // Init the array & query for the array
-  tdb::Array array(ctx, "my_dense_array");
-  tdb::Query query(array, TILEDB_READ);
+  tdb::Array array = ctx.array_get("my_dense_array");
+  tdb::Query query = array.read();
 
   // Set the layout of output, desired attributes, and determine buff sizes
   query.layout(TILEDB_GLOBAL_ORDER);
