@@ -969,7 +969,7 @@ void ArrayOrderedWriteState::copy_tile_slab_var(
   update_current_tile_and_offset(aid);
 
   // Fill the local buffer offsets with zeros
-  bzero(local_buffer, local_buffer_size);
+  memset(local_buffer, 0, local_buffer_size);
 
   // Handle offsets first
   for (;;) {
