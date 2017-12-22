@@ -44,4 +44,6 @@ int main() {
   } catch (std:: runtime_error &e) {
     std::cout << "Failed to delete invalid path\n";
   }
+
+  return 0;
 }

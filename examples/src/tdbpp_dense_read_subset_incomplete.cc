@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file   tdbpp_dense_read_subset_incomplete.cc
  *
  * @section LICENSE
  *
@@ -28,41 +28,45 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * It shows how to read from a dense array, constraining the read
+ * to a specific subarray and a subset of attributes. Moreover, the
+ * program shows how to handle incomplete queries that did not complete
+ * because the input buffers were not big enough to hold the entire
+ * result.
  */
 
 #include <tdbpp>
+#include <iomanip>
 
 int main() {
+  using std::setw;
   tdb::Context ctx;
 
-  // Can also do: domain.create<tdb::type::UINT64>();
-  tdb::Domain domain(ctx, TILEDB_UINT64);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<tdb::type::UINT64>("d1", {1,4}, 2);
-  d2.create<tdb::type::UINT64>("d2", {1,4}, 2);
-  domain << d1 << d2; // Add dims to domain
+  // Buffers
+  std::vector<int> a1_data;
 
-  // Can also do: a1.create<tdb::type::INT32>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
+  // Init the array & query for the array
+  tdb::Array array(ctx, "my_dense_array");
+  tdb::Query query(array, TILEDB_READ);
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
+  // Set subarray. Templated on domain type.
+  query.subarray<tdb::type::UINT64>({3, 4, 2, 4});
+  query.attributes({"a1"});
+  query.layout(TILEDB_ROW_MAJOR);
 
-  tdb::ArrayMetadata meta(ctx);
-  meta.create("my_dense_array");
-  meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  meta << domain << a1 << a2 << a3; // Add attributes to array
+  // Limit buff size to 2
+  query.resize_buffer<tdb::type::INT32>("a1", a1_data, 2);
 
-  // Check the metadata, and make the array.
-  tdb::Array array(meta);
+  std::cout << "a1\n---\n";
+  do {
+    std::cout << "Reading cells...\n";
+    query.submit();
+    const auto &buff_sizes = query.buff_sizes();
 
-  std::cout << array << std::endl;
+    for (unsigned i = 0; i < buff_sizes[0]; ++i) {
+      std::cout << a1_data[i] << "\n";
+    }
+  } while (query.query_status() == tdb::Query::Status::INCOMPLETE);
 
   return 0;
 }

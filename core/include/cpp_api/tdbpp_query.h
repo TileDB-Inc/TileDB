@@ -103,7 +103,7 @@ namespace tdb {
     }
 
     template<typename T>
-    Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf, std::vector<uint64_t> &offsets) {
+    Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       const auto &type = _array.get().attributes().at(attr).type();
       if (T::tiledb_datatype != type) {
         throw std::invalid_argument("Attempting to use buffer of type " + std::string(T::name) +
@@ -121,7 +121,7 @@ namespace tdb {
     Query &resize_buffer(const std::string &attr, std::vector<typename DataT::type> &buff, uint64_t max_el=0) {
       auto num = _array.get().attributes().at(attr).num();
       if (num == TILEDB_VAR_NUM) throw std::runtime_error("Use resize_var_buffer for variable size attributes.");
-      _make_buffer_impl<DataT, DomainT>(attr, buff, 1, max_el);
+      _make_buffer_impl<DataT, DomainT>(attr, buff, num, max_el);
       set_buffer<DataT>(attr, buff);
       return *this;
     }

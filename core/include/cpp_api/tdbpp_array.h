@@ -44,23 +44,49 @@
 #include <unordered_map>
 
 namespace tdb {
-
+  /**
+   * Open, create, and manage an Array. Arrays are read using tdb::Query's
+   */
   class Array {
   public:
+    /**
+     * Init an array within an context
+     * @param ctx context
+     */
     Array(Context &ctx) : _ctx(ctx), _meta(_ctx) {}
+    /**
+     * Init an array using a metadata configuration
+     * @param meta metadata
+     */
     Array(const ArrayMetadata &meta);
+    /**
+     * @param ctx context
+     * @param uri Array to open
+     */
     Array(Context &ctx, const std::string &uri) : _ctx(ctx), _meta(_ctx, uri) {}
     Array(const Array&) = delete;
     Array(Array&&) = default;
     Array &operator=(const Array&) = delete;
     Array &operator=(Array&&) = default;
 
+    /**
+     * @return Name of the current array
+     */
     const std::string name() const;
 
+    /**
+     * @return True if the underlying metadata is initilized.
+     */
     bool good() const;
 
+    /**
+     * @param uri Array path to open.
+     */
     void load(const std::string &uri);
 
+    /**
+     * @param meta Create a new array with given metadata
+     */
     void create(const ArrayMetadata &meta);
 
     Context &context();

@@ -48,15 +48,27 @@
 
 namespace tdb {
 
+  /**
+   * Specifies the configuration that defines an Array.
+   */
   class ArrayMetadata {
   public:
     ArrayMetadata(Context &ctx) : _ctx(ctx), _deleter(ctx) {};
+    /**
+     * Load metadata given a C API pointer. The class takes ownership of the pointer.
+     * @param ctx context
+     * @param meta metadata pointer
+     */
     ArrayMetadata(Context &ctx, tiledb_array_metadata_t **meta) : ArrayMetadata(ctx) {
       if (meta && *meta) {
         _init(*meta);
         *meta = nullptr;
       }
     };
+    /**
+     * @param ctx context
+     * @param uri Name of array to load the metadata for.
+     */
     ArrayMetadata(Context &ctx, const std::string &uri) : ArrayMetadata(ctx) {
       _init(uri);
     }
@@ -65,14 +77,26 @@ namespace tdb {
     ArrayMetadata &operator=(const ArrayMetadata&) = default;
     ArrayMetadata &operator=(ArrayMetadata &&o) = default;
 
+    /**
+     * Load array metadata given an array path.
+     * @param uri
+     */
     void load(const std::string &uri) {
       _init(uri);
     }
 
+    /**
+     * Create new metadata for an array with name uri
+     * @param uri
+     * @return *this
+     */
     ArrayMetadata &create(const std::string &uri);
 
     std::string to_str() const;
 
+    /**
+     * @return Array type (ex. Dense, Sparse, kv_
+     */
     tiledb_array_type_t type() const;
 
     ArrayMetadata &set_type(tiledb_array_type_t type) {
@@ -113,6 +137,9 @@ namespace tdb {
 
     bool is_kv() const;
 
+    /**
+     * Validate metadata. The context error handler will be triggered on failure.
+     */
     void check() const;
 
     const std::unordered_map<std::string, Attribute> attributes() const;

@@ -35,6 +35,7 @@
 #ifndef TILEDB_TDBPP_H
 #define TILEDB_TDBPP_H
 
+#include "tiledb.h"
 #include "tdbpp_context.h"
 #include "tdbpp_array.h"
 #include "tdbpp_kv.h"

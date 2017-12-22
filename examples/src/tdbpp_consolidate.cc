@@ -38,5 +38,6 @@
 int main() {
   tdb::Context ctx;
   ctx.consolidate("my_dense_array");
+  return 0;
 }
 

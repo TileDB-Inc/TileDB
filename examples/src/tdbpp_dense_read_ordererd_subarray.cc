@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_dense_read_async.h
- *
- * @author Ravi Gaddipati
+ * @file   tdbpp_dense_read_ordered_subarray.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +28,19 @@
  *
  * @section DESCRIPTION
  *
+ * It shows how to read from a dense array, constraining the read
+ * to a specific subarray. The cells are copied to the
+ * input buffers sorted in row-major order within the selected subarray.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_read_ordered_subarray
  */
 
 #include <tdbpp>
 #include <iomanip>
-
-void* print_upon_completion(void* s);
 
 int main() {
   using std::setw;
@@ -50,23 +56,17 @@ int main() {
   tdb::Array array(ctx, "my_dense_array");
   tdb::Query query(array, TILEDB_READ);
 
-  // Set the layout of output, desired attributes, and determine buff sizes
-  query.layout(TILEDB_GLOBAL_ORDER);
+  // Set subarray. Templated on domain type.
+  query.subarray<tdb::type::UINT64>({3, 4, 2, 4});
   query.attributes({"a1", "a2", "a3"});
+  query.layout(TILEDB_ROW_MAJOR);
+
+  // Resize buffers. Setting subarray before resizing ensures minimum buffer size.
   query.resize_buffer<tdb::type::INT32>("a1", a1_data); // For fixed size, compute the size we need.
-  query.resize_var_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data, 3); // For var size, use expected num per cell = 3
+  query.resize_var_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data, 4); // For var size, use expected num per cell = 3
   query.resize_buffer<tdb::type::FLOAT32>("a3", a3_data, 1000); // Bound the max buff size to N elements
 
-  // Submit query with callback
-  std::string msg = "(Callback) Query completed.";
-  query.submit_async(&print_upon_completion, (void*)msg.c_str());
-
-  std::cout << "Query in progress\n";
-  tdb::Query::Status status;
-  do {
-    // Wait till query is done
-    status = query.query_status();
-  } while (status == tdb::Query::Status::INPROGRESS);
+  query.submit();
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes first.
@@ -86,9 +86,4 @@ int main() {
   }
 
   return 0;
-}
-
-void* print_upon_completion(void* s) {
-  std::cout << std::string(static_cast<char*>(s)) << std::endl;
-  return nullptr;
 }

@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_dense_read_async.h
- *
- * @author Ravi Gaddipati
+ * @file   tdbpp_dense_read_global.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +28,17 @@
  *
  * @section DESCRIPTION
  *
+ * It shows how to read a complete dense array in the global cell order.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_read_global
  */
 
 #include <tdbpp>
 #include <iomanip>
-
-void* print_upon_completion(void* s);
 
 int main() {
   using std::setw;
@@ -57,16 +61,7 @@ int main() {
   query.resize_var_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data, 3); // For var size, use expected num per cell = 3
   query.resize_buffer<tdb::type::FLOAT32>("a3", a3_data, 1000); // Bound the max buff size to N elements
 
-  // Submit query with callback
-  std::string msg = "(Callback) Query completed.";
-  query.submit_async(&print_upon_completion, (void*)msg.c_str());
-
-  std::cout << "Query in progress\n";
-  tdb::Query::Status status;
-  do {
-    // Wait till query is done
-    status = query.query_status();
-  } while (status == tdb::Query::Status::INPROGRESS);
+  std::cout << "Query submitted: " << query.submit() << "\n'n";
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes first.
@@ -86,9 +81,4 @@ int main() {
   }
 
   return 0;
-}
-
-void* print_upon_completion(void* s) {
-  std::cout << std::string(static_cast<char*>(s)) << std::endl;
-  return nullptr;
 }
