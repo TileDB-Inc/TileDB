@@ -38,6 +38,13 @@
 #include <set>
 #include <sstream>
 
+#ifdef _WIN32
+#include <sys/timeb.h>
+#include <sys/types.h>
+#else
+#include <sys/time.h>
+#endif
+
 namespace tiledb {
 
 namespace utils {
@@ -408,6 +415,20 @@ std::string tile_extent_str(const void* tile_extent, Datatype type) {
   }
 
   return "";
+}
+
+uint64_t timestamp_ms() {
+#ifdef _WIN32
+  struct _timeb tb;
+  memset(&tb, 0, sizeof(struct _timeb));
+  _ftime_s(&tb);
+  return static_cast<uint64_t>(tb.time * 1000L + tb.millitm);
+#else
+  struct timeval tp;
+  memset(&tp, 0, sizeof(struct timeval));
+  gettimeofday(&tp, nullptr);
+  return static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
+#endif
 }
 
 // Explicit template instantiations

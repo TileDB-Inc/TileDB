@@ -34,7 +34,6 @@
 #include "logger.h"
 #include "utils.h"
 
-#include <sys/time.h>
 #include <set>
 #include <sstream>
 
@@ -809,10 +808,7 @@ Status Query::new_fragment() {
 }
 
 std::string Query::new_fragment_name() const {
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  auto ms = static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
+  uint64_t ms = utils::timestamp_ms();
   std::stringstream ss;
   ss << array_metadata_->array_uri().to_string() << "/__"
      << std::this_thread::get_id() << "_" << ms;

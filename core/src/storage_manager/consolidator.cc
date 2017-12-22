@@ -33,8 +33,8 @@
 #include "consolidator.h"
 #include "logger.h"
 #include "storage_manager.h"
+#include "utils.h"
 
-#include <sys/time.h>
 #include <sstream>
 
 /* ****************************** */
@@ -261,10 +261,7 @@ Status Consolidator::rename_new_fragment_uri(URI* uri) const {
   auto timestamp_str = name.substr(name.find_last_of('_') + 1);
 
   // Get current time
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  auto ms = static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
+  uint64_t ms = utils::timestamp_ms();
 
   std::stringstream ss;
   ss << uri->parent().to_string() << "/__" << std::this_thread::get_id() << "_"
