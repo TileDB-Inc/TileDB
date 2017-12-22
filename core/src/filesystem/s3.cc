@@ -319,7 +319,9 @@ bool S3::is_file(const URI& uri) const {
 }
 
 Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
-  Aws::Http::URI aws_uri = (uri.to_path() + std::string("/")).c_str();
+  auto uri_path = uri.to_path();
+  Aws::Http::URI aws_uri =
+      (uri_path + (uri_path.back() != '/' ? "/" : "")).c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
   listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
