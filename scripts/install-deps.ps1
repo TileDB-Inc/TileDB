@@ -21,12 +21,12 @@ function Get-ScriptsDirectory {
 
 $TileDBRootDirectory = Split-Path -Parent (Get-ScriptsDirectory)
 $InstallPrefix = Join-Path $TileDBRootDirectory "deps-install"
-$DownloadDirectory = Get-ScriptsDirectory
-$DownloadZlibDest = Join-Path $DownloadDirectory "zlib.zip"
-$DownloadLz4Dest = Join-Path $DownloadDirectory "lz4.zip"
-$DownloadBloscDest = Join-Path $DownloadDirectory "blosc.zip"
-$DownloadZstdDest = Join-Path $DownloadDirectory "zstd.zip"
-$DownloadBzip2Dest = Join-Path $DownloadDirectory "bzip2.zip"
+$StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
+$DownloadZlibDest = Join-Path $StagingDirectory "zlib.zip"
+$DownloadLz4Dest = Join-Path $StagingDirectory "lz4.zip"
+$DownloadBloscDest = Join-Path $StagingDirectory "blosc.zip"
+$DownloadZstdDest = Join-Path $StagingDirectory "zstd.zip"
+$DownloadBzip2Dest = Join-Path $StagingDirectory "bzip2.zip"
 
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
@@ -46,10 +46,10 @@ function Unzip([string] $Zipfile, [string] $Dest) {
 }
 
 function Install-Zlib {
-    $ZlibRoot = (Join-Path $DownloadDirectory "zlib-1.2.11")
+    $ZlibRoot = (Join-Path $StagingDirectory "zlib-1.2.11")
     if (!(Test-Path $ZlibRoot)) {
 	DownloadIfNotExists $DownloadZlibDest "https://zlib.net/zlib1211.zip"
-	Unzip $DownloadZlibDest $DownloadDirectory
+	Unzip $DownloadZlibDest $StagingDirectory
     }
     Push-Location
     Set-Location $ZlibRoot
@@ -57,13 +57,13 @@ function Install-Zlib {
 	New-Item -ItemType Directory -Path build
     }
     Set-Location build
-    cmake -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
+    cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
     cmake --build . --config Release --target INSTALL
     Pop-Location
 }
 
 function Install-LZ4 {
-    $Lz4Root = (Join-Path $DownloadDirectory "lz4")
+    $Lz4Root = (Join-Path $StagingDirectory "lz4")
     if (!(Test-Path $Lz4Root)) {
 	DownloadIfNotExists $DownloadLz4Dest "https://github.com/lz4/lz4/releases/download/v1.8.0/lz4_v1_8_0_win64.zip"
 	New-Item -ItemType Directory -Path $Lz4Root
@@ -77,10 +77,10 @@ function Install-LZ4 {
 }
 
 function Install-Blosc {
-    $BloscRoot = (Join-Path $DownloadDirectory "c-blosc-1.12.1")
+    $BloscRoot = (Join-Path $StagingDirectory "c-blosc-1.12.1")
     if (!(Test-Path $BloscRoot)) {
 	DownloadIfNotExists $DownloadBloscDest "https://github.com/Blosc/c-blosc/archive/v1.12.1.zip"
-	Unzip $DownloadBloscDest $DownloadDirectory
+	Unzip $DownloadBloscDest $StagingDirectory
     }
     Push-Location
     Set-Location $BloscRoot
@@ -88,13 +88,13 @@ function Install-Blosc {
 	New-Item -ItemType Directory -Path build
     }
     Set-Location build
-    cmake -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
+    cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
     cmake --build . --config Release --target INSTALL
     Pop-Location
 }
 
 function Install-Zstd {
-    $ZstdRoot = (Join-Path $DownloadDirectory "zstd")
+    $ZstdRoot = (Join-Path $StagingDirectory "zstd")
     if (!(Test-Path $ZstdRoot)) {
 	DownloadIfNotExists $DownloadZstdDest "https://github.com/facebook/zstd/releases/download/v1.3.2/zstd-v1.3.2-win64.zip"
 	New-Item -ItemType Directory -Path $ZstdRoot
@@ -108,7 +108,7 @@ function Install-Zstd {
 }
 
 function Install-Bzip2 {
-    $Bzip2Root = (Join-Path $DownloadDirectory "bzip2")
+    $Bzip2Root = (Join-Path $StagingDirectory "bzip2")
     if (!(Test-Path $Bzip2Root)) {
 	# Have to use a mirror URL directly, unless we handle the redirect.
 	DownloadIfNotExists $DownloadBzip2Dest "https://ayera.dl.sourceforge.net/project/gnuwin32/bzip2/1.0.5/bzip2-1.0.5-bin.zip"
@@ -124,6 +124,9 @@ function Install-Bzip2 {
 }
 
 function Install-All-Deps {
+    if (!(Test-Path $StagingDirectory)) {
+	New-Item -ItemType Directory -Path $StagingDirectory
+    }
     Install-Zlib
     Install-LZ4
     Install-Blosc
