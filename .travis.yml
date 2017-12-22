@@ -24,7 +24,9 @@ install:
     - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
 
     # Install minio if S3 is enabled
-    - if [ "$USE_S3" == "ON" ]; then source scripts/install-s3-minio.sh; fi
+    - if [ "$USE_S3" == "ON" ]; then 
+        source scripts/install-s3.sh && source scripts/install-minio.sh; 
+      fi
 
     # Build TileDB
     - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build
