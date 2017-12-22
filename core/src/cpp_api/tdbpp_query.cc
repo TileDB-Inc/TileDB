@@ -135,7 +135,7 @@ tdb::Query::Status tdb::Query::submit_async() {
   return query_status();
 }
 
-std::vector<uint64_t> tdb::Query::buff_sizes() {
+std::vector<uint64_t> tdb::Query::returned_buff_sizes() {
   std::vector<uint64_t> buffsize(_buff_sizes.size());
   for (size_t i = 0; i < _attrs.size(); ++i) {
     buffsize[i] = _buff_sizes[i] / _sub_tsize[i];

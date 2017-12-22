@@ -161,7 +161,7 @@ namespace tdb {
 
     void consolidate(const std::string &name);
 
-    void del(std::string &name);
+    void del(const std::string &name);
 
     template<typename C>
     void handle_error(int ret, C callback) {

@@ -42,9 +42,6 @@ int main() {
   using std::setw;
   tdb::Context ctx;
 
-  // Buffers
-  std::vector<int> a1_data;
-
   // Init the array & query for the array
   tdb::Array array = ctx.array_get("my_dense_array");
   tdb::Query query = array.read();
@@ -55,13 +52,14 @@ int main() {
   query.layout(TILEDB_ROW_MAJOR);
 
   // Limit buff size to 2
-  query.resize_buffer<tdb::type::INT32>("a1", a1_data, 2);
+  auto a1_data = query.make_buffer<tdb::type::INT32>("a1", 2);
+  query.set_buffer<tdb::type::INT32>("a1", a1_data);
 
   std::cout << "a1\n---\n";
   do {
     std::cout << "Reading cells...\n";
     query.submit();
-    const auto &buff_sizes = query.buff_sizes();
+    const auto &buff_sizes = query.returned_buff_sizes();
 
     for (unsigned i = 0; i < buff_sizes[0]; ++i) {
       std::cout << a1_data[i] << "\n";

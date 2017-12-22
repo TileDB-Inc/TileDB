@@ -62,12 +62,12 @@ int main() {
   20, 21, 23, 26,                                    // Lower left tile
   30, 31, 33, 36                                     // Lower right tile
   };
-  std::vector<float> a3_data =
+  std::vector<std::array<float,2>> a3_data =
   {
-  0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,     // Upper left tile
-  4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,     // Upper right tile
-  8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,    // Lower left tile
-  12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,    // Lower right tile
+  {0.1,  0.2},  {1.1,  1.2},  {2.1,  2.2},  {3.1,  3.2},     // Upper left tile
+  {4.1,  4.2},  {5.1,  5.2},  {6.1,  6.2},  {7.1,  7.2},     // Upper right tile
+  {8.1,  8.2},  {9.1,  9.2},  {10.1, 10.2}, {11.1, 11.2},    // Lower left tile
+  {12.1, 12.2}, {13.1, 13.2}, {14.1, 14.2}, {15.1, 15.2},    // Lower right tile
   };
 
   // Init the array & query for the array

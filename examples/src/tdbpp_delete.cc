@@ -33,6 +33,7 @@
  */
 
 #include <tdbpp>
+#include <string>
 
 int main() {
   tdb::Context ctx;

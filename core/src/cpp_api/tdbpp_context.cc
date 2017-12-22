@@ -147,7 +147,7 @@ void tdb::Context::consolidate(const std::string &name) {
   handle_error(tiledb_array_consolidate(_ctx.get(), name.c_str()));
 }
 
-void tdb::Context::del(std::string &name) {
+void tdb::Context::del(const std::string &name) {
   handle_error(tiledb_delete(_ctx.get(), name.c_str()));
 }
 
