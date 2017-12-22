@@ -40,7 +40,6 @@
 #include "comparators.h"
 #include "const_buffer.h"
 #include "logger.h"
-#include "posix_filesystem.h"
 #include "query.h"
 #include "tile.h"
 #include "utils.h"
