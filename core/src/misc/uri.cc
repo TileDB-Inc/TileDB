@@ -87,7 +87,7 @@ bool URI::is_posix() const {
 bool URI::is_win32(const std::string& path) {
 #ifdef _WIN32
   bool backslash = path.length() > 0 && path.find("\\") != std::string::npos;
-  return backslash || !(is_posix() || is_hdfs() || is_s3());
+  return backslash || !(is_posix(path) || is_hdfs(path) || is_s3(path));
 #else
   return false;
 #endif
@@ -96,7 +96,6 @@ bool URI::is_win32(const std::string& path) {
 bool URI::is_win32() const {
   return is_win32(uri_);
 }
-
 
 bool URI::is_hdfs(const std::string& path) {
   return utils::starts_with(path, "hdfs://");
@@ -132,12 +131,11 @@ URI URI::parent() const {
     return URI();
   return URI(uri_.substr(0, pos));
 }
-}
 
 std::string URI::to_path() const {
   if (is_posix())
     return uri_.substr(std::string("file://").size());
-
+  
   if (is_win32() || is_hdfs() || is_s3())
     return uri_;
 
