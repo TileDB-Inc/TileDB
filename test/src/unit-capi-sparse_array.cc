@@ -53,7 +53,7 @@ struct SparseArrayFx {
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
 
-  // Workspace folder name
+// Workspace folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";
@@ -280,7 +280,7 @@ struct SparseArrayFx {
       delete[] buffer_a1;
       return nullptr;
     }
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;

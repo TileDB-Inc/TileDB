@@ -275,8 +275,12 @@ class Query {
   Status set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
-  /** Sets the cell layout of the query. */
-  void set_layout(Layout layout);
+  /**
+   * Sets the cell layout of the query. The function will return an error
+   * if the queried array is a key-value store (because it has its default
+   * layout.
+   */
+  Status set_layout(Layout layout);
 
   /** Sets the query status. */
   void set_status(QueryStatus status);
@@ -426,6 +430,16 @@ class Query {
 
   /** Adds the coordinates attribute if it does not exist. */
   void add_coords();
+
+  /** Checks if attributes has been appropriately set for a query. */
+  Status check_attributes();
+
+  /** Checks if `subarray` falls inside the array domain. */
+  Status check_subarray(const void* subarray) const;
+
+  /** Checks if `subarray` falls inside the array domain. */
+  template <class T>
+  Status check_subarray(const T* subarray) const;
 
   /** Initializes the fragments (for a read query). */
   Status init_fragments(

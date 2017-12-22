@@ -121,6 +121,9 @@ class Domain {
   /** Returns the i-th dimensions (nullptr upon error). */
   const Dimension* dimension(unsigned int i) const;
 
+  /** Returns the dimension given a name (nullptr upon error). */
+  const Dimension* dimension(std::string name) const;
+
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
 

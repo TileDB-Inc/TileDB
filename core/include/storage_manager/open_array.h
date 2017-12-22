@@ -83,12 +83,6 @@ class OpenArray {
    */
   FragmentMetadata* fragment_metadata_get(const URI& fragment_uri);
 
-  /**
-   * Removes the metadata of the input fragment from the fragment metadata
-   * map.
-   */
-  void fragment_metadata_rm(const URI& fragment_uri);
-
   /** Increments the counter indicating the times this array has been opened. */
   void incr_cnt();
 
@@ -114,10 +108,9 @@ class OpenArray {
 
   /**
    * Enables searching for loaded fragment metadata by fragment name.
-   * Format: <fragment_name> --> (fragment_metadata, # queries using it)
+   * Format: <fragment_name> --> (fragment_metadata)
    */
-  std::map<std::string, std::pair<FragmentMetadata*, uint64_t>>
-      fragment_metadata_;
+  std::map<std::string, FragmentMetadata*> fragment_metadata_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

@@ -35,6 +35,7 @@
 #include "utils.h"
 
 #include <sys/time.h>
+#include <set>
 #include <sstream>
 
 /* ****************************** */
@@ -355,6 +356,9 @@ Status Query::overflow(
 }
 
 Status Query::read() {
+  // Check attributes
+  RETURN_NOT_OK(check_attributes());
+
   // Handle case of no fragments
   if (fragments_.empty()) {
     zero_out_buffer_sizes(buffer_sizes_);
@@ -396,6 +400,9 @@ Status Query::read(void** buffers, uint64_t* buffer_sizes) {
 
 void Query::set_array_metadata(const ArrayMetadata* array_metadata) {
   array_metadata_ = array_metadata;
+  if (array_metadata->is_kv())
+    layout_ =
+        (type_ == QueryType::WRITE) ? Layout::UNORDERED : Layout::GLOBAL_ORDER;
 }
 
 Status Query::set_buffers(
@@ -403,10 +410,13 @@ Status Query::set_buffers(
     unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes) {
-  // Sanity check
+  // Sanity checks
   if (attributes == nullptr || attribute_num == 0)
     return LOG_STATUS(
         Status::QueryError("Cannot set buffers; Attributes not provided"));
+  if (buffers == nullptr || buffer_sizes == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set buffers; Buffers not provided"));
 
   // Get attributes
   std::vector<std::string> attributes_vec;
@@ -450,8 +460,15 @@ Status Query::set_fragment_metadata(
   return Status::Ok();
 }
 
-void Query::set_layout(Layout layout) {
+Status Query::set_layout(Layout layout) {
+  // Check if the array is a key-value store
+  if (array_metadata_->is_kv())
+    return Status::QueryError(
+        "Cannot set layout; The array is defined as a key-value store");
+
   layout_ = layout;
+
+  return Status::Ok();
 }
 
 void Query::set_status(QueryStatus status) {
@@ -489,9 +506,9 @@ Status Query::set_subarray(const void* subarray, Datatype type) {
       return set_subarray<float>((const float*)subarray);
     case Datatype::FLOAT64:
       return set_subarray<double>((const double*)subarray);
-    default:
-      return Status::Error("unknown query subarray Datatype");
   }
+
+  return Status::Ok();
 }
 
 template <class T>
@@ -584,7 +601,12 @@ QueryType Query::type() const {
 }
 
 Status Query::write() {
+  // Check attributes
+  RETURN_NOT_OK(check_attributes());
+
+  // Set query status
   status_ = QueryStatus::INPROGRESS;
+
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(array_ordered_write_state_->write(buffers_, buffer_sizes_));
@@ -648,6 +670,74 @@ void Query::add_coords() {
 
   if (!has_coords)
     attribute_ids_.emplace_back(attribute_num);
+}
+
+Status Query::check_attributes() {
+  // If it is a write query, there should be no duplicate attributes
+  if (type_ == QueryType::WRITE) {
+    std::set<unsigned int> unique_attribute_ids;
+    for (auto& id : attribute_ids_)
+      unique_attribute_ids.insert(id);
+    if (unique_attribute_ids.size() != attribute_ids_.size())
+      return LOG_STATUS(
+          Status::QueryError("Check attributes failed; Duplicate attributes "
+                             "set for a write query"));
+  }
+
+  // If it is an unordered write query, all attributes must be provided
+  if (type_ == QueryType::WRITE && layout_ == Layout::UNORDERED) {
+    if (attribute_ids_.size() != array_metadata_->attribute_num() + 1)
+      return LOG_STATUS(
+          Status::QueryError("Check attributes failed; Unordered writes expect "
+                             "all attributes to be set"));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::check_subarray(const void* subarray) const {
+  if (subarray == nullptr)
+    return Status::Ok();
+
+  switch (array_metadata_->domain()->type()) {
+    case Datatype::CHAR:
+      return check_subarray<char>(static_cast<const char*>(subarray));
+    case Datatype::INT8:
+      return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
+    case Datatype::UINT8:
+      return check_subarray<uint8_t>(static_cast<const uint8_t*>(subarray));
+    case Datatype::INT16:
+      return check_subarray<int16_t>(static_cast<const int16_t*>(subarray));
+    case Datatype::UINT16:
+      return check_subarray<uint16_t>(static_cast<const uint16_t*>(subarray));
+    case Datatype::INT32:
+      return check_subarray<int32_t>(static_cast<const int32_t*>(subarray));
+    case Datatype::UINT32:
+      return check_subarray<uint32_t>(static_cast<const uint32_t*>(subarray));
+    case Datatype::INT64:
+      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
+    case Datatype::UINT64:
+      return check_subarray<uint64_t>(static_cast<const uint64_t*>(subarray));
+    case Datatype::FLOAT32:
+      return check_subarray<float>(static_cast<const float*>(subarray));
+    case Datatype::FLOAT64:
+      return check_subarray<double>(static_cast<const double*>(subarray));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::check_subarray(const T* subarray) const {
+  auto domain = array_metadata_->domain();
+  auto dim_num = domain->dim_num();
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
+    if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
+      return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+  }
+
+  return Status::Ok();
 }
 
 Status Query::init_fragments(
@@ -746,11 +836,9 @@ Status Query::set_attributes(
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_metadata_->attribute_names();
-    if (array_metadata_->dense() &&
-        !(type_ == QueryType::WRITE && layout_ == Layout::UNORDERED))
-      // Remove coordinates attribute for dense arrays,
-      // unless in TILEDB_WRITE_UNSORTED mode
-      attributes_vec.pop_back();
+    if ((!array_metadata_->dense() ||
+         (type_ == QueryType::WRITE && layout_ == Layout::UNORDERED)))
+      attributes_vec.emplace_back(constants::coords);
   } else {  // Custom attributes
     // Get attributes
     unsigned name_max_len = constants::name_max_len;
@@ -775,6 +863,8 @@ Status Query::set_attributes(
 }
 
 Status Query::set_subarray(const void* subarray) {
+  RETURN_NOT_OK(check_subarray(subarray));
+
   uint64_t subarray_size = 2 * array_metadata_->coords_size();
 
   if (subarray_ == nullptr)

@@ -63,8 +63,8 @@ Status Consolidator::consolidate(const char* array_name) {
   URI array_uri = URI(array_name);
 
   // Get array metadata
-  auto array_meta = new ArrayMetadata(array_uri);
-  RETURN_NOT_OK(storage_manager_->load(array_name, array_meta));
+  auto array_meta = (ArrayMetadata*)nullptr;
+  RETURN_NOT_OK(storage_manager_->load_array_metadata(array_uri, &array_meta));
 
   // Prepare buffers
   void** buffers;
@@ -115,7 +115,7 @@ Status Consolidator::consolidate(const char* array_name) {
   // Unlock the array
   st = storage_manager_->array_unlock(array_uri, false);
 
-  // Clean up
+// Clean up
 clean_up:
   delete array_meta;
   free_buffers(buffer_num, buffers, buffer_sizes);

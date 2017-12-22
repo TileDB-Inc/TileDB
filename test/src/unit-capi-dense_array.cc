@@ -51,7 +51,7 @@ struct DenseArrayFx {
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
 
-  // Group folder name
+// Group folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";
@@ -371,7 +371,7 @@ struct DenseArrayFx {
         ctx_, query, attributes, 1, buffers, buffer_sizes);
     if (rc != TILEDB_OK)
       return nullptr;
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK)
       return nullptr;
     rc = tiledb_query_set_layout(ctx_, query, query_layout);
@@ -605,7 +605,7 @@ struct DenseArrayFx {
         ctx_, query, attributes, 1, buffers, buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
-    rc = tiledb_query_by_subarray(ctx_, query, subarray, TILEDB_INT64);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
     rc = tiledb_query_set_layout(ctx_, query, query_layout);
@@ -893,4 +893,72 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[dense]") {
   delete[] after_update;
   delete[] buffer_a1;
   delete[] buffer_coords;
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx, "C API: Test out-of-bounds subarray", "[dense]") {
+  // Error code
+  int rc;
+
+  // Parameters used in this test
+  int64_t domain_size_0 = 5000;
+  int64_t domain_size_1 = 10000;
+  int64_t tile_extent_0 = 1000;
+  int64_t tile_extent_1 = 1000;
+  int64_t domain_0_lo = 0;
+  int64_t domain_0_hi = domain_size_0 - 1;
+  int64_t domain_1_lo = 0;
+  int64_t domain_1_hi = domain_size_1 - 1;
+  uint64_t capacity = 1000000;
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  int iter_num = 10;
+
+  // Set array name
+  set_array_name("dense_test_5000x10000_100x100");
+
+  // Create a dense integer array
+  create_dense_array_2D(
+      tile_extent_0,
+      tile_extent_1,
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      capacity,
+      cell_order,
+      tile_order);
+
+  // Write array cells with value = row id * COLUMNS + col id
+  // to disk tile by tile
+  rc = write_dense_array_by_tiles(
+      domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  int64_t subarray_1[] = {-1, 5, 10, 10};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_1, TILEDB_INT64);
+  CHECK(rc == TILEDB_ERR);
+
+  int64_t subarray_2[] = {0, 5000000, 10, 10};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_2, TILEDB_INT64);
+  CHECK(rc == TILEDB_ERR);
+
+  int64_t subarray_3[] = {0, 5, -1, 10};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_3, TILEDB_INT64);
+  CHECK(rc == TILEDB_ERR);
+
+  int64_t subarray_4[] = {0, 5, 10, 100000000};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_4, TILEDB_INT64);
+  CHECK(rc == TILEDB_ERR);
+
+  int64_t subarray_5[] = {0, 5, 10, 10};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_5, TILEDB_INT64);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_free(ctx_, query);
+  CHECK(rc == TILEDB_OK);
 }

@@ -1,12 +1,11 @@
 /**
- * @file   tiledb_dense_write_ordered_subarray.cc
+ * @file   tiledb_kv_read.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,57 +27,68 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a dense subarray, providing the array cells ordered
- * in row-major order within the specified subarray. TileDB will properly
- * re-organize the cells into the global cell order, prior to writing them
- * on the disk.
- *
- * Make sure that there is no directory named "my_dense_array" in your
- * current working directory.
+ * It shows how to read from a key-value store.
  *
  * You need to run the following to make it work:
  *
- * ./tiledb_dense_create
- * ./tiledb_dense_write_ordered_subarray
+ * $ ./tiledb_kv_create
+ * $ ./tiledb_kv_write
+ * $ ./tiledb_kv_read
  */
 
 #include <tiledb.h>
+#include <iostream>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
+  tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
+  unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
 
-  // Prepare cell buffers
-  int buffer_a1[] = {9, 12, 13, 11, 14, 15};
-  uint64_t buffer_a2[] = {0, 2, 3, 5, 9, 12};
-  char buffer_var_a2[] = "jjmnnllllooopppp";
-  float buffer_a3[] = {
-      9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {
-      sizeof(buffer_a1),
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
-      sizeof(buffer_a3)};
+  // Prepare key
+  int key = 100;
+  tiledb_datatype_t key_type = TILEDB_INT32;
+  uint64_t key_size = sizeof(int);
 
-  // Set subarray
-  uint64_t subarray[] = {3, 4, 2, 4};
+  // Create key-values
+  tiledb_kv_t* kv;
+  tiledb_kv_create(ctx, &kv, 3, attributes, types, nitems);
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
-  tiledb_query_set_subarray(ctx, query, subarray, TILEDB_UINT64);
-  tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
+  tiledb_query_create(ctx, &query, "my_kv", TILEDB_READ);
+  tiledb_query_set_kv_key(ctx, query, &key, key_type, key_size);
+  tiledb_query_set_kv(ctx, query, kv);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
+  // Key is not retrieved
+  void* key_r;
+  uint64_t key_size_r;
+  tiledb_datatype_t key_type_r;
+  if (tiledb_kv_get_key(ctx, kv, 0, &key_r, &key_type_r, &key_size_r) ==
+      TILEDB_ERR)
+    printf("Key attributes are not retrieved when reading with a single key\n");
+
+  // Print result
+  void *a1, *a2, *a3;
+  uint64_t a2_size;
+  std::cout << "a1, a2, (a3.first, a3.second)\n";
+  std::cout << "-----------------------------\n";
+  tiledb_kv_get_value(ctx, kv, 0, 0, &a1);
+  tiledb_kv_get_value_var(ctx, kv, 0, 1, &a2, &a2_size);
+  tiledb_kv_get_value(ctx, kv, 0, 2, &a3);
+  std::cout << *((int*)a1);
+  std::cout << ", " << std::string((const char*)a2, a2_size);
+  std::cout << ", (" << ((float*)a3)[0] << ", " << ((float*)a3)[1] << ")\n";
+
   // Clean up
+  tiledb_kv_free(ctx, kv);
   tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
 

@@ -63,6 +63,7 @@ class StorageManager {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  /** Enables iteration over TileDB objects in a path. */
   class ObjectIter {
    public:
     /**
@@ -179,23 +180,33 @@ class StorageManager {
    */
   Status init();
 
+  /** Returns true if the input URI is an array directory. */
+  bool is_array(const URI& uri) const;
+
+  /** Checks if the input URI is a directory. */
+  bool is_dir(const URI& uri) const;
+
   /** Returns true if the input URI is a fragment directory. */
   bool is_fragment(const URI& uri) const;
 
-  /** Checks if the input URI is a directory. */
-  bool is_dir(const URI& uri);
+  /** Returns true if the input URI is a group directory. */
+  bool is_group(const URI& uri) const;
 
   /** Checks if the input URI is a file. */
-  bool is_file(const URI& uri);
+  bool is_file(const URI& uri) const;
+
+  /** Returns true if the input URI is a key-value array directory. */
+  bool is_kv(const URI& uri) const;
 
   /**
    * Loads the metadata of an array from persistent storage into memory.
    *
-   * @param array_name The name (URI path) of the array.
+   * @param array_uri The URI path of the array.
    * @param array_metadata The array metadata to be retrieved.
    * @return Status
    */
-  Status load(const std::string& array_name, ArrayMetadata* array_metadata);
+  Status load_array_metadata(
+      const URI& array_uri, ArrayMetadata** array_metadata);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -204,7 +215,7 @@ class StorageManager {
    * @param metadata The fragment metadata to be loaded.
    * @return Status
    */
-  Status load(FragmentMetadata* metadata);
+  Status load_fragment_metadata(FragmentMetadata* metadata);
 
   /**
    * Creates a new object iterator for the input path.
@@ -372,7 +383,7 @@ class StorageManager {
    * @param array_metadata The array metadata to be stored.
    * @return Status
    */
-  Status store(ArrayMetadata* array_metadata);
+  Status store_array_metadata(ArrayMetadata* array_metadata);
 
   /**
    * Stores the fragment metadata into persistent storage.
@@ -380,7 +391,7 @@ class StorageManager {
    * @param metadata The fragment metadata to be stored.
    * @return Status
    */
-  Status store(FragmentMetadata* metadata);
+  Status store_fragment_metadata(FragmentMetadata* metadata);
 
   /**
    * Syncs a URI (file or directory), i.e., commits its contents
@@ -416,6 +427,9 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /** An array metadata cache. */
+  LRUCache* array_metadata_cache_;
+
   /**
    * Async condition variable. The first is for user async queries, the second
    * for internal async queries.
@@ -446,11 +460,11 @@ class StorageManager {
   /** Object that handles array consolidation. */
   Consolidator* consolidator_;
 
-  /** Used for array shared and exclusive locking. */
-  std::mutex locked_array_mtx_;
+  /** A fragment metadata cache. */
+  LRUCache* fragment_metadata_cache_;
 
   /** Used for array shared and exclusive locking. */
-  std::condition_variable locked_array_cv_;
+  std::mutex locked_array_mtx_;
 
   /**
    * Stores locked array entries. The map is indexed by the array URI string
@@ -480,9 +494,8 @@ class StorageManager {
   /*         PRIVATE METHODS           */
   /* ********************************* */
 
-  /** Closes an array, properly managing the opened fragment metadata. */
-  Status array_close(
-      URI array, const std::vector<FragmentMetadata*>& fragment_metadata);
+  /** Closes an array. */
+  Status array_close(URI array);
 
   /**
    * Opens an array, retrieving its metadata and fragment metadata.
@@ -502,9 +515,7 @@ class StorageManager {
   /**
    * Invokes in case an error occurs in array_open. It is a clean-up function.
    */
-  Status array_open_error(
-      OpenArray* open_array,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
+  Status array_open_error(OpenArray* open_array);
 
   /**
    * Starts listening to async queries.
@@ -540,7 +551,8 @@ class StorageManager {
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 
   /** Loads the array metadata into an open array. */
-  Status open_array_load_metadata(const URI& array_uri, OpenArray* open_array);
+  Status open_array_load_array_metadata(
+      const URI& array_uri, OpenArray* open_array);
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
   Status open_array_load_fragment_metadata(

@@ -324,8 +324,7 @@ Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
 Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
   unsigned int attribute_num = array_metadata_->attribute_num();
   file_var_sizes_.resize(attribute_num + 1);
-  Status st =
-      buff->read(&file_var_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
+  Status st = buff->read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
 
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
@@ -592,8 +591,8 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) {
 // file_var_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) {
   unsigned int attribute_num = array_metadata_->attribute_num();
-  Status st = buff->write(
-      &next_tile_var_offsets_[0], (attribute_num + 1) * sizeof(uint64_t));
+  Status st =
+      buff->write(&next_tile_var_offsets_[0], attribute_num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
         "Cannot serialize fragment metadata; Writing file sizes failed"));

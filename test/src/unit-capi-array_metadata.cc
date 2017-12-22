@@ -176,6 +176,7 @@ struct ArraySchemaFx {
     // Check for invalid array metadata
     rc = tiledb_array_metadata_check(ctx_, array_metadata_);
     REQUIRE(rc != TILEDB_OK);
+
     rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc != TILEDB_OK);
 
@@ -273,24 +274,25 @@ TEST_CASE_METHOD(
   rc = tiledb_array_metadata_get_coords_compressor(
       ctx_, array_metadata, &coords_compression, &coords_compression_level);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_DOUBLE_DELTA);
+  CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
   CHECK(coords_compression_level == -1);
 
   // Check attribute
-  int attr_it_done;
-  tiledb_attribute_iter_t* attr_it;
-  rc = tiledb_attribute_iter_create(ctx_, array_metadata, &attr_it);
-  REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!attr_it_done);
-
-  const tiledb_attribute_t* attr;
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
+  // get first attribute by index
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_from_index(ctx_, array_metadata, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attr_name;
+  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  tiledb_attribute_free(ctx_, attr);
+
+  // get first attribute by name
+  rc = tiledb_attribute_from_name(ctx_, array_metadata, ATTR_NAME, &attr);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
@@ -313,19 +315,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(cell_val_num == CELL_VAL_NUM);
 
-  rc = tiledb_attribute_iter_next(ctx_, attr_it);
+  unsigned int num_attributes = 0;
+  rc = tiledb_array_metadata_get_num_attributes(
+      ctx_, array_metadata, &num_attributes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(attr_it_done);
-
-  rc = tiledb_attribute_iter_first(ctx_, attr_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_iter_here(ctx_, attr_it, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK(num_attributes == 1);
 
   // Get domain
   tiledb_domain_t* domain;
@@ -333,20 +327,21 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check first dimension
-  int dim_it_done;
-  tiledb_dimension_iter_t* dim_it;
-  rc = tiledb_dimension_iter_create(ctx_, domain, &dim_it);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-
-  const tiledb_dimension_t* dim;
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
+  // get first dimension by name
+  tiledb_dimension_t* dim;
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM1_NAME, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   const char* dim_name;
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+
+  tiledb_dimension_free(ctx_, dim);
+
+  // get first dimension by index
+  rc = tiledb_dimension_from_index(ctx_, domain, 0, &dim);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
@@ -361,15 +356,23 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(!dim_it_done);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(ctx_, dim);
 
   // Check second dimension
+  // get second dimension by name
+  rc = tiledb_dimension_from_name(ctx_, domain, DIM2_NAME, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+
+  tiledb_dimension_free(ctx_, dim);
+
+  // get from index
+  rc = tiledb_dimension_from_index(ctx_, domain, 1, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
@@ -382,19 +385,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[1], TILE_EXTENT_SIZE));
 
-  rc = tiledb_dimension_iter_next(ctx_, dim_it);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_it_done);
+  // check that indexing > 1 returns an error for this domain
+  rc = tiledb_dimension_from_index(ctx_, domain, 2, &dim);
+  CHECK(rc != TILEDB_OK);
 
-  rc = tiledb_dimension_iter_first(ctx_, dim_it);
+  // check that the rank of the domain is 2
+  unsigned int rank = 0;
+  rc = tiledb_domain_get_rank(ctx_, domain, &rank);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_here(ctx_, dim_it, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK(rank == 2);
 
   // Check dump
   std::string dump_str =
@@ -403,7 +402,7 @@ TEST_CASE_METHOD(
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
-      "- Coordinates compressor: DOUBLE_DELTA\n" +
+      "- Coordinates compressor: BLOSC_ZSTD\n" +
       "- Coordinates compression level: -1\n\n" +
       "=== Domain ===\n"
       "- Dimensions type: " +
@@ -429,12 +428,273 @@ TEST_CASE_METHOD(
   CHECK(!system("rm gold_fout.txt fout.txt"));
 
   // Clean up
-  rc = tiledb_attribute_iter_free(ctx_, attr_it);
+  rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_iter_free(ctx_, dim_it);
+  rc = tiledb_dimension_free(ctx_, dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_metadata_free(ctx_, array_metadata);
   REQUIRE(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata anonymous dimensions",
+    "[metadata]") {
+  int rc;
+
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set metadata members
+  rc = tiledb_array_metadata_set_array_type(ctx_, array_metadata_, ARRAY_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_create(
+      ctx_, &d2, "", TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* get_dim = nullptr;
+  rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
+  // getting multiple anonymous dimension by name is an error
+  CHECK(rc != TILEDB_OK);
+
+  rc = tiledb_dimension_from_index(ctx_, domain, 0, &get_dim);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_dim != nullptr);
+  tiledb_dimension_free(ctx_, get_dim);
+
+  // Clean up
+  tiledb_dimension_free(ctx_, d1);
+  tiledb_dimension_free(ctx_, d2);
+  tiledb_domain_free(ctx_, domain);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata multiple anonymous dimensions",
+    "[metadata]") {
+  int rc;
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_create(
+      ctx_, &d2, "", TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* get_dim = nullptr;
+  rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
+  // getting multiple anonymous dimension by name is an error
+  CHECK(rc != TILEDB_OK);
+
+  rc = tiledb_dimension_from_index(ctx_, domain, 0, &get_dim);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_dim != nullptr);
+  tiledb_dimension_free(ctx_, get_dim);
+
+  // Clean up
+  tiledb_dimension_free(ctx_, d1);
+  tiledb_dimension_free(ctx_, d2);
+  tiledb_domain_free(ctx_, domain);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata one anonymous dimension",
+    "[metadata]") {
+  int rc;
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_create(
+      ctx_, &d2, "d2", TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_dimension_t* get_dim = nullptr;
+  rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(ctx_, get_dim);
+
+  rc = tiledb_dimension_from_name(ctx_, domain, "d2", &get_dim);
+  const char* get_name = nullptr;
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_get_name(ctx_, get_dim, &get_name);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(get_name, Catch::Equals("d2"));
+  tiledb_dimension_free(ctx_, get_dim);
+
+  // Clean up
+  tiledb_dimension_free(ctx_, d1);
+  tiledb_dimension_free(ctx_, d2);
+  tiledb_domain_free(ctx_, domain);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata multiple anonymous attributes",
+    "[metadata]") {
+  int rc;
+
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_create(ctx_, &attr1, "", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_t* attr2;
+  rc = tiledb_attribute_create(ctx_, &attr2, "", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_attribute_t* get_attr = nullptr;
+  rc = tiledb_attribute_from_name(ctx_, array_metadata_, "", &get_attr);
+  // from name when there are multiple anon attributes is an error
+  CHECK(rc != TILEDB_OK);
+
+  rc = tiledb_attribute_from_index(ctx_, array_metadata_, 0, &get_attr);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_attr != nullptr);
+  tiledb_attribute_free(ctx_, get_attr);
+
+  // Clean up
+  tiledb_attribute_free(ctx_, attr1);
+  tiledb_attribute_free(ctx_, attr2);
+  tiledb_dimension_free(ctx_, d1);
+  tiledb_domain_free(ctx_, domain);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata one anonymous attribute",
+    "[metadata]") {
+  int rc;
+
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_create(ctx_, &attr1, "", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_t* attr2;
+  rc = tiledb_attribute_create(ctx_, &attr2, "foo", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_attribute_t* get_attr = nullptr;
+  rc = tiledb_attribute_from_name(ctx_, array_metadata_, "", &get_attr);
+  // from name when there are multiple anon attributes is an error
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_attr != nullptr);
+  tiledb_attribute_free(ctx_, get_attr);
+
+  rc = tiledb_attribute_from_name(ctx_, array_metadata_, "foo", &get_attr);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_attr != nullptr);
+  const char* get_name = nullptr;
+  rc = tiledb_attribute_get_name(ctx_, get_attr, &get_name);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(get_name, Catch::Equals("foo"));
+  tiledb_attribute_free(ctx_, get_attr);
+
+  // Clean up
+  tiledb_attribute_free(ctx_, attr1);
+  tiledb_attribute_free(ctx_, attr2);
+  tiledb_dimension_free(ctx_, d1);
+  tiledb_domain_free(ctx_, domain);
 }
