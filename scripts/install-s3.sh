@@ -11,7 +11,8 @@ build_aws_sdk_cpp() {
   mkdir build
   cd build
   export AWS_SDK_CPP=$(pwd)
-  cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;core;transfer;config" .. || die "aws-sdk-cpp build failed"
+  cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;core;transfer;config" \
+        -DCUSTOM_MEMORY_MANAGEMENT=0 .. || die "aws-sdk-cpp build failed"
   make || die "aws-sdk-cpp build failed"
   sudo make install || die "aws-sdk-cpp installation failed"
   cd ../../
