@@ -62,7 +62,7 @@ int main() {
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes first.
-  const auto &buff_sizes = query.returned_buff_sizes();
+  const auto buff_sizes = query.returned_buff_sizes();
 
   // chunk the continous buffer by cell
   auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);

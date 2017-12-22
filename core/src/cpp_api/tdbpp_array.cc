@@ -77,9 +77,7 @@ const tdb::ArrayMetadata &tdb::Array::meta() const {
   return _meta;
 }
 
-tdb::Array::Array(const tdb::ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {
-  create(meta);
-}
+tdb::Array::Array(const tdb::ArrayMetadata &meta) : _ctx(meta._ctx), _meta(meta) {}
 
 tdb::Query tdb::Array::read() {
   return Query(*this, TILEDB_READ);

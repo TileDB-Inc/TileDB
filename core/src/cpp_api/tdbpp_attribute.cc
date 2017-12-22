@@ -101,3 +101,8 @@ tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c) {
   attr.set_compressor(c);
   return attr;
 }
+
+tdb::Attribute &operator<<(tdb::Attribute &attr, unsigned num) {
+  attr.set_num(num);
+  return attr;
+}

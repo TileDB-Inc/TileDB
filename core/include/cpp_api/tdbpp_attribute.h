@@ -113,5 +113,6 @@ namespace tdb {
 
 std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);
 tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c);
+tdb::Attribute &operator<<(tdb::Attribute &attr, unsigned num);
 
 #endif //TILEDB_GENOMICS_ATTRIBUTE_H

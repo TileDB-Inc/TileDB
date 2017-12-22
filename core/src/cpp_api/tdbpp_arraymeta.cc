@@ -228,3 +228,8 @@ tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Attribute &a
   meta.add_attribute(a);
   return meta;
 }
+
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tiledb_array_type_t type) {
+  meta.set_type(type);
+  return meta;
+}

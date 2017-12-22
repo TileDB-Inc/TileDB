@@ -171,6 +171,6 @@ namespace tdb {
 
 std::ostream &operator<<(std::ostream &os, const tdb::ArrayMetadata &meta);
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Domain &dim);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Dimension &dim);
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Attribute &dim);
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tiledb_array_type_t type);
 #endif //TILEDB_TDBPP_ARRAYMETA_H

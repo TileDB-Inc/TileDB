@@ -163,6 +163,10 @@ namespace tdb {
 
     void del(const std::string &name);
 
+    void move(std::string oldname, std::string newname, bool force) {
+      handle_error(tiledb_move(_ctx.get(), oldname.c_str(), newname.c_str(), force));
+    }
+
     template<typename C>
     void handle_error(int ret, C callback) {
       if (ret != TILEDB_OK) {

@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file   tdbpp_sparse_create.cc
  *
  * @section LICENSE
  *
@@ -29,8 +29,7 @@
  * @section DESCRIPTION
  *
  * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * with the name "my_sparse_array" in the current working directory.
  */
 
 #include <tdbpp>
@@ -55,9 +54,10 @@ int main() {
   a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
 
   tdb::ArrayMetadata meta(ctx);
-  meta.create("my_dense_array");
+  meta.create("my_sparse_array");
+  meta << TILEDB_SPARSE << domain << a1 << a2 << a3; // Add attributes to array
+  meta.set_capacity(2);
   meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  meta << domain << a1 << a2 << a3; // Add attributes to array
 
   // Check the metadata, and make the array.
   tdb::Array array(ctx);
