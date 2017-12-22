@@ -30,6 +30,8 @@
  * This file includes definitions of POSIX filesystem functions.
  */
 
+#ifndef _WIN32
+
 #include "posix_filesystem.h"
 #include "constants.h"
 #include "logger.h"
@@ -416,3 +418,5 @@ Status write_to_file(
 }  // namespace posix
 
 }  // namespace tiledb
+
+#endif // !_WIN32
