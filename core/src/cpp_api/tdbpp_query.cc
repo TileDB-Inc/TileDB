@@ -65,7 +65,7 @@ void tdb::Query::_prepare_submission() {
   _sub_tsize.clear();
 
   if (_attrs.empty()) {
-    for (const auto &a : _array.get().attributes()) {
+    for (const auto &a : _attr_buffs) {
       _attrs.push_back(a.first);
     }
   }
@@ -137,7 +137,7 @@ tdb::Query::Status tdb::Query::submit_async() {
 
 std::vector<uint64_t> tdb::Query::returned_buff_sizes() {
   std::vector<uint64_t> buffsize(_buff_sizes.size());
-  for (size_t i = 0; i < _attrs.size(); ++i) {
+  for (size_t i = 0; i < _buff_sizes.size(); ++i) {
     buffsize[i] = _buff_sizes[i] / _sub_tsize[i];
   }
   return buffsize;

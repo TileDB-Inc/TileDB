@@ -56,7 +56,7 @@ int main() {
 
   // Make buffers for var size attr
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
-  auto a2buff = tdb::make_varbuffers(a2);
+  auto a2buff = tdb::make_var_buffers(a2);
 
   std::vector<std::array<float,2>> a3_data = {{211.1, 211.2}, {213.1, 213.2},
                                               {212.1, 212.2}, {208.1, 208.2}};
