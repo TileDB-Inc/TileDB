@@ -62,7 +62,8 @@ struct ResourceMgmtRx {
 
   ResourceMgmtRx() {
 #if HAVE_S3
-    s3_.connect();
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
 #endif
 
     // Initialize context
@@ -100,8 +101,10 @@ struct ResourceMgmtRx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if (!s3_.bucket_exists(S3_BUCKET))
-      s3_.create_bucket(S3_BUCKET);
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
     bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
     return ret;
 #else
@@ -115,7 +118,8 @@ struct ResourceMgmtRx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
@@ -174,7 +178,8 @@ struct ResourceMgmtRx {
   }
 };
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi], [resource]") {
   // Test GROUP object type
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
 
@@ -196,7 +201,8 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi]") {
   CHECK(type == TILEDB_ARRAY);
 }
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Delete", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Delete", "[capi], [resource]") {
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
 
   // Test deleting TileDB Objects
@@ -250,7 +256,8 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Delete", "[capi]") {
   CHECK(type == TILEDB_INVALID);
 }
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Move", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Move", "[capi], [resource]") {
   // Move group
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
   REQUIRE(

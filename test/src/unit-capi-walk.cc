@@ -1,12 +1,11 @@
 /**
- * @file   unit-capi-error.cc
+ * @file   unit-capi-walk.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +45,8 @@
 struct WalkFx {
   WalkFx() {
 #ifdef HAVE_S3
-    s3_.connect();
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
 #endif
   }
 
@@ -70,8 +70,10 @@ struct WalkFx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if (!s3_.bucket_exists(S3_BUCKET))
-      s3_.create_bucket(S3_BUCKET);
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
     bool ret = s3_.is_dir(tiledb::URI(path));
     return ret;
 #else
@@ -85,7 +87,8 @@ struct WalkFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    s3_.remove_path(tiledb::URI(path));
+    tiledb::Status st = s3_.remove_path(tiledb::URI(path));
+    REQUIRE(st.ok());
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
@@ -165,26 +168,43 @@ struct WalkFx {
     REQUIRE(system(cmd_14.c_str()) == 0);
     REQUIRE(system(cmd_15.c_str()) == 0);
 #elif HAVE_S3
-    s3_.create_dir(tiledb::URI(TEMP_DIR));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays"));
-    s3_.create_file(tiledb::URI(TEMP_DIR + "/dense_arrays/__tiledb_group.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_A"));
-    s3_.create_file(
+    tiledb::Status st;
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR));
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
+        tiledb::URI(TEMP_DIR + "/dense_arrays/__tiledb_group.tdb"));
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_A"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
         tiledb::URI(TEMP_DIR + "/dense_arrays/array_A/__array_metadata.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_B"));
-    s3_.create_file(
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/array_B"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
         tiledb::URI(TEMP_DIR + "/dense_arrays/array_B/__array_metadata.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays"));
-    s3_.create_file(
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
         tiledb::URI(TEMP_DIR + "/sparse_arrays/__tiledb_group.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_C"));
-    s3_.create_file(
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_C"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
         tiledb::URI(TEMP_DIR + "/sparse_arrays/array_C/__array_metadata.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D"));
-    s3_.create_file(
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(
         tiledb::URI(TEMP_DIR + "/sparse_arrays/array_D/__array_metadata.tdb"));
-    s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/kv"));
-    s3_.create_file(tiledb::URI(TEMP_DIR + "/dense_arrays/kv/__kv.tdb"));
+    REQUIRE(st.ok());
+    st = s3_.create_dir(tiledb::URI(TEMP_DIR + "/dense_arrays/kv"));
+    REQUIRE(st.ok());
+    st = s3_.create_file(tiledb::URI(TEMP_DIR + "/dense_arrays/kv/__kv.tdb"));
+    REQUIRE(st.ok());
 #else
     std::string cmd_1 = std::string("mkdir ") + TEMP_DIR;
     std::string cmd_2 = std::string("mkdir ") + TEMP_DIR + "/dense_arrays";
@@ -289,8 +309,12 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
 
   // Preorder and postorder traversals
   std::string walk_str;
-  tiledb_walk(ctx, TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  tiledb_walk(ctx, TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+  rc = tiledb_walk(
+      ctx, TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_walk(
+      ctx, TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+  CHECK(rc == TILEDB_OK);
 
   // Check against the golden output
   CHECK_THAT(golden, Catch::Equals(walk_str));

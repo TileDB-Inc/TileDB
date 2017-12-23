@@ -81,7 +81,8 @@ struct DenseArrayFx {
 
   DenseArrayFx() {
 #if HAVE_S3
-    s3_.connect();
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
 #endif
 
     // Reset the random number generator
@@ -127,8 +128,10 @@ struct DenseArrayFx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if (!s3_.bucket_exists(S3_BUCKET))
-      s3_.create_bucket(S3_BUCKET);
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
     bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
     return ret;
 #else
@@ -142,7 +145,8 @@ struct DenseArrayFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
@@ -653,7 +657,7 @@ struct DenseArrayFx {
  * to row_id*dim1+col_id. Top left corner is always 4,4.
  */
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test random dense sorted reads", "[dense]") {
+    DenseArrayFx, "C API: Test random dense sorted reads", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -740,7 +744,7 @@ TEST_CASE_METHOD(
  */
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test random dense sorted writes", "[dense]") {
+    DenseArrayFx, "C API: Test random dense sorted writes", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -828,7 +832,8 @@ TEST_CASE_METHOD(
 /**
  * Test random updates in a 2D dense array.
  */
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[dense]") {
+TEST_CASE_METHOD(
+    DenseArrayFx, "C API: Test random dense updates", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -919,7 +924,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[dense]") {
 }
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test out-of-bounds subarray", "[dense]") {
+    DenseArrayFx, "C API: Test out-of-bounds subarray", "[capi], [dense]") {
   // Error code
   int rc;
 

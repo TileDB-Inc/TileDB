@@ -83,7 +83,8 @@ struct SparseArrayFx {
 
   SparseArrayFx() {
 #if HAVE_S3
-    s3_.connect();
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
 #endif
 
     // Initialize context
@@ -128,8 +129,10 @@ struct SparseArrayFx {
     std::string cmd = std::string("hadoop fs -test -d ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    if (!s3_.bucket_exists(S3_BUCKET))
-      s3_.create_bucket(S3_BUCKET);
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
     bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
     return ret;
 #else
@@ -143,7 +146,8 @@ struct SparseArrayFx {
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
     return (system(cmd.c_str()) == 0);
 #elif HAVE_S3
-    s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
     return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
@@ -465,7 +469,9 @@ struct SparseArrayFx {
  * width and height of the sub-regions
  */
 TEST_CASE_METHOD(
-    SparseArrayFx, "C API: Test random sparse sorted reads", "[sparse]") {
+    SparseArrayFx,
+    "C API: Test random sparse sorted reads",
+    "[capi], [sparse]") {
   // error code
   int rc;
 
