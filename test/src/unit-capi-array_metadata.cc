@@ -43,10 +43,19 @@
 #include "tiledb.h"
 #include "uri.h"
 
+#ifdef HAVE_S3
+#include "s3.h"
+#endif
+
 struct ArraySchemaFx {
 // Constant parameters
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
+  const std::string TEMP_DIR = "/tiledb_test/";
+#elif HAVE_S3
+  tiledb::S3 s3_;
+  const char* S3_BUCKET = "tiledb";
+  const std::string URI_PREFIX = "s3://tiledb";
   const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
@@ -94,6 +103,11 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
 
   ArraySchemaFx() {
+#if HAVE_S3
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
+#endif
+
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
     if (rc != TILEDB_OK) {
@@ -132,19 +146,32 @@ struct ArraySchemaFx {
   bool dir_exists(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -test -d ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
+    bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
+    return ret;
 #else
     std::string cmd = std::string("test -d ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   bool remove_dir(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
+    return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   void create_dense_array() {
@@ -215,10 +242,14 @@ struct ArraySchemaFx {
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
-    tiledb_attribute_free(ctx_, attr);
-    tiledb_dimension_free(ctx_, d1);
-    tiledb_dimension_free(ctx_, d2);
-    tiledb_domain_free(ctx_, domain);
+    rc = tiledb_attribute_free(ctx_, attr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d1);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_dimension_free(ctx_, d2);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_free(ctx_, domain);
+    REQUIRE(rc == TILEDB_OK);
 
     // Create the array
     rc = tiledb_array_create(ctx_, array_metadata_);
@@ -229,7 +260,7 @@ struct ArraySchemaFx {
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata creation and retrieval",
-    "[metadata]") {
+    "[capi], [metadata]") {
   create_dense_array();
 
   // Load array_metadata metadata from the disk
@@ -337,7 +368,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
-  tiledb_dimension_free(ctx_, dim);
+  rc = tiledb_dimension_free(ctx_, dim);
+  REQUIRE(rc == TILEDB_OK);
 
   // get first dimension by index
   rc = tiledb_dimension_from_index(ctx_, domain, 0, &dim);
@@ -356,7 +388,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
 
-  tiledb_dimension_free(ctx_, dim);
+  rc = tiledb_dimension_free(ctx_, dim);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check second dimension
   // get second dimension by name
@@ -367,7 +400,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
 
-  tiledb_dimension_free(ctx_, dim);
+  rc = tiledb_dimension_free(ctx_, dim);
+  REQUIRE(rc == TILEDB_OK);
 
   // get from index
   rc = tiledb_dimension_from_index(ctx_, domain, 1, &dim);
@@ -441,7 +475,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata anonymous dimensions",
-    "[metadata]") {
+    "[capi], [metadata]") {
   int rc;
 
   // Create array metadata
@@ -482,18 +516,22 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_from_index(ctx_, domain, 0, &get_dim);
   CHECK(rc == TILEDB_OK);
   CHECK(get_dim != nullptr);
-  tiledb_dimension_free(ctx_, get_dim);
+  rc = tiledb_dimension_free(ctx_, get_dim);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_dimension_free(ctx_, d1);
-  tiledb_dimension_free(ctx_, d2);
-  tiledb_domain_free(ctx_, domain);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata multiple anonymous dimensions",
-    "[metadata]") {
+    "[capi], [metadata]") {
   int rc;
   // Create array metadata
   rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
@@ -527,18 +565,22 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_from_index(ctx_, domain, 0, &get_dim);
   CHECK(rc == TILEDB_OK);
   CHECK(get_dim != nullptr);
-  tiledb_dimension_free(ctx_, get_dim);
+  rc = tiledb_dimension_free(ctx_, get_dim);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_dimension_free(ctx_, d1);
-  tiledb_dimension_free(ctx_, d2);
-  tiledb_domain_free(ctx_, domain);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata one anonymous dimension",
-    "[metadata]") {
+    "[capi], [metadata]") {
   int rc;
   // Create array metadata
   rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
@@ -567,7 +609,8 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* get_dim = nullptr;
   rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
   CHECK(rc == TILEDB_OK);
-  tiledb_dimension_free(ctx_, get_dim);
+  rc = tiledb_dimension_free(ctx_, get_dim);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_dimension_from_name(ctx_, domain, "d2", &get_dim);
   const char* get_name = nullptr;
@@ -578,15 +621,18 @@ TEST_CASE_METHOD(
   tiledb_dimension_free(ctx_, get_dim);
 
   // Clean up
-  tiledb_dimension_free(ctx_, d1);
-  tiledb_dimension_free(ctx_, d2);
-  tiledb_domain_free(ctx_, domain);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata multiple anonymous attributes",
-    "[metadata]") {
+    "[capi], [metadata]") {
   int rc;
 
   // Create array metadata
@@ -629,19 +675,24 @@ TEST_CASE_METHOD(
   rc = tiledb_attribute_from_index(ctx_, array_metadata_, 0, &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
-  tiledb_attribute_free(ctx_, get_attr);
+  rc = tiledb_attribute_free(ctx_, get_attr);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, attr1);
-  tiledb_attribute_free(ctx_, attr2);
-  tiledb_dimension_free(ctx_, d1);
-  tiledb_domain_free(ctx_, domain);
+  rc = tiledb_attribute_free(ctx_, attr1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_free(ctx_, attr2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array metadata one anonymous attribute",
-    "[metadata]") {
+    "[capi], [metadata]") {
   int rc;
 
   // Create array metadata
@@ -681,7 +732,8 @@ TEST_CASE_METHOD(
   // from name when there are multiple anon attributes is an error
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
-  tiledb_attribute_free(ctx_, get_attr);
+  rc = tiledb_attribute_free(ctx_, get_attr);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_attribute_from_name(ctx_, array_metadata_, "foo", &get_attr);
   CHECK(rc == TILEDB_OK);
@@ -690,11 +742,16 @@ TEST_CASE_METHOD(
   rc = tiledb_attribute_get_name(ctx_, get_attr, &get_name);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(get_name, Catch::Equals("foo"));
-  tiledb_attribute_free(ctx_, get_attr);
+  rc = tiledb_attribute_free(ctx_, get_attr);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, attr1);
-  tiledb_attribute_free(ctx_, attr2);
-  tiledb_dimension_free(ctx_, d1);
-  tiledb_domain_free(ctx_, domain);
+  rc = tiledb_attribute_free(ctx_, attr1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_free(ctx_, attr2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
 }

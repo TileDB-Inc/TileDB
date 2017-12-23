@@ -37,21 +37,35 @@
 #include <cassert>
 #include <iostream>
 
+#ifdef HAVE_S3
+#include "s3.h"
+#endif
+
 struct ResourceMgmtRx {
 // Workspace folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
   const std::string TEMP_DIR = "/tiledb_test/";
+#elif HAVE_S3
+  tiledb::S3 s3_;
+  const char* S3_BUCKET = "tiledb";
+  const std::string URI_PREFIX = "s3://tiledb";
+  const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
   const std::string TEMP_DIR = tiledb::posix::current_dir() + "/";
 #endif
-  const std::string GROUP = "my_group/";
+  const std::string GROUP = "my_group";
 
   // TileDB context
   tiledb_ctx_t* ctx_;
 
   ResourceMgmtRx() {
+#if HAVE_S3
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
+#endif
+
     // Initialize context
     int rc = tiledb_ctx_create(&ctx_);
     if (rc != TILEDB_OK) {
@@ -85,23 +99,36 @@ struct ResourceMgmtRx {
   bool dir_exists(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -test -d ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
+    bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
+    return ret;
 #else
     std::string cmd = std::string("test -d ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   bool remove_dir(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
+    return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   std::string group_path(std::string path = "") {
-    return URI_PREFIX + TEMP_DIR + GROUP + path;
+    return URI_PREFIX + TEMP_DIR + GROUP + "/" + path;
   }
 
   void create_test_array(std::string array_uri) {
@@ -151,7 +178,8 @@ struct ResourceMgmtRx {
   }
 };
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi], [resource]") {
   // Test GROUP object type
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
 
@@ -173,7 +201,8 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Object Type", "[capi]") {
   CHECK(type == TILEDB_ARRAY);
 }
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Delete", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Delete", "[capi], [resource]") {
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
 
   // Test deleting TileDB Objects
@@ -189,21 +218,20 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Delete", "[capi]") {
 
   // Test recursive group delete
   tiledb_object_t type;
+  REQUIRE(tiledb_group_create(ctx_, group_path("level1").c_str()) == TILEDB_OK);
   REQUIRE(
-      tiledb_group_create(ctx_, group_path("level1/").c_str()) == TILEDB_OK);
-  REQUIRE(
-      tiledb_group_create(ctx_, group_path("level1/level2/").c_str()) ==
+      tiledb_group_create(ctx_, group_path("level1/level2").c_str()) ==
       TILEDB_OK);
   REQUIRE(
-      tiledb_group_create(ctx_, group_path("level1/level2/level3/").c_str()) ==
+      tiledb_group_create(ctx_, group_path("level1/level2/level3").c_str()) ==
       TILEDB_OK);
 
   REQUIRE(
-      tiledb_object_type(ctx_, group_path("level1/").c_str(), &type) ==
+      tiledb_object_type(ctx_, group_path("level1").c_str(), &type) ==
       TILEDB_OK);
   CHECK(type == TILEDB_GROUP);
   REQUIRE(
-      tiledb_object_type(ctx_, group_path("level1/level2/").c_str(), &type) ==
+      tiledb_object_type(ctx_, group_path("level1/level2").c_str(), &type) ==
       TILEDB_OK);
   CHECK(type == TILEDB_GROUP);
   REQUIRE(
@@ -212,23 +240,24 @@ TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Delete", "[capi]") {
       TILEDB_OK);
   CHECK(type == TILEDB_GROUP);
 
-  REQUIRE(tiledb_delete(ctx_, group_path("level1/").c_str()) == TILEDB_OK);
+  REQUIRE(tiledb_delete(ctx_, group_path("level1").c_str()) == TILEDB_OK);
   REQUIRE(
       tiledb_object_type(
           ctx_, group_path("level1/level2/level3").c_str(), &type) ==
       TILEDB_OK);
   CHECK(type == TILEDB_INVALID);
   REQUIRE(
-      tiledb_object_type(ctx_, group_path("level1/level2/").c_str(), &type) ==
+      tiledb_object_type(ctx_, group_path("level1/level2").c_str(), &type) ==
       TILEDB_OK);
   CHECK(type == TILEDB_INVALID);
   REQUIRE(
-      tiledb_object_type(ctx_, group_path("level1/").c_str(), &type) ==
+      tiledb_object_type(ctx_, group_path("level1").c_str(), &type) ==
       TILEDB_OK);
   CHECK(type == TILEDB_INVALID);
 }
 
-TEST_CASE_METHOD(ResourceMgmtRx, "C API: Test TileDB Move", "[capi]") {
+TEST_CASE_METHOD(
+    ResourceMgmtRx, "C API: Test TileDB Move", "[capi], [resource]") {
   // Move group
   REQUIRE(tiledb_group_create(ctx_, group_path().c_str()) == TILEDB_OK);
   REQUIRE(

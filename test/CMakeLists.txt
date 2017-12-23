@@ -51,6 +51,11 @@ if(USE_HDFS OR USE_HDFS3)
   set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_HDFS_SOURCES})
 endif()
 
+if(USE_S3)
+  file(GLOB_RECURSE TILEDB_TEST_S3_SOURCES "src/s3-unit-*.cc")
+  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES} ${TILEDB_TEST_S3_SOURCES})
+endif()
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -67,7 +72,7 @@ set_target_properties(
 
 target_link_libraries(
   tiledb_unit
-  ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared
+  ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared ${S3_LIB_DEPENDENCIES}
 )
 
 target_include_directories(

@@ -250,6 +250,7 @@ Status StorageManager::init() {
   async_thread_[0] = new std::thread(async_start, this, 0);
   async_thread_[1] = new std::thread(async_start, this, 1);
   vfs_ = new VFS();
+  RETURN_NOT_OK(vfs_->init());
 
   return Status::Ok();
 }

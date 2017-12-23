@@ -43,6 +43,10 @@
 #include <map>
 #include <sstream>
 
+#ifdef HAVE_S3
+#include "s3.h"
+#endif
+
 struct DenseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";
@@ -54,6 +58,11 @@ struct DenseArrayFx {
 // Group folder name
 #ifdef HAVE_HDFS
   const std::string URI_PREFIX = "hdfs://";
+  const std::string TEMP_DIR = "/tiledb_test/";
+#elif HAVE_S3
+  tiledb::S3 s3_;
+  const char* S3_BUCKET = "tiledb";
+  const std::string URI_PREFIX = "s3://tiledb";
   const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
@@ -71,6 +80,11 @@ struct DenseArrayFx {
   tiledb_ctx_t* ctx_;
 
   DenseArrayFx() {
+#if HAVE_S3
+    tiledb::Status st = s3_.connect();
+    REQUIRE(st.ok());
+#endif
+
     // Reset the random number generator
     std::srand(0);
 
@@ -112,19 +126,32 @@ struct DenseArrayFx {
   bool dir_exists(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -test -d ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    if (!s3_.bucket_exists(S3_BUCKET)) {
+      tiledb::Status st = s3_.create_bucket(S3_BUCKET);
+      REQUIRE(st.ok());
+    }
+    bool ret = s3_.is_dir(tiledb::URI(URI_PREFIX + path));
+    return ret;
 #else
     std::string cmd = std::string("test -d ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   bool remove_dir(std::string path) {
 #ifdef HAVE_HDFS
     std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+    return (system(cmd.c_str()) == 0);
+#elif HAVE_S3
+    tiledb::Status st = s3_.remove_path(tiledb::URI(URI_PREFIX + path));
+    REQUIRE(st.ok());
+    return true;
 #else
     std::string cmd = std::string("rm -r -f ") + path;
-#endif
     return (system(cmd.c_str()) == 0);
+#endif
   }
 
   /**
@@ -630,7 +657,7 @@ struct DenseArrayFx {
  * to row_id*dim1+col_id. Top left corner is always 4,4.
  */
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test random dense sorted reads", "[dense]") {
+    DenseArrayFx, "C API: Test random dense sorted reads", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -717,7 +744,7 @@ TEST_CASE_METHOD(
  */
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test random dense sorted writes", "[dense]") {
+    DenseArrayFx, "C API: Test random dense sorted writes", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -805,7 +832,8 @@ TEST_CASE_METHOD(
 /**
  * Test random updates in a 2D dense array.
  */
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[dense]") {
+TEST_CASE_METHOD(
+    DenseArrayFx, "C API: Test random dense updates", "[capi], [dense]") {
   // Error code
   int rc;
 
@@ -896,7 +924,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[dense]") {
 }
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test out-of-bounds subarray", "[dense]") {
+    DenseArrayFx, "C API: Test out-of-bounds subarray", "[capi], [dense]") {
   // Error code
   int rc;
 

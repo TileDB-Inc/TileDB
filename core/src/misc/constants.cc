@@ -303,6 +303,17 @@ const char* kv_filename = "__kv.tdb";
  */
 uint64_t kv_buffer_size = 100000;
 
+#ifdef HAVE_S3
+/** A directory file suffix (in S3, directories are also files). */
+const char* s3_dir_suffix = ".dir";
+
+/** Maximum number of attempts to wait for an S3 response. */
+const unsigned int s3_max_attempts = 1000;
+
+/** An allocation tag used for logging. */
+const char* s3_allocation_tag = "TileDB";
+#endif
+
 }  // namespace constants
 
 }  // namespace tiledb
