@@ -83,12 +83,13 @@ struct SparseArrayFx {
 
   SparseArrayFx() {
 #if HAVE_S3
-    tiledb::Status st = s3_.connect();
+    tiledb::S3::S3Config s3_config;
+    tiledb::Status st = s3_.connect(s3_config);
     REQUIRE(st.ok());
 #endif
 
     // Initialize context
-    int rc = tiledb_ctx_create(&ctx_);
+    int rc = tiledb_ctx_create(&ctx_, nullptr);
     if (rc != TILEDB_OK) {
       std::cerr << "SparseArrayFx() Error error creating tiledb_ctx_t"
                 << std::endl;

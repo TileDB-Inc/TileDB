@@ -42,6 +42,84 @@ namespace tiledb {
 
 namespace utils {
 
+namespace parse {
+
+/* ********************************* */
+/*          PARSING FUNCTIONS        */
+/* ********************************* */
+
+Status convert(const std::string& str, long* value) {
+  if (!is_int(str))
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to long; Invalid argument"));
+
+  try {
+    *value = std::stol(str);
+  } catch (std::invalid_argument& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to long; Invalid argument"));
+  } catch (std::out_of_range& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to long; Value out of range"));
+  }
+
+  return Status::Ok();
+}
+
+Status convert(const std::string& str, uint64_t* value) {
+  if (!is_uint(str))
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to uint64_t; Invalid argument"));
+
+  try {
+    *value = std::stoull(str);
+  } catch (std::invalid_argument& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to uint64_t; Invalid argument"));
+  } catch (std::out_of_range& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to uint64_t; Value out of range"));
+  }
+
+  return Status::Ok();
+}
+
+bool is_int(const std::string& str) {
+  // Check if empty
+  if (str.empty())
+    return false;
+
+  // Check first character
+  if (str[0] != '+' && str[0] != '-' && !(bool)isdigit(str[0]))
+    return false;
+
+  // Check rest of characters
+  for (size_t i = 1; i < str.size(); ++i)
+    if (!(bool)isdigit(str[i]))
+      return false;
+
+  return true;
+}
+
+bool is_uint(const std::string& str) {
+  // Check if empty
+  if (str.empty())
+    return false;
+
+  // Check first character
+  if (str[0] != '+' && !isdigit(str[0]))
+    return false;
+
+  // Check characters
+  for (size_t i = 1; i < str.size(); ++i)
+    if (!(bool)isdigit(str[i]))
+      return false;
+
+  return true;
+}
+
+}  // namespace parse
+
 /* ****************************** */
 /*           FUNCTIONS            */
 /* ****************************** */

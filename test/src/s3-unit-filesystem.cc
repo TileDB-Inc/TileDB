@@ -42,7 +42,8 @@ struct S3Fx {
 };
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
-  Status st = s3_.connect();
+  S3::S3Config s3_config;
+  Status st = s3_.connect(s3_config);
   REQUIRE(st.ok());
 
   std::string bucket = "tiledb";

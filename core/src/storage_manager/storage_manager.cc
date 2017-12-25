@@ -48,11 +48,10 @@ StorageManager::StorageManager() {
   async_done_ = false;
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
-  consolidator_ = new Consolidator(this);
-  array_metadata_cache_ = new LRUCache(constants::array_metadata_cache_size);
-  fragment_metadata_cache_ =
-      new LRUCache(constants::fragment_metadata_cache_size);
-  tile_cache_ = new LRUCache(constants::tile_cache_size);
+  consolidator_ = nullptr;
+  array_metadata_cache_ = nullptr;
+  fragment_metadata_cache_ = nullptr;
+  tile_cache_ = nullptr;
   vfs_ = nullptr;
 }
 
@@ -246,11 +245,33 @@ Status StorageManager::group_create(const std::string& group) const {
   return Status::Ok();
 }
 
-Status StorageManager::init() {
+Status StorageManager::init(Config* config) {
+  if (config != nullptr)
+    config_ = *config;
+  RETURN_NOT_OK(config_.init());
+  consolidator_ = new Consolidator(this);
+  array_metadata_cache_ =
+      new LRUCache(config_.get_tiledb_array_metadata_cache_size());
+  fragment_metadata_cache_ =
+      new LRUCache(config_.get_tiledb_fragment_metadata_cache_size());
+  tile_cache_ = new LRUCache(config_.get_tiledb_tile_cache_size());
   async_thread_[0] = new std::thread(async_start, this, 0);
   async_thread_[1] = new std::thread(async_start, this, 1);
   vfs_ = new VFS();
+#ifdef HAVE_S3
+  S3::S3Config s3_config;
+  s3_config.region_ = config_.get_tiledb_s3_region();
+  s3_config.scheme_ = config_.get_tiledb_s3_scheme();
+  s3_config.endpoint_override_ = config_.get_tiledb_s3_endpoint_override();
+  s3_config.use_virtual_addressing_ =
+      config_.get_tiledb_s3_use_virtual_addressing();
+  s3_config.file_buffer_size_ = config_.get_tiledb_s3_file_buffer_size();
+  s3_config.connect_timeout_ms_ = config_.get_tiledb_s3_connect_timeout_ms();
+  s3_config.request_timeout_ms_ = config_.get_tiledb_s3_request_timeout_ms();
+  RETURN_NOT_OK(vfs_->init(s3_config));
+#else
   RETURN_NOT_OK(vfs_->init());
+#endif
 
   return Status::Ok();
 }
@@ -617,7 +638,7 @@ Status StorageManager::read_from_file(
 }
 
 Status StorageManager::store_array_metadata(ArrayMetadata* array_metadata) {
-  URI array_uri = array_metadata->array_uri();
+  auto& array_uri = array_metadata->array_uri();
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_filename);
 
@@ -858,6 +879,10 @@ void StorageManager::async_start(StorageManager* storage_manager, int i) {
 }
 
 void StorageManager::async_stop() {
+  // Check if async was never started
+  if (async_thread_[0] == nullptr)
+    return;
+
   async_done_ = true;
   async_cv_[0].notify_one();
   async_cv_[1].notify_one();

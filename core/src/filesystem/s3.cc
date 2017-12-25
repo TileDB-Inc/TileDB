@@ -36,17 +36,10 @@
 #include <iostream>
 
 #include "boost/bufferstream.h"
-#include "constants.h"
 #include "logger.h"
 #include "s3.h"
 
 namespace tiledb {
-
-/* ********************************* */
-/*         PRIVATE CONSTANTS         */
-/* ********************************* */
-
-const uint64_t S3::FILE_BUFFER_SIZE = 5 * 1024 * 1024;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -54,6 +47,7 @@ const uint64_t S3::FILE_BUFFER_SIZE = 5 * 1024 * 1024;
 
 S3::S3() {
   client_ = nullptr;
+  file_buffer_size_ = 0;
 }
 
 S3::~S3() {
@@ -72,40 +66,26 @@ bool S3::bucket_exists(const char* bucket) {
   return headBucketOutcome.IsSuccess();
 }
 
-Status S3::connect() {
+Status S3::connect(const S3Config& s3_config) {
   Aws::InitAPI(options_);
+  file_buffer_size_ = s3_config.file_buffer_size_;
+
   Aws::Client::ClientConfiguration config;
+  if (!s3_config.region_.empty())
+    config.region = s3_config.region_.c_str();
+  if (!s3_config.endpoint_override_.empty())
+    config.endpointOverride = s3_config.endpoint_override_.c_str();
+  config.scheme = (s3_config.scheme_ == "http") ? Aws::Http::Scheme::HTTP :
+                                                  Aws::Http::Scheme::HTTPS;
+  config.connectTimeoutMs = s3_config.connect_timeout_ms_;
+  config.requestTimeoutMs = s3_config.request_timeout_ms_;
 
-  // AWS S3 configuration
-  // config.region = "us-east-2";
-  // config.scheme = Aws::Http::Scheme::HTTPS;
-
-  // Local minio configuration
-  config.scheme = Aws::Http::Scheme::HTTP;
-  config.endpointOverride = "localhost:9000";
-
-  // Misc config
-  config.connectTimeoutMs = 3000;
-  config.requestTimeoutMs = 30000;
-  // config.readRateLimiter = Limiter;
-  // config.writeRateLimiter = Limiter;
-  // config.executor =
-  //     Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(
-  //         constants::s3_allocation_tag, 4);
-
-  // Connect S3 client - for local minio
+  // Connect S3 client
   client_ = Aws::MakeShared<Aws::S3::S3Client>(
       constants::s3_allocation_tag,
       config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-      false);
-
-  // Connect S3 client - for AWS S3
-  // client_ = Aws::MakeShared<Aws::S3::S3Client>(
-  //    constants::s3_allocation_tag,
-  //    config,
-  //    Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-  //    true);
+      s3_config.use_virtual_addressing_);
 
   return Status::Ok();
 }
@@ -471,18 +451,18 @@ Status S3::write_to_file(const URI& uri, const void* buffer, uint64_t length) {
   RETURN_NOT_OK(fill_file_buffer(buff, buffer, length, &nbytes_filled));
 
   // Flush file buffer
-  if (buff->size() == FILE_BUFFER_SIZE)
+  if (buff->size() == file_buffer_size_)
     RETURN_NOT_OK(flush_file_buffer(uri, buff));
 
   // Write chunks
   uint64_t new_length = length - nbytes_filled;
   uint64_t offset = nbytes_filled;
   while (new_length > 0) {
-    if (new_length >= FILE_BUFFER_SIZE) {
+    if (new_length >= file_buffer_size_) {
       RETURN_NOT_OK(
-          write_multipart(uri, (char*)buffer + offset, FILE_BUFFER_SIZE));
-      offset += FILE_BUFFER_SIZE;
-      new_length -= FILE_BUFFER_SIZE;
+          write_multipart(uri, (char*)buffer + offset, file_buffer_size_));
+      offset += file_buffer_size_;
+      new_length -= file_buffer_size_;
     } else {
       RETURN_NOT_OK(fill_file_buffer(
           buff, (char*)buffer + offset, new_length, &nbytes_filled));
@@ -587,7 +567,7 @@ Status S3::fill_file_buffer(
     const void* buffer,
     uint64_t length,
     uint64_t* nbytes_filled) {
-  *nbytes_filled = std::min(FILE_BUFFER_SIZE - buff->size(), length);
+  *nbytes_filled = std::min(file_buffer_size_ - buff->size(), length);
   if (*nbytes_filled > 0)
     RETURN_NOT_OK(buff->write(buffer, *nbytes_filled));
 

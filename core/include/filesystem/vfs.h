@@ -156,8 +156,12 @@ class VFS {
    */
   bool is_file(const URI& uri) const;
 
+#ifdef HAVE_S3
+  Status init(const S3::S3Config& s3_config);
+#else
   /** Initializes the virtual filesystem. */
   Status init();
+#endif
 
   /**
    * Retrieves all the URIs that have the first input as parent.

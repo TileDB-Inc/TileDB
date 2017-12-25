@@ -48,6 +48,26 @@ namespace tiledb {
 
 namespace utils {
 
+namespace parse {
+
+/* ********************************* */
+/*          PARSING FUNCTIONS        */
+/* ********************************* */
+
+/** Converts the input string into a `long` value. */
+Status convert(const std::string& str, long* value);
+
+/** Converts the input string into a `uint64_t` value. */
+Status convert(const std::string& str, uint64_t* value);
+
+/** Returns `true` if the input string is a (potentially signed) integer. */
+bool is_int(const std::string& str);
+
+/** Returns `true` if the input string is an unsigned integer. */
+bool is_uint(const std::string& str);
+
+}  // namespace parse
+
 /* ********************************* */
 /*             FUNCTIONS             */
 /* ********************************* */

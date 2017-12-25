@@ -100,7 +100,9 @@ enum class StatusCode : char {
   Domain,
   Consolidation,
   LRUCache,
-  KV
+  KV,
+  Config,
+  Utils
 };
 
 class Status {
@@ -260,6 +262,16 @@ class Status {
   /** Return a KVError error class Status with a given message **/
   static Status KVError(const std::string& msg) {
     return Status(StatusCode::KV, msg, -1);
+  }
+
+  /** Return a ConfigError error class Status with a given message **/
+  static Status ConfigError(const std::string& msg) {
+    return Status(StatusCode::Config, msg, -1);
+  }
+
+  /** Return a UtilsError error class Status with a given message **/
+  static Status UtilsError(const std::string& msg) {
+    return Status(StatusCode::Utils, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

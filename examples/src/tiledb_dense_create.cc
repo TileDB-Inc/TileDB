@@ -38,7 +38,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+  tiledb_ctx_create(&ctx, nullptr);
 
   // Create dimensions
   uint64_t dim_domain[] = {1, 4, 1, 4};

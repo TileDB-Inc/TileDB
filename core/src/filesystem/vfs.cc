@@ -34,9 +34,6 @@
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
-#include "s3.h"
-
-#include <iostream>
 
 namespace tiledb {
 
@@ -234,9 +231,7 @@ bool VFS::is_dir(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    bool ret = s3_.is_dir(uri);
-    //  std::cout<<ret<<std::endl;
-    return ret;
+    return s3_.is_dir(uri);
 #else
     return false;
 #endif
@@ -257,9 +252,7 @@ bool VFS::is_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    bool ret = s3_.is_file(uri);
-    //  std::cout<<ret<<std::endl;
-    return ret;
+    return s3_.is_file(uri);
 #else
     return false;
 #endif
@@ -267,15 +260,18 @@ bool VFS::is_file(const URI& uri) const {
   return false;
 }
 
-Status VFS::init() {
 #ifdef HAVE_S3
-  return s3_.connect();
-#endif
+Status VFS::init(const S3::S3Config& s3_config) {
+  return s3_.connect(s3_config);
+}
+#else
+Status VFS::init() {
 #ifdef HAVE_HDFS
   return hdfs::connect(hdfs_);
 #endif
   return Status::Ok();
 }
+#endif
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   std::vector<std::string> paths;

@@ -45,7 +45,8 @@
 struct WalkFx {
   WalkFx() {
 #ifdef HAVE_S3
-    tiledb::Status st = s3_.connect();
+    tiledb::S3::S3Config s3_config;
+    tiledb::Status st = s3_.connect(s3_config);
     REQUIRE(st.ok());
 #endif
   }
@@ -304,7 +305,7 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
   std::string golden;
   create_golden_output(&golden);
   tiledb_ctx_t *ctx;
-  int rc = tiledb_ctx_create(&ctx);
+  int rc = tiledb_ctx_create(&ctx, nullptr);
   CHECK(rc == TILEDB_OK);
 
   // Preorder and postorder traversals
