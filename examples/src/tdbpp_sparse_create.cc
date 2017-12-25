@@ -49,21 +49,24 @@ int main() {
   tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
   tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
+  // Set attr compressors and number
+  a1 << tdb::Compressor{TILEDB_BLOSC, -1} << 1;
+  a2 << tdb::Compressor{TILEDB_GZIP, -1} << TILEDB_VAR_NUM;
+  a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
 
   tdb::ArrayMetadata meta(ctx);
   meta.create("my_sparse_array");
-  meta << TILEDB_SPARSE << domain << a1 << a2 << a3; // Add attributes to array
-  meta.set_capacity(2);
-  meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
+  meta.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
+  meta << TILEDB_SPARSE // Type of array
+       << 2 // set capacity
+       << domain // Set domain
+       << a1 << a2 << a3; // set attributes
 
   // Check the metadata, and make the array.
   tdb::Array array(ctx);
   array.create(meta);
 
-  std::cout << array << std::endl;
+  std::cout << "Array created: " << array << std::endl;
 
   return 0;
 }

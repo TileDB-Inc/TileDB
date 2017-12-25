@@ -113,6 +113,8 @@ namespace tdb {
 
     ArrayMetadata &set_tile_order(tiledb_layout_t layout);
 
+    ArrayMetadata &set_order(const std::array<tiledb_layout_t, 2> &p);
+
     tiledb_layout_t cell_order() const;
 
     ArrayMetadata &set_cell_order(tiledb_layout_t layout);
@@ -134,6 +136,10 @@ namespace tdb {
     ArrayMetadata &add_attribute(const Attribute &attr);
 
     ArrayMetadata &set_kv();
+
+    tiledb_array_metadata_t *get() {
+      return _meta.get();
+    }
 
     bool is_kv() const;
 
@@ -173,4 +179,7 @@ std::ostream &operator<<(std::ostream &os, const tdb::ArrayMetadata &meta);
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Domain &dim);
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Attribute &dim);
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tiledb_array_type_t type);
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const std::array<tiledb_layout_t, 2> p);
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, uint64_t capacity);
+
 #endif //TILEDB_TDBPP_ARRAYMETA_H

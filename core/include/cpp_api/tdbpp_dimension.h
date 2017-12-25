@@ -63,9 +63,11 @@ namespace tdb {
       }
     }
 
-    template<typename DataT, typename NativeT=typename DataT::type>
-    Dimension &create(const std::string &name, std::pair<NativeT, NativeT> domain, NativeT extent) {
-      _create(name, DataT::tiledb_datatype, &domain, &extent);
+    template<typename DataT>
+    Dimension &create(const std::string &name, std::array<typename DataT::type, 2> domain, typename DataT::type extent) {
+      void* p = domain.data();
+      p = (typename DataT::type*) p;
+      _create(name, DataT::tiledb_datatype, domain.data(), &extent);
       return *this;
     }
 
@@ -73,26 +75,26 @@ namespace tdb {
 
     tiledb_datatype_t type() const;
 
-    template<typename T, typename NativeT=typename T::type>
-    std::pair<NativeT, NativeT> domain() const {
+    template<typename T>
+    std::pair<typename T::type, typename T::type> domain() const {
       auto tdbtype = type();
       if (T::tiledb_datatype != tdbtype) {
         throw std::invalid_argument("Attempting to use domain of type " + std::string(T::name) +
                                     " for attribute of type " + type::from_tiledb(tdbtype));
       }
-      NativeT *d = static_cast<NativeT *>(_domain());
-      return std::pair<NativeT, NativeT>(d[0], d[1]);
+      typename T::type *d = static_cast<typename T::type *>(_domain());
+      return std::pair<typename T::type, typename T::type>(d[0], d[1]);
     };
 
-    template<typename T, typename NativeT=typename T::type>
-    std::pair<NativeT, NativeT> extent() const {
+    template<typename T>
+    std::pair<typename T::type, typename T::type> extent() const {
       auto tdbtype = type();
       if (T::tiledb_datatype != tdbtype) {
         throw std::invalid_argument("Attempting to use extent of type " + std::string(T::name) +
                                     " for attribute of type " + type::from_tiledb(tdbtype));
       }
-      NativeT *e = static_cast<NativeT *>(_extent());
-      return std::make_pair<NativeT, NativeT>(e[0], e[1]);
+      typename T::type *e = static_cast<typename T::type *>(_extent());
+      return std::make_pair<typename T::type, typename T::type>(e[0], e[1]);
     };
 
     const tiledb_dimension_t &dim() const {

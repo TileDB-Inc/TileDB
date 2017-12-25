@@ -48,7 +48,7 @@ int main() {
 
   // Set subarray. Templated on domain type.
   query.subarray<tdb::type::UINT64>({3, 4, 2, 4});
-  query.attributes({"a1"});
+  query.buffer_list({"a1"});
   query.layout(TILEDB_ROW_MAJOR);
 
   // Limit buff size to 2

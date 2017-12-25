@@ -70,7 +70,7 @@ namespace tdb {
      * @param attrs Attributes to query.
      * @return *this
      */
-    Query &attributes(const std::vector<std::string> &attrs);
+    Query &buffer_list(const std::vector<std::string> &attrs);
 
     /**
      * @tparam T should be a type from tdb::type::*
@@ -105,22 +105,22 @@ namespace tdb {
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, true);
-      _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
+      _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
-    template<typename T, size_t N>
+    template<typename T, uint64_t N>
     Query &set_buffer(const std::string &attr, std::vector<std::array<typename T::type, N>> &buf) {
       _type_check_attr<T>(attr, true);
-      _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
+      _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, false);
-      _var_offsets[attr] = std::make_tuple<uint64_t, size_t, void*>(offsets.size(), sizeof(uint64_t), offsets.data());
-      _attr_buffs[attr] = std::make_tuple<uint64_t, size_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
+      _var_offsets[attr] = std::make_tuple<uint64_t, uint64_t, void*>(offsets.size(), sizeof(uint64_t), offsets.data());
+      _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       return *this;
     }
 
@@ -135,13 +135,30 @@ namespace tdb {
       if (_array_attributes.count(attr)) {
         num = _array_attributes.at(attr).num();
         if (num == TILEDB_VAR_NUM) throw std::runtime_error("Offsets required for var size attribute.");
-      } else if (!_special_attributes.count(attr)) {
+      } else if (_special_attributes.count(attr)) {
+        if (attr == TILEDB_COORDS) num = 2;
+      } else {
         throw std::out_of_range("Invalid attribute: " + attr);
       }
 
       _make_buffer_impl<DataT, DomainT>(attr, buff, num, max_el);
       return *this;
     }
+
+    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
+    Query &resize_buffer(const std::string &attr, std::vector<std::array<typename DataT::type, N>> &buff, uint64_t max_el=0) {
+      if (_array_attributes.count(attr)) {
+        unsigned num = _array_attributes.at(attr).num();
+        if (num == TILEDB_VAR_NUM) throw std::runtime_error("Attempting to create fixed size buffer for varsize attribute.");
+        if (num != N) throw std::runtime_error("Mismatching attribute size and array size.");
+      } else if (!_special_attributes.count(attr)) {
+        throw std::out_of_range("Invalid attribute: " + attr);
+      }
+
+      _make_buffer_impl<DataT, N, DomainT>(attr, buff, max_el);
+      return *this;
+    }
+
 
     template<typename DataT, typename DomainT=type::UINT64>
     Query &resize_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
@@ -154,6 +171,7 @@ namespace tdb {
       } else if (!_special_attributes.count(attr)) {
         throw std::out_of_range("Invalid attribute: " + attr);
       }
+      if (max_offset && !max_el) max_el = max_offset * expected_size;
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
       uint64_t offset_size = num/expected_size;
       if (max_offset != 0 && offset_size > max_offset) offset_size = max_offset;
@@ -177,16 +195,63 @@ namespace tdb {
       return {offsets, ret};
     };
 
+    /**
+     * Make a buffer for an attribute type with N elements per cell.
+     * @tparam DataT Datatype, tdb::type::*
+     * @tparam N Elements per cell
+     * @tparam DomainT Dim
+     * @param attr
+     * @param max_el
+     * @return
+     */
+    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
+    std::vector<std::array<typename DataT::type, N>>
+    make_fixed_buffer(const std::string &attr, uint64_t max_el = 0) {
+      std::vector<std::array<typename DataT::type,N>> ret;
+      resize_buffer<DataT, N, DomainT>(attr, ret, max_el);
+      return ret;
+    };
+
+    /**
+     * Clear all attribute buffers.
+     */
+    void reset_buffers() {
+      _attr_buffs.clear();
+      _var_offsets.clear();
+      _buff_sizes.clear();
+      _all_buff.clear();
+      _sub_tsize.clear();
+    }
+
     static Status tiledb_to_status(const tiledb_query_status_t &status);
 
+    /**
+     * Get the status of the current query.
+     * @return
+     */
     Status query_status();
 
+    /**
+     * Get the query status of a particular attribute.
+     * @param attr attribute name
+     * @return Status
+     */
     Status attribute_status(const std::string &attr);
 
     Status submit();
 
+    /**
+     * Submit an async query.
+     * @return
+     */
     Status submit_async();
 
+    /**
+     * Submit an async query, with callback.
+     * @param callback Callback function.
+     * @param data data to pass to callback.
+     * @return Status of submitted query.
+     */
     Status submit_async(void* (*callback)(void*), void* data);
 
     /**
@@ -235,6 +300,19 @@ namespace tdb {
       }
     };
 
+    template<typename DomainT>
+    uint64_t _get_buffer_size(uint64_t elements_per_cell) {
+      if (_subarray_cells != 0) {
+        elements_per_cell = elements_per_cell * _subarray_cells;
+      } else {
+        for (const auto &dim : _array.get().domain().dimensions()) {
+          const auto &d = dim.domain<DomainT>();
+          elements_per_cell = elements_per_cell * (d.second - d.first + 1);
+        }
+      }
+      return elements_per_cell;
+    }
+
     /**
      * Computes the required buffer size to hold a query result.
      * @tparam DataT Datatype of attrbute, tdb::type::*
@@ -246,25 +324,37 @@ namespace tdb {
      * @return Ideal buffer size. buff is resized to this, bound by max_el.
      */
     template<typename DataT, typename DomainT=type::UINT64>
-    uint64_t _make_buffer_impl(const std::string &attr, std::vector<typename DataT::type> &buff,
+    uint64_t _make_buffer_impl(const std::string &attr,
+                               std::vector<typename DataT::type> &buff,
                                uint64_t num=1, uint64_t max_el=0) {
       tiledb_datatype_t type;
       if (attr == TILEDB_COORDS) type = _array.get().domain().type();
       else type = _array_attributes.at(attr).type();
-      if (DataT::tiledb_datatype != type) {
-        throw std::invalid_argument("Attempting to use buffer of type " + std::string(DataT::name) +
-                                    " for attribute of type " + type::from_tiledb(type));
-      }
+      _type_check<DataT>(type);
+      num = _get_buffer_size<DomainT>(num);
+      buff.resize((max_el != 0 && num > max_el) ? max_el : num);
+      return num;
+    }
 
-      if (_subarray_cells != 0) {
-        num = num * _subarray_cells;
-      } else {
-        for (const auto &dim : _array.get().domain().dimensions()) {
-          const auto &d = dim.domain<DomainT>();
-          num = num * (d.second - d.first + 1);
-        }
-      }
-
+    /**
+     * Make a buffer for a fixed size, compile-time, attribute
+     * @tparam DataT tdb::type::*, datatype of attribute
+     * @tparam N Number of elements per cell
+     * @tparam DomainT Type of the array domain
+     * @param attr attribute name
+     * @param buff Buff to resize
+     * @param max_el maximum capacity (in # of cells) for buffer
+     * @return Unconstrained ideal buffer size
+     */
+    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
+    uint64_t _make_buffer_impl(const std::string &attr,
+                               std::vector<std::array<typename DataT::type,N>> &buff,
+                               uint64_t max_el=0) {
+      tiledb_datatype_t type;
+      if (attr == TILEDB_COORDS) type = _array.get().domain().type();
+      else type = _array_attributes.at(attr).type();
+      _type_check<DataT>(type);
+      uint64_t num =_get_buffer_size<DomainT>(N);
       buff.resize((max_el != 0 && num > max_el) ? max_el : num);
       return num;
     }
@@ -281,8 +371,8 @@ namespace tdb {
     std::vector<std::string> _attrs;
 
     // Size of the vector, size of vector::value_type, vector.data()
-    std::unordered_map<std::string, std::tuple<uint64_t, size_t, void*>> _var_offsets;
-    std::unordered_map<std::string, std::tuple<uint64_t, size_t, void*>> _attr_buffs;
+    std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>> _var_offsets;
+    std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>> _attr_buffs;
 
     // Vectors to compile buffers into the format C API expects
     std::vector<uint64_t> _sub_tsize; // Keeps track of vector value_type sizes to convert back at return
@@ -294,6 +384,15 @@ namespace tdb {
 
   };
 
+  /**
+   * Covert an offset, data vector pair into a single vector of vectors.
+   * @tparam T underlying datatype
+   * @param offsets Offsets vector
+   * @param buff data vector
+   * @param num_offset num offset elements populated by query
+   * @param num_buff num data elements populated by query.
+   * @return std::vector<std::vector<T>>
+   */
   template <typename T>
   std::vector<std::vector<T>>
   group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
@@ -306,6 +405,14 @@ namespace tdb {
     return ret;
   }
 
+  /**
+   * Covert an offset, data vector pair into a single vector of vectors.
+   * @tparam T underlying datatype
+   * @param buff pair<offset_vec, data_vec>
+   * @param num_offset num offset elements populated by query
+   * @param num_buff num data elements populated by query.
+   * @return std::vector<std::vector<T>>
+   */
   template <typename T>
   std::vector<std::vector<T>>
   group_by_cell(const std::pair<std::vector<uint64_t>, std::vector<T>> &buff,
@@ -313,6 +420,14 @@ namespace tdb {
     return group_by_cell(buff.first, buff.second, num_offset, num_buff);
   }
 
+  /**
+   * Group by cell at runtime.
+   * @tparam T Element type
+   * @param buff data buffer
+   * @param el_per_cell Number of elements per cell to group together
+   * @param num_buff Number of elements populated by query. To group whole buffer, use buff.size()
+   * @return
+   */
   template<typename T>
   std::vector<std::vector<T>>
   group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell, uint64_t num_buff) {
@@ -327,7 +442,15 @@ namespace tdb {
     return ret;
   }
 
-  template<size_t N, typename T> std::vector<std::array<T,N>>
+  /**
+   * Group a data vector into a a vector of arrays
+   * @tparam N Elements per cell
+   * @tparam T Array element type
+   * @param buff data buff to group
+   * @param num_buff Number of elements in buff that were populated by the query.
+   * @return std::vector<std::array<T,N>>
+   */
+  template<uint64_t N, typename T> std::vector<std::array<T,N>>
   group_by_cell(const std::vector<T> &buff, uint64_t num_buff) {
     std::vector<std::array<T,N>> ret;
     if (buff.size() % N != 0) {
@@ -345,6 +468,13 @@ namespace tdb {
   }
 
 
+  /**
+   * Unpack a vector of variable sized attributes into a data and offset buffer.
+   * @tparam T Vector type. T::value_type is considered the underlying data element type. Should be vector or string.
+   * @tparam R T::value_type, deduced
+   * @param data data to unpack
+   * @return pair where .first is the offset buffer, and .second is data buffer
+   */
   template<typename T, typename R=typename T::value_type>
   std::pair<std::vector<uint64_t>, std::vector<R>>
   make_var_buffers(const std::vector<T> &data) {

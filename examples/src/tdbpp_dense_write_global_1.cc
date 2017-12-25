@@ -75,7 +75,7 @@ int main() {
   tdb::Query query = array.write();
 
   query.layout(TILEDB_GLOBAL_ORDER);
-  query.attributes({"a1", "a2", "a3"});
+  query.buffer_list({"a1", "a2", "a3"});
   query.set_buffer<tdb::type::INT32>("a1", a1_data);
   query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);
   query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);

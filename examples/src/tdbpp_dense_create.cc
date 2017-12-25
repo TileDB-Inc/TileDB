@@ -38,9 +38,10 @@
 int main() {
   tdb::Context ctx;
 
-  // Can also do: domain.create<tdb::type::UINT64>();
-  tdb::Domain domain(ctx, TILEDB_UINT64);
+  tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
+
+  domain.create<tdb::type::UINT64>();
   d1.create<tdb::type::UINT64>("d1", {1,4}, 2);
   d2.create<tdb::type::UINT64>("d2", {1,4}, 2);
   domain << d1 << d2; // Add dims to domain
@@ -62,7 +63,7 @@ int main() {
   // Check the metadata, and make the array.
   tdb::Array array(ctx);
   array.create(meta);
-
+  
   std::cout << array << std::endl;
 
   return 0;

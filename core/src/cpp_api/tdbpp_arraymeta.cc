@@ -158,6 +158,12 @@ tdb::ArrayMetadata &tdb::ArrayMetadata::set_tile_order(tiledb_layout_t layout) {
   return *this;
 }
 
+tdb::ArrayMetadata &tdb::ArrayMetadata::set_order(const std::array<tiledb_layout_t, 2> &p) {
+  set_tile_order(p[0]);
+  set_cell_order(p[1]);
+  return *this;
+}
+
 tiledb_layout_t tdb::ArrayMetadata::cell_order() const {
   auto &ctx = _ctx.get();
   tiledb_layout_t layout;
@@ -231,5 +237,15 @@ tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Attribute &a
 
 tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tiledb_array_type_t type) {
   meta.set_type(type);
+  return meta;
+}
+
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const std::array<tiledb_layout_t, 2> p) {
+  meta.set_order(p);
+  return meta;
+}
+
+tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, uint64_t capacity) {
+  meta.set_capacity(capacity);
   return meta;
 }

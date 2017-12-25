@@ -45,7 +45,7 @@ int main() {
   tdb::Array array = ctx.array_get("my_dense_array");
   tdb::Query query = array.write();
 
-  query.attributes({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 3, 4}).layout(TILEDB_GLOBAL_ORDER);
+  query.buffer_list({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 3, 4}).layout(TILEDB_GLOBAL_ORDER);
 
   std::vector<int> a1_data = {112, 113, 114, 115};
   std::vector<uint64_t> a2_offsets = {0, 1, 3, 6};

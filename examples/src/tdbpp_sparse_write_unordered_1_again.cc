@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_write_unordered.cc
+ * @file   tdbpp_sparse_write_unordered_1_again.cc
  *
  * @section LICENSE
  *
@@ -28,47 +28,37 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write random (unordered) cells to a dense array.
- *
- * Make sure that there is no directory named "my_dense_array" in your
- * current working directory.
+ * It shows how to write unordered cells to a sparse array in a single write.
+ * This time we write 4 cells.
  *
  * You need to run the following to make this work:
  *
- * ./tdbpp_dense_create
- * ./tdbpp_dense_write_unordered
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_unordered_1_again
  */
 
 #include <tdbpp>
-#include <tuple>
 
 int main() {
   tdb::Context ctx;
-  tdb::Array array = ctx.array_get("my_dense_array");
+  tdb::Array array = ctx.array_get("my_sparse_array");
   tdb::Query query = array.write();
 
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
+
+  // clang-format off
+  std::vector<int> a1_buff = {107, 104, 106, 105};
+  auto a2_buff = tdb::make_var_buffers<std::string>({"yyy", "u", "w", "vvvv"});
+  std::vector<float> a3_buff = {107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
+  std::vector<uint64_t> coords_buff = {3, 4, 3, 2, 3, 3, 4, 1};
+
+  query.set_buffer<tdb::type::INT32>("a1", a1_buff);
+  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
+  query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
+  query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coords_buff);
   query.layout(TILEDB_UNORDERED);
-  query.subarray<tdb::type::UINT64>({{3, 4}, {3, 4}});
-
-
-  std::vector<int> a1_data = {211, 213, 212, 208};
-
-  // Make buffers for var size attr
-  std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
-  auto a2buff = tdb::make_var_buffers(a2);
-
-  std::vector<std::array<float,2>> a3_data = {{211.1, 211.2}, {213.1, 213.2},
-                                              {212.1, 212.2}, {208.1, 208.2}};
-  std::vector<std::array<uint64_t,2>> coords = {{4, 2}, {3, 4},
-                                                {3, 3}, {3, 1}};
-
-
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
-  query.set_buffer<tdb::type::CHAR>("a2", a2buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
-  query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coords);
 
   query.submit();
+
   return 0;
 }

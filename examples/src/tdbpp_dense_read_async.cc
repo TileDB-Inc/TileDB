@@ -46,7 +46,7 @@ int main() {
 
   // Set the layout of output, desired attributes, and determine buff sizes
   query.layout(TILEDB_GLOBAL_ORDER);
-  query.attributes({"a1", "a2", "a3"});
+  query.buffer_list({"a1", "a2", "a3"});
 
   // Make buffers
   auto a1_buff = query.make_buffer<tdb::type::INT32>("a1");

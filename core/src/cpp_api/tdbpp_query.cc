@@ -40,7 +40,7 @@ tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
   return *this;
 }
 
-tdb::Query &tdb::Query::attributes(const std::vector<std::string> &attrs) {
+tdb::Query &tdb::Query::buffer_list(const std::vector<std::string> &attrs) {
   _attrs = attrs;
   return *this;
 }
@@ -57,8 +57,6 @@ void tdb::Query::_Deleter::operator()(tiledb_query_t *p) {
 }
 
 void tdb::Query::_prepare_submission() {
-  if (query_status() == Status::COMPLETE) throw std::runtime_error("Cannot submit a completed query.");
-
   _all_buff.clear();
   _buff_sizes.clear();
   _attr_names.clear();
