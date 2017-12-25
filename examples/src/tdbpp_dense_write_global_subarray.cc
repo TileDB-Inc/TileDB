@@ -45,14 +45,14 @@ int main() {
   tdb::Array array = ctx.array_get("my_dense_array");
   tdb::Query query = array.write();
 
-  query.buffer_list({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 3, 4}).layout(TILEDB_GLOBAL_ORDER);
+  query.buffer_list({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 2, 4}).layout(TILEDB_GLOBAL_ORDER);
 
   std::vector<int> a1_data = {112, 113, 114, 115};
   std::vector<uint64_t> a2_offsets = {0, 1, 3, 6};
   const std::string a2str = "MNNOOOPPPP";
   std::vector<char> a2_data{a2str.begin(), a2str.end()};
-  std::vector<std::array<float,2>> a3_data = {{112.1, 112.2}, {113.1, 113.2},
-                                              {114.1, 114.2}, {115.1, 115.2}};
+  std::vector<float> a3_data = {112.1, 112.2, 113.1, 113.2,
+                                114.1, 114.2, 115.1, 115.2};
 
   query.set_buffer<tdb::type::INT32>("a1", a1_data);
   query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);

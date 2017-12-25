@@ -109,13 +109,6 @@ namespace tdb {
       return *this;
     }
 
-    template<typename T, uint64_t N>
-    Query &set_buffer(const std::string &attr, std::vector<std::array<typename T::type, N>> &buf) {
-      _type_check_attr<T>(attr, true);
-      _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
-      return *this;
-    }
-
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, false);
@@ -142,20 +135,6 @@ namespace tdb {
       }
 
       _make_buffer_impl<DataT, DomainT>(attr, buff, num, max_el);
-      return *this;
-    }
-
-    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
-    Query &resize_buffer(const std::string &attr, std::vector<std::array<typename DataT::type, N>> &buff, uint64_t max_el=0) {
-      if (_array_attributes.count(attr)) {
-        unsigned num = _array_attributes.at(attr).num();
-        if (num == TILEDB_VAR_NUM) throw std::runtime_error("Attempting to create fixed size buffer for varsize attribute.");
-        if (num != N) throw std::runtime_error("Mismatching attribute size and array size.");
-      } else if (!_special_attributes.count(attr)) {
-        throw std::out_of_range("Invalid attribute: " + attr);
-      }
-
-      _make_buffer_impl<DataT, N, DomainT>(attr, buff, max_el);
       return *this;
     }
 
@@ -193,23 +172,6 @@ namespace tdb {
       std::vector<uint64_t> offsets;
       resize_buffer<DataT, DomainT>(attr, offsets, ret, expected, max_offset, max_el);
       return {offsets, ret};
-    };
-
-    /**
-     * Make a buffer for an attribute type with N elements per cell.
-     * @tparam DataT Datatype, tdb::type::*
-     * @tparam N Elements per cell
-     * @tparam DomainT Dim
-     * @param attr
-     * @param max_el
-     * @return
-     */
-    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
-    std::vector<std::array<typename DataT::type, N>>
-    make_fixed_buffer(const std::string &attr, uint64_t max_el = 0) {
-      std::vector<std::array<typename DataT::type,N>> ret;
-      resize_buffer<DataT, N, DomainT>(attr, ret, max_el);
-      return ret;
     };
 
     /**
@@ -332,29 +294,6 @@ namespace tdb {
       else type = _array_attributes.at(attr).type();
       _type_check<DataT>(type);
       num = _get_buffer_size<DomainT>(num);
-      buff.resize((max_el != 0 && num > max_el) ? max_el : num);
-      return num;
-    }
-
-    /**
-     * Make a buffer for a fixed size, compile-time, attribute
-     * @tparam DataT tdb::type::*, datatype of attribute
-     * @tparam N Number of elements per cell
-     * @tparam DomainT Type of the array domain
-     * @param attr attribute name
-     * @param buff Buff to resize
-     * @param max_el maximum capacity (in # of cells) for buffer
-     * @return Unconstrained ideal buffer size
-     */
-    template<typename DataT, uint64_t N, typename DomainT=type::UINT64>
-    uint64_t _make_buffer_impl(const std::string &attr,
-                               std::vector<std::array<typename DataT::type,N>> &buff,
-                               uint64_t max_el=0) {
-      tiledb_datatype_t type;
-      if (attr == TILEDB_COORDS) type = _array.get().domain().type();
-      else type = _array_attributes.at(attr).type();
-      _type_check<DataT>(type);
-      uint64_t num =_get_buffer_size<DomainT>(N);
       buff.resize((max_el != 0 && num > max_el) ? max_el : num);
       return num;
     }

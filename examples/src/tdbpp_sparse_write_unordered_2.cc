@@ -68,7 +68,7 @@ int main() {
   // Reset buffers. This is needed in case vectors reallocate during reassignment.
   query.reset_buffers();
   query.set_buffer<tdb::type::INT32>("a1", a1_buff);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
+  query.set_buffer<tdb::type::CHAR>("a2", a2_2_buff);
   query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
   query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coords_buff);
 
