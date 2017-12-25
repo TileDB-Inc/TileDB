@@ -61,12 +61,7 @@ namespace tdb {
     Domain &operator=(const Domain&) = default;
     Domain &operator=(Domain&& o) = default;
 
-    void load(tiledb_domain_t **domain) {
-      if (domain && *domain) {
-        _init(*domain);
-        *domain = nullptr;
-      }
-    }
+    void load(tiledb_domain_t **domain);
 
     template<typename DataT>
     void create() {

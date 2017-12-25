@@ -48,6 +48,9 @@
 
 namespace tdb {
 
+  /**
+   * Construct and execute queries on a tdb::Array
+   */
   class Query {
   public:
     enum class Status {FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF};
@@ -64,10 +67,16 @@ namespace tdb {
     Query &operator=(const Query&) = default;
     Query &operator=(Query&& o) = default;
 
+    /**
+     * Data layout of the buffers.
+     * @param layout
+     * @return *this
+     */
     Query &layout(tiledb_layout_t layout);
 
     /**
-     * @param attrs Attributes to query.
+     * Set the list of buffers to be provided.
+     * @param attrs Attributes to query, plus TILEDB_COORDS if needed.
      * @return *this
      */
     Query &buffer_list(const std::vector<std::string> &attrs);
@@ -102,6 +111,13 @@ namespace tdb {
       return *this;
     };
 
+    /**
+     * Set a buffer for a particular attribute
+     * @tparam T buffer type, tdb::type::*
+     * @param attr Attribute name
+     * @param buf data buffer
+     * @return *this
+     */
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, true);
@@ -109,6 +125,14 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * Set a buffer for a particular attribute (variable size)
+     * @tparam T buffer type, tdb::type::*
+     * @param attr Attribute name
+     * @param offsets list of offsets for the data buffer
+     * @param buf data buffer
+     * @return *this
+     */
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, false);
@@ -117,11 +141,27 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * Set a buffer for a particular attribute (variable size)
+     * @tparam T buffer type, tdb::type::*
+     * @param attr Attribute name
+     * @param buf buffer, a pair of offsets and data buffs
+     * @return *this
+     */
     template<typename T>
     Query &set_buffer(const std::string &attr, std::pair<std::vector<uint64_t>, std::vector<typename T::type>> &buf) {
       return set_buffer<T>(attr, buf.first, buf.second);
     }
 
+    /**
+     * Resize a buffer for a particular attribute. Attempts to find an ideal buffer size.
+     * @tparam DataT tdb::type::*
+     * @tparam DomainT type of the dimensions, tdb::type::*
+     * @param attr Attribute name
+     * @param buff databuff to resize
+     * @param max_el upper bound on buffer size, in number of elements
+     * @return *this
+     */
     template<typename DataT, typename DomainT=type::UINT64>
     Query &resize_buffer(const std::string &attr, std::vector<typename DataT::type> &buff, uint64_t max_el=0) {
       uint64_t num = 1;
@@ -139,6 +179,19 @@ namespace tdb {
     }
 
 
+    /**
+     * Resize a buffer for a particular (varsize) attribute. Attempts to find an ideal buffer size.
+     * @tparam DataT tdb::type::*
+     * @tparam DomainT type of the dimensions, tdb::type::*
+     * @param attr Attribute name
+     * @param offsets Offsets buffer
+     * @param buff databuff to resize
+     * @param expected_size Average expected size of the attribute
+     * @param max_offset Max size for the offset buffer. Limits the number of cells read. If max_el is undefined,
+     *  this will set max_el = max_offset*expected_size
+     * @param max_el upper bound on buffer size, in number of elements.
+     * @return *this
+     */
     template<typename DataT, typename DomainT=type::UINT64>
     Query &resize_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
                          std::vector<typename DataT::type> &buff,
@@ -158,6 +211,14 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * Make a simple buffer for a fixed size attribute.
+     * @tparam DataT tdb::type::*
+     * @tparam DomainT tdb::type::*, underlying dimension type
+     * @param attr attribute name
+     * @param max_el upper bound on buffer size, number of elements
+     * @return Buffer
+     */
     template<typename DataT, typename DomainT=type::UINT64>
     std::vector<typename DataT::type> make_buffer(const std::string &attr, uint64_t max_el = 0) {
       std::vector<typename DataT::type> ret;
@@ -165,6 +226,16 @@ namespace tdb {
       return ret;
     };
 
+    /**
+     * Make a pair of buffers for a variable sized attr
+     * @tparam DataT tdb::type::*
+     * @tparam DomainT tdb::type::*, underlying dimension type
+     * @param attr attribute name
+     * @param expected expected size of the attribute
+     * @param max_offset upper bound on number of cells buffer can hold
+     * @param max_el upper bound on data buffer
+     * @return pair<offset buff,data buff>
+     */
     template<typename DataT, typename DomainT=type::UINT64>
     std::pair<std::vector<uint64_t>, std::vector<typename DataT::type>>
     make_var_buffers(const std::string &attr, uint64_t expected = 1, uint64_t max_offset = 0, uint64_t max_el = 0) {
@@ -200,6 +271,10 @@ namespace tdb {
      */
     Status attribute_status(const std::string &attr);
 
+    /**
+     * Submit the query. Call will block until query is complete.
+     * @return
+     */
     Status submit();
 
     /**
@@ -262,6 +337,12 @@ namespace tdb {
       }
     };
 
+    /**
+     * Gets the ideal buffer size using the underlying array dimensions and attr size.
+     * @tparam DomainT
+     * @param elements_per_cell
+     * @return
+     */
     template<typename DomainT>
     uint64_t _get_buffer_size(uint64_t elements_per_cell) {
       if (_subarray_cells != 0) {

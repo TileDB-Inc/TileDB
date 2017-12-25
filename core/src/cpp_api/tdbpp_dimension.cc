@@ -74,6 +74,13 @@ void *tdb::Dimension::_extent() const {
   return extent;
 }
 
+void tdb::Dimension::load(tiledb_dimension_t **dim) {
+  if (dim != nullptr && *dim != nullptr) {
+    _init(*dim);
+    *dim = nullptr;
+  }
+}
+
 void tdb::Dimension::_Deleter::operator()(tiledb_dimension_t *p) {
   _ctx.get().handle_error(tiledb_dimension_free(_ctx.get(), p));
 }

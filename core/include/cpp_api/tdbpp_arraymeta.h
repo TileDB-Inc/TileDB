@@ -99,6 +99,10 @@ namespace tdb {
      */
     tiledb_array_type_t type() const;
 
+    /**
+     * @param type DENSE or SPARSE array
+     * @return
+     */
     ArrayMetadata &set_type(tiledb_array_type_t type) {
       auto &ctx = _ctx.get();
       ctx.handle_error(tiledb_array_metadata_set_array_type(ctx, _meta.get(), type));
@@ -148,6 +152,10 @@ namespace tdb {
      */
     void check() const;
 
+    /**
+     * Get all attributes in the array.
+     * @return map of attr names to Attributes
+     */
     const std::unordered_map<std::string, Attribute> attributes() const;
 
     bool good() const;

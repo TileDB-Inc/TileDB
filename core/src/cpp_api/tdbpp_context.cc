@@ -151,6 +151,38 @@ void tdb::Context::del(const std::string &name) {
   handle_error(tiledb_delete(_ctx.get(), name.c_str()));
 }
 
+tdb::Context::Context(const std::string &root) : Context() {
+  set_root(root);
+}
+
+tiledb_ctx_t *tdb::Context::operator->() {
+  return _ctx.get();
+}
+
+tdb::Context::operator tiledb_ctx_t*() {
+  return _ctx.get();
+}
+
+const tdb::Object &tdb::Context::context_type() const {
+  return _curr_object;
+}
+
+tiledb_ctx_t *tdb::Context::get() {
+  return _ctx.get();
+}
+
+void tdb::Context::move(std::string oldname, std::string newname, bool force) {
+  handle_error(tiledb_move(_ctx.get(), oldname.c_str(), newname.c_str(), force));
+}
+
+void tdb::Context::set_error_handler(std::function<void(std::string)> fn) {
+  _handler = fn;
+}
+
+void tdb::Context::_default_handler(std::string msg) {
+  throw std::runtime_error(msg);
+}
+
 std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {
   os << "Ctx<" << ctx.context_type() << ">";
   return os;

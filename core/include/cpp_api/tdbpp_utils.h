@@ -43,6 +43,9 @@ namespace tdb {
     int major, minor, rev;
   };
 
+  /**
+   * @return TileDB library version
+   */
   inline const Version version() {
     Version ret;
     tiledb_version(&ret.major, &ret.minor, &ret.rev);

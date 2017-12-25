@@ -79,6 +79,13 @@ tdb::Domain &tdb::Domain::add_dimension(const tdb::Dimension &d) {
   return *this;
 }
 
+void tdb::Domain::load(tiledb_domain_t **domain) {
+  if (domain && *domain) {
+    _init(*domain);
+    *domain = nullptr;
+  }
+}
+
 void tdb::Domain::_Deleter::operator()(tiledb_domain_t *p) {
   _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), p));
 }

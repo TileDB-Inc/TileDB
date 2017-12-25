@@ -66,6 +66,12 @@ namespace tdb {
       }
     }
 
+    /**
+     * Create a new attribute of type DataT
+     * @tparam DataT tdb::type::*
+     * @param name Attribute name
+     * @return *this
+     */
     template<typename DataT>
     Attribute &create(const std::string &name) {
       _create(name, DataT::tiledb_datatype);
@@ -84,6 +90,11 @@ namespace tdb {
 
     unsigned num() const;
 
+    /**
+     * Set the number of attribute elements per cell.
+     * @param num
+     * @return *this
+     */
     Attribute &set_num(unsigned num);
 
     Compressor compressor() const;

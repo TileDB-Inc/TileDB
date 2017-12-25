@@ -56,12 +56,7 @@ namespace tdb {
     Dimension &operator=(const Dimension &) = default;
     Dimension &operator=(Dimension &&o) = default;
 
-    void load(tiledb_dimension_t **dim) {
-      if (dim != nullptr && *dim != nullptr) {
-        _init(*dim);
-        *dim = nullptr;
-      }
-    }
+    void load(tiledb_dimension_t **dim);
 
     template<typename DataT>
     Dimension &create(const std::string &name, std::array<typename DataT::type, 2> domain, typename DataT::type extent) {

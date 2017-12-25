@@ -55,6 +55,12 @@ namespace tdb {
     constexpr char float32_repr[] = "FLOAT32";
     constexpr char float64_repr[] = "FLOAT64";
 
+    /**
+     * Repr of a datatype, tiledb datatype, and name.
+     * @tparam T underlying type
+     * @tparam TDB_TYPE tiledb_data_type repr
+     * @tparam NAME string repr
+     */
     template<typename T, tiledb_datatype_t TDB_TYPE, const char *NAME>
     struct Type {
       Type() = delete;

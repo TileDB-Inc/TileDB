@@ -53,9 +53,7 @@ namespace tdb {
   class Context {
   public:
     Context();
-    Context(const std::string &root) : Context() {
-      set_root(root);
-    }
+    Context(const std::string &root);
     Context(Context &ctx, const std::string &root) : _ctx(ctx._ctx) {
       set_root(root);
     }
@@ -67,21 +65,13 @@ namespace tdb {
 
     void set_root(const std::string &root);
 
-    tiledb_ctx_t *operator->() {
-      return _ctx.get();
-    }
+    tiledb_ctx_t *operator->();
 
-    operator tiledb_ctx_t*() {
-      return _ctx.get();
-    }
+    operator tiledb_ctx_t*();
 
-    tiledb_ctx_t *get() {
-      return _ctx.get();
-    }
+    tiledb_ctx_t *get();
 
-    const Object &context_type() const {
-      return _curr_object;
-    }
+    const Object &context_type() const;
 
     class iterator: public std::iterator<std::forward_iterator_tag, Object> {
     public:
@@ -139,6 +129,11 @@ namespace tdb {
       }
     };
 
+    /**
+     * Walk the current directory for all TileDB objects
+     * @param order order to traverse directory
+     * @return iterator
+     */
     iterator begin(tiledb_walk_order_t order=TILEDB_PREORDER);
 
     iterator end();
@@ -151,21 +146,42 @@ namespace tdb {
 
     Context group_get(const std::string &uri);
 
+    /**
+     * Make a new group.
+     * @param group group name.
+     * @return *this
+     */
     Context group_create(const std::string &group);
 
     std::vector<Array> arrays();
 
+    /**
+     * Search the current path for an array.
+     * @param name
+     * @return Array
+     */
     Array array_find(const std::string &name);
 
+    /**
+     * Get an array by name.
+     * @param uri
+     * @return Array
+     */
     Array array_get(const std::string &uri);
 
+    /**
+     * Consolidate fragments.
+     * @param name
+     */
     void consolidate(const std::string &name);
 
+    /**
+     * Delete a tiledb object.
+     * @param name
+     */
     void del(const std::string &name);
 
-    void move(std::string oldname, std::string newname, bool force) {
-      handle_error(tiledb_move(_ctx.get(), oldname.c_str(), newname.c_str(), force));
-    }
+    void move(std::string oldname, std::string newname, bool force);
 
     template<typename C>
     void handle_error(int ret, C callback) {
@@ -177,14 +193,10 @@ namespace tdb {
 
     void handle_error(int ret);
 
-    void set_error_handler(std::function<void(std::string)> fn) {
-      _handler = fn;
-    }
+    void set_error_handler(std::function<void(std::string)> fn);
 
   private:
-    static void _default_handler(std::string msg) {
-      throw std::runtime_error(msg);
-    };
+    static void _default_handler(std::string msg);
     std::function<void(std::string)> _handler = _default_handler;
     std::string _handle_error();
     std::shared_ptr<tiledb_ctx_t> _ctx;

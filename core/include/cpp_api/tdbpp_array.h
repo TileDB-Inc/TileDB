@@ -91,14 +91,26 @@ namespace tdb {
      */
     void create(const ArrayMetadata &meta);
 
+    /**
+     * Create a query to read the array.
+     * @return Query
+     */
     Query read();
 
+    /**
+     * Create a query to write to the array.
+     * @return Query
+     */
     Query write();
 
     Context &context();
 
     const Context &context() const;
 
+    /**
+     * Get the metadata that defines the array.
+     * @return
+     */
     ArrayMetadata &meta();
 
     const ArrayMetadata &meta() const;
