@@ -162,6 +162,9 @@ TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 /*           TILEDB TYPES            */
 /* ********************************* */
 
+/** A config object. */
+typedef struct tiledb_config_t tiledb_config_t;
+
 /** A TileDB context. */
 typedef struct tiledb_ctx_t tiledb_ctx_t;
 
@@ -193,6 +196,68 @@ typedef struct tiledb_query_t tiledb_query_t;
 typedef struct tiledb_kv_t tiledb_kv_t;
 
 /* ********************************* */
+/*              CONFIG               */
+/* ********************************* */
+
+/**
+ * Creates a TileDB config.
+ *
+ * @param config The config to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_create(tiledb_config_t** config);
+
+/**
+ * Frees a TileDB config.
+ *
+ * @param config The config to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
+
+/**
+ * Sets a config parameter.
+ *
+ * @param config The config object.
+ * @param param The parameter to be set.
+ * @param value The value of the parameter to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note There are no correctness checks performed here. This function simply
+ *     stores each parameter value in the config object, and the correctness
+ *     of all the set parameters in the config object is checked in
+ *     `tiledb_ctx_create`.
+ */
+TILEDB_EXPORT int tiledb_config_set(
+    tiledb_config_t* config, const char* param, const char* value);
+
+/**
+ * Sets config parameters read from a text file.
+ *
+ * @param config The config object.
+ * @param filename The name of the file.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note There are no correctness checks performed here for the parameters.
+ *     This function simply stores each parameter value in the config object,
+ *     and the correctness of all the set parameters in the config object is
+ *     checked in `tiledb_ctx_create`.
+ */
+TILEDB_EXPORT int tiledb_config_set_from_file(
+    tiledb_config_t* config, const char* filename);
+
+/**
+ * Unsets a config parameter. Potentially useful upon errors, to remove a
+ * non-existing parameter from the config.
+ *
+ * @param config The config object.
+ * @param param The parameter to be unset.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_unset(
+    tiledb_config_t* config, const char* param);
+
+/* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
 
@@ -201,9 +266,11 @@ typedef struct tiledb_kv_t tiledb_kv_t;
  * that manages everything in the TileDB library.
  *
  * @param ctx The TileDB context to be created.
+ * @param config The configuration parameters (`nullptr` means default).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ctx_create(tiledb_ctx_t** ctx);
+TILEDB_EXPORT int tiledb_ctx_create(
+    tiledb_ctx_t** ctx, tiledb_config_t* config);
 
 /**
  * Destroys the TileDB context, properly freeing-up all memory.

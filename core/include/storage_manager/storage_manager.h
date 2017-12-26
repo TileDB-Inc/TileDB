@@ -43,6 +43,7 @@
 #include <thread>
 
 #include "array_metadata.h"
+#include "config.h"
 #include "consolidator.h"
 #include "locked_array.h"
 #include "lru_cache.h"
@@ -173,12 +174,13 @@ class StorageManager {
   /**
    * Initializes the storage manager. It spawns two threads. The first is for
    * handling user asynchronous queries (submitted via the *query_submit_async*
-   * function. The second handles internal asynchronous queries as part of some
+   * function). The second handles internal asynchronous queries as part of some
    * either sync or async query.
    *
+   * @param config The configuration parameters.
    * @return Status
    */
-  Status init();
+  Status init(Config* config);
 
   /** Returns true if the input URI is an array directory. */
   bool is_array(const URI& uri) const;
@@ -456,6 +458,9 @@ class StorageManager {
    * the second for internal queries.
    */
   std::thread* async_thread_[2];
+
+  /** Stores the TileDB configuration parameters. */
+  Config config_;
 
   /** Object that handles array consolidation. */
   Consolidator* consolidator_;

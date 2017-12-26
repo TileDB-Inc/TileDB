@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API library version
+ * Tests the C API version.
  */
 
 #include "catch.hpp"

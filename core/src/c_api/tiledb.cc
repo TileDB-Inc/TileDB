@@ -33,6 +33,7 @@
 
 #include "tiledb.h"
 #include "array_metadata.h"
+#include "config.h"
 #include "kv.h"
 #include "query.h"
 #include "utils.h"
@@ -64,6 +65,10 @@ void tiledb_version(int* major, int* minor, int* rev) {
 /* ********************************* */
 /*           TILEDB TYPES            */
 /* ********************************* */
+
+struct tiledb_config_t {
+  tiledb::Config* config_;
+};
 
 struct tiledb_ctx_t {
   tiledb::StorageManager* storage_manager_;
@@ -134,6 +139,12 @@ static bool save_error(tiledb_ctx_t* ctx, const tiledb::Status& st) {
 
   // There is an error
   return true;
+}
+
+inline int sanity_check(tiledb_config_t* config) {
+  if (config == nullptr || config->config_ == nullptr)
+    return TILEDB_ERR;
+  return TILEDB_OK;
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx) {
@@ -228,10 +239,67 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
 }
 
 /* ****************************** */
+/*            CONFIG              */
+/* ****************************** */
+
+int tiledb_config_create(tiledb_config_t** config) {
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Create storage manager
+  (*config)->config_ = new (std::nothrow) tiledb::Config();
+  if ((*config)->config_ == nullptr)
+    return TILEDB_OOM;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_config_free(tiledb_config_t* config) {
+  if (config != nullptr) {
+    delete config->config_;
+    delete config;
+  }
+
+  // Always succeeds
+  return TILEDB_OK;
+}
+
+int tiledb_config_set(
+    tiledb_config_t* config, const char* param, const char* value) {
+  if (sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  config->config_->set(param, value);
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_set_from_file(tiledb_config_t* config, const char* filename) {
+  if (sanity_check(config) == TILEDB_ERR || filename == nullptr)
+    return TILEDB_ERR;
+
+  config->config_->set_config_filename(filename);
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_unset(tiledb_config_t* config, const char* param) {
+  if (sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  config->config_->unset(param);
+
+  return TILEDB_OK;
+}
+
+/* ****************************** */
 /*            CONTEXT             */
 /* ****************************** */
 
-int tiledb_ctx_create(tiledb_ctx_t** ctx) {
+int tiledb_ctx_create(tiledb_ctx_t** ctx, tiledb_config_t* config) {
   // Initialize context
   *ctx = new (std::nothrow) tiledb_ctx_t;
   if (*ctx == nullptr)
@@ -254,7 +322,8 @@ int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   (*ctx)->last_error_ = nullptr;
 
   // Initialize storage manager
-  if (save_error(*ctx, ((*ctx)->storage_manager_->init()))) {
+  auto conf = (config == nullptr) ? (tiledb::Config*)nullptr : config->config_;
+  if (save_error(*ctx, ((*ctx)->storage_manager_->init(conf)))) {
     delete (*ctx)->storage_manager_;
     (*ctx)->storage_manager_ = nullptr;
     return TILEDB_ERR;
@@ -721,9 +790,9 @@ int tiledb_dimension_from_name(
         if (found_anonymous) {
           save_error(
               ctx,
-              tiledb::Status::Error("dimension from name is ambiguous when "
+              tiledb::Status::Error("Dimension from name is ambiguous when "
                                     "there are multiple anonymous "
-                                    "dimensions, use index instead"));
+                                    "dimensions; Use index instead"));
           return TILEDB_ERR;
         }
         found_anonymous = true;

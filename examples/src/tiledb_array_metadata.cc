@@ -40,7 +40,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+  tiledb_ctx_create(&ctx, nullptr);
 
   // Create array metadata
   tiledb_array_metadata_t* array_metadata;

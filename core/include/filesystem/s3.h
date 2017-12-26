@@ -36,6 +36,7 @@
 #define TILEDB_S3_H
 
 #include "buffer.h"
+#include "constants.h"
 #include "status.h"
 #include "uri.h"
 
@@ -79,6 +80,31 @@ class BufferCache;
 class S3 {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** S3 configuration parameters. */
+  struct S3Config {
+    S3Config() {
+      region_ = constants::s3_region;
+      scheme_ = constants::s3_scheme;
+      endpoint_override_ = constants::s3_endpoint_override;
+      use_virtual_addressing_ = constants::s3_use_virtual_addressing;
+      file_buffer_size_ = constants::s3_file_buffer_size;
+      connect_timeout_ms_ = constants::s3_connect_timeout_ms;
+      request_timeout_ms_ = constants::s3_request_timeout_ms;
+    }
+
+    std::string region_;
+    std::string scheme_;
+    std::string endpoint_override_;
+    bool use_virtual_addressing_;
+    uint64_t file_buffer_size_;
+    long connect_timeout_ms_;
+    long request_timeout_ms_;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -103,9 +129,10 @@ class S3 {
   /**
    * Connects an S3 client.
    *
+   * @param s3_config The S3 configuration parameters.
    * @return Status
    */
-  Status connect();
+  Status connect(const S3Config& s3_config);
 
   /**
    * Creates a bucket.
@@ -245,36 +272,32 @@ class S3 {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  // TODO: document
+  /** The S3 client. */
   std::shared_ptr<Aws::S3::S3Client> client_;
 
-  // TODO: document
+  /** The size of the file buffers used in multipart uploads. */
+  uint64_t file_buffer_size_;
+
+  /** AWS options. */
   Aws::SDKOptions options_;
 
-  // TODO: document
+  /** Used in multi-part uploads. */
   std::unordered_map<std::string, Aws::String> multipart_upload_IDs_;
 
-  // TODO: document
+  /** Used in multi-part uploads. */
   std::unordered_map<std::string, int> multipart_upload_part_number_;
 
-  // TODO: document
+  /** Used in multi-part uploads. */
   std::
       unordered_map<std::string, Aws::S3::Model::CompleteMultipartUploadRequest>
           multipart_upload_request_;
 
-  // TODO: document
+  /** Used in multi-part uploads. */
   std::unordered_map<std::string, Aws::S3::Model::CompletedMultipartUpload>
       multipart_upload_;
 
-  // TODO: doc
+  /** File buffers used in the multi-part uploads. */
   std::unordered_map<std::string, Buffer*> file_buffers_;
-
-  /* ********************************* */
-  /*         PRIVATE CONSTANTS         */
-  /* ********************************* */
-
-  // TODO: document
-  static const uint64_t FILE_BUFFER_SIZE;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

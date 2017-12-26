@@ -81,7 +81,8 @@ struct DenseArrayFx {
 
   DenseArrayFx() {
 #if HAVE_S3
-    tiledb::Status st = s3_.connect();
+    tiledb::S3::S3Config s3_config;
+    tiledb::Status st = s3_.connect(s3_config);
     REQUIRE(st.ok());
 #endif
 
@@ -89,7 +90,7 @@ struct DenseArrayFx {
     std::srand(0);
 
     // Initialize context
-    int rc = tiledb_ctx_create(&ctx_);
+    int rc = tiledb_ctx_create(&ctx_, nullptr);
     if (rc != TILEDB_OK) {
       std::cerr << "DenseArrayFx() Error creating tiledb_ctx_t" << std::endl;
       std::exit(1);
