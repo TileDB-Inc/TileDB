@@ -178,7 +178,7 @@ void purge_dots_from_path(std::string* path);
  * @param nbytes The size of the data to be read from the file.
  * @return Status.
  */
-Status read_from_file(
+Status read(
     const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes);
 
 /**
@@ -200,8 +200,7 @@ Status sync(const std::string& path);
  * @param buffer_size The size of the input buffer.
  * @return Status
  */
-Status write_to_file(
-    const std::string& path, const void* buffer, uint64_t buffer_size);
+Status write(const std::string& path, const void* buffer, uint64_t buffer_size);
 
 }  // namespace posix
 

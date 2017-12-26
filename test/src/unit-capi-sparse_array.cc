@@ -43,10 +43,6 @@
 #include <map>
 #include <sstream>
 
-#ifdef HAVE_S3
-#include "s3.h"
-#endif
-
 struct SparseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";
@@ -60,8 +56,7 @@ struct SparseArrayFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  tiledb::S3 s3_;
-  const char* S3_BUCKET = "tiledb";
+  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
   const std::string FILE_URI_PREFIX = "file://";
@@ -72,12 +67,13 @@ struct SparseArrayFx {
 
   // TileDB context
   tiledb_ctx_t* ctx_;
+  tiledb_vfs_t* vfs_;
 
   // Functions
   SparseArrayFx();
   ~SparseArrayFx();
-  void create_temp_dir();
-  void remove_temp_dir();
+  void create_temp_dir(const std::string& path);
+  void remove_temp_dir(const std::string& path);
   void check_sorted_reads(
       const std::string& array_name,
       tiledb_compressor_t compressor,
@@ -164,60 +160,60 @@ SparseArrayFx::SparseArrayFx() {
   REQUIRE(tiledb_config_create(&config) == TILEDB_OK);
 #ifdef HAVE_S3
   REQUIRE(
-      tiledb_config_set(
-          config, "tiledb.s3.endpoint_override", "localhost:9999") ==
+      tiledb_config_set(config, "vfs.s3.endpoint_override", "localhost:9999") ==
       TILEDB_OK);
 #endif
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+  vfs_ = nullptr;
+  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
   // Connect to S3
 #ifdef HAVE_S3
-  // TODO: use tiledb_vfs_t instead of S3::*
-  tiledb::S3::S3Config s3_config;
-  s3_config.endpoint_override_ = "localhost:9999";
-  REQUIRE(s3_.connect(s3_config).ok());
-
   // Create bucket if it does not exist
-  if (!s3_.bucket_exists(S3_BUCKET))
-    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  if (!is_bucket) {
+    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
 #endif
 
   std::srand(0);
 
-  create_temp_dir();
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+#ifdef HAVE_S3
+  create_temp_dir(S3_TEMP_DIR);
+#endif
+#ifdef HAVE_HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
+#endif
 }
 
 SparseArrayFx::~SparseArrayFx() {
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+#ifdef HAVE_S3
+  remove_temp_dir(S3_TEMP_DIR);
+#endif
+#ifdef HAVE_HDFS
+  remove_temp_dir(HDFS_TEMP_DIR);
+#endif
+
+  CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
-  remove_temp_dir();
 }
 
-void SparseArrayFx::create_temp_dir() {
-  remove_temp_dir();
-
-#ifdef HAVE_S3
-  REQUIRE(s3_.create_dir(tiledb::URI(S3_TEMP_DIR)).ok());
-#endif
-#ifdef HAVE_HDFS
-  auto cmd_hdfs = std::string("hadoop fs -mkdir -p ") + HDFS_TEMP_DIR;
-  REQUIRE(system(cmd_hdfs.c_str()) == 0);
-#endif
-  auto cmd_posix = std::string("mkdir -p ") + FILE_TEMP_DIR;
-  REQUIRE(system(cmd_posix.c_str()) == 0);
+void SparseArrayFx::create_temp_dir(const std::string& path) {
+  remove_temp_dir(path);
+  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-void SparseArrayFx::remove_temp_dir() {
-// Delete temporary directory
-#ifdef HAVE_S3
-  REQUIRE(s3_.remove_path(tiledb::URI(S3_TEMP_DIR)).ok());
-#endif
-#ifdef HAVE_HDFS
-  auto cmd_hdfs = std::string("hadoop fs -rm -r -f ") + HDFS_TEMP_DIR;
-  REQUIRE(system(cmd_hdfs.c_str()) == 0);
-#endif
-  auto cmd_posix = std::string("rm -rf ") + FILE_TEMP_DIR;
-  REQUIRE(system(cmd_posix.c_str()) == 0);
+void SparseArrayFx::remove_temp_dir(const std::string& path) {
+  int is_dir = 0;
+  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir)
+    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
 void SparseArrayFx::create_sparse_array_2D(

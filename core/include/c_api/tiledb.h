@@ -110,6 +110,13 @@ typedef enum {
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
 
+/** Filesystem. */
+typedef enum {
+#define TILEDB_FILESYSTEM_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_FILESYSTEM_ENUM
+} tiledb_filesystem_t;
+
 /** Data type. */
 typedef enum {
 #define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
@@ -117,7 +124,7 @@ typedef enum {
 #undef TILEDB_DATATYPE_ENUM
 } tiledb_datatype_t;
 
-/** Data type. */
+/** Array type. */
 typedef enum {
 #define TILEDB_ARRAY_TYPE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.inc"
@@ -194,6 +201,9 @@ typedef struct tiledb_query_t tiledb_query_t;
 
 /** A key-value store object. */
 typedef struct tiledb_kv_t tiledb_kv_t;
+
+/** A virtual filesystem object. */
+typedef struct tiledb_vfs_t tiledb_vfs_t;
 
 /* ********************************* */
 /*              CONFIG               */
@@ -1670,6 +1680,231 @@ TILEDB_EXPORT int tiledb_kv_get_value_var(
  */
 TILEDB_EXPORT int tiledb_kv_set_buffer_size(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t nbytes);
+
+/* ****************************** */
+/*        VIRTUAL FILESYSTEM      */
+/* ****************************** */
+
+/**
+ * Creates a virtual filesystem object.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object to be created.
+ * @param config Configuration parameters.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_create(
+    tiledb_ctx_t* ctx, tiledb_vfs_t** vfs, tiledb_config_t* config);
+
+/**
+ * Frees a virtual filesystem object.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+
+/**
+ * Creates an object-store bucket.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the bucket to be created.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_create_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Deletes an object-store bucket.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the bucket to be deleted.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_remove_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if an object-store bucket exists.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the bucket.
+ * @param is_bucket Sets it to `1` if the input URI is a bucket.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_is_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_bucket);
+
+/**
+ * Creates a directory.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the directory to be created.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_create_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if a directory exists.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the directory.
+ * @param is_dir Sets it to `true` if the directory exists and `false`
+ *     otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_is_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_dir);
+
+/**
+ * Removes a directory (recursively).
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The uri of the directory to be removed
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_remove_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if a file exists.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @param is_file Sets it to `true` if the file exists and `false` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_is_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_file);
+
+/**
+ * Deletes a file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_remove_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Retrieves the size of a file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @param size The file size to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_file_size(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
+
+/**
+ * Renames a TileDB resource path.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param old_uri The old URI.
+ * @param new_uri The new URI.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_move(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri);
+
+/**
+ * Reads from a file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @param offset The offset in the file where the read begins.
+ * @param buffer The buffer to read into.
+ * @param nbytes Number of bytes to read.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_read(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes);
+
+/**
+ * Writes the contents of a buffer into a file. Note that this
+ * function only **appends** data at the end of the file. If the
+ * file does not exist, it will be created.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @param buffer The buffer to write from.
+ * @param nbytes Number of bytes to write.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_write(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    const void* buffer,
+    uint64_t nbytes);
+
+/**
+ * Syncs (flushes) a file. This is important to call before starting to read
+ * from the file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note Specifically for S3, this function **finalizes** the file, in the
+ *     sense that from this point and onwards it becomes immutable. Any
+ *     attempt to write to this file again will result in **overwriting**
+ *     the old data.
+ */
+TILEDB_EXPORT int tiledb_vfs_sync(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if a given storage filesystem backend is supported.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param fs The filesystem to be checked.
+ * @param supports Sets it to `true` if the filesystem is supported, and `false`
+ *     otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_supports_fs(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    tiledb_filesystem_t fs,
+    int* supports);
+
+/**
+ * Touches a file, i.e., creates a new empty file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the file to be created.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_touch(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

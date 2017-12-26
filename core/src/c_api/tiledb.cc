@@ -121,6 +121,10 @@ struct tiledb_kv_t {
   tiledb::KV* kv_;
 };
 
+struct tiledb_vfs_t {
+  tiledb::VFS* vfs_;
+};
+
 /* ********************************* */
 /*         AUXILIARY FUNCTIONS       */
 /* ********************************* */
@@ -259,6 +263,15 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   return TILEDB_OK;
 }
 
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
+  if (vfs == nullptr || vfs->vfs_ == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Invalid TileDB virtual filesystem struct"));
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            CONFIG              */
 /* ****************************** */
@@ -321,6 +334,9 @@ int tiledb_config_unset(tiledb_config_t* config, const char* param) {
 /* ****************************** */
 
 int tiledb_ctx_create(tiledb_ctx_t** ctx, tiledb_config_t* config) {
+  if (config != nullptr && config->config_ == nullptr)
+    return TILEDB_ERR;
+
   // Initialize context
   *ctx = new (std::nothrow) tiledb_ctx_t;
   if (*ctx == nullptr)
@@ -2189,6 +2205,254 @@ int tiledb_kv_set_buffer_size(
 
   // Set the buffer size
   kv->kv_->set_buffer_alloc_size(nbytes);
+
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*        VIRTUAL FILESYSTEM      */
+/* ****************************** */
+
+int tiledb_vfs_create(
+    tiledb_ctx_t* ctx, tiledb_vfs_t** vfs, tiledb_config_t* config) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (config != nullptr && config->config_ == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Cannot create VFS; Invalid config");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Create VFS struct
+  *vfs = new (std::nothrow) tiledb_vfs_t;
+  if (*vfs == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB virtual filesystem struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create VFS object
+  (*vfs)->vfs_ = new tiledb::VFS();
+  if ((*vfs)->vfs_ == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB virtual filesystem object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    delete *vfs;
+    return TILEDB_OOM;
+  }
+
+  // Create a config tha inherits the VFS params from storage manager,
+  // and applies on top the ones from the input config.
+  tiledb::Config new_config;
+  if (config != nullptr)
+    new_config = *(config->config_);
+  new_config.set_vfs_params(ctx->storage_manager_->config().vfs_params());
+  if (save_error(ctx, new_config.init())) {
+    delete (*vfs)->vfs_;
+    delete vfs;
+    return TILEDB_ERR;
+  }
+
+  // Initialize VFS object
+  if (save_error(ctx, (*vfs)->vfs_->init(new_config.vfs_params()))) {
+    delete (*vfs)->vfs_;
+    delete vfs;
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  delete vfs->vfs_;
+  delete vfs;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_create_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->create_bucket(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_remove_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->remove_bucket(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_is_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_bucket) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_bucket = (int)vfs->vfs_->is_bucket(tiledb::URI(uri));
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_create_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->create_dir(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_is_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_dir) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_dir = (int)vfs->vfs_->is_dir(tiledb::URI(uri));
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_remove_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->remove_path(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_is_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_file) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_file = (int)vfs->vfs_->is_file(tiledb::URI(uri));
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_remove_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->remove_file(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_file_size(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->file_size(tiledb::URI(uri), size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_move(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          vfs->vfs_->move_path(tiledb::URI(old_uri), tiledb::URI(new_uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_read(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx, vfs->vfs_->read(tiledb::URI(uri), offset, buffer, nbytes)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_write(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    const void* buffer,
+    uint64_t nbytes) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->write(tiledb::URI(uri), buffer, nbytes)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->sync(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_supports_fs(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    tiledb_filesystem_t fs,
+    int* supports) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *supports = (int)vfs->vfs_->supports_fs(static_cast<tiledb::Filesystem>(fs));
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->create_file(tiledb::URI(uri))))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }

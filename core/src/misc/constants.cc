@@ -303,7 +303,6 @@ const char* kv_filename = "__kv.tdb";
  */
 uint64_t kv_buffer_size = 100000;
 
-#ifdef HAVE_S3
 /** A directory file suffix (in S3, directories are also files). */
 const char* s3_dir_suffix = ".dir";
 
@@ -333,7 +332,6 @@ const char* s3_region = "";
 
 /** S3 endpoint override. */
 const char* s3_endpoint_override = "localhost:9000";
-#endif
 
 }  // namespace constants
 

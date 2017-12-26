@@ -93,11 +93,11 @@ Status TileIO::read(
 
   // No compression
   if (tile->compressor() == Compressor::NO_COMPRESSION) {
-    RETURN_NOT_OK(storage_manager_->read_from_file(
-        uri_, file_offset, tile->buffer(), tile_size));
+    RETURN_NOT_OK(
+        storage_manager_->read(uri_, file_offset, tile->buffer(), tile_size));
   } else {  // Compression
-    RETURN_NOT_OK(storage_manager_->read_from_file(
-        uri_, file_offset, buffer_, compressed_size));
+    RETURN_NOT_OK(
+        storage_manager_->read(uri_, file_offset, buffer_, compressed_size));
 
     // Decompress tile
     tile->reset_offset();
@@ -142,8 +142,7 @@ Status TileIO::read_generic_tile_header(
   // Read header from file
   auto header_buff = new Buffer();
   RETURN_NOT_OK_ELSE(
-      storage_manager_->read_from_file(
-          uri_, file_offset, header_buff, *header_size),
+      storage_manager_->read(uri_, file_offset, header_buff, *header_size),
       delete header_buff);
 
   // Read header individual values
@@ -183,7 +182,7 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
       (compressor == Compressor::NO_COMPRESSION) ? tile->buffer() : buffer_;
   *bytes_written = buffer->size();
 
-  RETURN_NOT_OK(storage_manager_->write_to_file(uri_, buffer));
+  RETURN_NOT_OK(storage_manager_->write(uri_, buffer));
 
   return Status::Ok();
 }
@@ -203,7 +202,7 @@ Status TileIO::write_generic(Tile* tile) {
       (compressor == Compressor::NO_COMPRESSION) ? tile->buffer() : buffer_;
 
   RETURN_NOT_OK(write_generic_tile_header(tile, buffer->size()));
-  RETURN_NOT_OK(storage_manager_->write_to_file(uri_, buffer));
+  RETURN_NOT_OK(storage_manager_->write(uri_, buffer));
 
   return Status::Ok();
 }
@@ -227,7 +226,7 @@ Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
   RETURN_NOT_OK_ELSE(buff->write(&compression_level, sizeof(int)), delete buff);
 
   // Write to file
-  Status st = storage_manager_->write_to_file(uri_, buff);
+  Status st = storage_manager_->write(uri_, buff);
 
   delete buff;
 

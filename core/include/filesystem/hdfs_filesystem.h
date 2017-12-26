@@ -33,23 +33,21 @@
 #ifndef TILEDB_HDFS_FILESYSTEM_H
 #define TILEDB_HDFS_FILESYSTEM_H
 
+#ifdef HAVE_HDFS
+
 #include <sys/types.h>
 #include <string>
 #include <vector>
 
 #include "buffer.h"
+#include "hdfs.h"
 #include "status.h"
 #include "uri.h"
-
-#ifdef HAVE_HDFS
-#include "hdfs.h"
-#endif
 
 namespace tiledb {
 
 namespace hdfs {
 
-#ifdef HAVE_HDFS
 /**
  * Connects to an HDFS filesystem
  *
@@ -140,7 +138,7 @@ Status remove_path(hdfsFS fs, const URI& uri);
  * @param length The size of the data to be read from the file.
  * @return Status
  */
-Status read_from_file(
+Status read(
     hdfsFS fs, const URI& uri, off_t offset, void* buffer, uint64_t length);
 
 /**
@@ -155,7 +153,7 @@ Status read_from_file(
  * @param length The size of the input buffer.
  * @return Status
  */
-Status write_to_file(
+Status write(
     hdfsFS fs, const URI& uri, const void* buffer, const uint64_t length);
 
 /**
@@ -179,14 +177,10 @@ Status ls(hdfsFS fs, const URI& uri, std::vector<std::string>* paths);
 // File size in bytes for a given path
 Status file_size(hdfsFS fs, const URI& uri, uint64_t* nbytes);
 
-#endif
-
-Status put_path(const URI& fs_path, const URI& hdfs_path);
-
-Status get_path(const URI& hdfs_path, const URI& fs_path);
-
 }  // namespace hdfs
 
 }  // namespace tiledb
+
+#endif
 
 #endif  // TILEDB_HDFS_FILESYSTEM_H

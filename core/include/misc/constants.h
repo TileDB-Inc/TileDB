@@ -305,7 +305,6 @@ extern const char* kv_filename;
  */
 extern uint64_t kv_buffer_size;
 
-#ifdef HAVE_S3
 /** A directory file suffix (in S3, directories are also files). */
 extern const char* s3_dir_suffix;
 
@@ -335,7 +334,6 @@ extern const char* s3_region;
 
 /** S3 endpoint override. */
 extern const char* s3_endpoint_override;
-#endif
 
 }  // namespace constants
 

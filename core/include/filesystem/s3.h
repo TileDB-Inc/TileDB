@@ -119,14 +119,6 @@ class S3 {
   /* ********************************* */
 
   /**
-   * Check if a bucket exists.
-   *
-   * @param bucket The name of the bucket.
-   * @return bool
-   */
-  bool bucket_exists(const char* bucket);
-
-  /**
    * Connects an S3 client.
    *
    * @param s3_config The S3 configuration parameters.
@@ -140,7 +132,7 @@ class S3 {
    * @param bucket The name of the bucket to be created.
    * @return Status
    */
-  Status create_bucket(const char* bucket);
+  Status create_bucket(const URI& bucket) const;
 
   /**
    * Creates a new directory. Directories are not really supported in S3.
@@ -172,7 +164,7 @@ class S3 {
    * @param bucket The name of the bucket to be deleted.
    * @return Status
    */
-  Status delete_bucket(const char* bucket);
+  Status delete_bucket(const URI& bucket) const;
 
   /**
    * Returns the size of the input file with a given URI in bytes.
@@ -190,6 +182,14 @@ class S3 {
    * @return Status
    */
   Status flush_file(const URI& uri);
+
+  /**
+   * Check if a bucket exists.
+   *
+   * @param bucket The name of the bucket.
+   * @return bool
+   */
+  bool is_bucket(const URI& uri) const;
 
   /**
    * Checks if the URI is an existing S3 directory. Checks if the ".dir" object
@@ -237,7 +237,7 @@ class S3 {
    * @param length The size of the data to be read from the file.
    * @return Status
    */
-  Status read_from_file(
+  Status read(
       const URI& uri, off_t offset, void* buffer, uint64_t length) const;
 
   /**
@@ -265,7 +265,7 @@ class S3 {
    * @param length The size of the input buffer.
    * @return Status
    */
-  Status write_to_file(const URI& uri, const void* buffer, uint64_t length);
+  Status write(const URI& uri, const void* buffer, uint64_t length);
 
  private:
   /* ********************************* */
@@ -304,18 +304,27 @@ class S3 {
   /* ********************************* */
 
   /**
-   * Copies the object identified by `old_uri` to a new one identified by
-   * `new_uri`. In the case of directories, this is done recursively for
+   * Copies the directory identified by `old_uri` to a new one identified by
+   * `new_uri`. This is done recursively for
    * all the objects that have as prefix the directory path.
    *
-   * @param old_uri The object to be copied.
-   * @param new_uri The newly created object.
+   * @param old_uri The directory to be copied.
+   * @param new_uri The newly created directory.
    * @return Status
    */
-  Status copy_path(const URI& old_uri, const URI& new_uri);
+  Status copy_dir(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Copies a file.
+   *
+   * @param old_uri The file to be copied.
+   * @param new_uri The newly created file.
+   * @return Status
+   */
+  Status copy_file(const URI& old_uri, const URI& new_uri);
 
   /** Removes the contents of an S3 bucker. */
-  Status empty_bucket(const Aws::String& bucketName);
+  Status empty_bucket(const Aws::String& bucketName) const;
 
   /**
    * Fills the file buffer (given as an input `Buffer` object) from the
@@ -374,10 +383,14 @@ class S3 {
       std::string& str, const std::string& from, const std::string& to) const;
 
   /** Waits for the input bucket to be emptied. */
-  Status wait_for_bucket_to_empty(const Aws::String& bucketName);
+  Status wait_for_bucket_to_empty(const Aws::String& bucketName) const;
 
   /** Waits for the input object to be propagated. */
   bool wait_for_object_to_propagate(
+      const Aws::String& bucketName, const Aws::String& objectKey) const;
+
+  /** Waits for the input object to be deleted. */
+  bool wait_for_object_to_be_deleted(
       const Aws::String& bucketName, const Aws::String& objectKey) const;
 
   /**

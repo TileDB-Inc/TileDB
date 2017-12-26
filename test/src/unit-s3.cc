@@ -41,7 +41,7 @@ using namespace tiledb;
 
 struct S3Fx {
   tiledb::S3 s3_;
-  const std::string BUCKET = "tiledb";
+  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb/");
   const std::string TEST_DIR = "s3://tiledb/tiledb_test_dir/";
 };
 
@@ -51,8 +51,8 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   Status st = s3_.connect(s3_config);
   REQUIRE(st.ok());
 
-  if (!s3_.bucket_exists(BUCKET.c_str())) {
-    st = s3_.create_bucket(BUCKET.c_str());
+  if (!s3_.is_bucket(S3_BUCKET)) {
+    st = s3_.create_bucket(S3_BUCKET);
     CHECK(st.ok());
   }
 
@@ -69,7 +69,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   auto largefile = folder + "largefile";
   for (int i = 0; i < buffer_size; i++)
     write_buffer[i] = (char)('a' + (i % 26));
-  st = s3_.write_to_file(URI(largefile), write_buffer, buffer_size);
+  st = s3_.write(URI(largefile), write_buffer, buffer_size);
   CHECK(st.ok());
 
   int buffer_size_small = 1024 * 1024;
@@ -77,11 +77,11 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   for (int i = 0; i < buffer_size_small; i++)
     write_buffer_small[i] = (char)('a' + (i % 26));
 
-  st = s3_.write_to_file(URI(largefile), write_buffer_small, buffer_size_small);
+  st = s3_.write(URI(largefile), write_buffer_small, buffer_size_small);
   CHECK(st.ok());
 
   auto smallfile = folder + "smallfile";
-  st = s3_.write_to_file(URI(smallfile), write_buffer_small, buffer_size_small);
+  st = s3_.write(URI(smallfile), write_buffer_small, buffer_size_small);
   CHECK(st.ok());
 
   st = s3_.flush_file(URI(largefile));
@@ -106,9 +106,9 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
 
   auto file1 = folder2 + "file1";
   auto file2 = folder2 + "file2";
-  st = s3_.write_to_file(URI(file1), write_buffer_small, buffer_size_small);
+  st = s3_.write(URI(file1), write_buffer_small, buffer_size_small);
   CHECK(st.ok());
-  st = s3_.write_to_file(URI(file2), write_buffer_small, buffer_size_small);
+  st = s3_.write(URI(file2), write_buffer_small, buffer_size_small);
   CHECK(st.ok());
 
   st = s3_.flush_file(URI(file1));
@@ -130,7 +130,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   CHECK(paths2.size() == 2);
 
   auto read_buffer = new char[26];
-  st = s3_.read_from_file(URI(largefile), 0, read_buffer, 26);
+  st = s3_.read(URI(largefile), 0, read_buffer, 26);
   CHECK(st.ok());
 
   bool allok = true;
@@ -142,7 +142,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   }
   CHECK(allok);
 
-  st = s3_.read_from_file(URI(largefile), 11, read_buffer, 26);
+  st = s3_.read(URI(largefile), 11, read_buffer, 26);
   CHECK(st.ok());
 
   allok = true;
