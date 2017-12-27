@@ -51,14 +51,14 @@ int main() {
   // Set the layout of output, desired attributes, and determine buff sizes
   query.layout(TILEDB_GLOBAL_ORDER);
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
-  auto a1_buff = query.make_buffer<tdb::type::INT32>("a1");
-  auto a2_buff = query.make_var_buffers<tdb::type::CHAR>("a2", 3); // variable sized attr makes a pair of buffs
-  auto a3_buff = query.make_buffer<tdb::type::FLOAT32>("a3"); // 2 floats per cell
-  auto coord_buff = query.make_buffer<tdb::type::UINT64>(TILEDB_COORDS);
-  query.set_buffer<tdb::type::INT32>("a1", a1_buff);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
-  query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coord_buff);
+  auto a1_buff = query.make_buffer<int>("a1");
+  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr makes a pair of buffs
+  auto a3_buff = query.make_buffer<float>("a3"); // 2 floats per cell
+  auto coord_buff = query.make_buffer<uint64_t>(TILEDB_COORDS);
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coord_buff);
 
   std::cout << "Query submitted: " << query.submit() << "\n";
 

@@ -69,7 +69,7 @@ namespace tdb {
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, Dimension&>::type
     create(const std::string &name, std::array<T, 2> domain, T extent) {
-      create<typename type::type_from_native<T>::type>(name, domain, extent);
+      return create<typename type::type_from_native<T>::type>(name, domain, extent);
     }
 
     const std::string name() const;

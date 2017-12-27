@@ -55,9 +55,9 @@ int main() {
 
   query.layout(TILEDB_GLOBAL_ORDER);
   query.buffer_list({"a1", "a2", "a3"});
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
+  query.set_buffer("a1", a1_data);
+  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a3", a3_data);
 
   query.submit();
 
@@ -74,9 +74,9 @@ int main() {
   };
 
   query.reset_buffers();
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
+  query.set_buffer("a1", a1_data);
+  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a3", a3_data);
   query.submit();
 
   return 0;

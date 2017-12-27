@@ -44,10 +44,4 @@ int main() {
   ctx.group_create("my_group");
   ctx.group_create("my_group/dense_arrays");
   ctx.group_create("my_group/sparse_arrays");
-  /**
-   * Or:
-   * ctx.set_root("my_group");
-   * ctx.group_create("dense_arrays");
-   * ctx.group_create("sparse_arrays")'
-   */
 }

@@ -51,13 +51,13 @@ int main() {
   // Set the layout of output, desired attributes, and determine buff sizes
   query.layout(TILEDB_GLOBAL_ORDER);
   query.buffer_list({"a1", "a2", "a3"});
-  auto a1_buff = query.make_buffer<tdb::type::INT32>("a1");
-  auto a2_buff = query.make_var_buffers<tdb::type::CHAR>("a2", 3); // variable sized attr gets a pair of buffs
-  auto a3_buff = query.make_buffer<tdb::type::FLOAT32>("a3", 1000); // Limit size to 1000 elements
-  query.set_buffer<tdb::type::INT32>("a1", a1_buff);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
-
+  // Make buffers
+  auto a1_buff = query.make_buffer<int>("a1");
+  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr gets a pair of buffs
+  auto a3_buff = query.make_buffer<float>("a3", 1000); // Limit size to 1000 elements
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
   std::cout << "Query submitted: " << query.submit() << "\n";
 
   // Get the number of elements filled in by the query

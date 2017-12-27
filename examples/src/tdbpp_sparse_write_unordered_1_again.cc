@@ -52,10 +52,10 @@ int main() {
   std::vector<float> a3_buff = {107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
   std::vector<uint64_t> coords_buff = {3, 4, 3, 2, 3, 3, 4, 1};
 
-  query.set_buffer<tdb::type::INT32>("a1", a1_buff);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
-  query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coords_buff);
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coords_buff);
   query.layout(TILEDB_UNORDERED);
 
   query.submit();

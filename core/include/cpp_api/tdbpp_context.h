@@ -63,6 +63,10 @@ namespace tdb {
     Context &operator=(const Context &o) = default;
     Context &operator=(Context &&o) = default;
 
+    /**
+     * Sets the root for all walks.
+     * @param root
+     */
     void set_root(const std::string &root);
 
     tiledb_ctx_t *operator->();

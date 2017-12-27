@@ -118,6 +118,12 @@ namespace tdb {
       return *this;
     };
 
+    template<typename T=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &subarray(const std::vector<std::array<T, 2>> &pairs) {
+      return subarray<typename type::type_from_native<T>::type>(pairs);
+    };
+
     /**
      * Set a buffer for a particular attribute
      * @tparam T buffer type, tdb::type::*
@@ -157,7 +163,7 @@ namespace tdb {
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, Query>::type
     &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<T> &buf) {
-      return set_buffer<typename type::type_from_native<T>::type>(offsets, buf);
+      return set_buffer<typename type::type_from_native<T>::type>(attr, offsets, buf);
     };
 
     /**

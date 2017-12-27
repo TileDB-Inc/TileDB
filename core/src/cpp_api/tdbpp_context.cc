@@ -56,7 +56,7 @@ tdb::Array tdb::Context::array_find(const std::string &name) {
   for (const auto &i : *this) {
     if (i.type != Object::Type::Array) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
-      if (found) throw std::runtime_error("Multiple matches found, exctend search path.");
+      if (found) throw std::runtime_error("Multiple matches found, extend search path.");
       found = true;
       ret.load(i.uri);
     }
@@ -70,7 +70,7 @@ tdb::Context tdb::Context::group_find(const std::string &name) {
   for (const auto &i : *this) {
     if (i.type != Object::Type::Group) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
-      if (found) throw std::runtime_error("Multiple matches found, exctend search path.");
+      if (found) throw std::runtime_error("Multiple matches found, extend search path.");
       found = true;
       ret = Context(*this, i);
     }

@@ -47,7 +47,7 @@ int main() {
   tdb::Query query = array.read();
 
   // Set subarray. Templated on domain type.
-  query.subarray<tdb::type::UINT64>({3, 4, 2, 4});
+  query.subarray<uint64_t>({3, 4, 2, 4});
   query.buffer_list({"a1"});
   query.layout(TILEDB_ROW_MAJOR);
 

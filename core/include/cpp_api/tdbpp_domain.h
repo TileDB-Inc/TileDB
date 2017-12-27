@@ -64,7 +64,7 @@ namespace tdb {
 
     void load(tiledb_domain_t **domain);
 
-    template<typename DataT>
+    template<typename DataT, typename=typename DataT::type>
     void create() {
       _create(DataT::tiledb_datatype);
     }

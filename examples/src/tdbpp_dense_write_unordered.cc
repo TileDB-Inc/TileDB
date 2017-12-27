@@ -49,7 +49,7 @@ int main() {
 
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
   query.layout(TILEDB_UNORDERED);
-  query.subarray<tdb::type::UINT64>({{3, 4}, {3, 4}});
+  query.subarray<uint64_t>({{3, 4}, {3, 4}});
 
 
   std::vector<int> a1_data = {211, 213, 212, 208};
