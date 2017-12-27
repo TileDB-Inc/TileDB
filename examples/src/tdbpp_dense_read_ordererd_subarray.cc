@@ -51,17 +51,17 @@ int main() {
   tdb::Query query = array.read();
 
   // Set subarray. Templated on domain type.
-  query.subarray<tdb::type::UINT64>({3, 4, 2, 4});
+  query.subarray<uint64_t>({3, 4, 2, 4});
   query.buffer_list({"a1", "a2", "a3"});
   query.layout(TILEDB_ROW_MAJOR);
 
   // Make buffers
-  auto a1_buff = query.make_buffer<tdb::type::INT32>("a1");
-  auto a2_buff = query.make_var_buffers<tdb::type::CHAR>("a2", 3); // variable sized attr gets a pair of buffs
-  auto a3_buff = query.make_buffer<tdb::type::FLOAT32>("a3", 1000); // Limit size to 1000 elements
-  query.set_buffer<tdb::type::INT32>("a1", a1_buff);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_buff);
+  auto a1_buff = query.make_buffer<int>("a1");
+  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr gets a pair of buffs
+  auto a3_buff = query.make_buffer<float>("a3", 1000); // Limit size to 1000 elements
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
 
   query.submit();
 

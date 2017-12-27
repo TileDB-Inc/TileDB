@@ -66,6 +66,12 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, Dimension&>::type
+    create(const std::string &name, std::array<T, 2> domain, T extent) {
+      create<typename type::type_from_native<T>::type>(name, domain, extent);
+    }
+
     const std::string name() const;
 
     tiledb_datatype_t type() const;
@@ -82,6 +88,12 @@ namespace tdb {
     };
 
     template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+    domain() {
+      domain<typename type::type_from_native<T>::type>();
+    }
+
+    template<typename T>
     std::pair<typename T::type, typename T::type> extent() const {
       auto tdbtype = type();
       if (T::tiledb_datatype != tdbtype) {
@@ -91,6 +103,12 @@ namespace tdb {
       typename T::type *e = static_cast<typename T::type *>(_extent());
       return std::make_pair<typename T::type, typename T::type>(e[0], e[1]);
     };
+
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+    extent() {
+      extent<typename type::type_from_native<T>::type>();
+    }
 
     const tiledb_dimension_t &dim() const {
       return *_dim;

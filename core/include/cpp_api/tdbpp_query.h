@@ -45,6 +45,7 @@
 #include <memory>
 #include <set>
 #include <iterator>
+#include <type_traits>
 
 namespace tdb {
 
@@ -100,6 +101,12 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &subarray(const std::vector<T> &pairs) {
+      return subarray<typename type::type_from_native<T>::type>(pairs);
+    };
+
     template<typename T>
     Query &subarray(const std::vector<std::array<typename T::type, 2>> &pairs) {
       auto &ctx = _ctx.get();
@@ -125,6 +132,12 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &set_buffer(const std::string &attr, std::vector<T> &buf) {
+      return set_buffer<typename type::type_from_native<T>::type>(attr, buf);
+    };
+
     /**
      * Set a buffer for a particular attribute (variable size)
      * @tparam T buffer type, tdb::type::*
@@ -141,6 +154,12 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<T> &buf) {
+      return set_buffer<typename type::type_from_native<T>::type>(offsets, buf);
+    };
+
     /**
      * Set a buffer for a particular attribute (variable size)
      * @tparam T buffer type, tdb::type::*
@@ -152,6 +171,12 @@ namespace tdb {
     Query &set_buffer(const std::string &attr, std::pair<std::vector<uint64_t>, std::vector<typename T::type>> &buf) {
       return set_buffer<T>(attr, buf.first, buf.second);
     }
+
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &set_buffer(const std::string &attr, std::pair<std::vector<uint64_t>, std::vector<T>> &buf) {
+      return set_buffer<typename type::type_from_native<T>::type>(attr, buf);
+    };
 
     /**
      * Resize a buffer for a particular attribute. Attempts to find an ideal buffer size.
@@ -177,6 +202,12 @@ namespace tdb {
       _make_buffer_impl<DataT, DomainT>(attr, buff, num, max_el);
       return *this;
     }
+
+    template<typename T, typename D=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &resize_buffer(const std::string &attr, std::vector<T> &buff, uint64_t max_el=0) {
+      return resize_buffer<typename type::type_from_native<T>::type, typename type::type_from_native<D>::type>(attr, buff, max_el);
+    };
 
 
     /**
@@ -211,6 +242,14 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T, typename D=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, Query>::type
+    &resize_buffer(const std::string &attr, std::vector<uint64_t> &offsets,
+                   std::vector<T> &buff, uint64_t expected_size = 1, uint64_t max_offset = 0, uint64_t max_el = 0) {
+      return resize_buffer<typename type::type_from_native<T>::type,
+                           typename type::type_from_native<D>::type>(attr, offsets, buff, expected_size, max_offset, max_el);
+    };
+
     /**
      * Make a simple buffer for a fixed size attribute.
      * @tparam DataT tdb::type::*
@@ -225,6 +264,13 @@ namespace tdb {
       resize_buffer<DataT, DomainT>(attr, ret, max_el);
       return ret;
     };
+
+    template<typename T, typename D=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, std::vector<T>>::type
+    make_buffer(const std::string &attr, uint64_t max_el = 0) {
+      return make_buffer<typename type::type_from_native<T>::type, typename type::type_from_native<D>::type>(attr, max_el);
+    };
+
 
     /**
      * Make a pair of buffers for a variable sized attr
@@ -243,6 +289,13 @@ namespace tdb {
       std::vector<uint64_t> offsets;
       resize_buffer<DataT, DomainT>(attr, offsets, ret, expected, max_offset, max_el);
       return {offsets, ret};
+    };
+
+    template<typename T, typename D=uint64_t>
+    typename std::enable_if<std::is_fundamental<T>::value, std::pair<std::vector<uint64_t>, std::vector<T>>>::type
+    make_var_buffers(const std::string &attr, uint64_t expected = 1, uint64_t max_offset = 0, uint64_t max_el = 0) {
+      return make_var_buffers<typename type::type_from_native<T>::type,
+                              typename type::type_from_native<D>::type>(attr, expected, max_offset, max_el);
     };
 
     /**

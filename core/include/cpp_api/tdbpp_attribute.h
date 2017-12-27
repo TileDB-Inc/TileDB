@@ -78,6 +78,12 @@ namespace tdb {
       return *this;
     }
 
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+    create(const std::string &name) {
+      create<typename type::type_from_native<T>::type>(name);
+    }
+
     Attribute &create(const std::string &name, tiledb_datatype_t type) {
       _create(name, type);
       return *this;

@@ -94,6 +94,19 @@ namespace tdb {
     template<> struct type_from_tiledb<TILEDB_FLOAT32> {using type = FLOAT32;};
     template<> struct type_from_tiledb<TILEDB_FLOAT64> {using type = FLOAT64;};
 
+    template<typename T> struct type_from_native;
+    template<> struct type_from_native<char> {using type = CHAR;};
+    template<> struct type_from_native<int8_t> {using type = INT8;};
+    template<> struct type_from_native<uint8_t> {using type = UINT8;};
+    template<> struct type_from_native<int16_t> {using type = INT16;};
+    template<> struct type_from_native<uint16_t> {using type = UINT16;};
+    template<> struct type_from_native<int32_t> {using type = INT32;};
+    template<> struct type_from_native<uint32_t> {using type = UINT32;};
+    template<> struct type_from_native<int64_t> {using type = INT64;};
+    template<> struct type_from_native<uint64_t> {using type = UINT64;};
+    template<> struct type_from_native<float> {using type = FLOAT32;};
+    template<> struct type_from_native<double> {using type = FLOAT64;};
+
     std::string from_tiledb(const tiledb_datatype_t &type);
   }
 

@@ -41,6 +41,7 @@
 
 #include <functional>
 #include <memory>
+#include <type_traits>
 
 namespace tdb {
 
@@ -66,6 +67,12 @@ namespace tdb {
     template<typename DataT>
     void create() {
       _create(DataT::tiledb_datatype);
+    }
+
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, void>::type
+    create() {
+      create<typename type::type_from_native<T>::type>();
     }
 
     void create(tiledb_datatype_t type) {
