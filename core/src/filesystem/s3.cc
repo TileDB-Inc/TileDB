@@ -75,6 +75,7 @@ Status S3::connect(const S3Config& s3_config) {
     config.region = s3_config.region_.c_str();
   if (!s3_config.endpoint_override_.empty())
     config.endpointOverride = s3_config.endpoint_override_.c_str();
+
   config.scheme = (s3_config.scheme_ == "http") ? Aws::Http::Scheme::HTTP :
                                                   Aws::Http::Scheme::HTTPS;
   config.connectTimeoutMs = s3_config.connect_timeout_ms_;
@@ -268,7 +269,10 @@ Status S3::flush_file(const URI& uri) {
 }
 
 bool S3::is_dir(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  auto path = uri.to_path();
+  if (path.back() == '/')
+    path.pop_back();
+  Aws::Http::URI aws_uri = path.c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
   listObjectsRequest.SetPrefix(
@@ -390,24 +394,15 @@ Status S3::remove_file(const URI& uri) const {
 }
 
 Status S3::remove_path(const URI& uri) const {
-  std::string directory = uri.to_string();
+  auto directory = uri.to_string();
   if (directory.back() != '/')
     directory.push_back('/');
-  Aws::Http::URI aws_uri = directory.c_str();
-  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
-  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
-  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
-  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+  auto directory_obj =
+      directory.substr(0, directory.size() - 1) + constants::s3_dir_suffix;
 
-  if (!listObjectsOutcome.IsSuccess())
-    return LOG_STATUS(
-        Status::IOError("Error while listing s3 directory " + uri.to_string()));
-
-  if (!listObjectsOutcome.GetResult().GetContents().empty()) {
-    // delete directory object
-    directory.pop_back();
-    Aws::Http::URI dir_uri =
-        (directory + std::string(constants::s3_dir_suffix)).c_str();
+  // Delete directory object
+  if (is_file(URI(directory_obj))) {
+    Aws::Http::URI dir_uri = directory_obj.c_str();
     Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
     deleteObjectRequest.SetBucket(dir_uri.GetAuthority());
     deleteObjectRequest.SetKey(dir_uri.GetPath());
@@ -421,6 +416,16 @@ Status S3::remove_path(const URI& uri) const {
           deleteObjectOutcome.GetError().GetMessage().c_str()));
     }
   }
+
+  // Delete directory
+  Aws::Http::URI aws_uri = directory.c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+  if (!listObjectsOutcome.IsSuccess())
+    return LOG_STATUS(
+        Status::IOError("Error while listing s3 directory " + uri.to_string()));
 
   for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
     // delete objects in directory

@@ -144,6 +144,7 @@ bool is_dir(hdfsFS fs, const URI& uri) {
 // Is the given path a valid file
 bool is_file(hdfsFS fs, const URI& uri) {
   int ret = hdfsExists(fs, uri.to_path().c_str());
+
   if (!ret) {
     hdfsFileInfo* fileInfo = hdfsGetPathInfo(fs, uri.to_path().c_str());
     if (fileInfo == NULL) {
@@ -157,6 +158,7 @@ bool is_file(hdfsFS fs, const URI& uri) {
       return false;
     }
   }
+
   return false;
 }
 
