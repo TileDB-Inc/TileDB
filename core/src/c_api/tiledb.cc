@@ -1606,7 +1606,7 @@ int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
 }
 
 int tiledb_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force) {
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto old_uri = tiledb::URI(old_path);

@@ -33,12 +33,12 @@
  */
 
 #include <tiledb.h>
-#include <iostream>
+#include <stdio.h>
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  tiledb_ctx_create(&ctx, NULL);
 
   // Create dimensions
   uint64_t dim_domain[] = {1, 4, 1, 4};
@@ -81,9 +81,9 @@ int main() {
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
   tiledb_array_schema_add_attribute(ctx, array_schema, a3);
 
-  // Check array schema
+  // Check array metadata
   if (tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK) {
-    std::cout << "Invalid array schema\n";
+    printf("Invalid array metadata\n");
     return -1;
   }
 

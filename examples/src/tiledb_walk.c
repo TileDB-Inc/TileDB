@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_object_type.cc
+ * @file   tiledb_walk.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,50 +28,49 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to get the type of a TileDB object (resource).
+ * It shows how to explore the contents of a TileDB directory.
  */
 
 #include <tiledb.h>
 
-void print_object_type(tiledb_object_t type);
+int print_path(const char* path, tiledb_object_t type, void* data);
 
 int main() {
-  // Create context
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Get object type for group
-  tiledb_object_t type;
-  tiledb_object_type(ctx, "my_group", &type);
-  print_object_type(type);
+  // Walk in a path with a pre- and post-order traversal
+  printf("Preorder traversal:\n");
+  tiledb_walk(ctx, "my_group", TILEDB_PREORDER, print_path, NULL);
+  printf("\nPostorder traversal:\n");
+  tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, NULL);
 
-  // Get object type for array
-  tiledb_object_type(ctx, "my_dense_array", &type);
-  print_object_type(type);
-
-  // Get invalid object type
-  tiledb_object_type(ctx, "some_invalid_path", &type);
-  print_object_type(type);
-
-  // Clean up
+  // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;
 }
 
-void print_object_type(tiledb_object_t type) {
+int print_path(const char* path, tiledb_object_t type, void* data) {
+  // Simply print the path and type
+  (void)data;
+  printf("%s ", path);
   switch (type) {
     case TILEDB_ARRAY:
-      printf("ARRAY\n");
-      break;
-    case TILEDB_GROUP:
-      printf("GROUP\n");
+      printf("ARRAY");
       break;
     case TILEDB_KEY_VALUE:
-      printf("KEY_VALUE\n");
+      printf("KEY_VALUE");
       break;
-    case TILEDB_INVALID:
-      printf("INVALID\n");
+    case TILEDB_GROUP:
+      printf("GROUP");
       break;
+    default:
+      printf("INVALID");
   }
+  printf("\n");
+
+  // Always iterate till the end
+  return 1;
 }

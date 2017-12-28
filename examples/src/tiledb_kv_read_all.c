@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_kv_read.cc
+ * @file   tiledb_kv_read.c
  *
  * @section LICENSE
  *
@@ -37,8 +37,7 @@
  */
 
 #include <tiledb.h>
-#include <iostream>
-#include <string>
+#include <inttypes.h>
 
 void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 void print_key(void* key, tiledb_datatype_t key_type, uint64_t key_size);
@@ -86,9 +85,8 @@ void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
 
   // Sanity check
   if (a1_num != key_num || a2_num != key_num || a3_num != key_num) {
-    std::cout << "key_num: " << key_num << "a1_num: " << a1_num
-              << "a2_num: " << a2_num << "a3_num: " << a3_num << "\n";
-    std::cout << "Key/value number mismatch\n";
+    printf("key_num: %"PRIu64" a1_num: %"PRIu64" a2_num: %"PRIu64" a3_num: %"PRIu64"\n", key_num, a1_num, a2_num, a3_num);
+    printf("Key/value number mismatch\n");
     return;
   }
 
@@ -96,50 +94,48 @@ void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   uint64_t key_size_r, a2_size;
   tiledb_datatype_t key_type_r;
 
-  std::cout << "key, key_type, a1, a2, (a3.first, a3.second)\n";
-  std::cout << "--------------------------------------------\n";
+  printf("key, key_type, a1, a2, (a3.first, a3.second)\n");
+  printf("--------------------------------------------\n");
   for (uint64_t i = 0; i < key_num; ++i) {
     tiledb_kv_get_key(ctx, kv, i, &key_r, &key_type_r, &key_size_r);
     tiledb_kv_get_value(ctx, kv, i, 0, &a1);
     tiledb_kv_get_value_var(ctx, kv, i, 1, &a2, &a2_size);
     tiledb_kv_get_value(ctx, kv, i, 2, &a3);
     print_key(key_r, key_type_r, key_size_r);
-    std::cout << ", " << *((int*)a1);
-    std::cout << ", " << std::string((const char*)a2, a2_size);
-    std::cout << ", (" << ((float*)a3)[0] << ", " << ((float*)a3)[1] << ")\n";
+    printf(", %d, %.*s, (%f, %f)\n", *((int*)a1), (int)a2_size, (const char*)a2, ((float*)a3)[0],  ((float*)a3)[1]);
   }
 }
 
 void print_key(void* key, tiledb_datatype_t key_type, uint64_t key_size) {
-  auto nitems = 0;
+  int nitems = 0;
   switch (key_type) {
     case TILEDB_INT32:
       nitems = (int)(key_size / sizeof(int));
       for (int i = 0; i < nitems; ++i)
-        std::cout << ((int*)key)[i] << " ";
-      std::cout << "\b, int";
+        printf("%d ", ((int*)key)[i]);
+      printf("\b, int");
       break;
     case TILEDB_FLOAT32:
       nitems = (int)(key_size / sizeof(float));
       for (int i = 0; i < nitems; ++i)
-        std::cout << ((float*)key)[i] << " ";
-      std::cout << "\b, float32";
+        printf("%f ", ((float*)key)[i]);
+      printf("\b, float32");
       break;
     case TILEDB_FLOAT64:
       nitems = (int)(key_size / sizeof(double));
       for (int i = 0; i < nitems; ++i)
-        std::cout << ((double*)key)[i] << " ";
-      std::cout << "\b, float64";
+        printf("%f ", ((double*)key)[i]);
+      printf("\b, int");
       break;
     case TILEDB_CHAR:
       nitems = (int)(key_size / sizeof(char));
       for (int i = 0; i < nitems; ++i)
-        std::cout << ((char*)key)[i];
-      std::cout << ", char";
+        printf("%c ", ((char*)key)[i]);
+      printf(", char");
       break;
     default:
-      std::cout << "Other types are not supported in this example. It should "
-                   "be trivial "
-                   "to extend to other types following this example\n";
+      printf("Other types are not supported in this example. It should "
+             "be trivial "
+             "to extend to other types following this example\n");
   }
 }

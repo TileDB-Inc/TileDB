@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_walk.cc
+ * @file   tiledb_version.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,50 +28,21 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to explore the contents of a TileDB directory.
+ * Prints the current TileDB version. Program output:
+ *
+ *     $ ./tiledb_version
+ *     TileDB v<major>.<minor>.<rev>
  */
 
 #include <tiledb.h>
-#include <iostream>
-
-int print_path(const char* path, tiledb_object_t type, void* data);
 
 int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  // Get version
+  int major, minor, rev;
+  tiledb_version(&major, &minor, &rev);
 
-  // Walk in a path with a pre- and post-order traversal
-  std::cout << "Preorder traversal:\n";
-  tiledb_walk(ctx, "my_group", TILEDB_PREORDER, print_path, nullptr);
-  std::cout << "\nPostorder traversal:\n";
-  tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, nullptr);
-
-  // Finalize context
-  tiledb_ctx_free(ctx);
+  // Print version
+  printf("TileDB v%d.%d.%d\n", major, minor, rev);
 
   return 0;
-}
-
-int print_path(const char* path, tiledb_object_t type, void* data) {
-  // Simply print the path and type
-  (void)data;
-  std::cout << path << " ";
-  switch (type) {
-    case TILEDB_ARRAY:
-      std::cout << "ARRAY";
-      break;
-    case TILEDB_KEY_VALUE:
-      std::cout << "KEY_VALUE";
-      break;
-    case TILEDB_GROUP:
-      std::cout << "GROUP";
-      break;
-    default:
-      std::cout << "INVALID";
-  }
-  std::cout << "\n";
-
-  // Always iterate till the end
-  return 1;
 }

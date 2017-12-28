@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_sparse_create.cc
+ * @file   tiledb_sparse_create.c
  *
  * @section LICENSE
  *

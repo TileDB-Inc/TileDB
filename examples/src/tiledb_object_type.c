@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_move.cc
+ * @file   tiledb_object_type.c
  *
  * @section LICENSE
  *
@@ -28,29 +28,50 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * It shows how to get the type of a TileDB object (resource).
  */
 
 #include <tiledb.h>
-#include <iostream>
+
+void print_object_type(tiledb_object_t type);
 
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Rename a valid group and array
-  tiledb_move(ctx, "my_group", "my_group_2", true);
-  tiledb_move(
-      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
+  // Get object type for group
+  tiledb_object_t type;
+  tiledb_object_type(ctx, "my_group", &type);
+  print_object_type(type);
 
-  // Rename an invalid path
-  int rc = tiledb_move(ctx, "some_invalid_path", "path", false);
-  if (rc == TILEDB_ERR)
-    std::cout << "Failed moving invalid path\n";
+  // Get object type for array
+  tiledb_object_type(ctx, "my_dense_array", &type);
+  print_object_type(type);
+
+  // Get invalid object type
+  tiledb_object_type(ctx, "some_invalid_path", &type);
+  print_object_type(type);
 
   // Clean up
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void print_object_type(tiledb_object_t type) {
+  switch (type) {
+    case TILEDB_ARRAY:
+      printf("ARRAY\n");
+      break;
+    case TILEDB_GROUP:
+      printf("GROUP\n");
+      break;
+    case TILEDB_KEY_VALUE:
+      printf("KEY_VALUE\n");
+      break;
+    case TILEDB_INVALID:
+      printf("INVALID\n");
+      break;
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_read_global.cc
+ * @file   tiledb_sparse_read_ordered_subarray.c
  *
  * @section LICENSE
  *
@@ -28,17 +28,18 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read a complete sparse array in the global cell order.
+ * It shows how to read from a sparse array, constraining the read
+ * to a specific subarray. This time the cells are returned in row-major order
+ * within the specified subarray.
  *
  * You need to run the following to make it work:
  *
  * $ ./tiledb_sparse_create
  * $ ./tiledb_sparse_write_global_1
- * $ ./tiledb_sparse_read_global
+ * $ ./tiledb_sparse_read_ordered_subarray
  */
 
 #include <tiledb.h>
-#include <cstdlib>
 
 int main() {
   // Create TileDB context
@@ -62,11 +63,15 @@ int main() {
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Set subarray
+  uint64_t subarray[] = {3, 4, 2, 4};
+
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -84,7 +89,7 @@ int main() {
     printf("\t %3d", buffer_a1[i]);
     size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
                                               buffer_sizes[2] - buffer_a2[i];
-    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
+    printf("\t %4.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
     printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 

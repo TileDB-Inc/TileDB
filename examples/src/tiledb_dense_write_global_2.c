@@ -38,6 +38,7 @@
  */
 
 #include <tiledb.h>
+#include <stdio.h>
 
 int main() {
   // Initialize context with the default configuration parameters
@@ -51,7 +52,7 @@ int main() {
   int buffer_a1[] = {0, 1, 2, 3, 4, 5};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float* buffer_a3 = nullptr;
+  float* buffer_a3 = NULL;
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
   uint64_t buffer_sizes[] = {
       6 * sizeof(int),  // 6 cells on a1

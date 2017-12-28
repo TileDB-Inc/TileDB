@@ -34,8 +34,8 @@
 #ifndef TILEDB_H
 #define TILEDB_H
 
-#include <cstdint>
-#include <cstdio>
+#include <stdio.h>
+#include <stdint.h>
 
 /* ********************************* */
 /*               MACROS              */
@@ -1272,7 +1272,7 @@ TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force);
 
 /**
  * Walks (iterates) over the TileDB objects contained in *path*. The traversal

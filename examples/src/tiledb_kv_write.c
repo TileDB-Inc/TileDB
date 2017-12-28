@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_kv_write.cc
+ * @file   tiledb_kv_write.c
  *
  * @section LICENSE
  *
@@ -36,7 +36,7 @@
  */
 
 #include <tiledb.h>
-#include <cstring>
+#include <string.h>
 
 int main() {
   // Create TileDB context

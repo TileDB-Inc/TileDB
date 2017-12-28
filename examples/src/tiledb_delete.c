@@ -32,7 +32,7 @@
  */
 
 #include <tiledb.h>
-#include <iostream>
+#include <stdio.h>
 
 int main() {
   // Create context
@@ -46,7 +46,7 @@ int main() {
   // Deletes an invalid path
   int rc = tiledb_delete(ctx, "some_invalid_path");
   if (rc == TILEDB_ERR)
-    std::cout << "Failed deleting invalid path\n";
+    printf("Failed deleting invalid path\n");
 
   // Clean up
   tiledb_ctx_free(ctx);

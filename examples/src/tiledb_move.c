@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_version.cc
+ * @file   tiledb_move.c
  *
  * @section LICENSE
  *
@@ -28,22 +28,28 @@
  *
  * @section DESCRIPTION
  *
- * Prints the current TileDB version. Program output:
- *
- *     $ ./tiledb_version
- *     TileDB v<major>.<minor>.<rev>
+ * It shows how to move/rename a TileDB resource.
  */
 
 #include <tiledb.h>
-#include <iostream>
 
 int main() {
-  // Get version
-  int major, minor, rev;
-  tiledb_version(&major, &minor, &rev);
+  // Create context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx, nullptr);
 
-  // Print version
-  std::cout << "TileDB v" << major << "." << minor << "." << rev << "\n";
+  // Rename a valid group and array
+  tiledb_move(ctx, "my_group", "my_group_2", 1);
+  tiledb_move(
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", 0);
+
+  // Rename an invalid path
+  int rc = tiledb_move(ctx, "some_invalid_path", "path", 0);
+  if (rc == TILEDB_ERR)
+    printf("Failed moving invalid path\n");
+
+  // Clean up
+  tiledb_ctx_free(ctx);
 
   return 0;
 }
