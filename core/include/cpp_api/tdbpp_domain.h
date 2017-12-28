@@ -62,8 +62,16 @@ namespace tdb {
     Domain &operator=(const Domain&) = default;
     Domain &operator=(Domain&& o) = default;
 
+    /**
+     * Load and take ownership of a domain.
+     * @param domain
+     */
     void load(tiledb_domain_t **domain);
 
+    /**
+     * Create a new domain.
+     * @tparam DataT
+     */
     template<typename DataT, typename=typename DataT::type>
     void create() {
       _create(DataT::tiledb_datatype);
@@ -81,10 +89,20 @@ namespace tdb {
 
     tiledb_datatype_t type() const;
 
+    /**
+     * @return Current set of dimensions in domain.
+     */
     const std::vector<Dimension> dimensions() const;
 
+    /**
+     * Add a new dimension to the domain.
+     * @param d dimension to add
+     */
     Domain &add_dimension(const Dimension &d);
 
+    /**
+     * @return Number of dimensions in the domain.
+     */
     unsigned size() const;
 
     std::shared_ptr<tiledb_domain_t> ptr() const {

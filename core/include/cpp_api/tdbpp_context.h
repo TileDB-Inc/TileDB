@@ -69,6 +69,12 @@ namespace tdb {
      */
     void set_root(const std::string &root);
 
+    /**
+     * Get the root path of the directory being walked.
+     * @return
+     */
+    const std::string &root() const;
+    
     tiledb_ctx_t *operator->();
 
     operator tiledb_ctx_t*();
@@ -146,9 +152,12 @@ namespace tdb {
 
     std::vector<Context> groups();
 
-    Context group_find(const std::string &name);
-
-    Context group_get(const std::string &uri);
+    /**
+     * Find a group in the current path by name.
+     * @param name
+     * @return Group object
+     */
+    tdb::Object group_find(const std::string &name);
 
     /**
      * Make a new group.
@@ -157,6 +166,10 @@ namespace tdb {
      */
     Context group_create(const std::string &group);
 
+    /**
+     * Load all arrays in current directory tree.
+     * @return
+     */
     std::vector<Array> arrays();
 
     /**
@@ -185,6 +198,12 @@ namespace tdb {
      */
     void del(const std::string &name);
 
+    /**
+     * Move a tiledb object.
+     * @param oldname
+     * @param newname
+     * @param force
+     */
     void move(std::string oldname, std::string newname, bool force);
 
     template<typename C>
@@ -195,8 +214,16 @@ namespace tdb {
       }
     }
 
+    /**
+     * Error handler for tiledb C API calls.
+     * @param ret If != 0, call error handler
+     */
     void handle_error(int ret);
 
+    /**
+     * Set error handler for failed tiledb calls.
+     * @param fn Function that accepts error message.
+     */
     void set_error_handler(std::function<void(std::string)> fn);
 
   private:

@@ -56,8 +56,19 @@ namespace tdb {
     Dimension &operator=(const Dimension &) = default;
     Dimension &operator=(Dimension &&o) = default;
 
+    /**
+     * Load and take ownership of a tiledb_dimension
+     * @param dim
+     */
     void load(tiledb_dimension_t **dim);
 
+    /**
+     * Create a new dimension with a domain datatype of DataT.
+     * @tparam DataT tdb::type::*
+     * @param name name of dimension
+     * @param domain bounds of dimension, inclusive coordinates
+     * @param extent Tile length in this dimension
+     */
     template<typename DataT>
     Dimension &create(const std::string &name, std::array<typename DataT::type, 2> domain, typename DataT::type extent) {
       void* p = domain.data();
@@ -66,6 +77,13 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * Create a dimension with a native datatype
+     * @tparam T int, char,...
+     * @param name name of dimension
+     * @param domain bounds of dimension, inclusive coordinates
+     * @param extent Tile length in this dimension
+     */
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, Dimension&>::type
     create(const std::string &name, std::array<T, 2> domain, T extent) {
@@ -76,6 +94,11 @@ namespace tdb {
 
     tiledb_datatype_t type() const;
 
+    /**
+     * Get the bounds of the dimension.
+     * @tparam T Type of underlying dimension.
+     * @return
+     */
     template<typename T>
     std::pair<typename T::type, typename T::type> domain() const {
       auto tdbtype = type();

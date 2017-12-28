@@ -59,6 +59,9 @@ namespace tdb {
     Attribute &operator=(const Attribute&) = default;
     Attribute &operator=(Attribute&& o) = default;
 
+    /**
+     * Load an array from tiledb, and take ownership.
+     */
     void load(tiledb_attribute_t **attr) {
       if (attr && *attr) {
         _init(*attr);
@@ -78,6 +81,11 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * Create a new attribute with datatype T. Reverse lookup for DataT.
+     * @tparam T int,char, etc...
+     * @param name
+     */
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
     create(const std::string &name) {
@@ -90,8 +98,14 @@ namespace tdb {
     }
 
 
+    /**
+     * @return name of attribute
+     */
     std::string name() const;
 
+    /**
+     * @return Attribute datatype
+     */
     tiledb_datatype_t type() const;
 
     unsigned num() const;

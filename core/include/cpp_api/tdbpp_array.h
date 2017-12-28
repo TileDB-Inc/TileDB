@@ -44,11 +44,28 @@
 #include <unordered_map>
 
 namespace tdb {
-  /**
-   * Open, create, and manage an Array. Arrays are read using tdb::Query's
-   */
   class Query;
 
+  /**
+   * Open, create, and manage an Array. Arrays are read using tdb::Query's
+   *
+   * @details
+   * @code
+   * tdb::Context ctx;
+   *
+   * tdb::Array array(ctx); // Empty array
+   * tdb::Array array(ctx, "my_array"); // Load an array from disk
+   *
+   * tdb::ArrayMetadata meta(ctx);
+   * meta.create("my_new_array"); // New config
+   * meta << Domain{...} << Attribute{...} ...;
+   * array.create(meta); // Write array to disk
+   *
+   * array.write(); // Make write query
+   * array.read(); // Make read query
+   *
+   * @endcode
+   */
   class Array {
   public:
     /**
@@ -56,12 +73,14 @@ namespace tdb {
      * @param ctx context
      */
     Array(Context &ctx) : _ctx(ctx), _meta(_ctx) {}
+
     /**
      * Init an array using a metadata configuration
      * @param meta metadata
      */
     Array(const ArrayMetadata &meta);
-    /**
+
+     /**
      * @param ctx context
      * @param uri Array to open
      */
@@ -77,16 +96,19 @@ namespace tdb {
     const std::string name() const;
 
     /**
-     * @return True if the underlying metadata is initilized.
+     * @return True if the underlying metadata is initialized.
      */
     bool good() const;
 
     /**
+     * Load an array from disk.
      * @param uri Array path to open.
      */
     void load(const std::string &uri);
 
     /**
+     * Given an array configuration, write it do disk. A new array needs to be created
+     * before it is queried.
      * @param meta Create a new array with given metadata
      */
     void create(const ArrayMetadata &meta);
@@ -103,6 +125,9 @@ namespace tdb {
      */
     Query write();
 
+    /**
+     * @return The underlying context
+     */
     Context &context();
 
     const Context &context() const;

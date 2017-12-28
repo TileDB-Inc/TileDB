@@ -50,7 +50,7 @@
 namespace tdb {
 
   /**
-   * Construct and execute queries on a tdb::Array
+   * Construct and execute read/write queries on a tdb::Array
    */
   class Query {
   public:
@@ -62,6 +62,11 @@ namespace tdb {
       _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
       _array_attributes = _array.get().attributes();
     }
+    /**
+     * Create a new query bound to a particular array.
+     * @param array
+     * @param type Read or Write query.
+     */
     Query(Array &array, tiledb_query_type_t type=TILEDB_READ) : Query(array.meta(), type) {}
     Query(const Query&) = default;
     Query(Query&& o) = default;

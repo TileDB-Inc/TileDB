@@ -66,7 +66,7 @@ namespace tdb {
       Type() = delete;
       using type = T;
       static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
-      static constexpr const char* name = NAME;
+      static constexpr const char *name = NAME;
     };
 
     using CHAR = Type<char, TILEDB_CHAR, char_repr>;

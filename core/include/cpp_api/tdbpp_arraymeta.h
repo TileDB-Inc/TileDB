@@ -101,7 +101,6 @@ namespace tdb {
 
     /**
      * @param type DENSE or SPARSE array
-     * @return
      */
     ArrayMetadata &set_type(tiledb_array_type_t type) {
       auto &ctx = _ctx.get();
@@ -109,42 +108,99 @@ namespace tdb {
       return *this;
     }
 
+    /**
+     * For a sparse array, get the number of cells per tile.
+     * @return Cells per tile
+     */
     uint64_t capacity() const;
 
+    /**
+     * For a sparse array, set the number of cells per tile.
+     * @param capacity
+     */
     ArrayMetadata &set_capacity(uint64_t capacity);
 
+    /**
+     * @return Current tile order
+     */
     tiledb_layout_t tile_order() const;
 
+    /**
+     * @param layout Tile layout
+     */
     ArrayMetadata &set_tile_order(tiledb_layout_t layout);
 
+    /**
+     * @param {Tile layout, Cell layout}
+     */
     ArrayMetadata &set_order(const std::array<tiledb_layout_t, 2> &p);
 
+    /**
+     * @return Current cell layout.
+     */
     tiledb_layout_t cell_order() const;
 
+    /**
+     * @param layout Cell layout
+     */
     ArrayMetadata &set_cell_order(tiledb_layout_t layout);
 
+    /**
+     * @return Current compression scheme and level
+     */
     Compressor coord_compressor() const;
 
+    /**
+     * Set the compressor for coordinates
+     * @param c Compressor scheme and level
+     */
     ArrayMetadata &set_coord_compressor(const Compressor c);
 
+    /**
+     * @return Compressor scheme for offsets
+     */
     Compressor offset_compressor() const;
 
+   /**
+    * @param c Compressor scheme for offsets
+    */
     ArrayMetadata &set_offset_compressor(const Compressor c);
 
+    /**
+     * Get the name of the array the metadata defines.
+     * @return
+     */
     std::string name() const;
 
+    /**
+     * Domain of array. This is a set of dimensions.
+     * @return Domain
+     */
     Domain domain() const;
 
+    /**
+     * @param domain Configure array with the given domain.
+     */
     ArrayMetadata &set_domain(const Domain &domain);
 
+    /**
+     * Add a cell attribute to the array.
+     * @param attr
+     */
     ArrayMetadata &add_attribute(const Attribute &attr);
 
+    /**
+     * Mark the array as a key value store.
+     */
     ArrayMetadata &set_kv();
 
     tiledb_array_metadata_t *get() {
       return _meta.get();
     }
 
+    /**
+     * @return Check if the array is a key value store.
+     */
     bool is_kv() const;
 
     /**
@@ -158,7 +214,14 @@ namespace tdb {
      */
     const std::unordered_map<std::string, Attribute> attributes() const;
 
+    /**
+     * @return True if an underlying tiledb_metadata object exists.
+     */
     bool good() const;
+
+    /**
+     * @return shared_ptr to underlying metadata.
+     */
     std::shared_ptr<tiledb_array_metadata_t> ptr() const;
 
     std::reference_wrapper<Context> context();

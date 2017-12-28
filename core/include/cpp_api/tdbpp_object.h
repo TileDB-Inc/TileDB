@@ -42,6 +42,9 @@
 
 namespace tdb {
 
+  /**
+   * Represents a tiledb object: an array, group, keyvalue, or none (invalid)
+   */
   struct Object {
     enum class Type {Array, Group, Invalid, KeyValue};
 
@@ -60,6 +63,9 @@ namespace tdb {
     std::string to_str() const;
   };
 
+  /**
+   * Represents a compression scheme. Composed of a compression algo + a compression level.
+   */
   struct Compressor {
     Compressor() = default;
     Compressor(tiledb_compressor_t c) : compressor(c), level(-1) {}

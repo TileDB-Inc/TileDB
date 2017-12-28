@@ -35,8 +35,6 @@
 
 int main() {
   tdb::Context ctx;
-  // find my_group and move into it
-  ctx = ctx.group_find("my_group");
 
   std::cout << "Preorder traversal: \n";
   // Default order is preorder

@@ -64,15 +64,15 @@ tdb::Array tdb::Context::array_find(const std::string &name) {
   return ret;
 }
 
-tdb::Context tdb::Context::group_find(const std::string &name) {
-  auto ret = Context(*this, Object::Type::Invalid);
+tdb::Object tdb::Context::group_find(const std::string &name) {
+  auto ret = Object();
   bool found = false;
   for (const auto &i : *this) {
     if (i.type != Object::Type::Group) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
       if (found) throw std::runtime_error("Multiple matches found, extend search path.");
       found = true;
-      ret = Context(*this, i);
+      ret = i;
     }
   }
   return ret;
