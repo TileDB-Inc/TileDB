@@ -253,18 +253,27 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Domain not set"));
 
-  if (array_type_ == ArrayType::DENSE && domain_->null_tile_extents())
-    return LOG_STATUS(
-        Status::ArrayMetadataError("Array metadata check failed; Dense arrays "
-                                   "should not have null tile extents"));
-
   if (dim_num() == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No dimensions provided"));
 
-  if (array_type_ == ArrayType::DENSE && attribute_num_ == 0)
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; No attributes provided"));
+  if (array_type_ == ArrayType::DENSE) {
+    if (domain_->null_tile_extents()) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; Dense arrays "
+          "can not have null tile extents"));
+    }
+    if (domain_->type() == Datatype::FLOAT32 ||
+        domain_->type() == Datatype::FLOAT64) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; Dense arrays "
+          "can not have floating point domains"));
+    }
+    if (attribute_num_ == 0) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; No attributes provided"));
+    }
+  }
 
   if (!check_double_delta_compressor())
     return LOG_STATUS(Status::ArrayMetadataError(

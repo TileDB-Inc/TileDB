@@ -755,3 +755,42 @@ TEST_CASE_METHOD(
   rc = tiledb_domain_free(ctx_, domain);
   CHECK(rc == TILEDB_OK);
 }
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array metadata floating point dense domain error",
+    "[capi], [metadata]") {
+  int rc;
+  // Create array metadata
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata_, ARRAY_PATH.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  float dim_domain[] = {0.0, 1.0};
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_FLOAT32, dim_domain, nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain, TILEDB_FLOAT32);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_array_metadata_set_array_type(ctx_, array_metadata_, TILEDB_DENSE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_create(ctx_, &attr1, "", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_metadata_check(ctx_, array_metadata_);
+  CHECK(rc != TILEDB_OK);
+}
