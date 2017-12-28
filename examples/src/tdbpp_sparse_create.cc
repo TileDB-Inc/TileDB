@@ -37,14 +37,14 @@
 int main() {
   tdb::Context ctx;
 
-  // Can also do: domain.create<tdb::type::UINT64>();
+  // Can also do: domain.create<uint64_t>();
   tdb::Domain domain(ctx, TILEDB_UINT64);
   tdb::Dimension d1(ctx), d2(ctx);
   d1.create<uint64_t>("d1", {1,4}, 2);
   d2.create<uint64_t>("d2", {1,4}, 2);
   domain << d1 << d2; // Add dims to domain
 
-  // Can also do: a1.create<tdb::type::INT32>("a1")
+  // Can also do: a1.create<int>("a1")
   tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
   tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
   tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);

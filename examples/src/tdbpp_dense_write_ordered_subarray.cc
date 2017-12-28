@@ -55,9 +55,9 @@ int main() {
   std::vector<float> a3_data = {
   9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
 
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
-  query.set_buffer<tdb::type::CHAR>("a2", a2_offsets, a2_data);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
+  query.set_buffer("a1", a1_data);
+  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a3", a3_data);
 
   query.submit();
   return 0;

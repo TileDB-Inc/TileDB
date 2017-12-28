@@ -85,13 +85,11 @@ file(GLOB CPPAPI_SOURCE "src/cpp_api/*")
 add_library(tdbpp_static STATIC ${CPPAPI_SOURCE})
 set_target_properties(tdbpp_static PROPERTIES OUTPUT_NAME "tdbpp")
 set_target_properties(tdbpp_static PROPERTIES CXX_VISIBILITY_PRESET "default")
-target_link_libraries(tdbpp_static tiledb_static)
 
 # C++ library, dynamic
 add_library(tdbpp_shared SHARED ${CPPAPI_SOURCE})
 set_target_properties(tdbpp_shared PROPERTIES OUTPUT_NAME "tdbpp")
 set_target_properties(tdbpp_shared PROPERTIES CXX_VISIBILITY_PRESET "default")
-target_link_libraries(tdbpp_shared tiledb_shared)
 
 # Install libraries
 install(

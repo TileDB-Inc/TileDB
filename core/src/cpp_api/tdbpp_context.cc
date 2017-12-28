@@ -78,12 +78,6 @@ tdb::Object tdb::Context::group_find(const std::string &name) {
   return ret;
 }
 
-tdb::Context tdb::Context::group_get(const std::string &uri) {
-  auto ret = Context(*this, uri);
-  if (ret.context_type().type != Object::Type::Group) throw std::runtime_error("Group does not exist: " + uri);
-  return ret;
-}
-
 std::vector<tdb::Context> tdb::Context::groups() {
   std::vector<Context> ret;
   for (const auto &i : *this) {
