@@ -59,6 +59,20 @@ std::string abs_path(const std::string& path) {
   return str_result;
 }
 
+Status create_dir(const std::string& path) {
+  if (win32::is_dir(path)) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot create directory '") + path +
+        "'; Directory already exists"));
+  }
+  CreateDirectory(path.c_str(), nullptr);
+  return Status::Ok();
+}
+
+bool is_dir(const std::string& path) {
+  return PathIsDirectory(path.c_str());
+}
+
 }  // namespace win32
 
 }  // namespace tiledb
