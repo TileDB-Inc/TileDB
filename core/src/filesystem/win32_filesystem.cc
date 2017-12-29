@@ -135,9 +135,13 @@ static Status recursively_remove_directory(const std::string &path) {
     goto err;
   }
 
+  FindClose(find_h);
   return Status::Ok();
 
 err:
+  if (find_h != INVALID_HANDLE_VALUE) {
+    FindClose(find_h);
+  }
   return LOG_STATUS(Status::IOError(
     std::string("Failed to remove directory.")));
 }
@@ -218,6 +222,43 @@ bool is_dir(const std::string& path) {
 
 bool is_file(const std::string& path) {
   return PathFileExists(path.c_str());
+}
+
+Status ls(const std::string& path, std::vector<std::string>* paths) {
+  const std::string glob = path + "\\*";
+  WIN32_FIND_DATA find_data;
+
+  // Get first file in directory.
+  HANDLE find_h = FindFirstFileEx(glob.c_str(), FindExInfoBasic, &find_data, FindExSearchNameMatch, nullptr, 0);
+  if (find_h == INVALID_HANDLE_VALUE) {
+    goto err;
+  }
+
+  while (true) {
+    // Skip '.' and '..'
+    if (strcmp(find_data.cFileName, ".") != 0 && strcmp(find_data.cFileName, "..") != 0) {
+      paths->push_back(find_data.cFileName);
+    }
+
+    // Next find result.
+    if (!FindNextFile(find_h, &find_data)) {
+      break;
+    }
+  }
+
+  if (RemoveDirectory(path.c_str()) == 0) {
+    goto err;
+  }
+
+  FindClose(find_h);
+  return Status::Ok();
+
+err:
+  if (find_h != INVALID_HANDLE_VALUE) {
+    FindClose(find_h);
+  }
+  return LOG_STATUS(Status::IOError(
+    std::string("Failed to list directory.")));
 }
 
 std::string uri_from_path(const std::string &path) {
