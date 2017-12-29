@@ -201,6 +201,17 @@ Status filelock_lock(const std::string& filename, file_lock_t* fd, bool shared) 
   return Status::Ok();
 }
 
+Status filelock_unlock(file_lock_t fd) {
+  OVERLAPPED overlapped = { 0 };
+  if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) != 0) {
+    CloseHandle(fd);
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to unlock file lock")));
+  }
+  CloseHandle(fd);
+  return Status::Ok();
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
 }
