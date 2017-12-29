@@ -65,6 +65,18 @@ add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 set_target_properties(tiledb_shared PROPERTIES OUTPUT_NAME "tiledb")
 target_link_libraries(tiledb_shared ${TILEDB_LIB_DEPENDENCIES})
 
+# Link Windows API libraries
+if (WIN32)
+  set(WIN32_LIBS
+    Shlwapi
+  )
+  foreach (LIB ${WIN32_LIBS})
+    find_library(${LIB} $LIB)
+    target_link_libraries(tiledb_static ${LIB})
+    target_link_libraries(tiledb_shared ${LIB})
+  endforeach()
+endif()
+
 # Install libraries
 install(
     TARGETS tiledb_static tiledb_shared 

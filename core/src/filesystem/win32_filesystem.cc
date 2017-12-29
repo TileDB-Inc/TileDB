@@ -39,12 +39,25 @@
 
 #include <fstream>
 #include <iostream>
+#include <Windows.h>
+#include <Shlwapi.h>
+#include <wininet.h> // For INTERNET_MAX_URL_LENGTH
 
 namespace tiledb {
 
 namespace win32 {
 
-
+std::string abs_path(const std::string& path) {
+  unsigned long result_len = 0;
+  char result[INTERNET_MAX_URL_LENGTH];
+  std::string str_result;
+  if (UrlCanonicalize(path.c_str(), result, &result_len, 0) != S_OK) {
+    LOG_STATUS(Status::IOError(std::string("Cannot canonicalize path.")));
+  } else {
+    str_result = result;
+  }
+  return str_result;
+}
 
 }  // namespace win32
 
