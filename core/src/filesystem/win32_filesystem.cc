@@ -69,8 +69,31 @@ Status create_dir(const std::string& path) {
   return Status::Ok();
 }
 
+Status create_file(const std::string& filename) {
+  if (win32::is_file(filename)) {
+    return Status::Ok();
+  }
+
+  HANDLE file_h = CreateFile(filename.c_str(),
+           GENERIC_WRITE,
+           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+           nullptr,
+           CREATE_NEW,
+           FILE_ATTRIBUTE_NORMAL,
+           nullptr);
+  if (file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
+    return LOG_STATUS(Status::IOError(
+           std::string("Failed to create file '") + filename + "'"));
+  }
+  return Status::Ok();
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
+}
+
+bool is_file(const std::string& path) {
+  return PathFileExists(path.c_str());
 }
 
 }  // namespace win32
