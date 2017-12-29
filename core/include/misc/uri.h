@@ -86,21 +86,6 @@ class URI {
   bool is_posix() const;
 
   /**
-   * Checks if the input path is Win32.
-   *
-   * @param path The path to be checked.
-   * @return The result of the check.
-   */
-  static bool is_win32(const std::string& path);
-
-  /**
-   * Checks if the URI is Win32.
-   *
-   * @return The result of the check.
-   */
-  bool is_win32() const;
-
-  /**
    * Checks if the input path is HDFS.
    *
    * @param path The path to be checked.

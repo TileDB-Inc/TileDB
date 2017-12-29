@@ -38,12 +38,6 @@
 
 namespace tiledb {
 
-#ifdef _WIN32
-static const char PATH_SEPARATOR = '\\';
-#else
-static const char PATH_SEPARATOR = '/';
-#endif
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -53,7 +47,7 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  if (URI::is_posix(path) || URI::is_win32(path))
+  if (URI::is_posix(path))
     uri_ = VFS::abs_path(path);
   else if (URI::is_hdfs(path) || URI::is_s3(path))
     uri_ = path;
@@ -84,19 +78,6 @@ bool URI::is_posix() const {
   return utils::starts_with(uri_, "file:///");
 }
 
-bool URI::is_win32(const std::string& path) {
-#ifdef _WIN32
-  bool backslash = path.length() > 0 && path.find("\\") != std::string::npos;
-  return backslash || !(is_posix(path) || is_hdfs(path) || is_s3(path));
-#else
-  return false;
-#endif
-}
-
-bool URI::is_win32() const {
-  return is_win32(uri_);
-}
-
 bool URI::is_hdfs(const std::string& path) {
   return utils::starts_with(path, "hdfs://");
 }
@@ -114,19 +95,15 @@ bool URI::is_s3() const {
 }
 
 URI URI::join_path(const std::string& path) const {
-  if (is_win32()) {
-    return URI(uri_ + "\\" + path);
-  } else {
-    return URI(uri_ + "/" + path);
-  }
+  return URI(uri_ + "/" + path);
 }
 
 std::string URI::last_path_part() const {
-  return uri_.substr(uri_.find_last_of(PATH_SEPARATOR) + 1);
+  return uri_.substr(uri_.find_last_of('/') + 1);
 }
 
 URI URI::parent() const {
-  uint64_t pos = uri_.find_last_of(PATH_SEPARATOR);
+  uint64_t pos = uri_.find_last_of('/');
   if (pos == std::string::npos)
     return URI();
   return URI(uri_.substr(0, pos));
@@ -136,7 +113,7 @@ std::string URI::to_path() const {
   if (is_posix())
     return uri_.substr(std::string("file://").size());
   
-  if (is_win32() || is_hdfs() || is_s3())
+  if (is_hdfs() || is_s3())
     return uri_;
 
   // Error
