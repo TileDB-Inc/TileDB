@@ -35,6 +35,7 @@
 
 #include "status.h"
 #include "vfs.h"
+#include "file_lock.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -96,7 +97,7 @@ class LockedArray {
   bool exclusive_lock_;
 
   /** Filelock handle. */
-  int filelock_;
+  file_lock_t filelock_;
 
   /** The locked array mutex. */
   std::mutex mtx_;

@@ -181,6 +181,26 @@ Status file_size(const std::string& path, uint64_t* size) {
   return Status::Ok();
 }
 
+Status filelock_lock(const std::string& filename, file_lock_t* fd, bool shared) {
+  HANDLE file_h = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE,
+    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to lock '" + filename + "'")));
+  }
+  OVERLAPPED overlapped = { 0 };
+  if (LockFileEx(file_h, shared ? 0 : LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped) != 0) {
+    CloseHandle(file_h);
+    *fd = INVALID_FILE_LOCK;
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to lock '" + filename + "'")));
+  }
+
+  *fd = file_h;
+  return Status::Ok();
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
 }

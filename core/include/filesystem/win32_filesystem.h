@@ -42,6 +42,7 @@
 #include "buffer.h"
 #include "status.h"
 #include "uri.h"
+#include "file_lock.h"
 
 namespace tiledb {
 
@@ -113,7 +114,7 @@ Status file_size(const std::string& path, uint64_t* size);
  *     lock.
  * @return Status
  */
-Status filelock_lock(const std::string& filename, int* fd, bool shared);
+Status filelock_lock(const std::string& filename, file_lock_t* fd, bool shared);
 
 /**
  * Unlock an opened file descriptor
@@ -121,7 +122,7 @@ Status filelock_lock(const std::string& filename, int* fd, bool shared);
  * @param fd the open file descriptor to unlock
  * @return Status
  */
-Status filelock_unlock(int fd);
+Status filelock_unlock(file_lock_t fd);
 
 /**
  * Checks if the input is an existing directory.
