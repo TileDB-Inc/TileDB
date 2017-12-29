@@ -162,6 +162,25 @@ Status remove_file(const std::string& path) {
   return Status::Ok();
 }
 
+Status file_size(const std::string& path, uint64_t* size) {
+  LARGE_INTEGER nbytes;
+  HANDLE file_h = CreateFile(path.c_str(), GENERIC_READ,
+    FILE_SHARE_READ, NULL, OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to get file size for '" + path + "'")));
+  }
+  if (!GetFileSizeEx(file_h, &nbytes)) {
+    CloseHandle(file_h);
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to get file size for '" + path + "'")));
+  }
+  *size = nbytes.QuadPart;
+  CloseHandle(file_h);
+  return Status::Ok();
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
 }
