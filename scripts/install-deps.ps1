@@ -110,17 +110,19 @@ function Install-Zstd {
 function Install-Bzip2 {
     $Bzip2Root = (Join-Path $StagingDirectory "bzip2")
     if (!(Test-Path $Bzip2Root)) {
-	# Have to use a mirror URL directly, unless we handle the redirect.
-	DownloadIfNotExists $DownloadBzip2Dest "https://ayera.dl.sourceforge.net/project/gnuwin32/bzip2/1.0.5/bzip2-1.0.5-bin.zip"
+	DownloadIfNotExists $DownloadBzip2Dest "https://github.com/TileDB-Inc/bzip2-windows/releases/download/v1.0.6/bzip2-1.0.6.zip"
 	New-Item -ItemType Directory -Path $Bzip2Root
 	Unzip $DownloadBzip2Dest $Bzip2Root
     }
-    $LibDir = Join-Path $Bzip2Root "lib"
-    $BinDir = Join-Path $Bzip2Root "bin"
-    Copy-Item (Join-Path $LibDir "bzip2.lib") (Join-Path (Join-Path $InstallPrefix "lib") "bz2.lib")
-    Copy-Item (Join-Path $BinDir "bzip2.dll") (Join-Path (Join-Path $InstallPrefix "bin") "bz2.dll")
-    $IncDir = Join-Path $Bzip2Root "include"
-    Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
+    Push-Location
+    Set-Location (Join-Path $Bzip2Root "bzip2-1.0.6")
+    if (!(Test-Path build)) {
+	New-Item -ItemType Directory -Path build
+    }
+    Set-Location build
+    cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
+    cmake --build . --config Release --target INSTALL
+    Pop-Location
 }
 
 function Install-All-Deps {
