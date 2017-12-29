@@ -62,7 +62,7 @@ VFS::~VFS() {
 /* ********************************* */
 
 std::string VFS::abs_path(const std::string& path) {
-  if (URI::is_posix(path))
+  if (URI::is_file(path))
     return posix::abs_path(path);
   if (URI::is_hdfs(path))
     return path;
@@ -71,7 +71,7 @@ std::string VFS::abs_path(const std::string& path) {
 }
 
 Status VFS::create_dir(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::create_dir(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -86,7 +86,7 @@ Status VFS::create_dir(const URI& uri) const {
 }
 
 Status VFS::create_file(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::create_file(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -101,7 +101,7 @@ Status VFS::create_file(const URI& uri) const {
 }
 
 Status VFS::remove_path(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::remove_path(uri.to_path());
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -115,7 +115,7 @@ Status VFS::remove_path(const URI& uri) const {
 }
 
 Status VFS::remove_file(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::remove_file(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -129,7 +129,7 @@ Status VFS::remove_file(const URI& uri) const {
 }
 
 Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
-  if (uri.is_posix())
+  if (uri.is_file())
     return posix::filelock_lock(uri.to_path(), fd, shared);
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -142,7 +142,7 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
 }
 
 Status VFS::filelock_unlock(const URI& uri, int fd) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::filelock_unlock(fd);
   }
   if (uri.is_hdfs()) {
@@ -156,7 +156,7 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::file_size(uri.to_path(), size);
   }
   if (uri.is_hdfs()) {
@@ -170,7 +170,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 }
 
 bool VFS::is_dir(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::is_dir(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -184,7 +184,7 @@ bool VFS::is_dir(const URI& uri) const {
 }
 
 bool VFS::is_file(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::is_file(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -199,7 +199,7 @@ bool VFS::is_file(const URI& uri) const {
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   std::vector<std::string> paths;
-  if (parent.is_posix()) {
+  if (parent.is_file()) {
     RETURN_NOT_OK(posix::ls(parent.to_path(), &paths));
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -218,8 +218,8 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
-  if (old_uri.is_posix()) {
-    if (new_uri.is_posix()) {
+  if (old_uri.is_file()) {
+    if (new_uri.is_file()) {
       return posix::move_path(old_uri.to_path(), new_uri.to_path());
     }
     if (new_uri.is_hdfs()) {
@@ -234,7 +234,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
       return Status::VFSError("TileDB was built without HDFS support");
 #endif
     }
-    if (new_uri.is_posix()) {
+    if (new_uri.is_file()) {
       return hdfs::get_path(old_uri, new_uri);
     }
   }
@@ -245,7 +245,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
 
 Status VFS::read_from_file(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::read_from_file(uri.to_path(), offset, buffer, nbytes);
   }
   if (uri.is_hdfs()) {
@@ -259,7 +259,7 @@ Status VFS::read_from_file(
 }
 
 Status VFS::sync(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::sync(uri.to_path());
   }
   if (uri.is_hdfs()) {
@@ -274,7 +274,7 @@ Status VFS::sync(const URI& uri) const {
 
 Status VFS::write_to_file(
     const URI& uri, const void* buffer, uint64_t buffer_size) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
     return posix::write_to_file(uri.to_path(), buffer, buffer_size);
   }
   if (uri.is_hdfs()) {

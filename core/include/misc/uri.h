@@ -71,19 +71,19 @@ class URI {
   bool is_invalid() const;
 
   /**
-   * Checks if the input path is posix.
+   * Checks if the input path is file.
    *
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_posix(const std::string& path);
+  static bool is_file(const std::string& path);
 
   /**
-   * Checks if the URI is posix.
+   * Checks if the URI is file.
    *
    * @return The result of the check.
    */
-  bool is_posix() const;
+  bool is_file() const;
 
   /**
    * Checks if the input path is HDFS.

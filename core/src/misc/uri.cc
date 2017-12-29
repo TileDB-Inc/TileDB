@@ -47,7 +47,7 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  if (URI::is_posix(path))
+  if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
   else if (URI::is_hdfs(path) || URI::is_s3(path))
     uri_ = path;
@@ -69,12 +69,12 @@ bool URI::is_invalid() const {
   return uri_.empty();
 }
 
-bool URI::is_posix(const std::string& path) {
+bool URI::is_file(const std::string& path) {
   return utils::starts_with(path, "file:///") ||
          path.find("://") == std::string::npos;
 }
 
-bool URI::is_posix() const {
+bool URI::is_file() const {
   return utils::starts_with(uri_, "file:///");
 }
 
@@ -110,7 +110,7 @@ URI URI::parent() const {
 }
 
 std::string URI::to_path() const {
-  if (is_posix())
+  if (is_file())
     return uri_.substr(std::string("file://").size());
   
   if (is_hdfs() || is_s3())
