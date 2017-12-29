@@ -101,6 +101,67 @@ std::string current_dir() {
   return dir;
 }
 
+static Status recursively_remove_directory(const std::string &path) {
+  const std::string glob = path + "\\*";
+  WIN32_FIND_DATA find_data;
+
+  // Get first file in directory.
+  HANDLE find_h = FindFirstFileEx(glob.c_str(), FindExInfoBasic, &find_data, FindExSearchNameMatch, nullptr, 0);
+  if (find_h == INVALID_HANDLE_VALUE) {
+    goto err;
+  }
+
+  while (true) {
+    // Skip '.' and '..'
+    if (find_data.cFileName[0] != '.') {
+      if (PathIsDirectory(find_data.cFileName)) {
+        if (!recursively_remove_directory(find_data.cFileName).ok()) {
+          goto err;
+        }
+      } else {
+        if (!remove_file(find_data.cFileName).ok()) {
+          goto err;
+        }
+      }
+    }
+
+    // Next find result.
+    if (!FindNextFile(find_h, &find_data)) {
+      break;
+    }
+  }
+
+  if (RemoveDirectory(path.c_str()) == 0) {
+    goto err;
+  }
+
+  return Status::Ok();
+
+err:
+  return LOG_STATUS(Status::IOError(
+    std::string("Failed to remove directory.")));
+}
+
+Status remove_path(const std::string& path) {
+  if (win32::is_file(path)) {
+    return remove_file(path);
+  } else {
+    return recursively_remove_directory(path);
+  }
+}
+
+Status delete_dir(const std::string& path) {
+  return recursively_remove_directory(path);
+}
+
+Status remove_file(const std::string& path) {
+  if (!DeleteFile(path.c_str())) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to delete file '" + path + "'")));
+  }
+  return Status::Ok();
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
 }
@@ -127,7 +188,7 @@ std::string path_from_uri(const std::string &uri) {
   std::string str_path;
   if (PathCreateFromUrl(uri.c_str(), path, &path_length, NULL) != S_OK) {
     LOG_STATUS(Status::IOError(
-        std::string("Failed to convert URI to path.")));
+          std::string("Failed to convert URI to path.")));
   }
   str_path = path;
   return str_path;
