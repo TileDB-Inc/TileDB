@@ -205,6 +205,22 @@ Status sync(const std::string& path);
 Status write_to_file(
     const std::string& path, const void* buffer, uint64_t buffer_size);
 
+/**
+ * Converts a Win32 path to a "file:///" URI.
+ *
+ * @param path The Win32 path to convert.
+ * @status A path file URI.
+ */
+std::string uri_from_path(const std::string &path);
+
+/**
+ * Converts a "file:///" URI to a Win32 path.
+ *
+ * @param path The URI to convert.
+ * @status A Win32 path.
+ */
+std::string path_from_uri(const std::string &uri);
+
 }  // namespace win32
 
 }  // namespace tiledb

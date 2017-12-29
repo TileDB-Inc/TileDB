@@ -88,12 +88,49 @@ Status create_file(const std::string& filename) {
   return Status::Ok();
 }
 
+std::string current_dir() {
+  std::string dir;
+  unsigned long length = GetCurrentDirectory(0, nullptr);
+  char *path = (char*)std::malloc(length * sizeof(char));
+  if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
+    LOG_STATUS(Status::IOError(
+        std::string("Failed to get current directory.")));
+  }
+  dir = path;
+  std::free(path);
+  return dir;
+}
+
 bool is_dir(const std::string& path) {
   return PathIsDirectory(path.c_str());
 }
 
 bool is_file(const std::string& path) {
   return PathFileExists(path.c_str());
+}
+
+std::string uri_from_path(const std::string &path) {
+  unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
+  char uri[INTERNET_MAX_URL_LENGTH];
+  std::string str_uri;
+  if (UrlCreateFromPath(path.c_str(), uri, &uri_length, NULL) != S_OK) {
+    LOG_STATUS(Status::IOError(
+        std::string("Failed to convert path to URI.")));
+  }
+  str_uri = uri;
+  return str_uri;
+}
+
+std::string path_from_uri(const std::string &uri) {
+  unsigned long path_length = MAX_PATH;
+  char path[MAX_PATH];
+  std::string str_path;
+  if (PathCreateFromUrl(uri.c_str(), path, &path_length, NULL) != S_OK) {
+    LOG_STATUS(Status::IOError(
+        std::string("Failed to convert URI to path.")));
+  }
+  str_path = path;
+  return str_path;
 }
 
 }  // namespace win32
