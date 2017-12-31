@@ -262,12 +262,15 @@ bool VFS::is_file(const URI& uri) const {
 
 #ifdef HAVE_S3
 Status VFS::init(const S3::S3Config& s3_config) {
+#ifdef HAVE_HDFS
+  RETURN_NOT_OK(hdfs::connect(hdfs_));
+#endif
   return s3_.connect(s3_config);
 }
 #else
 Status VFS::init() {
 #ifdef HAVE_HDFS
-  return hdfs::connect(hdfs_);
+  RETURN_NOT_OK(hdfs::connect(hdfs_));
 #endif
   return Status::Ok();
 }

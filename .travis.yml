@@ -8,6 +8,7 @@ env:
         - USE_HDFS="ON" USE_S3="OFF" 
         - USE_HDFS="OFF" USE_S3="ON"
         - USE_HDFS="OFF" USE_S3="OFF"
+        - USE_HDFS="ON" USE_S3="ON"
 
 install:
     # Install lcov to coveralls conversion + upload tool
@@ -33,6 +34,7 @@ install:
     - if [ "$USE_HDFS" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-hdfs; fi
     - if [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3; fi
     - if [ "$USE_HDFS" == "OFF" ] && [ "$USE_S3" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
+    - if [ "$USE_HDFS" == "ON" ] && [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3 --enable-hdfs; fi
     - make -j4
     - make examples -j4
     
