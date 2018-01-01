@@ -269,6 +269,27 @@ Status move_path(const std::string& old_path, const std::string& new_path) {
   return Status::Ok();
 }
 
+void purge_dots_from_path(std::string* path) {
+  // Trivial case
+  if (path == nullptr)
+    return;
+
+  // Trivial case
+  uint64_t path_size = path->size();
+  if (path_size == 0 || *path == "file:///")
+    return;
+
+  assert(utils::starts_with(*path, "file:///"));
+
+  char result[INTERNET_MAX_URL_LENGTH];
+  unsigned long result_length = path->length();
+  if (UrlCanonicalize(path->c_str(), result, &result_length, 0) == S_OK) {
+    *path = result;
+  } else {
+    *path = "";
+  }
+}
+
 std::string uri_from_path(const std::string &path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
