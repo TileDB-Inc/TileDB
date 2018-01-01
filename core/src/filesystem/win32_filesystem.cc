@@ -282,7 +282,7 @@ void purge_dots_from_path(std::string* path) {
   assert(utils::starts_with(*path, "file:///"));
 
   char result[INTERNET_MAX_URL_LENGTH];
-  unsigned long result_length = path->length();
+  unsigned long result_length = 0;
   if (UrlCanonicalize(path->c_str(), result, &result_length, 0) == S_OK) {
     *path = result;
   } else {
