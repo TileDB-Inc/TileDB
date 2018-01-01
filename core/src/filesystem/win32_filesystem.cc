@@ -290,6 +290,39 @@ void purge_dots_from_path(std::string* path) {
   }
 }
 
+
+Status read_from_file(
+  const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
+  // Open the file (OPEN_EXISTING with CreateFile() will only open, not create, the file).
+  HANDLE file_h = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    return LOG_STATUS(
+      Status::IOError("Cannot read from file; File opening error"));
+  }
+
+  LARGE_INTEGER offset_lg_int;
+  offset_lg_int.QuadPart = offset;
+  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+      Status::IOError("Cannot read from file; File seek error"));
+  }
+
+  unsigned long num_bytes_read = 0;
+  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 || num_bytes_read != nbytes) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+      Status::IOError("Cannot read from file; File read error"));
+  }
+
+  if (CloseHandle(file_h) == 0) {
+    return LOG_STATUS(
+      Status::IOError("Cannot read from file; File closing error"));
+  }
+
+  return Status::Ok();
+}
+
 std::string uri_from_path(const std::string &path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
