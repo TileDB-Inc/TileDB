@@ -323,6 +323,28 @@ Status read_from_file(
   return Status::Ok();
 }
 
+Status sync(const std::string& path) {
+  // Open the file (OPEN_EXISTING with CreateFile() will only open, not create, the file).
+  HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    return LOG_STATUS(
+      Status::IOError("Cannot sync file; File opening error"));
+  }
+
+  if (FlushFileBuffers(file_h) == 0) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+      Status::IOError("Cannot sync file; Sync error"));
+  }
+
+  if (CloseHandle(file_h) == 0) {
+    return LOG_STATUS(
+      Status::IOError("Cannot read from file; File closing error"));
+  }
+
+  return Status::Ok();
+}
+
 std::string uri_from_path(const std::string &path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
