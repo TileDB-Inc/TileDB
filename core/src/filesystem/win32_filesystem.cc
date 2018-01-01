@@ -261,6 +261,14 @@ err:
     std::string("Failed to list directory.")));
 }
 
+Status move_path(const std::string& old_path, const std::string& new_path) {
+  if (MoveFileEx(old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to rename '" + old_path + "' to '" + new_path + "'.")));
+  }
+  return Status::Ok();
+}
+
 std::string uri_from_path(const std::string &path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
