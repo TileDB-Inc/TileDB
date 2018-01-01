@@ -345,6 +345,51 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
+Status write_to_file(
+  const std::string& path, const void* buffer, uint64_t buffer_size) {
+  // Open the file for appending, creating it if it doesn't exist.
+  HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_h == INVALID_HANDLE_VALUE) {
+    return LOG_STATUS(
+      Status::IOError("Cannot write to file; File opening error"));
+  }
+
+  LARGE_INTEGER offset_lg_int;
+  offset_lg_int.QuadPart = 0;
+  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_END) == 0) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+      Status::IOError("Cannot write to file; File seek error"));
+  }
+
+  // Append data to the file in batches of constants::max_write_bytes
+  // bytes at a time
+  unsigned long bytes_written = 0;
+  uint64_t byte_idx = 0;
+  const char *byte_buffer = reinterpret_cast<const char *>(buffer);
+  while (buffer_size > constants::max_write_bytes) {
+    if (WriteFile(file_h, byte_buffer + byte_idx, constants::max_write_bytes, &bytes_written, NULL) == 0 || bytes_written != constants::max_write_bytes) {
+      return LOG_STATUS(Status::IOError(
+        std::string("Cannot write to file '") + path +
+        "'; File writing error"));
+    }
+    buffer_size -= constants::max_write_bytes;
+    byte_idx += constants::max_write_bytes;
+  }
+  if (WriteFile(file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, NULL) == 0 || bytes_written != buffer_size) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Cannot write to file '") + path +
+      "'; File writing error"));
+  }
+
+  if (CloseHandle(file_h) == 0) {
+    return LOG_STATUS(
+      Status::IOError("Cannot write to file; File closing error"));
+  }
+
+  return Status::Ok();
+}
+
 std::string uri_from_path(const std::string &path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
