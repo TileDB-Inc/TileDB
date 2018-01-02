@@ -114,7 +114,8 @@ std::string current_dir() {
 }
 
 static Status recursively_remove_directory(const std::string &path) {
-  const std::string glob = path + "\\*";
+  std::string win_path = windows_path(path);
+  const std::string glob = win_path + "\\*";
   WIN32_FIND_DATA find_data;
 
   // Get first file in directory.
@@ -143,7 +144,7 @@ static Status recursively_remove_directory(const std::string &path) {
     }
   }
 
-  if (RemoveDirectory(path.c_str()) == 0) {
+  if (RemoveDirectory(win_path.c_str()) == 0) {
     goto err;
   }
 
