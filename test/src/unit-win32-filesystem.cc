@@ -8,6 +8,18 @@
 
 using namespace tiledb;
 
+static bool starts_with(const std::string& value, const std::string& prefix) {
+  if (prefix.size() > value.size())
+    return false;
+  return std::equal(prefix.begin(), prefix.end(), value.begin());
+}
+
+static bool ends_with(const std::string& value, const std::string& suffix) {
+  if (suffix.size() > value.size())
+    return false;
+  return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin());
+}
+
 struct Win32Fx {
   const std::string TEMP_DIR = win32::current_dir() + "/";
 
@@ -116,10 +128,13 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   }
   CHECK(allok == true);
 
-  // std::vector<std::string> paths;
-  // st = hdfs::ls(fs, URI("hdfs:///"), &paths);
-  // CHECK(st.ok());
-  // CHECK(paths.size() > 0);
+  std::vector<std::string> paths;
+  st = win32::ls(URI(test_dir).to_string(), &paths);
+  CHECK(st.ok());
+  CHECK(paths.size() == 1);
+  CHECK(starts_with(paths[0], "file:///"));
+  CHECK(ends_with(paths[0], "tiledb_test_dir/tiledb_test_file"));
+  CHECK(win32::is_file(paths[0]));
 
   // uint64_t nbytes = 0;
   // st = hdfs::file_size(

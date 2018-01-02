@@ -242,7 +242,8 @@ bool is_file(const std::string& path) {
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
-  const std::string glob = path + "\\*";
+  std::string win_path = windows_path(path);
+  const std::string glob = win_path + "\\*";
   WIN32_FIND_DATA find_data;
 
   // Get first file in directory.
@@ -254,17 +255,14 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   while (true) {
     // Skip '.' and '..'
     if (strcmp(find_data.cFileName, ".") != 0 && strcmp(find_data.cFileName, "..") != 0) {
-      paths->push_back(find_data.cFileName);
+      std::string uri = uri_from_path(win_path + "\\" + find_data.cFileName);
+      paths->push_back(uri);
     }
 
     // Next find result.
     if (!FindNextFile(find_h, &find_data)) {
       break;
     }
-  }
-
-  if (RemoveDirectory(path.c_str()) == 0) {
-    goto err;
   }
 
   FindClose(find_h);
