@@ -127,12 +127,13 @@ static Status recursively_remove_directory(const std::string &path) {
   while (true) {
     // Skip '.' and '..'
     if (strcmp(find_data.cFileName, ".") != 0 && strcmp(find_data.cFileName, "..") != 0) {
-      if (PathIsDirectory(find_data.cFileName)) {
-        if (!recursively_remove_directory(find_data.cFileName).ok()) {
+      std::string file_path = win_path + "\\" + find_data.cFileName;
+      if (PathIsDirectory(file_path.c_str())) {
+        if (!recursively_remove_directory(file_path).ok()) {
           goto err;
         }
       } else {
-        if (!remove_file(find_data.cFileName).ok()) {
+        if (!remove_file(file_path).ok()) {
           goto err;
         }
       }

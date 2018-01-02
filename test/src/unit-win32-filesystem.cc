@@ -66,6 +66,14 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(st.ok());
   CHECK(!win32::is_dir(URI(test_dir).to_string()));
 
+  st = win32::create_dir(URI(test_dir).to_string());
+  CHECK(st.ok());
+  st = win32::create_file(URI(test_file).to_string());
+  CHECK(st.ok());
+  st = win32::remove_path(URI(test_dir).to_string());
+  CHECK(st.ok());
+  CHECK(!win32::is_dir(URI(test_dir).to_string()));
+
   // st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
   // CHECK(st.ok());
 
