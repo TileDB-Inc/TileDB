@@ -35,11 +35,10 @@ file(GLOB_RECURSE TILEDB_CORE_SOURCES "src/*.cc")
 
 # Gather the external source files
 file(GLOB_RECURSE TILEDB_CORE_EXT_HEADERS 
-       "${CMAKE_SOURCE_DIR}/external/include/spdlog/*"
+       "${CMAKE_SOURCE_DIR}/external/include/spdlog/*.h"
        "${CMAKE_SOURCE_DIR}/external/include/md5/*"
 )
 file(GLOB_RECURSE TILEDB_CORE_EXT_SOURCES 
-       "${CMAKE_SOURCE_DIR}/external/src/spdlog/*"
        "${CMAKE_SOURCE_DIR}/external/src/md5/*"
 )
 
