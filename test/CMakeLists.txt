@@ -65,10 +65,17 @@ set_target_properties(
   CXX_STANDARD_REQUIRED ON
 )
 
-target_link_libraries(
-  tiledb_unit
-  ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared
-)
+if (WIN32)
+  target_link_libraries(
+    tiledb_unit
+    ${TILEDB_LIB_DEPENDENCIES} tiledb_shared
+  )
+else()
+  target_link_libraries(
+    tiledb_unit
+    ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared
+  )
+endif()
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
