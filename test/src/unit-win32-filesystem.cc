@@ -100,6 +100,8 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
       write_buffer,
       buffer_size);
   CHECK(st.ok());
+  st = win32::sync(URI(test_file).to_string());
+  CHECK(st.ok());
 
   auto read_buffer = new char[26];
   st = win32::read_from_file(
@@ -136,14 +138,18 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(ends_with(paths[0], "tiledb_test_dir/tiledb_test_file"));
   CHECK(win32::is_file(paths[0]));
 
-  // uint64_t nbytes = 0;
-  // st = hdfs::file_size(
-  //     fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"), &nbytes);
-  // CHECK(st.ok());
-  // CHECK(nbytes == buffer_size);
+  uint64_t nbytes = 0;
+  st = win32::file_size(URI(test_file).to_string(), &nbytes);
+  CHECK(st.ok());
+  CHECK(nbytes == buffer_size);
 
-  // st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test_dir/i_dont_exist"));
-  // CHECK(!st.ok());
+  st = win32::remove_path(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
+  CHECK(!st.ok());
+
+  st = win32::move_path(URI(test_file).to_string(), URI(test_file + "2").to_string());
+  CHECK(st.ok());
+  CHECK(!win32::is_file(URI(test_file).to_string()));
+  CHECK(win32::is_file(URI(test_file + "2").to_string()));
 
   // st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
   // CHECK(st.ok());

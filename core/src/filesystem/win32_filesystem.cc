@@ -182,18 +182,19 @@ Status remove_file(const std::string& path) {
 }
 
 Status file_size(const std::string& path, uint64_t* size) {
+  std::string win_path = windows_path(path);
   LARGE_INTEGER nbytes;
-  HANDLE file_h = CreateFile(path.c_str(), GENERIC_READ,
+  HANDLE file_h = CreateFile(win_path.c_str(), GENERIC_READ,
     FILE_SHARE_READ, NULL, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to get file size for '" + path + "'")));
+      std::string("Failed to get file size for '" + win_path + "'")));
   }
   if (!GetFileSizeEx(file_h, &nbytes)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to get file size for '" + path + "'")));
+      std::string("Failed to get file size for '" + win_path + "'")));
   }
   *size = nbytes.QuadPart;
   CloseHandle(file_h);
@@ -277,9 +278,11 @@ err:
 }
 
 Status move_path(const std::string& old_path, const std::string& new_path) {
-  if (MoveFileEx(old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
+  std::string old_win_path = windows_path(old_path), new_win_path = windows_path(new_path);
+
+  if (MoveFileEx(old_win_path.c_str(), new_win_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to rename '" + old_path + "' to '" + new_path + "'.")));
+      std::string("Failed to rename '" + old_win_path + "' to '" + new_win_path + "'.")));
   }
   return Status::Ok();
 }
@@ -340,8 +343,9 @@ Status read_from_file(
 }
 
 Status sync(const std::string& path) {
+  std::string win_path = windows_path(path);
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create, the file).
-  HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE file_h = CreateFile(win_path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
       Status::IOError("Cannot sync file; File opening error"));
