@@ -32,7 +32,6 @@
  * tiledb_attribute_iter_t and tiledb_dimension_iter_t.
  */
 
-#include <unistd.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>

@@ -35,7 +35,6 @@
 #include "posix_filesystem.h"
 #include "tiledb.h"
 
-#include <sys/time.h>
 #include <cassert>
 #include <cstring>
 #include <ctime>
