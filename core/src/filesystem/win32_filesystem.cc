@@ -310,8 +310,9 @@ void purge_dots_from_path(std::string* path) {
 
 Status read_from_file(
   const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
+  std::string win_path = windows_path(path);
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create, the file).
-  HANDLE file_h = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE file_h = CreateFile(win_path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
       Status::IOError("Cannot read from file; File opening error"));
@@ -364,8 +365,9 @@ Status sync(const std::string& path) {
 
 Status write_to_file(
   const std::string& path, const void* buffer, uint64_t buffer_size) {
+  std::string win_path = windows_path(path);
   // Open the file for appending, creating it if it doesn't exist.
-  HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE file_h = CreateFile(win_path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
       Status::IOError("Cannot write to file; File opening error"));
@@ -387,7 +389,7 @@ Status write_to_file(
   while (buffer_size > constants::max_write_bytes) {
     if (WriteFile(file_h, byte_buffer + byte_idx, constants::max_write_bytes, &bytes_written, NULL) == 0 || bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + path +
+        std::string("Cannot write to file '") + win_path +
         "'; File writing error"));
     }
     buffer_size -= constants::max_write_bytes;
@@ -395,7 +397,7 @@ Status write_to_file(
   }
   if (WriteFile(file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, NULL) == 0 || bytes_written != buffer_size) {
     return LOG_STATUS(Status::IOError(
-      std::string("Cannot write to file '") + path +
+      std::string("Cannot write to file '") + win_path +
       "'; File writing error"));
   }
 

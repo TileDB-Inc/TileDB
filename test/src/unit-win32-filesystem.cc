@@ -83,26 +83,25 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  // st = hdfs::write_to_file(
-  //     fs,
-  //     URI("hdfs:///tiledb_test_dir/tiledb_test_file"),
-  //     write_buffer,
-  //     buffer_size);
-  // CHECK(st.ok());
+  st = win32::write_to_file(
+      URI(test_file).to_string(),
+      write_buffer,
+      buffer_size);
+  CHECK(st.ok());
 
-  // auto read_buffer = new char[26];
-  // st = hdfs::read_from_file(
-  //     fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"), 0, read_buffer, 26);
-  // CHECK(st.ok());
+  auto read_buffer = new char[26];
+  st = win32::read_from_file(
+      URI(test_file).to_string(), 0, read_buffer, 26);
+  CHECK(st.ok());
 
-  // bool allok = true;
-  // for (int i = 0; i < 26; i++) {
-  //   if (read_buffer[i] != static_cast<char>('a' + i)) {
-  //     allok = false;
-  //     break;
-  //   }
-  // }
-  // CHECK(allok == true);
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok == true);
 
   // st = hdfs::read_from_file(
   //     fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"), 11, read_buffer, 26);
