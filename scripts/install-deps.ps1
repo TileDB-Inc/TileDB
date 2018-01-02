@@ -70,8 +70,8 @@ function Install-LZ4 {
 	Unzip $DownloadLz4Dest $Lz4Root
     }
     $DllDir = Join-Path $Lz4Root "dll"
-    Copy-Item (Join-Path $DllDir "liblz4.lib") (Join-Path (Join-Path $InstallPrefix "lib") "lz4.lib")
-    Copy-Item (Join-Path $DllDir "liblz4.so.1.8.0.dll") (Join-Path (Join-Path $InstallPrefix "bin") "lz4.dll")
+    Copy-Item (Join-Path $DllDir "liblz4.lib") (Join-Path (Join-Path $InstallPrefix "lib") "liblz4.lib")
+    Copy-Item (Join-Path $DllDir "liblz4.so.1.8.0.dll") (Join-Path (Join-Path $InstallPrefix "bin") "liblz4.dll")
     $IncDir = Join-Path $Lz4Root "include"
     Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
 }
@@ -90,6 +90,7 @@ function Install-Blosc {
     Set-Location build
     cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
     cmake --build . --config Release --target INSTALL
+    Move-Item (Join-Path (Join-Path "$InstallPrefix" "lib") "blosc.dll") (Join-Path (Join-Path "$InstallPrefix" "bin") "blosc.dll")
     Pop-Location
 }
 
@@ -101,8 +102,8 @@ function Install-Zstd {
 	Unzip $DownloadZstdDest $ZstdRoot
     }
     $DllDir = Join-Path $ZstdRoot "dll"
-    Copy-Item (Join-Path $DllDir "libzstd.lib") (Join-Path (Join-Path $InstallPrefix "lib") "zstd.lib")
-    Copy-Item (Join-Path $DllDir "libzstd.dll") (Join-Path (Join-Path $InstallPrefix "bin") "zstd.dll")
+    Copy-Item (Join-Path $DllDir "libzstd.lib") (Join-Path (Join-Path $InstallPrefix "lib") "libzstd.lib")
+    Copy-Item (Join-Path $DllDir "libzstd.dll") (Join-Path (Join-Path $InstallPrefix "bin") "libzstd.dll")
     $IncDir = Join-Path $ZstdRoot "include"
     Copy-Item (Join-Path $IncDir "*") (Join-Path $InstallPrefix "include")
 }
