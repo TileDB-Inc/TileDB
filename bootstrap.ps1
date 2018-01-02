@@ -20,13 +20,13 @@ Semicolon separated list to binary dependencies.
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
 2017". Check 'cmake --help' for a list of supported generators.
 
-.PARAMETER Debug
+.PARAMETER EnableDebug
 Enable Debug build.
 
-.PARAMETER Coverage
+.PARAMETER EnableCoverage
 Enable build with code coverage support.
 
-.PARAMETER Verbose
+.PARAMETER EnableVerbose
 Enable verbose status messages.
 
 .PARAMETER Hdfs
@@ -48,7 +48,9 @@ Param(
     [string]$Prefix,
     [string]$Dependency,
     [string]$CMakeGenerator,
-    [switch]$Coverage,
+    [switch]$EnableDebug,
+    [switch]$EnableCoverage,
+    [switch]$EnableVerbose,
     [switch]$Hdfs
 )
 
@@ -69,16 +71,16 @@ $DefaultDependency = Join-Path $SourceDirectory "deps-install"
 
 # Set TileDB build type
 $BuildType = "Release"
-if ($Debug.IsPresent) {
+if ($EnableDebug.IsPresent) {
     $BuildType = "Debug"
 }
-if ($Coverage.IsPresent) {
+if ($EnableCoverage.IsPresent) {
     $BuildType = "Coverage"
 }
 
 # Set TileDB verbosity
 $Verbosity = "OFF"
-if ($Verbose.IsPresent) {
+if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
 }
 
@@ -126,4 +128,4 @@ Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
 
-Write-Host "Bootstrap success. Run 'cmake --build .' to build, TODO to test."
+Write-Host "Bootstrap success. Run 'cmake --build .' to build and 'cmake --build . --target check --config $BuildType' to test."
