@@ -33,7 +33,11 @@
 
 #include "catch.hpp"
 #include "constants.h"
+#ifdef _WIN32
+#include "win32_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
 #include "tiledb.h"
 
 #include <iostream>
@@ -44,8 +48,13 @@ const std::string TEMP_DIR = "hdfs:///tiledb_test/";
 const std::string FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test";
 #else
 const std::string TEMP_DIR = "tiledb_test";
+# ifdef _WIN32
+const std::string FULL_TEMP_DIR =
+    std::string("file://") + tiledb::win32::current_dir() + "/tiledb_test";
+# else
 const std::string FULL_TEMP_DIR =
     std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test";
+# endif
 #endif
 
 // Returns true if the input path exists

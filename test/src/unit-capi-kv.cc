@@ -31,7 +31,11 @@
  */
 
 #include "catch.hpp"
+#ifdef _WIN32
+#include "win32_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
 #include "tiledb.h"
 
 #include <cassert>
@@ -66,7 +70,11 @@ struct KVFx {
   const std::string TEMP_DIR = "/tiledb_test/";
 #else
   const std::string URI_PREFIX = "file://";
+# ifdef _WIN32
+  const std::string TEMP_DIR = tiledb::win32::current_dir() + "/";
+# else
   const std::string TEMP_DIR = tiledb::posix::current_dir() + "/";
+# endif
 #endif
   const std::string GROUP = "my_group/";
 
