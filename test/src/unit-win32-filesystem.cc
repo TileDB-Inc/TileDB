@@ -56,15 +56,11 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(st.ok());
   CHECK(win32::is_file(URI(test_file).to_string()));
 
-  // st = hdfs::create_dir(fs, URI("hdfs:///tiledb_test_dir"));
-  // CHECK(!st.ok());
-
-  // st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_file"));
-  // CHECK(st.ok());
-  // CHECK(hdfs::is_file(fs, URI("hdfs:///tiledb_test_file")));
-
-  // st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test_file"));
-  // CHECK(st.ok());
+  st = win32::create_file(URI(test_file).to_string());
+  CHECK(st.ok());
+  st = win32::remove_path(URI(test_file).to_string());
+  CHECK(st.ok());
+  CHECK(!win32::is_file(URI(test_file).to_string()));
 
   // st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
   // CHECK(st.ok());

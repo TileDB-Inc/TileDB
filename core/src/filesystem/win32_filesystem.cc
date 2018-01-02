@@ -171,9 +171,10 @@ Status delete_dir(const std::string& path) {
 }
 
 Status remove_file(const std::string& path) {
-  if (!DeleteFile(path.c_str())) {
+  std::string win_path = windows_path(path);
+  if (!DeleteFile(win_path.c_str())) {
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to delete file '" + path + "'")));
+      std::string("Failed to delete file '" + win_path + "'")));
   }
   return Status::Ok();
 }
