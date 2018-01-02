@@ -62,6 +62,11 @@ find_package(Bzip2 REQUIRED)
 include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
+# On Windows, set a variable for the dependency install location.
+if (WIN32)
+  set(TILEDB_DEPENDENCY_INSTALL_DIR "${CMAKE_SOURCE_DIR}/deps-install")
+endif()
+
 # Find optional library dependencies
 if(USE_HDFS)
   find_package(LIBJVM REQUIRED)

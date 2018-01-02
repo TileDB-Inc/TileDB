@@ -97,6 +97,15 @@ else()
   )
 endif()
 
+# Set PATH so the dependency .DLLs can be located.
+if (WIN32)
+  # Handle escaped semicolons. See
+  # https://cmake.org/pipermail/cmake/2010-December/041176.html
+  set(PATH_STRING "$ENV{PATH};${TILEDB_DEPENDENCY_INSTALL_DIR}/bin")
+  string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
+  string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
+  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
+endif()
 
 # Add custom target 'check'
 add_custom_target(
