@@ -47,10 +47,16 @@ namespace tiledb {
 
 namespace win32 {
 
+/** Always returns a Windows path, converting from a URI if necessary. */
+static std::string windows_path(const std::string &path_or_uri) {
+  return utils::starts_with(path_or_uri, "file:///") ? path_from_uri(path_or_uri) : path_or_uri;
+}
+
 std::string abs_path(const std::string& path) {
   if (path.length() == 0) {
     return "";
   }
+  // Convert to URI.
   std::string p = utils::starts_with(path, "file:///") ? path : uri_from_path(path);
   unsigned long result_len = p.length() + 1;
   char result[INTERNET_MAX_URL_LENGTH];
@@ -69,7 +75,8 @@ Status create_dir(const std::string& path) {
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
-  CreateDirectory(path.c_str(), nullptr);
+  std::string win_path = windows_path(path);
+  CreateDirectory(win_path.c_str(), nullptr);
   return Status::Ok();
 }
 
@@ -221,11 +228,13 @@ Status filelock_unlock(file_lock_t fd) {
 }
 
 bool is_dir(const std::string& path) {
-  return PathIsDirectory(path.c_str());
+  std::string win_path = windows_path(path);
+  return PathIsDirectory(win_path.c_str());
 }
 
 bool is_file(const std::string& path) {
-  return PathFileExists(path.c_str());
+  std::string win_path = windows_path(path);
+  return PathFileExists(win_path.c_str());
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
