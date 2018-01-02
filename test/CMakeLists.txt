@@ -100,6 +100,6 @@ endif()
 
 # Add custom target 'check'
 add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V
+  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
   DEPENDS tiledb_unit
 )
