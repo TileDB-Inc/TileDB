@@ -48,7 +48,7 @@ namespace tiledb {
 namespace win32 {
 
 std::string abs_path(const std::string& path) {
-  unsigned long result_len = 0;
+  unsigned long result_len = path.length() + 1;
   char result[INTERNET_MAX_URL_LENGTH];
   std::string str_result;
   if (UrlCanonicalize(path.c_str(), result, &result_len, 0) != S_OK) {
