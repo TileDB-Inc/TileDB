@@ -13,19 +13,19 @@ struct Win32Fx {
 
   Win32Fx() {
     bool success = false;
-    // if (path_exists(TEMP_DIR + "tiledb_test_dir")) {
-    //   success = remove_path(TEMP_DIR + "tiledb_test_dir");
-    //   assert(success);
-    // }
-    // if (path_exists(TEMP_DIR + "tiledb_test_file")) {
-    //   success = remove_path(TEMP_DIR + "tiledb_test_file");
-    //   assert(success);
-    // }
+    if (path_exists(TEMP_DIR + "tiledb_test_dir")) {
+      success = remove_path(TEMP_DIR + "tiledb_test_dir");
+      assert(success);
+    }
+    if (path_exists(TEMP_DIR + "tiledb_test_file")) {
+      success = remove_path(TEMP_DIR + "tiledb_test_file");
+      assert(success);
+    }
   }
 
   ~Win32Fx() {
-    // bool success = remove_path(TEMP_DIR + "tiledb_test_dir");
-    // assert(success);
+    bool success = remove_path(TEMP_DIR + "tiledb_test_dir");
+    assert(success);
   }
 
   bool path_exists(std::string path) {
@@ -74,14 +74,15 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(st.ok());
   CHECK(!win32::is_dir(URI(test_dir).to_string()));
 
-  // st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"));
-  // CHECK(st.ok());
+  st = win32::create_dir(URI(test_dir).to_string());
+  st = win32::create_file(URI(test_file).to_string());
+  CHECK(st.ok());
 
-  // tSize buffer_size = 100000;
-  // auto write_buffer = new char[buffer_size];
-  // for (int i = 0; i < buffer_size; i++) {
-  //   write_buffer[i] = 'a' + (i % 26);
-  // }
+  const unsigned  buffer_size = 100000;
+  auto write_buffer = new char[buffer_size];
+  for (int i = 0; i < buffer_size; i++) {
+    write_buffer[i] = 'a' + (i % 26);
+  }
   // st = hdfs::write_to_file(
   //     fs,
   //     URI("hdfs:///tiledb_test_dir/tiledb_test_file"),
