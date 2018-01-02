@@ -38,16 +38,23 @@ struct Win32Fx {
 };
 
 TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
-  std::string test_dir = win32::current_dir() + "/tiledb_test_dir";
-  std::string test_file = win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
+  const std::string test_dir = win32::current_dir() + "/tiledb_test_dir";
+  const std::string test_file = win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
   Status st;
 
   CHECK(!win32::is_dir(URI(test_dir).to_string()));
-
   st = win32::create_dir(URI(test_dir).to_string());
   CHECK(st.ok());
-
+  CHECK(!win32::is_file(URI(test_dir).to_string()));
   CHECK(win32::is_dir(URI(test_dir).to_string()));
+
+  CHECK(!win32::is_file(URI(test_file).to_string()));
+  st = win32::create_file(URI(test_file).to_string());
+  CHECK(st.ok());
+  CHECK(win32::is_file(URI(test_file).to_string()));
+  st = win32::create_file(URI(test_file).to_string());
+  CHECK(st.ok());
+  CHECK(win32::is_file(URI(test_file).to_string()));
 
   // st = hdfs::create_dir(fs, URI("hdfs:///tiledb_test_dir"));
   // CHECK(!st.ok());

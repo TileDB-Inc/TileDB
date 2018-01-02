@@ -85,7 +85,8 @@ Status create_file(const std::string& filename) {
     return Status::Ok();
   }
 
-  HANDLE file_h = CreateFile(filename.c_str(),
+  std::string win_path = windows_path(filename);
+  HANDLE file_h = CreateFile(win_path.c_str(),
            GENERIC_WRITE,
            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
            nullptr,
@@ -94,7 +95,7 @@ Status create_file(const std::string& filename) {
            nullptr);
   if (file_h == INVALID_HANDLE_VALUE || CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status::IOError(
-           std::string("Failed to create file '") + filename + "'"));
+           std::string("Failed to create file '") + win_path + "'"));
   }
   return Status::Ok();
 }
@@ -234,7 +235,7 @@ bool is_dir(const std::string& path) {
 
 bool is_file(const std::string& path) {
   std::string win_path = windows_path(path);
-  return PathFileExists(win_path.c_str());
+  return PathFileExists(win_path.c_str()) && !PathIsDirectory(win_path.c_str());
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
