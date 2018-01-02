@@ -103,18 +103,18 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   }
   CHECK(allok == true);
 
-  // st = hdfs::read_from_file(
-  //     fs, URI("hdfs:///tiledb_test_dir/tiledb_test_file"), 11, read_buffer, 26);
-  // CHECK(st.ok());
+  st = win32::read_from_file(
+     URI(test_file).to_string(), 11, read_buffer, 26);
+  CHECK(st.ok());
 
-  // allok = true;
-  // for (int i = 0; i < 26; ++i) {
-  //   if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
-  //     allok = false;
-  //     break;
-  //   }
-  // }
-  // CHECK(allok == true);
+  allok = true;
+  for (int i = 0; i < 26; ++i) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok == true);
 
   // std::vector<std::string> paths;
   // st = hdfs::ls(fs, URI("hdfs:///"), &paths);
