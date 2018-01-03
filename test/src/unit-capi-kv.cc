@@ -50,19 +50,19 @@ struct KVFx {
   int KEY1 = 100;
   const int KEY1_A1 = 1;
   const char* KEY1_A2 = "a";
-  const float KEY1_A3[2] = {1.1, 1.2};
+  const float KEY1_A3[2] = {1.1f, 1.2f};
   const float KEY2 = 200.0;
   const int KEY2_A1 = 2;
   const char* KEY2_A2 = "bb";
-  const float KEY2_A3[2] = {2.1, 2.2};
+  const float KEY2_A3[2] = {2.1f, 2.2f};
   const double KEY3[2] = {300.0, 300.1};
   const int KEY3_A1 = 3;
   const char* KEY3_A2 = "ccc";
-  const float KEY3_A3[2] = {3.1, 3.2};
+  const float KEY3_A3[2] = {3.1f, 3.2f};
   const char* KEY4 = "key_4";
   const int KEY4_A1 = 4;
   const char* KEY4_A2 = "dddd";
-  const float KEY4_A3[2] = {4.1, 4.2};
+  const float KEY4_A3[2] = {4.1f, 4.2f};
 
 #ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
