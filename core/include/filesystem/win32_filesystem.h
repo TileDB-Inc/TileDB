@@ -209,6 +209,14 @@ std::string uri_from_path(const std::string &path);
  */
 std::string path_from_uri(const std::string &uri);
 
+/**
+ * Returns true if the given string is a Win32 path.
+ *
+ * @param path The path to check.
+ * @return True if the path is a Win32 path.
+ */
+bool is_win32_path(const std::string &path);
+
 }  // namespace win32
 
 }  // namespace tiledb

@@ -395,10 +395,18 @@ std::string path_from_uri(const std::string &uri) {
   std::string str_path;
   if (PathCreateFromUrl(uri.c_str(), path, &path_length, NULL) != S_OK) {
     LOG_STATUS(Status::IOError(
-          std::string("Failed to convert URI to path.")));
+          std::string("Failed to convert URI '" + uri + "' to path.")));
   }
   str_path = path;
   return str_path;
+}
+
+bool is_win32_path(const std::string &path) {
+  if (PathIsURL(path.c_str())) {
+    return false;
+  } else {
+    return PathIsUNC(path.c_str()) || PathGetDriveNumber(path.c_str()) != -1 || path.find('\\') != std::string::npos;
+  }
 }
 
 }  // namespace win32
