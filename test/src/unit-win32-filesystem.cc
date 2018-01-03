@@ -56,8 +56,26 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   URI test_file(test_file_path);
   Status st;
 
+  CHECK(win32::is_win32_path("C:\\path"));
+  CHECK(win32::is_win32_path("C:path"));
+  CHECK(win32::is_win32_path("..\\path"));
+  CHECK(win32::is_win32_path("\\path"));
+  CHECK(win32::is_win32_path("path\\"));
+  CHECK(win32::is_win32_path("\\\\path1\\path2"));
+  CHECK(!win32::is_win32_path("path"));
+  CHECK(!win32::is_win32_path("path1/path2"));
+  CHECK(!win32::is_win32_path("file:///path1/path2"));
+  CHECK(!win32::is_win32_path("hdfs:///path1/path2"));
+
   CHECK(win32::abs_path(test_dir_path) == test_dir_path);
   CHECK(win32::abs_path(test_file_path) == test_file_path);
+  CHECK(win32::abs_path("") == "");
+  CHECK(win32::abs_path("C:\\") == "C:\\");
+  CHECK(win32::abs_path("C:\\path1\\path2\\") == "C:\\path1\\path2\\");
+  CHECK(win32::abs_path("C:\\..") == "C:\\");
+  CHECK(win32::abs_path("C:\\..\\path1") == "C:\\path1");
+  CHECK(win32::abs_path("C:\\path1\\.\\..\\path2\\") == "C:\\path2\\");
+  CHECK(win32::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
 
   CHECK(!win32::is_dir(test_dir.to_path()));
   st = win32::create_dir(test_dir.to_path());

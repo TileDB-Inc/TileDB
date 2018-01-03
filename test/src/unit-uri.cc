@@ -31,17 +31,6 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
 #ifdef _WIN32
 
 TEST_CASE("URI: Test Windows paths", "[uri]") {
-  CHECK(win32::is_win32_path("C:\\path"));
-  CHECK(win32::is_win32_path("C:path"));
-  CHECK(win32::is_win32_path("..\\path"));
-  CHECK(win32::is_win32_path("\\path"));
-  CHECK(win32::is_win32_path("path\\"));
-  CHECK(win32::is_win32_path("\\\\path1\\path2"));
-  CHECK(!win32::is_win32_path("path"));
-  CHECK(!win32::is_win32_path("path1/path2"));
-  CHECK(!win32::is_win32_path("file:///path1/path2"));
-  CHECK(!win32::is_win32_path("hdfs:///path1/path2"));
-
   URI uri("C:\\path");
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
