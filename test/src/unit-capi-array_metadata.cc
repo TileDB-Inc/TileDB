@@ -441,8 +441,13 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
   FILE* fout = fopen("fout.txt", "w");
   tiledb_array_metadata_dump(ctx_, array_metadata, fout);
   fclose(fout);
+#ifdef _WIN32
+  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
+#else
   CHECK(!system("diff gold_fout.txt fout.txt"));
-  CHECK(!system("rm gold_fout.txt fout.txt"));
+#endif
+  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "gold_fout.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "fout.txt") == TILEDB_OK);
 
   // Clean up
   rc = tiledb_attribute_free(ctx_, attr);
