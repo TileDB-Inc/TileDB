@@ -141,6 +141,9 @@ class StorageManager {
    */
   Status async_push_query(Query* query, int i);
 
+  /** Returns the configuration parameters. */
+  Config config() const;
+
   /** Creates a directory with the input URI. */
   Status create_dir(const URI& uri);
 
@@ -376,7 +379,7 @@ class StorageManager {
    * @param nbytes The number of bytes to read.
    * @return Status.
    */
-  Status read_from_file(
+  Status read(
       const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
 
   /**
@@ -401,6 +404,9 @@ class StorageManager {
    */
   Status sync(const URI& uri);
 
+  /** Returns the virtual filesystem object. */
+  VFS* vfs() const;
+
   /**
    * Writes the contents of a buffer into the cache. `uri` and `offset`
    * collectively form the key of the object to be cached. Essentially, this is
@@ -422,7 +428,7 @@ class StorageManager {
    * @param buffer The buffer to write.
    * @return Status.
    */
-  Status write_to_file(const URI& uri, Buffer* buffer) const;
+  Status write(const URI& uri, Buffer* buffer) const;
 
  private:
   /* ********************************* */

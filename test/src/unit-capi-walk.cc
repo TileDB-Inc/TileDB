@@ -38,31 +38,28 @@
 
 #include <iostream>
 
-#ifdef HAVE_S3
-#include "s3.h"
-#endif
-
 struct WalkFx {
 #ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string HDFS_FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test";
+  const std::string HDFS_FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  tiledb::S3 s3_;
-  const char *S3_BUCKET = "tiledb";
-  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test";
+  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb/");
+  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
-  const std::string FILE_TEMP_DIR = "tiledb_test";
+  const std::string FILE_TEMP_DIR = "tiledb_test/";
   const std::string FILE_FULL_TEMP_DIR =
-      std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test";
+      std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test/";
 
+  // TileDB context and VFS
   tiledb_ctx_t *ctx_;
+  tiledb_vfs_t *vfs_;
 
   // Functions
   WalkFx();
   ~WalkFx();
-  void remove_temp_dir();
-  void create_hierarchy();
+  void remove_temp_dir(const std::string &path);
+  void create_hierarchy(const std::string &path);
   std::string get_golden_output(const std::string &path);
   static int write_path(const char *path, tiledb_object_t type, void *data);
 };
@@ -73,45 +70,37 @@ WalkFx::WalkFx() {
   REQUIRE(tiledb_config_create(&config) == TILEDB_OK);
 #ifdef HAVE_S3
   REQUIRE(
-      tiledb_config_set(
-          config, "tiledb.s3.endpoint_override", "localhost:9999") ==
+      tiledb_config_set(config, "vfs.s3.endpoint_override", "localhost:9999") ==
       TILEDB_OK);
 #endif
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+  vfs_ = nullptr;
+  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
   // Connect to S3
 #ifdef HAVE_S3
-  // TODO: use tiledb_vfs_t instead of S3::*
-  tiledb::S3::S3Config s3_config;
-  s3_config.endpoint_override_ = "localhost:9999";
-  REQUIRE(s3_.connect(s3_config).ok());
-
   // Create bucket if it does not exist
-  if (!s3_.bucket_exists(S3_BUCKET))
-    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  if (!is_bucket) {
+    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
 #endif
-
-  // Clean up
-  remove_temp_dir();
 }
 
 WalkFx::~WalkFx() {
-  remove_temp_dir();
+  CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
 
-void WalkFx::remove_temp_dir() {
-// Delete temporary directory
-#ifdef HAVE_S3
-  REQUIRE(s3_.remove_path(tiledb::URI(S3_TEMP_DIR)).ok());
-#endif
-#ifdef HAVE_HDFS
-  auto cmd_hdfs = std::string("hadoop fs -rm -r -f ") + HDFS_TEMP_DIR;
-  REQUIRE(system(cmd_hdfs.c_str()) == 0);
-#endif
-  auto cmd_posix = std::string("rm -rf ") + FILE_TEMP_DIR;
-  REQUIRE(system(cmd_posix.c_str()) == 0);
+void WalkFx::remove_temp_dir(const std::string &path) {
+  int is_dir = 0;
+  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir)
+    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
 /**
@@ -133,155 +122,74 @@ void WalkFx::remove_temp_dir() {
  *            |_ array_D
  *                  |_ __array_metadata.tdb
  */
-void WalkFx::create_hierarchy() {
-#ifdef HAVE_HDFS
-  std::string h_cmd_1 = std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR;
-  std::string h_cmd_2 =
-      std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR + "/dense_arrays";
-  std::string h_cmd_3 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                        "/dense_arrays/__tiledb_group.tdb";
-  std::string h_cmd_4 = std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR +
-                        "/dense_arrays/array_A";
-  std::string h_cmd_5 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                        "/dense_arrays/array_A/__array_metadata.tdb";
-  std::string h_cmd_6 = std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR +
-                        "/dense_arrays/array_B";
-  std::string h_cmd_7 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                        "/dense_arrays/array_B/__array_metadata.tdb";
-  std::string h_cmd_8 =
-      std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR + "/sparse_arrays";
-  std::string h_cmd_9 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                        "/sparse_arrays/__tiledb_group.tdb";
-  std::string h_cmd_10 = std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR +
-                         "/sparse_arrays/array_C";
-  std::string h_cmd_11 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                         "/sparse_arrays/array_C/__array_metadata.tdb";
-  std::string h_cmd_12 = std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR +
-                         "/sparse_arrays/array_D";
-  std::string h_cmd_13 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                         "/sparse_arrays/array_D/__array_metadata.tdb";
-  std::string h_cmd_14 =
-      std::string("hadoop fs -mkdir ") + HDFS_TEMP_DIR + "/dense_arrays/kv";
-  std::string h_cmd_15 = std::string("hadoop fs -touchz ") + HDFS_TEMP_DIR +
-                         "/dense_arrays/kv/__kv.tdb";
-  REQUIRE(system(h_cmd_1.c_str()) == 0);
-  REQUIRE(system(h_cmd_2.c_str()) == 0);
-  REQUIRE(system(h_cmd_3.c_str()) == 0);
-  REQUIRE(system(h_cmd_4.c_str()) == 0);
-  REQUIRE(system(h_cmd_5.c_str()) == 0);
-  REQUIRE(system(h_cmd_6.c_str()) == 0);
-  REQUIRE(system(h_cmd_7.c_str()) == 0);
-  REQUIRE(system(h_cmd_8.c_str()) == 0);
-  REQUIRE(system(h_cmd_9.c_str()) == 0);
-  REQUIRE(system(h_cmd_10.c_str()) == 0);
-  REQUIRE(system(h_cmd_11.c_str()) == 0);
-  REQUIRE(system(h_cmd_12.c_str()) == 0);
-  REQUIRE(system(h_cmd_13.c_str()) == 0);
-  REQUIRE(system(h_cmd_14.c_str()) == 0);
-  REQUIRE(system(h_cmd_15.c_str()) == 0);
-#endif
-#ifdef HAVE_S3
-  tiledb::Status st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/dense_arrays"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/dense_arrays/__tiledb_group.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/dense_arrays/array_A"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/dense_arrays/array_A/__array_metadata.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/dense_arrays/array_B"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/dense_arrays/array_B/__array_metadata.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/sparse_arrays"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/sparse_arrays/__tiledb_group.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/sparse_arrays/array_C"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/sparse_arrays/array_C/__array_metadata.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/sparse_arrays/array_D"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(
-      tiledb::URI(S3_TEMP_DIR + "/sparse_arrays/array_D/__array_metadata.tdb"));
-  REQUIRE(st.ok());
-  st = s3_.create_dir(tiledb::URI(S3_TEMP_DIR + "/dense_arrays/kv"));
-  REQUIRE(st.ok());
-  st = s3_.create_file(tiledb::URI(S3_TEMP_DIR + "/dense_arrays/kv/__kv.tdb"));
-  REQUIRE(st.ok());
-#endif
-  std::string cmd_1 = std::string("mkdir ") + FILE_TEMP_DIR;
-  std::string cmd_2 = std::string("mkdir ") + FILE_TEMP_DIR + "/dense_arrays";
-  std::string cmd_3 = std::string("touch ") + FILE_TEMP_DIR +
-                      "/dense_arrays/__tiledb_group.tdb";
-  std::string cmd_4 =
-      std::string("mkdir ") + FILE_TEMP_DIR + "/dense_arrays/array_A";
-  std::string cmd_5 = std::string("touch ") + FILE_TEMP_DIR +
-                      "/dense_arrays/array_A/__array_metadata.tdb";
-  std::string cmd_6 =
-      std::string("mkdir ") + FILE_TEMP_DIR + "/dense_arrays/array_B";
-  std::string cmd_7 = std::string("touch ") + FILE_TEMP_DIR +
-                      "/dense_arrays/array_B/__array_metadata.tdb";
-  std::string cmd_8 = std::string("mkdir ") + FILE_TEMP_DIR + "/sparse_arrays";
-  std::string cmd_9 = std::string("touch ") + FILE_TEMP_DIR +
-                      "/sparse_arrays/__tiledb_group.tdb";
-  std::string cmd_10 =
-      std::string("mkdir ") + FILE_TEMP_DIR + "/sparse_arrays/array_C";
-  std::string cmd_11 = std::string("touch ") + FILE_TEMP_DIR +
-                       "/sparse_arrays/array_C/__array_metadata.tdb";
-  std::string cmd_12 =
-      std::string("mkdir ") + FILE_TEMP_DIR + "/sparse_arrays/array_D";
-  std::string cmd_13 = std::string("touch ") + FILE_TEMP_DIR +
-                       "/sparse_arrays/array_D/__array_metadata.tdb";
-  std::string cmd_14 =
-      std::string("mkdir ") + FILE_TEMP_DIR + "/dense_arrays/kv";
-  std::string cmd_15 =
-      std::string("touch ") + FILE_TEMP_DIR + "/dense_arrays/kv/__kv.tdb";
-  REQUIRE(system(cmd_1.c_str()) == 0);
-  REQUIRE(system(cmd_2.c_str()) == 0);
-  REQUIRE(system(cmd_3.c_str()) == 0);
-  REQUIRE(system(cmd_4.c_str()) == 0);
-  REQUIRE(system(cmd_5.c_str()) == 0);
-  REQUIRE(system(cmd_6.c_str()) == 0);
-  REQUIRE(system(cmd_7.c_str()) == 0);
-  REQUIRE(system(cmd_8.c_str()) == 0);
-  REQUIRE(system(cmd_9.c_str()) == 0);
-  REQUIRE(system(cmd_10.c_str()) == 0);
-  REQUIRE(system(cmd_11.c_str()) == 0);
-  REQUIRE(system(cmd_12.c_str()) == 0);
-  REQUIRE(system(cmd_13.c_str()) == 0);
-  REQUIRE(system(cmd_14.c_str()) == 0);
-  REQUIRE(system(cmd_15.c_str()) == 0);
+void WalkFx::create_hierarchy(const std::string &path) {
+  int rc = tiledb_vfs_create_dir(ctx_, vfs_, path.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_, vfs_, (path + "dense_arrays/__tiledb_group.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(
+      ctx_, vfs_, (path + "dense_arrays/array_A").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_, vfs_, (path + "dense_arrays/array_A/__array_metadata.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(
+      ctx_, vfs_, (path + "dense_arrays/array_B").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_, vfs_, (path + "dense_arrays/array_B/__array_metadata.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "sparse_arrays").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_, vfs_, (path + "sparse_arrays/__tiledb_group.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(
+      ctx_, vfs_, (path + "sparse_arrays/array_C").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_,
+      vfs_,
+      (path + "sparse_arrays/array_C/__array_metadata.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(
+      ctx_, vfs_, (path + "sparse_arrays/array_D").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(
+      ctx_,
+      vfs_,
+      (path + "sparse_arrays/array_D/__array_metadata.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays/kv").c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_vfs_touch(ctx_, vfs_, (path + "dense_arrays/kv/__kv.tdb").c_str());
+  REQUIRE(rc == TILEDB_OK);
 }
 
 std::string WalkFx::get_golden_output(const std::string &path) {
   std::string golden;
 
   // Preorder traversal
-  golden += path + "/dense_arrays GROUP\n";
-  golden += path + "/dense_arrays/array_A ARRAY\n";
-  golden += path + "/dense_arrays/array_B ARRAY\n";
-  golden += path + "/dense_arrays/kv KEY_VALUE\n";
-  golden += path + "/sparse_arrays GROUP\n";
-  golden += path + "/sparse_arrays/array_C ARRAY\n";
-  golden += path + "/sparse_arrays/array_D ARRAY\n";
+  golden += path + "dense_arrays GROUP\n";
+  golden += path + "dense_arrays/array_A ARRAY\n";
+  golden += path + "dense_arrays/array_B ARRAY\n";
+  golden += path + "dense_arrays/kv KEY_VALUE\n";
+  golden += path + "sparse_arrays GROUP\n";
+  golden += path + "sparse_arrays/array_C ARRAY\n";
+  golden += path + "sparse_arrays/array_D ARRAY\n";
 
   // Postorder traversal
-  golden += path + "/dense_arrays/array_A ARRAY\n";
-  golden += path + "/dense_arrays/array_B ARRAY\n";
-  golden += path + "/dense_arrays/kv KEY_VALUE\n";
-  golden += path + "/dense_arrays GROUP\n";
-  golden += path + "/sparse_arrays/array_C ARRAY\n";
-  golden += path + "/sparse_arrays/array_D ARRAY\n";
-  golden += path + "/sparse_arrays GROUP\n";
+  golden += path + "dense_arrays/array_A ARRAY\n";
+  golden += path + "dense_arrays/array_B ARRAY\n";
+  golden += path + "dense_arrays/kv KEY_VALUE\n";
+  golden += path + "dense_arrays GROUP\n";
+  golden += path + "sparse_arrays/array_C ARRAY\n";
+  golden += path + "sparse_arrays/array_D ARRAY\n";
+  golden += path + "sparse_arrays GROUP\n";
 
   return golden;
 }
@@ -316,9 +224,27 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
   std::string walk_str;
   int rc;
 
-  create_hierarchy();
+  // File
+  remove_temp_dir(FILE_FULL_TEMP_DIR);
+  create_hierarchy(FILE_FULL_TEMP_DIR);
+  golden = get_golden_output(FILE_FULL_TEMP_DIR);
+  walk_str.clear();
+  rc = tiledb_walk(
+      ctx_, FILE_FULL_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_walk(
+      ctx_,
+      FILE_FULL_TEMP_DIR.c_str(),
+      TILEDB_POSTORDER,
+      write_path,
+      &walk_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden, Catch::Equals(walk_str));
+  remove_temp_dir(FILE_FULL_TEMP_DIR);
 
 #ifdef HAVE_S3
+  remove_temp_dir(S3_TEMP_DIR);
+  create_hierarchy(S3_TEMP_DIR);
   golden = get_golden_output(S3_TEMP_DIR);
   walk_str.clear();
   rc = tiledb_walk(
@@ -328,9 +254,12 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
       ctx_, S3_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden, Catch::Equals(walk_str));
+  remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
+  remove_temp_dir(HDFS_TEMP_DIR);
+  create_hierarchy(HDFS_TEMP_DIR);
   golden = get_golden_output(HDFS_FULL_TEMP_DIR);
   walk_str.clear();
   rc = tiledb_walk(
@@ -340,15 +269,6 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
       ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden, Catch::Equals(walk_str));
+  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
-
-  golden = get_golden_output(FILE_FULL_TEMP_DIR);
-  walk_str.clear();
-  rc = tiledb_walk(
-      ctx_, FILE_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_walk(
-      ctx_, FILE_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden, Catch::Equals(walk_str));
 }

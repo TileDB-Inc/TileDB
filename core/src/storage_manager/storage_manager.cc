@@ -187,6 +187,10 @@ Status StorageManager::async_push_query(Query* query, int i) {
   return Status::Ok();
 }
 
+Config StorageManager::config() const {
+  return config_;
+}
+
 Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
@@ -250,29 +254,15 @@ Status StorageManager::init(Config* config) {
     config_ = *config;
   RETURN_NOT_OK(config_.init());
   consolidator_ = new Consolidator(this);
-  array_metadata_cache_ =
-      new LRUCache(config_.get_tiledb_array_metadata_cache_size());
+  Config::SMParams sm_params = config_.sm_params();
+  array_metadata_cache_ = new LRUCache(sm_params.array_metadata_cache_size_);
   fragment_metadata_cache_ =
-      new LRUCache(config_.get_tiledb_fragment_metadata_cache_size());
-  tile_cache_ = new LRUCache(config_.get_tiledb_tile_cache_size());
+      new LRUCache(sm_params.fragment_metadata_cache_size_);
+  tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   async_thread_[0] = new std::thread(async_start, this, 0);
   async_thread_[1] = new std::thread(async_start, this, 1);
   vfs_ = new VFS();
-#ifdef HAVE_S3
-  S3::S3Config s3_config;
-  s3_config.region_ = config_.get_tiledb_s3_region();
-  s3_config.scheme_ = config_.get_tiledb_s3_scheme();
-  s3_config.endpoint_override_ = config_.get_tiledb_s3_endpoint_override();
-  s3_config.use_virtual_addressing_ =
-      config_.get_tiledb_s3_use_virtual_addressing();
-  s3_config.file_buffer_size_ = config_.get_tiledb_s3_file_buffer_size();
-  s3_config.connect_timeout_ms_ = config_.get_tiledb_s3_connect_timeout_ms();
-  s3_config.request_timeout_ms_ = config_.get_tiledb_s3_request_timeout_ms();
-  RETURN_NOT_OK(vfs_->init(s3_config));
-#else
-  RETURN_NOT_OK(vfs_->init());
-#endif
-
+  RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
   return Status::Ok();
 }
 
@@ -627,10 +617,10 @@ Status StorageManager::read_from_cache(
   return Status::Ok();
 }
 
-Status StorageManager::read_from_file(
+Status StorageManager::read(
     const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
   RETURN_NOT_OK(buffer->realloc(nbytes));
-  RETURN_NOT_OK(vfs_->read_from_file(uri, offset, buffer->data(), nbytes));
+  RETURN_NOT_OK(vfs_->read(uri, offset, buffer->data(), nbytes));
   buffer->set_size(nbytes);
   buffer->reset_offset();
 
@@ -721,6 +711,10 @@ Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
 }
 
+VFS* StorageManager::vfs() const {
+  return vfs_;
+}
+
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
   // Do not write metadata to cache
@@ -746,8 +740,8 @@ Status StorageManager::write_to_cache(
   return Status::Ok();
 }
 
-Status StorageManager::write_to_file(const URI& uri, Buffer* buffer) const {
-  return vfs_->write_to_file(uri, buffer->data(), buffer->size());
+Status StorageManager::write(const URI& uri, Buffer* buffer) const {
+  return vfs_->write(uri, buffer->data(), buffer->size());
 }
 
 /* ****************************** */

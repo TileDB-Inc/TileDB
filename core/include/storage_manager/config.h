@@ -46,15 +46,14 @@ class Config {
   /*         TYPE DEFINITIONS          */
   /* ********************************* */
 
-  /** The main TileDB parameters. */
-  struct TiledbParams {
+  /** Storage manager parameters. */
+  struct SMParams {
     uint64_t array_metadata_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     uint64_t tile_cache_size_;
   };
 
-#ifdef HAVE_S3
-  struct TiledbS3Params {
+  struct S3Params {
     std::string region_;
     std::string scheme_;
     std::string endpoint_override_;
@@ -63,7 +62,13 @@ class Config {
     long connect_timeout_ms_;
     long request_timeout_ms_;
   };
-#endif
+
+  struct HDFSParams {};
+
+  struct VFSParams {
+    S3Params s3_params_;
+    HDFSParams hdfs_params_;
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -79,37 +84,14 @@ class Config {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the array metadata cache size. */
-  uint64_t get_tiledb_array_metadata_cache_size() const;
+  /** Returns the storage manager parameters. */
+  SMParams sm_params() const;
 
-  /** Returns the fragment metadata cache size. */
-  uint64_t get_tiledb_fragment_metadata_cache_size() const;
+  /** Returns the VFS parameters. */
+  VFSParams vfs_params() const;
 
-  /** Returns the tile cache size. */
-  uint64_t get_tiledb_tile_cache_size() const;
-
-#ifdef HAVE_S3
-  /** Returns the S3 region. */
-  std::string get_tiledb_s3_region() const;
-
-  /** Returns the S3 scheme. */
-  std::string get_tiledb_s3_scheme() const;
-
-  /** Returns the S3 endpoint override. */
-  std::string get_tiledb_s3_endpoint_override() const;
-
-  /** Returns the S3 use virtual addressing value. */
-  bool get_tiledb_s3_use_virtual_addressing() const;
-
-  /** Returns the S3 file buffer size. */
-  uint64_t get_tiledb_s3_file_buffer_size() const;
-
-  /** Returns the S3 connect timeout in milliseconds. */
-  long get_tiledb_s3_connect_timeout_ms() const;
-
-  /** Returns the S3 request timeout in milliseconds. */
-  long get_tiledb_s3_request_timeout_ms() const;
-#endif
+  /** Returns the S3 parameters. */
+  S3Params s3_params() const;
 
   /**
    * Initializes the config. This function will return error if there is
@@ -117,7 +99,10 @@ class Config {
    */
   Status init();
 
-  /** Sets a config parameter. */
+  /**
+   * Sets a config parameter. Note that this does not have any effect
+   * until the object is initialized with `init`.
+   */
   Status set(const std::string& param, const std::string& value);
 
   /**
@@ -131,37 +116,11 @@ class Config {
    */
   Status set_config_filename(const std::string& filename);
 
-  /** Sets the array metadata cache size, properly parsing the input value. */
-  Status set_tiledb_array_metadata_cache_size(const std::string& value);
-
-  /** Sets the fragment metadata cache size, properly parsing the input value.*/
-  Status set_tiledb_fragment_metadata_cache_size(const std::string& value);
-
-  /** Sets the tile cache size, properly parsing the input value. */
-  Status set_tiledb_tile_cache_size(const std::string& value);
-
-#ifdef HAVE_S3
-  /** Sets the S3 region. */
-  Status set_tiledb_s3_region(const std::string& value);
-
-  /** Sets the S3 scheme. */
-  Status set_tiledb_s3_scheme(const std::string& value);
-
-  /** Sets the S3 endpoint override. */
-  Status set_tiledb_s3_endpoint_override(const std::string& value);
-
-  /** Sets the S3 virtual addressing. */
-  Status set_tiledb_s3_use_virtual_addressing(const std::string& value);
-
-  /** Sets the S3 file buffer size. */
-  Status set_tiledb_s3_file_buffer_size(const std::string& value);
-
-  /** Sets the S3 connect timeout in milliseconds. */
-  Status set_tiledb_s3_connect_timeout_ms(const std::string& value);
-
-  /** Sets the S3 request timeout in milliseconds. */
-  Status set_tiledb_s3_request_timeout_ms(const std::string& value);
-#endif
+  /**
+   * Set the VFS parameters. Note that this has effect immediately, and does
+   * not require `init` to be called.
+   */
+  Status set_vfs_params(const VFSParams& vfs_params);
 
   /** Unsets a parameter. */
   Status unset(const std::string& param);
@@ -177,13 +136,11 @@ class Config {
   /** Stores a map of param -> value. */
   std::unordered_map<std::string, std::string> param_values_;
 
-  /** The TileDB parameters. */
-  TiledbParams tiledb_params_;
+  /** The storage manager parameters. */
+  SMParams sm_params_;
 
-#ifdef HAVE_S3
-  /** The TileDB S3 parameters. */
-  TiledbS3Params tiledb_s3_params_;
-#endif
+  /** The VFS parameters. */
+  VFSParams vfs_params_;
 
   /* ********************************* */
   /*          PRIVATE CONSTANTS        */
@@ -196,16 +153,47 @@ class Config {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Sets the default main TileDB parameters. */
-  void set_default_tiledb_params();
+  /** Sets the default storage manager parameters. */
+  void set_default_sm_params();
 
-#ifdef HAVE_S3
-  /** Sets the default TileDB S3 parameters. */
-  void set_default_tiledb_s3_params();
-#endif
+  /** Sets the default VFS parameters. */
+  void set_default_vfs_params();
+
+  /** Sets the default S3 parameters. */
+  void set_default_vfs_s3_params();
 
   /** Sets the config parameters from a configuration file. */
   Status set_from_file();
+
+  /** Sets the array metadata cache size, properly parsing the input value. */
+  Status set_sm_array_metadata_cache_size(const std::string& value);
+
+  /** Sets the fragment metadata cache size, properly parsing the input value.*/
+  Status set_sm_fragment_metadata_cache_size(const std::string& value);
+
+  /** Sets the tile cache size, properly parsing the input value. */
+  Status set_sm_tile_cache_size(const std::string& value);
+
+  /** Sets the S3 region. */
+  Status set_vfs_s3_region(const std::string& value);
+
+  /** Sets the S3 scheme. */
+  Status set_vfs_s3_scheme(const std::string& value);
+
+  /** Sets the S3 endpoint override. */
+  Status set_vfs_s3_endpoint_override(const std::string& value);
+
+  /** Sets the S3 virtual addressing. */
+  Status set_vfs_s3_use_virtual_addressing(const std::string& value);
+
+  /** Sets the S3 file buffer size. */
+  Status set_vfs_s3_file_buffer_size(const std::string& value);
+
+  /** Sets the S3 connect timeout in milliseconds. */
+  Status set_vfs_s3_connect_timeout_ms(const std::string& value);
+
+  /** Sets the S3 request timeout in milliseconds. */
+  Status set_vfs_s3_request_timeout_ms(const std::string& value);
 };
 
 }  // namespace tiledb

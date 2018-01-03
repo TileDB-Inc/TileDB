@@ -39,9 +39,9 @@ void check_correct_file() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "tiledb.tile_cache_size 1000\n";
+  ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "tiledb.array_metadata_cache_size 1000 # some comment\n";
+  ofs << "sm.array_metadata_cache_size 1000 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -84,9 +84,9 @@ void check_incorrect_file_missing_value() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "tiledb.tile_cache_size    \n";
+  ofs << "sm.tile_cache_size    \n";
   ofs << "# another comment line\n";
-  ofs << "tiledb.array_metadata_cache_size 1000\n";
+  ofs << "sm.array_metadata_cache_size 1000\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -113,9 +113,9 @@ void check_incorrect_file_extra_word() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "tiledb.tile_cache_size 1000\n";
+  ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "tiledb.array_metadata_cache_size 1000 some comment\n";
+  ofs << "sm.array_metadata_cache_size 1000 some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -144,7 +144,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   REQUIRE(rc == TILEDB_OK);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "100");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100");
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_t* ctx;
   rc = tiledb_ctx_create(&ctx, config);
@@ -153,7 +153,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "+100");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "+100");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
@@ -161,15 +161,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "xadf");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
-  CHECK(rc == TILEDB_OK);
-
-  // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "10xadf");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "xadf");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_ERR);
@@ -177,7 +169,15 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "-10");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "10xadf");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_ctx_free(ctx);
+  CHECK(rc == TILEDB_OK);
+
+  // Check invalid argument for correct parameter
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "-10");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_ERR);
@@ -185,7 +185,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   // Check invalid parameter
-  rc = tiledb_config_set(config, "tiledb.tile_cache_size", "10");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "10");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_set(config, "slkjs", "10");
   CHECK(rc == TILEDB_OK);
@@ -197,8 +197,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   // Check out of range argument for correct parameter
   rc = tiledb_config_unset(config, "slkjs");
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(
-      config, "tiledb.tile_cache_size", "100000000000000000000");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100000000000000000000");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_ERR);
