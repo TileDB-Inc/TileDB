@@ -50,7 +50,7 @@ namespace win32 {
 
 /**
  * Returns the absolute (string) path of the input in the
- * form "file://<absolute path>"
+ * form of a Win32 path.
  */
 std::string abs_path(const std::string& path);
 

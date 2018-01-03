@@ -390,12 +390,14 @@ std::string path_from_uri(const std::string &uri) {
     return "";
   }
 
+  std::string uri_with_scheme = utils::starts_with(uri, "file:///") ? uri : "file:///" + uri;
+
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];
   std::string str_path;
-  if (PathCreateFromUrl(uri.c_str(), path, &path_length, NULL) != S_OK) {
+  if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, NULL) != S_OK) {
     LOG_STATUS(Status::IOError(
-          std::string("Failed to convert URI '" + uri + "' to path.")));
+          std::string("Failed to convert URI '" + uri_with_scheme + "' to path.")));
   }
   str_path = path;
   return str_path;
