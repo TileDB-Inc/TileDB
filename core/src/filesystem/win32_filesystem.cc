@@ -51,10 +51,16 @@ std::string abs_path(const std::string& path) {
   if (path.length() == 0) {
     return "";
   }
-  unsigned long result_len = path.length() + 1;
+  std::string full_path;
+  if (PathIsRelative(path.c_str())) {
+    full_path = current_dir() + "\\" + path;
+  } else {
+    full_path = path;
+  }
+  unsigned long result_len = full_path.length() + 1;
   char result[MAX_PATH];
   std::string str_result;
-  if (PathCanonicalize(result, path.c_str()) == FALSE) {
+  if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     LOG_STATUS(Status::IOError(std::string("Cannot canonicalize path.")));
   } else {
     str_result = result;

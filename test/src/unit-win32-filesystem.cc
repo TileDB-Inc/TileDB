@@ -77,9 +77,11 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(win32::abs_path("C:\\..\\path1") == "C:\\path1");
   CHECK(win32::abs_path("C:\\path1\\.\\..\\path2\\") == "C:\\path2\\");
   CHECK(win32::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
-  CHECK(win32::abs_path("path1\\path2\\..\\path3") == "path1\\path3");
-  CHECK(win32::abs_path("path1") == "path1");
-
+  CHECK(win32::abs_path("path1\\path2\\..\\path3") == win32::current_dir() + "\\path1\\path3");
+  CHECK(win32::abs_path("path1") == win32::current_dir() + "\\path1");
+  CHECK(win32::abs_path("path1\\path2") == win32::current_dir() + "\\path1\\path2");
+  CHECK(win32::abs_path("path1\\path2\\..\\path3") == win32::current_dir() + "\\path1\\path3");
+  
   CHECK(!win32::is_dir(test_dir.to_path()));
   st = win32::create_dir(test_dir.to_path());
   CHECK(st.ok());
