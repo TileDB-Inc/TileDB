@@ -31,8 +31,12 @@
  */
 
 #include "catch.hpp"
-#include "posix_filesystem.h"
 #include "tiledb.h"
+#ifdef _WIN32
+#include "win32_filesystem.h"
+#else
+#include "posix_filesystem.h"
+#endif
 
 #include <iostream>
 
@@ -44,8 +48,13 @@ struct VFSFx {
   const std::string S3_BUCKET = "s3://tiledb/";
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
+#ifdef _WIN32
+  const std::string FILE_TEMP_DIR =
+      tiledb::win32::current_dir() + "\\tiledb_test\\";
+#else
   const std::string FILE_TEMP_DIR =
       std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test/";
+#endif
 
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
