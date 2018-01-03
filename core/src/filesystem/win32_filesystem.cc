@@ -147,14 +147,17 @@ err:
     FindClose(find_h);
   }
   return LOG_STATUS(Status::IOError(
-    std::string("Failed to remove directory.")));
+    std::string("Failed to remove directory '" + path + "'")));
 }
 
 Status remove_path(const std::string& path) {
   if (win32::is_file(path)) {
     return remove_file(path);
-  } else {
+  } else if (win32::is_dir(path)) {
     return recursively_remove_directory(path);
+  } else {
+    return LOG_STATUS(Status::IOError(
+      std::string("Failed to delete path '" + path + "'; not a valid path.")));
   }
 }
 
@@ -276,7 +279,7 @@ Status read_from_file(
   HANDLE file_h = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
-      Status::IOError("Cannot read from file; File opening error"));
+      Status::IOError("Cannot read from file '" + path + "'; File opening error"));
   }
 
   LARGE_INTEGER offset_lg_int;
@@ -284,19 +287,19 @@ Status read_from_file(
   if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
     CloseHandle(file_h);
     return LOG_STATUS(
-      Status::IOError("Cannot read from file; File seek error"));
+      Status::IOError("Cannot read from file '" + path + "'; File seek error"));
   }
 
   unsigned long num_bytes_read = 0;
   if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 || num_bytes_read != nbytes) {
     CloseHandle(file_h);
     return LOG_STATUS(
-      Status::IOError("Cannot read from file; File read error"));
+      Status::IOError("Cannot read from file '" + path + "'; File read error"));
   }
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(
-      Status::IOError("Cannot read from file; File closing error"));
+      Status::IOError("Cannot read from file '" + path + "'; File closing error"));
   }
 
   return Status::Ok();
@@ -307,18 +310,18 @@ Status sync(const std::string& path) {
   HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
-      Status::IOError("Cannot sync file; File opening error"));
+      Status::IOError("Cannot sync file '" + path + "'; File opening error"));
   }
 
   if (FlushFileBuffers(file_h) == 0) {
     CloseHandle(file_h);
     return LOG_STATUS(
-      Status::IOError("Cannot sync file; Sync error"));
+      Status::IOError("Cannot sync file '" + path + "'; Sync error"));
   }
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(
-      Status::IOError("Cannot read from file; File closing error"));
+      Status::IOError("Cannot read from file '" + path + "'; File closing error"));
   }
 
   return Status::Ok();
@@ -330,7 +333,7 @@ Status write_to_file(
   HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(
-      Status::IOError("Cannot write to file; File opening error"));
+      Status::IOError("Cannot write to file '" + path + "'; File opening error"));
   }
 
   LARGE_INTEGER offset_lg_int;
@@ -338,7 +341,7 @@ Status write_to_file(
   if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_END) == 0) {
     CloseHandle(file_h);
     return LOG_STATUS(
-      Status::IOError("Cannot write to file; File seek error"));
+      Status::IOError("Cannot write to file '" + path + "'; File seek error"));
   }
 
   // Append data to the file in batches of constants::max_write_bytes
@@ -363,7 +366,7 @@ Status write_to_file(
 
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(
-      Status::IOError("Cannot write to file; File closing error"));
+      Status::IOError("Cannot write to file '" + path + "'; File closing error"));
   }
 
   return Status::Ok();
@@ -379,7 +382,7 @@ std::string uri_from_path(const std::string &path) {
   std::string str_uri;
   if (UrlCreateFromPath(path.c_str(), uri, &uri_length, NULL) != S_OK) {
     LOG_STATUS(Status::IOError(
-        std::string("Failed to convert path to URI.")));
+        std::string("Failed to convert path '"+ path +"' to URI.")));
   }
   str_uri = uri;
   return str_uri;
