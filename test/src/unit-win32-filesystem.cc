@@ -62,6 +62,7 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(win32::is_win32_path("\\path"));
   CHECK(win32::is_win32_path("path\\"));
   CHECK(win32::is_win32_path("\\\\path1\\path2"));
+  CHECK(win32::is_win32_path("path1\\path2"));
   CHECK(!win32::is_win32_path("path"));
   CHECK(!win32::is_win32_path("path1/path2"));
   CHECK(!win32::is_win32_path("file:///path1/path2"));
