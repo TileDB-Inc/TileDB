@@ -34,6 +34,10 @@
 #include "utils.h"
 #include "vfs.h"
 
+#ifdef _WIN32
+#include "win32_filesystem.h"
+#endif
+
 #include <iostream>
 
 namespace tiledb {
@@ -110,9 +114,14 @@ URI URI::parent() const {
 }
 
 std::string URI::to_path() const {
-  if (is_file())
+  if (is_file()) {
+#ifdef _WIN32
+    return win32::path_from_uri(uri_);
+#else
     return uri_.substr(std::string("file://").size());
-  
+#endif
+  }
+
   if (is_hdfs() || is_s3())
     return uri_;
 
