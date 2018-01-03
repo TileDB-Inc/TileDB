@@ -50,44 +50,49 @@ struct Win32Fx {
 };
 
 TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
-  const std::string test_dir = win32::current_dir() + "/tiledb_test_dir";
-  const std::string test_file = win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
+  const std::string test_dir_path = win32::current_dir() + "/tiledb_test_dir";
+  const std::string test_file_path = win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
+  URI test_dir(test_dir_path);
+  URI test_file(test_file_path);
   Status st;
 
-  CHECK(!win32::is_dir(URI(test_dir).to_string()));
-  st = win32::create_dir(URI(test_dir).to_string());
-  CHECK(st.ok());
-  CHECK(!win32::is_file(URI(test_dir).to_string()));
-  CHECK(win32::is_dir(URI(test_dir).to_string()));
+  CHECK(win32::abs_path(test_dir_path) == test_dir_path);
+  CHECK(win32::abs_path(test_file_path) == test_file_path);
 
-  CHECK(!win32::is_file(URI(test_file).to_string()));
-  st = win32::create_file(URI(test_file).to_string());
+  CHECK(!win32::is_dir(test_dir.to_path()));
+  st = win32::create_dir(test_dir.to_path());
   CHECK(st.ok());
-  CHECK(win32::is_file(URI(test_file).to_string()));
-  st = win32::create_file(URI(test_file).to_string());
-  CHECK(st.ok());
-  CHECK(win32::is_file(URI(test_file).to_string()));
+  CHECK(!win32::is_file(test_dir.to_path()));
+  CHECK(win32::is_dir(test_dir.to_path()));
 
-  st = win32::create_file(URI(test_file).to_string());
+  CHECK(!win32::is_file(test_file.to_path()));
+  st = win32::create_file(test_file.to_path());
   CHECK(st.ok());
-  st = win32::remove_path(URI(test_file).to_string());
+  CHECK(win32::is_file(test_file.to_path()));
+  st = win32::create_file(test_file.to_path());
   CHECK(st.ok());
-  CHECK(!win32::is_file(URI(test_file).to_string()));
+  CHECK(win32::is_file(test_file.to_path()));
 
-  st = win32::remove_path(URI(test_dir).to_string());
+  st = win32::create_file(test_file.to_path());
   CHECK(st.ok());
-  CHECK(!win32::is_dir(URI(test_dir).to_string()));
+  st = win32::remove_path(test_file.to_path());
+  CHECK(st.ok());
+  CHECK(!win32::is_file(test_file.to_path()));
 
-  st = win32::create_dir(URI(test_dir).to_string());
+  st = win32::remove_path(test_dir.to_path());
   CHECK(st.ok());
-  st = win32::create_file(URI(test_file).to_string());
-  CHECK(st.ok());
-  st = win32::remove_path(URI(test_dir).to_string());
-  CHECK(st.ok());
-  CHECK(!win32::is_dir(URI(test_dir).to_string()));
+  CHECK(!win32::is_dir(test_dir.to_path()));
 
-  st = win32::create_dir(URI(test_dir).to_string());
-  st = win32::create_file(URI(test_file).to_string());
+  st = win32::create_dir(test_dir.to_path());
+  CHECK(st.ok());
+  st = win32::create_file(test_file.to_path());
+  CHECK(st.ok());
+  st = win32::remove_path(test_dir.to_path());
+  CHECK(st.ok());
+  CHECK(!win32::is_dir(test_dir.to_path()));
+
+  st = win32::create_dir(test_dir.to_path());
+  st = win32::create_file(test_file.to_path());
   CHECK(st.ok());
 
   const unsigned  buffer_size = 100000;
@@ -96,16 +101,16 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
     write_buffer[i] = 'a' + (i % 26);
   }
   st = win32::write_to_file(
-      URI(test_file).to_string(),
+      test_file.to_path(),
       write_buffer,
       buffer_size);
   CHECK(st.ok());
-  st = win32::sync(URI(test_file).to_string());
+  st = win32::sync(test_file.to_path());
   CHECK(st.ok());
 
   auto read_buffer = new char[26];
   st = win32::read_from_file(
-      URI(test_file).to_string(), 0, read_buffer, 26);
+      test_file.to_path(), 0, read_buffer, 26);
   CHECK(st.ok());
 
   bool allok = true;
@@ -118,7 +123,7 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(allok == true);
 
   st = win32::read_from_file(
-     URI(test_file).to_string(), 11, read_buffer, 26);
+     test_file.to_path(), 11, read_buffer, 26);
   CHECK(st.ok());
 
   allok = true;
@@ -131,25 +136,25 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(allok == true);
 
   std::vector<std::string> paths;
-  st = win32::ls(URI(test_dir).to_string(), &paths);
+  st = win32::ls(test_dir.to_path(), &paths);
   CHECK(st.ok());
   CHECK(paths.size() == 1);
-  CHECK(starts_with(paths[0], "file:///"));
-  CHECK(ends_with(paths[0], "tiledb_test_dir/tiledb_test_file"));
+  CHECK(!starts_with(paths[0], "file:///"));
+  CHECK(ends_with(paths[0], "tiledb_test_dir\\tiledb_test_file"));
   CHECK(win32::is_file(paths[0]));
 
   uint64_t nbytes = 0;
-  st = win32::file_size(URI(test_file).to_string(), &nbytes);
+  st = win32::file_size(test_file.to_path(), &nbytes);
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
   st = win32::remove_path(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
   CHECK(!st.ok());
 
-  st = win32::move_path(URI(test_file).to_string(), URI(test_file + "2").to_string());
+  st = win32::move_path(test_file.to_path(), URI(test_file_path + "2").to_path());
   CHECK(st.ok());
-  CHECK(!win32::is_file(URI(test_file).to_string()));
-  CHECK(win32::is_file(URI(test_file + "2").to_string()));
+  CHECK(!win32::is_file(test_file.to_path()));
+  CHECK(win32::is_file(URI(test_file_path + "2").to_path()));
 }
 
 #endif // _WIN32
