@@ -416,7 +416,13 @@ bool is_win32_path(const std::string &path) {
   if (PathIsURL(path.c_str())) {
     return false;
   } else {
-    return PathIsUNC(path.c_str()) || PathGetDriveNumber(path.c_str()) != -1 || path.find('\\') != std::string::npos;
+    bool definitely_win32 = PathIsUNC(path.c_str()) || PathGetDriveNumber(path.c_str()) != -1 || path.find('\\') != std::string::npos;
+    if (definitely_win32) {
+      return true;
+    } else {
+      // Bare relative path e.g. "filename.txt"
+      return path.find('/') == std::string::npos;
+    }
   }
 }
 
