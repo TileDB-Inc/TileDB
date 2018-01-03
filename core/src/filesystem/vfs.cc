@@ -65,7 +65,7 @@ VFS::~VFS() {
 std::string VFS::abs_path(const std::string& path) {
   if (URI::is_file(path))
 #ifdef _WIN32
-    return win32::abs_path(path);
+    return win32::uri_from_path(win32::abs_path(win32::path_from_uri(path)));
 #else
     return posix::abs_path(path);
 #endif

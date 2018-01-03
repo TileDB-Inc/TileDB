@@ -370,6 +370,10 @@ Status write_to_file(
 }
 
 std::string uri_from_path(const std::string &path) {
+  if (path.length() == 0) {
+    return "";
+  }
+
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
   std::string str_uri;
@@ -382,6 +386,10 @@ std::string uri_from_path(const std::string &path) {
 }
 
 std::string path_from_uri(const std::string &uri) {
+  if (uri.length() == 0) {
+    return "";
+  }
+
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];
   std::string str_path;
