@@ -34,6 +34,8 @@
 #define TILEDB_VFS_H
 
 #include "buffer.h"
+#include "config.h"
+#include "filesystem.h"
 #include "status.h"
 #include "uri.h"
 #include "file_lock.h"
@@ -46,6 +48,7 @@
 #include "s3.h"
 #endif
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -97,7 +100,24 @@ class VFS {
   Status create_file(const URI& uri) const;
 
   /**
+   * Creates an object-store bucket.
+   *
+   * @param uri The name of the bucket to be created.
+   * @return Status
+   */
+  Status create_bucket(const URI& uri) const;
+
+  /**
+   * Deletes an object-store bucket.
+   *
+   * @param uri The name of the bucket to be deleted.
+   * @return Status
+   */
+  Status remove_bucket(const URI& uri) const;
+
+  /**
    * Removes a given path (recursive)
+   *
    * @param uri The uri of the path to be removed
    * @return Status
    */
@@ -145,7 +165,7 @@ class VFS {
    * Checks if a directory exists.
    *
    * @param uri The URI of the directory.
-   * @return *True* if the directory exists and *false* otherwise.
+   * @return `True` if the directory exists and `false` otherwise.
    */
   bool is_dir(const URI& uri) const;
 
@@ -153,16 +173,20 @@ class VFS {
    * Checks if a file exists.
    *
    * @param uri The URI of the file.
-   * @return *True* if the file exists and *false* otherwise.
+   * @return `True` if the file exists and `false` otherwise.
    */
   bool is_file(const URI& uri) const;
 
-#ifdef HAVE_S3
-  Status init(const S3::S3Config& s3_config);
-#else
+  /**
+   * Checks if an object-store bucket exists.
+   *
+   * @param uri The name of the S3 bucket.
+   * @return `True` if the bucket exists and `false` otherwise.
+   */
+  bool is_bucket(const URI& uri) const;
+
   /** Initializes the virtual filesystem. */
-  Status init();
-#endif
+  Status init(const Config::VFSParams& vfs_params);
 
   /**
    * Retrieves all the URIs that have the first input as parent.
@@ -183,15 +207,6 @@ class VFS {
   Status move_path(const URI& old_uri, const URI& new_uri);
 
   /**
-   * Reads the entire file into a buffer.
-   *
-   * @param uri The URI of the file.
-   * @param buff The buffer to read into.
-   * @return Status
-   */
-  //  Status read_from_file(const URI& uri, Buffer** buff);
-
-  /**
    * Reads from a file.
    *
    * @param uri The URI of the file.
@@ -200,8 +215,11 @@ class VFS {
    * @param nbytes Number of bytes to read.
    * @return Status
    */
-  Status read_from_file(
+  Status read(
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+
+  /** Checks if a given filesystem is supported. */
+  bool supports_fs(Filesystem fs) const;
 
   /**
    * Syncs (flushes) a file.
@@ -219,8 +237,7 @@ class VFS {
    * @param buffer_size The buffer size.
    * @return Status
    */
-  Status write_to_file(
-      const URI& uri, const void* buffer, uint64_t buffer_size);
+  Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
 
  private:
 /* ********************************* */
@@ -233,6 +250,9 @@ class VFS {
 #ifdef HAVE_S3
   S3 s3_;
 #endif
+
+  /** The set with the supported filesystems. */
+  std::set<Filesystem> supported_fs_;
 };
 
 }  // namespace tiledb

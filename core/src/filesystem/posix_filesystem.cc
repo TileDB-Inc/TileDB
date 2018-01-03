@@ -158,16 +158,6 @@ Status remove_path(const std::string& path) {
   return Status::Ok();
 }
 
-Status delete_dir(const std::string& path) {
-  std::string cmd = "rm -rf " + path;
-  int rc = system(cmd.c_str());
-  if (rc) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Failed to delete directory '") + path + "'"));
-  }
-  return Status::Ok();
-}
-
 Status remove_file(const std::string& path) {
   if (remove(path.c_str()) != 0) {
     return LOG_STATUS(
@@ -319,7 +309,7 @@ void purge_dots_from_path(std::string* path) {
     *path += std::string("/") + t;
 }
 
-Status read_from_file(
+Status read(
     const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
@@ -375,7 +365,7 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
-Status write_to_file(
+Status write(
     const std::string& path, const void* buffer, uint64_t buffer_size) {
   // Open file
   int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);

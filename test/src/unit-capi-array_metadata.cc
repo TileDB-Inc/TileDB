@@ -44,11 +44,6 @@
 #include "posix_filesystem.h"
 #endif
 #include "tiledb.h"
-#include "uri.h"
-
-#ifdef HAVE_S3
-#include "s3.h"
-#endif
 
 struct ArrayMetadataFx {
 // Filesystem related
@@ -56,8 +51,7 @@ struct ArrayMetadataFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  tiledb::S3 s3_;
-  const char* S3_BUCKET = "tiledb";
+  const std::string S3_BUCKET = "s3://tiledb";
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
   const std::string FILE_URI_PREFIX = "file://";
@@ -101,15 +95,16 @@ struct ArrayMetadataFx {
   const char* DIM2_TILE_EXTENT_STR = "5";
   const uint64_t TILE_EXTENT_SIZE = sizeof(TILE_EXTENTS) / DIM_NUM;
 
-  // TileDB context
+  // TileDB context and vfs
   tiledb_ctx_t* ctx_;
+  tiledb_vfs_t* vfs_;
 
   // Functions
   ArrayMetadataFx();
   ~ArrayMetadataFx();
-  void remove_temp_dir();
+  void remove_temp_dir(const std::string& path);
   void create_array(const std::string& path);
-  void create_temp_dir();
+  void create_temp_dir(const std::string& path);
   void delete_array(const std::string& path);
   bool is_array(const std::string& path);
   void load_and_check_array_metadata(const std::string& path);
@@ -121,55 +116,43 @@ ArrayMetadataFx::ArrayMetadataFx() {
   REQUIRE(tiledb_config_create(&config) == TILEDB_OK);
 #ifdef HAVE_S3
   REQUIRE(
-      tiledb_config_set(
-          config, "tiledb.s3.endpoint_override", "localhost:9999") ==
+      tiledb_config_set(config, "vfs.s3.endpoint_override", "localhost:9999") ==
       TILEDB_OK);
 #endif
+  ctx_ = nullptr;
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+  vfs_ = nullptr;
+  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
   // Connect to S3
 #ifdef HAVE_S3
-  // TODO: use tiledb_vfs_t instead of S3::*
-  tiledb::S3::S3Config s3_config;
-  s3_config.endpoint_override_ = "localhost:9999";
-  REQUIRE(s3_.connect(s3_config).ok());
-
   // Create bucket if it does not exist
-  if (!s3_.bucket_exists(S3_BUCKET))
-    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  if (!is_bucket) {
+    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
 #endif
 }
 
 ArrayMetadataFx::~ArrayMetadataFx() {
+  CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
 
-void ArrayMetadataFx::create_temp_dir() {
-  remove_temp_dir();
-
-#ifdef HAVE_S3
-  REQUIRE(s3_.create_dir(tiledb::URI(S3_TEMP_DIR)).ok());
-#endif
-#ifdef HAVE_HDFS
-  auto cmd_hdfs = std::string("hadoop fs -mkdir -p ") + HDFS_TEMP_DIR;
-  REQUIRE(system(cmd_hdfs.c_str()) == 0);
-#endif
-  auto cmd_posix = std::string("mkdir -p ") + FILE_TEMP_DIR;
-  REQUIRE(system(cmd_posix.c_str()) == 0);
+void ArrayMetadataFx::create_temp_dir(const std::string& path) {
+  remove_temp_dir(path);
+  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-void ArrayMetadataFx::remove_temp_dir() {
-// Delete temporary directory
-#ifdef HAVE_S3
-  REQUIRE(s3_.remove_path(tiledb::URI(S3_TEMP_DIR)).ok());
-#endif
-#ifdef HAVE_HDFS
-  auto cmd_hdfs = std::string("hadoop fs -rm -r -f ") + HDFS_TEMP_DIR;
-  REQUIRE(system(cmd_hdfs.c_str()) == 0);
-#endif
-  auto cmd_posix = std::string("rm -rf ") + FILE_TEMP_DIR;
-  REQUIRE(system(cmd_posix.c_str()) == 0);
+void ArrayMetadataFx::remove_temp_dir(const std::string& path) {
+  int is_dir = 0;
+  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir)
+    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
 bool ArrayMetadataFx::is_array(const std::string& path) {
@@ -474,40 +457,42 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
 TEST_CASE_METHOD(
     ArrayMetadataFx,
     "C API: Test array metadata creation and retrieval",
-    "[capi], [array metadata]") {
-  create_temp_dir();
-
+    "[capi], [array-metadata]") {
   std::string array_name;
 
-  // Posix
+  // File
   array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   create_array(array_name);
   load_and_check_array_metadata(array_name);
   delete_array(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
   // S3
   array_name = S3_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(S3_TEMP_DIR);
   create_array(array_name);
   load_and_check_array_metadata(array_name);
   delete_array(array_name);
+  remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   // HDFS
   array_name = HDFS_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(HDFS_TEMP_DIR);
   create_array(array_name);
   load_and_check_array_metadata(array_name);
   delete_array(array_name);
+  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
-
-  remove_temp_dir();
 }
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
     "C API: Test array metadata one anonymous dimension",
-    "[capi], [array metadata]") {
+    "[capi], [array-metadata]") {
   // Create dimensions
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_create(
@@ -554,7 +539,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayMetadataFx,
     "C API: Test array metadata multiple anonymous dimensions",
-    "[capi], [array metadata]") {
+    "[capi], [array-metadata]") {
   // Create dimensions
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_create(
@@ -598,7 +583,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayMetadataFx,
     "C API: Test array metadata one anonymous attribute",
-    "[capi], [array metadata]") {
+    "[capi], [array-metadata]") {
   // Create array metadata
   tiledb_array_metadata_t* array_metadata;
   int rc = tiledb_array_metadata_create(ctx_, &array_metadata, "my_meta");
@@ -666,7 +651,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayMetadataFx,
     "C API: Test array metadata multiple anonymous attributes",
-    "[capi], [array metadata]") {
+    "[capi], [array-metadata]") {
   // Create array metadata
   tiledb_array_metadata_t* array_metadata;
   int rc = tiledb_array_metadata_create(ctx_, &array_metadata, "my_meta");
