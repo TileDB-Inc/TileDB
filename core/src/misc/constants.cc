@@ -303,6 +303,38 @@ const char* kv_filename = "__kv.tdb";
  */
 uint64_t kv_buffer_size = 100000;
 
+#ifdef HAVE_S3
+/** A directory file suffix (in S3, directories are also files). */
+const char* s3_dir_suffix = ".dir";
+
+/** Maximum number of attempts to wait for an S3 response. */
+const unsigned int s3_max_attempts = 1000;
+
+/** An allocation tag used for logging. */
+const char* s3_allocation_tag = "TileDB";
+
+/** Use virtual addressing (false for minio, true for AWS S3). */
+const bool s3_use_virtual_addressing = false;
+
+/** Connect timeout in milliseconds. */
+const long s3_connect_timeout_ms = 3000;
+
+/** Request timeout in milliseconds. */
+const long s3_request_timeout_ms = 3000;
+
+/** S3 scheme (http for local minio, https for AWS S3). */
+const char* s3_scheme = "http";
+
+/** Size of file buffers used in the S3 multi-part uploads. */
+const uint64_t s3_file_buffer_size = 5 * 1024 * 1024;
+
+/** S3 region. */
+const char* s3_region = "";
+
+/** S3 endpoint override. */
+const char* s3_endpoint_override = "localhost:9000";
+#endif
+
 }  // namespace constants
 
 }  // namespace tiledb

@@ -47,7 +47,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+  tiledb_ctx_create(&ctx, nullptr);
 
   // Consolidate the input array
   tiledb_array_consolidate(ctx, "my_dense_array");

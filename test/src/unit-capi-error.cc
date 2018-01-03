@@ -36,9 +36,9 @@
 
 #include <iostream>
 
-TEST_CASE("C API: Test error and error message", "[capi]") {
+TEST_CASE("C API: Test error and error message", "[capi], [error]") {
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_create(&ctx);
+  int rc = tiledb_ctx_create(&ctx, nullptr);
   CHECK(rc == TILEDB_OK);
 
   const char* bad_path = nullptr;

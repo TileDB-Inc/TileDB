@@ -410,9 +410,10 @@ Status Query::set_buffers(
     void** buffers,
     uint64_t* buffer_sizes) {
   // Sanity checks
-  if (attributes == nullptr || attribute_num == 0)
+  if (attributes == nullptr && attribute_num == 0)
     return LOG_STATUS(
-        Status::QueryError("Cannot set buffers; Attributes not provided"));
+        Status::QueryError("Cannot set buffers; no attributes provided"));
+
   if (buffers == nullptr || buffer_sizes == nullptr)
     return LOG_STATUS(
         Status::QueryError("Cannot set buffers; Buffers not provided"));

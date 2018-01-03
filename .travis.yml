@@ -1,10 +1,14 @@
 sudo: required
 dist: trusty
 language: cpp
+services:
+  - docker
 env:
     matrix:
-        - USE_HDFS="ON" 
-        - USE_HDFS="OFF"
+        - USE_HDFS="ON" USE_S3="OFF" 
+        - USE_HDFS="OFF" USE_S3="ON"
+        - USE_HDFS="OFF" USE_S3="OFF"
+        - USE_HDFS="ON" USE_S3="ON"
 
 install:
     # Install lcov to coveralls conversion + upload tool
@@ -20,10 +24,17 @@ install:
     # Install hadoop if HDFS is enabled
     - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
 
+    # Install minio if S3 is enabled
+    - if [ "$USE_S3" == "ON" ]; then 
+        source scripts/install-s3.sh && source scripts/install-minio.sh; 
+      fi
+
     # Build TileDB
     - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build
     - if [ "$USE_HDFS" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-hdfs; fi
-    - if [ "$USE_HDFS" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
+    - if [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3; fi
+    - if [ "$USE_HDFS" == "OFF" ] && [ "$USE_S3" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
+    - if [ "$USE_HDFS" == "ON" ] && [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3 --enable-hdfs; fi
     - make -j4
     - make examples -j4
     

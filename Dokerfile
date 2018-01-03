@@ -1,0 +1,45 @@
+FROM ubuntu:16.04
+MAINTAINER npapa
+
+RUN apt-get update && \
+      apt-get -y install --no-install-recommends sudo lcov rubygems git libcurl4-openssl-dev software-properties-common python-software-properties wget libssl-dev && \
+      rm -rf /var/lib/apt/lists/*
+RUN useradd -m docker 
+RUN echo "docker ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/docker && \
+    chmod 0440 /etc/sudoers.d/docker
+
+RUN chmod 777 -R /opt
+
+USER docker
+
+RUN mkdir -p /opt/tiledb
+COPY scripts /opt/tiledb/scripts
+WORKDIR /opt
+
+
+# Install lcov to coveralls conversion + upload tool
+#RUN sudo apt-get install -y lcov rubygems git libcurl4-openssl-dev 
+#RUN sudo apt-get install -y software-properties-common python-software-properties
+RUN sudo gem install coveralls-lcov
+#RUN sudo apt-get install -y wget
+
+# Install clangformat (v5.0)
+RUN sudo tiledb/scripts/install-clangformat.sh
+
+# Install library dependencies
+RUN sudo tiledb/scripts/install-deps.sh
+
+# Install minio if S3 is enabled
+#RUN sudo apt-get install -y libssl-dev
+RUN . tiledb/scripts/install-s3-minio.sh
+
+ENV AWS_SDK_CPP=/opt/aws-sdk-cpp/build
+COPY . /opt/tiledb/
+WORKDIR /opt/tiledb
+
+# Build TileDB
+RUN sudo rm -rf build
+RUN mkdir -p build
+WORKDIR /opt/tiledb/build
+RUN ../bootstrap --enable-coverage --enable-verbose --enable-s3
+RUN make -j4

@@ -305,6 +305,38 @@ extern const char* kv_filename;
  */
 extern uint64_t kv_buffer_size;
 
+#ifdef HAVE_S3
+/** A directory file suffix (in S3, directories are also files). */
+extern const char* s3_dir_suffix;
+
+/** Maximum number of attempts to wait for an S3 response. */
+extern const unsigned int s3_max_attempts;
+
+/** An allocation tag used for logging. */
+extern const char* s3_allocation_tag;
+
+/** Use virtual addressing (false for minio, true for AWS S3). */
+extern const bool s3_use_virtual_addressing;
+
+/** Connect timeout in milliseconds. */
+extern const long s3_connect_timeout_ms;
+
+/** Request timeout in milliseconds. */
+extern const long s3_request_timeout_ms;
+
+/** S3 scheme (http for local minio, https for AWS S3). */
+extern const char* s3_scheme;
+
+/** Size of file buffers used in the S3 multi-part uploads. */
+extern const uint64_t s3_file_buffer_size;
+
+/** S3 region. */
+extern const char* s3_region;
+
+/** S3 endpoint override. */
+extern const char* s3_endpoint_override;
+#endif
+
 }  // namespace constants
 
 }  // namespace tiledb

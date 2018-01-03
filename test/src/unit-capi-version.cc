@@ -28,14 +28,14 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API library version
+ * Tests the C API version.
  */
 
 #include "catch.hpp"
 #include "constants.h"
 #include "tiledb.h"
 
-TEST_CASE("C API: Test version", "[capi] [version]") {
+TEST_CASE("C API: Test version", "[capi], [version]") {
   int major = -1;
   int minor = -1;
   int rev = -1;

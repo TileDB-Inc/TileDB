@@ -38,259 +38,259 @@
 #endif
 #include "tiledb.h"
 
-#include <cassert>
-#include <iostream>
-
-// Constant parameters
-const char* ATTR_1 = "a1";
-const char* ATTR_2 = "a2";
-const char* ATTR_3 = "a3";
-const char* KV_NAME = "kv";
-int KEY1 = 100;
-const int KEY1_A1 = 1;
-const char* KEY1_A2 = "a";
-const float KEY1_A3[] = {1.1, 1.2};
-const float KEY2 = 200.0;
-const int KEY2_A1 = 2;
-const char* KEY2_A2 = "bb";
-const float KEY2_A3[] = {2.1, 2.2};
-const double KEY3[] = {300.0, 300.1};
-const int KEY3_A1 = 3;
-const char* KEY3_A2 = "ccc";
-const float KEY3_A3[] = {3.1, 3.2};
-const char KEY4[] = "key_4";
-const int KEY4_A1 = 4;
-const char* KEY4_A2 = "dddd";
-const float KEY4_A3[] = {4.1, 4.2};
+#ifdef HAVE_S3
+#include "s3.h"
+#endif
 
 struct KVFx {
-// Group folder name
-#ifdef HAVE_HDFS
-  const std::string URI_PREFIX = "hdfs://";
-  const std::string TEMP_DIR = "/tiledb_test/";
-#else
-  const std::string URI_PREFIX = "file://";
-# ifdef _WIN32
-  const std::string TEMP_DIR = tiledb::win32::current_dir() + "/";
-# else
-  const std::string TEMP_DIR = tiledb::posix::current_dir() + "/";
-# endif
-#endif
-  const std::string GROUP = "my_group/";
+  const char* ATTR_1 = "a1";
+  const char* ATTR_2 = "a2";
+  const char* ATTR_3 = "a3";
+  const char* KV_NAME = "kv";
+  int KEY1 = 100;
+  const int KEY1_A1 = 1;
+  const char* KEY1_A2 = "a";
+  const float KEY1_A3[2] = {1.1, 1.2};
+  const float KEY2 = 200.0;
+  const int KEY2_A1 = 2;
+  const char* KEY2_A2 = "bb";
+  const float KEY2_A3[2] = {2.1, 2.2};
+  const double KEY3[2] = {300.0, 300.1};
+  const int KEY3_A1 = 3;
+  const char* KEY3_A2 = "ccc";
+  const float KEY3_A3[2] = {3.1, 3.2};
+  const char* KEY4 = "key_4";
+  const int KEY4_A1 = 4;
+  const char* KEY4_A2 = "dddd";
+  const float KEY4_A3[2] = {4.1, 4.2};
 
-  // Key-value name
-  std::string kv_name_;
+#ifdef HAVE_HDFS
+  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
+#endif
+#ifdef HAVE_S3
+  tiledb::S3 s3_;
+  const char* S3_BUCKET = "tiledb";
+  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
+#endif
+  const std::string FILE_URI_PREFIX = "file://";
+#ifdef _WIN32
+  const std::string FILE_TEMP_DIR =
+    tiledb::win32::current_dir() + "\\tiledb_test\\";
+#else
+  const std::string FILE_TEMP_DIR =
+    tiledb::posix::current_dir() + "/tiledb_test/";
+#endif
 
   // TileDB context
   tiledb_ctx_t* ctx_;
 
-  KVFx() {
-    // Initialize context
-    int rc = tiledb_ctx_create(&ctx_);
-    if (rc != TILEDB_OK) {
-      std::cerr << "KVFx() Error creating tiledb_ctx_t" << std::endl;
-      std::exit(1);
-    }
-    // Create group, delete it if it already exists
-    if (dir_exists(TEMP_DIR + GROUP)) {
-      bool success = remove_dir(TEMP_DIR + GROUP);
-      if (!success) {
-        tiledb_ctx_free(ctx_);
-        std::cerr << "KVFx() Error deleting existing test group" << std::endl;
-        std::exit(1);
-      }
-    }
-    rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
-    if (rc != TILEDB_OK) {
-      tiledb_ctx_free(ctx_);
-      std::cerr << "KVFx() Error creating test group" << std::endl;
-      std::exit(1);
-    }
-
-    set_kv_name();
-  }
-
-  ~KVFx() {
-    // Finalize TileDB context
-    tiledb_ctx_free(ctx_);
-
-    // Remove the temporary group
-    bool success = remove_dir(TEMP_DIR + GROUP);
-    if (!success) {
-      std::cerr << "KVFx() Error deleting test group" << std::endl;
-      std::exit(1);
-    }
-  }
-
-  bool dir_exists(std::string path) {
-#ifdef HAVE_HDFS
-    std::string cmd = std::string("hadoop fs -test -d ") + path;
-#else
-    std::string cmd = std::string("test -d ") + path;
-#endif
-    return (system(cmd.c_str()) == 0);
-  }
-
-  bool remove_dir(std::string path) {
-#ifdef HAVE_HDFS
-    std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
-#else
-    std::string cmd = std::string("rm -r -f ") + path;
-#endif
-    return (system(cmd.c_str()) == 0);
-  }
-
-  /** Sets the key-value name for the current test. */
-  void set_kv_name() {
-    kv_name_ = URI_PREFIX + TEMP_DIR + GROUP + KV_NAME;
-  }
-
-  void create_kv() {
-    int rc;
-
-    // Create attributes
-    tiledb_attribute_t* a1;
-    rc = tiledb_attribute_create(ctx_, &a1, ATTR_1, TILEDB_INT32);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC, -1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
-    CHECK(rc == TILEDB_OK);
-    tiledb_attribute_t* a2;
-    rc = tiledb_attribute_create(ctx_, &a2, ATTR_2, TILEDB_CHAR);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
-    CHECK(rc == TILEDB_OK);
-    tiledb_attribute_t* a3;
-    rc = tiledb_attribute_create(ctx_, &a3, ATTR_3, TILEDB_FLOAT32);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
-    CHECK(rc == TILEDB_OK);
-
-    // Create array metadata
-    tiledb_array_metadata_t* array_metadata;
-    rc = tiledb_array_metadata_create(ctx_, &array_metadata, kv_name_.c_str());
-    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a1);
-    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a2);
-    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a3);
-
-    // Set array as key-value
-    rc = tiledb_array_metadata_set_as_kv(ctx_, array_metadata);
-    CHECK(rc == TILEDB_OK);
-
-    // Check array metadata
-    rc = tiledb_array_metadata_check(ctx_, array_metadata);
-    CHECK(rc == TILEDB_OK);
-
-    // Check if array is defined as kv
-    int as_kv;
-    rc = tiledb_array_metadata_get_as_kv(ctx_, array_metadata, &as_kv);
-    CHECK(rc == TILEDB_OK);
-    CHECK(as_kv == 1);
-
-    // Create key-value store
-    rc = tiledb_array_create(ctx_, array_metadata);
-    CHECK(rc == TILEDB_OK);
-
-    // Clean up
-    rc = tiledb_attribute_free(ctx_, a1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_free(ctx_, a2);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_attribute_free(ctx_, a3);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_free(ctx_, array_metadata);
-    CHECK(rc == TILEDB_OK);
-  }
-
-  void write_kv() {
-    int rc;
-
-    // Attributes and value sizes
-    const char* attributes[] = {ATTR_1, ATTR_2, ATTR_3};
-    tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-    unsigned int nitems[] = {1, tiledb_var_num(), 2};
-
-    // Create key-values
-    tiledb_kv_t* kv;
-    rc = tiledb_kv_create(ctx_, &kv, 3, attributes, types, nitems);
-    CHECK(rc == TILEDB_OK);
-
-    // Add keys
-    rc = tiledb_kv_add_key(ctx_, kv, &KEY1, TILEDB_INT32, sizeof(KEY1));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_key(ctx_, kv, &KEY2, TILEDB_FLOAT32, sizeof(KEY2));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_key(ctx_, kv, KEY3, TILEDB_FLOAT64, sizeof(KEY3));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_key(ctx_, kv, KEY4, TILEDB_CHAR, strlen(KEY4));
-    CHECK(rc == TILEDB_OK);
-
-    // Add attribute "a1" values
-    rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY1_A1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY2_A1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY3_A1);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY4_A1);
-    CHECK(rc == TILEDB_OK);
-
-    // Add attribute "a2" values
-    rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY1_A2, strlen(KEY1_A2));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY2_A2, strlen(KEY2_A2));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY3_A2, strlen(KEY3_A2));
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY4_A2, strlen(KEY4_A2));
-    CHECK(rc == TILEDB_OK);
-
-    // Add attribute "a3" values
-    rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY1_A3);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY2_A3);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY3_A3);
-    CHECK(rc == TILEDB_OK);
-    // One value is missing - rectified below
-
-    // Create query
-    tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, kv_name_.c_str(), TILEDB_WRITE);
-    CHECK(rc == TILEDB_OK);
-
-    // Check write mismatch and rectify
-    rc = tiledb_query_set_kv(ctx_, query, kv);
-    CHECK(rc == TILEDB_ERR);
-    rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY4_A3);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_kv(ctx_, query, kv);
-    CHECK(rc == TILEDB_OK);
-
-    // Submit query
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-
-    // Clean up
-    rc = tiledb_query_free(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_kv_free(ctx_, kv);
-    CHECK(rc == TILEDB_OK);
-  }
+  // Functions
+  KVFx();
+  ~KVFx();
+  void check_single_key_read(const std::string& path);
+  void check_read_all(const std::string& path);
+  void create_kv(const std::string& path);
+  void write_kv(const std::string& path);
+  void create_temp_dir();
+  void remove_temp_dir();
 };
 
-TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
-  int rc;
+KVFx::KVFx() {
+  // Create TileDB context
+  tiledb_config_t* config = nullptr;
+  REQUIRE(tiledb_config_create(&config) == TILEDB_OK);
+#ifdef HAVE_S3
+  REQUIRE(
+      tiledb_config_set(
+          config, "tiledb.s3.endpoint_override", "localhost:9999") ==
+      TILEDB_OK);
+#endif
+  REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+
+  // Connect to S3
+#ifdef HAVE_S3
+  // TODO: use tiledb_vfs_t instead of S3::*
+  tiledb::S3::S3Config s3_config;
+  s3_config.endpoint_override_ = "localhost:9999";
+  REQUIRE(s3_.connect(s3_config).ok());
+
+  // Create bucket if it does not exist
+  if (!s3_.bucket_exists(S3_BUCKET))
+    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+#endif
+}
+
+KVFx::~KVFx() {
+  CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+}
+
+void KVFx::create_temp_dir() {
+  remove_temp_dir();
+
+#ifdef HAVE_S3
+  REQUIRE(s3_.create_dir(tiledb::URI(S3_TEMP_DIR)).ok());
+#endif
+#ifdef HAVE_HDFS
+  auto cmd_hdfs = std::string("hadoop fs -mkdir -p ") + HDFS_TEMP_DIR;
+  REQUIRE(system(cmd_hdfs.c_str()) == 0);
+#endif
+  auto cmd_posix = std::string("mkdir -p ") + FILE_TEMP_DIR;
+  REQUIRE(system(cmd_posix.c_str()) == 0);
+}
+
+void KVFx::remove_temp_dir() {
+// Delete temporary directory
+#ifdef HAVE_S3
+  REQUIRE(s3_.remove_path(tiledb::URI(S3_TEMP_DIR)).ok());
+#endif
+#ifdef HAVE_HDFS
+  auto cmd_hdfs = std::string("hadoop fs -rm -r -f ") + HDFS_TEMP_DIR;
+  REQUIRE(system(cmd_hdfs.c_str()) == 0);
+#endif
+  auto cmd_posix = std::string("rm -rf ") + FILE_TEMP_DIR;
+  REQUIRE(system(cmd_posix.c_str()) == 0);
+}
+
+void KVFx::create_kv(const std::string& path) {
+  // Create attributes
+  tiledb_attribute_t* a1;
+  int rc = tiledb_attribute_create(ctx_, &a1, ATTR_1, TILEDB_INT32);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a2;
+  rc = tiledb_attribute_create(ctx_, &a2, ATTR_2, TILEDB_CHAR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a3;
+  rc = tiledb_attribute_create(ctx_, &a3, ATTR_3, TILEDB_FLOAT32);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array metadata
+  tiledb_array_metadata_t* array_metadata;
+  rc = tiledb_array_metadata_create(ctx_, &array_metadata, path.c_str());
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a3);
+  CHECK(rc == TILEDB_OK);
+
+  // Set array as key-value
+  rc = tiledb_array_metadata_set_as_kv(ctx_, array_metadata);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array metadata
+  rc = tiledb_array_metadata_check(ctx_, array_metadata);
+  CHECK(rc == TILEDB_OK);
+
+  // Check if array is defined as kv
+  int as_kv;
+  rc = tiledb_array_metadata_get_as_kv(ctx_, array_metadata, &as_kv);
+  CHECK(rc == TILEDB_OK);
+  CHECK(as_kv == 1);
 
   // Create key-value store
-  create_kv();
-  write_kv();
+  rc = tiledb_array_create(ctx_, array_metadata);
+  CHECK(rc == TILEDB_OK);
 
+  // Clean up
+  rc = tiledb_attribute_free(ctx_, a1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_free(ctx_, a2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_free(ctx_, a3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  CHECK(rc == TILEDB_OK);
+}
+
+void KVFx::write_kv(const std::string& path) {
+  // Attributes and value sizes
+  const char* attributes[] = {ATTR_1, ATTR_2, ATTR_3};
+  tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
+  unsigned int nitems[] = {1, tiledb_var_num(), 2};
+
+  // Create key-values
+  tiledb_kv_t* kv;
+  int rc = tiledb_kv_create(ctx_, &kv, 3, attributes, types, nitems);
+  CHECK(rc == TILEDB_OK);
+
+  // Add keys
+  rc = tiledb_kv_add_key(ctx_, kv, &KEY1, TILEDB_INT32, sizeof(KEY1));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_key(ctx_, kv, &KEY2, TILEDB_FLOAT32, sizeof(KEY2));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_key(ctx_, kv, KEY3, TILEDB_FLOAT64, sizeof(KEY3));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_key(ctx_, kv, KEY4, TILEDB_CHAR, strlen(KEY4));
+  CHECK(rc == TILEDB_OK);
+
+  // Add attribute "a1" values
+  rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY1_A1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY2_A1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY3_A1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value(ctx_, kv, 0, &KEY4_A1);
+  CHECK(rc == TILEDB_OK);
+
+  // Add attribute "a2" values
+  rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY1_A2, strlen(KEY1_A2));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY2_A2, strlen(KEY2_A2));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY3_A2, strlen(KEY3_A2));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value_var(ctx_, kv, 1, KEY4_A2, strlen(KEY4_A2));
+  CHECK(rc == TILEDB_OK);
+
+  // Add attribute "a3" values
+  rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY1_A3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY2_A3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY3_A3);
+  CHECK(rc == TILEDB_OK);
+  // One value is missing - rectified below
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, path.c_str(), TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Check write mismatch and rectify
+  rc = tiledb_query_set_kv(ctx_, query, kv);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_kv_add_value(ctx_, kv, 2, &KEY4_A3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_kv(ctx_, query, kv);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_query_free(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_free(ctx_, kv);
+  CHECK(rc == TILEDB_OK);
+}
+
+void KVFx::check_single_key_read(const std::string& path) {
   // Set attributes
   const char* attributes[] = {ATTR_1, ATTR_2, ATTR_3};
   tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
@@ -315,12 +315,12 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
 
   // Create key-values #1
   tiledb_kv_t* kv_1;
-  rc = tiledb_kv_create(ctx_, &kv_1, 3, attributes, types, nitems);
+  int rc = tiledb_kv_create(ctx_, &kv_1, 3, attributes, types, nitems);
   CHECK(rc == TILEDB_OK);
 
   // Query #1
   tiledb_query_t* query_1;
-  rc = tiledb_query_create(ctx_, &query_1, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query_1, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_1, &key1, key1_type, key1_size);
   CHECK(rc == TILEDB_OK);
@@ -359,7 +359,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
 
   // Query #2
   tiledb_query_t* query_2;
-  rc = tiledb_query_create(ctx_, &query_2, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query_2, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_2, &key2, key2_type, key2_size);
   CHECK(rc == TILEDB_OK);
@@ -389,7 +389,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
 
   // Query #3
   tiledb_query_t* query_3;
-  rc = tiledb_query_create(ctx_, &query_3, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query_3, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_3, key3, key3_type, key3_size);
   CHECK(rc == TILEDB_OK);
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
 
   // Query #4
   tiledb_query_t* query_4;
-  rc = tiledb_query_create(ctx_, &query_4, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query_4, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_4, key4, key4_type, key4_size);
   CHECK(rc == TILEDB_OK);
@@ -443,7 +443,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
   CHECK(!memcmp(a3, &KEY4_A3, 2 * sizeof(float)));
 
   // Check that we can consolidate kv-arrays
-  rc = tiledb_array_consolidate(ctx_, kv_name_.c_str());
+  rc = tiledb_array_consolidate(ctx_, path.c_str());
   CHECK(rc == TILEDB_OK);
 
   // Create key-values #5
@@ -454,7 +454,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
   // Query #5 - Key does not exist
   tiledb_query_t* query_5;
   const char* key5 = "invalid";
-  rc = tiledb_query_create(ctx_, &query_5, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query_5, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_5, key5, TILEDB_CHAR, strlen(key5));
   CHECK(rc == TILEDB_OK);
@@ -494,13 +494,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Single-key read", "[kv]") {
   CHECK(rc == TILEDB_OK);
 }
 
-TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[kv]") {
-  int rc;
-
-  // Create key-value store
-  create_kv();
-  write_kv();
-
+void KVFx::check_read_all(const std::string& path) {
   // Set attributes
   const char* attributes[] = {ATTR_1, ATTR_2, ATTR_3};
   tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
@@ -508,14 +502,14 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[kv]") {
 
   // Create key-values
   tiledb_kv_t* kv;
-  rc = tiledb_kv_create(ctx_, &kv, 3, attributes, types, nitems);
+  int rc = tiledb_kv_create(ctx_, &kv, 3, attributes, types, nitems);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_kv_set_buffer_size(ctx_, kv, 1000);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx_, &query, kv_name_.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, path.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query, kv);
   CHECK(rc == TILEDB_OK);
@@ -540,11 +534,11 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[kv]") {
   CHECK(a3_num == 4);
 
   // Get the key-value order
-  int order[4];
+  uint64_t order[4] = {0, 1, 2, 3};
   void* key;
   uint64_t key_size;
   tiledb_datatype_t key_type;
-  for (int i = 0; i < 4; ++i) {
+  for (uint64_t i = 0; i < 4; ++i) {
     rc = tiledb_kv_get_key(ctx_, kv, i, &key, &key_type, &key_size);
     CHECK(rc == TILEDB_OK);
     if (key_type == TILEDB_INT32) {
@@ -620,4 +614,73 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[kv]") {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, query);
   CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    KVFx, "C API: Test key-value; Create and write", "[capi], [kv]") {
+  create_temp_dir();
+
+  std::string array_name;
+
+  // Posix
+  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  write_kv(array_name);
+
+#ifdef HAVE_S3
+  // S3
+  array_name = S3_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  write_kv(array_name);
+#endif
+
+#ifdef HAVE_HDFS
+  // HDFS
+  array_name = HDFS_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  write_kv(array_name);
+#endif
+}
+
+TEST_CASE_METHOD(
+    KVFx, "C API: Test key-value; Single-key read", "[capi], [kv]") {
+  std::string array_name;
+
+  // Posix
+  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  check_single_key_read(array_name);
+
+#ifdef HAVE_S3
+  // S3
+  array_name = S3_TEMP_DIR + KV_NAME;
+  check_single_key_read(array_name);
+#endif
+
+#ifdef HAVE_HDFS
+  // HDFS
+  array_name = HDFS_TEMP_DIR + KV_NAME;
+  check_single_key_read(array_name);
+#endif
+}
+
+TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[capi], [kv]") {
+  std::string array_name;
+
+  // Posix
+  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  check_read_all(array_name);
+
+#ifdef HAVE_S3
+  // S3
+  array_name = S3_TEMP_DIR + KV_NAME;
+  check_read_all(array_name);
+#endif
+
+#ifdef HAVE_HDFS
+  // HDFS
+  array_name = HDFS_TEMP_DIR + KV_NAME;
+  check_read_all(array_name);
+#endif
+
+  remove_temp_dir();
 }

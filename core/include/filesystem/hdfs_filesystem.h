@@ -30,8 +30,8 @@
  * This file includes declarations of HDFS filesystem functions.
  */
 
-#ifndef TILEDB_FILESYSTEM_HDFS_H
-#define TILEDB_FILESYSTEM_HDFS_H
+#ifndef TILEDB_HDFS_FILESYSTEM_H
+#define TILEDB_HDFS_FILESYSTEM_H
 
 #include <sys/types.h>
 #include <string>
@@ -189,4 +189,4 @@ Status get_path(const URI& hdfs_path, const URI& fs_path);
 
 }  // namespace tiledb
 
-#endif  // TILEDB_FILESYSTEM_HDFS_H
+#endif  // TILEDB_HDFS_FILESYSTEM_H

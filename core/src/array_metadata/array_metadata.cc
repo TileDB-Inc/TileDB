@@ -123,10 +123,11 @@ const Attribute* ArrayMetadata::attribute(unsigned int id) const {
 }
 
 const Attribute* ArrayMetadata::attribute(std::string name) const {
+  bool anonymous = name.empty();
   unsigned int nattr = attribute_num();
   for (unsigned int i = 0; i < nattr; i++) {
     auto attr = attribute(i);
-    if (attr->name() == name) {
+    if ((attr->name() == name) || (anonymous && attr->is_anonymous())) {
       return attr;
     }
   }
@@ -146,20 +147,23 @@ const std::string& ArrayMetadata::attribute_name(
 
 Status ArrayMetadata::attribute_id(
     const std::string& attribute_name, unsigned int* id) const {
+  bool anonymous = attribute_name.empty();
   // Special case - coordinates
   if (attribute_name == constants::coords) {
     *id = attribute_num_;
     return Status::Ok();
   }
-
   for (unsigned int i = 0; i < attribute_num_; ++i) {
-    if (attributes_[i]->name() == attribute_name) {
+    auto attr = attributes_[i];
+    if ((attr->name() == attribute_name) ||
+        (anonymous && attr->is_anonymous())) {
       *id = i;
       return Status::Ok();
     }
   }
-  return LOG_STATUS(
-      Status::ArrayMetadataError("Attribute not found: " + attribute_name));
+  return LOG_STATUS(Status::ArrayMetadataError(
+      std::string("Attribute not found: ") +
+      (anonymous ? "<anonymous>" : attribute_name)));
 }
 
 std::vector<std::string> ArrayMetadata::attribute_names() const {
@@ -177,7 +181,6 @@ std::vector<Datatype> ArrayMetadata::attribute_types() const {
   std::vector<Datatype> types;
   for (auto& attr : attributes_)
     types.emplace_back(attr->type());
-
   return types;
 }
 
@@ -230,7 +233,6 @@ std::vector<unsigned int> ArrayMetadata::cell_val_nums() const {
   std::vector<unsigned int> cell_val_nums;
   for (auto& attr : attributes_)
     cell_val_nums.emplace_back(attr->cell_val_num());
-
   return cell_val_nums;
 }
 
@@ -251,18 +253,27 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Domain not set"));
 
-  if (array_type_ == ArrayType::DENSE && domain_->null_tile_extents())
-    return LOG_STATUS(
-        Status::ArrayMetadataError("Array metadata check failed; Dense arrays "
-                                   "should not have null tile extents"));
-
   if (dim_num() == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No dimensions provided"));
 
-  if (array_type_ == ArrayType ::DENSE && attribute_num_ == 0)
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; No attributes provided"));
+  if (array_type_ == ArrayType::DENSE) {
+    if (domain_->null_tile_extents()) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; Dense arrays "
+          "can not have null tile extents"));
+    }
+    if (domain_->type() == Datatype::FLOAT32 ||
+        domain_->type() == Datatype::FLOAT64) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; Dense arrays "
+          "can not have floating point domains"));
+    }
+    if (attribute_num_ == 0) {
+      return LOG_STATUS(Status::ArrayMetadataError(
+          "Array metadata check failed; No attributes provided"));
+    }
+  }
 
   if (!check_double_delta_compressor())
     return LOG_STATUS(Status::ArrayMetadataError(
@@ -438,30 +449,37 @@ Datatype ArrayMetadata::type(unsigned int i) const {
     LOG_ERROR("Cannot retrieve type; Invalid attribute id");
     assert(false);
   }
-
   if (i < attribute_num_)
     return attributes_[i]->type();
-
   return domain_->type();
 }
 
 bool ArrayMetadata::var_size(unsigned int attribute_id) const {
   assert(attribute_id <= attribute_num_);
-
   if (attribute_id < attribute_num_)
     return attributes_[attribute_id]->cell_val_num() == constants::var_num;
-
   return false;
 }
 
-void ArrayMetadata::add_attribute(const Attribute* attr) {
+Status ArrayMetadata::add_attribute(const Attribute* attr) {
   // Create new attribute and potentially set a default name
-  auto new_attr = new Attribute(attr);
-  if (new_attr->name().empty())
+  Attribute* new_attr = nullptr;
+  if (attr->is_anonymous()) {
+    // Check if any other attributes are anonymous
+    for (auto& a : attributes_) {
+      if (a->is_anonymous()) {
+        return LOG_STATUS(Status::ArrayMetadataError(
+            "Only one anonymous attribute is allowed per array"));
+      }
+    }
+    new_attr = new Attribute(attr);
     new_attr->set_name(constants::default_attr_name);
-
+  } else {
+    new_attr = new Attribute(attr);
+  }
   attributes_.emplace_back(new_attr);
   ++attribute_num_;
+  return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -560,7 +578,7 @@ Status ArrayMetadata::init() {
 }
 
 Status ArrayMetadata::set_as_kv() {
-  // Do nothing if the array is alreade set as a key-value store
+  // Do nothing if the array is already set as a key-value store
   if (is_kv_)
     return Status::Ok();
 
@@ -649,12 +667,10 @@ void ArrayMetadata::set_tile_order(Layout tile_order) {
 bool ArrayMetadata::check_attribute_dimension_names() const {
   std::set<std::string> names;
   auto dim_num = this->dim_num();
-
   for (auto attr : attributes_)
     names.insert(attr->name());
   for (unsigned int i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension(i)->name());
-
   return (names.size() == attribute_num_ + dim_num);
 }
 

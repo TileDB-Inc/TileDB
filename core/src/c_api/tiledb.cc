@@ -33,7 +33,9 @@
 
 #include "tiledb.h"
 #include "array_metadata.h"
+#include "config.h"
 #include "kv.h"
+#include "logger.h"
 #include "query.h"
 #include "utils.h"
 
@@ -64,6 +66,10 @@ void tiledb_version(int* major, int* minor, int* rev) {
 /* ********************************* */
 /*           TILEDB TYPES            */
 /* ********************************* */
+
+struct tiledb_config_t {
+  tiledb::Config* config_;
+};
 
 struct tiledb_ctx_t {
   tiledb::StorageManager* storage_manager_;
@@ -136,11 +142,19 @@ static bool save_error(tiledb_ctx_t* ctx, const tiledb::Status& st) {
   return true;
 }
 
+inline int sanity_check(tiledb_config_t* config) {
+  if (config == nullptr || config->config_ == nullptr)
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
 inline int sanity_check(tiledb_ctx_t* ctx) {
   if (ctx == nullptr)
     return TILEDB_ERR;
   if (ctx->storage_manager_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB context"));
+    tiledb::Status st = tiledb::Status::Error("Invalid TileDB context");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -148,7 +162,9 @@ inline int sanity_check(tiledb_ctx_t* ctx) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
   if (err == nullptr || err->status_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB error struct"));
+    tiledb::Status st = tiledb::Status::Error("Invalid TileDB error struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -156,7 +172,10 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   if (attr == nullptr || attr->attr_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB attribute struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB attribute struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -165,8 +184,10 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_attribute_iter_t* attr_it) {
   if (attr_it == nullptr || attr_it->array_metadata_ == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB attribute iterator struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB attribute iterator struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -175,8 +196,10 @@ inline int sanity_check(
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_dimension_iter_t* dim_it) {
   if (dim_it == nullptr || dim_it->domain_ == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB dimension iterator struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB dimension iterator struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -184,7 +207,10 @@ inline int sanity_check(
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
   if (dim == nullptr || dim->dim_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -193,8 +219,10 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_metadata_t* array_metadata) {
   if (array_metadata == nullptr || array_metadata->array_metadata_ == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB array metadata struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB array metadata struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -202,7 +230,9 @@ inline int sanity_check(
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
   if (domain == nullptr || domain->domain_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB domain struct"));
+    tiledb::Status st = tiledb::Status::Error("Invalid TileDB domain struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -210,7 +240,9 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid TileDB query struct"));
+    tiledb::Status st = tiledb::Status::Error("Invalid TileDB query struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -218,12 +250,69 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   if (kv == nullptr || kv->kv_ == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Invalid TileDB in-memory key-value store struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Invalid TileDB in-memory key-value store struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*            CONFIG              */
+/* ****************************** */
+
+int tiledb_config_create(tiledb_config_t** config) {
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Create storage manager
+  (*config)->config_ = new (std::nothrow) tiledb::Config();
+  if ((*config)->config_ == nullptr)
+    return TILEDB_OOM;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_config_free(tiledb_config_t* config) {
+  if (config != nullptr) {
+    delete config->config_;
+    delete config;
+  }
+
+  // Always succeeds
+  return TILEDB_OK;
+}
+
+int tiledb_config_set(
+    tiledb_config_t* config, const char* param, const char* value) {
+  if (sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  config->config_->set(param, value);
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_set_from_file(tiledb_config_t* config, const char* filename) {
+  if (sanity_check(config) == TILEDB_ERR || filename == nullptr)
+    return TILEDB_ERR;
+
+  config->config_->set_config_filename(filename);
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_unset(tiledb_config_t* config, const char* param) {
+  if (sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  config->config_->unset(param);
+
   return TILEDB_OK;
 }
 
@@ -231,7 +320,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
 /*            CONTEXT             */
 /* ****************************** */
 
-int tiledb_ctx_create(tiledb_ctx_t** ctx) {
+int tiledb_ctx_create(tiledb_ctx_t** ctx, tiledb_config_t* config) {
   // Initialize context
   *ctx = new (std::nothrow) tiledb_ctx_t;
   if (*ctx == nullptr)
@@ -243,10 +332,10 @@ int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   // Create storage manager
   (*ctx)->storage_manager_ = new (std::nothrow) tiledb::StorageManager();
   if ((*ctx)->storage_manager_ == nullptr) {
-    save_error(
-        *ctx,
-        tiledb::Status::Error(
-            "Failed to allocate storage manager in TileDB context"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate storage manager in TileDB context");
+    LOG_STATUS(st);
+    save_error(*ctx, st);
     return TILEDB_ERR;
   }
 
@@ -254,7 +343,8 @@ int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   (*ctx)->last_error_ = nullptr;
 
   // Initialize storage manager
-  if (save_error(*ctx, ((*ctx)->storage_manager_->init()))) {
+  auto conf = (config == nullptr) ? (tiledb::Config*)nullptr : config->config_;
+  if (save_error(*ctx, ((*ctx)->storage_manager_->init(conf)))) {
     delete (*ctx)->storage_manager_;
     (*ctx)->storage_manager_ = nullptr;
     return TILEDB_ERR;
@@ -296,7 +386,10 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     // Create error struct
     *err = new (std::nothrow) tiledb_error_t;
     if (*err == nullptr) {
-      save_error(ctx, tiledb::Status::Error("Failed to allocate error struct"));
+      tiledb::Status st =
+          tiledb::Status::Error("Failed to allocate error struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       return TILEDB_OOM;
     }
 
@@ -304,10 +397,10 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     (*err)->status_ = new (std::nothrow) tiledb::Status(*(ctx->last_error_));
     if ((*err)->status_ == nullptr) {
       delete *err;
-      save_error(
-          ctx,
-          tiledb::Status::Error(
-              "Failed to allocate status object in TileDB error struct"));
+      tiledb::Status st = tiledb::Status::Error(
+          "Failed to allocate status object in TileDB error struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       return TILEDB_OOM;
     }
 
@@ -351,8 +444,10 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
 
   // Check for error
   if (group == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Invalid group directory argument is NULL"));
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid group directory argument is NULL");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -379,9 +474,10 @@ int tiledb_attribute_create(
   // Create an attribute struct
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB attribute struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB attribute struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -390,10 +486,10 @@ int tiledb_attribute_create(
       tiledb::Attribute(name, static_cast<tiledb::Datatype>(type));
   if ((*attr)->attr_ == nullptr) {
     delete *attr;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB attribute object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB attribute object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -489,8 +585,10 @@ int tiledb_domain_create(
   // Create a domain struct
   *domain = new (std::nothrow) tiledb_domain_t;
   if (*domain == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB domain struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB domain struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -499,10 +597,10 @@ int tiledb_domain_create(
       new (std::nothrow) tiledb::Domain(static_cast<tiledb::Datatype>(type));
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB domain object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB domain object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -573,9 +671,10 @@ int tiledb_dimension_create(
   // Create a dimension struct
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -584,10 +683,10 @@ int tiledb_dimension_create(
       tiledb::Dimension(name, static_cast<tiledb::Datatype>(type));
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB dimension object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB dimension object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -673,25 +772,29 @@ int tiledb_dimension_from_index(
   }
   if (index > (ndim - 1)) {
     std::ostringstream errmsg;
-    errmsg << "Dimesnion " << index << " out of bounds, domain has rank "
+    errmsg << "Dimension " << index << " out of bounds, domain has rank "
            << ndim;
-    save_error(ctx, tiledb::Status::DomainError(errmsg.str()));
+    tiledb::Status st = tiledb::Status::DomainError(errmsg.str());
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   (*dim)->dim_ =
       new (std::nothrow) tiledb::Dimension(domain->domain_->dimension(index));
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -719,11 +822,12 @@ int tiledb_dimension_from_name(
       auto dim = domain->domain_->dimension(i);
       if (dim->is_anonymous()) {
         if (found_anonymous) {
-          save_error(
-              ctx,
-              tiledb::Status::Error("dimension from name is ambiguous when "
-                                    "there are multiple anonymous "
-                                    "dimensions, use index instead"));
+          tiledb::Status st = tiledb::Status::Error(
+              "Dimension from name is ambiguous when "
+              "there are multiple anonymous "
+              "dimensions; Use index instead");
+          LOG_STATUS(st);
+          save_error(ctx, st);
           return TILEDB_ERR;
         }
         found_anonymous = true;
@@ -734,25 +838,27 @@ int tiledb_dimension_from_name(
     found_dim = domain->domain_->dimension(name_string);
   }
   if (found_dim == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::DomainError(
-            std::string("Dimension \"") + name + "\" does not exist"));
+    tiledb::Status st = tiledb::Status::DomainError(
+        std::string("Dimension \"") + name + "\" does not exist");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   (*dim)->dim_ = new (std::nothrow) tiledb::Dimension(found_dim);
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB dimension struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB dimension struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -772,10 +878,10 @@ int tiledb_dimension_iter_create(
   // Create dimension iterator struct
   *dim_it = new (std::nothrow) tiledb_dimension_iter_t;
   if (*dim_it == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB dimension iterator struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB dimension iterator struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -791,10 +897,11 @@ int tiledb_dimension_iter_create(
     if ((*dim_it)->dim_ == nullptr) {
       delete *dim_it;
       *dim_it = nullptr;
-      save_error(
-          ctx,
-          tiledb::Status::Error("Failed to allocate TileDB dimension struct "
-                                "in iterator struct"));
+      tiledb::Status st = tiledb::Status::Error(
+          "Failed to allocate TileDB dimension struct "
+          "in iterator struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       return TILEDB_OOM;
     }
 
@@ -807,10 +914,11 @@ int tiledb_dimension_iter_create(
       delete (*dim_it)->dim_;
       delete *dim_it;
       *dim_it = nullptr;
-      save_error(
-          ctx,
-          tiledb::Status::Error("Failed to allocate TileDB dimension object "
-                                "in iterator struct"));
+      tiledb::Status st = tiledb::Status::Error(
+          "Failed to allocate TileDB dimension object "
+          "in iterator struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       return TILEDB_OOM;
     }
   }
@@ -903,20 +1011,20 @@ int tiledb_array_metadata_create(
   // Check array name
   tiledb::URI array_uri(array_name);
   if (array_uri.is_invalid()) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to create array metadata; Invalid array URI"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to create array metadata; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
   // Create array metadata struct
   *array_metadata = new (std::nothrow) tiledb_array_metadata_t;
   if (*array_metadata == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB array metadata struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB array metadata struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -926,10 +1034,11 @@ int tiledb_array_metadata_create(
   if ((*array_metadata)->array_metadata_ == nullptr) {
     delete *array_metadata;
     *array_metadata = nullptr;
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array metadata "
-                              "object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB array metadata "
+        "object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -957,7 +1066,9 @@ int tiledb_array_metadata_add_attribute(
       sanity_check(ctx, array_metadata) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_metadata->array_metadata_->add_attribute(attr->attr_);
+  if (save_error(
+          ctx, array_metadata->array_metadata_->add_attribute(attr->attr_)))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 
@@ -1031,7 +1142,6 @@ int tiledb_array_metadata_set_array_type(
           array_metadata->array_metadata_->set_array_type(
               static_cast<tiledb::ArrayType>(array_type))))
     return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 
@@ -1086,10 +1196,10 @@ int tiledb_array_metadata_load(
   // Create array metadata
   *array_metadata = new (std::nothrow) tiledb_array_metadata_t;
   if (*array_metadata == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB array_metadata struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB array_metadata struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1197,8 +1307,10 @@ int tiledb_array_metadata_get_domain(
   // Create a domain struct
   *domain = new (std::nothrow) tiledb_domain_t;
   if (*domain == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB domain struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB domain struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1207,10 +1319,10 @@ int tiledb_array_metadata_get_domain(
       tiledb::Domain(array_metadata->array_metadata_->domain());
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB domain object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB domain object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -1278,15 +1390,19 @@ int tiledb_attribute_from_index(
     errmsg << "Attribute index: " << index << " exceeds number of attributes("
            << attribute_num << ") for array "
            << array_metadata->array_metadata_->array_uri().to_string();
-    save_error(ctx, tiledb::Status::ArrayMetadataError(errmsg.str()));
+    tiledb::Status st = tiledb::Status::ArrayMetadataError(errmsg.str());
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   auto found_attr = array_metadata->array_metadata_->attribute(index);
 
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB attribute");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1296,8 +1412,10 @@ int tiledb_attribute_from_index(
   // Check for allocation error
   if ((*attr)->attr_ == nullptr) {
     delete *attr;
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB attribute");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -1318,40 +1436,21 @@ int tiledb_attribute_from_name(
     return TILEDB_OK;
   }
   std::string name_string(name);
-  const tiledb::Attribute* found_attr = nullptr;
-  if (name_string.empty()) {  // anonymous attribute
-    bool found_anonymous = false;
-    for (unsigned int i = 0; i < attribute_num; i++) {
-      auto attr = array_metadata->array_metadata_->attribute(i);
-      if (attr->is_anonymous()) {
-        if (found_anonymous) {
-          save_error(
-              ctx,
-              tiledb::Status::Error("attribute from name is ambiguous when "
-                                    "there are multiple anonymous "
-                                    "attributes, use index instead"));
-          return TILEDB_ERR;
-        }
-        found_anonymous = true;
-        found_attr = attr;
-      }
-    }
-  } else {
-    found_attr = array_metadata->array_metadata_->attribute(name_string);
-  }
+  auto found_attr = array_metadata->array_metadata_->attribute(name_string);
   if (found_attr == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::ArrayMetadataError(
-            std::string("Attribute name: ") + name +
-            " does not exist for array " +
-            array_metadata->array_metadata_->array_uri().to_string()));
+    tiledb::Status st = tiledb::Status::ArrayMetadataError(
+        std::string("Attribute name: ") + name + " does not exist for array " +
+        array_metadata->array_metadata_->array_uri().to_string());
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB attribute");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   // Create an attribute object
@@ -1359,8 +1458,10 @@ int tiledb_attribute_from_name(
   // Check for allocation error
   if ((*attr)->attr_ == nullptr) {
     delete *attr;
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB attribute"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB attribute");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
   return TILEDB_OK;
@@ -1380,10 +1481,10 @@ int tiledb_attribute_iter_create(
   // Create attribute iterator struct
   *attr_it = new (std::nothrow) tiledb_attribute_iter_t;
   if (*attr_it == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB attribute iterator struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB attribute iterator struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1399,10 +1500,11 @@ int tiledb_attribute_iter_create(
     // Create an attribute struct inside the iterator struct
     (*attr_it)->attr_ = new (std::nothrow) tiledb_attribute_t;
     if ((*attr_it)->attr_ == nullptr) {
-      save_error(
-          ctx,
-          tiledb::Status::Error("Failed to allocate TileDB attribute struct "
-                                "in iterator struct"));
+      tiledb::Status st = tiledb::Status::Error(
+          "Failed to allocate TileDB attribute struct "
+          "in iterator struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       delete *attr_it;
       return TILEDB_OOM;
     }
@@ -1415,10 +1517,11 @@ int tiledb_attribute_iter_create(
     if ((*attr_it)->attr_->attr_ == nullptr) {
       delete (*attr_it)->attr_;
       delete *attr_it;
-      save_error(
-          ctx,
-          tiledb::Status::Error("Failed to allocate TileDB attribute object "
-                                "in iterator struct"));
+      tiledb::Status st = tiledb::Status::Error(
+          "Failed to allocate TileDB attribute object "
+          "in iterator struct");
+      LOG_STATUS(st);
+      save_error(ctx, st);
       return TILEDB_OOM;
     }
   }
@@ -1514,8 +1617,10 @@ int tiledb_query_create(
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate TileDB query struct"));
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB query struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1523,10 +1628,10 @@ int tiledb_query_create(
   (*query)->query_ = new (std::nothrow) tiledb::Query();
   if ((*query)->query_ == nullptr) {
     delete *query;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB query object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB query object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1661,10 +1766,10 @@ int tiledb_query_set_kv_key(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   if (!query->query_->array_metadata()->is_kv()) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Cannot query by key; The queried array is not a key-value store"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Cannot query by key; The queried array is not a key-value store");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -1840,10 +1945,10 @@ int tiledb_walk(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   if (callback == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Cannot initiate walk; Invalid callback function"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Cannot initiate walk; Invalid callback function");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -1899,10 +2004,10 @@ int tiledb_kv_create(
   // Create key-value store struct
   *kv = new (std::nothrow) tiledb_kv_t;
   if (*kv == nullptr) {
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB in-memory key-value store struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB in-memory key-value store struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 
@@ -1921,10 +2026,11 @@ int tiledb_kv_create(
   if ((*kv)->kv_ == nullptr) {
     delete *kv;
     *kv = nullptr;
-    save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB in-memory key-value "
-                              "store object in struct"));
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB in-memory key-value "
+        "store object in struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
   }
 

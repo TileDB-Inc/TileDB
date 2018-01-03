@@ -223,7 +223,7 @@ class Buffer {
    */
   bool owns_data_;
 
-  /** Buffer allocated size. */
+  /** Size of the buffer useful data. */
   uint64_t size_;
 };
 

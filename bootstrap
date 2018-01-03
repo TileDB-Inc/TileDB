@@ -40,6 +40,8 @@ Configuration:
     --enable-coverage               enable build with code coverage support
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
+    --enable-s3                   enables the s3/minio storage backend
+
     
 Dependencies:
     c/c++ compiler
@@ -63,6 +65,7 @@ build_type="Release"
 enable_coverage="OFF"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
+tiledb_s3="OFF"
 while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
@@ -73,6 +76,7 @@ while test $# != 0; do
     --enable-coverage) build_type="Coverage";;
     --enable-verbose) tiledb_verbose="ON";;
     --enable-hdfs) tiledb_hdfs="ON";;
+    --enable-s3) tiledb_s3="ON";;
     --help) usage ;;
     *) die "Unknown option: $1" ;;
     esac
@@ -116,6 +120,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_PREFIX_PATH=${dependency_dir} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DUSE_HDFS=${tiledb_hdfs} \
+    -DUSE_S3=${tiledb_s3} \
     ${source_dir} || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test.'

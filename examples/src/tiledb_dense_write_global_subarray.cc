@@ -43,7 +43,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+  tiledb_ctx_create(&ctx, nullptr);
 
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};

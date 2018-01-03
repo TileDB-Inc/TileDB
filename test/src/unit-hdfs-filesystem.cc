@@ -1,5 +1,5 @@
 /**
- * @file   opt-unit_hdfs_fisystem.cc
+ * @file   hdfs-unit-filesystem.cc
  *
  * @section LICENSE
  *
@@ -30,14 +30,15 @@
  * Tests for HDFS API filesystem functions.
  */
 
+#ifdef HAVE_HDFS
+
 #include "catch.hpp"
+#include "hdfs_filesystem.h"
+#include "status.h"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
-
-#include <hdfs_filesystem.h>
-#include <status.h>
 
 using namespace tiledb;
 
@@ -157,3 +158,5 @@ TEST_CASE_METHOD(HDFSFx, "Test HDFS filesystem", "[hdfs]") {
   st = hdfs::disconnect(fs);
   CHECK(st.ok());
 }
+
+#endif

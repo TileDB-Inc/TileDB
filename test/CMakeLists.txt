@@ -46,10 +46,6 @@ target_include_directories(
 
 # Gather the test source files
 file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
-if(USE_HDFS OR USE_HDFS3)
-  file(GLOB_RECURSE TILEDB_TEST_HDFS_SOURCES "src/hdfs-unit-*.cc")
-  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES}  ${TILEDB_TEST_HDFS_SOURCES})
-endif()
 
 # unit test executable
 add_executable(
@@ -68,12 +64,12 @@ set_target_properties(
 if (WIN32)
   target_link_libraries(
     tiledb_unit
-    ${TILEDB_LIB_DEPENDENCIES} tiledb_shared
+    ${TILEDB_LIB_DEPENDENCIES} tiledb_shared ${S3_LIB_DEPENDENCIES}
   )
 else()
   target_link_libraries(
     tiledb_unit
-    ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared
+    ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared ${S3_LIB_DEPENDENCIES}
   )
 endif()
 

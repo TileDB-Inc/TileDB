@@ -224,8 +224,8 @@ class ArrayMetadata {
   /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(unsigned int attribute_id) const;
 
-  /** Adds an attribute, cloning the input. */
-  void add_attribute(const Attribute* attr);
+  /** Adds an attribute, copying the input. */
+  Status add_attribute(const Attribute* attr);
 
   /**
    * It assigns values to the members of the object from the input buffer.
