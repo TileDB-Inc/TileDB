@@ -160,19 +160,6 @@ Status ls(const std::string& path, std::vector<std::string>* paths);
 Status move_path(const std::string& old_path, const std::string& new_path);
 
 /**
- * It takes as input an **absolute** path, and returns it in its canonicalized
- * form, after appropriately replacing "./" and "../" in the path.
- *
- * @param path The input path passed by reference, which will be modified
- *     by the function to hold the canonicalized absolute path. Note that the
- *     path must be absolute, otherwise the function fails. In case of error
- *     (e.g., if "../" are not properly used in *path*, or if *path* is not
- *     absolute), the function sets the empty string (i.e., "") to *path*.
- * @return void
- */
-void purge_dots_from_path(std::string* path);
-
-/**
  * Reads data from a file into a buffer.
  *
  * @param path The name of the file.
