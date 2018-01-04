@@ -312,6 +312,10 @@ Status read_from_file(
 }
 
 Status sync(const std::string& path) {
+  if (!is_file(path)) {
+    return Status::Ok();
+  }
+
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create, the file).
   HANDLE file_h = CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
