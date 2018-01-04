@@ -462,11 +462,10 @@ TILEDB_EXPORT int tiledb_attribute_dump(
  *
  * @param ctx The TileDB context.
  * @param domain The TileDB domain to be created.
- * @param type The type of all dimensions of the domain.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_domain_create(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type);
+    tiledb_ctx_t* ctx, tiledb_domain_t** domain);
 
 /**
  * Destroys a TileDB domain, freeing-up memory.

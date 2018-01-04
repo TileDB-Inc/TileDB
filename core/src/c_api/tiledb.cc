@@ -593,8 +593,7 @@ int tiledb_attribute_dump(
 /*            HYPERSPACE             */
 /* ********************************* */
 
-int tiledb_domain_create(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type) {
+int tiledb_domain_create(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -609,8 +608,7 @@ int tiledb_domain_create(
   }
 
   // Create a new Domain object
-  (*domain)->domain_ =
-      new (std::nothrow) tiledb::Domain(static_cast<tiledb::Datatype>(type));
+  (*domain)->domain_ = new (std::nothrow) tiledb::Domain();
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     tiledb::Status st = tiledb::Status::Error(

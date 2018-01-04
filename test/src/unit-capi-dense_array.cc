@@ -327,7 +327,7 @@ void DenseArrayFx::create_dense_array_2D(
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);

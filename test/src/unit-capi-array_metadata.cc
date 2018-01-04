@@ -196,15 +196,25 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   rc = tiledb_dimension_create(
       ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* d3;  // This will be an invalid dimension
+  rc = tiledb_dimension_create(
+      ctx_, &d3, DIM2_NAME, TILEDB_INT32, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+  REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_datatype_t domain_type;
+  rc = tiledb_domain_get_type(ctx_, domain, &domain_type);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(domain_type == TILEDB_INT64);
   rc = tiledb_domain_add_dimension(ctx_, domain, d2);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d3);
+  REQUIRE(rc == TILEDB_ERR);
   rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
   REQUIRE(rc == TILEDB_OK);
 
@@ -499,7 +509,7 @@ TEST_CASE_METHOD(
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -546,7 +556,7 @@ TEST_CASE_METHOD(
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -590,7 +600,7 @@ TEST_CASE_METHOD(
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -658,7 +668,7 @@ TEST_CASE_METHOD(
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);

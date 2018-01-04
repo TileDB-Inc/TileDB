@@ -116,7 +116,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* dim;
   rc = tiledb_dimension_create(
