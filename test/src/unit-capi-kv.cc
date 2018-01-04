@@ -67,11 +67,12 @@ struct KVFx {
   const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
-  const std::string FILE_URI_PREFIX = "file://";
 #ifdef _WIN32
+  const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
     tiledb::win32::current_dir() + "\\tiledb_test\\";
 #else
+  const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
     tiledb::posix::current_dir() + "/tiledb_test/";
 #endif
