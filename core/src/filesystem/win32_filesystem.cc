@@ -47,6 +47,22 @@ namespace tiledb {
 
 namespace win32 {
 
+static std::string get_last_error_msg() {
+  DWORD err = GetLastError();
+  LPVOID lpMsgBuf;
+  if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL,
+      err,
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
+      (LPTSTR)&lpMsgBuf, 0, NULL) == 0) {
+    LocalFree(lpMsgBuf);
+    return "unknown error";
+  }
+  std::string msg(reinterpret_cast<char*>(lpMsgBuf));
+  LocalFree(lpMsgBuf);
+  return msg;
+}
+
 std::string abs_path(const std::string& path) {
   if (path.length() == 0) {
     return "";
@@ -74,7 +90,10 @@ Status create_dir(const std::string& path) {
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
-  CreateDirectory(path.c_str(), nullptr);
+  if (CreateDirectory(path.c_str(), nullptr) == 0) {
+    return LOG_STATUS(Status::IOError(
+      std::string("Cannot create directory '") + path + "': " + get_last_error_msg()));
+  }
   return Status::Ok();
 }
 
