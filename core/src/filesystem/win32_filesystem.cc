@@ -204,14 +204,14 @@ Status filelock_lock(const std::string& filename, file_lock_t* fd, bool shared) 
     FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_h == INVALID_HANDLE_VALUE) {
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to lock '" + filename + "'")));
+      std::string("Failed to lock '" + filename + "'; CreateFile error")));
   }
   OVERLAPPED overlapped = { 0 };
   if (LockFileEx(file_h, shared ? 0 : LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped) != 0) {
     CloseHandle(file_h);
     *fd = INVALID_FILE_LOCK;
     return LOG_STATUS(Status::IOError(
-      std::string("Failed to lock '" + filename + "'")));
+      std::string("Failed to lock '" + filename + "'; LockFile error")));
   }
 
   *fd = file_h;
