@@ -257,7 +257,8 @@ bool is_file(const std::string& path) {
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
-  const std::string glob = path + "\\*";
+  bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
+  const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
 
   // Get first file in directory.
@@ -269,7 +270,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   while (true) {
     // Skip '.' and '..'
     if (strcmp(find_data.cFileName, ".") != 0 && strcmp(find_data.cFileName, "..") != 0) {
-      std::string file_path = path + "\\" + find_data.cFileName;
+      std::string file_path = path + (ends_with_slash ? "" : "\\") + find_data.cFileName;
       paths->push_back(file_path);
     }
 
