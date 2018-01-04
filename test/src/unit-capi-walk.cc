@@ -238,7 +238,12 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
   // File
   remove_temp_dir(FILE_FULL_TEMP_DIR);
   create_hierarchy(FILE_FULL_TEMP_DIR);
+#ifdef _WIN32
+  // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
+  golden = get_golden_output(tiledb::win32::uri_from_path(FILE_FULL_TEMP_DIR));
+#else
   golden = get_golden_output(FILE_FULL_TEMP_DIR);
+#endif
   walk_str.clear();
   rc = tiledb_walk(
       ctx_, FILE_FULL_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
