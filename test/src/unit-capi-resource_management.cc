@@ -122,7 +122,7 @@ void ResourceMgmtFx::create_array(const std::string& path) {
 
   // Domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx_, &domain, TILEDB_INT64);
+  tiledb_domain_create(ctx_, &domain);
   tiledb_domain_add_dimension(ctx_, domain, d1);
 
   // Create array_metadata metadata

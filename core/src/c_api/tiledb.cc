@@ -593,8 +593,7 @@ int tiledb_attribute_dump(
 /*            HYPERSPACE             */
 /* ********************************* */
 
-int tiledb_domain_create(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type) {
+int tiledb_domain_create(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -609,8 +608,7 @@ int tiledb_domain_create(
   }
 
   // Create a new Domain object
-  (*domain)->domain_ =
-      new (std::nothrow) tiledb::Domain(static_cast<tiledb::Datatype>(type));
+  (*domain)->domain_ = new (std::nothrow) tiledb::Domain();
   if ((*domain)->domain_ == nullptr) {
     delete *domain;
     tiledb::Status st = tiledb::Status::Error(
@@ -1668,19 +1666,13 @@ int tiledb_query_create(
 }
 
 int tiledb_query_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const void* subarray,
-    tiledb_datatype_t type) {
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set subarray
-  if (save_error(
-          ctx,
-          query->query_->set_subarray(
-              subarray, static_cast<tiledb::Datatype>(type))))
+  if (save_error(ctx, query->query_->set_subarray(subarray)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1795,7 +1787,7 @@ int tiledb_query_set_kv_key(
       key, static_cast<tiledb::Datatype>(type), key_size, subarray);
 
   // Set query subarray
-  return tiledb_query_set_subarray(ctx, query, subarray, TILEDB_UINT64);
+  return tiledb_query_set_subarray(ctx, query, subarray);
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {

@@ -51,7 +51,7 @@ int main() {
 
   // Create domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
+  tiledb_domain_create(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
 

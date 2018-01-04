@@ -462,11 +462,10 @@ TILEDB_EXPORT int tiledb_attribute_dump(
  *
  * @param ctx The TileDB context.
  * @param domain The TileDB domain to be created.
- * @param type The type of all dimensions of the domain.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_domain_create(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain, tiledb_datatype_t type);
+    tiledb_ctx_t* ctx, tiledb_domain_t** domain);
 
 /**
  * Destroys a TileDB domain, freeing-up memory.
@@ -1023,16 +1022,12 @@ TILEDB_EXPORT int tiledb_query_create(
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one
  *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays, and specifically dense writes.
- * @param type The data type of `subarray`. TileDB will internally convert
- *     `subarray` so that its type is the same as the domain/coordinates.
+ *     for dense arrays, and specifically dense writes. Note that `subarray`
+ *     must have the same type as the domain.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_query_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const void* subarray,
-    tiledb_datatype_t type);
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 /**
  * Sets the buffers to the query, which will either hold the attribute
