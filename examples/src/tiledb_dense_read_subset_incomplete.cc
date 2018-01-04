@@ -55,7 +55,7 @@ int main() {
   uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
-  tiledb_query_set_subarray(ctx, query, subarray, TILEDB_UINT64);
+  tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
 

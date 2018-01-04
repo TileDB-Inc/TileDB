@@ -196,7 +196,7 @@ void DenseVectorFx::check_read(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
@@ -222,7 +222,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, update_query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, update_query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, update_query);
   REQUIRE(rc == TILEDB_OK);
@@ -240,7 +240,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, read_query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);

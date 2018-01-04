@@ -290,26 +290,12 @@ class Query {
 
   /**
    * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain. Otherwise, the subarray will be converted to a type
-   * that matches the array domain/coordinates type.
+   * the entire domain.
    *
-   * @param subarray The subarray to be set.
-   * @param type The type of the subarray values.
-   * @return Status
-   */
-  Status set_subarray(const void* subarray, Datatype type);
-
-  /**
-   * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain. Otherwise, the subarray will be converted to a type
-   * that matches the array domain/coordinates type.
-   *
-   * @tparam T The type of subarray.
    * @param subarray The subarray to be set.
    * @return Status
    */
-  template <class T>
-  Status set_subarray(const T* subarray);
+  Status set_subarray(const void* subarray);
 
   /** Sets the query type. */
   void set_type(QueryType type);
@@ -475,9 +461,6 @@ class Query {
 
   /** Sets the query attributes. */
   Status set_attributes(const char** attributes, unsigned int attribute_num);
-
-  /** Sets the query subarray. */
-  Status set_subarray(const void* subarray);
 
   /**
    * Sets the input buffer sizes to zero. The function assumes that the buffer

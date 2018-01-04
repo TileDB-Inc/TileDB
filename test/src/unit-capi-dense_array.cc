@@ -417,7 +417,7 @@ int* DenseArrayFx::read_dense_array_2D(
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
@@ -582,7 +582,7 @@ void DenseArrayFx::write_dense_subarray_2D(
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
@@ -676,19 +676,19 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   int64_t subarray_1[] = {-1, 5, 10, 10};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_1, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_ERR);
   int64_t subarray_2[] = {0, 5000000, 10, 10};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_2, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_2);
   CHECK(rc == TILEDB_ERR);
   int64_t subarray_3[] = {0, 5, -1, 10};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_3, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_3);
   CHECK(rc == TILEDB_ERR);
   int64_t subarray_4[] = {0, 5, 10, 100000000};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_4, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_4);
   CHECK(rc == TILEDB_ERR);
   int64_t subarray_5[] = {0, 5, 10, 10};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_5, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_5);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, query);
   CHECK(rc == TILEDB_OK);
