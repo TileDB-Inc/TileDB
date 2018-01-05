@@ -58,6 +58,7 @@ Status connect(hdfsFS& fs) {
     return LOG_STATUS(
         Status::HDFSError(std::string("Failed to connect to hdfs")));
   }
+
   return Status::Ok();
 }
 
