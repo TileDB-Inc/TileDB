@@ -73,7 +73,6 @@ std::string abs_path(const std::string& path) {
   } else {
     full_path = path;
   }
-  unsigned long result_len = static_cast<unsigned long>(full_path.length()) + 1;
   char result[MAX_PATH];
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
