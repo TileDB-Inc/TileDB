@@ -234,55 +234,31 @@ void ResourceMgmtFx::check_move(const std::string& path) {
 }
 
 TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB object type", "[capi], [resource]") {
+    ResourceMgmtFx,
+    "C API: Test resource management methods",
+    "[capi], [resource]") {
   // File
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_object_type(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-  // S3
-#ifdef HAVE_S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_object_type(S3_TEMP_DIR);
-#endif
-
-  // HDFS
-#ifdef HAVE_HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_object_type(HDFS_TEMP_DIR);
-#endif
-}
-
-TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB delete", "[capi], [resource]") {
-  // File
   check_delete(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-  // S3
-#ifdef HAVE_S3
-  check_delete(S3_TEMP_DIR);
-#endif
-
-  // HDFS
-#ifdef HAVE_HDFS
-  check_delete(HDFS_TEMP_DIR);
-#endif
-}
-
-TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB Move", "[capi], [resource]") {
-  // File
   check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
   // S3
 #ifdef HAVE_S3
+  create_temp_dir(S3_TEMP_DIR);
+  check_object_type(S3_TEMP_DIR);
+  check_delete(S3_TEMP_DIR);
   check_move(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
   // HDFS
 #ifdef HAVE_HDFS
-  check_move(HDFS_TEMP_DIR);
+  create_temp_dir(HDFS_TEMP_DIR);
+  check_object_type(HDFS_TEMP_DIR);
+  check_delete(HDFS_TEMP_DIR);
+  check_move(S3_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
