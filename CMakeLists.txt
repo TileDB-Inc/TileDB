@@ -124,10 +124,12 @@ include(SetCXX2011Flag REQUIRED)
 # Set compiler flags
 if (WIN32)
   # We disable some warnings that are not present in gcc/clang -Wall:
+  #   C4101: unreferenced local variable
   #   C4244: conversion warning of floating point to integer type.
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
-  set(MSVC_DISABLE_WARNINGS "/wd4244 /wd4457 /wd4702")
+  #   C4996: deprecation warning about e.g. sscanf.
+  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4457 /wd4702 /wd4996")
   # Note: MSVC has the behavior of -fvisibility=hidden by default (you must
   # explicitly export all symbols you want exported).
   set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 ${MSVC_DISABLE_WARNINGS}")
