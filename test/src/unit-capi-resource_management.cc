@@ -258,7 +258,7 @@ TEST_CASE_METHOD(
   create_temp_dir(HDFS_TEMP_DIR);
   check_object_type(HDFS_TEMP_DIR);
   check_delete(HDFS_TEMP_DIR);
-  check_move(S3_TEMP_DIR);
+  check_move(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }

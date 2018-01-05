@@ -590,67 +590,44 @@ void KVFx::check_read_all(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 }
 
-TEST_CASE_METHOD(
-    KVFx, "C API: Test key-value; Create and write", "[capi], [kv]") {
+TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   // File
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  // create & write
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
   create_kv(array_name);
   write_kv(array_name);
 
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  array_name = S3_TEMP_DIR + KV_NAME;
-  create_kv(array_name);
-  write_kv(array_name);
-#endif
-
-#ifdef HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  array_name = HDFS_TEMP_DIR + KV_NAME;
-  create_kv(array_name);
-  write_kv(array_name);
-#endif
-}
-
-TEST_CASE_METHOD(
-    KVFx, "C API: Test key-value; Single-key read", "[capi], [kv]") {
-  // File
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  // read
   check_single_key_read(array_name);
 
-#ifdef HAVE_S3
-  // S3
-  array_name = S3_TEMP_DIR + KV_NAME;
-  check_single_key_read(array_name);
-#endif
-
-#ifdef HAVE_HDFS
-  // HDFS
-  array_name = HDFS_TEMP_DIR + KV_NAME;
-  check_single_key_read(array_name);
-#endif
-}
-
-TEST_CASE_METHOD(KVFx, "C API: Test key-value; Read all", "[capi], [kv]") {
-  // File
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  // read all
   check_read_all(array_name);
+
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
-  // S3
+  create_temp_dir(S3_TEMP_DIR);
+
   array_name = S3_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  write_kv(array_name);
+  check_single_key_read(array_name);
   check_read_all(array_name);
+
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
-  // HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
+
   array_name = HDFS_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  write_kv(array_name);
+  check_single_key_read(array_name);
   check_read_all(array_name);
+
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
