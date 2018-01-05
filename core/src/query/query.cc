@@ -479,105 +479,24 @@ void Query::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
 
-Status Query::set_subarray(const void* subarray, Datatype type) {
-  if (subarray == nullptr)
-    set_subarray(subarray);
+Status Query::set_subarray(const void* subarray) {
+  RETURN_NOT_OK(check_subarray(subarray));
 
-  switch (type) {
-    case Datatype::CHAR:
-      return set_subarray<char>((const char*)subarray);
-    case Datatype::INT8:
-      return set_subarray<int8_t>((const int8_t*)subarray);
-    case Datatype::UINT8:
-      return set_subarray<uint8_t>((const uint8_t*)subarray);
-    case Datatype::INT16:
-      return set_subarray<int16_t>((const int16_t*)subarray);
-    case Datatype::UINT16:
-      return set_subarray<uint16_t>((const uint16_t*)subarray);
-    case Datatype::INT32:
-      return set_subarray<int>((const int*)subarray);
-    case Datatype::UINT32:
-      return set_subarray<unsigned int>((const unsigned int*)subarray);
-    case Datatype::INT64:
-      return set_subarray<int64_t>((const int64_t*)subarray);
-    case Datatype::UINT64:
-      return set_subarray<uint64_t>((const uint64_t*)subarray);
-    case Datatype::FLOAT32:
-      return set_subarray<float>((const float*)subarray);
-    case Datatype::FLOAT64:
-      return set_subarray<double>((const double*)subarray);
-  }
+  uint64_t subarray_size = 2 * array_metadata_->coords_size();
+
+  if (subarray_ == nullptr)
+    subarray_ = malloc(subarray_size);
+
+  if (subarray_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Memory allocation for subarray failed"));
+
+  if (subarray == nullptr)
+    std::memcpy(subarray_, array_metadata_->domain()->domain(), subarray_size);
+  else
+    std::memcpy(subarray_, subarray, subarray_size);
 
   return Status::Ok();
-}
-
-template <class T>
-Status Query::set_subarray(const T* subarray) {
-  // Sanity check
-  if (array_metadata_ == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; Array metadata not set"));
-
-  // For easy reference
-  auto subarray_len = 2 * array_metadata_->dim_num();
-  auto coords_type = array_metadata_->coords_type();
-  void* new_subarray = nullptr;
-
-  // Convert subarray to the coordinates type
-  switch (coords_type) {
-    case Datatype::CHAR:
-      new_subarray = std::malloc(subarray_len * sizeof(char));
-      std::copy(subarray, subarray + subarray_len, (char*)new_subarray);
-      break;
-    case Datatype::INT8:
-      new_subarray = std::malloc(subarray_len * sizeof(int8_t));
-      std::copy(subarray, subarray + subarray_len, (int8_t*)new_subarray);
-      break;
-    case Datatype::UINT8:
-      new_subarray = std::malloc(subarray_len * sizeof(uint8_t));
-      std::copy(subarray, subarray + subarray_len, (uint8_t*)new_subarray);
-      break;
-    case Datatype::INT16:
-      new_subarray = std::malloc(subarray_len * sizeof(int16_t));
-      std::copy(subarray, subarray + subarray_len, (int16_t*)new_subarray);
-      break;
-    case Datatype::UINT16:
-      new_subarray = std::malloc(subarray_len * sizeof(uint16_t));
-      std::copy(subarray, subarray + subarray_len, (uint16_t*)new_subarray);
-      break;
-    case Datatype::INT32:
-      new_subarray = std::malloc(subarray_len * sizeof(int));
-      std::copy(subarray, subarray + subarray_len, (int*)new_subarray);
-      break;
-    case Datatype::UINT32:
-      new_subarray = std::malloc(subarray_len * sizeof(unsigned int));
-      std::copy(subarray, subarray + subarray_len, (unsigned int*)new_subarray);
-      break;
-    case Datatype::INT64:
-      new_subarray = std::malloc(subarray_len * sizeof(int64_t));
-      std::copy(subarray, subarray + subarray_len, (int64_t*)new_subarray);
-      break;
-    case Datatype::UINT64:
-      new_subarray = std::malloc(subarray_len * sizeof(uint64_t));
-      std::copy(subarray, subarray + subarray_len, (uint64_t*)new_subarray);
-      break;
-    case Datatype::FLOAT32:
-      new_subarray = std::malloc(subarray_len * sizeof(float));
-      std::copy(subarray, subarray + subarray_len, (float*)new_subarray);
-      break;
-    case Datatype::FLOAT64:
-      new_subarray = std::malloc(subarray_len * sizeof(double));
-      std::copy(subarray, subarray + subarray_len, (double*)new_subarray);
-      break;
-  }
-
-  // Set new subarray
-  assert(new_subarray != nullptr);
-  Status st = set_subarray(new_subarray);
-
-  // Clean up and return
-  std::free(new_subarray);
-  return st;
 }
 
 void Query::set_type(QueryType type) {
@@ -855,26 +774,6 @@ Status Query::set_attributes(
   // Set attribute ids
   RETURN_NOT_OK(
       array_metadata_->get_attribute_ids(attributes_vec, attribute_ids_));
-
-  return Status::Ok();
-}
-
-Status Query::set_subarray(const void* subarray) {
-  RETURN_NOT_OK(check_subarray(subarray));
-
-  uint64_t subarray_size = 2 * array_metadata_->coords_size();
-
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
-
-  if (subarray_ == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Memory allocation for subarray failed"));
-
-  if (subarray == nullptr)
-    std::memcpy(subarray_, array_metadata_->domain()->domain(), subarray_size);
-  else
-    std::memcpy(subarray_, subarray, subarray_size);
 
   return Status::Ok();
 }

@@ -259,7 +259,7 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
+  rc = tiledb_domain_create(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -332,7 +332,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray, TILEDB_INT64);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);

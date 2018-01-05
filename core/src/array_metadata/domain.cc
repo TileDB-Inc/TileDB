@@ -132,17 +132,23 @@ Domain::~Domain() {
 /* ********************************* */
 
 Status Domain::add_dimension(Dimension* dim) {
+  // Set domain type and do sanity check
+  if (dim_num_ == 0)
+    type_ = dim->type();
+  else if (dim->type() != type_)
+    return LOG_STATUS(
+        Status::DomainError("Cannot add dimension to domain; All added "
+                            "dimensions must have the same type"));
+
   // Compute new dimension name
   std::string new_dim_name = dim->name();
   if (new_dim_name.empty())
     new_dim_name = default_dimension_name(dim_num_);
 
   auto new_dim = new Dimension(new_dim_name.c_str(), type_);
+  RETURN_NOT_OK_ELSE(new_dim->set_domain(dim->domain()), delete new_dim);
   RETURN_NOT_OK_ELSE(
-      new_dim->set_domain(dim->domain(), dim->type()), delete new_dim);
-  RETURN_NOT_OK_ELSE(
-      new_dim->set_tile_extent(dim->tile_extent(), dim->type()),
-      delete new_dim);
+      new_dim->set_tile_extent(dim->tile_extent()), delete new_dim);
 
   dimensions_.emplace_back(new_dim);
   ++dim_num_;

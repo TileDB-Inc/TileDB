@@ -13,6 +13,7 @@ coverage.info
 deps-install/*
 test/obj/*
 test/bin/*
+test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc
 doxygen/html/

@@ -68,7 +68,7 @@ int main() {
   int d1_domain[] = {0, 1000};
   int d1_extent = 10;
   tiledb_dimension_t* d1;
-  tiledb_dimension_create(ctx, &d1, "", TILEDB_INT32, d1_domain, &d1_extent);
+  tiledb_dimension_create(ctx, &d1, "", TILEDB_UINT64, d1_domain, &d1_extent);
   uint64_t d2_domain[] = {100, 10000};
   uint64_t d2_extent = 100;
   tiledb_dimension_t* d2;
@@ -76,7 +76,7 @@ int main() {
 
   // Set domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
+  tiledb_domain_create(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
   tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
