@@ -229,7 +229,7 @@ Status read(
 
 // Write length bytes of buffer to a given path
 Status write(
-    hdfsFS fs, const URI& uri, const void* buffer, const uint64_t length) {
+    hdfsFS fs, const URI& uri, const void* buffer, uint64_t buffer_size) {
   int flags = is_file(fs, uri) ? O_WRONLY | O_APPEND : O_WRONLY;
   hdfsFile write_file = hdfsOpenFile(
       fs, uri.to_path().c_str(), flags, constants::max_write_bytes, 0, 0);
@@ -240,22 +240,30 @@ Status write(
   }
   // Append data to the file in batches of
   // constants::max_write_bytes bytes at a time
-  uint64_t nbytes_remaining = length;
-  while (true) {
-    tSize cur_size = (nbytes_remaining > constants::max_write_bytes) ?
-                         constants::max_write_bytes :
-                         nbytes_remaining;
-    tSize written = hdfsWrite(fs, write_file, buffer, cur_size);
-    if (written != cur_size) {
+  uint64_t buffer_bytes_written = 0;
+  const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
+  while (buffer_size > constants::max_write_bytes) {
+    tSize bytes_written = hdfsWrite(
+        fs,
+        write_file,
+        buffer_bytes_ptr + buffer_bytes_written,
+        constants::max_write_bytes);
+    if (bytes_written < 0 ||
+        static_cast<uint64_t>(bytes_written) != constants::max_write_bytes) {
       return LOG_STATUS(Status::HDFSError(
           std::string("Cannot write to file ") + uri.to_string() +
           "; File writing error"));
     }
-    hdfsFlush(fs, write_file);
-    nbytes_remaining -= written;
-    if (nbytes_remaining == 0) {
-      break;
-    }
+    buffer_bytes_written += bytes_written;
+    buffer_size -= bytes_written;
+  }
+  tSize bytes_written = hdfsWrite(
+      fs, write_file, buffer_bytes_ptr + buffer_bytes_written, buffer_size);
+  if (bytes_written < 0 ||
+      static_cast<uint64_t>(bytes_written) != buffer_size) {
+    return LOG_STATUS(Status::HDFSError(
+        std::string("Cannot write to file '") + uri.to_string() +
+        "'; File writing error"));
   }
   // Close file
   if (hdfsCloseFile(fs, write_file)) {
