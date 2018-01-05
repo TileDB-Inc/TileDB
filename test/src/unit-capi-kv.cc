@@ -243,7 +243,7 @@ void KVFx::write_kv(const std::string& path) {
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_create(ctx_, &query, path.c_str(), TILEDB_WRITE);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check write mismatch and rectify
   rc = tiledb_query_set_kv(ctx_, query, kv);
@@ -295,7 +295,7 @@ void KVFx::check_single_key_read(const std::string& path) {
   // Query #1
   tiledb_query_t* query_1;
   rc = tiledb_query_create(ctx_, &query_1, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_1, &key1, key1_type, key1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query_1, kv_1);
@@ -334,7 +334,7 @@ void KVFx::check_single_key_read(const std::string& path) {
   // Query #2
   tiledb_query_t* query_2;
   rc = tiledb_query_create(ctx_, &query_2, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_2, &key2, key2_type, key2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query_2, kv_2);
@@ -364,7 +364,7 @@ void KVFx::check_single_key_read(const std::string& path) {
   // Query #3
   tiledb_query_t* query_3;
   rc = tiledb_query_create(ctx_, &query_3, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_3, key3, key3_type, key3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query_3, kv_3);
@@ -394,7 +394,7 @@ void KVFx::check_single_key_read(const std::string& path) {
   // Query #4
   tiledb_query_t* query_4;
   rc = tiledb_query_create(ctx_, &query_4, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_4, key4, key4_type, key4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query_4, kv_4);
@@ -429,7 +429,7 @@ void KVFx::check_single_key_read(const std::string& path) {
   tiledb_query_t* query_5;
   const char* key5 = "invalid";
   rc = tiledb_query_create(ctx_, &query_5, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv_key(ctx_, query_5, key5, TILEDB_CHAR, strlen(key5));
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query_5, kv_5);
@@ -484,7 +484,7 @@ void KVFx::check_read_all(const std::string& path) {
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_create(ctx_, &query, path.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_kv(ctx_, query, kv);
   CHECK(rc == TILEDB_OK);
 

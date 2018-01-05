@@ -112,7 +112,7 @@ void ResourceMgmtFx::create_array(const std::string& path) {
   tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_FLOAT32);
 
   // Domain and tile extents
-  int64_t dim_domain[] = {1};
+  int64_t dim_domain[2] = {1, 1};
   int64_t tile_extents[] = {1};
 
   // Create dimension
@@ -137,7 +137,6 @@ void ResourceMgmtFx::create_array(const std::string& path) {
 
   // Create array
   REQUIRE(tiledb_array_create(ctx_, path.c_str(), array_schema) == TILEDB_OK);
-
   tiledb_dimension_free(ctx_, d1);
 }
 
