@@ -375,17 +375,23 @@ Status write(
 
   // Append data to the file in batches of constants::max_write_bytes
   // bytes at a time
-  uint64_t bytes_written = 0;
+  uint64_t buffer_bytes_written = 0;
+  const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
   while (buffer_size > constants::max_write_bytes) {
-    bytes_written = ::write(fd, buffer, constants::max_write_bytes);
+    uint64_t bytes_written = ::write(
+        fd,
+        buffer_bytes_ptr + buffer_bytes_written,
+        constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + path +
           "'; File writing error"));
     }
-    buffer_size -= constants::max_write_bytes;
+    buffer_bytes_written += bytes_written;
+    buffer_size -= bytes_written;
   }
-  bytes_written = ::write(fd, buffer, buffer_size);
+  uint64_t bytes_written =
+      ::write(fd, buffer_bytes_ptr + buffer_bytes_written, buffer_size);
   if (bytes_written != buffer_size) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
