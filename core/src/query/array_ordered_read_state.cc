@@ -160,11 +160,11 @@ bool ArrayOrderedReadState::copy_tile_slab_done() const {
   auto anum = (unsigned int)attribute_ids_.size();
   for (unsigned int i = 0; i < anum; ++i) {
     // Special case for sparse arrays with extra coordinates attribute
-    if (i == coords_attr_i_ && extra_coords_)
+    if ((i == coords_attr_i_) && extra_coords_)
       continue;
 
     // Check
-    if (!tile_slab_state_.copy_tile_slab_done_[i])
+    if (tile_slab_state_.copy_tile_slab_done_[i] == 0)
       return false;
   }
 

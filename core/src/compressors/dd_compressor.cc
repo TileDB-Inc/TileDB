@@ -172,6 +172,10 @@ Status DoubleDelta::compute_bitsize(
   // Find maximum absolute double delta
   *bitsize = 0;
   int64_t max = 0;
+  if (num <= 2) {
+    *bitsize = 0;
+    return Status::Ok();
+  }
   int64_t prev_delta = in[1] - in[0];
   char delta_out_of_bounds = 0;
   for (uint64_t i = 2; i < num; ++i) {
