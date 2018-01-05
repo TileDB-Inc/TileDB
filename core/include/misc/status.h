@@ -81,7 +81,7 @@ enum class StatusCode : char {
   WriteState,
   Fragment,
   FragmentMetadata,
-  ArrayMetadata,
+  ArraySchema,
   ARS,   // Array Read State
   ASRS,  // Array Sorted Read State
   ASWS,  // Array Sorted Write State
@@ -159,9 +159,9 @@ class Status {
     return Status(StatusCode::FragmentMetadata, msg, -1);
   }
 
-  /** Return a ArrayMetadata error class Status with a given message **/
-  static Status ArrayMetadataError(const std::string& msg) {
-    return Status(StatusCode::ArrayMetadata, msg, -1);
+  /** Return a ArraySchema error class Status with a given message **/
+  static Status ArraySchemaError(const std::string& msg) {
+    return Status(StatusCode::ArraySchema, msg, -1);
   }
 
   /** Return a ArrayReadState (ARS) error class Status with a given message **/

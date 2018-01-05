@@ -48,7 +48,7 @@ class Config {
 
   /** Storage manager parameters. */
   struct SMParams {
-    uint64_t array_metadata_cache_size_;
+    uint64_t array_schema_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     uint64_t tile_cache_size_;
   };
@@ -166,7 +166,7 @@ class Config {
   Status set_from_file();
 
   /** Sets the array metadata cache size, properly parsing the input value. */
-  Status set_sm_array_metadata_cache_size(const std::string& value);
+  Status set_sm_array_schema_cache_size(const std::string& value);
 
   /** Sets the fragment metadata cache size, properly parsing the input value.*/
   Status set_sm_fragment_metadata_cache_size(const std::string& value);

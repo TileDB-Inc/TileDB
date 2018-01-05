@@ -109,18 +109,18 @@ void WalkFx::remove_temp_dir(const std::string &path) {
  *    |_ dense_arrays
  *    |       |_ __tiledb_group.tdb
  *    |       |_ array_A
- *    |       |     |_ __array_metadata.tdb
+ *    |       |     |_ __array_schema.tdb
  *    |       |_ array_B
- *    |       |     |_ __array_metadata.tdb
- *    |       |     |_ __array_metadata.tdb
+ *    |       |     |_ __array_schema.tdb
+ *    |       |     |_ __array_schema.tdb
  *    |       |_ kv
  *    |             |_ __kv.tdb
  *    |_ sparse_arrays
  *            |_ __tiledb_group.tdb
  *            |_ array_C
- *            |     |_ __array_metadata.tdb
+ *            |     |_ __array_schema.tdb
  *            |_ array_D
- *                  |_ __array_metadata.tdb
+ *                  |_ __array_schema.tdb
  */
 void WalkFx::create_hierarchy(const std::string &path) {
   int rc = tiledb_vfs_create_dir(ctx_, vfs_, path.c_str());
@@ -134,13 +134,13 @@ void WalkFx::create_hierarchy(const std::string &path) {
       ctx_, vfs_, (path + "dense_arrays/array_A").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/array_A/__array_metadata.tdb").c_str());
+      ctx_, vfs_, (path + "dense_arrays/array_A/__array_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_create_dir(
       ctx_, vfs_, (path + "dense_arrays/array_B").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/array_B/__array_metadata.tdb").c_str());
+      ctx_, vfs_, (path + "dense_arrays/array_B/__array_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "sparse_arrays").c_str());
   REQUIRE(rc == TILEDB_OK);
@@ -151,17 +151,13 @@ void WalkFx::create_hierarchy(const std::string &path) {
       ctx_, vfs_, (path + "sparse_arrays/array_C").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_touch(
-      ctx_,
-      vfs_,
-      (path + "sparse_arrays/array_C/__array_metadata.tdb").c_str());
+      ctx_, vfs_, (path + "sparse_arrays/array_C/__array_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_create_dir(
       ctx_, vfs_, (path + "sparse_arrays/array_D").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_touch(
-      ctx_,
-      vfs_,
-      (path + "sparse_arrays/array_D/__array_metadata.tdb").c_str());
+      ctx_, vfs_, (path + "sparse_arrays/array_D/__array_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays/kv").c_str());
   REQUIRE(rc == TILEDB_OK);

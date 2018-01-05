@@ -69,27 +69,26 @@ int main() {
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
-  // Create array metadata
-  const char* array_name = "my_sparse_array";
-  tiledb_array_metadata_t* array_metadata;
-  tiledb_array_metadata_create(ctx, &array_metadata, array_name);
-  tiledb_array_metadata_set_cell_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
-  tiledb_array_metadata_set_tile_order(ctx, array_metadata, TILEDB_ROW_MAJOR);
-  tiledb_array_metadata_set_array_type(ctx, array_metadata, TILEDB_SPARSE);
-  tiledb_array_metadata_set_capacity(ctx, array_metadata, 2);
-  tiledb_array_metadata_set_domain(ctx, array_metadata, domain);
-  tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
-  tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
-  tiledb_array_metadata_add_attribute(ctx, array_metadata, a3);
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_create(ctx, &array_schema);
+  tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_SPARSE);
+  tiledb_array_schema_set_capacity(ctx, array_schema, 2);
+  tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a1);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a2);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a3);
 
-  // Check array metadata
-  if (tiledb_array_metadata_check(ctx, array_metadata) != TILEDB_OK) {
-    printf("Invalid array metadata\n");
+  // Check array schema
+  if (tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK) {
+    printf("Invalid array schema\n");
     return -1;
   }
 
   // Create array
-  tiledb_array_create(ctx, array_metadata);
+  tiledb_array_create(ctx, "my_sparse_array", array_schema);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);
@@ -98,7 +97,7 @@ int main() {
   tiledb_dimension_free(ctx, d1);
   tiledb_dimension_free(ctx, d2);
   tiledb_domain_free(ctx, domain);
-  tiledb_array_metadata_free(ctx, array_metadata);
+  tiledb_array_schema_free(ctx, array_schema);
   tiledb_ctx_free(ctx);
 
   return 0;

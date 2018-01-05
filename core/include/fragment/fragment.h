@@ -34,7 +34,7 @@
 #ifndef TILEDB_FRAGMENT_H
 #define TILEDB_FRAGMENT_H
 
-#include "array_metadata.h"
+#include "array_schema.h"
 #include "fragment_metadata.h"
 #include "read_state.h"
 #include "write_state.h"
@@ -63,8 +63,8 @@ class Fragment {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the array metadata. */
-  const ArrayMetadata* array_metadata() const;
+  /** Returns the array schema. */
+  const ArraySchema* array_schema() const;
 
   /** Returns the URI of the array the query focuses on. */
   URI attr_uri(unsigned int attribute_id) const;

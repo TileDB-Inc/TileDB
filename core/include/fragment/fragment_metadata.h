@@ -34,7 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
-#include "array_metadata.h"
+#include "array_schema.h"
 #include "buffer.h"
 #include "query_type.h"
 #include "status.h"
@@ -54,12 +54,12 @@ class FragmentMetadata {
   /**
    * Constructor.
    *
-   * @param array_metadata The schema of the array the fragment belongs to.
+   * @param array_schema The schema of the array the fragment belongs to.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param fragment_uri The fragment URI.
    */
   FragmentMetadata(
-      const ArrayMetadata* array_metadata, bool dense, const URI& fragment_uri);
+      const ArraySchema* array_schema, bool dense, const URI& fragment_uri);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -199,7 +199,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   /** The array schema */
-  const ArrayMetadata* array_metadata_;
+  const ArraySchema* array_schema_;
 
   /** A vector storing the first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;

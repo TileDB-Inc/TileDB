@@ -45,8 +45,8 @@ namespace tiledb {
 /* ****************************** */
 
 FragmentMetadata::FragmentMetadata(
-    const ArrayMetadata* array_metadata, bool dense, const URI& fragment_uri)
-    : array_metadata_(array_metadata)
+    const ArraySchema* array_schema, bool dense, const URI& fragment_uri)
+    : array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri) {
   domain_ = nullptr;
@@ -78,7 +78,7 @@ FragmentMetadata::~FragmentMetadata() {
 
 void FragmentMetadata::append_bounding_coords(const void* bounding_coords) {
   // For easy reference
-  uint64_t bounding_coords_size = 2 * array_metadata_->coords_size();
+  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
 
   // Copy and append MBR
   void* new_bounding_coords = std::malloc(bounding_coords_size);
@@ -88,7 +88,7 @@ void FragmentMetadata::append_bounding_coords(const void* bounding_coords) {
 
 void FragmentMetadata::append_mbr(const void* mbr) {
   // For easy reference
-  uint64_t mbr_size = 2 * array_metadata_->coords_size();
+  uint64_t mbr_size = 2 * array_schema_->coords_size();
 
   // Copy and append MBR
   void* new_mbr = std::malloc(mbr_size);
@@ -122,11 +122,11 @@ const std::vector<void*>& FragmentMetadata::bounding_coords() const {
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   if (dense_)
-    return array_metadata_->domain()->cell_num_per_tile();
+    return array_schema_->domain()->cell_num_per_tile();
 
   uint64_t tile_num = this->tile_num();
   if (tile_pos != tile_num - 1)
-    return array_metadata_->capacity();
+    return array_schema_->capacity();
 
   return last_tile_cell_num();
 }
@@ -170,15 +170,15 @@ const URI& FragmentMetadata::fragment_uri() const {
 
 Status FragmentMetadata::init(const void* non_empty_domain) {
   // For easy reference
-  unsigned int attribute_num = array_metadata_->attribute_num();
-  auto domain = array_metadata_->domain();
+  unsigned int attribute_num = array_schema_->attribute_num();
+  auto domain = array_schema_->domain();
 
   // Sanity check
   assert(non_empty_domain_ == NULL);
   assert(domain_ == NULL);
 
   // Set non-empty domain
-  uint64_t domain_size = 2 * array_metadata_->coords_size();
+  uint64_t domain_size = 2 * array_schema_->coords_size();
   non_empty_domain_ = std::malloc(domain_size);
   if (non_empty_domain == nullptr)
     std::memcpy(non_empty_domain_, domain->domain(), domain_size);
@@ -244,7 +244,7 @@ void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
 
 uint64_t FragmentMetadata::tile_num() const {
   if (dense_)
-    return array_metadata_->domain()->tile_num(domain_);
+    return array_schema_->domain()->tile_num(domain_);
 
   return (uint64_t)mbrs_.size();
 }
@@ -272,7 +272,7 @@ const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_var_sizes()
 //  bounding_coords_num (uint64_t)
 //  bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
 Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
-  uint64_t bounding_coords_size = 2 * array_metadata_->coords_size();
+  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
 
   // Get number of bounding coordinates
   uint64_t bounding_coords_num = 0;
@@ -304,7 +304,7 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
 // ...
 // file_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   file_sizes_.resize(attribute_num + 1);
   Status st =
       buff->read(&file_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
@@ -322,7 +322,7 @@ Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
 // ...
 // file_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   file_var_sizes_.resize(attribute_num + 1);
   Status st = buff->read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
 
@@ -361,7 +361,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   }
 
   // Get MBRs
-  uint64_t mbr_size = 2 * array_metadata_->coords_size();
+  uint64_t mbr_size = 2 * array_schema_->coords_size();
   void* mbr = nullptr;
   mbrs_.resize(mbr_num);
   for (uint64_t i = 0; i < mbr_num; ++i) {
@@ -408,7 +408,7 @@ Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
   } else {
     domain_ = std::malloc(domain_size);
     std::memcpy(domain_, non_empty_domain_, domain_size);
-    array_metadata_->domain()->expand_domain(domain_);
+    array_schema_->domain()->expand_domain(domain_);
   }
 
   return Status::Ok();
@@ -424,7 +424,7 @@ Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
 Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
   Status st;
   uint64_t tile_offsets_num = 0;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Allocate tile offsets
   tile_offsets_.resize(attribute_num + 1);
@@ -463,7 +463,7 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
 //     tile_ver_offsets_attr#<attribute_num-1>_#2 (uint64_t) ...
 Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
   Status st;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   uint64_t tile_var_offsets_num = 0;
 
   // Allocate tile offsets
@@ -504,7 +504,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
 //     tile_var_sizes_attr#<attribute_num-1>_#2 (uint64_t) ...
 Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
   Status st;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   uint64_t tile_var_sizes_num = 0;
 
   // Allocate tile sizes
@@ -547,7 +547,7 @@ Status FragmentMetadata::load_version(ConstBuffer* buff) {
 // bounding_coords_#1(void*) bounding_coords_#2(void*) ...
 Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
   Status st;
-  uint64_t bounding_coords_size = 2 * array_metadata_->coords_size();
+  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
   auto bounding_coords_num = (uint64_t)bounding_coords_.size();
   // Write number of bounding coordinates
   st = buff->write(&bounding_coords_num, sizeof(uint64_t));
@@ -574,7 +574,7 @@ Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
 // ...
 // file_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::write_file_sizes(Buffer* buff) {
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   Status st = buff->write(
       &next_tile_offsets_[0], (attribute_num + 1) * sizeof(uint64_t));
   if (!st.ok()) {
@@ -590,7 +590,7 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) {
 // ...
 // file_var_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) {
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   Status st =
       buff->write(&next_tile_var_offsets_[0], attribute_num * sizeof(uint64_t));
   if (!st.ok()) {
@@ -605,8 +605,8 @@ Status FragmentMetadata::write_file_var_sizes(Buffer* buff) {
 // last_tile_cell_num(uint64_t)
 Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   uint64_t cell_num_per_tile =
-      dense_ ? array_metadata_->domain()->cell_num_per_tile() :
-               array_metadata_->capacity();
+      dense_ ? array_schema_->domain()->cell_num_per_tile() :
+               array_schema_->capacity();
   // Handle the case of zero
   uint64_t last_tile_cell_num =
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
@@ -624,7 +624,7 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
 // mbr_#1(void*) mbr_#2(void*) ...
 Status FragmentMetadata::write_mbrs(Buffer* buff) {
   Status st;
-  uint64_t mbr_size = 2 * array_metadata_->coords_size();
+  uint64_t mbr_size = 2 * array_schema_->coords_size();
   uint64_t mbr_num = mbrs_.size();
 
   // Write number of MBRs
@@ -650,7 +650,7 @@ Status FragmentMetadata::write_mbrs(Buffer* buff) {
 // non_empty_domain_size(uint64_t) non_empty_domain(void*)
 Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
   uint64_t domain_size =
-      (non_empty_domain_ == nullptr) ? 0 : array_metadata_->coords_size() * 2;
+      (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
 
   // Write non-empty domain size
   Status st = buff->write(&domain_size, sizeof(uint64_t));
@@ -680,7 +680,7 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
 // tile_offsets_attr#<attribute_num>_#2 (uint64_t) ...
 Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Write tile offsets for each attribute
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
@@ -717,7 +717,7 @@ Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
 //     tile_var_offsets_attr#<attribute_num-1>_#2 (uint64_t) ...
 Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Write tile offsets for each attribute
   for (unsigned int i = 0; i < attribute_num; ++i) {
@@ -755,7 +755,7 @@ Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
 //     tile_var_sizes_attr#<attribute_num-1>_#2 (uint64_t) ...
 Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_metadata_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Write tile sizes for each attribute
   for (unsigned int i = 0; i < attribute_num; ++i) {
