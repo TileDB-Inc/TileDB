@@ -44,7 +44,7 @@ int main() {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, "my_array");
+  tiledb_array_schema_create(ctx, &array_schema);
 
   // Print array schema contents
   printf("First dump:\n");
@@ -94,13 +94,11 @@ int main() {
   tiledb_array_schema_dump(ctx, array_schema, stdout);
 
   // Get some values using getters
-  const char* array_name;
   tiledb_array_type_t array_type;
   uint64_t capacity;
   tiledb_compressor_t coords_compressor, offsets_compressor;
   int coords_compression_level, offsets_compression_level;
   tiledb_layout_t tile_order, cell_order;
-  tiledb_array_schema_get_array_name(ctx, array_schema, &array_name);
   tiledb_array_schema_get_array_type(ctx, array_schema, &array_type);
   tiledb_array_schema_get_capacity(ctx, array_schema, &capacity);
   tiledb_array_schema_get_tile_order(ctx, array_schema, &tile_order);
@@ -112,7 +110,6 @@ int main() {
 
   // Print from getters
   printf("\nFrom getters:\n");
-  printf("- Array name: %s\n", array_name);
   printf(
       "- Array type: %s\n", (array_type == TILEDB_DENSE) ? "dense" : "sparse");
   printf(

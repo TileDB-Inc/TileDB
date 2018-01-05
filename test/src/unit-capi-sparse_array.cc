@@ -259,7 +259,7 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema, array_name.c_str());
+  rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, capacity);
   REQUIRE(rc == TILEDB_OK);
@@ -275,7 +275,7 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Create the array schema
-  rc = tiledb_array_create(ctx_, array_schema);
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up

@@ -86,16 +86,18 @@ Status StorageManager::array_consolidate(const char* array_name) {
   return consolidator_->consolidate(array_name);
 }
 
-Status StorageManager::array_create(ArraySchema* array_schema) {
+Status StorageManager::array_create(
+    const URI& array_uri, ArraySchema* array_schema) {
   // Check array schema
   if (array_schema == nullptr) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot create array; Empty array schema"));
   }
+
+  array_schema->set_array_uri(array_uri);
   RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
-  const URI& array_uri = array_schema->array_uri();
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Store array schema
@@ -320,7 +322,8 @@ Status StorageManager::load_array_schema(
 
   // Deserialize
   auto cbuff = new ConstBuffer(buff);
-  *array_schema = new ArraySchema(array_uri);
+  *array_schema = new ArraySchema();
+  (*array_schema)->set_array_uri(array_uri);
   Status st = (*array_schema)->deserialize(cbuff);
   delete cbuff;
   if (!st.ok()) {

@@ -71,9 +71,8 @@ int main() {
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Create array schema
-  const char* array_name = "my_dense_array";
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, array_name);
+  tiledb_array_schema_create(ctx, &array_schema);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_DENSE);
@@ -89,7 +88,7 @@ int main() {
   }
 
   // Create array
-  tiledb_array_create(ctx, array_schema);
+  tiledb_array_create(ctx, "my_dense_array", array_schema);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);

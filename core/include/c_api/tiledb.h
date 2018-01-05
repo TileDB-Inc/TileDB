@@ -325,10 +325,10 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err);
  * Creates a new TileDB group.
  *
  * @param ctx The TileDB context.
- * @param group The group name.
+ * @param group_uri The group uri.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group);
+TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -644,13 +644,10 @@ TILEDB_EXPORT int tiledb_dimension_dump(
  *
  * @param ctx The TileDB context.
  * @param array_schema The TileDB array schema to be created.
- * @param array_name The array name.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_create(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
-    const char* array_name);
+    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema);
 
 /**
  * Destroys an array schema, freeing-up memory.
@@ -797,26 +794,13 @@ TILEDB_EXPORT int tiledb_array_schema_check(
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema to be retrieved, or NULL upon error.
- * @param array_name The array whose schema will be retrieved.
+ * @param array_uri The array whose schema will be retrieved.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t** array_schema,
-    const char* array_name);
-
-/**
- * Retrieves the array name.
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param array_name The array name to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_schema_get_array_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    const char** array_name);
+    const char* array_uri);
 
 /**
  * Retrieves the array type.
@@ -991,7 +975,7 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
  *
  * @param ctx The TileDB context.
  * @param query The query object to be created.
- * @param array_name The name of the array the query will focus on.
+ * @param array_uri The name of the array the query will focus on.
  * @param type The query type, which must be one of the following:
  *    - TILEDB_WRITE
  *    - TILEDB_READ
@@ -1000,7 +984,7 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
 TILEDB_EXPORT int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
-    const char* array_name,
+    const char* array_uri,
     tiledb_query_type_t type);
 
 /**
@@ -1230,21 +1214,24 @@ TILEDB_EXPORT int tiledb_query_get_attribute_status(
  * Creates a new TileDB array given an input schema.
  *
  * @param ctx The TileDB context.
+ * @param array_uri The array name.
  * @param array_schema The array schema.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_create(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema);
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_array_schema_t* array_schema);
 
 /**
  * Consolidates the fragments of an array into a single fragment.
  *
  * @param ctx The TileDB context.
- * @param array_name The name of the TileDB array to be consolidated.
+ * @param array_uri The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_consolidate(
-    tiledb_ctx_t* ctx, const char* array_name);
+    tiledb_ctx_t* ctx, const char* array_uri);
 
 /* ********************************* */
 /*        RESOURCE MANAGEMENT        */

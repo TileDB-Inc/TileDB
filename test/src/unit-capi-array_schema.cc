@@ -162,13 +162,9 @@ void ArrayMetadataFx::delete_array(const std::string& path) {
 }
 
 void ArrayMetadataFx::create_array(const std::string& path) {
-  // Create array schema with invalid URI
-  tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, "file://array");
-  REQUIRE(rc == TILEDB_ERR);
-
   // Create array schema
-  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Set schema members
@@ -184,7 +180,7 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_create(ctx_, array_schema);
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_ERR);
 
   // Create dimensions
@@ -221,7 +217,7 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_create(ctx_, array_schema);
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_ERR);
 
   // Set attribute
@@ -231,8 +227,12 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create the array
-  rc = tiledb_array_create(ctx_, array_schema);
+  // Create array with invalid URI
+  rc = tiledb_array_create(ctx_, "file://array", array_schema);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Create correct array
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -253,13 +253,6 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_load(ctx_, &array_schema, path.c_str());
   REQUIRE(rc == TILEDB_OK);
-
-  // Check name
-  const char* name;
-  rc = tiledb_array_schema_get_array_name(ctx_, array_schema, &name);
-  REQUIRE(rc == TILEDB_OK);
-  auto real_path = tiledb::URI(path).to_string();
-  CHECK_THAT(name, Catch::Equals(real_path));
 
   // Check capacity
   uint64_t capacity;
@@ -417,8 +410,8 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
 
   // Check dump
   std::string dump_str =
-      "- Array name: " + real_path + "\n" + "- Array type: " + ARRAY_TYPE_STR +
-      "\n" + "- Cell order: " + CELL_ORDER_STR + "\n" +
+      std::string("- Array type: ") + ARRAY_TYPE_STR + "\n" +
+      "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
       "- Coordinates compressor: BLOSC_ZSTD\n" +
@@ -589,7 +582,7 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, "my_meta");
+  int rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -657,7 +650,7 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, "my_meta");
+  int rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions

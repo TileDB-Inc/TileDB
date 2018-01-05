@@ -69,13 +69,6 @@ class ArraySchema {
    */
   explicit ArraySchema(const ArraySchema* array_schema);
 
-  /**
-   * Constructor.
-   *
-   * @param uri The array uri.
-   */
-  explicit ArraySchema(const URI& uri);
-
   /** Destructor. */
   ~ArraySchema();
 
@@ -249,6 +242,9 @@ class ArraySchema {
   /** Defines the array as a key-value store. */
   Status set_as_kv();
 
+  /** Sets an array URI. */
+  void set_array_uri(const URI& array_uri);
+
   /**
    * Sets the array type. The function returns an error if the array has been
    * defined as a key-value store (which by default is always sparse).
@@ -287,7 +283,7 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array name. */
+  /** An array name attached to the schema object. */
   URI array_uri_;
 
   /** The array type. */

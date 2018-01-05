@@ -152,7 +152,7 @@ void KVFx::create_kv(const std::string& path) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
+  rc = tiledb_array_schema_create(ctx_, &array_schema);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
   CHECK(rc == TILEDB_OK);
@@ -176,7 +176,7 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(as_kv == 1);
 
   // Create key-value store
-  rc = tiledb_array_create(ctx_, array_schema);
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   CHECK(rc == TILEDB_OK);
 
   // Clean up

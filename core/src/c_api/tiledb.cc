@@ -416,12 +416,12 @@ int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err) {
 /*              GROUP             */
 /* ****************************** */
 
-int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
+int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check for error
-  if (group == nullptr) {
+  if (group_uri == nullptr) {
     tiledb::Status st =
         tiledb::Status::Error("Invalid group directory argument is NULL");
     LOG_STATUS(st);
@@ -430,7 +430,7 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
   }
 
   // Create the group
-  if (save_error(ctx, ctx->storage_manager_->group_create(group)))
+  if (save_error(ctx, ctx->storage_manager_->group_create(group_uri)))
     return TILEDB_ERR;
 
   // Success
@@ -845,21 +845,9 @@ int tiledb_dimension_from_name(
 /* ****************************** */
 
 int tiledb_array_schema_create(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
-    const char* array_name) {
+    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  // Check array name
-  tiledb::URI array_uri(array_name);
-  if (array_uri.is_invalid()) {
-    tiledb::Status st = tiledb::Status::Error(
-        "Failed to create array schema; Invalid array URI");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
 
   // Create array schema struct
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
@@ -872,14 +860,12 @@ int tiledb_array_schema_create(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ =
-      new (std::nothrow) tiledb::ArraySchema(tiledb::URI(array_name));
+  (*array_schema)->array_schema_ = new (std::nothrow) tiledb::ArraySchema();
   if ((*array_schema)->array_schema_ == nullptr) {
     delete *array_schema;
     *array_schema = nullptr;
     tiledb::Status st = tiledb::Status::Error(
-        "Failed to allocate TileDB array schema "
-        "object in struct");
+        "Failed to allocate TileDB array schema object in struct");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -1028,7 +1014,7 @@ int tiledb_array_schema_check(
 int tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t** array_schema,
-    const char* array_name) {
+    const char* array_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create array schema
@@ -1046,23 +1032,11 @@ int tiledb_array_schema_load(
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
-              tiledb::URI(array_name), &((*array_schema)->array_schema_)))) {
+              tiledb::URI(array_uri), &((*array_schema)->array_schema_)))) {
     delete *array_schema;
     return TILEDB_ERR;
   }
 
-  return TILEDB_OK;
-}
-
-int tiledb_array_schema_get_array_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    const char** array_name) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  const tiledb::URI& uri = array_schema->array_schema_->array_uri();
-  *array_name = uri.c_str();
   return TILEDB_OK;
 }
 
@@ -1308,7 +1282,7 @@ int tiledb_attribute_from_name(
 int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
-    const char* array_name,
+    const char* array_uri,
     tiledb_query_type_t type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -1340,7 +1314,7 @@ int tiledb_query_create(
           ctx,
           ctx->storage_manager_->query_init(
               ((*query)->query_),
-              array_name,
+              array_uri,
               static_cast<tiledb::QueryType>(type)))) {
     delete (*query)->query_;
     delete *query;
@@ -1570,27 +1544,40 @@ int tiledb_query_get_attribute_status(
 /* ****************************** */
 
 int tiledb_array_create(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_array_schema_t* array_schema) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Check array name
+  tiledb::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to create array; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   // Create the array_schema
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_create(array_schema->array_schema_)))
+          ctx->storage_manager_->array_create(
+              uri, array_schema->array_schema_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_name) {
+int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_name)))
+  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

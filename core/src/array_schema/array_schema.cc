@@ -83,23 +83,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   std::memcpy(version_, array_schema->version_, sizeof(version_));
 }
 
-ArraySchema::ArraySchema(const URI& uri) {
-  attribute_num_ = 0;
-  array_uri_ = uri;
-  array_type_ = ArrayType::DENSE;
-  capacity_ = constants::capacity;
-  cell_order_ = Layout::ROW_MAJOR;
-  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
-  cell_var_offsets_compression_level_ =
-      constants::cell_var_offsets_compression_level;
-  coords_compression_ = constants::coords_compression;
-  coords_compression_level_ = constants::coords_compression_level;
-  is_kv_ = false;
-  domain_ = nullptr;
-  tile_order_ = Layout::ROW_MAJOR;
-  std::memcpy(version_, constants::version, sizeof(version_));
-}
-
 ArraySchema::~ArraySchema() {
   clear();
 }
@@ -245,10 +228,6 @@ int ArraySchema::cell_var_offsets_compression_level() const {
 }
 
 Status ArraySchema::check() const {
-  if (array_uri_.is_invalid())
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Array schema check failed; Invalid array URI"));
-
   if (domain_ == nullptr)
     return LOG_STATUS(
         Status::ArraySchemaError("Array schema check failed; Domain not set"));
@@ -340,7 +319,6 @@ void ArraySchema::dump(FILE* out) const {
   const char* cell_order_s = layout_str(cell_order_);
   const char* tile_order_s = layout_str(tile_order_);
 
-  fprintf(out, "- Array name: %s\n", array_uri_.to_string().c_str());
   fprintf(out, "- Array type: %s\n", array_type_s);
   fprintf(out, "- Cell order: %s\n", cell_order_s);
   fprintf(out, "- Tile order: %s\n", tile_order_s);
@@ -599,6 +577,10 @@ Status ArraySchema::set_as_kv() {
   is_kv_ = true;
 
   return Status::Ok();
+}
+
+void ArraySchema::set_array_uri(const URI& array_uri) {
+  array_uri_ = array_uri;
 }
 
 Status ArraySchema::set_array_type(ArrayType array_type) {

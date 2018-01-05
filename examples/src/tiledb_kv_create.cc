@@ -55,9 +55,9 @@ int main() {
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Create array schema
-  const char* array_name = "my_kv";
+  const char* array_uri = "my_kv";
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, array_name);
+  tiledb_array_schema_create(ctx, &array_schema);
   tiledb_array_schema_add_attribute(ctx, array_schema, a1);
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
   tiledb_array_schema_add_attribute(ctx, array_schema, a3);
@@ -78,7 +78,7 @@ int main() {
     printf("Array is defined as a key-value store\n");
 
   // Create array (which is defined as a key-value store)
-  tiledb_array_create(ctx, array_schema);
+  tiledb_array_create(ctx, array_uri, array_schema);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);

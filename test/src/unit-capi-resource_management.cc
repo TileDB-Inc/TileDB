@@ -127,7 +127,7 @@ void ResourceMgmtFx::create_array(const std::string& path) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
+  tiledb_array_schema_create(ctx_, &array_schema);
   tiledb_array_schema_set_array_type(ctx_, array_schema, TILEDB_DENSE);
   tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
@@ -136,7 +136,7 @@ void ResourceMgmtFx::create_array(const std::string& path) {
   REQUIRE(tiledb_array_schema_check(ctx_, array_schema) == TILEDB_OK);
 
   // Create array
-  REQUIRE(tiledb_array_create(ctx_, array_schema) == TILEDB_OK);
+  REQUIRE(tiledb_array_create(ctx_, path.c_str(), array_schema) == TILEDB_OK);
 
   tiledb_dimension_free(ctx_, d1);
 }

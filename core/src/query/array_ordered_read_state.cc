@@ -627,7 +627,7 @@ Status ArrayOrderedReadState::async_submit_query(unsigned int id) {
   assert(storage_manager != nullptr);
 
   // Coords only needed in sparse case.
-  bool add_coords = !query_->array_metadata()->dense();
+  bool add_coords = !query_->array_schema()->dense();
 
   // Prepare a new query to be submitted asynchronously
   if (async_query_[id] != nullptr)

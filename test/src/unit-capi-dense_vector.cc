@@ -132,7 +132,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
+  rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -149,7 +149,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx_, array_schema);
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);

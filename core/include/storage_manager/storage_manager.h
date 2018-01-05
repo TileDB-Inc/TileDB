@@ -107,10 +107,11 @@ class StorageManager {
   /**
    * Creates a TileDB array storing its schema.
    *
+   * @param array_uri The URI of the array to be created.
    * @param array_schema The array schema.
    * @return Status
    */
-  Status array_create(ArraySchema* array_schema);
+  Status array_create(const URI& array_uri, ArraySchema* array_schema);
 
   /**
    * Locks the array.
