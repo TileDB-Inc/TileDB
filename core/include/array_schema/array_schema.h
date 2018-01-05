@@ -1,5 +1,5 @@
 /**
- * @file   array_metadata.h
+ * @file   array_schema.h
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class ArrayMetadata.
+ * This file defines class ArraySchema.
  */
 
 #ifndef TILEDB_ARRAY_METADATA_H
@@ -52,32 +52,32 @@
 
 namespace tiledb {
 
-/** Specifies the array metadata. */
-class ArrayMetadata {
+/** Specifies the array schema. */
+class ArraySchema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  ArrayMetadata();
+  ArraySchema();
 
   /**
    * Constructor. Clones the input.
    *
-   * @param array_metadata The array metadata to copy.
+   * @param array_schema The array schema to copy.
    */
-  explicit ArrayMetadata(const ArrayMetadata* array_metadata);
+  explicit ArraySchema(const ArraySchema* array_schema);
 
   /**
    * Constructor.
    *
    * @param uri The array uri.
    */
-  explicit ArrayMetadata(const URI& uri);
+  explicit ArraySchema(const URI& uri);
 
   /** Destructor. */
-  ~ArrayMetadata();
+  ~ArraySchema();
 
   /* ********************************* */
   /*               API                 */
@@ -157,7 +157,7 @@ class ArrayMetadata {
   int cell_var_offsets_compression_level() const;
 
   /**
-   * Checks the correctness of the array metadata.
+   * Checks the correctness of the array schema.
    *
    * @return Status
    */
@@ -190,7 +190,7 @@ class ArrayMetadata {
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
 
-  /** Dumps the array metadata in ASCII format in the selected output. */
+  /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;
 
   /**
@@ -208,9 +208,9 @@ class ArrayMetadata {
   bool is_kv() const;
 
   /**
-   * Serializes the array metadata object into a buffer.
+   * Serializes the array schema object into a buffer.
    *
-   * @param buff The buffer the array metadata is serialized into.
+   * @param buff The buffer the array schema is serialized into.
    * @return Status
    */
   Status serialize(Buffer* buff) const;
@@ -239,7 +239,7 @@ class ArrayMetadata {
   const Domain* domain() const;
 
   /**
-   * Initializes the ArrayMetadata object. It also performs a check to see if
+   * Initializes the ArraySchema object. It also performs a check to see if
    * all the member attributes have been properly set.
    *
    * @return Status

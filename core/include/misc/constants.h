@@ -45,8 +45,8 @@ namespace constants {
 /** The array filelock name. */
 extern const char* array_filelock_name;
 
-/** The array metadata file name. */
-extern const char* array_metadata_filename;
+/** The array schema file name. */
+extern const char* array_schema_filename;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -159,8 +159,8 @@ extern const unsigned int var_num;
 /** String describing no compression. */
 extern const char* no_compression_str;
 
-/** The array metadata cache size. */
-extern const uint64_t array_metadata_cache_size;
+/** The array schema cache size. */
+extern const uint64_t array_schema_cache_size;
 
 /** The fragment metadata cache size. */
 extern const uint64_t fragment_metadata_cache_size;

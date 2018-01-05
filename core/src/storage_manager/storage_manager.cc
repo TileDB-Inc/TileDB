@@ -49,7 +49,7 @@ StorageManager::StorageManager() {
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
   consolidator_ = nullptr;
-  array_metadata_cache_ = nullptr;
+  array_schema_cache_ = nullptr;
   fragment_metadata_cache_ = nullptr;
   tile_cache_ = nullptr;
   vfs_ = nullptr;
@@ -59,7 +59,7 @@ StorageManager::~StorageManager() {
   async_stop();
   delete async_thread_[0];
   delete async_thread_[1];
-  delete array_metadata_cache_;
+  delete array_schema_cache_;
   delete tile_cache_;
   delete vfs_;
   for (auto& open_array : open_arrays_)
@@ -86,21 +86,21 @@ Status StorageManager::array_consolidate(const char* array_name) {
   return consolidator_->consolidate(array_name);
 }
 
-Status StorageManager::array_create(ArrayMetadata* array_metadata) {
-  // Check array metadata
-  if (array_metadata == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot create array; Empty array metadata"));
+Status StorageManager::array_create(ArraySchema* array_schema) {
+  // Check array schema
+  if (array_schema == nullptr) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot create array; Empty array schema"));
   }
-  RETURN_NOT_OK(array_metadata->check());
+  RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
-  const URI& array_uri = array_metadata->array_uri();
+  const URI& array_uri = array_schema->array_uri();
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
-  // Store array metadata
+  // Store array schema
   RETURN_NOT_OK_ELSE(
-      store_array_metadata(array_metadata), vfs_->remove_path(array_uri));
+      store_array_schema(array_schema), vfs_->remove_path(array_uri));
 
   // Create array filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
@@ -255,7 +255,7 @@ Status StorageManager::init(Config* config) {
   RETURN_NOT_OK(config_.init());
   consolidator_ = new Consolidator(this);
   Config::SMParams sm_params = config_.sm_params();
-  array_metadata_cache_ = new LRUCache(sm_params.array_metadata_cache_size_);
+  array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
@@ -267,7 +267,7 @@ Status StorageManager::init(Config* config) {
 }
 
 bool StorageManager::is_array(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::array_metadata_filename));
+  return vfs_->is_file(uri.join_path(constants::array_schema_filename));
 }
 
 bool StorageManager::is_dir(const URI& uri) const {
@@ -290,28 +290,26 @@ bool StorageManager::is_kv(const URI& uri) const {
   return vfs_->is_file(uri.join_path(constants::kv_filename));
 }
 
-Status StorageManager::load_array_metadata(
-    const URI& array_uri, ArrayMetadata** array_metadata) {
+Status StorageManager::load_array_schema(
+    const URI& array_uri, ArraySchema** array_schema) {
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load array metadata; Invalid array URI"));
+        "Cannot load array schema; Invalid array URI"));
 
   // Initialization
-  URI array_metadata_uri =
-      array_uri.join_path(constants::array_metadata_filename);
+  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
 
   // Try to read from cache
   bool in_cache;
   auto buff = new Buffer();
   RETURN_NOT_OK_ELSE(
-      array_metadata_cache_->read(
-          array_metadata_uri.to_string(), buff, &in_cache),
+      array_schema_cache_->read(array_schema_uri.to_string(), buff, &in_cache),
       delete buff);
 
   // Read from file if not in cache
   if (!in_cache) {
     delete buff;
-    auto tile_io = new TileIO(this, array_metadata_uri);
+    auto tile_io = new TileIO(this, array_schema_uri);
     auto tile = (Tile*)nullptr;
     RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
     tile->disown_buff();
@@ -322,19 +320,19 @@ Status StorageManager::load_array_metadata(
 
   // Deserialize
   auto cbuff = new ConstBuffer(buff);
-  *array_metadata = new ArrayMetadata(array_uri);
-  Status st = (*array_metadata)->deserialize(cbuff);
+  *array_schema = new ArraySchema(array_uri);
+  Status st = (*array_schema)->deserialize(cbuff);
   delete cbuff;
   if (!st.ok()) {
-    delete array_metadata;
-    *array_metadata = nullptr;
+    delete array_schema;
+    *array_schema = nullptr;
   }
 
   // Store in cache
   if (st.ok() && !in_cache) {
     buff->disown_data();
-    st = array_metadata_cache_->insert(
-        array_metadata_uri.to_string(), buff->data(), buff->size());
+    st = array_schema_cache_->insert(
+        array_schema_uri.to_string(), buff->data(), buff->size());
   }
 
   delete buff;
@@ -522,7 +520,7 @@ Status StorageManager::object_iter_next_preorder(
 
 Status StorageManager::query_finalize(Query* query) {
   RETURN_NOT_OK(query->finalize());
-  RETURN_NOT_OK(array_close(query->array_metadata()->array_uri()));
+  RETURN_NOT_OK(array_close(query->array_schema()->array_uri()));
 
   return Status::Ok();
 }
@@ -531,14 +529,14 @@ Status StorageManager::query_init(
     Query* query, const char* array_name, QueryType type) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
-  auto array_metadata = (const ArrayMetadata*)nullptr;
+  auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(
-      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
+      array_open(URI(array_name), type, &array_schema, &fragment_metadata));
 
   // Set basic query members
   query->set_storage_manager(this);
   query->set_type(type);
-  query->set_array_metadata(array_metadata);
+  query->set_array_schema(array_schema);
   query->set_fragment_metadata(fragment_metadata);
 
   return Status::Ok();
@@ -557,14 +555,14 @@ Status StorageManager::query_init(
     const URI& consolidation_fragment_uri) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
-  auto array_metadata = (const ArrayMetadata*)nullptr;
+  auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(
-      array_open(URI(array_name), type, &array_metadata, &fragment_metadata));
+      array_open(URI(array_name), type, &array_schema, &fragment_metadata));
 
   // Initialize query
   return query->init(
       this,
-      array_metadata,
+      array_schema,
       fragment_metadata,
       type,
       layout,
@@ -627,18 +625,17 @@ Status StorageManager::read(
   return Status::Ok();
 }
 
-Status StorageManager::store_array_metadata(ArrayMetadata* array_metadata) {
-  auto& array_uri = array_metadata->array_uri();
-  URI array_metadata_uri =
-      array_uri.join_path(constants::array_metadata_filename);
+Status StorageManager::store_array_schema(ArraySchema* array_schema) {
+  auto& array_uri = array_schema->array_uri();
+  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
 
   // Serialize
   auto buff = new Buffer();
-  RETURN_NOT_OK_ELSE(array_metadata->serialize(buff), delete buff);
+  RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
 
   // Delete file if it exists already
-  if (is_file(array_metadata_uri))
-    RETURN_NOT_OK_ELSE(remove_path(array_metadata_uri), delete buff);
+  if (is_file(array_schema_uri))
+    RETURN_NOT_OK_ELSE(remove_path(array_schema_uri), delete buff);
 
   // Write to file
   buff->reset_offset();
@@ -650,21 +647,21 @@ Status StorageManager::store_array_metadata(ArrayMetadata* array_metadata) {
       0,
       buff,
       false);
-  auto tile_io = new TileIO(this, array_metadata_uri);
+  auto tile_io = new TileIO(this, array_schema_uri);
   Status st = tile_io->write_generic(tile);
   if (st.ok())
-    st = sync(array_metadata_uri);
+    st = sync(array_schema_uri);
 
   delete tile;
   delete tile_io;
   delete buff;
 
   // If it is a key-value store, create a new key-value special file
-  if (st.ok() && array_metadata->is_kv()) {
+  if (st.ok() && array_schema->is_kv()) {
     URI kv_uri = array_uri.join_path(constants::kv_filename);
     st = vfs_->create_file(kv_uri);
     if (!st.ok()) {
-      vfs_->remove_path(array_metadata_uri);
+      vfs_->remove_path(array_schema_uri);
       vfs_->remove_path(kv_uri);
     }
   }
@@ -720,7 +717,7 @@ Status StorageManager::write_to_cache(
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
   if (filename == constants::fragment_metadata_filename ||
-      filename == constants::array_metadata_filename) {
+      filename == constants::array_schema_filename) {
     return Status::Ok();
   }
 
@@ -793,7 +790,7 @@ Status StorageManager::array_close(URI array_uri) {
 Status StorageManager::array_open(
     const URI& array_uri,
     QueryType type,
-    const ArrayMetadata** array_metadata,
+    const ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
   if (!is_array(array_uri)) {
@@ -824,11 +821,11 @@ Status StorageManager::array_open(
   // Increment counter
   open_array->incr_cnt();
 
-  // Load array metadata
+  // Load array schema
   RETURN_NOT_OK_ELSE(
-      open_array_load_array_metadata(array_uri, open_array),
+      open_array_load_array_schema(array_uri, open_array),
       array_open_error(open_array));
-  *array_metadata = open_array->array_metadata();
+  *array_schema = open_array->array_schema();
 
   // Get fragment metadata only in read mode
   if (type == QueryType::READ)
@@ -916,15 +913,15 @@ Status StorageManager::open_array_get_entry(
   return Status::Ok();
 }
 
-Status StorageManager::open_array_load_array_metadata(
+Status StorageManager::open_array_load_array_schema(
     const URI& array_uri, OpenArray* open_array) {
-  // Do nothing if the array metadata is already loaded
-  if (open_array->array_metadata() != nullptr)
+  // Do nothing if the array schema is already loaded
+  if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
-  auto array_metadata = (ArrayMetadata*)nullptr;
-  RETURN_NOT_OK(load_array_metadata(array_uri, &array_metadata));
-  open_array->set_array_metadata(array_metadata);
+  auto array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, &array_schema));
+  open_array->set_array_schema(array_schema);
 
   return Status::Ok();
 }
@@ -949,7 +946,7 @@ Status StorageManager::open_array_load_fragment_metadata(
       URI coords_uri = uri.join_path(
           std::string("/") + constants::coords + constants::file_suffix);
       bool dense = !vfs_->is_file(coords_uri);
-      metadata = new FragmentMetadata(open_array->array_metadata(), dense, uri);
+      metadata = new FragmentMetadata(open_array->array_schema(), dense, uri);
       RETURN_NOT_OK_ELSE(load_fragment_metadata(metadata), delete metadata);
       open_array->fragment_metadata_add(metadata);
     }

@@ -107,8 +107,8 @@ std::string Status::code_to_string() const {
     case StatusCode::FragmentMetadata:
       type = "[TileDB::FragmentMetadata] Error";
       break;
-    case StatusCode::ArrayMetadata:
-      type = "[TileDB::ArrayMetadata] Error";
+    case StatusCode::ArraySchema:
+      type = "[TileDB::ArraySchema] Error";
       break;
     case StatusCode::ASRS:
       type = "[TileDB::ArraySortedReadState] Error";

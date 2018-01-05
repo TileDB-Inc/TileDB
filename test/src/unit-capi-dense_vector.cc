@@ -130,34 +130,32 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create array metadata
-  tiledb_array_metadata_t* array_metadata;
-  rc = tiledb_array_metadata_create(ctx_, &array_metadata, path.c_str());
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_cell_order(
-      ctx_, array_metadata, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_tile_order(
-      ctx_, array_metadata, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_array_type(ctx_, array_metadata, TILEDB_DENSE);
+  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_array_metadata_check(ctx_, array_metadata);
+  rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx_, array_metadata);
+  rc = tiledb_array_create(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_free(ctx_, dim);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attributes[] = {ATTR_NAME};

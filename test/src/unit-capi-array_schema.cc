@@ -1,5 +1,5 @@
 /**
- * @file unit-capi-array_metadata.cc
+ * @file unit-capi-array_schema.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API tiledb_array_metadata_t spec, along with
+ * Tests for the C API tiledb_array_schema_t spec, along with
  * tiledb_attribute_iter_t and tiledb_dimension_iter_t.
  */
 
@@ -100,7 +100,7 @@ struct ArrayMetadataFx {
   void create_temp_dir(const std::string& path);
   void delete_array(const std::string& path);
   bool is_array(const std::string& path);
-  void load_and_check_array_metadata(const std::string& path);
+  void load_and_check_array_schema(const std::string& path);
 };
 
 ArrayMetadataFx::ArrayMetadataFx() {
@@ -162,29 +162,29 @@ void ArrayMetadataFx::delete_array(const std::string& path) {
 }
 
 void ArrayMetadataFx::create_array(const std::string& path) {
-  // Create array metadata with invalid URI
-  tiledb_array_metadata_t* array_metadata;
-  int rc = tiledb_array_metadata_create(ctx_, &array_metadata, "file://array");
+  // Create array schema with invalid URI
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, "file://array");
   REQUIRE(rc == TILEDB_ERR);
 
-  // Create array metadata
-  rc = tiledb_array_metadata_create(ctx_, &array_metadata, path.c_str());
+  // Create array schema
+  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
   REQUIRE(rc == TILEDB_OK);
 
-  // Set metadata members
-  rc = tiledb_array_metadata_set_array_type(ctx_, array_metadata, ARRAY_TYPE);
+  // Set schema members
+  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_capacity(ctx_, array_metadata, CAPACITY);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_cell_order(ctx_, array_metadata, CELL_ORDER);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, CELL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_tile_order(ctx_, array_metadata, TILE_ORDER);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILE_ORDER);
   REQUIRE(rc == TILEDB_OK);
 
-  // Check for invalid array metadata
-  rc = tiledb_array_metadata_check(ctx_, array_metadata);
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_create(ctx_, array_metadata);
+  rc = tiledb_array_create(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
 
   // Create dimensions
@@ -215,28 +215,28 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d3);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
-  // Check for invalid array metadata
-  rc = tiledb_array_metadata_check(ctx_, array_metadata);
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_create(ctx_, array_metadata);
+  rc = tiledb_array_create(ctx_, array_schema);
   REQUIRE(rc == TILEDB_ERR);
 
   // Set attribute
   tiledb_attribute_t* attr;
   rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the array
-  rc = tiledb_array_create(ctx_, array_metadata);
+  rc = tiledb_array_create(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_free(ctx_, attr);
   REQUIRE(rc == TILEDB_OK);
@@ -248,48 +248,48 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
-void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
-  // Load array_metadata metadata from the disk
-  tiledb_array_metadata_t* array_metadata;
-  int rc = tiledb_array_metadata_load(ctx_, &array_metadata, path.c_str());
+void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
+  // Load array schema from the disk
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_load(ctx_, &array_schema, path.c_str());
   REQUIRE(rc == TILEDB_OK);
 
   // Check name
   const char* name;
-  rc = tiledb_array_metadata_get_array_name(ctx_, array_metadata, &name);
+  rc = tiledb_array_schema_get_array_name(ctx_, array_schema, &name);
   REQUIRE(rc == TILEDB_OK);
   auto real_path = tiledb::URI(path).to_string();
   CHECK_THAT(name, Catch::Equals(real_path));
 
   // Check capacity
   uint64_t capacity;
-  rc = tiledb_array_metadata_get_capacity(ctx_, array_metadata, &capacity);
+  rc = tiledb_array_schema_get_capacity(ctx_, array_schema, &capacity);
   REQUIRE(rc == TILEDB_OK);
   CHECK(capacity == CAPACITY);
 
   // Check cell order
   tiledb_layout_t cell_order;
-  rc = tiledb_array_metadata_get_cell_order(ctx_, array_metadata, &cell_order);
+  rc = tiledb_array_schema_get_cell_order(ctx_, array_schema, &cell_order);
   REQUIRE(rc == TILEDB_OK);
   CHECK(cell_order == CELL_ORDER);
 
   // Check tile order
   tiledb_layout_t tile_order;
-  rc = tiledb_array_metadata_get_tile_order(ctx_, array_metadata, &tile_order);
+  rc = tiledb_array_schema_get_tile_order(ctx_, array_schema, &tile_order);
   REQUIRE(rc == TILEDB_OK);
   CHECK(tile_order == TILE_ORDER);
 
-  // Check array_metadata type
+  // Check array_schema type
   tiledb_array_type_t type;
-  rc = tiledb_array_metadata_get_array_type(ctx_, array_metadata, &type);
+  rc = tiledb_array_schema_get_array_type(ctx_, array_schema, &type);
   REQUIRE(rc == TILEDB_OK);
   CHECK(type == TILEDB_DENSE);
 
   // Check coordinates compression
   tiledb_compressor_t coords_compression;
   int coords_compression_level;
-  rc = tiledb_array_metadata_get_coords_compressor(
-      ctx_, array_metadata, &coords_compression, &coords_compression_level);
+  rc = tiledb_array_schema_get_coords_compressor(
+      ctx_, array_schema, &coords_compression, &coords_compression_level);
   REQUIRE(rc == TILEDB_OK);
   CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
   CHECK(coords_compression_level == -1);
@@ -298,7 +298,7 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
 
   // get first attribute by index
   tiledb_attribute_t* attr;
-  rc = tiledb_attribute_from_index(ctx_, array_metadata, 0, &attr);
+  rc = tiledb_attribute_from_index(ctx_, array_schema, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attr_name;
@@ -308,7 +308,7 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
   tiledb_attribute_free(ctx_, attr);
 
   // get first attribute by name
-  rc = tiledb_attribute_from_name(ctx_, array_metadata, ATTR_NAME, &attr);
+  rc = tiledb_attribute_from_name(ctx_, array_schema, ATTR_NAME, &attr);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
@@ -333,14 +333,14 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
   CHECK(cell_val_num == CELL_VAL_NUM);
 
   unsigned int num_attributes = 0;
-  rc = tiledb_array_metadata_get_num_attributes(
-      ctx_, array_metadata, &num_attributes);
+  rc = tiledb_array_schema_get_num_attributes(
+      ctx_, array_schema, &num_attributes);
   REQUIRE(rc == TILEDB_OK);
   CHECK(num_attributes == 1);
 
   // Get domain
   tiledb_domain_t* domain;
-  rc = tiledb_array_metadata_get_domain(ctx_, array_metadata, &domain);
+  rc = tiledb_array_schema_get_domain(ctx_, array_schema, &domain);
   REQUIRE(rc == TILEDB_OK);
 
   // Check first dimension
@@ -441,7 +441,7 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
   fclose(gold_fout);
   FILE* fout = fopen("fout.txt", "w");
-  tiledb_array_metadata_dump(ctx_, array_metadata, fout);
+  tiledb_array_schema_dump(ctx_, array_schema, fout);
   fclose(fout);
   CHECK(!system("diff gold_fout.txt fout.txt"));
   CHECK(!system("rm gold_fout.txt fout.txt"));
@@ -453,21 +453,21 @@ void ArrayMetadataFx::load_and_check_array_metadata(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
-    "C API: Test array metadata creation and retrieval",
-    "[capi], [array-metadata]") {
+    "C API: Test array schema creation and retrieval",
+    "[capi], [array-schema]") {
   std::string array_name;
 
   // File
   array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   create_array(array_name);
-  load_and_check_array_metadata(array_name);
+  load_and_check_array_schema(array_name);
   delete_array(array_name);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -476,7 +476,7 @@ TEST_CASE_METHOD(
   array_name = S3_TEMP_DIR + ARRAY_NAME;
   create_temp_dir(S3_TEMP_DIR);
   create_array(array_name);
-  load_and_check_array_metadata(array_name);
+  load_and_check_array_schema(array_name);
   delete_array(array_name);
   remove_temp_dir(S3_TEMP_DIR);
 #endif
@@ -486,7 +486,7 @@ TEST_CASE_METHOD(
   array_name = HDFS_TEMP_DIR + ARRAY_NAME;
   create_temp_dir(HDFS_TEMP_DIR);
   create_array(array_name);
-  load_and_check_array_metadata(array_name);
+  load_and_check_array_schema(array_name);
   delete_array(array_name);
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
@@ -494,8 +494,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
-    "C API: Test array metadata one anonymous dimension",
-    "[capi], [array-metadata]") {
+    "C API: Test array schema one anonymous dimension",
+    "[capi], [array-schema]") {
   // Create dimensions
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_create(
@@ -541,8 +541,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
-    "C API: Test array metadata multiple anonymous dimensions",
-    "[capi], [array-metadata]") {
+    "C API: Test array schema multiple anonymous dimensions",
+    "[capi], [array-schema]") {
   // Create dimensions
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_create(
@@ -585,11 +585,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
-    "C API: Test array metadata one anonymous attribute",
-    "[capi], [array-metadata]") {
-  // Create array metadata
-  tiledb_array_metadata_t* array_metadata;
-  int rc = tiledb_array_metadata_create(ctx_, &array_metadata, "my_meta");
+    "C API: Test array schema one anonymous attribute",
+    "[capi], [array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, "my_meta");
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -604,7 +604,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
   // Set attribute
@@ -615,20 +615,20 @@ TEST_CASE_METHOD(
   rc = tiledb_attribute_create(ctx_, &attr2, "foo", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr1);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr2);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_attribute_t* get_attr = nullptr;
-  rc = tiledb_attribute_from_name(ctx_, array_metadata, "", &get_attr);
+  rc = tiledb_attribute_from_name(ctx_, array_schema, "", &get_attr);
   // from name when there are multiple anon attributes is an error
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   rc = tiledb_attribute_free(ctx_, get_attr);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_from_name(ctx_, array_metadata, "foo", &get_attr);
+  rc = tiledb_attribute_from_name(ctx_, array_schema, "foo", &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   const char* get_name = nullptr;
@@ -647,17 +647,17 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(
     ArrayMetadataFx,
-    "C API: Test array metadata multiple anonymous attributes",
-    "[capi], [array-metadata]") {
-  // Create array metadata
-  tiledb_array_metadata_t* array_metadata;
-  int rc = tiledb_array_metadata_create(ctx_, &array_metadata, "my_meta");
+    "C API: Test array schema multiple anonymous attributes",
+    "[capi], [array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, "my_meta");
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -672,7 +672,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
   // Set attribute
@@ -683,16 +683,16 @@ TEST_CASE_METHOD(
   rc = tiledb_attribute_create(ctx_, &attr2, "", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr1);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, attr2);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
   CHECK(rc != TILEDB_OK);
 
   tiledb_attribute_t* get_attr = nullptr;
-  rc = tiledb_attribute_from_name(ctx_, array_metadata, "", &get_attr);
+  rc = tiledb_attribute_from_name(ctx_, array_schema, "", &get_attr);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_from_index(ctx_, array_metadata, 0, &get_attr);
+  rc = tiledb_attribute_from_index(ctx_, array_schema, 0, &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   rc = tiledb_attribute_free(ctx_, get_attr);
@@ -707,6 +707,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 }

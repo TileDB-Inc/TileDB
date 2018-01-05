@@ -150,33 +150,33 @@ void KVFx::create_kv(const std::string& path) {
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);
 
-  // Create array metadata
-  tiledb_array_metadata_t* array_metadata;
-  rc = tiledb_array_metadata_create(ctx_, &array_metadata, path.c_str());
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a1);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a2);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a3);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a3);
   CHECK(rc == TILEDB_OK);
 
   // Set array as key-value
-  rc = tiledb_array_metadata_set_as_kv(ctx_, array_metadata);
+  rc = tiledb_array_schema_set_as_kv(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 
-  // Check array metadata
-  rc = tiledb_array_metadata_check(ctx_, array_metadata);
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 
   // Check if array is defined as kv
   int as_kv;
-  rc = tiledb_array_metadata_get_as_kv(ctx_, array_metadata, &as_kv);
+  rc = tiledb_array_schema_get_as_kv(ctx_, array_schema, &as_kv);
   CHECK(rc == TILEDB_OK);
   CHECK(as_kv == 1);
 
   // Create key-value store
-  rc = tiledb_array_create(ctx_, array_metadata);
+  rc = tiledb_array_create(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -186,7 +186,7 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_free(ctx_, a3);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   CHECK(rc == TILEDB_OK);
 }
 

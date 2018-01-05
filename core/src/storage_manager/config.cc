@@ -80,8 +80,8 @@ Status Config::init() {
   for (auto& pv : param_values_) {
     if (pv.first == "sm.tile_cache_size") {
       RETURN_NOT_OK(set_sm_tile_cache_size(pv.second));
-    } else if (pv.first == "sm.array_metadata_cache_size") {
-      RETURN_NOT_OK(set_sm_array_metadata_cache_size(pv.second));
+    } else if (pv.first == "sm.array_schema_cache_size") {
+      RETURN_NOT_OK(set_sm_array_schema_cache_size(pv.second));
     } else if (pv.first == "sm.fragment_metadata_cache_size") {
       RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(pv.second));
     } else if (pv.first == "vfs.s3.region") {
@@ -132,7 +132,7 @@ Status Config::unset(const std::string& param) {
 /* ****************************** */
 
 void Config::set_default_sm_params() {
-  sm_params_.array_metadata_cache_size_ = constants::array_metadata_cache_size;
+  sm_params_.array_schema_cache_size_ = constants::array_schema_cache_size;
   sm_params_.fragment_metadata_cache_size_ =
       constants::fragment_metadata_cache_size;
   sm_params_.tile_cache_size_ = constants::tile_cache_size;
@@ -191,10 +191,10 @@ Status Config::set_from_file() {
   return Status::Ok();
 }
 
-Status Config::set_sm_array_metadata_cache_size(const std::string& value) {
+Status Config::set_sm_array_schema_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
-  sm_params_.array_metadata_cache_size_ = v;
+  sm_params_.array_schema_cache_size_ = v;
 
   return Status::Ok();
 }

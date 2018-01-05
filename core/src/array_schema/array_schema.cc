@@ -1,5 +1,5 @@
 /**
- * @file   array_metadata.cc
+ * @file   array_schema.cc
  *
  * @section LICENSE
  *
@@ -28,10 +28,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the ArrayMetadata class.
+ * This file implements the ArraySchema class.
  */
 
-#include "array_metadata.h"
+#include "array_schema.h"
 #include "const_buffer.h"
 #include "logger.h"
 
@@ -46,7 +46,7 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArrayMetadata::ArrayMetadata() {
+ArraySchema::ArraySchema() {
   attribute_num_ = 0;
   array_uri_ = URI();
   array_type_ = ArrayType::DENSE;
@@ -63,27 +63,27 @@ ArrayMetadata::ArrayMetadata() {
   std::memcpy(version_, constants::version, sizeof(version_));
 }
 
-ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
-  array_uri_ = array_metadata->array_uri_;
-  array_type_ = array_metadata->array_type_;
-  attributes_ = array_metadata->attributes_;
-  attribute_num_ = array_metadata->attribute_num();
-  capacity_ = array_metadata->capacity_;
-  cell_order_ = array_metadata->cell_order_;
-  cell_sizes_ = array_metadata->cell_sizes_;
-  cell_var_offsets_compression_ = array_metadata->cell_var_offsets_compression_;
+ArraySchema::ArraySchema(const ArraySchema* array_schema) {
+  array_uri_ = array_schema->array_uri_;
+  array_type_ = array_schema->array_type_;
+  attributes_ = array_schema->attributes_;
+  attribute_num_ = array_schema->attribute_num();
+  capacity_ = array_schema->capacity_;
+  cell_order_ = array_schema->cell_order_;
+  cell_sizes_ = array_schema->cell_sizes_;
+  cell_var_offsets_compression_ = array_schema->cell_var_offsets_compression_;
   cell_var_offsets_compression_level_ =
-      array_metadata->cell_var_offsets_compression_level_;
-  coords_compression_ = array_metadata->coords_compression_;
-  coords_compression_level_ = array_metadata->coords_compression_level_;
-  coords_size_ = array_metadata->coords_size_;
-  is_kv_ = array_metadata->is_kv_;
-  domain_ = array_metadata->domain_;
-  tile_order_ = array_metadata->tile_order_;
-  std::memcpy(version_, array_metadata->version_, sizeof(version_));
+      array_schema->cell_var_offsets_compression_level_;
+  coords_compression_ = array_schema->coords_compression_;
+  coords_compression_level_ = array_schema->coords_compression_level_;
+  coords_size_ = array_schema->coords_size_;
+  is_kv_ = array_schema->is_kv_;
+  domain_ = array_schema->domain_;
+  tile_order_ = array_schema->tile_order_;
+  std::memcpy(version_, array_schema->version_, sizeof(version_));
 }
 
-ArrayMetadata::ArrayMetadata(const URI& uri) {
+ArraySchema::ArraySchema(const URI& uri) {
   attribute_num_ = 0;
   array_uri_ = uri;
   array_type_ = ArrayType::DENSE;
@@ -100,7 +100,7 @@ ArrayMetadata::ArrayMetadata(const URI& uri) {
   std::memcpy(version_, constants::version, sizeof(version_));
 }
 
-ArrayMetadata::~ArrayMetadata() {
+ArraySchema::~ArraySchema() {
   clear();
 }
 
@@ -108,21 +108,21 @@ ArrayMetadata::~ArrayMetadata() {
 /*               API              */
 /* ****************************** */
 
-ArrayType ArrayMetadata::array_type() const {
+ArrayType ArraySchema::array_type() const {
   return array_type_;
 }
 
-const URI& ArrayMetadata::array_uri() const {
+const URI& ArraySchema::array_uri() const {
   return array_uri_;
 }
 
-const Attribute* ArrayMetadata::attribute(unsigned int id) const {
+const Attribute* ArraySchema::attribute(unsigned int id) const {
   if (id < attributes_.size())
     return attributes_[id];
   return nullptr;
 }
 
-const Attribute* ArrayMetadata::attribute(std::string name) const {
+const Attribute* ArraySchema::attribute(std::string name) const {
   bool anonymous = name.empty();
   unsigned int nattr = attribute_num();
   for (unsigned int i = 0; i < nattr; i++) {
@@ -134,7 +134,7 @@ const Attribute* ArrayMetadata::attribute(std::string name) const {
   return nullptr;
 }
 
-const std::string& ArrayMetadata::attribute_name(
+const std::string& ArraySchema::attribute_name(
     unsigned int attribute_id) const {
   assert(attribute_id <= attribute_num_ + 1);
 
@@ -145,7 +145,7 @@ const std::string& ArrayMetadata::attribute_name(
   return attributes_[attribute_id]->name();
 }
 
-Status ArrayMetadata::attribute_id(
+Status ArraySchema::attribute_id(
     const std::string& attribute_name, unsigned int* id) const {
   bool anonymous = attribute_name.empty();
   // Special case - coordinates
@@ -161,39 +161,39 @@ Status ArrayMetadata::attribute_id(
       return Status::Ok();
     }
   }
-  return LOG_STATUS(Status::ArrayMetadataError(
+  return LOG_STATUS(Status::ArraySchemaError(
       std::string("Attribute not found: ") +
       (anonymous ? "<anonymous>" : attribute_name)));
 }
 
-std::vector<std::string> ArrayMetadata::attribute_names() const {
+std::vector<std::string> ArraySchema::attribute_names() const {
   std::vector<std::string> names;
   for (auto& attr : attributes_)
     names.emplace_back(attr->name());
   return names;
 }
 
-unsigned int ArrayMetadata::attribute_num() const {
+unsigned int ArraySchema::attribute_num() const {
   return attribute_num_;
 }
 
-std::vector<Datatype> ArrayMetadata::attribute_types() const {
+std::vector<Datatype> ArraySchema::attribute_types() const {
   std::vector<Datatype> types;
   for (auto& attr : attributes_)
     types.emplace_back(attr->type());
   return types;
 }
 
-const std::vector<Attribute*>& ArrayMetadata::attributes() const {
+const std::vector<Attribute*>& ArraySchema::attributes() const {
   return attributes_;
 }
 
-Status ArrayMetadata::buffer_num(
+Status ArraySchema::buffer_num(
     const char** attributes,
     unsigned int attribute_num,
     unsigned int* buffer_num) const {
   if (attributes == nullptr || attribute_num == 0)
-    return LOG_STATUS(Status::ArrayMetadataError(
+    return LOG_STATUS(Status::ArraySchemaError(
         "Cannot retrieve number of buffers; Attributes not provided"));
 
   *buffer_num = 0;
@@ -209,15 +209,15 @@ Status ArrayMetadata::buffer_num(
   return Status::Ok();
 }
 
-uint64_t ArrayMetadata::capacity() const {
+uint64_t ArraySchema::capacity() const {
   return capacity_;
 }
 
-Layout ArrayMetadata::cell_order() const {
+Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
-uint64_t ArrayMetadata::cell_size(unsigned int attribute_id) const {
+uint64_t ArraySchema::cell_size(unsigned int attribute_id) const {
   // Special case for the search tile
   if (attribute_id == attribute_num_ + 1)
     attribute_id = attribute_num_;
@@ -225,71 +225,71 @@ uint64_t ArrayMetadata::cell_size(unsigned int attribute_id) const {
   return cell_sizes_[attribute_id];
 }
 
-unsigned int ArrayMetadata::cell_val_num(unsigned int attribute_id) const {
+unsigned int ArraySchema::cell_val_num(unsigned int attribute_id) const {
   return attributes_[attribute_id]->cell_val_num();
 }
 
-std::vector<unsigned int> ArrayMetadata::cell_val_nums() const {
+std::vector<unsigned int> ArraySchema::cell_val_nums() const {
   std::vector<unsigned int> cell_val_nums;
   for (auto& attr : attributes_)
     cell_val_nums.emplace_back(attr->cell_val_num());
   return cell_val_nums;
 }
 
-Compressor ArrayMetadata::cell_var_offsets_compression() const {
+Compressor ArraySchema::cell_var_offsets_compression() const {
   return cell_var_offsets_compression_;
 }
 
-int ArrayMetadata::cell_var_offsets_compression_level() const {
+int ArraySchema::cell_var_offsets_compression_level() const {
   return cell_var_offsets_compression_level_;
 }
 
-Status ArrayMetadata::check() const {
+Status ArraySchema::check() const {
   if (array_uri_.is_invalid())
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; Invalid array URI"));
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; Invalid array URI"));
 
   if (domain_ == nullptr)
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; Domain not set"));
+    return LOG_STATUS(
+        Status::ArraySchemaError("Array schema check failed; Domain not set"));
 
   if (dim_num() == 0)
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; No dimensions provided"));
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; No dimensions provided"));
 
   if (array_type_ == ArrayType::DENSE) {
     if (domain_->null_tile_extents()) {
-      return LOG_STATUS(Status::ArrayMetadataError(
-          "Array metadata check failed; Dense arrays "
-          "can not have null tile extents"));
+      return LOG_STATUS(
+          Status::ArraySchemaError("Array schema check failed; Dense arrays "
+                                   "can not have null tile extents"));
     }
     if (domain_->type() == Datatype::FLOAT32 ||
         domain_->type() == Datatype::FLOAT64) {
-      return LOG_STATUS(Status::ArrayMetadataError(
-          "Array metadata check failed; Dense arrays "
-          "can not have floating point domains"));
+      return LOG_STATUS(
+          Status::ArraySchemaError("Array schema check failed; Dense arrays "
+                                   "can not have floating point domains"));
     }
     if (attribute_num_ == 0) {
-      return LOG_STATUS(Status::ArrayMetadataError(
-          "Array metadata check failed; No attributes provided"));
+      return LOG_STATUS(Status::ArraySchemaError(
+          "Array schema check failed; No attributes provided"));
     }
   }
 
   if (!check_double_delta_compressor())
-    return LOG_STATUS(Status::ArrayMetadataError(
-        "Array metadata check failed; Double delta compression can be used "
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; Double delta compression can be used "
         "only with integer values"));
 
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
-        Status::ArrayMetadataError("Array metadata check failed; Attributes "
-                                   "and dimensions must have unique names"));
+        Status::ArraySchemaError("Array schema check failed; Attributes "
+                                 "and dimensions must have unique names"));
 
   // Success
   return Status::Ok();
 }
 
-Compressor ArrayMetadata::compression(unsigned int attr_id) const {
+Compressor ArraySchema::compression(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
@@ -298,7 +298,7 @@ Compressor ArrayMetadata::compression(unsigned int attr_id) const {
   return attributes_[attr_id]->compressor();
 }
 
-int ArrayMetadata::compression_level(unsigned int attr_id) const {
+int ArraySchema::compression_level(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
@@ -307,35 +307,35 @@ int ArrayMetadata::compression_level(unsigned int attr_id) const {
   return attributes_[attr_id]->compression_level();
 }
 
-Compressor ArrayMetadata::coords_compression() const {
+Compressor ArraySchema::coords_compression() const {
   return coords_compression_;
 }
 
-int ArrayMetadata::coords_compression_level() const {
+int ArraySchema::coords_compression_level() const {
   return coords_compression_level_;
 }
 
-uint64_t ArrayMetadata::coords_size() const {
+uint64_t ArraySchema::coords_size() const {
   return coords_size_;
 }
 
-Datatype ArrayMetadata::coords_type() const {
+Datatype ArraySchema::coords_type() const {
   return domain_->type();
 }
 
-bool ArrayMetadata::dense() const {
+bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-const Dimension* ArrayMetadata::dimension(unsigned int i) const {
+const Dimension* ArraySchema::dimension(unsigned int i) const {
   return domain_->dimension(i);
 }
 
-unsigned int ArrayMetadata::dim_num() const {
+unsigned int ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
 
-void ArrayMetadata::dump(FILE* out) const {
+void ArraySchema::dump(FILE* out) const {
   const char* array_type_s = array_type_str(array_type_);
   const char* cell_order_s = layout_str(cell_order_);
   const char* tile_order_s = layout_str(tile_order_);
@@ -363,11 +363,11 @@ void ArrayMetadata::dump(FILE* out) const {
   }
 }
 
-bool ArrayMetadata::is_kv() const {
+bool ArraySchema::is_kv() const {
   return is_kv_;
 }
 
-Status ArrayMetadata::get_attribute_ids(
+Status ArraySchema::get_attribute_ids(
     const std::vector<std::string>& attributes,
     std::vector<unsigned int>& attribute_ids) const {
   // Initialization
@@ -399,7 +399,7 @@ Status ArrayMetadata::get_attribute_ids(
 //   attribute #1
 //   attribute #2
 //   ...
-Status ArrayMetadata::serialize(Buffer* buff) const {
+Status ArraySchema::serialize(Buffer* buff) const {
   // Write version
   RETURN_NOT_OK(buff->write(constants::version, sizeof(constants::version)));
 
@@ -440,11 +440,11 @@ Status ArrayMetadata::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Layout ArrayMetadata::tile_order() const {
+Layout ArraySchema::tile_order() const {
   return tile_order_;
 }
 
-Datatype ArrayMetadata::type(unsigned int i) const {
+Datatype ArraySchema::type(unsigned int i) const {
   if (i > attribute_num_) {
     LOG_ERROR("Cannot retrieve type; Invalid attribute id");
     assert(false);
@@ -454,21 +454,21 @@ Datatype ArrayMetadata::type(unsigned int i) const {
   return domain_->type();
 }
 
-bool ArrayMetadata::var_size(unsigned int attribute_id) const {
+bool ArraySchema::var_size(unsigned int attribute_id) const {
   assert(attribute_id <= attribute_num_);
   if (attribute_id < attribute_num_)
     return attributes_[attribute_id]->cell_val_num() == constants::var_num;
   return false;
 }
 
-Status ArrayMetadata::add_attribute(const Attribute* attr) {
+Status ArraySchema::add_attribute(const Attribute* attr) {
   // Create new attribute and potentially set a default name
   Attribute* new_attr = nullptr;
   if (attr->is_anonymous()) {
     // Check if any other attributes are anonymous
     for (auto& a : attributes_) {
       if (a->is_anonymous()) {
-        return LOG_STATUS(Status::ArrayMetadataError(
+        return LOG_STATUS(Status::ArraySchemaError(
             "Only one anonymous attribute is allowed per array"));
       }
     }
@@ -498,7 +498,7 @@ Status ArrayMetadata::add_attribute(const Attribute* attr) {
 //   attribute #1
 //   attribute #2
 //   ...
-Status ArrayMetadata::deserialize(ConstBuffer* buff) {
+Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load version
   RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
 
@@ -554,11 +554,11 @@ Status ArrayMetadata::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-const Domain* ArrayMetadata::domain() const {
+const Domain* ArraySchema::domain() const {
   return domain_;
 }
 
-Status ArrayMetadata::init() {
+Status ArraySchema::init() {
   // Perform check of all members
   RETURN_NOT_OK(check());
 
@@ -577,7 +577,7 @@ Status ArrayMetadata::init() {
   return Status::Ok();
 }
 
-Status ArrayMetadata::set_as_kv() {
+Status ArraySchema::set_as_kv() {
   // Do nothing if the array is already set as a key-value store
   if (is_kv_)
     return Status::Ok();
@@ -601,10 +601,10 @@ Status ArrayMetadata::set_as_kv() {
   return Status::Ok();
 }
 
-Status ArrayMetadata::set_array_type(ArrayType array_type) {
+Status ArraySchema::set_array_type(ArrayType array_type) {
   // Check if the array is a key-value store
   if (is_kv_)
-    return Status::ArrayMetadataError(
+    return Status::ArraySchemaError(
         "Cannot set array type; The array is defined as a key-value store");
 
   array_type_ = array_type;
@@ -612,35 +612,35 @@ Status ArrayMetadata::set_array_type(ArrayType array_type) {
   return Status::Ok();
 }
 
-void ArrayMetadata::set_capacity(uint64_t capacity) {
+void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-void ArrayMetadata::set_coords_compressor(Compressor compressor) {
+void ArraySchema::set_coords_compressor(Compressor compressor) {
   coords_compression_ = compressor;
 }
 
-void ArrayMetadata::set_coords_compression_level(int compression_level) {
+void ArraySchema::set_coords_compression_level(int compression_level) {
   coords_compression_level_ = compression_level;
 }
 
-void ArrayMetadata::set_cell_var_offsets_compressor(Compressor compressor) {
+void ArraySchema::set_cell_var_offsets_compressor(Compressor compressor) {
   cell_var_offsets_compression_ = compressor;
 }
 
-void ArrayMetadata::set_cell_var_offsets_compression_level(
+void ArraySchema::set_cell_var_offsets_compression_level(
     int compression_level) {
   cell_var_offsets_compression_level_ = compression_level;
 }
 
-void ArrayMetadata::set_cell_order(Layout cell_order) {
+void ArraySchema::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
 }
 
-Status ArrayMetadata::set_domain(Domain* domain) {
+Status ArraySchema::set_domain(Domain* domain) {
   // Check if the array is a key-value store
   if (is_kv_)
-    return Status::ArrayMetadataError(
+    return Status::ArraySchemaError(
         "Cannot set domain; The array is defined as a key-value store");
 
   // Set domain
@@ -656,7 +656,7 @@ Status ArrayMetadata::set_domain(Domain* domain) {
   return Status::Ok();
 }
 
-void ArrayMetadata::set_tile_order(Layout tile_order) {
+void ArraySchema::set_tile_order(Layout tile_order) {
   tile_order_ = tile_order;
 }
 
@@ -664,7 +664,7 @@ void ArrayMetadata::set_tile_order(Layout tile_order) {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-bool ArrayMetadata::check_attribute_dimension_names() const {
+bool ArraySchema::check_attribute_dimension_names() const {
   std::set<std::string> names;
   auto dim_num = this->dim_num();
   for (auto attr : attributes_)
@@ -674,7 +674,7 @@ bool ArrayMetadata::check_attribute_dimension_names() const {
   return (names.size() == attribute_num_ + dim_num);
 }
 
-bool ArrayMetadata::check_double_delta_compressor() const {
+bool ArraySchema::check_double_delta_compressor() const {
   // Check coordinates
   if ((domain_->type() == Datatype::FLOAT32 ||
        domain_->type() == Datatype::FLOAT64) &&
@@ -692,7 +692,7 @@ bool ArrayMetadata::check_double_delta_compressor() const {
   return true;
 }
 
-void ArrayMetadata::clear() {
+void ArraySchema::clear() {
   array_uri_ = URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
@@ -708,7 +708,7 @@ void ArrayMetadata::clear() {
   domain_ = nullptr;
 }
 
-uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
+uint64_t ArraySchema::compute_cell_size(unsigned int i) const {
   assert(i <= attribute_num_);
 
   // For easy reference
@@ -773,7 +773,7 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
   return size;
 }
 
-Status ArrayMetadata::set_kv_attributes() {
+Status ArraySchema::set_kv_attributes() {
   // Add key attribute
   auto key_attr = new Attribute(constants::key_attr_name, Datatype::CHAR);
   key_attr->set_cell_val_num(constants::var_num);
@@ -791,7 +791,7 @@ Status ArrayMetadata::set_kv_attributes() {
   return Status::Ok();
 }
 
-Status ArrayMetadata::set_kv_domain() {
+Status ArraySchema::set_kv_domain() {
   delete domain_;
   domain_ = new Domain(Datatype::UINT64);
   uint64_t dim_domain[] = {0, UINT64_MAX};

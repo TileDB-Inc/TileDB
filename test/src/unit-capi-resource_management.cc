@@ -125,18 +125,18 @@ void ResourceMgmtFx::create_array(const std::string& path) {
   tiledb_domain_create(ctx_, &domain);
   tiledb_domain_add_dimension(ctx_, domain, d1);
 
-  // Create array_metadata metadata
-  tiledb_array_metadata_t* array_metadata;
-  tiledb_array_metadata_create(ctx_, &array_metadata, path.c_str());
-  tiledb_array_metadata_set_array_type(ctx_, array_metadata, TILEDB_DENSE);
-  tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
-  tiledb_array_metadata_add_attribute(ctx_, array_metadata, a1);
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_create(ctx_, &array_schema, path.c_str());
+  tiledb_array_schema_set_array_type(ctx_, array_schema, TILEDB_DENSE);
+  tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
 
-  // Check array metadata
-  REQUIRE(tiledb_array_metadata_check(ctx_, array_metadata) == TILEDB_OK);
+  // Check array schema
+  REQUIRE(tiledb_array_schema_check(ctx_, array_schema) == TILEDB_OK);
 
   // Create array
-  REQUIRE(tiledb_array_create(ctx_, array_metadata) == TILEDB_OK);
+  REQUIRE(tiledb_array_create(ctx_, array_schema) == TILEDB_OK);
 
   tiledb_dimension_free(ctx_, d1);
 }
