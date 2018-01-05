@@ -12,6 +12,7 @@ core/src/temp
 coverage.info
 test/obj/*
 test/bin/*
+test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc
 doxygen/html/

@@ -36,11 +36,13 @@ Configuration:
                                     ['"${default_prefix}"']
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon 
                                     ['"${default_dependency}"']
+    --enable-sanitizer=SAN          enable sanitizer (clang only)
+                                    (address|memory|thread|undefined)
     --enable-debug                  enable debug build
     --enable-coverage               enable build with code coverage support
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
-    --enable-s3                   enables the s3/minio storage backend
+    --enable-s3                     enables the s3 storage backend
 
     
 Dependencies:
@@ -61,8 +63,8 @@ Example:
 # Parse arguments
 prefix_dirs="${default_prefix}"
 dependency_dir="${default_dependency}"
+sanitizer=""
 build_type="Release"
-enable_coverage="OFF"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
@@ -72,6 +74,8 @@ while test $# != 0; do
                 prefix_dirs="$dir";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
+    --enable-sanitizer=*) san=`arg "$1"`
+                sanitizer="$san";;
     --enable-debug) build_type="Debug";;
     --enable-coverage) build_type="Coverage";;
     --enable-verbose) tiledb_verbose="ON";;
@@ -112,7 +116,7 @@ if [[ ! -x ${cmake} ]]; then
     die "cannot find cmake"
 fi
 
-# Configure 
+# Configure
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX=${prefix_dirs} \
     -DCMAKE_C_COMPILER=${c_compiler} \
@@ -121,6 +125,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DUSE_HDFS=${tiledb_hdfs} \
     -DUSE_S3=${tiledb_s3} \
+    -DSANITIZER=${sanitizer} \
     ${source_dir} || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test.'

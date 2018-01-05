@@ -117,13 +117,34 @@ endif()
 include(SetCXX2011Flag REQUIRED)
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS_DEBUG
-    "-DDEBUG -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Werror -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage -Werror -Wall -Wextra")
+
 if(NOT APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
 endif()
+
+# Enable sanitizers only on clang for now
+if(SANITIZER)
+  if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
+  endif()
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    string(TOLOWER ${SANITIZER} SANITIZER)
+    if(NOT SANITIZER MATCHES "^(address|memory|thread|undefined)$")
+      message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
+    else()
+      message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
+    endif()
+    set(_SANITIZER_COMPILE_OPTIONS "-g -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+    set(_SANITIZER_COMPILE_FLAG "-fsanitize=${SANITIZER}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_SANITIZER_COMPILE_OPTIONS} ${_SANITIZER_COMPILE_FLAG}" )
+  else()
+    message(WARNING "Sanitizers only enabled for the clang compiler")
+  endif()
+endif()
+
 
 # Add definitions
 add_definitions(-D_FILE_OFFSET_BITS=64)
