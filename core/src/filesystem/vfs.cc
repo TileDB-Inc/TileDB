@@ -60,8 +60,8 @@ VFS::~VFS() {
   }
 #endif
 #ifdef HAVE_S3
-    // Do not disconnect - may lead to problems
-    // Status st = s3_.disconnect();
+// Do not disconnect - may lead to problems
+// Status st = s3_.disconnect();
 #endif
 }
 
@@ -73,7 +73,7 @@ std::string VFS::abs_path(const std::string& path) {
 #ifdef _WIN32
   if (win32::is_win32_path(path))
     return win32::uri_from_path(win32::abs_path(path));
-  else if (URI::is_file(path)) 
+  else if (URI::is_file(path))
     return win32::uri_from_path(win32::abs_path(win32::path_from_uri(path)));
 #else
   if (URI::is_file(path))

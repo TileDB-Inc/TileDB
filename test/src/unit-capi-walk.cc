@@ -89,7 +89,7 @@ WalkFx::WalkFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;

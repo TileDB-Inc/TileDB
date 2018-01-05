@@ -34,7 +34,8 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string().find("file:///") == 0);
 #ifdef _WIN32
-  CHECK(uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1");
+  CHECK(
+      uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
 #endif
@@ -66,14 +67,17 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
   CHECK(uri.to_string() == "file:///C:/Program%20Files%20(x86)/TileDB/");
   uri = URI("path1\\path2");
   CHECK(!uri.is_invalid());
-  CHECK(URI::is_file(uri.to_string())); 
+  CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string().find("file:///") == 0);
-  CHECK(uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1/path2");
+  CHECK(
+      uri.to_string() ==
+      win32::uri_from_path(win32::current_dir()) + "/path1/path2");
   /*uri = URI("path1");
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string().find("file:///") == 0);
-  CHECK(uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1");*/
+  CHECK(uri.to_string() == win32::uri_from_path(win32::current_dir()) +
+  "/path1");*/
 }
 
 #endif

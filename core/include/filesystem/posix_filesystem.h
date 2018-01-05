@@ -38,9 +38,9 @@
 #include <vector>
 
 #include "buffer.h"
+#include "file_lock.h"
 #include "status.h"
 #include "uri.h"
-#include "file_lock.h"
 
 namespace tiledb {
 

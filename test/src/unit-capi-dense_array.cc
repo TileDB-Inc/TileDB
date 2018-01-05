@@ -63,11 +63,11 @@ struct DenseArrayFx {
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
-    tiledb::win32::current_dir() + "\\tiledb_test\\";
+      tiledb::win32::current_dir() + "\\tiledb_test\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
-    tiledb::posix::current_dir() + "/tiledb_test/";
+      tiledb::posix::current_dir() + "/tiledb_test/";
 #endif
   const int ITER_NUM = 10;
 
@@ -240,7 +240,7 @@ DenseArrayFx::DenseArrayFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;

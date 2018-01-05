@@ -308,7 +308,7 @@ void VFSFx::check_move(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
 
-  // Move from one bucket to another (only for S3)
+// Move from one bucket to another (only for S3)
 #ifdef HAVE_S3
   if (path == S3_TEMP_DIR) {
     std::string bucket2 = "s3://tiledb2/";

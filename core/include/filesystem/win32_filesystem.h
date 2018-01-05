@@ -40,9 +40,9 @@
 #include <vector>
 
 #include "buffer.h"
+#include "file_lock.h"
 #include "status.h"
 #include "uri.h"
-#include "file_lock.h"
 
 namespace tiledb {
 
@@ -199,7 +199,7 @@ Status write_to_file(
  * @param path The Win32 path to convert.
  * @status A path file URI.
  */
-std::string uri_from_path(const std::string &path);
+std::string uri_from_path(const std::string& path);
 
 /**
  * Converts a "file:///" URI to a Win32 path.
@@ -207,7 +207,7 @@ std::string uri_from_path(const std::string &path);
  * @param path The URI to convert.
  * @status A Win32 path.
  */
-std::string path_from_uri(const std::string &uri);
+std::string path_from_uri(const std::string& uri);
 
 /**
  * Returns true if the given string is a Win32 path.
@@ -215,7 +215,7 @@ std::string path_from_uri(const std::string &uri);
  * @param path The path to check.
  * @return True if the path is a Win32 path.
  */
-bool is_win32_path(const std::string &path);
+bool is_win32_path(const std::string& path);
 
 }  // namespace win32
 

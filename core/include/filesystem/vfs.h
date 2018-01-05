@@ -35,10 +35,10 @@
 
 #include "buffer.h"
 #include "config.h"
+#include "file_lock.h"
 #include "filesystem.h"
 #include "status.h"
 #include "uri.h"
-#include "file_lock.h"
 
 #ifdef HAVE_HDFS
 #include "hdfs.h"
@@ -141,7 +141,7 @@ class VFS {
    *     exclusive lock.
    * @return Status
    */
-  Status filelock_lock(const URI& uri, file_lock_t *lock, bool shared) const;
+  Status filelock_lock(const URI& uri, file_lock_t* lock, bool shared) const;
 
   /**
    * Unlocks a filelock.

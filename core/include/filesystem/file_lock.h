@@ -36,13 +36,13 @@
 namespace tiledb {
 
 #ifdef WIN32
-typedef void * file_lock_t;
+typedef void* file_lock_t;
 const file_lock_t INVALID_FILE_LOCK = nullptr;
 #else
 typedef int file_lock_t;
 const file_lock_t INVALID_FILE_LOCK = -1;
 #endif
 
-} // namespace tiledb
+}  // namespace tiledb
 
-#endif // TILEDB_FILE_LOCK_H
+#endif  // TILEDB_FILE_LOCK_H

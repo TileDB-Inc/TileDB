@@ -2,9 +2,9 @@
 
 #include "catch.hpp"
 
-#include <cassert>
 #include <status.h>
 #include <win32_filesystem.h>
+#include <cassert>
 
 using namespace tiledb;
 
@@ -51,7 +51,8 @@ struct Win32Fx {
 
 TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   const std::string test_dir_path = win32::current_dir() + "/tiledb_test_dir";
-  const std::string test_file_path = win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
+  const std::string test_file_path =
+      win32::current_dir() + "/tiledb_test_dir/tiledb_test_file";
   URI test_dir(test_dir_path);
   URI test_file(test_file_path);
   Status st;
@@ -76,12 +77,19 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(win32::abs_path("C:\\..") == "C:\\");
   CHECK(win32::abs_path("C:\\..\\path1") == "C:\\path1");
   CHECK(win32::abs_path("C:\\path1\\.\\..\\path2\\") == "C:\\path2\\");
-  CHECK(win32::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
-  CHECK(win32::abs_path("path1\\path2\\..\\path3") == win32::current_dir() + "\\path1\\path3");
+  CHECK(
+      win32::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
+  CHECK(
+      win32::abs_path("path1\\path2\\..\\path3") ==
+      win32::current_dir() + "\\path1\\path3");
   CHECK(win32::abs_path("path1") == win32::current_dir() + "\\path1");
-  CHECK(win32::abs_path("path1\\path2") == win32::current_dir() + "\\path1\\path2");
-  CHECK(win32::abs_path("path1\\path2\\..\\path3") == win32::current_dir() + "\\path1\\path3");
-  
+  CHECK(
+      win32::abs_path("path1\\path2") ==
+      win32::current_dir() + "\\path1\\path2");
+  CHECK(
+      win32::abs_path("path1\\path2\\..\\path3") ==
+      win32::current_dir() + "\\path1\\path3");
+
   CHECK(!win32::is_dir(test_dir.to_path()));
   st = win32::create_dir(test_dir.to_path());
   CHECK(st.ok());
@@ -118,22 +126,18 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   st = win32::create_file(test_file.to_path());
   CHECK(st.ok());
 
-  const unsigned  buffer_size = 100000;
+  const unsigned buffer_size = 100000;
   auto write_buffer = new char[buffer_size];
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = win32::write_to_file(
-      test_file.to_path(),
-      write_buffer,
-      buffer_size);
+  st = win32::write_to_file(test_file.to_path(), write_buffer, buffer_size);
   CHECK(st.ok());
   st = win32::sync(test_file.to_path());
   CHECK(st.ok());
 
   auto read_buffer = new char[26];
-  st = win32::read_from_file(
-      test_file.to_path(), 0, read_buffer, 26);
+  st = win32::read_from_file(test_file.to_path(), 0, read_buffer, 26);
   CHECK(st.ok());
 
   bool allok = true;
@@ -145,8 +149,7 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   }
   CHECK(allok == true);
 
-  st = win32::read_from_file(
-     test_file.to_path(), 11, read_buffer, 26);
+  st = win32::read_from_file(test_file.to_path(), 11, read_buffer, 26);
   CHECK(st.ok());
 
   allok = true;
@@ -171,13 +174,15 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
-  st = win32::remove_path(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
+  st = win32::remove_path(
+      URI("file:///tiledb_test_dir/i_dont_exist").to_string());
   CHECK(!st.ok());
 
-  st = win32::move_path(test_file.to_path(), URI(test_file_path + "2").to_path());
+  st = win32::move_path(
+      test_file.to_path(), URI(test_file_path + "2").to_path());
   CHECK(st.ok());
   CHECK(!win32::is_file(test_file.to_path()));
   CHECK(win32::is_file(URI(test_file_path + "2").to_path()));
 }
 
-#endif // _WIN32
+#endif  // _WIN32

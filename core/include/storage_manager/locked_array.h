@@ -33,9 +33,9 @@
 #ifndef TILEDB_LOCKED_ARRAY_H
 #define TILEDB_LOCKED_ARRAY_H
 
+#include "file_lock.h"
 #include "status.h"
 #include "vfs.h"
-#include "file_lock.h"
 
 #include <condition_variable>
 #include <mutex>
