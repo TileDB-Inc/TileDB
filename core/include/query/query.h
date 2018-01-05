@@ -77,8 +77,8 @@ class Query {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the array metadata.*/
-  const ArrayMetadata* array_metadata() const;
+  /** Returns the array schema.*/
+  const ArraySchema* array_schema() const;
 
   /** Processes asynchronously the query. */
   Status async_process();
@@ -126,7 +126,7 @@ class Query {
    * Initializes the query.
    *
    * @param storage_manager The storage manager.
-   * @param array_metadata The array metadata.
+   * @param array_schema The array schema.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
    * @param layout The cell layout.
@@ -146,7 +146,7 @@ class Query {
    */
   Status init(
       StorageManager* storage_manager,
-      const ArrayMetadata* array_metadata,
+      const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
       Layout layout,
@@ -167,7 +167,7 @@ class Query {
    * the new fragment is named using the appropriate thread id.
    *
    * @param storage_manager The storage manager.
-   * @param array_metadata The array metadata.
+   * @param array_schema The array schema.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
    * @param layout The cell layout.
@@ -187,7 +187,7 @@ class Query {
    */
   Status init(
       StorageManager* storage_manager,
-      const ArrayMetadata* array_metadata,
+      const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
       Layout layoyt,
@@ -236,8 +236,8 @@ class Query {
    */
   Status read(void** buffers, uint64_t* buffer_sizes);
 
-  /** Sets the array metadata. */
-  void set_array_metadata(const ArrayMetadata* array_metadata);
+  /** Sets the array schema. */
+  void set_array_schema(const ArraySchema* array_schema);
 
   /**
    * Sets the buffers to the query for a set of attributes.
@@ -327,8 +327,8 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array metadata. */
-  const ArrayMetadata* array_metadata_;
+  /** The array schema. */
+  const ArraySchema* array_schema_;
 
   /**
    * The array read state. Handles reads in the presence of multiple

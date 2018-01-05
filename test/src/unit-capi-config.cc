@@ -41,7 +41,7 @@ void check_correct_file() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_metadata_cache_size 1000 # some comment\n";
+  ofs << "sm.array_schema_cache_size 1000 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -89,7 +89,7 @@ void check_incorrect_file_missing_value() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size    \n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_metadata_cache_size 1000\n";
+  ofs << "sm.array_schema_cache_size 1000\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -122,7 +122,7 @@ void check_incorrect_file_extra_word() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_metadata_cache_size 1000 some comment\n";
+  ofs << "sm.array_schema_cache_size 1000 some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 

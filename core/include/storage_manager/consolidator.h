@@ -39,7 +39,7 @@
 
 namespace tiledb {
 
-class ArrayMetadata;
+class ArraySchema;
 class Query;
 class StorageManager;
 class URI;
@@ -95,14 +95,14 @@ class Consolidator {
    * writing into the new fragment. It also retrieves the number of buffers
    * created.
    *
-   * @param array_meta The array metadata.
+   * @param array_schema The array schema.
    * @param buffers The buffers to be created.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param buffer_num The number of buffers to be retrieved.
    * @return Status
    */
   Status create_buffers(
-      ArrayMetadata* array_meta,
+      ArraySchema* array_schema,
       void*** buffers,
       uint64_t** buffer_sizes,
       unsigned int* buffer_num);

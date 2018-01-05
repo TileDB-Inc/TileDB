@@ -237,7 +237,7 @@ void SparseArrayFx::create_sparse_array_2D(
     const tiledb_compressor_t compressor,
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order) {
-  // Prepare and set the array_metadata metadata object and data structures
+  // Prepare and set the array schema object and data structures
   int64_t dim_domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
   // Create attribute
@@ -266,25 +266,25 @@ void SparseArrayFx::create_sparse_array_2D(
   rc = tiledb_domain_add_dimension(ctx_, domain, d2);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create array_metadata metadata
-  tiledb_array_metadata_t* array_metadata;
-  rc = tiledb_array_metadata_create(ctx_, &array_metadata, array_name.c_str());
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_create(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_capacity(ctx_, array_metadata, capacity);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, capacity);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_cell_order(ctx_, array_metadata, cell_order);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, cell_order);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_tile_order(ctx_, array_metadata, tile_order);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, tile_order);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_array_type(ctx_, array_metadata, ARRAY_TYPE);
+  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata, a);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_set_domain(ctx_, array_metadata, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create the array_metadata
-  rc = tiledb_array_create(ctx_, array_metadata);
+  // Create the array schema
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -296,7 +296,7 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 }
 
@@ -404,7 +404,7 @@ void SparseArrayFx::test_random_subarrays(
     int64_t domain_size_0,
     int64_t domain_size_1,
     int iter_num) {
-  // write array_metadata cells with value = row id * columns + col id to disk
+  // write array_schema cells with value = row id * columns + col id to disk
   write_sparse_array_unsorted_2D(array_name, domain_size_0, domain_size_1);
 
   // test random subarrays and check with corresponding value set by

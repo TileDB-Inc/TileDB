@@ -59,9 +59,9 @@ ReadState::ReadState(
     : fragment_(fragment)
     , metadata_(metadata)
     , query_(query) {
-  array_metadata_ = query_->array_metadata();
-  attribute_num_ = array_metadata_->attribute_num();
-  coords_size_ = array_metadata_->coords_size();
+  array_schema_ = query_->array_schema();
+  attribute_num_ = array_schema_->attribute_num();
+  coords_size_ = array_schema_->coords_size();
   done_ = false;
   last_tile_coords_ = nullptr;
   search_tile_overlap_subarray_ = std::malloc(2 * coords_size_);
@@ -112,14 +112,14 @@ Status ReadState::copy_cells(
     uint64_t* buffer_offset,
     const CellPosRange& cell_pos_range) {
   // Sanity check
-  assert(!array_metadata_->var_size(attribute_id));
+  assert(!array_schema_->var_size(attribute_id));
 
   // Trivial case
   if (is_empty_attribute(attribute_id))
     return Status::Ok();
 
   // For easy reference
-  uint64_t cell_size = array_metadata_->cell_size(attribute_id);
+  uint64_t cell_size = array_schema_->cell_size(attribute_id);
 
   // Prepare attribute tile
   RETURN_NOT_OK(read_tile(attribute_id, tile_i));
@@ -168,7 +168,7 @@ Status ReadState::copy_cells_var(
     uint64_t* buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // Sanity check
-  assert(array_metadata_->var_size(attribute_id));
+  assert(array_schema_->var_size(attribute_id));
 
   // For easy reference
   uint64_t cell_size = constants::cell_var_offset_size;
@@ -372,7 +372,7 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
     const T* cell_range,
     FragmentCellPosRange* fragment_cell_pos_range) {
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   uint64_t tile_i = fragment_info.second;
 
   // Prepare attribute tile
@@ -404,8 +404,8 @@ Status ReadState::get_fragment_cell_ranges_dense(
     return Status::Ok();
 
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
-  Layout cell_order = array_metadata_->cell_order();
+  unsigned int dim_num = array_schema_->dim_num();
+  Layout cell_order = array_schema_->cell_order();
   uint64_t cell_range_size = 2 * coords_size_;
   auto search_tile_overlap_subarray =
       static_cast<const T*>(search_tile_overlap_subarray_);
@@ -507,7 +507,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
     return Status::Ok();
 
   // For easy reference
-  auto dim_num = array_metadata_->dim_num();
+  auto dim_num = array_schema_->dim_num();
   auto search_tile_overlap_subarray =
       static_cast<const T*>(search_tile_overlap_subarray_);
 
@@ -542,7 +542,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   assert(search_tile_overlap_);
 
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Handle full overlap
@@ -643,8 +643,8 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     return;
 
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
-  auto domain = array_metadata_->domain();
+  unsigned int dim_num = array_schema_->dim_num();
+  auto domain = array_schema_->domain();
   auto array_domain = static_cast<const T*>(domain->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
   auto metadata_domain = static_cast<const T*>(metadata_->domain());
@@ -736,7 +736,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
     }
 
     auto mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
-    search_tile_overlap_ = array_metadata_->domain()->subarray_overlap(
+    search_tile_overlap_ = array_schema_->domain()->subarray_overlap(
         subarray, mbr, static_cast<T*>(search_tile_overlap_subarray_));
 
     if (!search_tile_overlap_)
@@ -753,10 +753,10 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
     return;
 
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   const std::vector<void*>& mbrs = metadata_->mbrs();
   auto subarray = static_cast<const T*>(query_->subarray());
-  auto domain = array_metadata_->domain();
+  auto domain = array_schema_->domain();
 
   // Compute the tile subarray
   auto tile_subarray = new T[2 * dim_num];
@@ -1001,7 +1001,7 @@ Status ReadState::compute_tile_compressed_var_size(
 
 void ReadState::compute_tile_search_range() {
   // For easy reference
-  Datatype coords_type = array_metadata_->coords_type();
+  Datatype coords_type = array_schema_->coords_type();
 
   // Applicable only to sparse fragments
   if (fragment_->dense())
@@ -1048,11 +1048,11 @@ void ReadState::compute_tile_search_range() {
 template <class T>
 void ReadState::compute_tile_search_range_col_or_row() {
   // For easy reference
-  unsigned int dim_num = array_metadata_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto subarray = static_cast<const T*>(query_->subarray());
   uint64_t tile_num = metadata_->tile_num();
   auto& bounding_coords = metadata_->bounding_coords();
-  auto domain = array_metadata_->domain();
+  auto domain = array_schema_->domain();
 
   // Calculate subarray coordinates
   auto subarray_min_coords = new T[dim_num];
@@ -1183,7 +1183,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_schema_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1221,7 +1221,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t))
 
     // Compute order
-    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_schema_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
@@ -1259,7 +1259,7 @@ Status ReadState::get_cell_pos_at_or_before(
     RETURN_NOT_OK(get_coords_from_search_tile(med, &coords_t));
 
     // Compute order
-    int cmp = array_metadata_->domain()->tile_cell_order_cmp<T>(
+    int cmp = array_schema_->domain()->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1300,7 +1300,7 @@ void ReadState::init_empty_attributes() {
   is_empty_attribute_.resize(attribute_num_ + 1);
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     uri = fragment_->fragment_uri().join_path(
-        array_metadata_->attribute_name(i) + constants::file_suffix);
+        array_schema_->attribute_name(i) + constants::file_suffix);
     is_empty_attribute_[i] = !query_->storage_manager()->is_file(uri);
   }
 
@@ -1323,15 +1323,15 @@ void ReadState::init_overflow() {
 }
 
 void ReadState::init_tiles() {
-  auto dim_num = array_metadata_->domain()->dim_num();
+  auto dim_num = array_schema_->domain()->dim_num();
 
   for (unsigned int i = 0; i < attribute_num_; ++i) {
-    const Attribute* attr = array_metadata_->attribute(i);
+    const Attribute* attr = array_schema_->attribute(i);
     bool var_size = attr->var_size();
 
     tiles_.emplace_back(new Tile(
         (var_size) ? constants::cell_var_offset_type : attr->type(),
-        (var_size) ? array_metadata_->cell_var_offsets_compression() :
+        (var_size) ? array_schema_->cell_var_offsets_compression() :
                      attr->compressor(),
         (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
         0));
@@ -1343,20 +1343,20 @@ void ReadState::init_tiles() {
       tiles_var_.emplace_back(nullptr);
   }
   tiles_.emplace_back(new Tile(
-      array_metadata_->coords_type(),
-      array_metadata_->coords_compression(),
-      array_metadata_->coords_size(),
+      array_schema_->coords_type(),
+      array_schema_->coords_compression(),
+      array_schema_->coords_size(),
       dim_num));
   tiles_.emplace_back(new Tile(
-      array_metadata_->coords_type(),
-      array_metadata_->coords_compression(),
-      array_metadata_->coords_size(),
+      array_schema_->coords_type(),
+      array_schema_->coords_compression(),
+      array_schema_->coords_size(),
       dim_num));
 }
 
 void ReadState::init_tile_io() {
   for (unsigned int i = 0; i < attribute_num_; ++i) {
-    const Attribute* attr = array_metadata_->attribute(i);
+    const Attribute* attr = array_schema_->attribute(i);
     bool var_size = attr->var_size();
     tile_io_.emplace_back(new TileIO(
         query_->storage_manager(),
@@ -1418,8 +1418,8 @@ Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {
       tile_i, attribute_id_real, tile_io->file_size(), &tile_compressed_size));
 
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id_real][tile_i];
-  uint64_t tile_size = metadata_->cell_num(tile_i) *
-                       array_metadata_->cell_size(attribute_id_real);
+  uint64_t tile_size =
+      metadata_->cell_num(tile_i) * array_schema_->cell_size(attribute_id_real);
 
   Status st = tile_io->read(tile, file_offset, tile_compressed_size, tile_size);
 
@@ -1437,7 +1437,7 @@ Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
 
   // Sanity check
   assert(
-      attribute_id < attribute_num_ && array_metadata_->var_size(attribute_id));
+      attribute_id < attribute_num_ && array_schema_->var_size(attribute_id));
 
   auto tile = tiles_[attribute_id];
   auto tile_io = tile_io_[attribute_id];

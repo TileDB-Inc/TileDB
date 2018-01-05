@@ -62,17 +62,17 @@ Status Consolidator::consolidate(const char* array_name) {
   URI new_fragment_uri;
   URI array_uri = URI(array_name);
 
-  // Get array metadata
-  auto array_meta = (ArrayMetadata*)nullptr;
-  RETURN_NOT_OK(storage_manager_->load_array_metadata(array_uri, &array_meta));
+  // Get array schema
+  auto array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(storage_manager_->load_array_schema(array_uri, &array_schema));
 
   // Prepare buffers
   void** buffers;
   uint64_t* buffer_sizes;
   unsigned int buffer_num;
   RETURN_NOT_OK_ELSE(
-      create_buffers(array_meta, &buffers, &buffer_sizes, &buffer_num),
-      delete array_meta);
+      create_buffers(array_schema, &buffers, &buffer_sizes, &buffer_num),
+      delete array_schema);
 
   // Create queries
   unsigned int fragment_num;
@@ -117,7 +117,7 @@ Status Consolidator::consolidate(const char* array_name) {
 
 // Clean up
 clean_up:
-  delete array_meta;
+  delete array_schema;
   free_buffers(buffer_num, buffers, buffer_sizes);
   delete query_r;
   delete query_w;
@@ -139,7 +139,7 @@ Status Consolidator::copy_array(Query* query_r, Query* query_w) {
 }
 
 Status Consolidator::create_buffers(
-    ArrayMetadata* array_meta,
+    ArraySchema* array_meta,
     void*** buffers,
     uint64_t** buffer_sizes,
     unsigned int* buffer_num) {

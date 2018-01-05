@@ -42,7 +42,7 @@
 #include <string>
 #include <thread>
 
-#include "array_metadata.h"
+#include "array_schema.h"
 #include "config.h"
 #include "consolidator.h"
 #include "locked_array.h"
@@ -105,12 +105,13 @@ class StorageManager {
   Status array_consolidate(const char* array_name);
 
   /**
-   * Creates a TileDB array storing its metadata.
+   * Creates a TileDB array storing its schema.
    *
-   * @param array_metadata The array metadata.
+   * @param array_uri The URI of the array to be created.
+   * @param array_schema The array schema.
    * @return Status
    */
-  Status array_create(ArrayMetadata* array_metadata);
+  Status array_create(const URI& array_uri, ArraySchema* array_schema);
 
   /**
    * Locks the array.
@@ -204,14 +205,13 @@ class StorageManager {
   bool is_kv(const URI& uri) const;
 
   /**
-   * Loads the metadata of an array from persistent storage into memory.
+   * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
-   * @param array_metadata The array metadata to be retrieved.
+   * @param array_schema The array schema to be retrieved.
    * @return Status
    */
-  Status load_array_metadata(
-      const URI& array_uri, ArrayMetadata** array_metadata);
+  Status load_array_schema(const URI& array_uri, ArraySchema** array_schema);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -383,12 +383,12 @@ class StorageManager {
       const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
 
   /**
-   * Stores an array metadata into persistent storage.
+   * Stores an array schema into persistent storage.
    *
-   * @param array_metadata The array metadata to be stored.
+   * @param array_schema The array metadata to be stored.
    * @return Status
    */
-  Status store_array_metadata(ArrayMetadata* array_metadata);
+  Status store_array_schema(ArraySchema* array_schema);
 
   /**
    * Stores the fragment metadata into persistent storage.
@@ -435,8 +435,8 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** An array metadata cache. */
-  LRUCache* array_metadata_cache_;
+  /** An array schema cache. */
+  LRUCache* array_schema_cache_;
 
   /**
    * Async condition variable. The first is for user async queries, the second
@@ -509,18 +509,18 @@ class StorageManager {
   Status array_close(URI array);
 
   /**
-   * Opens an array, retrieving its metadata and fragment metadata.
+   * Opens an array, retrieving its schema and fragment metadata.
    *
    * @param array_uri The array URI.
    * @param query_type The query type.
-   * @param array_metadata The array metadata to be retrieved.
+   * @param array_schema The array schema to be retrieved.
    * @param fragment_metadata The fragment metadat to be retrieved.
    * @return
    */
   Status array_open(
       const URI& array_uri,
       QueryType query_type,
-      const ArrayMetadata** array_metadata,
+      const ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
@@ -561,8 +561,8 @@ class StorageManager {
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 
-  /** Loads the array metadata into an open array. */
-  Status open_array_load_array_metadata(
+  /** Loads the array schema into an open array. */
+  Status open_array_load_array_schema(
       const URI& array_uri, OpenArray* open_array);
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */

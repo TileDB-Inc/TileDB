@@ -135,11 +135,15 @@ Status remove_path(hdfsFS fs, const URI& uri);
  * @param uri The URI of the file to be read.
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
- * @param length The size of the data to be read from the file.
+ * @param buffer_size The size of the data to be read from the file.
  * @return Status
  */
 Status read(
-    hdfsFS fs, const URI& uri, off_t offset, void* buffer, uint64_t length);
+    hdfsFS fs,
+    const URI& uri,
+    off_t offset,
+    void* buffer,
+    uint64_t buffer_size);
 
 /**
  * Writes the input buffer to a file.
@@ -150,11 +154,11 @@ Status read(
  * @param fs Connected hdfsFS filesystem handle.
  * @param uri The URI of the file to be written to.
  * @param buffer The input buffer.
- * @param length The size of the input buffer.
+ * @param buffer_size The size of the input buffer.
  * @return Status
  */
 Status write(
-    hdfsFS fs, const URI& uri, const void* buffer, const uint64_t length);
+    hdfsFS fs, const URI& uri, const void* buffer, uint64_t buffer_size);
 
 /**
  * Lists the files one level deep under a given path.

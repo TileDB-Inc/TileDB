@@ -40,8 +40,8 @@ namespace tiledb {
 
 namespace constants {
 
-/** The array metadata file name. */
-const char* array_metadata_filename = "__array_metadata.tdb";
+/** The array schema file name. */
+const char* array_schema_filename = "__array_schema.tdb";
 
 /** The fragment file name. */
 const char* fragment_filename = "__fragment.tdb";
@@ -157,8 +157,8 @@ const unsigned int var_num = std::numeric_limits<unsigned int>::max();
 /** String describing no compression. */
 const char* no_compression_str = "NO_COMPRESSION";
 
-/** The array metadata cache size. */
-const uint64_t array_metadata_cache_size = 10000000;
+/** The array schema cache size. */
+const uint64_t array_schema_cache_size = 10000000;
 
 /** The fragment metadata cache size. */
 const uint64_t fragment_metadata_cache_size = 100000000;

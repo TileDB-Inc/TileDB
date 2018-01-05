@@ -40,12 +40,12 @@ namespace tiledb {
 /* ****************************** */
 
 OpenArray::OpenArray() {
-  array_metadata_ = nullptr;
+  array_schema_ = nullptr;
   cnt_ = 0;
 }
 
 OpenArray::~OpenArray() {
-  delete array_metadata_;
+  delete array_schema_;
   for (auto& fragment : fragment_metadata_)
     delete fragment.second;
 }
@@ -54,12 +54,12 @@ OpenArray::~OpenArray() {
 /*               API              */
 /* ****************************** */
 
-const ArrayMetadata* OpenArray::array_metadata() const {
-  return array_metadata_;
+const ArraySchema* OpenArray::array_schema() const {
+  return array_schema_;
 }
 
 const URI& OpenArray::array_uri() const {
-  return array_metadata_->array_uri();
+  return array_schema_->array_uri();
 }
 
 uint64_t OpenArray::cnt() const {
@@ -94,8 +94,8 @@ void OpenArray::mtx_unlock() {
   mtx_.unlock();
 }
 
-void OpenArray::set_array_metadata(const ArrayMetadata* array_metadata) {
-  array_metadata_ = array_metadata;
+void OpenArray::set_array_schema(const ArraySchema* array_schema) {
+  array_schema_ = array_schema;
 }
 
 /* ****************************** */

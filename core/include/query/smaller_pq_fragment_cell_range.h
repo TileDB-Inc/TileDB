@@ -34,7 +34,7 @@
 #ifndef TILEDB_SMALLER_PQ_FRAGMENT_CELL_RANGE_H
 #define TILEDB_SMALLER_PQ_FRAGMENT_CELL_RANGE_H
 
-#include "array_metadata.h"
+#include "array_schema.h"
 #include "pq_fragment_cell_range.h"
 
 namespace tiledb {
@@ -54,7 +54,7 @@ class SmallerPQFragmentCellRange {
   SmallerPQFragmentCellRange();
 
   /** Constructor. */
-  SmallerPQFragmentCellRange(const ArrayMetadata* array_metadata);
+  SmallerPQFragmentCellRange(const ArraySchema* array_schema);
 
   /* ********************************* */
   /*                API                */
@@ -71,8 +71,8 @@ class SmallerPQFragmentCellRange {
   /*          PRIVATE ATTRIBUTES       */
   /* ********************************* */
 
-  /** The array metadata. */
-  const ArrayMetadata* array_metadata_;
+  /** The array schema. */
+  const ArraySchema* array_schema_;
 };
 
 }  // namespace tiledb

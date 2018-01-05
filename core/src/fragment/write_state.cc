@@ -59,9 +59,9 @@ WriteState::WriteState(const Fragment* fragment)
   init_tile_io();
 
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
-  uint64_t coords_size = array_metadata->coords_size();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
+  uint64_t coords_size = array_schema->coords_size();
 
   // Initialize the number of cells written in the current tile
   tile_cell_num_.resize(attribute_num + 1);
@@ -107,8 +107,8 @@ WriteState::~WriteState() {
 
 Status WriteState::finalize() {
   // For easy reference
-  const ArrayMetadata* array_metadata = fragment_->query()->array_metadata();
-  int attribute_num = array_metadata->attribute_num();
+  auto array_schema = fragment_->query()->array_schema();
+  int attribute_num = array_schema->attribute_num();
 
   // Write last tile (applicable only to the sparse case)
   if (!tiles_[attribute_num]->empty())
@@ -123,8 +123,8 @@ Status WriteState::finalize() {
 
 Status WriteState::sync() {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
   auto attribute_ids = fragment_->query()->attribute_ids();
   auto storage_manager = fragment_->query()->storage_manager();
 
@@ -138,7 +138,7 @@ Status WriteState::sync() {
     }
 
     // Only for variable-size attributes (they have an extra file)
-    if (array_metadata->var_size(attribute_id))
+    if (array_schema->var_size(attribute_id))
       RETURN_NOT_OK(
           storage_manager->sync(fragment_->attr_var_uri(attribute_id)));
   }
@@ -163,14 +163,14 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   if (layout == Layout::GLOBAL_ORDER || layout == Layout::COL_MAJOR ||
       layout == Layout::ROW_MAJOR) {  // Ordered
     // For easy reference
-    auto array_metadata = fragment_->query()->array_metadata();
+    auto array_schema = fragment_->query()->array_schema();
     auto& attribute_ids = fragment_->query()->attribute_ids();
     auto attribute_id_num = (unsigned int)attribute_ids.size();
 
     // Write each attribute individually
     unsigned int buffer_i = 0;
     for (unsigned int i = 0; i < attribute_id_num; ++i) {
-      if (!array_metadata->var_size(attribute_ids[i])) {  // FIXED CELLS
+      if (!array_schema->var_size(attribute_ids[i])) {  // FIXED CELLS
         RETURN_NOT_OK(write_attr(
             attribute_ids[i], buffers[buffer_i], buffer_sizes[buffer_i]));
         ++buffer_i;
@@ -203,9 +203,9 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
 template <class T>
 void WriteState::expand_mbr(const T* coords) {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
-  auto dim_num = array_metadata->dim_num();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
+  auto dim_num = array_schema->dim_num();
   auto mbr = static_cast<T*>(mbr_);
 
   // Initialize MBR
@@ -220,17 +220,17 @@ void WriteState::expand_mbr(const T* coords) {
 }
 
 void WriteState::init_tiles() {
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    auto attr = array_metadata->attribute(i);
+    auto attr = array_schema->attribute(i);
     bool var_size = attr->var_size();
 
     tiles_.emplace_back(new Tile(
         (var_size) ? constants::cell_var_offset_type : attr->type(),
-        (var_size) ? array_metadata->cell_var_offsets_compression() :
+        (var_size) ? array_schema->cell_var_offsets_compression() :
                      attr->compressor(),
-        (var_size) ? array_metadata->cell_var_offsets_compression_level() :
+        (var_size) ? array_schema->cell_var_offsets_compression_level() :
                      attr->compression_level(),
         fragment_->tile_size(i),
         (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
@@ -249,20 +249,20 @@ void WriteState::init_tiles() {
     }
   }
   tiles_.emplace_back(new Tile(
-      array_metadata->coords_type(),
-      array_metadata->coords_compression(),
-      array_metadata->coords_compression_level(),
-      fragment_->tile_size(array_metadata->attribute_num()),
-      array_metadata->coords_size(),
-      array_metadata->domain()->dim_num()));
+      array_schema->coords_type(),
+      array_schema->coords_compression(),
+      array_schema->coords_compression_level(),
+      fragment_->tile_size(array_schema->attribute_num()),
+      array_schema->coords_size(),
+      array_schema->domain()->dim_num()));
 }
 
 void WriteState::init_tile_io() {
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
   auto query = fragment_->query();
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    bool var_size = array_metadata->var_size(i);
+    bool var_size = array_schema->var_size(i);
     tile_io_.emplace_back(
         new TileIO(query->storage_manager(), fragment_->attr_uri(i)));
     if (var_size) {
@@ -282,8 +282,8 @@ void WriteState::sort_cell_pos(
     uint64_t buffer_size,
     std::vector<uint64_t>* cell_pos) const {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  Datatype coords_type = array_metadata->coords_type();
+  auto array_schema = fragment_->query()->array_schema();
+  Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
   if (coords_type == Datatype::INT32)
@@ -314,13 +314,13 @@ void WriteState::sort_cell_pos(
     uint64_t buffer_size,
     std::vector<uint64_t>* cell_pos) const {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto dim_num = array_metadata->dim_num();
-  uint64_t coords_size = array_metadata->coords_size();
+  auto array_schema = fragment_->query()->array_schema();
+  auto dim_num = array_schema->dim_num();
+  uint64_t coords_size = array_schema->coords_size();
   uint64_t buffer_cell_num = buffer_size / coords_size;
-  Layout cell_order = array_metadata->cell_order();
+  Layout cell_order = array_schema->cell_order();
   auto buffer_T = static_cast<const T*>(buffer);
-  auto domain = array_metadata->domain();
+  auto domain = array_schema->domain();
 
   // Populate cell_pos
   cell_pos->resize(buffer_cell_num);
@@ -374,8 +374,8 @@ void WriteState::sort_cell_pos(
 
 void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  Datatype coords_type = array_metadata->coords_type();
+  auto array_schema = fragment_->query()->array_schema();
+  Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
   if (coords_type == Datatype::INT32)
@@ -407,11 +407,11 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
     return;
 
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
-  auto dim_num = array_metadata->dim_num();
-  auto capacity = array_metadata->capacity();
-  auto coords_size = array_metadata->coords_size();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
+  auto dim_num = array_schema->dim_num();
+  auto capacity = array_schema->capacity();
+  auto coords_size = array_schema->coords_size();
   auto buffer_cell_num = buffer_size / coords_size;
   auto buffer_T = static_cast<const T*>(buffer);
   uint64_t& tile_cell_num = tile_cell_num_[attribute_num];
@@ -453,7 +453,7 @@ Status WriteState::write_attr(
     return Status::Ok();
 
   // Update metadata in the case of sparse fragment coordinates
-  if (attribute_id == fragment_->query()->array_metadata()->attribute_num())
+  if (attribute_id == fragment_->query()->array_schema()->attribute_num())
     update_bookkeeping(buffer, buffer_size);
 
   // Preparation
@@ -571,8 +571,8 @@ Status WriteState::write_attr_var_last(unsigned int attribute_id) {
 
 Status WriteState::write_last_tile() {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  auto attribute_num = array_metadata->attribute_num();
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
 
   // Send last MBR, bounding coordinates and tile cell number to metadata
   metadata_->append_mbr(mbr_);
@@ -583,7 +583,7 @@ Status WriteState::write_last_tile() {
   // memory
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
     RETURN_NOT_OK(write_attr_last(i));
-    if (array_metadata->var_size(i))
+    if (array_schema->var_size(i))
       RETURN_NOT_OK(write_attr_var_last(i));
   }
 
@@ -595,7 +595,7 @@ Status WriteState::write_sparse_unsorted(
     void** buffers, uint64_t* buffer_sizes) {
   // For easy reference
   auto query = fragment_->query();
-  const ArrayMetadata* array_metadata = query->array_metadata();
+  auto array_schema = query->array_schema();
   auto& attribute_ids = query->attribute_ids();
   auto attribute_id_num = (int)attribute_ids.size();
 
@@ -611,7 +611,7 @@ Status WriteState::write_sparse_unsorted(
   // Write each attribute individually
   int buffer_i = 0;
   for (int i = 0; i < attribute_id_num; ++i) {
-    if (!array_metadata->var_size(attribute_ids[i])) {  // FIXED CELLS
+    if (!array_schema->var_size(attribute_ids[i])) {  // FIXED CELLS
       RETURN_NOT_OK(write_sparse_unsorted_attr(
           attribute_ids[i],
           buffers[buffer_i],
@@ -640,8 +640,8 @@ Status WriteState::write_sparse_unsorted_attr(
     uint64_t buffer_size,
     const std::vector<uint64_t>& cell_pos) {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
-  uint64_t cell_size = array_metadata->cell_size(attribute_id);
+  auto array_schema = fragment_->query()->array_schema();
+  uint64_t cell_size = array_schema->cell_size(attribute_id);
 
   // Check number of cells in buffer
   uint64_t buffer_cell_num = buffer_size / cell_size;
@@ -649,7 +649,7 @@ Status WriteState::write_sparse_unsorted_attr(
     return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted; Invalid number of "
                     "cells in attribute '") +
-        array_metadata->attribute_name(attribute_id) + "'"));
+        array_schema->attribute_name(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
@@ -694,7 +694,7 @@ Status WriteState::write_sparse_unsorted_attr_var(
     uint64_t buffer_var_size,
     const std::vector<uint64_t>& cell_pos) {
   // For easy reference
-  auto array_metadata = fragment_->query()->array_metadata();
+  auto array_schema = fragment_->query()->array_schema();
   uint64_t cell_size = constants::cell_var_offset_size;
   auto buffer_s = static_cast<const uint64_t*>(buffer);
   auto buffer_var_c = static_cast<const char*>(buffer_var);
@@ -705,7 +705,7 @@ Status WriteState::write_sparse_unsorted_attr_var(
     return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted variable; "
                     "Invalid number of cells in attribute '") +
-        array_metadata->attribute_name(attribute_id) + "'"));
+        array_schema->attribute_name(attribute_id) + "'"));
   }
 
   auto sorted_buf = new Buffer();
