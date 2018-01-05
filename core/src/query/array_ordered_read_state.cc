@@ -626,6 +626,9 @@ Status ArrayOrderedReadState::async_submit_query(unsigned int id) {
   // Sanity check
   assert(storage_manager != nullptr);
 
+  // Coords only needed in sparse case.
+  bool add_coords = !query_->array_metadata()->dense();
+
   // Prepare a new query to be submitted asynchronously
   if (async_query_[id] != nullptr)
     RETURN_NOT_OK(async_query_[id]->finalize());
@@ -641,7 +644,7 @@ Status ArrayOrderedReadState::async_submit_query(unsigned int id) {
       query_->attribute_ids(),
       buffers_[id],
       buffer_sizes_tmp_[id],
-      true));
+      add_coords));
   async_query_[id]->set_callback(async_done, &(async_data_[id]));
 
   // Send the async query
