@@ -123,7 +123,9 @@ ArrayOrderedReadState::~ArrayOrderedReadState() {
     std::free(tile_coords_);
   if (tile_domain_ != nullptr)
     std::free(tile_domain_);
+
   delete[] overflow_;
+  delete[] overflow_still_;
 
   for (unsigned int i = 0; i < 2; ++i) {
     if (async_query_[i] != nullptr)

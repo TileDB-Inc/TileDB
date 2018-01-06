@@ -60,6 +60,8 @@ StorageManager::~StorageManager() {
   delete async_thread_[0];
   delete async_thread_[1];
   delete array_schema_cache_;
+  delete consolidator_;
+  delete fragment_metadata_cache_;
   delete tile_cache_;
   delete vfs_;
   for (auto& open_array : open_arrays_)
