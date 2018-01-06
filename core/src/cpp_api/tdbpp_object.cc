@@ -34,7 +34,7 @@
 
 #include "tdbpp_object.h"
 
-std::ostream &operator<<(std::ostream &os, const tdb::Object &obj) {
+std::ostream &tdb::operator<<(std::ostream &os, const tdb::Object &obj) {
   os << obj.to_str();
   return os;
 }
@@ -92,4 +92,13 @@ std::string tdb::from_tiledb(const tiledb_layout_t &layout) {
 
 std::string tdb::from_tiledb(const tiledb_array_type_t &type) {
   return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
+}
+
+std::string tdb::from_tiledb(const tiledb_query_type_t &qtype) {
+  switch(qtype) {
+    case TILEDB_READ:
+      return "READ";
+    case TILEDB_WRITE:
+      return "WRITE";
+  }
 }

@@ -213,32 +213,32 @@ void tdb::ArraySchema::_Deleter::operator()(tiledb_array_schema_t *p) {
   _ctx.get().handle_error(tiledb_array_schema_free(_ctx.get(), p));
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::ArraySchema &schema) {
+std::ostream &tdb::operator<<(std::ostream &os, const ArraySchema &schema) {
   os << schema.to_str();
   return os;
 }
 
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Domain &d) {
+tdb::ArraySchema &tdb::operator<<(ArraySchema &schema, const Domain &d) {
   schema.set_domain(d);
   return schema;
 }
 
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Attribute &a) {
+tdb::ArraySchema &tdb::operator<<(ArraySchema &schema, const tdb::Attribute &a) {
   schema.add_attribute(a);
   return schema;
 }
 
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tiledb_array_type_t type) {
+tdb::ArraySchema &tdb::operator<<(ArraySchema &schema, const tiledb_array_type_t type) {
   schema.set_type(type);
   return schema;
 }
 
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const std::array<tiledb_layout_t, 2> p) {
+tdb::ArraySchema &tdb::operator<<(ArraySchema &schema, const std::array<tiledb_layout_t, 2> p) {
   schema.set_order(p);
   return schema;
 }
 
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, uint64_t capacity) {
+tdb::ArraySchema &tdb::operator<<(ArraySchema &schema, uint64_t capacity) {
   schema.set_capacity(capacity);
   return schema;
 }

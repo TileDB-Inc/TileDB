@@ -149,7 +149,7 @@ tdb::Query::Query(tdb::Context &ctx, const std::string &array, tiledb_query_type
   _array_attributes = _schema.attributes();
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Query::Status &stat) {
+std::ostream &tdb::operator<<(std::ostream &os, const tdb::Query::Status &stat) {
   switch (stat) {
     case tdb::Query::Status::INCOMPLETE:
       os << "INCOMPLETE";

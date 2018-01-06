@@ -229,8 +229,9 @@ namespace tdb {
 
   };
 
+  std::ostream &operator<<(std::ostream &os, const Context &ctx);
+
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx);
 
 #endif //TILEDB_GENOMICS_CONTEXT_H

@@ -113,9 +113,11 @@ namespace tdb {
     _Deleter _deleter;
     std::shared_ptr<tiledb_domain_t> _domain;
   };
+
+  std::ostream &operator<<(std::ostream &os, const Domain &d);
+  tdb::Domain &operator<<(tdb::Domain &d, const Dimension &dim);
+
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Domain &d);
-tdb::Domain &operator<<(tdb::Domain &d, const tdb::Dimension &dim);
 
 #endif //TILEDB_GENOMICS_DOMAIN_H

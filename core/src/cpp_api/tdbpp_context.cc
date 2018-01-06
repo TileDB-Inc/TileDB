@@ -179,12 +179,12 @@ void tdb::Context::array_create(const tdb::ArraySchema &schema, const std::strin
   handle_error(tiledb_array_create(ctx, name.c_str(), schema.ptr().get()));
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {
-  os << "Ctx<" << ctx.context_type() << ">";
-  return os;
-}
-
 void tdb::Context::iterator::_init(const std::string &root, tiledb_ctx_t *ctx, tiledb_walk_order_t order) {
   _ictx.handle_error(tiledb_walk(ctx, root.c_str(), order, _obj_getter, &_objs));
   _curr = 0;
+}
+
+std::ostream &tdb::operator<<(std::ostream &os, const tdb::Context &ctx) {
+  os << "Ctx<" << ctx.context_type() << ">";
+  return os;
 }

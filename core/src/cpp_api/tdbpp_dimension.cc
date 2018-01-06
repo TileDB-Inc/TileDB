@@ -85,7 +85,7 @@ void tdb::Dimension::_Deleter::operator()(tiledb_dimension_t *p) {
   _ctx.get().handle_error(tiledb_dimension_free(_ctx.get(), p));
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim) {
+std::ostream &tdb::operator<<(std::ostream &os, const tdb::Dimension &dim) {
   os << "Dim<" << dim.name() << '>';
   return os;
 }

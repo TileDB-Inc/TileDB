@@ -238,13 +238,14 @@ namespace tdb {
     _Deleter _deleter;
     std::shared_ptr<tiledb_array_schema_t> _schema;
   };
-}
 
-std::ostream &operator<<(std::ostream &os, const tdb::ArraySchema &schema);
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Domain &dim);
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Attribute &dim);
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tiledb_array_type_t type);
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const std::array<tiledb_layout_t, 2> p);
-tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, uint64_t capacity);
+  std::ostream &operator<<(std::ostream &os, const ArraySchema &schema);
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const Domain &dim);
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const Attribute &dim);
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const tiledb_array_type_t type);
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const std::array<tiledb_layout_t, 2> p);
+  tdb::ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity);
+
+}
 
 #endif //TILEDB_TDBPP_ARRAYMETA_H

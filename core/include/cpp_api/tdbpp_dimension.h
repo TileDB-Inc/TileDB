@@ -167,8 +167,9 @@ namespace tdb {
     void *_extent() const;
   };
 
+  std::ostream &operator<<(std::ostream &os, const Dimension &dim);
+
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim);
 
 #endif //TILEDB_GENOMICS_DOMENSION_H

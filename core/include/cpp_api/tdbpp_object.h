@@ -76,11 +76,10 @@ namespace tdb {
 
   std::string from_tiledb(const tiledb_layout_t &layout);
   std::string from_tiledb(const tiledb_array_type_t &type);
+  std::string from_tiledb(const tiledb_query_type_t &qtype);
 
+  std::ostream &operator<<(std::ostream &os, const Object &obj);
 }
-
-std::ostream &operator<<(std::ostream &os, const tdb::Object &obj);
-std::ostream &operator<<(std::ostream &os, const tdb::Compressor &obj);
 
 
 #endif //TILEDB_GENOMICS_OBJECT_H

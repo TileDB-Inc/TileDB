@@ -91,18 +91,18 @@ void tdb::Attribute::_Deleter::operator()(tiledb_attribute_t *p) {
   _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), p));
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a) {
+std::ostream &tdb::operator<<(std::ostream &os, const Attribute &a) {
   os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
      << (a.num() == TILEDB_VAR_NUM ? "VAR" : std::to_string(a.num())) << '>';
   return os;
 }
 
-tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c) {
+tdb::Attribute &tdb::operator<<(Attribute &attr, const Compressor &c) {
   attr.set_compressor(c);
   return attr;
 }
 
-tdb::Attribute &operator<<(tdb::Attribute &attr, unsigned num) {
+tdb::Attribute &tdb::operator<<(Attribute &attr, unsigned num) {
   attr.set_num(num);
   return attr;
 }

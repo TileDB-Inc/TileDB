@@ -140,10 +140,11 @@ namespace tdb {
     _Deleter _deleter;
     std::shared_ptr<tiledb_attribute_t> _attr;
   };
-}
 
-std::ostream &operator<<(std::ostream &os, const tdb::Attribute &a);
-tdb::Attribute &operator<<(tdb::Attribute &attr, const tdb::Compressor &c);
-tdb::Attribute &operator<<(tdb::Attribute &attr, unsigned num);
+  std::ostream &operator<<(std::ostream &os, const Attribute &a);
+  Attribute &operator<<(Attribute &attr, const Compressor &c);
+  Attribute &operator<<(Attribute &attr, unsigned num);
+
+}
 
 #endif //TILEDB_GENOMICS_ATTRIBUTE_H
