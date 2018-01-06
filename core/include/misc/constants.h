@@ -335,6 +335,9 @@ extern const char* s3_region;
 /** S3 endpoint override. */
 extern const char* s3_endpoint_override;
 
+/** Prefix indicating a special name reserved by TileDB. */
+extern const char* special_name_prefix;
+
 }  // namespace constants
 
 }  // namespace tiledb

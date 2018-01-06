@@ -220,6 +220,15 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_ERR);
 
+  // Set invalid attribute
+  tiledb_attribute_t* inv_attr;
+  rc = tiledb_attribute_create(ctx_, &inv_attr, "__foo", ATTR_TYPE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, inv_attr);
+  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_attribute_free(ctx_, inv_attr);
+  REQUIRE(rc == TILEDB_OK);
+
   // Set attribute
   tiledb_attribute_t* attr;
   rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
