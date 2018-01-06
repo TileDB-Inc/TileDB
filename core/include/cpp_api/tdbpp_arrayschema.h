@@ -1,5 +1,5 @@
 /**
- * @file  tdbpp_arraymeta.h
+ * @file  tdbpp_arrayschema.h
  *
  * @author Ravi Gaddipati
  *
@@ -51,34 +51,34 @@ namespace tdb {
   /**
    * Specifies the configuration that defines an Array.
    */
-  class ArrayMetadata {
+  class ArraySchema {
   public:
-    ArrayMetadata(Context &ctx) : _ctx(ctx), _deleter(ctx) {};
+    ArraySchema(Context &ctx) : _ctx(ctx), _deleter(ctx) {};
     /**
-     * Load metadata given a C API pointer. The class takes ownership of the pointer.
+     * Load schema given a C API pointer. The class takes ownership of the pointer.
      * @param ctx context
-     * @param meta metadata pointer
+     * @param schema schema pointer
      */
-    ArrayMetadata(Context &ctx, tiledb_array_metadata_t **meta) : ArrayMetadata(ctx) {
-      if (meta && *meta) {
-        _init(*meta);
-        *meta = nullptr;
+    ArraySchema(Context &ctx, tiledb_array_schema_t **schema) : ArraySchema(ctx) {
+      if (schema && *schema) {
+        _init(*schema);
+        *schema = nullptr;
       }
     };
     /**
      * @param ctx context
-     * @param uri Name of array to load the metadata for.
+     * @param uri Name of array to load the schema for.
      */
-    ArrayMetadata(Context &ctx, const std::string &uri) : ArrayMetadata(ctx) {
+    ArraySchema(Context &ctx, const std::string &uri) : ArraySchema(ctx) {
       _init(uri);
     }
-    ArrayMetadata(const ArrayMetadata&) = default;
-    ArrayMetadata(ArrayMetadata&& o) = default;
-    ArrayMetadata &operator=(const ArrayMetadata&) = default;
-    ArrayMetadata &operator=(ArrayMetadata &&o) = default;
+    ArraySchema(const ArraySchema&) = default;
+    ArraySchema(ArraySchema&& o) = default;
+    ArraySchema &operator=(const ArraySchema&) = default;
+    ArraySchema &operator=(ArraySchema &&o) = default;
 
     /**
-     * Load array metadata given an array path.
+     * Load array schema given an array path.
      * @param uri
      */
     void load(const std::string &uri) {
@@ -86,11 +86,11 @@ namespace tdb {
     }
 
     /**
-     * Create new metadata for an array with name uri
+     * Create new schema for an array with name uri
      * @param uri
      * @return *this
      */
-    ArrayMetadata &create(const std::string &uri);
+    ArraySchema &create();
 
     std::string to_str() const;
 
@@ -102,9 +102,9 @@ namespace tdb {
     /**
      * @param type DENSE or SPARSE array
      */
-    ArrayMetadata &set_type(tiledb_array_type_t type) {
+    ArraySchema &set_type(tiledb_array_type_t type) {
       auto &ctx = _ctx.get();
-      ctx.handle_error(tiledb_array_metadata_set_array_type(ctx, _meta.get(), type));
+      ctx.handle_error(tiledb_array_schema_set_array_type(ctx, _schema.get(), type));
       return *this;
     }
 
@@ -118,7 +118,7 @@ namespace tdb {
      * For a sparse array, set the number of cells per tile.
      * @param capacity
      */
-    ArrayMetadata &set_capacity(uint64_t capacity);
+    ArraySchema &set_capacity(uint64_t capacity);
 
     /**
      * @return Current tile order
@@ -128,12 +128,12 @@ namespace tdb {
     /**
      * @param layout Tile layout
      */
-    ArrayMetadata &set_tile_order(tiledb_layout_t layout);
+    ArraySchema &set_tile_order(tiledb_layout_t layout);
 
     /**
      * @param {Tile layout, Cell layout}
      */
-    ArrayMetadata &set_order(const std::array<tiledb_layout_t, 2> &p);
+    ArraySchema &set_order(const std::array<tiledb_layout_t, 2> &p);
 
     /**
      * @return Current cell layout.
@@ -143,7 +143,7 @@ namespace tdb {
     /**
      * @param layout Cell layout
      */
-    ArrayMetadata &set_cell_order(tiledb_layout_t layout);
+    ArraySchema &set_cell_order(tiledb_layout_t layout);
 
     /**
      * @return Current compression scheme and level
@@ -154,7 +154,7 @@ namespace tdb {
      * Set the compressor for coordinates
      * @param c Compressor scheme and level
      */
-    ArrayMetadata &set_coord_compressor(const Compressor c);
+    ArraySchema &set_coord_compressor(const Compressor c);
 
     /**
      * @return Compressor scheme for offsets
@@ -164,13 +164,7 @@ namespace tdb {
    /**
     * @param c Compressor scheme for offsets
     */
-    ArrayMetadata &set_offset_compressor(const Compressor c);
-
-    /**
-     * Get the name of the array the metadata defines.
-     * @return
-     */
-    std::string name() const;
+    ArraySchema &set_offset_compressor(const Compressor c);
 
     /**
      * Domain of array. This is a set of dimensions.
@@ -181,21 +175,21 @@ namespace tdb {
     /**
      * @param domain Configure array with the given domain.
      */
-    ArrayMetadata &set_domain(const Domain &domain);
+    ArraySchema &set_domain(const Domain &domain);
 
     /**
      * Add a cell attribute to the array.
      * @param attr
      */
-    ArrayMetadata &add_attribute(const Attribute &attr);
+    ArraySchema &add_attribute(const Attribute &attr);
 
     /**
      * Mark the array as a key value store.
      */
-    ArrayMetadata &set_kv();
+    ArraySchema &set_kv();
 
-    tiledb_array_metadata_t *get() {
-      return _meta.get();
+    tiledb_array_schema_t *get() {
+      return _schema.get();
     }
 
     /**
@@ -204,7 +198,7 @@ namespace tdb {
     bool is_kv() const;
 
     /**
-     * Validate metadata. The context error handler will be triggered on failure.
+     * Validate schema. The context error handler will be triggered on failure.
      */
     void check() const;
 
@@ -215,42 +209,42 @@ namespace tdb {
     const std::unordered_map<std::string, Attribute> attributes() const;
 
     /**
-     * @return True if an underlying tiledb_metadata object exists.
+     * @return True if an underlying tiledb_schema object exists.
      */
     bool good() const;
 
     /**
-     * @return shared_ptr to underlying metadata.
+     * @return shared_ptr to underlying schema.
      */
-    std::shared_ptr<tiledb_array_metadata_t> ptr() const;
+    std::shared_ptr<tiledb_array_schema_t> ptr() const;
 
     std::reference_wrapper<Context> context();
 
   private:
     friend class Array;
 
-    void _init(tiledb_array_metadata_t* meta);
+    void _init(tiledb_array_schema_t* schema);
     void _init(const std::string &uri);
 
     struct _Deleter {
       _Deleter(Context& ctx) : _ctx(ctx) {}
       _Deleter(const _Deleter&) = default;
-      void operator()(tiledb_array_metadata_t *p);
+      void operator()(tiledb_array_schema_t *p);
     private:
       std::reference_wrapper<Context> _ctx;
     };
 
     std::reference_wrapper<Context> _ctx;
     _Deleter _deleter;
-    std::shared_ptr<tiledb_array_metadata_t> _meta;
+    std::shared_ptr<tiledb_array_schema_t> _schema;
   };
 }
 
-std::ostream &operator<<(std::ostream &os, const tdb::ArrayMetadata &meta);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Domain &dim);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tdb::Attribute &dim);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const tiledb_array_type_t type);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, const std::array<tiledb_layout_t, 2> p);
-tdb::ArrayMetadata &operator<<(tdb::ArrayMetadata &meta, uint64_t capacity);
+std::ostream &operator<<(std::ostream &os, const tdb::ArraySchema &schema);
+tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Domain &dim);
+tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tdb::Attribute &dim);
+tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const tiledb_array_type_t type);
+tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, const std::array<tiledb_layout_t, 2> p);
+tdb::ArraySchema &operator<<(tdb::ArraySchema &schema, uint64_t capacity);
 
 #endif //TILEDB_TDBPP_ARRAYMETA_H

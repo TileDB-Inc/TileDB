@@ -134,8 +134,8 @@ int main() {
   unsigned int nattr = 0;
   tiledb_array_schema_get_num_attributes(ctx, array_schema, &nattr);
 
-  tiledb_attribute_t* attr = nullptr;
-  const char* attr_name = nullptr;
+  tiledb_attribute_t* attr = NULL;
+  const char* attr_name = NULL;
   for (unsigned int i = 0; i < nattr; i++) {
     tiledb_attribute_from_index(ctx, array_schema, i, &attr);
     tiledb_attribute_get_name(ctx, attr, &attr_name);
@@ -154,8 +154,8 @@ int main() {
   unsigned int rank = 0;
   tiledb_domain_get_rank(ctx, domain, &rank);
 
-  tiledb_dimension_t* dim = nullptr;
-  const char* dim_name = nullptr;
+  tiledb_dimension_t* dim = NULL;
+  const char* dim_name = NULL;
   for (unsigned int i = 0; i < rank; i++) {
     tiledb_dimension_from_index(ctx, domain, i, &dim);
     tiledb_dimension_get_name(ctx, dim, &dim_name);

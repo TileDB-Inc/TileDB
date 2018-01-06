@@ -43,7 +43,7 @@ void print_error(tiledb_ctx_t* ctx);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  tiledb_ctx_create(&ctx, NULL);
 
   // Create a group
   int rc = tiledb_group_create(ctx, "my_group");

@@ -38,7 +38,7 @@ int print_path(const char* path, tiledb_object_t type, void* data);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  tiledb_ctx_create(&ctx, NULL);
 
   // Walk in a path with a pre- and post-order traversal
   printf("Preorder traversal:\n");

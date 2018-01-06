@@ -57,9 +57,6 @@ int main() {
     std::cout << object << '\n';
   }
 
-  // Search by name
-  tdb::Array array = ctx.array_find("my_dense_array");
-
   return 0;
 }
 

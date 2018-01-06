@@ -66,10 +66,10 @@ unsigned tdb::Domain::size() const {
   return rank;
 }
 
-void tdb::Domain::_create(tiledb_datatype_t type) {
+void tdb::Domain::_create() {
   auto &ctx = _ctx.get();
   tiledb_domain_t *d;
-  ctx.handle_error(tiledb_domain_create(ctx, &d, type));
+  ctx.handle_error(tiledb_domain_create(ctx, &d));
   _init(d);
 }
 

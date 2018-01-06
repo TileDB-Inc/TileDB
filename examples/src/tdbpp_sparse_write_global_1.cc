@@ -42,8 +42,7 @@
 
 int main() {
   tdb::Context ctx;
-  tdb::Array array = ctx.array_get("my_sparse_array");
-  tdb::Query query = array.write();
+  tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
 

@@ -44,7 +44,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  tiledb_ctx_create(&ctx, NULL);
 
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};

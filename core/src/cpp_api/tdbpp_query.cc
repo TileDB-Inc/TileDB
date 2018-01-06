@@ -141,6 +141,14 @@ std::vector<uint64_t> tdb::Query::returned_buff_sizes() {
   return buffsize;
 }
 
+tdb::Query::Query(tdb::Context &ctx, const std::string &array, tiledb_query_type_t type)
+: _ctx(ctx), _schema(ctx, array), _deleter(_ctx) {
+  tiledb_query_t *q;
+  _ctx.get().handle_error(tiledb_query_create(_ctx.get(), &q, array.c_str(), type));
+  _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
+  _array_attributes = _schema.attributes();
+}
+
 std::ostream &operator<<(std::ostream &os, const tdb::Query::Status &stat) {
   switch (stat) {
     case tdb::Query::Status::INCOMPLETE:

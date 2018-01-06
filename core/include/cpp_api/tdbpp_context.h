@@ -47,8 +47,7 @@
 
 namespace tdb {
 
-  class Array;
-  struct ArrayMetadata;
+  struct ArraySchema;
 
   class Context {
   public:
@@ -167,24 +166,19 @@ namespace tdb {
     Context group_create(const std::string &group);
 
     /**
-     * Load all arrays in current directory tree.
+     * Get all URI's of arrays in the current root.
      * @return
      */
-    std::vector<Array> arrays();
+    std::vector<std::string> arrays();
 
     /**
-     * Search the current path for an array.
+     * Search the current path for an array and get the full path.
      * @param name
-     * @return Array
+     * @return Array URI
      */
-    Array array_find(const std::string &name);
+    std::string array_find(const std::string &name);
 
-    /**
-     * Get an array by name.
-     * @param uri
-     * @return Array
-     */
-    Array array_get(const std::string &uri);
+    void array_create(const ArraySchema &schema, const std::string &name);
 
     /**
      * Consolidate fragments.

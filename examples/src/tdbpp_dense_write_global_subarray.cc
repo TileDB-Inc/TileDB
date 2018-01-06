@@ -42,8 +42,7 @@
 
 int main() {
   tdb::Context ctx;
-  tdb::Array array = ctx.array_get("my_dense_array");
-  tdb::Query query = array.write();
+  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.buffer_list({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 2, 4}).layout(TILEDB_GLOBAL_ORDER);
 

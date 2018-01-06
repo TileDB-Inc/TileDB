@@ -33,11 +33,11 @@
  */
 
 #include "tdbpp_context.h"
-#include "tdbpp_array.h"
+#include "tdbpp_arrayschema.h"
 
 tdb::Context::Context() {
   tiledb_ctx_t *ctx;
-  tiledb_ctx_create(&ctx);
+  tiledb_ctx_create(&ctx, NULL);
   _ctx = std::shared_ptr<tiledb_ctx_t>(ctx, tiledb_ctx_free);
   _curr_object.uri = ".";
 }
@@ -50,15 +50,15 @@ void tdb::Context::set_root(const std::string &root) {
   if (_curr_object.type == Object::Type::Array) throw std::runtime_error("Cannot move context to an Array.");
 }
 
-tdb::Array tdb::Context::array_find(const std::string &name) {
-  auto ret = Array(*this);
+std::string tdb::Context::array_find(const std::string &name) {
   bool found = false;
+  std::string ret = "";
   for (const auto &i : *this) {
     if (i.type != Object::Type::Array) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
-      if (found) throw std::runtime_error("Multiple matches found, extend search path.");
+      if (found) throw std::runtime_error("Multiple matches found, extend search name.");
       found = true;
-      ret.load(i.uri);
+      ret = i.uri;
     }
   }
   return ret;
@@ -86,10 +86,10 @@ std::vector<tdb::Context> tdb::Context::groups() {
   return ret;
 }
 
-std::vector<tdb::Array> tdb::Context::arrays() {
-  std::vector<Array> ret;
+std::vector<std::string> tdb::Context::arrays() {
+  std::vector<std::string> ret;
   for (const auto &i : *this) {
-    if (i.type == Object::Type::Array) ret.emplace_back(*this, i.uri);
+    if (i.type == Object::Type::Array) ret.push_back(i.uri);
   }
   return ret;
 }
@@ -117,10 +117,6 @@ tdb::Context::iterator tdb::Context::begin(tiledb_walk_order_t order) {
 
 tdb::Context::iterator tdb::Context::end() {
   return begin().end();
-}
-
-tdb::Array tdb::Context::array_get(const std::string &uri) {
-  return Array(*this, uri);
 }
 
 tdb::Object tdb::Context::object_type(const std::string &uri) {
@@ -175,6 +171,12 @@ void tdb::Context::set_error_handler(std::function<void(std::string)> fn) {
 
 void tdb::Context::_default_handler(std::string msg) {
   throw std::runtime_error(msg);
+}
+
+void tdb::Context::array_create(const tdb::ArraySchema &schema, const std::string &name) {
+  auto ctx = _ctx.get();
+  handle_error(tiledb_array_schema_check(ctx, schema.ptr().get()));
+  handle_error(tiledb_array_create(ctx, name.c_str(), schema.ptr().get()));
 }
 
 std::ostream &operator<<(std::ostream &os, const tdb::Context &ctx) {

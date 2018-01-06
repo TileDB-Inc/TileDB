@@ -37,7 +37,6 @@
 
 #include "tiledb.h"
 #include "tdbpp_context.h"
-#include "tdbpp_array.h"
 #include "tdbpp_kv.h"
 #include "tdbpp_attribute.h"
 #include "tdbpp_dimension.h"

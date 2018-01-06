@@ -38,7 +38,7 @@ int main() {
   tdb::Context ctx;
 
   // Can also do: domain.create<uint64_t>();
-  tdb::Domain domain(ctx, TILEDB_UINT64);
+  tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
   d1.create<uint64_t>("d1", {1,4}, 2);
   d2.create<uint64_t>("d2", {1,4}, 2);
@@ -54,19 +54,17 @@ int main() {
   a2 << tdb::Compressor{TILEDB_GZIP, -1} << TILEDB_VAR_NUM;
   a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
 
-  tdb::ArrayMetadata meta(ctx);
-  meta.create("my_sparse_array");
-  meta.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
-  meta << TILEDB_SPARSE // Type of array
+  tdb::ArraySchema schema(ctx);
+  schema.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
+  schema << TILEDB_SPARSE // Type of array
        << 2 // set capacity
        << domain // Set domain
        << a1 << a2 << a3; // set attributes
 
-  // Check the metadata, and make the array.
-  tdb::Array array(ctx);
-  array.create(meta);
+  // Check the schema, and make the array.
+  ctx.array_create(schema, "my_sparse_array");
 
-  std::cout << "Array created: " << array << std::endl;
+  std::cout << "Array created with schema: " << schema << std::endl;
 
   return 0;
 }

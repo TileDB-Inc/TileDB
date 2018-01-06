@@ -50,12 +50,11 @@ namespace tdb {
 
   class Domain {
   public:
-    Domain(Context &ctx) : _ctx(ctx), _deleter(ctx) {}
+    Domain(Context &ctx) : _ctx(ctx), _deleter(ctx) {
+      create();
+    }
     Domain(Context &ctx, tiledb_domain_t **domain) : Domain(ctx) {
       load(domain);
-    }
-    Domain(Context &ctx, tiledb_datatype_t type) : Domain(ctx) {
-      create(type);
     }
     Domain(const Domain& o) = default;
     Domain(Domain&& o) = default;
@@ -72,19 +71,8 @@ namespace tdb {
      * Create a new domain.
      * @tparam DataT
      */
-    template<typename DataT, typename=typename DataT::type>
     void create() {
-      _create(DataT::tiledb_datatype);
-    }
-
-    template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, void>::type
-    create() {
-      create<typename type::type_from_native<T>::type>();
-    }
-
-    void create(tiledb_datatype_t type) {
-      _create(type);
+      _create();
     }
 
     tiledb_datatype_t type() const;
@@ -111,7 +99,7 @@ namespace tdb {
 
   private:
     void _init(tiledb_domain_t *domain);
-    void _create(tiledb_datatype_t type);
+    void _create();
 
     struct _Deleter {
       _Deleter(Context& ctx) : _ctx(ctx) {}

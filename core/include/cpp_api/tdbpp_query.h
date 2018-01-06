@@ -36,16 +36,17 @@
 #define TILEDB_TDBPP_QUERY_H
 
 #include "tdbpp_context.h"
-#include "tdbpp_array.h"
 #include "tdbpp_type.h"
 #include "tiledb.h"
 #include "tdbpp_utils.h"
+#include "tdbpp_arrayschema.h"
 
 #include <functional>
 #include <memory>
 #include <set>
 #include <iterator>
 #include <type_traits>
+#include <unordered_map>
 
 namespace tdb {
 
@@ -56,18 +57,7 @@ namespace tdb {
   public:
     enum class Status {FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF};
 
-    Query(ArrayMetadata &meta, tiledb_query_type_t type) : _ctx(meta.context()), _array(meta), _deleter(_ctx) {
-      tiledb_query_t *q;
-      _ctx.get().handle_error(tiledb_query_create(_ctx.get(), &q, meta.name().c_str(), type));
-      _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
-      _array_attributes = _array.get().attributes();
-    }
-    /**
-     * Create a new query bound to a particular array.
-     * @param array
-     * @param type Read or Write query.
-     */
-    Query(Array &array, tiledb_query_type_t type=TILEDB_READ) : Query(array.meta(), type) {}
+    Query(tdb::Context &ctx, const std::string &array, tiledb_query_type_t type);
     Query(const Query&) = default;
     Query(Query&& o) = default;
     Query &operator=(const Query&) = default;
@@ -94,11 +84,11 @@ namespace tdb {
     template<typename T>
     Query &subarray(const std::vector<typename T::type> &pairs) {
       auto &ctx = _ctx.get();
-      _type_check<T>(_array.get().domain().type());
-      if (pairs.size() != _array.get().domain().size() * 2) {
+      _type_check<T>(_schema.domain().type());
+      if (pairs.size() != _schema.domain().size() * 2) {
         throw std::invalid_argument("Subarray should have num_dims * 2 values: (low, high) for each dimension.");
       }
-      ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data(), T::tiledb_datatype));
+      ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
       _subarray_cells = pairs[1] - pairs[0] + 1;
       for (unsigned i = 2; i < pairs.size() - 1; i+= 2) {
         _subarray_cells = _subarray_cells * (pairs[i+1] - pairs[i] + 1);
@@ -115,7 +105,8 @@ namespace tdb {
     template<typename T>
     Query &subarray(const std::vector<std::array<typename T::type, 2>> &pairs) {
       auto &ctx = _ctx.get();
-      ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data(), T::tiledb_datatype));
+      _type_check<T>(_schema.domain().type());
+      ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
       _subarray_cells = pairs[0][1] - pairs[0][0] + 1;
       for (unsigned i = 1; i < pairs.size(); ++i) {
         _subarray_cells = _subarray_cells * (pairs[i][1] - pairs[i][0] + 1);
@@ -393,7 +384,7 @@ namespace tdb {
       if (_array_attributes.count(attr)) {
         // Type check if an attribute
         _type_check<DataT>(_array_attributes.at(attr).type());
-        if (varcmp == (_array.get().attributes().at(attr).num() == TILEDB_VAR_NUM)) {
+        if (varcmp == (_schema.attributes().at(attr).num() == TILEDB_VAR_NUM)) {
           throw std::invalid_argument("Offsets must be provided for variable length attributes.");
         }
       } else if (!_special_attributes.count(attr)) {
@@ -412,7 +403,7 @@ namespace tdb {
       if (_subarray_cells != 0) {
         elements_per_cell = elements_per_cell * _subarray_cells;
       } else {
-        for (const auto &dim : _array.get().domain().dimensions()) {
+        for (const auto &dim : _schema.domain().dimensions()) {
           const auto &d = dim.domain<DomainT>();
           elements_per_cell = elements_per_cell * (d.second - d.first + 1);
         }
@@ -435,7 +426,7 @@ namespace tdb {
                                std::vector<typename DataT::type> &buff,
                                uint64_t num=1, uint64_t max_el=0) {
       tiledb_datatype_t type;
-      if (attr == TILEDB_COORDS) type = _array.get().domain().type();
+      if (attr == TILEDB_COORDS) type = _schema.domain().type();
       else type = _array_attributes.at(attr).type();
       _type_check<DataT>(type);
       num = _get_buffer_size<DomainT>(num);
@@ -446,11 +437,11 @@ namespace tdb {
     // Special underlying attribute types to skip type checking for
     const std::set<std::string> _special_attributes{TILEDB_COORDS,};
 
-    // On init get the attributes the underlying arraymetadata defines
+    // On init get the attributes the underlying arrayschema defines
     std::unordered_map<std::string, Attribute> _array_attributes;
 
     std::reference_wrapper<Context> _ctx;
-    std::reference_wrapper<ArrayMetadata> _array;
+    ArraySchema _schema;
     _Deleter _deleter;
     std::vector<std::string> _attrs;
 

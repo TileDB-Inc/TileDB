@@ -38,7 +38,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  tiledb_ctx_create(&ctx, NULL);
 
   // Create attributes
   tiledb_attribute_t* a1;

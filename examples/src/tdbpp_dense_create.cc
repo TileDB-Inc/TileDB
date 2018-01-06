@@ -41,7 +41,6 @@ int main() {
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
 
-  domain.create<uint64_t>();
   d1.create<uint64_t>("d1", {1,4}, 2);
   d2.create<uint64_t>("d2", {1,4}, 2);
   domain << d1 << d2; // Add dims to domain
@@ -55,16 +54,14 @@ int main() {
   a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
 
-  tdb::ArrayMetadata meta(ctx);
-  meta.create("my_dense_array");
-  meta.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  meta << domain << a1 << a2 << a3; // Add attributes to array
+  tdb::ArraySchema schema(ctx);
+  schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
+  schema << domain << a1 << a2 << a3; // Add attributes to array
 
-  // Check the metadata, and make the array.
-  tdb::Array array(ctx);
-  array.create(meta);
+  // Check the schemadata, and make the array.
+  ctx.array_create(schema, "my_dense_array");
 
-  std::cout << array << std::endl;
+  std::cout << schema << std::endl;
 
   return 0;
 }

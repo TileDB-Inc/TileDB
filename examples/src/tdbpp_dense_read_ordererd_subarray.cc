@@ -47,8 +47,7 @@ int main() {
   tdb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Array array = ctx.array_get("my_dense_array");
-  tdb::Query query = array.read();
+  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set subarray. Templated on domain type.
   query.subarray<uint64_t>({3, 4, 2, 4});
