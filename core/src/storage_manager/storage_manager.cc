@@ -334,7 +334,7 @@ Status StorageManager::load_array_schema(
   }
 
   // Store in cache
-  if (st.ok() && !in_cache) {
+  if (st.ok() && !in_cache && buff->size() <= array_schema_cache_->max_size()) {
     buff->disown_data();
     st = array_schema_cache_->insert(
         array_schema_uri.to_string(), buff->data(), buff->size());
@@ -382,7 +382,8 @@ Status StorageManager::load_fragment_metadata(
   delete cbuff;
 
   // Store in cache
-  if (st.ok() && !in_cache) {
+  if (st.ok() && !in_cache &&
+      buff->size() <= fragment_metadata_cache_->max_size()) {
     buff->disown_data();
     st = fragment_metadata_cache_->insert(
         fragment_metadata_uri.to_string(), buff->data(), buff->size());
@@ -719,6 +720,11 @@ VFS* StorageManager::vfs() const {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
+  // Do nothing if the object size is larger than the cache size
+  uint64_t object_size = buffer->size();
+  if (object_size > tile_cache_->max_size())
+    return Status::Ok();
+
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
   if (filename == constants::fragment_metadata_filename ||
@@ -731,7 +737,6 @@ Status StorageManager::write_to_cache(
   key << uri.to_string() << "+" << offset;
 
   // Insert to cache
-  uint64_t object_size = buffer->size();
   void* object = std::malloc(object_size);
   if (object == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
