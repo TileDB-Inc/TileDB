@@ -52,9 +52,6 @@ tdb::Query::Status tdb::Query::submit() {
   return query_status();
 }
 
-void tdb::Query::_Deleter::operator()(tiledb_query_t *p) {
-  _ctx.get().handle_error(tiledb_query_free(_ctx.get(), p));
-}
 
 void tdb::Query::_prepare_submission() {
   _all_buff.clear();

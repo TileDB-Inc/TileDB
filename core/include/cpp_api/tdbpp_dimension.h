@@ -37,6 +37,7 @@
 
 #include "tiledb.h"
 #include "tdbpp_type.h"
+#include "tdbpp_object.h"
 
 #include <functional>
 #include <memory>
@@ -146,17 +147,6 @@ namespace tdb {
     }
 
   private:
-    struct _Deleter {
-      _Deleter(Context &ctx) : _ctx(ctx) {}
-
-      _Deleter(const _Deleter &) = default;
-
-      void operator()(tiledb_dimension_t *p);
-
-    private:
-      std::reference_wrapper<Context> _ctx;
-    };
-
     std::reference_wrapper<Context> _ctx;
     _Deleter _deleter;
     std::shared_ptr<tiledb_dimension_t> _dim;

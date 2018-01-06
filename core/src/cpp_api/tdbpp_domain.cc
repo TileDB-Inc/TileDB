@@ -86,10 +86,6 @@ void tdb::Domain::load(tiledb_domain_t **domain) {
   }
 }
 
-void tdb::Domain::_Deleter::operator()(tiledb_domain_t *p) {
-  _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), p));
-}
-
 std::ostream &tdb::operator<<(std::ostream &os, const tdb::Domain &d) {
   os << "Domain<(" << tdb::type::from_tiledb(d.type()) << ")";
   for (const auto &dimension : d.dimensions()) {

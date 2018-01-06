@@ -126,13 +126,6 @@ namespace tdb {
     }
 
   protected:
-    struct _Deleter {
-      _Deleter(Context& ctx) : _ctx(ctx) {}
-      _Deleter(const _Deleter&) = default;
-      void operator()(tiledb_attribute_t *p);
-    private:
-      std::reference_wrapper<Context> _ctx;
-    };
     void _init(tiledb_attribute_t *attr);
     void _create(const std::string &name, tiledb_datatype_t type);
 

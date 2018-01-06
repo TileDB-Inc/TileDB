@@ -33,6 +33,7 @@
  */
 
 #include "tdbpp_object.h"
+#include "tdbpp_context.h"
 
 std::ostream &tdb::operator<<(std::ostream &os, const tdb::Object &obj) {
   os << obj.to_str();
@@ -76,6 +77,26 @@ void tdb::Object::set(const tiledb_object_t t) {
   }
 }
 
+void tdb::_Deleter::operator()(tiledb_query_t *p) {
+  _ctx.get().handle_error(tiledb_query_free(_ctx.get(), p));
+}
+
+void tdb::_Deleter::operator()(tiledb_array_schema_t *p) {
+  _ctx.get().handle_error(tiledb_array_schema_free(_ctx.get(), p));
+}
+
+void tdb::_Deleter::operator()(tiledb_attribute_t *p) {
+  _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), p));
+}
+
+void tdb::_Deleter::operator()(tiledb_dimension_t *p) {
+  _ctx.get().handle_error(tiledb_dimension_free(_ctx.get(), p));
+}
+
+void tdb::_Deleter::operator()(tiledb_domain_t *p) {
+  _ctx.get().handle_error(tiledb_domain_free(_ctx.get(), p));
+}
+
 std::string tdb::from_tiledb(const tiledb_layout_t &layout) {
   switch (layout) {
     case TILEDB_GLOBAL_ORDER:
@@ -94,6 +115,7 @@ std::string tdb::from_tiledb(const tiledb_array_type_t &type) {
   return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
 }
 
+
 std::string tdb::from_tiledb(const tiledb_query_type_t &qtype) {
   switch(qtype) {
     case TILEDB_READ:
@@ -101,4 +123,5 @@ std::string tdb::from_tiledb(const tiledb_query_type_t &qtype) {
     case TILEDB_WRITE:
       return "WRITE";
   }
+  return ""; // silence error
 }

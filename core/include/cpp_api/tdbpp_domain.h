@@ -101,14 +101,6 @@ namespace tdb {
     void _init(tiledb_domain_t *domain);
     void _create();
 
-    struct _Deleter {
-      _Deleter(Context& ctx) : _ctx(ctx) {}
-      _Deleter(const _Deleter&) = default;
-      void operator()(tiledb_domain_t *p);
-    private:
-      std::reference_wrapper<Context> _ctx;
-    };
-
     std::reference_wrapper<Context> _ctx;
     _Deleter _deleter;
     std::shared_ptr<tiledb_domain_t> _domain;

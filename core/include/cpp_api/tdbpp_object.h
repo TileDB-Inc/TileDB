@@ -36,11 +36,15 @@
 #define TILEDB_GENOMICS_OBJECT_H
 
 #include "tiledb.h"
+
 #include <iostream>
 #include <type_traits>
 #include <string>
+#include <functional>
 
 namespace tdb {
+
+  class Context;
 
   /**
    * Represents a tiledb object: an array, group, keyvalue, or none (invalid)
@@ -72,6 +76,28 @@ namespace tdb {
     Compressor(tiledb_compressor_t compressor, int level) : compressor(compressor), level(level) {}
     tiledb_compressor_t compressor;
     int level;
+  };
+
+  /**
+   * Deleter for various tiledb types. Usefull for sharedptr.
+   *
+   * @code{cpp}
+   * tdb::Context ctx;
+   * _Deleter _deleter(ctx);
+   * std::shared_ptr<tiledb_type_t> p = std::shared_ptr<tiledb_type_t>(ptr, _deleter);
+   * @endcode
+   */
+  struct _Deleter {
+    _Deleter(Context& ctx) : _ctx(ctx) {}
+    _Deleter(const _Deleter&) = default;
+    void operator()(tiledb_query_t *p);
+    void operator()(tiledb_array_schema_t *p);
+    void operator()(tiledb_attribute_t *p);
+    void operator()(tiledb_dimension_t *p);
+    void operator()(tiledb_domain_t *p);
+
+  private:
+    std::reference_wrapper<Context> _ctx;
   };
 
   std::string from_tiledb(const tiledb_layout_t &layout);

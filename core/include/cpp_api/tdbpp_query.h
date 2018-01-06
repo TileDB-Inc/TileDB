@@ -352,14 +352,6 @@ namespace tdb {
     std::vector<uint64_t> returned_buff_sizes();
 
   private:
-    struct _Deleter {
-      _Deleter(Context& ctx) : _ctx(ctx) {}
-      _Deleter(const _Deleter&) = default;
-      void operator()(tiledb_query_t *p);
-    private:
-      std::reference_wrapper<Context> _ctx;
-    };
-
     /**
      * Collate buffers and attach them to the query.
      */
@@ -460,7 +452,7 @@ namespace tdb {
   };
 
   std::ostream &operator<<(std::ostream &os, const Query::Status &stat);
-  
+
 }
 
 

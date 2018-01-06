@@ -87,10 +87,6 @@ void tdb::Attribute::_create(const std::string &name, tiledb_datatype_t type) {
   _init(attr);
 }
 
-void tdb::Attribute::_Deleter::operator()(tiledb_attribute_t *p) {
-  _ctx.get().handle_error(tiledb_attribute_free(_ctx.get(), p));
-}
-
 std::ostream &tdb::operator<<(std::ostream &os, const Attribute &a) {
   os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
      << (a.num() == TILEDB_VAR_NUM ? "VAR" : std::to_string(a.num())) << '>';

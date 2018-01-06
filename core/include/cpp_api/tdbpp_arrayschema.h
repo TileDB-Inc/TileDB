@@ -49,13 +49,15 @@
 namespace tdb {
 
   /**
-   * Specifies the configuration that defines an Array.
+   * Specifies a schema for an Array.
    */
   class ArraySchema {
   public:
     ArraySchema(Context &ctx) : _ctx(ctx), _deleter(ctx) {};
+
     /**
      * Load schema given a C API pointer. The class takes ownership of the pointer.
+     *
      * @param ctx context
      * @param schema schema pointer
      */
@@ -65,7 +67,10 @@ namespace tdb {
         *schema = nullptr;
       }
     };
+
     /**
+     * Load the schema of an existing array.
+     *
      * @param ctx context
      * @param uri Name of array to load the schema for.
      */
@@ -79,6 +84,7 @@ namespace tdb {
 
     /**
      * Load array schema given an array path.
+     *
      * @param uri
      */
     void load(const std::string &uri) {
@@ -87,6 +93,7 @@ namespace tdb {
 
     /**
      * Create new schema for an array with name uri
+     *
      * @param uri
      * @return *this
      */
@@ -95,11 +102,13 @@ namespace tdb {
     std::string to_str() const;
 
     /**
-     * @return Array type (ex. Dense, Sparse, kv_
+     * @return Array type (Dense, Sparse)
      */
     tiledb_array_type_t type() const;
 
     /**
+     * Set the type of array.
+     *
      * @param type DENSE or SPARSE array
      */
     ArraySchema &set_type(tiledb_array_type_t type) {
@@ -110,12 +119,14 @@ namespace tdb {
 
     /**
      * For a sparse array, get the number of cells per tile.
+     *
      * @return Cells per tile
      */
     uint64_t capacity() const;
 
     /**
      * For a sparse array, set the number of cells per tile.
+     *
      * @param capacity
      */
     ArraySchema &set_capacity(uint64_t capacity);
@@ -126,11 +137,15 @@ namespace tdb {
     tiledb_layout_t tile_order() const;
 
     /**
+     * Set order of tile compression.
+     *
      * @param layout Tile layout
      */
     ArraySchema &set_tile_order(tiledb_layout_t layout);
 
     /**
+     * Set both the tile and cell layouts
+     *
      * @param {Tile layout, Cell layout}
      */
     ArraySchema &set_order(const std::array<tiledb_layout_t, 2> &p);
@@ -221,18 +236,8 @@ namespace tdb {
     std::reference_wrapper<Context> context();
 
   private:
-    friend class Array;
-
     void _init(tiledb_array_schema_t* schema);
     void _init(const std::string &uri);
-
-    struct _Deleter {
-      _Deleter(Context& ctx) : _ctx(ctx) {}
-      _Deleter(const _Deleter&) = default;
-      void operator()(tiledb_array_schema_t *p);
-    private:
-      std::reference_wrapper<Context> _ctx;
-    };
 
     std::reference_wrapper<Context> _ctx;
     _Deleter _deleter;

@@ -209,10 +209,6 @@ std::reference_wrapper<tdb::Context> tdb::ArraySchema::context() {
   return _ctx;
 }
 
-void tdb::ArraySchema::_Deleter::operator()(tiledb_array_schema_t *p) {
-  _ctx.get().handle_error(tiledb_array_schema_free(_ctx.get(), p));
-}
-
 std::ostream &tdb::operator<<(std::ostream &os, const ArraySchema &schema) {
   os << schema.to_str();
   return os;
