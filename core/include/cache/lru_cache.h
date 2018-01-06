@@ -116,6 +116,9 @@ class LRUCache {
    */
   Status insert(const std::string& key, void* object, uint64_t size);
 
+  /** Returns the maximum size of the cache. */
+  uint64_t max_size() const;
+
   /**
    * Reads an entire cached object labeled by `key`.
    *

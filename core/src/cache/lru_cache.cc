@@ -126,6 +126,10 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
   return Status::Ok();
 }
 
+uint64_t LRUCache::max_size() const {
+  return max_size_;
+}
+
 Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
   // Lock mutex
   mtx_.lock();
