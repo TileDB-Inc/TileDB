@@ -39,11 +39,12 @@ function(build_TileDB_example_cppapi TARGET)
     target_link_libraries(${TARGET} tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
   endif()
   target_link_libraries(${TARGET} tdbpp_static tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES})
+  target_link_libraries(${TARGET} tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES})
 endfunction()
 
 # Get the example sources
-file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "src/tiledb*.c")
-file(GLOB TILEDB_EXAMPLE_SOURCES_CPPAPI "src/tdbpp*.cc")
+file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "src/*.c")
+file(GLOB TILEDB_EXAMPLE_SOURCES_CPPAPI "src/*.cc")
 
 # Include TileDB C API headers
 include_directories(BEFORE "${CMAKE_SOURCE_DIR}/core/include/c_api/" "${CMAKE_SOURCE_DIR}/core/include/cpp_api/")
@@ -79,9 +80,9 @@ endforeach()
 
 # Add custom target 'examples'
 add_custom_target(examples_c DEPENDS tiledb_static)
-add_custom_target(examples_cpp DEPENDS tdbpp_static)
-add_dependencies(examples_c ${EXAMPLE_C_BINS})
-add_dependencies(examples_cpp ${EXAMPLE_CPP_BINS})
+add_custom_target(examples_cpp DEPENDS tiledb_static)
+add_dependencies(examples_c ${EXAMPLE_C_BINS} tiledb_static)
+add_dependencies(examples_cpp ${EXAMPLE_CPP_BINS} tiledb_static)
 
 add_custom_target(examples DEPENDS examples_c examples_cpp)
-add_dependencies(examples ${EXAMPLE_C_BINS} ${EXAMPLE_CPP_BINS})
+add_dependencies(examples ${EXAMPLE_C_BINS} ${EXAMPLE_CPP_BINS} tiledb_static)

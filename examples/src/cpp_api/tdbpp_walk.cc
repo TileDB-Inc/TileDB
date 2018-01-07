@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_sparse_create.cc
+ * @file   tdbpp_walk.cc
  *
  * @section LICENSE
  *
@@ -28,43 +28,35 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_sparse_array" in the current working directory.
+ * Walk a directory for TileDB Objects.
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
 
-  // Can also do: domain.create<uint64_t>();
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {1,4}, 2);
-  d2.create<uint64_t>("d2", {1,4}, 2);
-  domain << d1 << d2; // Add dims to domain
+  std::cout << "Preorder traversal: \n";
+  // Default order is preorder
+  for (const auto &object : ctx) {
+    std::cout << object << '\n';
+  }
 
-  // Can also do: a1.create<int>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
+  std::cout << "\nPostorder traversal: \n";
+  for (auto begin=ctx.begin(TILEDB_POSTORDER); begin != ctx.end(); ++begin) {
+    std::cout << *begin << '\n';
+  }
 
-  // Set attr compressors and number
-  a1 << tdb::Compressor{TILEDB_BLOSC, -1} << 1;
-  a2 << tdb::Compressor{TILEDB_GZIP, -1} << TILEDB_VAR_NUM;
-  a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
+  std::cout << "\nOnly groups: \n";
+  for (const auto &object : ctx.groups()) {
+    std::cout << object << '\n';
+  }
 
-  tdb::ArraySchema schema(ctx);
-  schema.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
-  schema << TILEDB_SPARSE // Type of array
-       << 2 // set capacity
-       << domain // Set domain
-       << a1 << a2 << a3; // set attributes
-
-  // Check the schema, and make the array.
-  ctx.array_create(schema, "my_sparse_array");
-
-  std::cout << "Array created with schema: " << schema << std::endl;
+  std::cout << "\nOnly arrays: \n";
+  for (const auto &object : ctx.arrays()) {
+    std::cout << object << '\n';
+  }
 
   return 0;
 }
+

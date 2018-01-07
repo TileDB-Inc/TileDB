@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_error.h
- *
- * @author Ravi Gaddipati
+ * @file   tdbpp_dense_read_subset_incomplete.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,23 +28,42 @@
  *
  * @section DESCRIPTION
  *
- * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
+ * It shows how to read from a dense array, constraining the read
+ * to a specific subarray and a subset of attributes. Moreover, the
+ * program shows how to handle incomplete queries that did not complete
+ * because the input buffers were not big enough to hold the entire
+ * result.
  */
 
-#include <tdbpp>
+#include <tiledb>
+#include <iomanip>
 
 int main() {
+  using std::setw;
   tdb::Context ctx;
 
-  // default: throws runtime_error
-  try {
-    ctx.group_create("my_group");
-    ctx.group_create("my_group");
-  } catch (std::runtime_error &e) {
-    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
-  }
+  // Init the array & query for the array
+  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
-  // Set a different handler
-  ctx.set_error_handler([](std::string msg){std::cout << "Callback:\n\t" << msg << "\n";});
-  ctx.group_create("my_group");
+  // Set subarray. Templated on domain type.
+  query.subarray<uint64_t>({3, 4, 2, 4});
+  query.buffer_list({"a1"});
+  query.layout(TILEDB_ROW_MAJOR);
+
+  // Limit buff size to 2
+  auto a1_data = query.make_buffer<tdb::type::INT32>("a1", 2);
+  query.set_buffer<tdb::type::INT32>("a1", a1_data);
+
+  std::cout << "a1\n---\n";
+  do {
+    std::cout << "Reading cells...\n";
+    query.submit();
+    const auto &buff_sizes = query.returned_buff_sizes();
+
+    for (unsigned i = 0; i < buff_sizes[0]; ++i) {
+      std::cout << a1_data[i] << "\n";
+    }
+  } while (query.query_status() == tdb::Query::Status::INCOMPLETE);
+
+  return 0;
 }

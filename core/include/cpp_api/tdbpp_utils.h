@@ -55,18 +55,19 @@ namespace tdb {
 
   /**
  * Covert an offset, data vector pair into a single vector of vectors.
+   *
  * @tparam T underlying datatype
+ * @tparam E element type. usually std::vector<T> or std::string. Must be constructable by a buff::iterator pair
  * @param offsets Offsets vector
  * @param buff data vector
  * @param num_offset num offset elements populated by query
  * @param num_buff num data elements populated by query.
- * @return std::vector<std::vector<T>>
+ * @return std::vector<E>
  */
-  template <typename T>
-  std::vector<std::vector<T>>
-  group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
-                uint64_t num_offset, uint64_t num_buff) {
-    std::vector<std::vector<T>> ret;
+  template <typename T, typename E=typename std::vector<T>>
+  std::vector<E> group_by_cell(const std::vector<uint64_t> &offsets, const std::vector<T> &buff,
+                               uint64_t num_offset, uint64_t num_buff) {
+    std::vector<E> ret;
     ret.reserve(num_offset);
     for (unsigned i = 0; i < num_offset; ++i) {
       ret.emplace_back(buff.begin() + offsets[i], (i == num_offset - 1) ? buff.begin()+num_buff : buff.begin()+offsets[i+1]);
@@ -76,31 +77,32 @@ namespace tdb {
 
   /**
    * Covert an offset, data vector pair into a single vector of vectors.
+   *
    * @tparam T underlying datatype
+   * @tparam E element type. usually std::vector<T> or std::string. Must be constructable by a buff::iterator pair
    * @param buff pair<offset_vec, data_vec>
    * @param num_offset num offset elements populated by query
    * @param num_buff num data elements populated by query.
-   * @return std::vector<std::vector<T>>
+   * @return std::vector<E>
    */
-  template <typename T>
-  std::vector<std::vector<T>>
-  group_by_cell(const std::pair<std::vector<uint64_t>, std::vector<T>> &buff,
-                uint64_t num_offset, uint64_t num_buff) {
-    return group_by_cell(buff.first, buff.second, num_offset, num_buff);
+  template <typename T, typename E=typename std::vector<T>>
+  std::vector<E> group_by_cell(const std::pair<std::vector<uint64_t>, std::vector<T>> &buff,
+                               uint64_t num_offset, uint64_t num_buff) {
+    return group_by_cell<T,E>(buff.first, buff.second, num_offset, num_buff);
   }
 
   /**
    * Group by cell at runtime.
+   *
    * @tparam T Element type
+   * @tparam E element type. usually std::vector<T> or std::string. Must be constructable by a buff::iterator pair
    * @param buff data buffer
    * @param el_per_cell Number of elements per cell to group together
    * @param num_buff Number of elements populated by query. To group whole buffer, use buff.size()
-   * @return
    */
-  template<typename T>
-  std::vector<std::vector<T>>
-  group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell, uint64_t num_buff) {
-    std::vector<std::vector<T>> ret;
+  template<typename T, typename E=typename std::vector<T>>
+  std::vector<E> group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell, uint64_t num_buff) {
+    std::vector<E> ret;
     if (buff.size() % el_per_cell != 0) {
       throw std::invalid_argument("Buffer is not a multiple of elements per cell.");
     }
@@ -113,14 +115,15 @@ namespace tdb {
 
   /**
    * Group a data vector into a a vector of arrays
+   *
    * @tparam N Elements per cell
    * @tparam T Array element type
    * @param buff data buff to group
    * @param num_buff Number of elements in buff that were populated by the query.
    * @return std::vector<std::array<T,N>>
    */
-  template<uint64_t N, typename T> std::vector<std::array<T,N>>
-  group_by_cell(const std::vector<T> &buff, uint64_t num_buff) {
+  template<uint64_t N, typename T>
+  std::vector<std::array<T,N>> group_by_cell(const std::vector<T> &buff, uint64_t num_buff) {
     std::vector<std::array<T,N>> ret;
     if (buff.size() % N != 0) {
       throw std::invalid_argument("Buffer is not a multiple of elements per cell.");
@@ -139,14 +142,14 @@ namespace tdb {
 
   /**
    * Unpack a vector of variable sized attributes into a data and offset buffer.
+   *
    * @tparam T Vector type. T::value_type is considered the underlying data element type. Should be vector or string.
    * @tparam R T::value_type, deduced
    * @param data data to unpack
    * @return pair where .first is the offset buffer, and .second is data buffer
    */
   template<typename T, typename R=typename T::value_type>
-  std::pair<std::vector<uint64_t>, std::vector<R>>
-  make_var_buffers(const std::vector<T> &data) {
+  std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(const std::vector<T> &data) {
     std::pair<std::vector<uint64_t>, std::vector<R>> ret;
     ret.first.push_back(0);
     for (const auto &v : data) {

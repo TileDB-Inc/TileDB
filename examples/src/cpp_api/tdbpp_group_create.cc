@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_kv.h
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_group_create.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * Key Value API
+ * It creates a hierarchical directory structure with three groups:
+ *     my_group
+ *        |_ dense_arrays
+ *        |_ sparse_arrays
+ *
+ * Make sure that no folder with name "my_group" exists in the working
+ * directory before running this example.
  */
 
-#ifndef TILEDB_TDBPP_KV_H
-#define TILEDB_TDBPP_KV_H
+#include <tiledb>
 
-#endif //TILEDB_TDBPP_KV_H
+int main() {
+  tdb::Context ctx;
+  ctx.create_group("my_group");
+  ctx.create_group("my_group/dense_arrays");
+  ctx.create_group("my_group/sparse_arrays");
+}

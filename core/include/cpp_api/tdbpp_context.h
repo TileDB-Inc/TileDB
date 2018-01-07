@@ -64,13 +64,13 @@ namespace tdb {
 
     /**
      * Sets the root for all walks.
+     *
      * @param root
      */
     void set_root(const std::string &root);
 
     /**
-     * Get the root path of the directory being walked.
-     * @return
+     * @return Get the root path of the directory being walked.
      */
     const std::string &root() const;
     
@@ -80,6 +80,9 @@ namespace tdb {
 
     tiledb_ctx_t *get();
 
+    /**
+     * Get the current object, defining the current dir object type and URI.
+     */
     const Object &context_type() const;
 
     class iterator: public std::iterator<std::forward_iterator_tag, Object> {
@@ -147,59 +150,86 @@ namespace tdb {
 
     iterator end();
 
+    /**
+     * Get the object type of the given path.
+     *
+     * @param uri
+     * @return object
+     */
     Object object_type(const std::string &uri);
 
-    std::vector<Context> groups();
+    /**
+     * Get all URI's of groups in the current root.
+     */
+    std::vector<std::string> groups();
 
     /**
-     * Find a group in the current path by name.
+     * Find a group in the current path that contains name.
+     *
      * @param name
      * @return Group object
      */
-    tdb::Object group_find(const std::string &name);
+    std::string find_group(const std::string &name);
 
     /**
      * Make a new group.
+     *
      * @param group group name.
      * @return *this
      */
-    Context group_create(const std::string &group);
+    Context create_group(const std::string &group);
 
     /**
      * Get all URI's of arrays in the current root.
-     * @return
      */
     std::vector<std::string> arrays();
 
     /**
      * Search the current path for an array and get the full path.
+     *
      * @param name
      * @return Array URI
      */
-    std::string array_find(const std::string &name);
+    std::string find_array(const std::string &name);
 
-    void array_create(const ArraySchema &schema, const std::string &name);
+    /**
+     * Make an array on disk from a schema definition.
+     *
+     * @param schema
+     * @param name
+     */
+    void create_array(const ArraySchema &schema, const std::string &name);
 
     /**
      * Consolidate fragments.
+     *
      * @param name
      */
     void consolidate(const std::string &name);
 
     /**
      * Delete a tiledb object.
+     *
      * @param name
      */
     void del(const std::string &name);
 
     /**
      * Move a tiledb object.
+     *
      * @param oldname
      * @param newname
      * @param force
      */
     void move(std::string oldname, std::string newname, bool force);
 
+    /**
+     * Handle an error with the given callback if ret != TILEDB_OK
+     *
+     * @tparam C
+     * @param ret return code
+     * @param callback callback function accepting a msg string
+     */
     template<typename C>
     void handle_error(int ret, C callback) {
       if (ret != TILEDB_OK) {
@@ -210,12 +240,14 @@ namespace tdb {
 
     /**
      * Error handler for tiledb C API calls.
+     *
      * @param ret If != 0, call error handler
      */
     void handle_error(int ret);
 
     /**
      * Set error handler for failed tiledb calls.
+     *
      * @param fn Function that accepts error message.
      */
     void set_error_handler(std::function<void(std::string)> fn);

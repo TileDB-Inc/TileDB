@@ -1,12 +1,12 @@
 /**
- * @file   tdbpp_version.cc
+ * @file   tdbpp_move.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +28,21 @@
  *
  * @section DESCRIPTION
  *
- * Print the tiledb version.
+ * It shows how to move/rename a TileDB resource.
  */
 
-#include "tdbpp"
+#include <tiledb>
 
 int main() {
-  tdb::Version version = tdb::version();
-  std::cout << version << '\n';
+  tdb::Context ctx;
+
+  ctx.move("my_group", "my_group_2", true);
+  ctx.move("my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
+
+  try {
+    ctx.move("invalid_path", "path", false);
+  } catch (std::runtime_error &e) {
+    std::cout << "Failed to move invalid path.\n";
+  }
   return 0;
 }

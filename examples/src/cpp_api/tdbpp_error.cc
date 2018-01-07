@@ -1,12 +1,13 @@
 /**
- * @file   tdbpp_consolidate.cc
+ * @file   tdbpp_error.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,16 +29,23 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
-  ctx.consolidate("my_dense_array");
-  return 0;
-}
 
+  // default: throws runtime_error
+  try {
+    ctx.create_group("my_group");
+    ctx.create_group("my_group");
+  } catch (std::runtime_error &e) {
+    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
+  }
+
+  // Set a different handler
+  ctx.set_error_handler([](std::string msg){std::cout << "Callback:\n\t" << msg << "\n";});
+  ctx.create_group("my_group");
+}

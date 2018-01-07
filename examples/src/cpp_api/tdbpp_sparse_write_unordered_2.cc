@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_sparse_write_unordered_1.cc
+ * @file   tdbpp_sparse_write_unordered_2.cc
  *
  * @section LICENSE
  *
@@ -28,15 +28,16 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unordered cells to a sparse array in a single write.
+ * It shows how to write unordered cells to a sparse array with two write
+ * queries.
  *
  * You need to run the following to make this work:
  *
  * ./tiledb_sparse_create
- * ./tiledb_sparse_write_unordered_1
+ * ./tiledb_sparse_write_unordered_2
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
@@ -45,11 +46,10 @@ int main() {
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
 
   // clang-format off
-  std::vector<int> a1_buff = {7, 5, 0, 6, 4, 3, 1, 2};
-  auto a2_buff = tdb::make_var_buffers<std::string>({"hhhh", "ff", "a", "ggg", "e", "dddd", "bb", "ccc"});
-  std::vector<float> a3_buff = {7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
-                                4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2};
-  std::vector<uint64_t> coords_buff = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
+  std::vector<int> a1_buff = {7, 5, 0};
+  auto a2_buff = tdb::make_var_buffers<std::string>({"hhhh", "ff", "a"});
+  std::vector<float> a3_buff = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
+  std::vector<uint64_t> coords_buff = {3, 4, 4, 2, 1, 1};
 
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
@@ -59,5 +59,19 @@ int main() {
 
   query.submit();
 
-  return 0;
+  a1_buff = {6, 4, 3, 1, 2};
+  auto a2_2_buff = tdb::make_var_buffers<std::string>({"ggg", "e", "dddd", "bb", "ccc"});
+  a3_buff = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
+  coords_buff = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
+
+  // Reset buffers. This is needed in case vectors reallocate during reassignment.
+  query.reset_buffers();
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_2_buff);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coords_buff);
+
+  query.submit();
+
+return 0;
 }

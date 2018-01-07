@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_sparse_write_unordered_1_again.cc
+ * @file   tdbpp_consolidate.cc
  *
  * @section LICENSE
  *
@@ -28,36 +28,16 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unordered cells to a sparse array in a single write.
- * This time we write 4 cells.
- *
- * You need to run the following to make this work:
- *
- * ./tiledb_sparse_create
- * ./tiledb_sparse_write_unordered_1_again
+ * It shows how to create a dense array. Make sure that no directory exists
+ * with the name "my_dense_array" in the current working directory. Uses
+ * C++ API.
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
-  tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
-
-  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
-
-  // clang-format off
-  std::vector<int> a1_buff = {107, 104, 106, 105};
-  auto a2_buff = tdb::make_var_buffers<std::string>({"yyy", "u", "w", "vvvv"});
-  std::vector<float> a3_buff = {107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
-  std::vector<uint64_t> coords_buff = {3, 4, 3, 2, 3, 3, 4, 1};
-
-  query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_buff);
-  query.set_buffer("a3", a3_buff);
-  query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.layout(TILEDB_UNORDERED);
-
-  query.submit();
-
+  ctx.consolidate("my_dense_array");
   return 0;
 }
+

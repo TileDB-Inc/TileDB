@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_write_global_1.cc
+ * @file   tdbpp_dense_write_async.cc
  *
  * @section LICENSE
  *
@@ -28,40 +28,43 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write an entire dense array in a single write.
+ * It shows how to write asynchronoulsy to a dense array. The case of sparse
+ * arrays is similar.
  *
  * You need to run the following to make this work:
  *
- * ./tdbpp_dense_create
- * ./tdbpp_dense_write_global_1
+ * $ ./tiledb_dense_create
+ * # ./tiledb_dense_write_async
  */
 
-#include <tdbpp>
+#include <tiledb>
+
+void* print_upon_completion(void* s);
 
 int main() {
   tdb::Context ctx;
 
   // Buffers
   std::vector<int> a1_data =
-  {
-  0,  1,  2,  3,                                     // Upper left tile
-  4,  5,  6,  7,                                     // Upper right tile
-  8,  9,  10, 11,                                    // Lower left tile
-  12, 13, 14, 15                                     // Lower right tile
-  };
+    {
+    0,  1,  2,  3,                                     // Upper left tile
+    4,  5,  6,  7,                                     // Upper right tile
+    8,  9,  10, 11,                                    // Lower left tile
+    12, 13, 14, 15                                     // Lower right tile
+    };
   std::string a2str =
-  "abbcccdddd"                                       // Upper left tile
-  "effggghhhh"                                       // Upper right tile
-  "ijjkkkllll"                                       // Lower left tile
-  "mnnooopppp";                                      // Lower right tile
+    "abbcccdddd"                                       // Upper left tile
+    "effggghhhh"                                       // Upper right tile
+    "ijjkkkllll"                                       // Lower left tile
+    "mnnooopppp";                                      // Lower right tile
   std::vector<char> a2_data(a2str.begin(), a2str.end());
   std::vector<uint64_t> a2_offsets =
-  {
-  0,  1,  3,  6,                                     // Upper left tile
-  10, 11, 13, 16,                                    // Upper right tile
-  20, 21, 23, 26,                                    // Lower left tile
-  30, 31, 33, 36                                     // Lower right tile
-  };
+    {
+    0,  1,  3,  6,                                     // Upper left tile
+    10, 11, 13, 16,                                    // Upper right tile
+    20, 21, 23, 26,                                    // Lower left tile
+    30, 31, 33, 36                                     // Lower right tile
+    };
   std::vector<float> a3_data =
   {
   0.1,  0.2,  1.1,  1.2, 2.1,  2.2,  3.1,  3.2,     // Upper left tile
@@ -79,7 +82,21 @@ int main() {
   query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_data);
 
-  query.submit();
+  // Submit query with callback
+  static const std::string msg = "(Callback) Query completed.";
+  query.submit_async(&print_upon_completion, (void*)msg.c_str());
+
+  std::cout << "Query in progress\n";
+  tdb::Query::Status status;
+  do {
+    // Wait till query is done
+    status = query.query_status();
+  } while (status == tdb::Query::Status::INPROGRESS);
 
   return 0;
+}
+
+void* print_upon_completion(void* s) {
+  std::cout << std::string(static_cast<char*>(s)) << std::endl;
+  return nullptr;
 }

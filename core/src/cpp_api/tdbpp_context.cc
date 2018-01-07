@@ -47,10 +47,10 @@ void tdb::Context::set_root(const std::string &root) {
   tiledb_object_t type;
   handle_error(tiledb_object_type(_ctx.get(), root.c_str(), &type));
   _curr_object.set(type);
-  if (_curr_object.type == Object::Type::Array) throw std::runtime_error("Cannot move context to an Array.");
+
 }
 
-std::string tdb::Context::array_find(const std::string &name) {
+std::string tdb::Context::find_array(const std::string &name) {
   bool found = false;
   std::string ret = "";
   for (const auto &i : *this) {
@@ -64,24 +64,24 @@ std::string tdb::Context::array_find(const std::string &name) {
   return ret;
 }
 
-tdb::Object tdb::Context::group_find(const std::string &name) {
-  auto ret = Object();
+std::string tdb::Context::find_group(const std::string &name) {
+  std::string ret;
   bool found = false;
   for (const auto &i : *this) {
     if (i.type != Object::Type::Group) continue;
     if (i.uri.size() >= name.size() && i.uri.substr(i.uri.size() - name.size()) == name)  {
       if (found) throw std::runtime_error("Multiple matches found, extend search path.");
       found = true;
-      ret = i;
+      ret = i.uri;
     }
   }
   return ret;
 }
 
-std::vector<tdb::Context> tdb::Context::groups() {
-  std::vector<Context> ret;
+std::vector<std::string> tdb::Context::groups() {
+  std::vector<std::string> ret;
   for (const auto &i : *this) {
-    if (i.type == Object::Type::Group) ret.emplace_back(*this, i);
+    if (i.type == Object::Type::Group) ret.push_back(i.uri);
   }
   return ret;
 }
@@ -105,7 +105,7 @@ std::string tdb::Context::_handle_error() {
     return _msg_str;
 }
 
-tdb::Context tdb::Context::group_create(const std::string &group) {
+tdb::Context tdb::Context::create_group(const std::string &group) {
   handle_error(tiledb_group_create(_ctx.get(), group.c_str()));
   return *this;
 }
@@ -173,10 +173,14 @@ void tdb::Context::_default_handler(std::string msg) {
   throw std::runtime_error(msg);
 }
 
-void tdb::Context::array_create(const tdb::ArraySchema &schema, const std::string &name) {
+void tdb::Context::create_array(const tdb::ArraySchema &schema, const std::string &name) {
   auto ctx = _ctx.get();
   handle_error(tiledb_array_schema_check(ctx, schema.ptr().get()));
   handle_error(tiledb_array_create(ctx, name.c_str(), schema.ptr().get()));
+}
+
+const std::string &tdb::Context::root() const {
+  return _curr_object.uri;
 }
 
 void tdb::Context::iterator::_init(const std::string &root, tiledb_ctx_t *ctx, tiledb_walk_order_t order) {

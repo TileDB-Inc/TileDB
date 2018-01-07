@@ -63,12 +63,14 @@ namespace tdb {
 
     /**
      * Load and take ownership of a domain.
+     *
      * @param domain
      */
     void load(tiledb_domain_t **domain);
 
     /**
      * Create a new domain.
+     *
      * @tparam DataT
      */
     void create() {
@@ -84,6 +86,7 @@ namespace tdb {
 
     /**
      * Add a new dimension to the domain.
+     *
      * @param d dimension to add
      */
     Domain &add_dimension(const Dimension &d);

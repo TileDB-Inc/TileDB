@@ -61,6 +61,8 @@ namespace tdb {
 
     /**
      * Load an array from tiledb, and take ownership.
+     *
+     * @param attr attribute to load
      */
     void load(tiledb_attribute_t **attr) {
       if (attr && *attr) {
@@ -71,6 +73,7 @@ namespace tdb {
 
     /**
      * Create a new attribute of type DataT
+     *
      * @tparam DataT tdb::type::*
      * @param name Attribute name
      * @return *this
@@ -83,6 +86,7 @@ namespace tdb {
 
     /**
      * Create a new attribute with datatype T. Reverse lookup for DataT.
+     *
      * @tparam T int,char, etc...
      * @param name
      */
@@ -92,11 +96,16 @@ namespace tdb {
       create<typename type::type_from_native<T>::type>(name);
     }
 
+    /**
+     * Create an attribute by naming the type at runtime.
+     *
+     * @param name
+     * @param type
+     */
     Attribute &create(const std::string &name, tiledb_datatype_t type) {
       _create(name, type);
       return *this;
     }
-
 
     /**
      * @return name of attribute
@@ -108,17 +117,28 @@ namespace tdb {
      */
     tiledb_datatype_t type() const;
 
+    /**
+     * @return The number of elements in each cell.
+     */
     unsigned num() const;
 
     /**
      * Set the number of attribute elements per cell.
+     *
      * @param num
-     * @return *this
      */
     Attribute &set_num(unsigned num);
 
+    /**
+     * @return Get the current compressor.
+     */
     Compressor compressor() const;
 
+    /**
+     * Set the attribute compressor.
+     *
+     * @param c
+     */
     Attribute &set_compressor(Compressor c);
 
     std::shared_ptr<tiledb_attribute_t> ptr() const {
@@ -134,8 +154,26 @@ namespace tdb {
     std::shared_ptr<tiledb_attribute_t> _attr;
   };
 
+  /**
+   * Get a string repr of the attribute.
+   *
+   * @param os
+   * @param a
+   */
   std::ostream &operator<<(std::ostream &os, const Attribute &a);
+
+  /**
+   * Set the attribute compressor.
+   *
+   * @param c
+   */
   Attribute &operator<<(Attribute &attr, const Compressor &c);
+
+  /**
+   * Set the number of attribute elements per cell.
+   *
+   * @param num
+   */
   Attribute &operator<<(Attribute &attr, unsigned num);
 
 }

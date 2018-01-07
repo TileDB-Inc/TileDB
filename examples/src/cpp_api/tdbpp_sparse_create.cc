@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_read_ordered_subarray.cc
+ * @file   tdbpp_sparse_create.cc
  *
  * @section LICENSE
  *
@@ -28,36 +28,43 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a dense array, constraining the read
- * to a specific subarray. The cells are copied to the
- * input buffers sorted in row-major order within the selected subarray.
- *
- * You need to run the following to make it work:
- *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_ordered_subarray
+ * It shows how to create a dense array. Make sure that no directory exists
+ * with the name "my_sparse_array" in the current working directory.
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.buffer_list({"a1", "a2", "a3"}).subarray<uint64_t>({3, 4, 2, 4}).layout(TILEDB_ROW_MAJOR);
+  // Can also do: domain.create<uint64_t>();
+  tdb::Domain domain(ctx);
+  tdb::Dimension d1(ctx), d2(ctx);
+  d1.create<uint64_t>("d1", {1,4}, 2);
+  d2.create<uint64_t>("d2", {1,4}, 2);
+  domain << d1 << d2; // Add dims to domain
 
-  std::vector<int> a1_data = {9, 12, 13, 14, 15};
-  std::vector<uint64_t> a2_offsets = {0, 2, 3, 5, 9, 12};
-  const std::string a2str = "jjmnnllllooopppp";
-  std::vector<char> a2_data{a2str.begin(), a2str.end()};
-  std::vector<float> a3_data = {
-  9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
+  // Can also do: a1.create<int>("a1")
+  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
+  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
+  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
 
-  query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
-  query.set_buffer("a3", a3_data);
+  // Set attr compressors and number
+  a1 << tdb::Compressor{TILEDB_BLOSC, -1} << 1;
+  a2 << tdb::Compressor{TILEDB_GZIP, -1} << TILEDB_VAR_NUM;
+  a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
 
-  query.submit();
+  tdb::ArraySchema schema(ctx);
+  schema.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
+  schema << TILEDB_SPARSE // Type of array
+       << 2 // set capacity
+       << domain // Set domain
+       << a1 << a2 << a3; // set attributes
+
+  // Check the schema, and make the array.
+  ctx.create_array(schema, "my_sparse_array");
+
+  std::cout << "Array created with schema: " << schema << std::endl;
+
   return 0;
 }

@@ -49,16 +49,9 @@ void tdb::ArraySchema::_init(const std::string &uri) {
   _init(schema);
 }
 
-std::string tdb::ArraySchema::to_str() const {
-  std::stringstream ss;
-  ss << "ArrayMetadata<";
-  ss << from_tiledb(type());
-  ss << ' ' << domain();
-  for (const auto &a : attributes()) {
-    ss << ' ' << a.second;
-  }
-  ss << '>';
-  return ss.str();
+void tdb::ArraySchema::dump(FILE* out) const {
+  auto &ctx = _ctx.get();
+  ctx.handle_error(tiledb_array_schema_dump(ctx, _schema.get(), out));
 }
 
 tiledb_array_type_t tdb::ArraySchema::type() const {
@@ -210,7 +203,13 @@ std::reference_wrapper<tdb::Context> tdb::ArraySchema::context() {
 }
 
 std::ostream &tdb::operator<<(std::ostream &os, const ArraySchema &schema) {
-  os << schema.to_str();
+  os << "ArraySchema<";
+  os << from_tiledb(schema.type());
+  os << ' ' << schema.domain();
+  for (const auto &a : schema.attributes()) {
+    os << ' ' << a.second;
+  }
+  os << '>';
   return os;
 }
 

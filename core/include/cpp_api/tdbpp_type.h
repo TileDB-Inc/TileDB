@@ -57,6 +57,7 @@ namespace tdb {
 
     /**
      * Repr of a datatype, tiledb datatype, and name.
+     *
      * @tparam T underlying type
      * @tparam TDB_TYPE tiledb_data_type repr
      * @tparam NAME string repr

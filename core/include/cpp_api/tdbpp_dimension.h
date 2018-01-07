@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tdbpp_dimension.h
  *
  * @author Ravi Gaddipati
  *
@@ -59,12 +59,14 @@ namespace tdb {
 
     /**
      * Load and take ownership of a tiledb_dimension
+     *
      * @param dim
      */
     void load(tiledb_dimension_t **dim);
 
     /**
      * Create a new dimension with a domain datatype of DataT.
+     *
      * @tparam DataT tdb::type::*
      * @param name name of dimension
      * @param domain bounds of dimension, inclusive coordinates
@@ -80,6 +82,7 @@ namespace tdb {
 
     /**
      * Create a dimension with a native datatype
+     *
      * @tparam T int, char,...
      * @param name name of dimension
      * @param domain bounds of dimension, inclusive coordinates
@@ -91,12 +94,19 @@ namespace tdb {
       return create<typename type::type_from_native<T>::type>(name, domain, extent);
     }
 
+    /**
+     * @return Name of the dimension
+     */
     const std::string name() const;
 
+    /**
+     * @return Dimension datatype
+     */
     tiledb_datatype_t type() const;
 
     /**
      * Get the bounds of the dimension.
+     *
      * @tparam T Type of underlying dimension.
      * @return
      */
@@ -104,8 +114,8 @@ namespace tdb {
     std::pair<typename T::type, typename T::type> domain() const {
       auto tdbtype = type();
       if (T::tiledb_datatype != tdbtype) {
-        throw std::invalid_argument("Attempting to use domain of type " + std::string(T::name) +
-                                    " for attribute of type " + type::from_tiledb(tdbtype));
+        throw std::invalid_argument("Attempting to use type of " + std::string(T::name) +
+                                    " for dimension of type " + type::from_tiledb(tdbtype));
       }
       typename T::type *d = static_cast<typename T::type *>(_domain());
       return std::pair<typename T::type, typename T::type>(d[0], d[1]);
@@ -117,19 +127,23 @@ namespace tdb {
       domain<typename type::type_from_native<T>::type>();
     }
 
+    /**
+     * Get the tile extent of the dimension.
+     *
+     * @tparam T datatype of the extent.
+     */
     template<typename T>
-    std::pair<typename T::type, typename T::type> extent() const {
+    typename T::type extent() const {
       auto tdbtype = type();
       if (T::tiledb_datatype != tdbtype) {
         throw std::invalid_argument("Attempting to use extent of type " + std::string(T::name) +
-                                    " for attribute of type " + type::from_tiledb(tdbtype));
+                                    " for dimension of type " + type::from_tiledb(tdbtype));
       }
-      typename T::type *e = static_cast<typename T::type *>(_extent());
-      return std::make_pair<typename T::type, typename T::type>(e[0], e[1]);
+      return *static_cast<typename T::type *>(_extent());
     };
 
     template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+    typename std::enable_if<std::is_fundamental<T>::value, T>::type
     extent() {
       extent<typename type::type_from_native<T>::type>();
     }

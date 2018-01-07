@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_group_create.cc
+ * @file   tdbpp_version.cc
  *
  * @section LICENSE
  *
@@ -28,20 +28,13 @@
  *
  * @section DESCRIPTION
  *
- * It creates a hierarchical directory structure with three groups:
- *     my_group
- *        |_ dense_arrays
- *        |_ sparse_arrays
- *
- * Make sure that no folder with name "my_group" exists in the working
- * directory before running this example.
+ * Print the tiledb version.
  */
 
-#include <tdbpp>
+#include "tiledb"
 
 int main() {
-  tdb::Context ctx;
-  ctx.group_create("my_group");
-  ctx.group_create("my_group/dense_arrays");
-  ctx.group_create("my_group/sparse_arrays");
+  tdb::Version version = tdb::version();
+  std::cout << version << '\n';
+  return 0;
 }

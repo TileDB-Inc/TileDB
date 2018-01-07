@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_sparse_write_global_2.cc
+ * @file   tdbpp_sparse_write_unordered_1.cc
  *
  * @section LICENSE
  *
@@ -28,16 +28,15 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array with two write queries, assuming
- * that the user provides the cells ordered in the array global cell order.
+ * It shows how to write unordered cells to a sparse array in a single write.
  *
  * You need to run the following to make this work:
  *
  * ./tiledb_sparse_create
- * ./tiledb_sparse_write_global_2
+ * ./tiledb_sparse_write_unordered_1
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
@@ -45,32 +44,18 @@ int main() {
 
   query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
 
-  std::vector<int> a1_buff = {0,1,2};
-  auto a2_buff = tdb::make_var_buffers<std::string>({"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
-  std::vector<float> a3_buff = {0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-                                4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2};
-  std::vector<uint64_t> coords_buff = { 1, 1, 1, 2 };
+  // clang-format off
+  std::vector<int> a1_buff = {7, 5, 0, 6, 4, 3, 1, 2};
+  auto a2_buff = tdb::make_var_buffers<std::string>({"hhhh", "ff", "a", "ggg", "e", "dddd", "bb", "ccc"});
+  std::vector<float> a3_buff = {7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
+                                4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2};
+  std::vector<uint64_t> coords_buff = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
 
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.layout(TILEDB_GLOBAL_ORDER);
-
-  query.submit();
-
-  a1_buff = {3, 4, 5, 6, 7};
-  a2_buff.first.clear();
-  a2_buff.second.clear();
-  a3_buff.clear();
-  coords_buff = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
-
-  // Reset buffers. This is needed in case vectors reallocate during reassignment.
-  query.reset_buffers();
-  query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_buff);
-  query.set_buffer("a3", a3_buff);
-  query.set_buffer(TILEDB_COORDS, coords_buff);
+  query.layout(TILEDB_UNORDERED);
 
   query.submit();
 

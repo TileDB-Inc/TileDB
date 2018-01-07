@@ -65,6 +65,7 @@ namespace tdb {
 
     /**
      * Data layout of the buffers.
+     *
      * @param layout
      * @return *this
      */
@@ -72,6 +73,7 @@ namespace tdb {
 
     /**
      * Set the list of buffers to be provided.
+     *
      * @param attrs Attributes to query, plus TILEDB_COORDS if needed.
      * @return *this
      */
@@ -122,6 +124,7 @@ namespace tdb {
 
     /**
      * Set a buffer for a particular attribute
+     *
      * @tparam T buffer type, tdb::type::*
      * @param attr Attribute name
      * @param buf data buffer
@@ -142,6 +145,7 @@ namespace tdb {
 
     /**
      * Set a buffer for a particular attribute (variable size)
+     *
      * @tparam T buffer type, tdb::type::*
      * @param attr Attribute name
      * @param offsets list of offsets for the data buffer
@@ -164,6 +168,7 @@ namespace tdb {
 
     /**
      * Set a buffer for a particular attribute (variable size)
+     *
      * @tparam T buffer type, tdb::type::*
      * @param attr Attribute name
      * @param buf buffer, a pair of offsets and data buffs
@@ -182,6 +187,7 @@ namespace tdb {
 
     /**
      * Resize a buffer for a particular attribute. Attempts to find an ideal buffer size.
+     *
      * @tparam DataT tdb::type::*
      * @tparam DomainT type of the dimensions, tdb::type::*
      * @param attr Attribute name
@@ -214,6 +220,7 @@ namespace tdb {
 
     /**
      * Resize a buffer for a particular (varsize) attribute. Attempts to find an ideal buffer size.
+     *
      * @tparam DataT tdb::type::*
      * @tparam DomainT type of the dimensions, tdb::type::*
      * @param attr Attribute name
@@ -254,6 +261,7 @@ namespace tdb {
 
     /**
      * Make a simple buffer for a fixed size attribute.
+     *
      * @tparam DataT tdb::type::*
      * @tparam DomainT tdb::type::*, underlying dimension type
      * @param attr attribute name
@@ -276,6 +284,7 @@ namespace tdb {
 
     /**
      * Make a pair of buffers for a variable sized attr
+     *
      * @tparam DataT tdb::type::*
      * @tparam DomainT tdb::type::*, underlying dimension type
      * @param attr attribute name
@@ -315,12 +324,14 @@ namespace tdb {
 
     /**
      * Get the status of the current query.
+     *
      * @return
      */
     Status query_status();
 
     /**
      * Get the query status of a particular attribute.
+     *
      * @param attr attribute name
      * @return Status
      */
@@ -328,18 +339,21 @@ namespace tdb {
 
     /**
      * Submit the query. Call will block until query is complete.
+     *
      * @return
      */
     Status submit();
 
     /**
      * Submit an async query.
+     *
      * @return
      */
     Status submit_async();
 
     /**
      * Submit an async query, with callback.
+     *
      * @param callback Callback function.
      * @param data data to pass to callback.
      * @return Status of submitted query.
@@ -367,6 +381,7 @@ namespace tdb {
 
     /**
      * Check if type matches the attribute and expected num
+     *
      * @tparam DataT Type attr should be, tdb::type::*
      * @param attr Attribute name
      * @param varcmp If we expect the attribute to be variable length
@@ -386,6 +401,7 @@ namespace tdb {
 
     /**
      * Gets the ideal buffer size using the underlying array dimensions and attr size.
+     *
      * @tparam DomainT
      * @param elements_per_cell
      * @return
@@ -405,6 +421,7 @@ namespace tdb {
 
     /**
      * Computes the required buffer size to hold a query result.
+     *
      * @tparam DataT Datatype of attrbute, tdb::type::*
      * @tparam DomainT Datatype of Domain, tdb::type::*
      * @param attr Attribute name
@@ -414,8 +431,7 @@ namespace tdb {
      * @return Ideal buffer size. buff is resized to this, bound by max_el.
      */
     template<typename DataT, typename DomainT=type::UINT64>
-    uint64_t _make_buffer_impl(const std::string &attr,
-                               std::vector<typename DataT::type> &buff,
+    uint64_t _make_buffer_impl(const std::string &attr, std::vector<typename DataT::type> &buff,
                                uint64_t num=1, uint64_t max_el=0) {
       tiledb_datatype_t type;
       if (attr == TILEDB_COORDS) type = _schema.domain().type();

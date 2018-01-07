@@ -79,9 +79,9 @@ namespace tdb {
   };
 
   /**
-   * Deleter for various tiledb types. Usefull for sharedptr.
+   * Deleter for various tiledb types. Useful for sharedptr.
    *
-   * @code{cpp}
+   * @code{.cpp}
    * tdb::Context ctx;
    * _Deleter _deleter(ctx);
    * std::shared_ptr<tiledb_type_t> p = std::shared_ptr<tiledb_type_t>(ptr, _deleter);

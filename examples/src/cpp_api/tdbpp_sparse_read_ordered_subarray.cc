@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_read_global.cc
+ * @file   tdbpp_sparse_read_ordered_subarray.cc
  *
  * @section LICENSE
  *
@@ -28,16 +28,18 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read a complete dense array in the global cell order.
+ * It shows how to read from a sparse array, constraining the read
+ * to a specific subarray. This time the cells are returned in row-major order
+ * within the specified subarray.
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_global
+ * $ ./tiledb_sparse_create
+ * $ ./tiledb_sparse_write_global_1
+ * $ ./tiledb_sparse_read_ordered_subarray
  */
 
-#include <tdbpp>
+#include <tiledb>
 #include <iomanip>
 
 int main() {
@@ -45,35 +47,37 @@ int main() {
   tdb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tdb::Query query(ctx, "my_sparse_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.buffer_list({"a1", "a2", "a3"});
-  // Make buffers
+  query.layout(TILEDB_GLOBAL_ORDER).subarray<tdb::type::UINT64>({3, 4, 2, 4});
+  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
   auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr gets a pair of buffs
-  auto a3_buff = query.make_buffer<float>("a3", 1000); // Limit size to 1000 elements
+  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr makes a pair of buffs
+  auto a3_buff = query.make_buffer<float>("a3"); // 2 floats per cell
+  auto coord_buff = query.make_buffer<uint64_t>(TILEDB_COORDS);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coord_buff);
+
   std::cout << "Query submitted: " << query.submit() << "\n";
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes first.
   const auto buff_sizes = query.returned_buff_sizes();
 
-  // chunk the continous buffer by cell
   auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
   auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
+  auto coords = tdb::group_by_cell<2>(coord_buff, buff_sizes[4]);
 
   std::cout << "Result num: " << buff_sizes[0] << '\n'; // This assumes all attributes were fully read.
-  std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10) << "a3[1]\n";
+  std::cout << "coords" << setw(10) << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(8) << "a3[1]\n";
   for (unsigned i = 0; i < buff_sizes[0]; ++i) {
-    std::cout << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(10)
-              << a3[i][0] << setw(10)
-              << a3[i][1] << '\n';
+    std::cout << '(' << coords[i][0] << ',' << coords[i][1] << ')' << setw(10)
+              << a1_buff[i] << setw(10)
+              << std::string(a2[i].data(), a2[i].size()) << setw(8)
+              << '(' << a3[i][0] << ',' << setw(5) << a3[i][1] << ')' << '\n';
   }
 
   return 0;

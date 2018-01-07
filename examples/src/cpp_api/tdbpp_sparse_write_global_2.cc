@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_write_global_subarray.cc
+ * @file   tdbpp_sparse_write_global_2.cc
  *
  * @section LICENSE
  *
@@ -28,35 +28,51 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write a dense subarray in the global cell order.
- * Make sure that there is not directory named "my_dense_array" in your current
- * working directory.
+ * It shows how to write to a sparse array with two write queries, assuming
+ * that the user provides the cells ordered in the array global cell order.
  *
  * You need to run the following to make this work:
  *
- * ./tsbpp_dense_create
- * ./tdbpp_dense_write_global_subarray
+ * ./tiledb_sparse_create
+ * ./tiledb_sparse_write_global_2
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
-  query.buffer_list({"a1", "a2", "a3"}).subarray<tdb::type::UINT64>({3, 4, 2, 4}).layout(TILEDB_GLOBAL_ORDER);
+  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
 
-  std::vector<int> a1_data = {112, 113, 114, 115};
-  std::vector<uint64_t> a2_offsets = {0, 1, 3, 6};
-  const std::string a2str = "MNNOOOPPPP";
-  std::vector<char> a2_data{a2str.begin(), a2str.end()};
-  std::vector<float> a3_data = {112.1, 112.2, 113.1, 113.2,
-                                114.1, 114.2, 115.1, 115.2};
+  std::vector<int> a1_buff = {0,1,2};
+  auto a2_buff = tdb::make_var_buffers<std::string>({"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
+  std::vector<float> a3_buff = {0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
+                                4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2};
+  std::vector<uint64_t> coords_buff = { 1, 1, 1, 2 };
 
-  query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
-  query.set_buffer("a3", a3_data);
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coords_buff);
+  query.layout(TILEDB_GLOBAL_ORDER);
 
   query.submit();
+
+  a1_buff = {3, 4, 5, 6, 7};
+  a2_buff.first.clear();
+  a2_buff.second.clear();
+  a3_buff.clear();
+  coords_buff = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+
+  // Reset buffers. This is needed in case vectors reallocate during reassignment.
+  query.reset_buffers();
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coords_buff);
+
+  query.submit();
+
   return 0;
 }

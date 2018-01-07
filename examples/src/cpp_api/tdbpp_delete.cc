@@ -1,12 +1,13 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file   tdbpp_delete.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,40 +29,22 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * Deleting objects.
  */
 
-#include <tdbpp>
+#include <tiledb>
+#include <string>
 
 int main() {
   tdb::Context ctx;
+  ctx.del("my_group");
+  ctx.del("my_dense_array");
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-
-  d1.create<uint64_t>("d1", {1,4}, 2);
-  d2.create<uint64_t>("d2", {1,4}, 2);
-  domain << d1 << d2; // Add dims to domain
-
-  // Can also do: a1.create<tdb::type::INT32>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
-
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
-
-  tdb::ArraySchema schema(ctx);
-  schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  schema << domain << a1 << a2 << a3; // Add attributes to array
-
-  // Check the schemadata, and make the array.
-  ctx.array_create(schema, "my_dense_array");
-
-  std::cout << schema << std::endl;
+  try {
+    ctx.del("invalid_path");
+  } catch (std:: runtime_error &e) {
+    std::cout << "Failed to delete invalid path\n";
+  }
 
   return 0;
 }

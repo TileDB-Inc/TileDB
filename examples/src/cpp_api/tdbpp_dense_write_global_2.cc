@@ -37,7 +37,7 @@
  * ./tdbpp_dense_write_global_2
  */
 
-#include <tdbpp>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;

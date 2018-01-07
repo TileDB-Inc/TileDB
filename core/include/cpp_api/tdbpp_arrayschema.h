@@ -99,7 +99,10 @@ namespace tdb {
      */
     ArraySchema &create();
 
-    std::string to_str() const;
+    /**
+     * Dump an ASCII repr of the array.
+     */
+    void dump(FILE* out=stdout) const;
 
     /**
      * @return Array type (Dense, Sparse)
@@ -233,6 +236,9 @@ namespace tdb {
      */
     std::shared_ptr<tiledb_array_schema_t> ptr() const;
 
+    /**
+     * @return The underlying context
+     */
     std::reference_wrapper<Context> context();
 
   private:
@@ -244,11 +250,53 @@ namespace tdb {
     std::shared_ptr<tiledb_array_schema_t> _schema;
   };
 
+  /**
+   * Convert the schema into a str repr
+   *
+   * @param os output stream
+   * @param schema array schema
+   * @return os
+   */
   std::ostream &operator<<(std::ostream &os, const ArraySchema &schema);
-  tdb::ArraySchema &operator<<(ArraySchema &schema, const Domain &dim);
-  tdb::ArraySchema &operator<<(ArraySchema &schema, const Attribute &dim);
+
+  /**
+   * Add a domain to the array schema.
+   *
+   * @param schema
+   * @param dim
+   */
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const Domain &domain);
+
+  /**
+   * Add a attribute to the array schema.
+   *
+   * @param schema
+   * @param attr
+   */
+  tdb::ArraySchema &operator<<(ArraySchema &schema, const Attribute &attr);
+
+  /**
+   * Set the array type.
+   *
+   * @param schema
+   * @param type TILEDB_DENSE or TILEDB_SPARSE
+   */
   tdb::ArraySchema &operator<<(ArraySchema &schema, const tiledb_array_type_t type);
+
+  /**
+   * Set the layout of the array.
+   *
+   * @param schema
+   * @param p {Tile layout, Cell layout}
+   */
   tdb::ArraySchema &operator<<(ArraySchema &schema, const std::array<tiledb_layout_t, 2> p);
+
+  /**
+   * Set the cell capacity for a sparse array.
+   *
+   * @param schema
+   * @param capacity
+   */
   tdb::ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity);
 
 }

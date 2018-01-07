@@ -93,7 +93,7 @@ set_target_properties(tdbpp_shared PROPERTIES CXX_VISIBILITY_PRESET "default")
 
 # Install libraries
 install(
-    TARGETS tiledb_static tiledb_shared tdbpp_static tdbpp_shared
+    TARGETS tiledb_static tiledb_shared
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
