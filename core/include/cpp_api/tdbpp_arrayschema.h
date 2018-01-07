@@ -53,7 +53,9 @@ namespace tdb {
    */
   class ArraySchema {
   public:
-    ArraySchema(Context &ctx) : _ctx(ctx), _deleter(ctx) {};
+    ArraySchema(Context &ctx) : _ctx(ctx), _deleter(ctx) {
+      create();
+    };
 
     /**
      * Load schema given a C API pointer. The class takes ownership of the pointer.
