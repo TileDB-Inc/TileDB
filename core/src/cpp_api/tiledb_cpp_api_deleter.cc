@@ -1,12 +1,13 @@
 /**
- * @file   tiledb_error.c
+ * @file   tiledb_cpp_api_deleter.cc
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,48 +29,45 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors. Program output:
- *
- * $ ./tiledb_error
- * Group created successfully!
- * [TileDB::OS] Error: Cannot create directory \
- * '<current_working_dir>/my_group'; Directory already exists
+ * This file defines the C++ API for the TileDB Deleter object.
  */
 
-#include <tiledb.h>
+#include "tiledb_cpp_api_deleter.h"
 
-void print_error(tiledb_ctx_t* ctx);
+namespace tdb {
 
-int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+namespace impl {
 
-  // Create a group
-  int rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
-
-  // Create the same group again - ERROR
-  rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
-
-  // Clean up
-  tiledb_ctx_free(ctx);
-
-  return 0;
+void Deleter::operator()(tiledb_query_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_query_free(ctx.ptr(), p));
 }
 
-void print_error(tiledb_ctx_t* ctx) {
-  tiledb_error_t* err;
-  tiledb_ctx_get_last_error(ctx, &err);
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  printf("%s\n", msg);
-  tiledb_error_free(err);
+void Deleter::operator()(tiledb_array_schema_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_array_schema_free(ctx.ptr(), p));
 }
+
+void Deleter::operator()(tiledb_attribute_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_attribute_free(ctx.ptr(), p));
+}
+
+void Deleter::operator()(tiledb_dimension_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_dimension_free(ctx.ptr(), p));
+}
+
+void Deleter::operator()(tiledb_domain_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_domain_free(ctx.ptr(), p));
+}
+
+void Deleter::operator()(tiledb_vfs_t *p) {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_vfs_free(ctx.ptr(), p));
+}
+
+}  // namespace impl
+
+}  // namespace tdb

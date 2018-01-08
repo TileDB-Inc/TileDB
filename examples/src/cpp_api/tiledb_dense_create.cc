@@ -59,7 +59,7 @@ int main() {
   schema << domain << a1 << a2 << a3;  // Add attributes to array
 
   // Check the schema, and make the array.
-  ctx.create_array("my_dense_array", schema);
+  tdb::Array::create(ctx, "my_dense_array", schema);
 
   std::cout << schema << std::endl;
 

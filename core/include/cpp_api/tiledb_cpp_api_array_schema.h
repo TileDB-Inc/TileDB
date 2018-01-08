@@ -1,5 +1,5 @@
 /**
- * @file  tdbpp_arrayschema.h
+ * @file  tiledb_cpp_api_array_schema.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,17 +29,18 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB ArraySchema object.
  */
 
-#ifndef TILEDB_TDBPP_ARRAYMETA_H
-#define TILEDB_TDBPP_ARRAYMETA_H
+#ifndef TILEDB_CPP_API_ARRAY_SCHEMA_H
+#define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-#include "tdbpp_domain.h"
-#include "tdbpp_object.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_domain.h"
+#include "tiledb_cpp_api_object.h"
 
 #include <functional>
 #include <memory>
@@ -98,6 +99,11 @@ class ArraySchema {
     _init(uri);
   }
 
+  /** Returns the input array type in string format. */
+  static std::string to_str(tiledb_array_type_t type);
+  static std::string to_str(tiledb_layout_t layout);
+  static std::string to_str(tiledb_query_type_t type);
+
   /**
    * Create new schema for an array with name uri
    *
@@ -124,7 +130,7 @@ class ArraySchema {
   ArraySchema &set_type(tiledb_array_type_t type) {
     auto &ctx = _ctx.get();
     ctx.handle_error(
-        tiledb_array_schema_set_array_type(ctx, _schema.get(), type));
+        tiledb_array_schema_set_array_type(ctx.ptr(), _schema.get(), type));
     return *this;
   }
 
@@ -254,7 +260,7 @@ class ArraySchema {
   void _init(const std::string &uri);
 
   std::reference_wrapper<Context> _ctx;
-  _Deleter _deleter;
+  impl::Deleter _deleter;
   std::shared_ptr<tiledb_array_schema_t> _schema;
 };
 
@@ -311,4 +317,4 @@ tdb::ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity);
 
 }  // namespace tdb
 
-#endif  // TILEDB_TDBPP_ARRAYMETA_H
+#endif  // TILEDB_CPP_API_ARRAY_SCHEMA_H

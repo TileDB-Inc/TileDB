@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_error.c
+ * @file   tiledb_walk_ls.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,48 +28,53 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors. Program output:
- *
- * $ ./tiledb_error
- * Group created successfully!
- * [TileDB::OS] Error: Cannot create directory \
- * '<current_working_dir>/my_group'; Directory already exists
+ * It shows how to explore the contents of a TileDB directory.
  */
 
 #include <tiledb.h>
 
-void print_error(tiledb_ctx_t* ctx);
+int print_path(const char* path, tiledb_object_t type, void* data);
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Create a group
-  int rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
+  // Walk in a path with a pre- and post-order traversal
+  printf("Preorder traversal:\n");
+  tiledb_object_walk(ctx, "my_group", TILEDB_PREORDER, print_path, NULL);
+  printf("\nPostorder traversal:\n");
+  tiledb_object_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, NULL);
 
-  // Create the same group again - ERROR
-  rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
+  // List children
+  printf("\nList children:\n");
+  tiledb_object_ls(ctx, "my_group", print_path, NULL);
 
-  // Clean up
+  // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;
 }
 
-void print_error(tiledb_ctx_t* ctx) {
-  tiledb_error_t* err;
-  tiledb_ctx_get_last_error(ctx, &err);
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  printf("%s\n", msg);
-  tiledb_error_free(err);
+int print_path(const char* path, tiledb_object_t type, void* data) {
+  // Simply print the path and type
+  (void)data;
+  printf("%s ", path);
+  switch (type) {
+    case TILEDB_ARRAY:
+      printf("ARRAY");
+      break;
+    case TILEDB_KEY_VALUE:
+      printf("KEY_VALUE");
+      break;
+    case TILEDB_GROUP:
+      printf("GROUP");
+      break;
+    default:
+      printf("INVALID");
+  }
+  printf("\n");
+
+  // Always iterate till the end
+  return 1;
 }

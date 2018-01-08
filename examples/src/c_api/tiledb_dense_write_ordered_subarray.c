@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_write_ordered_subarray.cc
+ * @file   tiledb_dense_write_ordered_subarray.c
  *
  * @section LICENSE
  *

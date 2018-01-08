@@ -1,6 +1,5 @@
-
 /**
- * @file   tiledb_kv_create.cc
+ * @file   tiledb_kv_create.c
  *
  * @section LICENSE
  *

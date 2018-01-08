@@ -1,12 +1,13 @@
 /**
- * @file   tdbpp_walk.cc
+ * @file   tiledb_cpp_api_array.cc
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,34 +29,26 @@
  *
  * @section DESCRIPTION
  *
- * Walk a directory for TileDB Objects.
+ * This file defines the C++ API for the TileDB arrays.
  */
 
-#include <tiledb>
+#include "tiledb_cpp_api_array.h"
 
-int main() {
-  tdb::Context ctx;
+namespace tdb {
 
-  std::cout << "Preorder traversal: \n";
-  // Default order is preorder
-  for (const auto &object : ctx) {
-    std::cout << object << '\n';
-  }
+namespace Array {
 
-  std::cout << "\nPostorder traversal: \n";
-  for (auto begin = ctx.begin(TILEDB_POSTORDER); begin != ctx.end(); ++begin) {
-    std::cout << *begin << '\n';
-  }
-
-  std::cout << "\nOnly groups: \n";
-  for (const auto &object : ctx.groups()) {
-    std::cout << object << '\n';
-  }
-
-  std::cout << "\nOnly arrays: \n";
-  for (const auto &object : ctx.arrays()) {
-    std::cout << object << '\n';
-  }
-
-  return 0;
+void consolidate(const Context& ctx, const std::string& array) {
+  ctx.handle_error(tiledb_array_consolidate(ctx.ptr(), array.c_str()));
 }
+
+void create(
+    const Context& ctx, const std::string& array, const ArraySchema& schema) {
+  ctx.handle_error(tiledb_array_schema_check(ctx.ptr(), schema.ptr().get()));
+  ctx.handle_error(
+      tiledb_array_create(ctx.ptr(), array.c_str(), schema.ptr().get()));
+}
+
+}  // namespace Array
+
+}  // namespace tdb

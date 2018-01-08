@@ -470,7 +470,7 @@ TEST_CASE_METHOD(
       &walk_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
+  rc = tiledb_object_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(FILE_FULL_TEMP_DIR);
@@ -489,7 +489,7 @@ TEST_CASE_METHOD(
       ctx_, S3_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, S3_TEMP_DIR.c_str(), write_path, &ls_str);
+  rc = tiledb_object_ls(ctx_, S3_TEMP_DIR.c_str(), write_path, &ls_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(S3_TEMP_DIR);
@@ -509,7 +509,7 @@ TEST_CASE_METHOD(
       ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, HDFS_TEMP_DIR.c_str(), write_path, &ls_str);
+  rc = tiledb_object_ls(ctx_, HDFS_TEMP_DIR.c_str(), write_path, &ls_str);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(HDFS_TEMP_DIR);

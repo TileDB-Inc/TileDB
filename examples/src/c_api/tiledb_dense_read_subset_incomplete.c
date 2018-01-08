@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_read_subset_incomplete.cc
+ * @file   tiledb_dense_read_subset_incomplete.c
  *
  * @section LICENSE
  *

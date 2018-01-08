@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_move.c
+ * @file   tdbpp_walk_ls.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,28 +28,38 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * Walk/list a directory for TileDB Objects.
  */
 
-#include <tiledb.h>
+#include <tiledb>
 
 int main() {
-  // Create context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tdb::Context ctx;
 
-  // Rename a valid group and array
-  tiledb_move(ctx, "my_group", "my_group_2", 1);
-  tiledb_move(
-      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", 0);
+  std::cout << "List children: \n";
+  tdb::ObjectIter obj_iter(ctx, "my_group");
+  for (const auto &object : obj_iter)
+    std::cout << object << '\n';
 
-  // Rename an invalid path
-  int rc = tiledb_move(ctx, "some_invalid_path", "path", 0);
-  if (rc == TILEDB_ERR)
-    printf("Failed moving invalid path\n");
+  std::cout << "\nPreorder traversal: \n";
+  obj_iter.set_recursive();  // Default order is preorder
+  for (const auto &object : obj_iter)
+    std::cout << object << '\n';
 
-  // Clean up
-  tiledb_ctx_free(ctx);
+  std::cout << "\nPostorder traversal: \n";
+  obj_iter.set_recursive(TILEDB_POSTORDER);
+  for (const auto &object : obj_iter)
+    std::cout << object << '\n';
+
+  std::cout << "\nOnly groups: \n";
+  obj_iter.set_iter_policy(true, false, false);
+  for (const auto &object : obj_iter)
+    std::cout << object << '\n';
+
+  std::cout << "\nOnly arrays and groups: \n";
+  obj_iter.set_iter_policy(true, true, false);
+  for (const auto &object : obj_iter)
+    std::cout << object << '\n';
 
   return 0;
 }

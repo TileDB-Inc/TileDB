@@ -35,8 +35,8 @@
 
 int main() {
   tdb::Context ctx;
-  std::cout << ctx.object_type("my_group") << "\n";
-  std::cout << ctx.object_type("my_dense_array") << "\n";
-  std::cout << ctx.object_type("invalid_path") << "\n";
+  std::cout << tdb::Object::object(ctx, "my_group") << "\n";
+  std::cout << tdb::Object::object(ctx, "my_dense_array") << "\n";
+  std::cout << tdb::Object::object(ctx, "invalid_path") << "\n";
   return 0;
 }

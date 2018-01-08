@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_type.h
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_array_consolidate.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,35 +28,32 @@
  *
  * @section DESCRIPTION
  *
- * This defines TileDB datatypes for the C++ API.
+ * It shows how to consolidate arrays.
+ *
+ * One way to make this work is:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_write_global_subarray
+ * $ ./tiledb_dense_write_unordered
+ * $ ./tiledb_array_consolidate
+ *
+ * The first three programs create three different fragments. The last program
+ * consolidates the three fragments in a single one.
  */
 
-#include "tdbpp_type.h"
+#include <tiledb.h>
 
-std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
-  switch (type) {
-    case TILEDB_CHAR:
-      return "char";
-    case TILEDB_INT8:
-      return "int8";
-    case TILEDB_UINT8:
-      return "uint8";
-    case TILEDB_INT16:
-      return "int16";
-    case TILEDB_UINT16:
-      return "uint16";
-    case TILEDB_INT32:
-      return "int32";
-    case TILEDB_UINT32:
-      return "uint32";
-    case TILEDB_INT64:
-      return "int64";
-    case TILEDB_UINT64:
-      return "uint64";
-    case TILEDB_FLOAT32:
-      return "float32";
-    case TILEDB_FLOAT64:
-      return "float64";
-  }
-  return "";
+int main() {
+  // Create TileDB context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx, NULL);
+
+  // Consolidate the input array
+  tiledb_array_consolidate(ctx, "my_dense_array");
+
+  // Clean up
+  tiledb_ctx_free(ctx);
+
+  return 0;
 }

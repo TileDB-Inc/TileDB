@@ -267,6 +267,31 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
 /**
  * Sets a config parameter.
  *
+ * **Parameters**
+ *
+ * - `sm.tile_cache_size` <br>
+ *    The tile cache size in bytes. Any `uint64_t` value is acceptable.
+ * - `sm.array_schema_cache_size` <br>
+ *    The array schema cache size in bytes. Any `uint64_t` value is acceptable.
+ * - `sm.fragment_metadata_cache_size` <br>
+ *    The fragment metadata cache size in bytes. Any `uint64_t` value is
+ *    acceptable.
+ * - `vfs.s3.region` <br>
+ *    The S3 region, if S3 is enabled.
+ * - `vfs.s3.scheme` <br>
+ *    The S3 scheme (`http` or `https`), if S3 is enabled.
+ * - `vfs.s3.endpoint_override` <br>
+ *    The S3 endpoint, if S3 is enabled.
+ * - `vfs.s3.use_virtual_addressing` <br>
+ *    The S3 use of virtual addressing (`true` or `false`), if S3 is enabled.
+ * - `vfs.s3.file_buffer_size` <br>
+ *    The file buffer size (in bytes) used in S3 writes, if S3 is enables. Any
+ *    `uint64_t` value is acceptable.
+ * - `vfs.s3.connect_timeout_ms` <br>
+ *    The connection timeout in ms. Any `long` value is acceptable.
+ * - `vfs.s3.request_timeout_ms` <br>
+ *    The request timeout in ms. Any `long` value is acceptable.
+ *
  * @param config The config object.
  * @param param The parameter to be set.
  * @param value The value of the parameter to be set.
@@ -1365,7 +1390,7 @@ TILEDB_EXPORT int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force);
 
 /**
  * Walks (iterates) over the TileDB objects contained in *path*. The traversal
@@ -1410,7 +1435,7 @@ TILEDB_EXPORT int tiledb_object_walk(
  * @param data The data passed in the callback as the last argument.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ls(
+TILEDB_EXPORT int tiledb_object_ls(
     tiledb_ctx_t* ctx,
     const char* path,
     int (*callback)(const char*, tiledb_object_t, void*),

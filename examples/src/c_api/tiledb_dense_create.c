@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_create.cc
+ * @file   tiledb_dense_create.c
  *
  * @section LICENSE
  *
