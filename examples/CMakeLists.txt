@@ -28,7 +28,11 @@
 # Function that builds an executable per example
 function(build_TileDB_example TARGET)
   add_executable(${TARGET} EXCLUDE_FROM_ALL src/${TARGET}.cc)
-  target_link_libraries(${TARGET} tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
+  if (WIN32)
+    target_link_libraries(${TARGET} tiledb_static ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
+  else()
+    target_link_libraries(${TARGET} tiledb_static -lpthread ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
+  endif()
 endfunction()
 
 # Get the example sources

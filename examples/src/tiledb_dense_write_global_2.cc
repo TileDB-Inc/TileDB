@@ -74,10 +74,10 @@ int main() {
   uint64_t buffer_a2_2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2_2[] = "ijjkkkllllmnnooopppp";
   float buffer_a3_2[] = {
-      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,   // Upper left tile
-      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,   // Upper right tile
-      8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,  // Lower left tile
-      12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,  // Lower right tile
+      0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,   // Upper left tile
+      4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,   // Upper right tile
+      8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,  // Lower left tile
+      12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,  // Lower right tile
   };
   void* buffers_2[] = {buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2};
   uint64_t buffer_sizes_2[] = {
