@@ -35,6 +35,9 @@ Enables building with the HDFS storage backend.
 .PARAMETER S3
 Enables building with the S3 storage backend.
 
+.PARAMETER BuildProcesses
+Number of parallel compile jobs.
+
 .LINK
 https://github.com/TileDB-Inc/TileDB
 
@@ -55,7 +58,10 @@ Param(
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
     [switch]$Hdfs,
-    [switch]$S3
+    [switch]$S3,
+    [Alias('J')]
+    [int]
+    $BuildProcesses = $env:NUMBER_OF_PROCESSORS
 )
 
 # Return the directory containing this script file.
@@ -133,7 +139,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs -DUSE_S3=$UseS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs -DUSE_S3=$UseS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

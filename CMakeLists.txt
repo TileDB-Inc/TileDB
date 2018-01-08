@@ -138,6 +138,8 @@ if (WIN32)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOGDI")
+  # Add /MPn flag from CMake invocation (if defined).
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_MP_FLAG}")
 else()
   set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
   set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Werror -Wall -Wextra")
