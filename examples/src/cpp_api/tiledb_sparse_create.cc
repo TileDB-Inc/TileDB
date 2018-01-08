@@ -33,14 +33,16 @@
  */
 
 #include <tiledb>
+#include <array>
 
 int main() {
   tdb::Context ctx;
 
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {1,4}, 2);
-  d2.create<uint64_t>("d2", {1,4}, 2);
+  std::array<uint64_t, 2> dim_domain{{1, 4}};
+  d1.create<uint64_t>("d1", dim_domain, 2);
+  d2.create<uint64_t>("d2", dim_domain, 2);
   domain << d1 << d2; // Add dims to domain
 
   tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
@@ -54,7 +56,7 @@ int main() {
   a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
 
   tdb::ArraySchema schema(ctx);
-  schema.set_order({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR});
+  schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema << TILEDB_SPARSE // Type of array
        << 2 // set capacity
        << domain // Set domain

@@ -56,8 +56,8 @@ int main() {
 
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {0,1000}, 10);
-  d2.create<uint64_t>("d2", {100, 10000}, 100);
+  d1.create<uint64_t>("d1", {{0,1000}}, 10);
+  d2.create<uint64_t>("d2", {{100, 10000}}, 100);
   domain << d1 << d2;
   schema << domain;
 

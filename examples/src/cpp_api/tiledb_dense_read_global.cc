@@ -39,6 +39,7 @@
 
 #include <tiledb>
 #include <iomanip>
+#include <array>
 
 int main() {
   using std::setw;

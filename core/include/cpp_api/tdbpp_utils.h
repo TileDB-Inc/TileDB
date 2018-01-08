@@ -37,6 +37,7 @@
 #include "tiledb.h"
 #include <iostream>
 #include <functional>
+#include <array>
 
 namespace tdb {
 
