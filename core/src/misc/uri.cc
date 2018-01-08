@@ -52,7 +52,9 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  if (URI::is_file(path))
+  if (path.empty())
+    uri_ = "";
+  else if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
   else if (URI::is_hdfs(path) || URI::is_s3(path))
     uri_ = path;

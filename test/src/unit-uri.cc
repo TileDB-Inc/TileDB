@@ -34,6 +34,8 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
           "long/long/long/long/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long");
   CHECK(uri.is_invalid());
+  uri = URI("");
+  CHECK(uri.is_invalid());
 
   // TODO: re-enable these checks if appropriate for posix_filesystem.
   // uri = URI("file:///path/../relative");
@@ -58,7 +60,7 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
 #endif
 
-  uri = URI("");
+  uri = URI(".");
   CHECK(!uri.is_invalid());
   CHECK(uri.to_path() == current_dir());
 }
