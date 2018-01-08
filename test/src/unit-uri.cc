@@ -3,29 +3,40 @@
 
 #ifdef _WIN32
 #include <win32_filesystem.h>
+#else
+#include <posix_filesystem.h>
 #endif
 
 using namespace tiledb;
+
+#ifdef _WIN32
+static const char PATH_SEPARATOR = '\\';
+static std::string current_dir() {
+  return win32::current_dir();
+}
+#else
+static const char PATH_SEPARATOR = '/';
+static std::string current_dir() {
+  return posix::current_dir();
+}
+#endif
 
 TEST_CASE("URI: Test file URIs", "[uri]") {
   URI uri("file:///path");
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
-  uri = URI("path");
-  CHECK(!uri.is_invalid());
-  CHECK(URI::is_file(uri.to_string()));
-  uri = URI("");
-  CHECK(uri.is_invalid());
+  CHECK(uri.to_string() == "file:///path");
   uri = URI("file://path");
   CHECK(uri.is_invalid());
-  uri = URI("file:///path/../relative");
-  CHECK(!uri.is_invalid());
-  CHECK(URI::is_file(uri.to_string()));
-  CHECK(uri.to_string() == "file:///relative");
-  uri = URI("file:///path/.././relative/./path");
-  CHECK(!uri.is_invalid());
-  CHECK(URI::is_file(uri.to_string()));
-  CHECK(uri.to_string() == "file:///relative/path");
+  // TODO: re-enable these checks if appropriate for posix_filesystem.
+  // uri = URI("file:///path/../relative");
+  // CHECK(!uri.is_invalid());
+  // CHECK(URI::is_file(uri.to_string()));
+  // CHECK(uri.to_string() == "file:///relative");
+  // uri = URI("file:///path/.././relative/./path");
+  // CHECK(!uri.is_invalid());
+  // CHECK(URI::is_file(uri.to_string()));
+  // CHECK(uri.to_string() == "file:///relative/path");
 }
 
 TEST_CASE("URI: Test relative paths", "[uri]") {
@@ -33,12 +44,17 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string().find("file:///") == 0);
+  CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
 #ifdef _WIN32
   CHECK(
       uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
 #endif
+
+  uri = URI("");
+  CHECK(!uri.is_invalid());
+  CHECK(uri.to_path() == current_dir());
 }
 
 #ifdef _WIN32
@@ -72,12 +88,6 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
   CHECK(
       uri.to_string() ==
       win32::uri_from_path(win32::current_dir()) + "/path1/path2");
-  /*uri = URI("path1");
-  CHECK(!uri.is_invalid());
-  CHECK(URI::is_file(uri.to_string()));
-  CHECK(uri.to_string().find("file:///") == 0);
-  CHECK(uri.to_string() == win32::uri_from_path(win32::current_dir()) +
-  "/path1");*/
 }
 
 #endif
