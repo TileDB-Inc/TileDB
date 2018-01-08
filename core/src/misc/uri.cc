@@ -30,6 +30,7 @@
  * This file implements class URI.
  */
 
+#include "logger.h"
 #include "uri.h"
 #include "utils.h"
 #include "vfs.h"
@@ -57,6 +58,11 @@ URI::URI(const std::string& path) {
     uri_ = path;
   else
     uri_ = "";
+
+  if (uri_.length() > constants::name_max_len) {
+    LOG_ERROR("URI '" + uri_ + "' exceeds length limit.");
+    uri_ = "";
+  }
 }
 
 URI::~URI() = default;

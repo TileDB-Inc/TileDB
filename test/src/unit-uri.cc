@@ -28,6 +28,9 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   CHECK(uri.to_string() == "file:///path");
   uri = URI("file://path");
   CHECK(uri.is_invalid());
+  uri = URI("file:///path/is/too/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long");
+  CHECK(uri.is_invalid());
+
   // TODO: re-enable these checks if appropriate for posix_filesystem.
   // uri = URI("file:///path/../relative");
   // CHECK(!uri.is_invalid());
