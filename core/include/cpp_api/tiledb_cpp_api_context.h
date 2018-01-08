@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_context.h
+ * @file   tiledb_cpp_api_context.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,14 +29,14 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Context object.
  */
 
-#ifndef TILEDB_GENOMICS_CONTEXT_H
-#define TILEDB_GENOMICS_CONTEXT_H
+#ifndef TILEDB_CPP_API_CONTEXT_H
+#define TILEDB_CPP_API_CONTEXT_H
 
-#include "tdbpp_object.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_object.h"
 
 #include <functional>
 #include <iostream>
@@ -273,4 +273,4 @@ std::ostream &operator<<(std::ostream &os, const Context &ctx);
 
 }  // namespace tdb
 
-#endif  // TILEDB_GENOMICS_CONTEXT_H
+#endif  // TILEDB_CPP_API_CONTEXT_H

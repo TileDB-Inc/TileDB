@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_query.h
+ * @file   tiledb_cpp_api_query.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,17 +29,17 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Query object.
  */
 
-#ifndef TILEDB_TDBPP_QUERY_H
-#define TILEDB_TDBPP_QUERY_H
+#ifndef TILEDB_CPP_API_QUERY_H
+#define TILEDB_CPP_API_QUERY_H
 
-#include "tdbpp_arrayschema.h"
-#include "tdbpp_context.h"
-#include "tdbpp_type.h"
-#include "tdbpp_utils.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_type.h"
+#include "tiledb_cpp_api_utils.h"
 
 #include <functional>
 #include <iterator>
@@ -529,4 +529,4 @@ std::ostream &operator<<(std::ostream &os, const Query::Status &stat);
 
 }  // namespace tdb
 
-#endif  // TILEDB_TDBPP_QUERY_H
+#endif  // TILEDB_CPP_API_QUERY_H

@@ -32,8 +32,8 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_dimension.h"
-#include "tdbpp_context.h"
+#include "tiledb_cpp_api_dimension.h"
+#include "tiledb_cpp_api_context.h"
 
 void tdb::Dimension::_init(tiledb_dimension_t *dim) {
   _dim = std::shared_ptr<tiledb_dimension_t>(dim, _deleter);

@@ -32,8 +32,8 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_object.h"
-#include "tdbpp_context.h"
+#include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_context.h"
 
 std::ostream &tdb::operator<<(std::ostream &os, const tdb::Object &obj) {
   os << obj.to_str();

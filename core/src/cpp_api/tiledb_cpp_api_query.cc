@@ -32,7 +32,7 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_query.h"
+#include "tiledb_cpp_api_query.h"
 
 tdb::Query &tdb::Query::set_layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();

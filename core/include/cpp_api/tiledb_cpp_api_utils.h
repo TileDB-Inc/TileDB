@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_urils.h
+ * @file   tiledb_cpp_api_utils.h
  *
  * @section LICENSE
  *
@@ -31,8 +31,8 @@
  * Utils for C++ API.
  */
 
-#ifndef TILEDB_TDBPP_UTILS_H
-#define TILEDB_TDBPP_UTILS_H
+#ifndef TILEDB_CPP_API_UTILS_H
+#define TILEDB_CPP_API_UTILS_H
 
 #include <array>
 #include <functional>
@@ -185,4 +185,4 @@ inline std::ostream &operator<<(std::ostream &os, const tdb::Version &v) {
   return os;
 }
 
-#endif  // TILEDB_TDBPP_UTILS_H
+#endif  // TILEDB_CPP_API_UTILS_H

@@ -32,10 +32,10 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_arrayschema.h"
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-#include "tdbpp_domain.h"
+#include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_domain.h"
 
 #include <array>
 #include <sstream>

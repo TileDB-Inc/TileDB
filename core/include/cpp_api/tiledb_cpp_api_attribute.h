@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tiledb_cpp_api_attribute.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,16 +29,16 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Attribute object.
  */
 
-#ifndef TILEDB_GENOMICS_ATTRIBUTE_H
-#define TILEDB_GENOMICS_ATTRIBUTE_H
+#ifndef TILEDB_CPP_API_ATTRIBUTE_H
+#define TILEDB_CPP_API_ATTRIBUTE_H
 
-#include "tdbpp_context.h"
-#include "tdbpp_object.h"
-#include "tdbpp_type.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_type.h"
 
 #include <functional>
 #include <memory>
@@ -177,4 +177,4 @@ Attribute &operator<<(Attribute &attr, unsigned num);
 
 }  // namespace tdb
 
-#endif  // TILEDB_GENOMICS_ATTRIBUTE_H
+#endif  // TILEDB_CPP_API_ATTRIBUTE_H

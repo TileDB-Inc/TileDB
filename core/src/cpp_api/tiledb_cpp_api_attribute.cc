@@ -32,9 +32,9 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-#include "tdbpp_type.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_type.h"
 
 void tdb::Attribute::_init(tiledb_attribute_t *attr) {
   _attr = std::shared_ptr<tiledb_attribute_t>(attr, _deleter);

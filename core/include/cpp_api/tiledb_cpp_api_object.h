@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tiledb_cpp_api_object.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,11 +29,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Object object.
  */
 
-#ifndef TILEDB_GENOMICS_OBJECT_H
-#define TILEDB_GENOMICS_OBJECT_H
+#ifndef TILEDB_CPP_API_OBJECT_H
+#define TILEDB_CPP_API_OBJECT_H
 
 #include "tiledb.h"
 
@@ -122,4 +122,4 @@ std::ostream &operator<<(std::ostream &os, const Object &obj);
 std::ostream &operator<<(std::ostream &os, const Compressor &c);
 }  // namespace tdb
 
-#endif  // TILEDB_GENOMICS_OBJECT_H
+#endif  // TILEDB_CPP_API_OBJECT_H

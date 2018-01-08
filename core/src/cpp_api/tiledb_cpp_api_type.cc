@@ -32,7 +32,7 @@
  * This defines TileDB datatypes for the C++ API.
  */
 
-#include "tdbpp_type.h"
+#include "tiledb_cpp_api_type.h"
 
 std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
   switch (type) {

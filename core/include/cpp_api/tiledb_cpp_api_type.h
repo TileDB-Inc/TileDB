@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_type.h
+ * @file   tiledb_cpp_api_type.h
  *
  * @author Ravi Gaddipati
  *
@@ -32,8 +32,8 @@
  * This defines TileDB datatypes for the C++ API.
  */
 
-#ifndef TILEDB_TDBPP_TYPE_H
-#define TILEDB_TDBPP_TYPE_H
+#ifndef TILEDB_CPP_API_TYPE_H
+#define TILEDB_CPP_API_TYPE_H
 
 #include <cstdint>
 #include <string>
@@ -185,4 +185,4 @@ template <template <class...> class Template, class... Args>
 struct is_specialization<Template<Args...>, Template> : std::true_type {};
 }  // namespace tdb
 
-#endif  // TILEDB_TDBPP_TYPE_H
+#endif  // TILEDB_CPP_API_TYPE_H

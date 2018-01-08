@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_domain.h
+ * @file   tiledb_cpp_api_domain.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,15 +29,15 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Domain.
  */
 
-#ifndef TILEDB_GENOMICS_DOMAIN_H
-#define TILEDB_GENOMICS_DOMAIN_H
+#ifndef TILEDB_CPP_API_DOMAIN_H
+#define TILEDB_CPP_API_DOMAIN_H
 
-#include "tdbpp_dimension.h"
-#include "tdbpp_type.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_dimension.h"
+#include "tiledb_cpp_api_type.h"
 
 #include <functional>
 #include <memory>
@@ -107,4 +107,4 @@ tdb::Domain &operator<<(tdb::Domain &d, const Dimension &dim);
 
 }  // namespace tdb
 
-#endif  // TILEDB_GENOMICS_DOMAIN_H
+#endif  // TILEDB_CPP_API_DOMAIN_H

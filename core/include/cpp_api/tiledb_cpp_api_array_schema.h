@@ -1,5 +1,5 @@
 /**
- * @file  tdbpp_arrayschema.h
+ * @file  tiledb_cpp_api_array_schema.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,17 +29,17 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB ArraySchema object.
  */
 
-#ifndef TILEDB_TDBPP_ARRAYMETA_H
-#define TILEDB_TDBPP_ARRAYMETA_H
+#ifndef TILEDB_CPP_API_ARRAY_SCHEMA_H
+#define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-#include "tdbpp_domain.h"
-#include "tdbpp_object.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_domain.h"
+#include "tiledb_cpp_api_object.h"
 
 #include <functional>
 #include <memory>
@@ -311,4 +311,4 @@ tdb::ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity);
 
 }  // namespace tdb
 
-#endif  // TILEDB_TDBPP_ARRAYMETA_H
+#endif  // TILEDB_CPP_API_ARRAY_SCHEMA_H

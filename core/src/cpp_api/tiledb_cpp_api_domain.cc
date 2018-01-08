@@ -32,8 +32,8 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_domain.h"
-#include "tdbpp_context.h"
+#include "tiledb_cpp_api_domain.h"
+#include "tiledb_cpp_api_context.h"
 
 void tdb::Domain::_init(tiledb_domain_t *domain) {
   _domain = std::shared_ptr<tiledb_domain_t>(domain, _deleter);
