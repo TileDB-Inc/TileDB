@@ -1,5 +1,5 @@
 /**
- * @file   win32_filesystem.cc
+ * @file   win_filesystem.cc
  *
  * @section LICENSE
  *
@@ -32,7 +32,7 @@
 
 #ifdef _WIN32
 
-#include "win32_filesystem.h"
+#include "win_filesystem.h"
 #include "constants.h"
 #include "logger.h"
 #include "utils.h"

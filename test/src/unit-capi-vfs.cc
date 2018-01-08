@@ -33,7 +33,7 @@
 #include "catch.hpp"
 #include "tiledb.h"
 #ifdef _WIN32
-#include "win32_filesystem.h"
+#include "win_filesystem.h"
 #else
 #include "posix_filesystem.h"
 #endif

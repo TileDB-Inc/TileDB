@@ -3,7 +3,7 @@
 #include "catch.hpp"
 
 #include <status.h>
-#include <win32_filesystem.h>
+#include <win_filesystem.h>
 #include <cassert>
 
 using namespace tiledb;

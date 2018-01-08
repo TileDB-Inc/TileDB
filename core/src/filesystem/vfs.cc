@@ -35,7 +35,7 @@
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
-#include "win32_filesystem.h"
+#include "win_filesystem.h"
 
 namespace tiledb {
 
