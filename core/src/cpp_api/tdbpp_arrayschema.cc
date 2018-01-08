@@ -38,6 +38,7 @@
 #include "tdbpp_attribute.h"
 
 #include <sstream>
+#include <array>
 
 void tdb::ArraySchema::_init(tiledb_array_schema_t *schema) {
   _schema = std::shared_ptr<tiledb_array_schema_t>(schema, _deleter);
@@ -65,7 +66,7 @@ tdb::Compressor tdb::ArraySchema::coord_compressor() const {
   auto &ctx = _ctx.get();
   Compressor cmp;
   ctx.handle_error(tiledb_array_schema_get_coords_compressor(ctx, _schema.get(), &cmp.compressor, &cmp.level));
-  return std::move(cmp);
+  return cmp;
 }
 
 tdb::ArraySchema &tdb::ArraySchema::set_coord_compressor(const tdb::Compressor c) {
@@ -121,7 +122,7 @@ const std::unordered_map<std::string, tdb::Attribute> tdb::ArraySchema::attribut
     auto attr = Attribute(_ctx, &attrptr);
     attrs.emplace(std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
   }
-  return std::move(attrs);
+  return attrs;
 }
 
 tdb::ArraySchema &tdb::ArraySchema::create() {

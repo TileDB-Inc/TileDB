@@ -47,7 +47,7 @@
 
 namespace tdb {
 
-  struct ArraySchema;
+  class ArraySchema;
 
   class Context {
   public:

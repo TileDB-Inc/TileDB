@@ -71,7 +71,7 @@ tdb::Compressor tdb::Attribute::compressor() const {
   auto &ctx = _ctx.get();
   Compressor cmp;
   ctx.handle_error(tiledb_attribute_get_compressor(ctx, _attr.get(), &(cmp.compressor), &(cmp.level)));
-  return std::move(cmp);
+  return cmp;
 }
 
 tdb::Attribute &tdb::Attribute::set_compressor(tdb::Compressor c) {
