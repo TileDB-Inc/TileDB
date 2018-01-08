@@ -757,10 +757,10 @@ Status Query::set_attributes(
       attributes_vec.emplace_back(constants::coords);
   } else {  // Custom attributes
     // Get attributes
-    unsigned name_max_len = constants::name_max_len;
+    unsigned uri_max_len = constants::uri_max_len;
     for (unsigned int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
+      if (attributes[i] == nullptr || strlen(attributes[i]) > uri_max_len)
         return LOG_STATUS(Status::QueryError("Invalid attribute name length"));
       attributes_vec.emplace_back(attributes[i]);
     }
