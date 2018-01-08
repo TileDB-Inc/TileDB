@@ -35,7 +35,7 @@
 
 namespace tiledb {
 
-#ifdef WIN32
+#ifdef _WIN32
 typedef void* file_lock_t;
 const file_lock_t INVALID_FILE_LOCK = nullptr;
 #else
