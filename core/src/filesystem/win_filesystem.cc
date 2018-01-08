@@ -234,8 +234,7 @@ Status file_size(const std::string& path, uint64_t* size) {
   return Status::Ok();
 }
 
-Status filelock_lock(
-    const std::string& filename, filelock_t* fd, bool shared) {
+Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_READ | GENERIC_WRITE,

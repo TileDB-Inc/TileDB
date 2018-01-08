@@ -181,8 +181,7 @@ Status file_size(const std::string& path, uint64_t* size) {
   return Status::Ok();
 }
 
-Status filelock_lock(
-    const std::string& filename, filelock_t* fd, bool shared) {
+Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   // Prepare the flock struct
   struct flock fl;
   memset(&fl, 0, sizeof(struct flock));
