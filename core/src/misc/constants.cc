@@ -333,6 +333,9 @@ const char* s3_region = "";
 /** S3 endpoint override. */
 const char* s3_endpoint_override = "localhost:9000";
 
+/** Prefix indicating a special name reserved by TileDB. */
+const char* special_name_prefix = "__";
+
 }  // namespace constants
 
 }  // namespace tiledb

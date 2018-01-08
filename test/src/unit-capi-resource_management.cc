@@ -126,7 +126,7 @@ void ResourceMgmtFx::create_array(const std::string& path) {
   tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_FLOAT32);
 
   // Domain and tile extents
-  int64_t dim_domain[] = {1};
+  int64_t dim_domain[2] = {1, 1};
   int64_t tile_extents[] = {1};
 
   // Create dimension
@@ -151,7 +151,6 @@ void ResourceMgmtFx::create_array(const std::string& path) {
 
   // Create array
   REQUIRE(tiledb_array_create(ctx_, path.c_str(), array_schema) == TILEDB_OK);
-
   tiledb_dimension_free(ctx_, d1);
 }
 
@@ -248,54 +247,30 @@ void ResourceMgmtFx::check_move(const std::string& path) {
 }
 
 TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB object type", "[capi], [resource]") {
+    ResourceMgmtFx,
+    "C API: Test resource management methods",
+    "[capi], [resource]") {
   // File
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_object_type(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-// S3
-#ifdef HAVE_S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_object_type(S3_TEMP_DIR);
-#endif
-
-// HDFS
-#ifdef HAVE_HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_object_type(HDFS_TEMP_DIR);
-#endif
-}
-
-TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB delete", "[capi], [resource]") {
-  // File
   check_delete(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-// S3
-#ifdef HAVE_S3
-  check_delete(S3_TEMP_DIR);
-#endif
-
-// HDFS
-#ifdef HAVE_HDFS
-  check_delete(HDFS_TEMP_DIR);
-#endif
-}
-
-TEST_CASE_METHOD(
-    ResourceMgmtFx, "C API: Test TileDB Move", "[capi], [resource]") {
-  // File
   check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 // S3
 #ifdef HAVE_S3
+  create_temp_dir(S3_TEMP_DIR);
+  check_object_type(S3_TEMP_DIR);
+  check_delete(S3_TEMP_DIR);
   check_move(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 // HDFS
 #ifdef HAVE_HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
+  check_object_type(HDFS_TEMP_DIR);
+  check_delete(HDFS_TEMP_DIR);
   check_move(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif

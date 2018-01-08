@@ -68,6 +68,7 @@ ArrayOrderedWriteState::ArrayOrderedWriteState(Query* query)
   tile_coords_ = nullptr;
   tile_domain_ = nullptr;
   buffer_sizes_ = nullptr;
+  buffer_offsets_ = nullptr;
   buffers_ = nullptr;
   for (unsigned int i = 0; i < 2; ++i) {
     async_query_[i] = nullptr;
@@ -114,6 +115,8 @@ ArrayOrderedWriteState::~ArrayOrderedWriteState() {
     std::free(tile_slab_[i]);
     std::free(tile_slab_norm_[i]);
   }
+
+  delete[] buffer_offsets_;
 
   // Free tile slab info and state, and copy state
   free_copy_state();
@@ -1394,12 +1397,13 @@ void ArrayOrderedWriteState::fill_with_empty_var<uint64_t>(unsigned int bid) {
 
 void ArrayOrderedWriteState::free_copy_state() {
   for (unsigned int i = 0; i < 2; ++i) {
+    delete[] copy_state_.buffer_offsets_[i];
     if (copy_state_.buffer_sizes_[i] != nullptr)
       delete[] copy_state_.buffer_sizes_[i];
     if (copy_state_.buffers_[i] != nullptr) {
       for (unsigned int b = 0; b < buffer_num_; ++b)
         std::free(copy_state_.buffers_[i][b]);
-      std::free(copy_state_.buffers_[i]);
+      delete[] copy_state_.buffers_[i];
     }
   }
 }

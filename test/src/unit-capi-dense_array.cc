@@ -684,7 +684,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   // Check out of bounds subarray
   tiledb_query_t* query;
   int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   int64_t subarray_1[] = {-1, 5, 10, 10};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_ERR);
