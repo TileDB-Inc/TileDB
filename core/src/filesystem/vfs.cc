@@ -476,7 +476,7 @@ Status VFS::read(
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::read_from_file(uri.to_path(), offset, buffer, nbytes);
+    return win32::read(uri.to_path(), offset, buffer, nbytes);
 #else
     return posix::read(uri.to_path(), offset, buffer, nbytes);
 #endif
@@ -534,7 +534,7 @@ Status VFS::sync(const URI& uri) {
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::write_to_file(uri.to_path(), buffer, buffer_size);
+    return win32::write(uri.to_path(), buffer, buffer_size);
 #else
     return posix::write(uri.to_path(), buffer, buffer_size);
 #endif

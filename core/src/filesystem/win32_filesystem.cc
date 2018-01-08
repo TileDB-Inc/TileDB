@@ -336,7 +336,7 @@ Status move_path(const std::string& old_path, const std::string& new_path) {
   return Status::Ok();
 }
 
-Status read_from_file(
+Status read(
     const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
@@ -411,7 +411,7 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
-Status write_to_file(
+Status write(
     const std::string& path, const void* buffer, uint64_t buffer_size) {
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(

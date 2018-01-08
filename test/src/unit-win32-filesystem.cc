@@ -131,13 +131,13 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = win32::write_to_file(test_file.to_path(), write_buffer, buffer_size);
+  st = win32::write(test_file.to_path(), write_buffer, buffer_size);
   CHECK(st.ok());
   st = win32::sync(test_file.to_path());
   CHECK(st.ok());
 
   auto read_buffer = new char[26];
-  st = win32::read_from_file(test_file.to_path(), 0, read_buffer, 26);
+  st = win32::read(test_file.to_path(), 0, read_buffer, 26);
   CHECK(st.ok());
 
   bool allok = true;
@@ -149,7 +149,7 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
   }
   CHECK(allok == true);
 
-  st = win32::read_from_file(test_file.to_path(), 11, read_buffer, 26);
+  st = win32::read(test_file.to_path(), 11, read_buffer, 26);
   CHECK(st.ok());
 
   allok = true;
