@@ -149,7 +149,6 @@ namespace tdb {
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, false);
-
       _var_offsets[attr] = std::make_tuple<uint64_t, uint64_t, void*>(offsets.size(), sizeof(uint64_t), offsets.data());
       _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
       _attrs.insert(attr);
@@ -197,8 +196,8 @@ namespace tdb {
       if (_array_attributes.count(attr)) {
         num = _array_attributes.at(attr).num();
         if (num == TILEDB_VAR_NUM) throw std::runtime_error("Offsets required for var size attribute.");
-      } else if (_special_attributes.count(attr)) {
-        if (attr == TILEDB_COORDS) num = 2;
+      } else if (attr == TILEDB_COORDS) {
+        num = 2;
       } else {
         throw std::out_of_range("Invalid attribute: " + attr);
       }
@@ -236,8 +235,6 @@ namespace tdb {
       if (_array_attributes.count(attr)) {
         num = _array_attributes.at(attr).num();
         if (num != TILEDB_VAR_NUM) throw std::runtime_error("Offsets provided for fixed size attribute.");
-      } else if (!_special_attributes.count(attr)) {
-        throw std::out_of_range("Invalid attribute: " + attr);
       }
       if (max_offset && !max_el) max_el = max_offset * expected_size;
       num = _make_buffer_impl<DataT, DomainT>(attr, buff, expected_size, max_el);
@@ -391,8 +388,6 @@ namespace tdb {
         if (varcmp == (_schema.attributes().at(attr).num() == TILEDB_VAR_NUM)) {
           throw std::invalid_argument("Offsets must be provided for variable length attributes.");
         }
-      } else if (!_special_attributes.count(attr)) {
-        throw std::invalid_argument("Invalid attribute: " + attr);
       }
     };
 
@@ -438,9 +433,6 @@ namespace tdb {
       buff.resize((max_el != 0 && num > max_el) ? max_el : num);
       return num;
     }
-
-    // Special underlying attribute types to skip type checking for
-    const std::set<std::string> _special_attributes{TILEDB_COORDS,};
 
     // On init get the attributes the underlying arrayschema defines
     std::unordered_map<std::string, Attribute> _array_attributes;
