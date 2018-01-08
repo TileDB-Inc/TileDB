@@ -32,8 +32,8 @@
  * Deleting objects.
  */
 
-#include <tiledb>
 #include <string>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
@@ -42,7 +42,7 @@ int main() {
 
   try {
     ctx.del("invalid_path");
-  } catch (std:: runtime_error &e) {
+  } catch (std::runtime_error &e) {
     std::cout << "Failed to delete invalid path\n";
   }
 

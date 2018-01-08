@@ -47,7 +47,6 @@ tdb::Query::Status tdb::Query::submit() {
   return query_status();
 }
 
-
 void tdb::Query::_prepare_submission() {
   _all_buff.clear();
   _buff_sizes.clear();
@@ -56,7 +55,7 @@ void tdb::Query::_prepare_submission() {
 
   uint64_t bufsize;
   size_t tsize;
-  void* ptr;
+  void *ptr;
 
   for (const auto &a : _attrs) {
     if (_attr_buffs.count(a) == 0) {
@@ -65,18 +64,24 @@ void tdb::Query::_prepare_submission() {
     if (_var_offsets.count(a)) {
       std::tie(bufsize, tsize, ptr) = _var_offsets[a];
       _all_buff.push_back(ptr);
-      _buff_sizes.push_back(bufsize*tsize);
+      _buff_sizes.push_back(bufsize * tsize);
       _sub_tsize.push_back(tsize);
     }
     std::tie(bufsize, tsize, ptr) = _attr_buffs[a];
     _all_buff.push_back(ptr);
-    _buff_sizes.push_back(bufsize*tsize);
+    _buff_sizes.push_back(bufsize * tsize);
     _attr_names.push_back(a.c_str());
     _sub_tsize.push_back(tsize);
   }
 
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_set_buffers(ctx, _query.get(), _attr_names.data(), _attr_names.size(), _all_buff.data(), _buff_sizes.data()));
+  ctx.handle_error(tiledb_query_set_buffers(
+      ctx,
+      _query.get(),
+      _attr_names.data(),
+      _attr_names.size(),
+      _all_buff.data(),
+      _buff_sizes.data()));
 }
 
 tdb::Query::Status tdb::Query::query_status() {
@@ -89,11 +94,13 @@ tdb::Query::Status tdb::Query::query_status() {
 tdb::Query::Status tdb::Query::attribute_status(const std::string &attr) {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_get_attribute_status(ctx, _query.get(), attr.c_str(), &status));
+  ctx.handle_error(tiledb_query_get_attribute_status(
+      ctx, _query.get(), attr.c_str(), &status));
   return tiledb_to_status(status);
 }
 
-tdb::Query::Status tdb::Query::tiledb_to_status(const tiledb_query_status_t &status) {
+tdb::Query::Status tdb::Query::tiledb_to_status(
+    const tiledb_query_status_t &status) {
   switch (status) {
     case TILEDB_INCOMPLETE:
       return Status::INCOMPLETE;
@@ -107,10 +114,12 @@ tdb::Query::Status tdb::Query::tiledb_to_status(const tiledb_query_status_t &sta
   return Status::UNDEF;
 }
 
-tdb::Query::Status tdb::Query::submit_async(void* (*callback)(void*), void* data) {
+tdb::Query::Status tdb::Query::submit_async(
+    void *(*callback)(void *), void *data) {
   auto &ctx = _ctx.get();
   _prepare_submission();
-  ctx.handle_error(tiledb_query_submit_async(ctx, _query.get(), callback, data));
+  ctx.handle_error(
+      tiledb_query_submit_async(ctx, _query.get(), callback, data));
   return query_status();
 }
 
@@ -127,15 +136,20 @@ std::vector<uint64_t> tdb::Query::returned_buff_sizes() {
   return buffsize;
 }
 
-tdb::Query::Query(tdb::Context &ctx, const std::string &array, tiledb_query_type_t type)
-: _ctx(ctx), _schema(ctx, array), _deleter(_ctx) {
+tdb::Query::Query(
+    tdb::Context &ctx, const std::string &array, tiledb_query_type_t type)
+    : _ctx(ctx)
+    , _schema(ctx, array)
+    , _deleter(_ctx) {
   tiledb_query_t *q;
-  _ctx.get().handle_error(tiledb_query_create(_ctx.get(), &q, array.c_str(), type));
+  _ctx.get().handle_error(
+      tiledb_query_create(_ctx.get(), &q, array.c_str(), type));
   _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
   _array_attributes = _schema.attributes();
 }
 
-std::ostream &tdb::operator<<(std::ostream &os, const tdb::Query::Status &stat) {
+std::ostream &tdb::operator<<(
+    std::ostream &os, const tdb::Query::Status &stat) {
   switch (stat) {
     case tdb::Query::Status::INCOMPLETE:
       os << "INCOMPLETE";

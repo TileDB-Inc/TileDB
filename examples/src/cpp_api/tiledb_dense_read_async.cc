@@ -31,8 +31,8 @@
  *
  */
 
-#include <tiledb>
 #include <iomanip>
+#include <tiledb>
 
 void* print_upon_completion(void* s);
 
@@ -48,8 +48,10 @@ int main() {
 
   // Make buffers
   auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr gets a pair of buffs
-  auto a3_buff = query.make_buffer<float>("a3", 1000); // Limit size to 1000 elements
+  auto a2_buff = query.make_var_buffers<char>(
+      "a2", 3);  // variable sized attr gets a pair of buffs
+  auto a3_buff =
+      query.make_buffer<float>("a3", 1000);  // Limit size to 1000 elements
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
@@ -66,20 +68,24 @@ int main() {
   } while (status == tdb::Query::Status::INPROGRESS);
 
   // Get the number of elements filled in by the query
-  // Order is by attribute. For variable size attrs, the offset_buff comes first.
-  const auto &buff_sizes = query.returned_buff_sizes();
+  // Order is by attribute. For variable size attrs, the offset_buff comes
+  // first.
+  const auto& buff_sizes = query.returned_buff_sizes();
 
   // chunk the continous buffer by cell
-  auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]); // For var size: use offset buff
-  auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]); // std::vector<std::array<T, 2>>
+  auto a2 = tdb::group_by_cell(
+      a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
+  auto a3 = tdb::group_by_cell<2>(
+      a3_buff, buff_sizes[3]);  // std::vector<std::array<T, 2>>
 
-  std::cout << "Result num: " << buff_sizes[0] << '\n'; // This assumes all attributes were fully read.
-  std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10) << "a3[1]\n";
+  std::cout << "Result num: " << buff_sizes[0]
+            << '\n';  // This assumes all attributes were fully read.
+  std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10)
+            << "a3[1]\n";
   for (unsigned i = 0; i < buff_sizes[0]; ++i) {
     std::cout << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(10)
-              << a3[i][0] << setw(10)
-              << a3[i][1] << '\n';
+              << std::string(a2[i].data(), a2[i].size()) << setw(10) << a3[i][0]
+              << setw(10) << a3[i][1] << '\n';
   }
 
   return 0;

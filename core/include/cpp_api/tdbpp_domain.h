@@ -35,9 +35,9 @@
 #ifndef TILEDB_GENOMICS_DOMAIN_H
 #define TILEDB_GENOMICS_DOMAIN_H
 
-#include "tiledb.h"
 #include "tdbpp_dimension.h"
 #include "tdbpp_type.h"
+#include "tiledb.h"
 
 #include <functional>
 #include <memory>
@@ -45,64 +45,66 @@
 
 namespace tdb {
 
-  class Context;
+class Context;
 
-  class Domain {
-  public:
-    Domain(Context &ctx) : _ctx(ctx), _deleter(ctx) {
-      _create();
-    }
-    Domain(Context &ctx, tiledb_domain_t **domain) : Domain(ctx) {
-      load(domain);
-    }
-    Domain(const Domain& o) = default;
-    Domain(Domain&& o) = default;
-    Domain &operator=(const Domain&) = default;
-    Domain &operator=(Domain&& o) = default;
+class Domain {
+ public:
+  Domain(Context &ctx)
+      : _ctx(ctx)
+      , _deleter(ctx) {
+    _create();
+  }
+  Domain(Context &ctx, tiledb_domain_t **domain)
+      : Domain(ctx) {
+    load(domain);
+  }
+  Domain(const Domain &o) = default;
+  Domain(Domain &&o) = default;
+  Domain &operator=(const Domain &) = default;
+  Domain &operator=(Domain &&o) = default;
 
-    /**
-     * Load and take ownership of a domain.
-     *
-     * @param domain
-     */
-    void load(tiledb_domain_t **domain);
+  /**
+   * Load and take ownership of a domain.
+   *
+   * @param domain
+   */
+  void load(tiledb_domain_t **domain);
 
-    tiledb_datatype_t type() const;
+  tiledb_datatype_t type() const;
 
-    /**
-     * @return Current set of dimensions in domain.
-     */
-    const std::vector<Dimension> dimensions() const;
+  /**
+   * @return Current set of dimensions in domain.
+   */
+  const std::vector<Dimension> dimensions() const;
 
-    /**
-     * Add a new dimension to the domain.
-     *
-     * @param d dimension to add
-     */
-    Domain &add_dimension(const Dimension &d);
+  /**
+   * Add a new dimension to the domain.
+   *
+   * @param d dimension to add
+   */
+  Domain &add_dimension(const Dimension &d);
 
-    /**
-     * @return Number of dimensions in the domain.
-     */
-    unsigned size() const;
+  /**
+   * @return Number of dimensions in the domain.
+   */
+  unsigned size() const;
 
-    std::shared_ptr<tiledb_domain_t> ptr() const {
-      return _domain;
-    }
+  std::shared_ptr<tiledb_domain_t> ptr() const {
+    return _domain;
+  }
 
-  private:
-    void _init(tiledb_domain_t *domain);
-    void _create();
+ private:
+  void _init(tiledb_domain_t *domain);
+  void _create();
 
-    std::reference_wrapper<Context> _ctx;
-    _Deleter _deleter;
-    std::shared_ptr<tiledb_domain_t> _domain;
-  };
+  std::reference_wrapper<Context> _ctx;
+  _Deleter _deleter;
+  std::shared_ptr<tiledb_domain_t> _domain;
+};
 
-  std::ostream &operator<<(std::ostream &os, const Domain &d);
-  tdb::Domain &operator<<(tdb::Domain &d, const Dimension &dim);
+std::ostream &operator<<(std::ostream &os, const Domain &d);
+tdb::Domain &operator<<(tdb::Domain &d, const Dimension &dim);
 
-}
+}  // namespace tdb
 
-
-#endif //TILEDB_GENOMICS_DOMAIN_H
+#endif  // TILEDB_GENOMICS_DOMAIN_H

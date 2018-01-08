@@ -43,11 +43,26 @@ int main() {
   tdb::Context ctx;
   tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
-  std::vector<int> a1_buff = {0,1,2};
-  auto a2_buff = tdb::make_var_buffers<std::string>({"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
-  std::vector<float> a3_buff = {0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-                                4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2};
-  std::vector<uint64_t> coords_buff = { 1, 1, 1, 2 };
+  std::vector<int> a1_buff = {0, 1, 2};
+  auto a2_buff = tdb::make_var_buffers<std::string>(
+      {"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
+  std::vector<float> a3_buff = {0.1,
+                                0.2,
+                                1.1,
+                                1.2,
+                                2.1,
+                                2.2,
+                                3.1,
+                                3.2,
+                                4.1,
+                                4.2,
+                                5.1,
+                                5.2,
+                                6.1,
+                                6.2,
+                                7.1,
+                                7.2};
+  std::vector<uint64_t> coords_buff = {1, 1, 1, 2};
 
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
@@ -63,7 +78,8 @@ int main() {
   a3_buff.clear();
   coords_buff = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
 
-  // Reset buffers. This is needed in case vectors reallocate during reassignment.
+  // Reset buffers. This is needed in case vectors reallocate during
+  // reassignment.
   query.reset_buffers();
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);

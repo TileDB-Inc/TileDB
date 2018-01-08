@@ -42,7 +42,7 @@ std::ostream &tdb::operator<<(std::ostream &os, const tdb::Object &obj) {
 
 std::string tdb::Object::to_str() const {
   std::string ret = "Obj<";
-  switch(type) {
+  switch (type) {
     case Type::Array:
       ret += "ARRAY";
       break;
@@ -61,7 +61,7 @@ std::string tdb::Object::to_str() const {
 }
 
 void tdb::Object::set(const tiledb_object_t t) {
-  switch(t) {
+  switch (t) {
     case TILEDB_ARRAY:
       type = Type::Array;
       break;
@@ -115,37 +115,49 @@ std::string tdb::from_tiledb(const tiledb_array_type_t &type) {
   return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
 }
 
-
 std::string tdb::from_tiledb(const tiledb_query_type_t &qtype) {
-  switch(qtype) {
+  switch (qtype) {
     case TILEDB_READ:
       return "READ";
     case TILEDB_WRITE:
       return "WRITE";
   }
-  return ""; // silence error
+  return "";  // silence error
 }
 
 std::string tdb::from_tiledb(const tiledb_compressor_t &c) {
-  switch(c) {
-    case TILEDB_NO_COMPRESSION: return "NO_COMPRESSION";
-    case TILEDB_GZIP: return "GZIP";
-    case TILEDB_ZSTD: return "ZSTD";
-    case TILEDB_LZ4: return "LZ4";
-    case TILEDB_BLOSC: return "BLOSC";
-    case TILEDB_BLOSC_LZ4: return "BLOSC_LZ4";
-    case TILEDB_BLOSC_LZ4HC: return "BLOSC_LZ4HC";
-    case TILEDB_BLOSC_SNAPPY: return "BLOSC_SNAPPY";
-    case TILEDB_BLOSC_ZLIB: return "BLOSC_ZLIB";
-    case TILEDB_BLOSC_ZSTD: return "BLOSC_ZSTD";
-    case TILEDB_RLE: return "RLE";
-    case TILEDB_BZIP2: return "BZIP2";
-    case TILEDB_DOUBLE_DELTA: return "DOUBLE_DELTA";
+  switch (c) {
+    case TILEDB_NO_COMPRESSION:
+      return "NO_COMPRESSION";
+    case TILEDB_GZIP:
+      return "GZIP";
+    case TILEDB_ZSTD:
+      return "ZSTD";
+    case TILEDB_LZ4:
+      return "LZ4";
+    case TILEDB_BLOSC:
+      return "BLOSC";
+    case TILEDB_BLOSC_LZ4:
+      return "BLOSC_LZ4";
+    case TILEDB_BLOSC_LZ4HC:
+      return "BLOSC_LZ4HC";
+    case TILEDB_BLOSC_SNAPPY:
+      return "BLOSC_SNAPPY";
+    case TILEDB_BLOSC_ZLIB:
+      return "BLOSC_ZLIB";
+    case TILEDB_BLOSC_ZSTD:
+      return "BLOSC_ZSTD";
+    case TILEDB_RLE:
+      return "RLE";
+    case TILEDB_BZIP2:
+      return "BZIP2";
+    case TILEDB_DOUBLE_DELTA:
+      return "DOUBLE_DELTA";
   }
   return "Invalid";
 }
 
-std::ostream &::tdb::operator<<(std::ostream &os, const tdb::Compressor &c) {
+std::ostream & ::tdb::operator<<(std::ostream &os, const tdb::Compressor &c) {
   os << '(' << from_tiledb(c.compressor) << ", " << c.level << ')';
   return os;
 }

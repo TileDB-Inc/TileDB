@@ -49,18 +49,15 @@ int main() {
   query.set_layout(TILEDB_UNORDERED);
   query.set_subarray<uint64_t>({{{3, 4}}, {{3, 4}}});
 
-
   std::vector<int> a1_data = {211, 213, 212, 208};
 
   // Make buffers for var size attr
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
   auto a2buff = tdb::make_var_buffers(a2);
 
-  std::vector<float> a3_data = {211.1, 211.2, 213.1, 213.2,
-                                212.1, 212.2, 208.1, 208.2};
-  std::vector<uint64_t> coords = {4, 2, 3, 4,
-                                  3, 3, 3, 1};
-
+  std::vector<float> a3_data = {
+      211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
+  std::vector<uint64_t> coords = {4, 2, 3, 4, 3, 3, 3, 1};
 
   query.set_buffer<tdb::type::INT32>("a1", a1_data);
   query.set_buffer<tdb::type::CHAR>("a2", a2buff);

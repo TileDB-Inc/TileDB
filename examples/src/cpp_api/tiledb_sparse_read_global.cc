@@ -37,8 +37,8 @@
  * $ ./tiledb_sparse_read_global
  */
 
-#include <tiledb>
 #include <iomanip>
+#include <tiledb>
 
 int main() {
   using std::setw;
@@ -50,8 +50,9 @@ int main() {
   // Set the layout of output, desired attributes, and determine buff sizes
   query.set_layout(TILEDB_GLOBAL_ORDER);
   auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr makes a pair of buffs
-  auto a3_buff = query.make_buffer<float>("a3"); // 2 floats per cell
+  auto a2_buff = query.make_var_buffers<char>(
+      "a2", 3);  // variable sized attr makes a pair of buffs
+  auto a3_buff = query.make_buffer<float>("a3");  // 2 floats per cell
   auto coord_buff = query.make_buffer<uint64_t>(TILEDB_COORDS);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
@@ -61,20 +62,23 @@ int main() {
   std::cout << "Query submitted: " << query.submit() << "\n";
 
   // Get the number of elements filled in by the query
-  // Order is by attribute. For variable size attrs, the offset_buff comes first.
+  // Order is by attribute. For variable size attrs, the offset_buff comes
+  // first.
   const auto buff_sizes = query.returned_buff_sizes();
 
   auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
   auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
   auto coords = tdb::group_by_cell<2>(coord_buff, buff_sizes[4]);
 
-  std::cout << "Result num: " << buff_sizes[0] << '\n'; // This assumes all attributes were fully read.
-  std::cout << "coords" << setw(10) << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(8) << "a3[1]\n";
+  std::cout << "Result num: " << buff_sizes[0]
+            << '\n';  // This assumes all attributes were fully read.
+  std::cout << "coords" << setw(10) << "a1" << setw(10) << "a2" << setw(10)
+            << "a3[0]" << setw(8) << "a3[1]\n";
   for (unsigned i = 0; i < buff_sizes[0]; ++i) {
     std::cout << '(' << coords[i][0] << ',' << coords[i][1] << ')' << setw(10)
               << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(8)
-              << '(' << a3[i][0] << ',' << setw(5) << a3[i][1] << ')' << '\n';
+              << std::string(a2[i].data(), a2[i].size()) << setw(8) << '('
+              << a3[i][0] << ',' << setw(5) << a3[i][1] << ')' << '\n';
   }
 
   return 0;

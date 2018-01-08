@@ -40,4 +40,3 @@ int main() {
   ctx.consolidate("my_dense_array");
   return 0;
 }
-

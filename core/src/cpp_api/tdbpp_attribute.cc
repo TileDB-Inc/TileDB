@@ -32,9 +32,9 @@
  * This file declares the C++ API for TileDB.
  */
 
-#include "tdbpp_type.h"
 #include "tdbpp_attribute.h"
 #include "tdbpp_context.h"
+#include "tdbpp_type.h"
 
 void tdb::Attribute::_init(tiledb_attribute_t *attr) {
   _attr = std::shared_ptr<tiledb_attribute_t>(attr, _deleter);
@@ -70,13 +70,15 @@ tdb::Attribute &tdb::Attribute::set_num(unsigned num) {
 tdb::Compressor tdb::Attribute::compressor() const {
   auto &ctx = _ctx.get();
   Compressor cmp;
-  ctx.handle_error(tiledb_attribute_get_compressor(ctx, _attr.get(), &(cmp.compressor), &(cmp.level)));
+  ctx.handle_error(tiledb_attribute_get_compressor(
+      ctx, _attr.get(), &(cmp.compressor), &(cmp.level)));
   return cmp;
 }
 
 tdb::Attribute &tdb::Attribute::set_compressor(tdb::Compressor c) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_attribute_set_compressor(ctx, _attr.get(), c.compressor, c.level));
+  ctx.handle_error(
+      tiledb_attribute_set_compressor(ctx, _attr.get(), c.compressor, c.level));
   return *this;
 }
 

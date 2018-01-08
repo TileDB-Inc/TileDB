@@ -39,15 +39,20 @@ void tdb::Dimension::_init(tiledb_dimension_t *dim) {
   _dim = std::shared_ptr<tiledb_dimension_t>(dim, _deleter);
 }
 
-void tdb::Dimension::_create(const std::string &name, tiledb_datatype_t type, const void *domain, const void *extent) {
+void tdb::Dimension::_create(
+    const std::string &name,
+    tiledb_datatype_t type,
+    const void *domain,
+    const void *extent) {
   auto &ctx = _ctx.get();
   tiledb_dimension_t *d;
-  ctx.handle_error(tiledb_dimension_create(ctx, &d, name.c_str(), type, domain, extent));
+  ctx.handle_error(
+      tiledb_dimension_create(ctx, &d, name.c_str(), type, domain, extent));
   _init(d);
 }
 
 const std::string tdb::Dimension::name() const {
-  const char* name;
+  const char *name;
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_dimension_get_name(ctx, _dim.get(), &name));
   return name;
@@ -85,4 +90,3 @@ std::ostream &tdb::operator<<(std::ostream &os, const tdb::Dimension &dim) {
   os << "Dim<" << dim.name() << '>';
   return os;
 }
-

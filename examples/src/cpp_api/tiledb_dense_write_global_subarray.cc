@@ -45,8 +45,8 @@ int main() {
 
   std::vector<int> a1_data = {112, 113, 114, 115};
   std::vector<std::string> a2 = {"M", "NN", "OOO", "PPPP"};
-  std::vector<float> a3_data = {112.1, 112.2, 113.1, 113.2,
-                                114.1, 114.2, 115.1, 115.2};
+  std::vector<float> a3_data = {
+      112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
 
   auto a2_buff = tdb::make_var_buffers(a2);
 

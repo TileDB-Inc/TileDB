@@ -35,8 +35,8 @@
  * result.
  */
 
-#include <tiledb>
 #include <iomanip>
+#include <tiledb>
 
 int main() {
   using std::setw;

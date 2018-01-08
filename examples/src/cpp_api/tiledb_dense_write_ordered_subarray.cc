@@ -52,7 +52,7 @@ int main() {
   const std::string a2str = "jjmnnllllooopppp";
   std::vector<char> a2_data{a2str.begin(), a2str.end()};
   std::vector<float> a3_data = {
-  9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
+      9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
 
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2_data);

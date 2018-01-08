@@ -41,9 +41,9 @@ int main() {
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
 
-  d1.create<uint64_t>("d1", {{1,4}}, 2);
-  d2.create<uint64_t>("d2", {{1,4}}, 2);
-  domain << d1 << d2; // Add dims to domain
+  d1.create<uint64_t>("d1", {{1, 4}}, 2);
+  d2.create<uint64_t>("d2", {{1, 4}}, 2);
+  domain << d1 << d2;  // Add dims to domain
 
   tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
   a1.create<int>("a1");
@@ -56,7 +56,7 @@ int main() {
 
   tdb::ArraySchema schema(ctx);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  schema << domain << a1 << a2 << a3; // Add attributes to array
+  schema << domain << a1 << a2 << a3;  // Add attributes to array
 
   // Check the schema, and make the array.
   ctx.create_array("my_dense_array", schema);

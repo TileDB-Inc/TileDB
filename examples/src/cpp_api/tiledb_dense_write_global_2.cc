@@ -46,7 +46,7 @@ int main() {
   std::vector<int> a1_data = {0, 1, 2, 3, 4, 5};
   std::string a2str = "abbcccddddeffggghhhh";
   std::vector<char> a2_data(a2str.begin(), a2str.end());
-  std::vector<uint64_t> a2_offsets = {0,  1,  3,  6, 10, 11, 13, 16};
+  std::vector<uint64_t> a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   std::vector<float> a3_data = {};
 
   // Init the array & query for the array
@@ -63,12 +63,11 @@ int main() {
   a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   a2str = "ijjkkkllllmnnooopppp";
   a2_data = std::vector<char>(a2str.begin(), a2str.end());
-  a3_data =
-  {
-  0.1,  0.2,  1.1,  1.2, 2.1,  2.2,  3.1,  3.2,     // Upper left tile
-  4.1,  4.2,  5.1,  5.2, 6.1,  6.2,  7.1,  7.2,     // Upper right tile
-  8.1,  8.2,  9.1,  9.2, 10.1, 10.2, 11.1, 11.2,    // Lower left tile
-  12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,    // Lower right tile
+  a3_data = {
+      0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,   // Upper left tile
+      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,   // Upper right tile
+      8.1,  8.2,  9.1,  9.2,  10.1, 10.2, 11.1, 11.2,  // Lower left tile
+      12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,  // Lower right tile
   };
 
   query.reset_buffers();

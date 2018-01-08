@@ -35,7 +35,6 @@
 #include "tdbpp_domain.h"
 #include "tdbpp_context.h"
 
-
 void tdb::Domain::_init(tiledb_domain_t *domain) {
   _domain = std::shared_ptr<tiledb_domain_t>(domain, _deleter);
 }
@@ -47,7 +46,8 @@ const std::vector<tdb::Dimension> tdb::Domain::dimensions() const {
   std::vector<Dimension> dims;
   ctx.handle_error(tiledb_domain_get_rank(ctx, _domain.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
-    ctx.handle_error(tiledb_dimension_from_index(ctx, _domain.get(), i, &dimptr));
+    ctx.handle_error(
+        tiledb_dimension_from_index(ctx, _domain.get(), i, &dimptr));
     dims.emplace_back(_ctx, &dimptr);
   }
   return dims;
@@ -62,7 +62,8 @@ tiledb_datatype_t tdb::Domain::type() const {
 
 unsigned tdb::Domain::size() const {
   unsigned rank;
-  _ctx.get().handle_error(tiledb_domain_get_rank(_ctx.get(), _domain.get(), &rank));
+  _ctx.get().handle_error(
+      tiledb_domain_get_rank(_ctx.get(), _domain.get(), &rank));
   return rank;
 }
 
@@ -75,7 +76,8 @@ void tdb::Domain::_create() {
 
 tdb::Domain &tdb::Domain::add_dimension(const tdb::Dimension &d) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_domain_add_dimension(ctx, _domain.get(), d.ptr().get()));
+  ctx.handle_error(
+      tiledb_domain_add_dimension(ctx, _domain.get(), d.ptr().get()));
   return *this;
 }
 

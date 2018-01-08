@@ -46,6 +46,7 @@ int main() {
   }
 
   // Set a different handler
-  ctx.set_error_handler([](std::string msg){std::cout << "Callback:\n\t" << msg << "\n";});
+  ctx.set_error_handler(
+      [](std::string msg) { std::cout << "Callback:\n\t" << msg << "\n"; });
   ctx.create_group("my_group");
 }

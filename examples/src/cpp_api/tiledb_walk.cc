@@ -43,7 +43,7 @@ int main() {
   }
 
   std::cout << "\nPostorder traversal: \n";
-  for (auto begin=ctx.begin(TILEDB_POSTORDER); begin != ctx.end(); ++begin) {
+  for (auto begin = ctx.begin(TILEDB_POSTORDER); begin != ctx.end(); ++begin) {
     std::cout << *begin << '\n';
   }
 
@@ -59,4 +59,3 @@ int main() {
 
   return 0;
 }
-

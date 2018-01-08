@@ -56,7 +56,7 @@ int main() {
 
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {{0,1000}}, 10);
+  d1.create<uint64_t>("d1", {{0, 1000}}, 10);
   d2.create<uint64_t>("d2", {{100, 10000}}, 100);
   domain << d1 << d2;
   schema << domain;
@@ -80,10 +80,12 @@ int main() {
             << "\n- Offsets compressor: " << schema.offset_compressor();
 
   std::cout << "\nAttribute names:";
-  for (const auto &a : schema.attributes()) std::cout << "\n* " << a.first;
+  for (const auto &a : schema.attributes())
+    std::cout << "\n* " << a.first;
 
   std::cout << "\nDimension names:";
-  for (const auto &d : schema.domain().dimensions()) std::cout << "\n* " << d.name();
+  for (const auto &d : schema.domain().dimensions())
+    std::cout << "\n* " << d.name();
 
   return 0;
 }

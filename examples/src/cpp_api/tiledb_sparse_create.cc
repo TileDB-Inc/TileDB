@@ -32,8 +32,8 @@
  * with the name "my_sparse_array" in the current working directory.
  */
 
-#include <tiledb>
 #include <array>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
@@ -43,7 +43,7 @@ int main() {
   std::array<uint64_t, 2> dim_domain{{1, 4}};
   d1.create<uint64_t>("d1", dim_domain, 2);
   d2.create<uint64_t>("d2", dim_domain, 2);
-  domain << d1 << d2; // Add dims to domain
+  domain << d1 << d2;  // Add dims to domain
 
   tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
   a1.create<int>("a1");
@@ -57,10 +57,10 @@ int main() {
 
   tdb::ArraySchema schema(ctx);
   schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema << TILEDB_SPARSE // Type of array
-       << 2 // set capacity
-       << domain // Set domain
-       << a1 << a2 << a3; // set attributes
+  schema << TILEDB_SPARSE    // Type of array
+         << 2                // set capacity
+         << domain           // Set domain
+         << a1 << a2 << a3;  // set attributes
 
   // Check the schema, and make the array.
   ctx.create_array("my_sparse_array", schema);
