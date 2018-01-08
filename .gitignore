@@ -10,6 +10,7 @@ core/lib/*
 core/include/temp
 core/src/temp
 coverage.info
+deps-install/*
 test/obj/*
 test/bin/*
 test/tiledb_test/*
@@ -19,6 +20,7 @@ doxygen/html/
 doxygen/latex/
 examples/bin/*
 examples/obj/*
+scripts/deps-staging/*
 .idea
 *temp*
 *.DS_Store

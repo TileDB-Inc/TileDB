@@ -32,10 +32,14 @@
  */
 
 #include "catch.hpp"
+#ifdef _WIN32
+#include "win_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
 #include "tiledb.h"
 
-#include <sys/time.h>
+#include <cassert>
 #include <cstring>
 #include <ctime>
 #include <iostream>
@@ -56,9 +60,15 @@ struct DenseArrayFx {
   const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
+#ifdef _WIN32
+  const std::string FILE_URI_PREFIX = "";
+  const std::string FILE_TEMP_DIR =
+      tiledb::win::current_dir() + "\\tiledb_test\\";
+#else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::posix::current_dir() + "/tiledb_test/";
+#endif
   const int ITER_NUM = 10;
 
   // TileDB context and VFS
@@ -230,7 +240,7 @@ DenseArrayFx::DenseArrayFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;
@@ -537,7 +547,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
       int64_t tile_cols = ((j + tile_extent_1) < domain_size_1) ?
                               tile_extent_1 :
                               (domain_size_1 - j);
-      int64_t k, l;
+      int64_t k = 0, l = 0;
       for (k = 0; k < tile_rows; ++k) {
         for (l = 0; l < tile_cols; ++l) {
           index = uint64_t(k * tile_cols + l);

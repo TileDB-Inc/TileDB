@@ -29,6 +29,13 @@
 #   - LZ4_LIBRARIES, the LZ4 library path
 #   - LZ4_FOUND, whether LZ4 has been found
 
+# Set the name of the lz4 shared object
+if (WIN32)
+  set(LZ4_LIB_NAME liblz4)
+else()
+  set(LZ4_LIB_NAME lz4)
+endif()
+
 # Find header files  
 if(LZ4_SEARCH_HEADER_PATHS)
   find_path( 
@@ -43,12 +50,12 @@ endif()
 # Find library
 if(LZ4_SEARCH_LIB_PATH)
   find_library(
-      LZ4_LIBRARIES NAMES lz4
+      LZ4_LIBRARIES NAMES ${LZ4_LIB_NAME}
       PATHS ${LZ4_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(LZ4_LIBRARIES NAMES lz4)
+  find_library(LZ4_LIBRARIES NAMES ${LZ4_LIB_NAME})
 endif()
 
 if(LZ4_INCLUDE_DIR AND LZ4_LIBRARIES)

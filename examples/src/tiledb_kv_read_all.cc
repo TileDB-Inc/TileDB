@@ -38,6 +38,7 @@
 
 #include <tiledb.h>
 #include <iostream>
+#include <string>
 
 void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 void print_key(void* key, tiledb_datatype_t key_type, uint64_t key_size);

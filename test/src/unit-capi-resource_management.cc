@@ -31,7 +31,13 @@
  */
 
 #include "catch.hpp"
+
+#ifdef _WIN32
+#include "win_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
+
 #include "tiledb.h"
 
 struct ResourceMgmtFx {
@@ -42,11 +48,19 @@ struct ResourceMgmtFx {
   const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
+#ifdef _WIN32
+  const std::string FILE_URI_PREFIX = "";
+  const std::string FILE_TEMP_DIR =
+      tiledb::win::current_dir() + "\\tiledb_test\\";
+  const std::string GROUP = "group\\";
+  const std::string ARRAY = "array\\";
+#else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::posix::current_dir() + "/tiledb_test/";
   const std::string GROUP = "group/";
   const std::string ARRAY = "array/";
+#endif
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -77,7 +91,7 @@ ResourceMgmtFx::ResourceMgmtFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;
@@ -243,7 +257,7 @@ TEST_CASE_METHOD(
   check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
-  // S3
+// S3
 #ifdef HAVE_S3
   create_temp_dir(S3_TEMP_DIR);
   check_object_type(S3_TEMP_DIR);
@@ -252,7 +266,7 @@ TEST_CASE_METHOD(
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
-  // HDFS
+// HDFS
 #ifdef HAVE_HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_object_type(HDFS_TEMP_DIR);

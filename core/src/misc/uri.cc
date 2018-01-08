@@ -31,8 +31,13 @@
  */
 
 #include "uri.h"
+#include "logger.h"
 #include "utils.h"
 #include "vfs.h"
+
+#ifdef _WIN32
+#include "win_filesystem.h"
+#endif
 
 #include <iostream>
 
@@ -47,12 +52,19 @@ URI::URI() {
 }
 
 URI::URI(const std::string& path) {
-  if (URI::is_posix(path))
+  if (path.empty())
+    uri_ = "";
+  else if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
   else if (URI::is_hdfs(path) || URI::is_s3(path))
     uri_ = path;
   else
     uri_ = "";
+
+  if (uri_.length() > constants::uri_max_len) {
+    LOG_ERROR("URI '" + uri_ + "' exceeds length limit.");
+    uri_ = "";
+  }
 }
 
 URI::~URI() = default;
@@ -69,12 +81,12 @@ bool URI::is_invalid() const {
   return uri_.empty();
 }
 
-bool URI::is_posix(const std::string& path) {
+bool URI::is_file(const std::string& path) {
   return utils::starts_with(path, "file:///") ||
          path.find("://") == std::string::npos;
 }
 
-bool URI::is_posix() const {
+bool URI::is_file() const {
   return utils::starts_with(uri_, "file:///");
 }
 
@@ -125,8 +137,13 @@ URI URI::parent() const {
 }
 
 std::string URI::to_path() const {
-  if (is_posix())
+  if (is_file()) {
+#ifdef _WIN32
+    return win::path_from_uri(uri_);
+#else
     return uri_.substr(std::string("file://").size());
+#endif
+  }
 
   if (is_hdfs() || is_s3())
     return uri_;

@@ -63,6 +63,11 @@ find_package(Bzip2 REQUIRED)
 include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
+# On Windows, set a variable for the dependency install location.
+if (WIN32)
+  set(TILEDB_DEPENDENCY_INSTALL_DIR "${CMAKE_SOURCE_DIR}/deps-install")
+endif()
+
 # Find optional library dependencies
 if(USE_HDFS)
   find_package(LIBJVM REQUIRED)
@@ -117,12 +122,32 @@ endif()
 include(SetCXX2011Flag REQUIRED)
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Werror -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage -Werror -Wall -Wextra")
+if (WIN32)
+  # We disable some warnings that are not present in gcc/clang -Wall:
+  #   C4101: unreferenced local variable
+  #   C4244: conversion warning of floating point to integer type.
+  #   C4456: local variable hiding previous local variable
+  #   C4457: local variable hiding function parameter
+  #   C4702: unreachable code
+  #   C4996: deprecation warning about e.g. sscanf.
+  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4456 /wd4457 /wd4702 /wd4996")
+  # Note: MSVC has the behavior of -fvisibility=hidden by default (you must
+  # explicitly export all symbols you want exported).
+  set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 /WX ${MSVC_DISABLE_WARNINGS}")
+  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /Ox /W4 /WX ${MSVC_DISABLE_WARNINGS}")
+  # Disable GDI (which we don't need, and causes some macro
+  # re-definition issues if wingdi.h is included)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOGDI")
+  # Add /MPn flag from CMake invocation (if defined).
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_MP_FLAG}")
+else()
+  set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Werror -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage -Werror -Wall -Wextra")
 
-if(NOT APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+  if(NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+  endif()
 endif()
 
 # Enable sanitizers only on clang for now
