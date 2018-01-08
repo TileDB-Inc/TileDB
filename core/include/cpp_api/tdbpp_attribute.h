@@ -51,9 +51,6 @@ namespace tdb {
     Attribute(Context &ctx, tiledb_attribute_t **attr) : Attribute(ctx) {
       load(attr);
     }
-    Attribute(Context &ctx, std::string name, tiledb_datatype_t type) : Attribute(ctx) {
-      create(name, type);
-    }
     Attribute(const Attribute &attr) = default;
     Attribute(Attribute &&o) = default;
     Attribute &operator=(const Attribute&) = default;
@@ -78,10 +75,9 @@ namespace tdb {
      * @param name Attribute name
      * @return *this
      */
-    template<typename DataT>
-    Attribute &create(const std::string &name) {
+    template<typename DataT, typename = typename DataT::type>
+    void create(const std::string &name) {
       _create(name, DataT::tiledb_datatype);
-      return *this;
     }
 
     /**
@@ -91,7 +87,7 @@ namespace tdb {
      * @param name
      */
     template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+    typename std::enable_if<std::is_fundamental<T>::value, void>::type
     create(const std::string &name) {
       create<typename type::type_from_native<T>::type>(name);
     }
@@ -102,9 +98,8 @@ namespace tdb {
      * @param name
      * @param type
      */
-    Attribute &create(const std::string &name, tiledb_datatype_t type) {
+    void create(const std::string &name, tiledb_datatype_t type) {
       _create(name, type);
-      return *this;
     }
 
     /**

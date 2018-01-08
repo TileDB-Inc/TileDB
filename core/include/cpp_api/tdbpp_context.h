@@ -198,7 +198,7 @@ namespace tdb {
      * @param schema
      * @param name
      */
-    void create_array(const ArraySchema &schema, const std::string &name);
+    void create_array(const std::string &name, const ArraySchema &schema);
 
     /**
      * Consolidate fragments.

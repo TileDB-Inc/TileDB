@@ -46,9 +46,9 @@ int main() {
   tdb::Context ctx;
   tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
-  query.layout(TILEDB_UNORDERED);
-  query.subarray<uint64_t>({{3, 4}, {3, 4}});
+  query.set_layout(TILEDB_UNORDERED);
+  query.set_subarray<uint64_t>({{3, 4},
+                                {3, 4}});
 
 
   std::vector<int> a1_data = {211, 213, 212, 208};

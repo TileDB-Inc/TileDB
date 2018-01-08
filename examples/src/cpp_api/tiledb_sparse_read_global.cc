@@ -48,8 +48,7 @@ int main() {
   tdb::Query query(ctx, "my_sparse_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
+  query.set_layout(TILEDB_GLOBAL_ORDER);
   auto a1_buff = query.make_buffer<int>("a1");
   auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr makes a pair of buffs
   auto a3_buff = query.make_buffer<float>("a3"); // 2 floats per cell

@@ -49,10 +49,9 @@ int main() {
   // Init the array & query for the array
   tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
-  // Set subarray. Templated on domain type.
-  query.subarray<uint64_t>({3, 4, 2, 4});
-  query.buffer_list({"a1", "a2", "a3"});
-  query.layout(TILEDB_ROW_MAJOR);
+  // Set set_subarray. Templated on domain type.
+  query.set_subarray<uint64_t>({3, 4, 2, 4});
+  query.set_layout(TILEDB_ROW_MAJOR);
 
   // Make buffers
   auto a1_buff = query.make_buffer<int>("a1");
@@ -68,7 +67,7 @@ int main() {
   // Order is by attribute. For variable size attrs, the offset_buff comes first.
   const auto &buff_sizes = query.returned_buff_sizes();
 
-  // chunk the continous buffer by cell
+  // chunk the continuous buffer by cell
   auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]); // For var size: use offset buff
   auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
 

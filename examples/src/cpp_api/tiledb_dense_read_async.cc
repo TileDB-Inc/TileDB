@@ -44,8 +44,7 @@ int main() {
   tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.buffer_list({"a1", "a2", "a3"});
+  query.set_layout(TILEDB_GLOBAL_ORDER);
 
   // Make buffers
   auto a1_buff = query.make_buffer<int>("a1");
@@ -56,7 +55,7 @@ int main() {
   query.set_buffer("a3", a3_buff);
 
   // Submit query with callback
-  std::string msg = "(Callback) Query completed.";
+  std::string msg = "(Callback) Query completed.\n";
   query.submit_async(&print_upon_completion, (void*)msg.c_str());
 
   std::cout << "Query in progress\n";

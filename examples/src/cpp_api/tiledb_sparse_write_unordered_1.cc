@@ -42,8 +42,6 @@ int main() {
   tdb::Context ctx;
   tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
-  query.buffer_list({"a1", "a2", "a3", TILEDB_COORDS});
-
   // clang-format off
   std::vector<int> a1_buff = {7, 5, 0, 6, 4, 3, 1, 2};
   auto a2_buff = tdb::make_var_buffers<std::string>({"hhhh", "ff", "a", "ggg", "e", "dddd", "bb", "ccc"});
@@ -55,7 +53,7 @@ int main() {
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.layout(TILEDB_UNORDERED);
+  query.set_layout(TILEDB_UNORDERED);
 
   query.submit();
 

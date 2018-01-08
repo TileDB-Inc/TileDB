@@ -125,3 +125,27 @@ std::string tdb::from_tiledb(const tiledb_query_type_t &qtype) {
   }
   return ""; // silence error
 }
+
+std::string tdb::from_tiledb(const tiledb_compressor_t &c) {
+  switch(c) {
+    case TILEDB_NO_COMPRESSION: return "NO_COMPRESSION";
+    case TILEDB_GZIP: return "GZIP";
+    case TILEDB_ZSTD: return "ZSTD";
+    case TILEDB_LZ4: return "LZ4";
+    case TILEDB_BLOSC: return "BLOSC";
+    case TILEDB_BLOSC_LZ4: return "BLOSC_LZ4";
+    case TILEDB_BLOSC_LZ4HC: return "BLOSC_LZ4HC";
+    case TILEDB_BLOSC_SNAPPY: return "BLOSC_SNAPPY";
+    case TILEDB_BLOSC_ZLIB: return "BLOSC_ZLIB";
+    case TILEDB_BLOSC_ZSTD: return "BLOSC_ZSTD";
+    case TILEDB_RLE: return "RLE";
+    case TILEDB_BZIP2: return "BZIP2";
+    case TILEDB_DOUBLE_DELTA: return "DOUBLE_DELTA";
+  }
+  return "Invalid";
+}
+
+std::ostream &::tdb::operator<<(std::ostream &os, const tdb::Compressor &c) {
+  os << '(' << from_tiledb(c.compressor) << ", " << c.level << ')';
+  return os;
+}

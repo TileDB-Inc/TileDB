@@ -45,10 +45,9 @@ int main() {
   // Init the array & query for the array
   tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
-  // Set subarray. Templated on domain type.
-  query.subarray<uint64_t>({3, 4, 2, 4});
-  query.buffer_list({"a1"});
-  query.layout(TILEDB_ROW_MAJOR);
+  // Set set_subarray. Templated on domain type.
+  query.set_subarray<uint64_t>({3, 4, 2, 4});
+  query.set_layout(TILEDB_ROW_MAJOR);
 
   // Limit buff size to 2
   auto a1_data = query.make_buffer<tdb::type::INT32>("a1", 2);

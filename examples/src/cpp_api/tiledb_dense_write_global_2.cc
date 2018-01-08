@@ -43,7 +43,7 @@ int main() {
   tdb::Context ctx;
 
   // Buffers
-  std::vector<int> a1_data = {0,  1,  2,  3, 4,  5};
+  std::vector<int> a1_data = {0, 1, 2, 3, 4, 5};
   std::string a2str = "abbcccddddeffggghhhh";
   std::vector<char> a2_data(a2str.begin(), a2str.end());
   std::vector<uint64_t> a2_offsets = {0,  1,  3,  6, 10, 11, 13, 16};
@@ -52,8 +52,7 @@ int main() {
   // Init the array & query for the array
   tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.buffer_list({"a1", "a2", "a3"});
+  query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_data);

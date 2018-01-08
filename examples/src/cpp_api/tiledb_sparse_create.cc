@@ -37,17 +37,16 @@
 int main() {
   tdb::Context ctx;
 
-  // Can also do: domain.create<uint64_t>();
   tdb::Domain domain(ctx);
   tdb::Dimension d1(ctx), d2(ctx);
   d1.create<uint64_t>("d1", {1,4}, 2);
   d2.create<uint64_t>("d2", {1,4}, 2);
   domain << d1 << d2; // Add dims to domain
 
-  // Can also do: a1.create<int>("a1")
-  tdb::Attribute a1(ctx, "a1", TILEDB_INT32);
-  tdb::Attribute a2(ctx, "a2", TILEDB_CHAR);
-  tdb::Attribute a3(ctx, "a3", TILEDB_FLOAT32);
+  tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
+  a1.create<int>("a1");
+  a2.create<char>("a2");
+  a3.create<float>("a3");
 
   // Set attr compressors and number
   a1 << tdb::Compressor{TILEDB_BLOSC, -1} << 1;
@@ -62,7 +61,7 @@ int main() {
        << a1 << a2 << a3; // set attributes
 
   // Check the schema, and make the array.
-  ctx.create_array(schema, "my_sparse_array");
+  ctx.create_array("my_sparse_array", schema);
 
   std::cout << "Array created with schema: " << schema << std::endl;
 

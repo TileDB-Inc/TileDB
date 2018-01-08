@@ -46,12 +46,11 @@
 namespace tdb {
 
   class Context;
-  class Dimension;
 
   class Domain {
   public:
     Domain(Context &ctx) : _ctx(ctx), _deleter(ctx) {
-      create();
+      _create();
     }
     Domain(Context &ctx, tiledb_domain_t **domain) : Domain(ctx) {
       load(domain);
@@ -67,15 +66,6 @@ namespace tdb {
      * @param domain
      */
     void load(tiledb_domain_t **domain);
-
-    /**
-     * Create a new domain.
-     *
-     * @tparam DataT
-     */
-    void create() {
-      _create();
-    }
 
     tiledb_datatype_t type() const;
 

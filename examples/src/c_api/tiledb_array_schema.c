@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_schema.cc
+ * @file   tiledb_array_schema.c
  *
  * @section LICENSE
  *

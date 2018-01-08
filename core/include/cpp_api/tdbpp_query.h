@@ -47,6 +47,7 @@
 #include <iterator>
 #include <type_traits>
 #include <unordered_map>
+#include <set>
 
 namespace tdb {
 
@@ -69,22 +70,14 @@ namespace tdb {
      * @param layout
      * @return *this
      */
-    Query &layout(tiledb_layout_t layout);
-
-    /**
-     * Set the list of buffers to be provided.
-     *
-     * @param attrs Attributes to query, plus TILEDB_COORDS if needed.
-     * @return *this
-     */
-    Query &buffer_list(const std::vector<std::string> &attrs);
+    Query &set_layout(tiledb_layout_t layout);
 
     /**
      * @tparam T should be a type from tdb::type::*
      * @param pair vector of pairs defining each dimensions [start,stop]. Inclusive.
      */
     template<typename T>
-    Query &subarray(const std::vector<typename T::type> &pairs) {
+    Query &set_subarray(const std::vector<typename T::type> &pairs) {
       auto &ctx = _ctx.get();
       _type_check<T>(_schema.domain().type());
       if (pairs.size() != _schema.domain().size() * 2) {
@@ -100,12 +93,12 @@ namespace tdb {
 
     template<typename T=uint64_t>
     typename std::enable_if<std::is_fundamental<T>::value, Query>::type
-    &subarray(const std::vector<T> &pairs) {
-      return subarray<typename type::type_from_native<T>::type>(pairs);
+    &set_subarray(const std::vector<T> &pairs) {
+      return set_subarray<typename type::type_from_native<T>::type>(pairs);
     };
 
     template<typename T>
-    Query &subarray(const std::vector<std::array<typename T::type, 2>> &pairs) {
+    Query &set_subarray(const std::vector<std::array<typename T::type, 2>> &pairs) {
       auto &ctx = _ctx.get();
       _type_check<T>(_schema.domain().type());
       ctx.handle_error(tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
@@ -118,8 +111,8 @@ namespace tdb {
 
     template<typename T=uint64_t>
     typename std::enable_if<std::is_fundamental<T>::value, Query>::type
-    &subarray(const std::vector<std::array<T, 2>> &pairs) {
-      return subarray<typename type::type_from_native<T>::type>(pairs);
+    &set_subarray(const std::vector<std::array<T, 2>> &pairs) {
+      return set_subarray<typename type::type_from_native<T>::type>(pairs);
     };
 
     /**
@@ -134,6 +127,7 @@ namespace tdb {
     Query &set_buffer(const std::string &attr, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, true);
       _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
+      _attrs.insert(attr);
       return *this;
     }
 
@@ -155,8 +149,10 @@ namespace tdb {
     template<typename T>
     Query &set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, std::vector<typename T::type> &buf) {
       _type_check_attr<T>(attr, false);
+
       _var_offsets[attr] = std::make_tuple<uint64_t, uint64_t, void*>(offsets.size(), sizeof(uint64_t), offsets.data());
       _attr_buffs[attr] = std::make_tuple<uint64_t, uint64_t, void*>(buf.size(), sizeof(typename T::type), buf.data());
+      _attrs.insert(attr);
       return *this;
     }
 
@@ -313,6 +309,7 @@ namespace tdb {
      * Clear all attribute buffers.
      */
     void reset_buffers() {
+      _attrs.clear();
       _attr_buffs.clear();
       _var_offsets.clear();
       _buff_sizes.clear();
@@ -451,7 +448,7 @@ namespace tdb {
     std::reference_wrapper<Context> _ctx;
     ArraySchema _schema;
     _Deleter _deleter;
-    std::vector<std::string> _attrs;
+    std::set<std::string> _attrs;
 
     // Size of the vector, size of vector::value_type, vector.data()
     std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>> _var_offsets;
@@ -462,7 +459,7 @@ namespace tdb {
     std::vector<const char*> _attr_names;
     std::vector<void*> _all_buff;
     std::vector<uint64_t> _buff_sizes;
-    uint64_t _subarray_cells = 0; // Number of cells set by subarray, influences resize_buffer
+    uint64_t _subarray_cells = 0; // Number of cells set by set_subarray, influences resize_buffer
     std::shared_ptr<tiledb_query_t> _query;
 
   };

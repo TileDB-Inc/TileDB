@@ -34,14 +34,9 @@
 
 #include "tdbpp_query.h"
 
-tdb::Query &tdb::Query::layout(tiledb_layout_t layout) {
+tdb::Query &tdb::Query::set_layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_set_layout(ctx, _query.get(), layout));
-  return *this;
-}
-
-tdb::Query &tdb::Query::buffer_list(const std::vector<std::string> &attrs) {
-  _attrs = attrs;
   return *this;
 }
 
@@ -58,12 +53,6 @@ void tdb::Query::_prepare_submission() {
   _buff_sizes.clear();
   _attr_names.clear();
   _sub_tsize.clear();
-
-  if (_attrs.empty()) {
-    for (const auto &a : _attr_buffs) {
-      _attrs.push_back(a.first);
-    }
-  }
 
   uint64_t bufsize;
   size_t tsize;
@@ -82,7 +71,7 @@ void tdb::Query::_prepare_submission() {
     std::tie(bufsize, tsize, ptr) = _attr_buffs[a];
     _all_buff.push_back(ptr);
     _buff_sizes.push_back(bufsize*tsize);
-    _attr_names.push_back(a.data());
+    _attr_names.push_back(a.c_str());
     _sub_tsize.push_back(tsize);
   }
 

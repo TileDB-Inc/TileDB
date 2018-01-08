@@ -48,8 +48,8 @@ int main() {
   tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.layout(TILEDB_GLOBAL_ORDER);
-  query.buffer_list({"a1", "a2", "a3"});
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
   // Make buffers
   auto a1_buff = query.make_buffer<int>("a1");
   auto a2_buff = query.make_var_buffers<char>("a2", 3); // variable sized attr gets a pair of buffs

@@ -173,7 +173,7 @@ void tdb::Context::_default_handler(std::string msg) {
   throw std::runtime_error(msg);
 }
 
-void tdb::Context::create_array(const tdb::ArraySchema &schema, const std::string &name) {
+void tdb::Context::create_array(const std::string &name, const tdb::ArraySchema &schema) {
   auto ctx = _ctx.get();
   handle_error(tiledb_array_schema_check(ctx, schema.ptr().get()));
   handle_error(tiledb_array_create(ctx, name.c_str(), schema.ptr().get()));
