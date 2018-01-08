@@ -69,7 +69,7 @@ static std::string get_last_error_msg() {
 
 std::string abs_path(const std::string& path) {
   if (path.length() == 0) {
-    return "";
+    return current_dir();
   }
   std::string full_path;
   if (PathIsRelative(path.c_str())) {
@@ -509,7 +509,10 @@ std::string path_from_uri(const std::string& uri) {
 }
 
 bool is_win32_path(const std::string& path) {
-  if (PathIsURL(path.c_str())) {
+  if (path.empty()) {
+    // Special case to match the behavior of posix_filesystem.
+    return true;
+  } else if (PathIsURL(path.c_str())) {
     return false;
   } else {
     bool definitely_win32 = PathIsUNC(path.c_str()) ||

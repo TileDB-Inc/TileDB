@@ -71,7 +71,7 @@ TEST_CASE_METHOD(Win32Fx, "Test Win32 filesystem", "[win32]") {
 
   CHECK(win32::abs_path(test_dir_path) == test_dir_path);
   CHECK(win32::abs_path(test_file_path) == test_file_path);
-  CHECK(win32::abs_path("") == "");
+  CHECK(win32::abs_path("") == win32::current_dir());
   CHECK(win32::abs_path("C:\\") == "C:\\");
   CHECK(win32::abs_path("C:\\path1\\path2\\") == "C:\\path1\\path2\\");
   CHECK(win32::abs_path("C:\\..") == "C:\\");
