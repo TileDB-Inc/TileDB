@@ -79,7 +79,7 @@ void tdb::Query::_prepare_submission() {
       ctx,
       _query.get(),
       _attr_names.data(),
-      _attr_names.size(),
+      static_cast<unsigned int>(_attr_names.size()),
       _all_buff.data(),
       _buff_sizes.data()));
 }
