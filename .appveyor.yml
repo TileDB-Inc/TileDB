@@ -10,6 +10,6 @@ build_script:
 
     ..\scripts\install-deps.ps1
 
-    ..\bootstrap
+    ..\bootstrap.ps1
 test_script:
 - ps: cmake --build . --target check --config Release
