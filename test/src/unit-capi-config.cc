@@ -54,14 +54,17 @@ void check_correct_file() {
   tiledb_ctx_t* ctx;
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
+
+  // Remove file
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
+
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-
-  // Remove file
-  std::string cmd = std::string("rm -f test_config.txt");
-  CHECK(system(cmd.c_str()) == 0);
 }
 
 void check_incorrect_file_cannot_open() {
@@ -104,9 +107,13 @@ void check_incorrect_file_missing_value() {
   rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
 
-  // Remove file
-  std::string cmd = std::string("rm -f test_config.txt");
-  CHECK(system(cmd.c_str()) == 0);
+  // Remove file (with a new valid context).
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
+  CHECK(tiledb_ctx_free(ctx) == TILEDB_OK);
 }
 
 void check_incorrect_file_extra_word() {
@@ -133,9 +140,13 @@ void check_incorrect_file_extra_word() {
   rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
 
-  // Remove file
-  std::string cmd = std::string("rm -f test_config.txt");
-  CHECK(system(cmd.c_str()) == 0);
+  // Remove file (with a new valid context).
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
+  CHECK(tiledb_ctx_free(ctx) == TILEDB_OK);
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {

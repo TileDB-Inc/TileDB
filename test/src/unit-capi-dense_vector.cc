@@ -31,7 +31,11 @@
  */
 
 #include "catch.hpp"
+#ifdef _WIN32
+#include "win_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
 #include "tiledb.h"
 
 struct DenseVectorFx {
@@ -46,9 +50,15 @@ struct DenseVectorFx {
   const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
+#ifdef _WIN32
+  const std::string FILE_URI_PREFIX = "";
+  const std::string FILE_TEMP_DIR =
+      tiledb::win::current_dir() + "\\tiledb_test\\";
+#else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::posix::current_dir() + "/tiledb_test/";
+#endif
   const std::string VECTOR = "vector";
 
   // TileDB context
@@ -79,7 +89,7 @@ DenseVectorFx::DenseVectorFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;

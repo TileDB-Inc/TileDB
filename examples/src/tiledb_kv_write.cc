@@ -52,22 +52,22 @@ int main() {
   int key1 = 100;
   int key1_a1 = 1;
   const char* key1_a2 = "a";
-  float key1_a3[] = {1.1, 1.2};
+  float key1_a3[] = {1.1f, 1.2f};
 
   float key2 = 200.0;
   int key2_a1 = 2;
   const char* key2_a2 = "bb";
-  float key2_a3[] = {2.1, 2.2};
+  float key2_a3[] = {2.1f, 2.2f};
 
   double key3[] = {300.0, 300.1};
   int key3_a1 = 3;
   const char* key3_a2 = "ccc";
-  float key3_a3[] = {3.1, 3.2};
+  float key3_a3[] = {3.1f, 3.2f};
 
   char key4[] = "key_4";
   int key4_a1 = 4;
   const char* key4_a2 = "dddd";
-  float key4_a3[] = {4.1, 4.2};
+  float key4_a3[] = {4.1f, 4.2f};
 
   // Create key-values
   tiledb_kv_t* kv;
