@@ -131,7 +131,7 @@ URI URI::parent() const {
 std::string URI::to_path() const {
   if (is_file()) {
 #ifdef _WIN32
-    return win32::path_from_uri(uri_);
+    return win::path_from_uri(uri_);
 #else
     return uri_.substr(std::string("file://").size());
 #endif

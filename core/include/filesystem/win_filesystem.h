@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file includes declarations of Win32 filesystem functions.
+ * This file includes declarations of Windows filesystem functions.
  */
 
-#ifndef TILEDB_WIN32_FILESYSTEM_H
-#define TILEDB_WIN32_FILESYSTEM_H
+#ifndef TILEDB_WIN_FILESYSTEM_H
+#define TILEDB_WIN_FILESYSTEM_H
 
 #ifdef _WIN32
 
@@ -46,11 +46,11 @@
 
 namespace tiledb {
 
-namespace win32 {
+namespace win {
 
 /**
  * Returns the absolute (string) path of the input in the
- * form of a Win32 path.
+ * form of a Windows path.
  */
 std::string abs_path(const std::string& path);
 
@@ -194,33 +194,33 @@ Status write(
     const std::string& path, const void* buffer, uint64_t buffer_size);
 
 /**
- * Converts a Win32 path to a "file:///" URI.
+ * Converts a Windows path to a "file:///" URI.
  *
- * @param path The Win32 path to convert.
+ * @param path The Windows path to convert.
  * @status A path file URI.
  */
 std::string uri_from_path(const std::string& path);
 
 /**
- * Converts a "file:///" URI to a Win32 path.
+ * Converts a "file:///" URI to a Windows path.
  *
  * @param path The URI to convert.
- * @status A Win32 path.
+ * @status A Windows path.
  */
 std::string path_from_uri(const std::string& uri);
 
 /**
- * Returns true if the given string is a Win32 path.
+ * Returns true if the given string is a Windows path.
  *
  * @param path The path to check.
- * @return True if the path is a Win32 path.
+ * @return True if the path is a Windows path.
  */
-bool is_win32_path(const std::string& path);
+bool is_win_path(const std::string& path);
 
-}  // namespace win32
+}  // namespace win
 
 }  // namespace tiledb
 
 #endif  // _WIN32
 
-#endif  // TILEDB_WIN32_FILESYSTEM_H
+#endif  // TILEDB_WIN_FILESYSTEM_H

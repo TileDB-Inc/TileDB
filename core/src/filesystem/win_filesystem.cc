@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file includes definitions of Win32 filesystem functions.
+ * This file includes definitions of Windows filesystem functions.
  */
 
 #ifdef _WIN32
@@ -45,7 +45,7 @@
 
 namespace tiledb {
 
-namespace win32 {
+namespace win {
 
 static std::string get_last_error_msg() {
   DWORD err = GetLastError();
@@ -88,7 +88,7 @@ std::string abs_path(const std::string& path) {
 }
 
 Status create_dir(const std::string& path) {
-  if (win32::is_dir(path)) {
+  if (win::is_dir(path)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
@@ -102,7 +102,7 @@ Status create_dir(const std::string& path) {
 }
 
 Status create_file(const std::string& filename) {
-  if (win32::is_file(filename)) {
+  if (win::is_file(filename)) {
     return Status::Ok();
   }
 
@@ -188,9 +188,9 @@ err:
 }
 
 Status remove_path(const std::string& path) {
-  if (win32::is_file(path)) {
+  if (win::is_file(path)) {
     return remove_file(path);
-  } else if (win32::is_dir(path)) {
+  } else if (win::is_dir(path)) {
     return recursively_remove_directory(path);
   } else {
     return LOG_STATUS(Status::IOError(std::string(
@@ -508,17 +508,17 @@ std::string path_from_uri(const std::string& uri) {
   return str_path;
 }
 
-bool is_win32_path(const std::string& path) {
+bool is_win_path(const std::string& path) {
   if (path.empty()) {
     // Special case to match the behavior of posix_filesystem.
     return true;
   } else if (PathIsURL(path.c_str())) {
     return false;
   } else {
-    bool definitely_win32 = PathIsUNC(path.c_str()) ||
+    bool definitely_windows = PathIsUNC(path.c_str()) ||
                             PathGetDriveNumber(path.c_str()) != -1 ||
                             path.find('\\') != std::string::npos;
-    if (definitely_win32) {
+    if (definitely_windows) {
       return true;
     } else {
       // Bare relative path e.g. "filename.txt"
@@ -527,7 +527,7 @@ bool is_win32_path(const std::string& path) {
   }
 }
 
-}  // namespace win32
+}  // namespace win
 
 }  // namespace tiledb
 

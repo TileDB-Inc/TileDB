@@ -55,7 +55,7 @@ struct WalkFx {
 #ifdef _WIN32
   const std::string FILE_TEMP_DIR = "tiledb_test\\";
   const std::string FILE_FULL_TEMP_DIR =
-      tiledb::win32::current_dir() + "\\tiledb_test\\";
+      tiledb::win::current_dir() + "\\tiledb_test\\";
 #else
   const std::string FILE_TEMP_DIR = "tiledb_test/";
   const std::string FILE_FULL_TEMP_DIR =
@@ -236,7 +236,7 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
   create_hierarchy(FILE_FULL_TEMP_DIR);
 #ifdef _WIN32
   // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
-  golden = get_golden_output(tiledb::win32::uri_from_path(FILE_FULL_TEMP_DIR));
+  golden = get_golden_output(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
 #else
   golden = get_golden_output(FILE_FULL_TEMP_DIR);
 #endif

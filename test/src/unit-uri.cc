@@ -12,7 +12,7 @@ using namespace tiledb;
 #ifdef _WIN32
 static const char PATH_SEPARATOR = '\\';
 static std::string current_dir() {
-  return win32::current_dir();
+  return win::current_dir();
 }
 #else
 static const char PATH_SEPARATOR = '/';
@@ -47,7 +47,7 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
 #ifdef _WIN32
   CHECK(
-      uri.to_string() == win32::uri_from_path(win32::current_dir()) + "/path1");
+      uri.to_string() == win::uri_from_path(win::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
 #endif
@@ -87,7 +87,7 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(
       uri.to_string() ==
-      win32::uri_from_path(win32::current_dir()) + "/path1/path2");
+      win::uri_from_path(win::current_dir()) + "/path1/path2");
 }
 
 #endif

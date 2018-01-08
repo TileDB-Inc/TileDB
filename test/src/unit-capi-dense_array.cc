@@ -63,7 +63,7 @@ struct DenseArrayFx {
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
-      tiledb::win32::current_dir() + "\\tiledb_test\\";
+      tiledb::win::current_dir() + "\\tiledb_test\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =

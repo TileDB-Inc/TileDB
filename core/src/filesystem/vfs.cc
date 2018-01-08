@@ -71,10 +71,10 @@ VFS::~VFS() {
 
 std::string VFS::abs_path(const std::string& path) {
 #ifdef _WIN32
-  if (win32::is_win32_path(path))
-    return win32::uri_from_path(win32::abs_path(path));
+  if (win::is_win_path(path))
+    return win::uri_from_path(win::abs_path(path));
   else if (URI::is_file(path))
-    return win32::uri_from_path(win32::abs_path(win32::path_from_uri(path)));
+    return win::uri_from_path(win::abs_path(win::path_from_uri(path)));
 #else
   if (URI::is_file(path))
     return posix::abs_path(path);
@@ -90,7 +90,7 @@ std::string VFS::abs_path(const std::string& path) {
 Status VFS::create_dir(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::create_dir(uri.to_path());
+    return win::create_dir(uri.to_path());
 #else
     return posix::create_dir(uri.to_path());
 #endif
@@ -120,7 +120,7 @@ Status VFS::create_file(const URI& uri) const {
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::create_file(uri.to_path());
+    return win::create_file(uri.to_path());
 #else
     return posix::create_file(uri.to_path());
 #endif
@@ -175,7 +175,7 @@ Status VFS::remove_bucket(const URI& uri) const {
 Status VFS::remove_path(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::remove_path(uri.to_path());
+    return win::remove_path(uri.to_path());
 #else
     return posix::remove_path(uri.to_path());
 #endif
@@ -201,7 +201,7 @@ Status VFS::remove_path(const URI& uri) const {
 Status VFS::remove_file(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::remove_file(uri.to_path());
+    return win::remove_file(uri.to_path());
 #else
     return posix::remove_file(uri.to_path());
 #endif
@@ -228,7 +228,7 @@ Status VFS::remove_file(const URI& uri) const {
 Status VFS::filelock_lock(const URI& uri, file_lock_t* fd, bool shared) const {
   if (uri.is_file())
 #ifdef _WIN32
-    return win32::filelock_lock(uri.to_path(), fd, shared);
+    return win::filelock_lock(uri.to_path(), fd, shared);
 #else
     return posix::filelock_lock(uri.to_path(), fd, shared);
 #endif
@@ -255,7 +255,7 @@ Status VFS::filelock_lock(const URI& uri, file_lock_t* fd, bool shared) const {
 Status VFS::filelock_unlock(const URI& uri, file_lock_t fd) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::filelock_unlock(fd);
+    return win::filelock_unlock(fd);
 #else
     return posix::filelock_unlock(fd);
 #endif
@@ -282,7 +282,7 @@ Status VFS::filelock_unlock(const URI& uri, file_lock_t fd) const {
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::file_size(uri.to_path(), size);
+    return win::file_size(uri.to_path(), size);
 #else
     return posix::file_size(uri.to_path(), size);
 #endif
@@ -309,7 +309,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 bool VFS::is_dir(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::is_dir(uri.to_path());
+    return win::is_dir(uri.to_path());
 #else
     return posix::is_dir(uri.to_path());
 #endif
@@ -334,7 +334,7 @@ bool VFS::is_dir(const URI& uri) const {
 bool VFS::is_file(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::is_file(uri.to_path());
+    return win::is_file(uri.to_path());
 #else
     return posix::is_file(uri.to_path());
 #endif
@@ -394,7 +394,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   std::vector<std::string> paths;
   if (parent.is_file()) {
 #ifdef _WIN32
-    RETURN_NOT_OK(win32::ls(parent.to_path(), &paths));
+    RETURN_NOT_OK(win::ls(parent.to_path(), &paths));
 #else
     RETURN_NOT_OK(posix::ls(parent.to_path(), &paths));
 #endif
@@ -427,7 +427,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
-      return win32::move_path(old_uri.to_path(), new_uri.to_path());
+      return win::move_path(old_uri.to_path(), new_uri.to_path());
 #else
       return posix::move_path(old_uri.to_path(), new_uri.to_path());
 #endif
@@ -476,7 +476,7 @@ Status VFS::read(
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::read(uri.to_path(), offset, buffer, nbytes);
+    return win::read(uri.to_path(), offset, buffer, nbytes);
 #else
     return posix::read(uri.to_path(), offset, buffer, nbytes);
 #endif
@@ -507,7 +507,7 @@ bool VFS::supports_fs(Filesystem fs) const {
 Status VFS::sync(const URI& uri) {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::sync(uri.to_path());
+    return win::sync(uri.to_path());
 #else
     return posix::sync(uri.to_path());
 #endif
@@ -534,7 +534,7 @@ Status VFS::sync(const URI& uri) {
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win32::write(uri.to_path(), buffer, buffer_size);
+    return win::write(uri.to_path(), buffer, buffer_size);
 #else
     return posix::write(uri.to_path(), buffer, buffer_size);
 #endif
