@@ -32,6 +32,9 @@ Enable verbose status messages.
 .PARAMETER Hdfs
 Enables building with the HDFS storage backend.
 
+.PARAMETER S3
+Enables building with the S3 storage backend.
+
 .LINK
 https://github.com/TileDB-Inc/TileDB
 
@@ -51,7 +54,8 @@ Param(
     [switch]$EnableDebug,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
-    [switch]$Hdfs
+    [switch]$Hdfs,
+    [switch]$S3
 )
 
 # Return the directory containing this script file.
@@ -90,6 +94,12 @@ if ($Hdfs.IsPresent) {
     $UseHdfs = "ON"
 }
 
+# Set TileDB S3 flag
+$UseS3 = "OFF"
+if ($S3.IsPresent) {
+    $UseS3 = "ON"
+}
+
 # Set TileDB prefix
 $InstallPrefix = $DefaultPrefix
 if ($Prefix.IsPresent) {
@@ -123,7 +133,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs -DUSE_S3=$UseS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
