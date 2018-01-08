@@ -131,7 +131,7 @@ Status Query::async_process() {
 
     // Invoke the callback
     if (callback_ != nullptr)
-      (*callback_)(callback_data_);
+      callback_(callback_data_);
   } else {  // Error
     set_status(QueryStatus::FAILED);
   }
@@ -449,7 +449,8 @@ void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   buffer_sizes_ = buffer_sizes;
 }
 
-void Query::set_callback(void* (*callback)(void*), void* callback_data) {
+void Query::set_callback(
+    std::function<void(void*)> callback, void* callback_data) {
   callback_ = callback;
   callback_data_ = callback_data;
 }

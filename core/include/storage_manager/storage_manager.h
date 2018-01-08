@@ -35,6 +35,7 @@
 #define TILEDB_STORAGE_MANAGER_H
 
 #include <condition_variable>
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
@@ -344,7 +345,7 @@ class StorageManager {
    * @return Status
    */
   Status query_submit_async(
-      Query* query, void* (*callback)(void*), void* callback_data);
+      Query* query, std::function<void(void*)> callback, void* callback_data);
 
   /**
    * Reads from the cache into the input buffer. `uri` and `offset` collectively

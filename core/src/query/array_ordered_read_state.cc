@@ -528,7 +528,7 @@ void ArrayOrderedReadState::advance_cell_slab_row(unsigned int aid) {
   update_current_tile_and_offset<T>(aid);
 }
 
-void* ArrayOrderedReadState::async_done(void* data) {
+void ArrayOrderedReadState::async_done(void* data) {
   // Retrieve data
   ArrayOrderedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   unsigned int id = ((ASRS_Data*)data)->id_;
@@ -609,8 +609,6 @@ void* ArrayOrderedReadState::async_done(void* data) {
     // Manage the mutexes and conditions
     asrs->async_notify(id);
   }
-
-  return nullptr;
 }
 
 void ArrayOrderedReadState::async_notify(unsigned int id) {
