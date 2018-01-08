@@ -54,23 +54,23 @@ int main() {
   // clang-format off
   int buffer_a1[] =
   {
-      0,  1,  2,  3,                                     // Upper left tile
-      4,  5,  6,  7,                                     // Upper right tile
-      8,  9,  10, 11,                                    // Lower left tile
-      12, 13, 14, 15                                     // Lower right tile
+      0,  1,  2,  3,                                             // Upper left tile
+      4,  5,  6,  7,                                             // Upper right tile
+      8,  9,  10, 11,                                            // Lower left tile
+      12, 13, 14, 15                                             // Lower right tile
   };
   uint64_t buffer_a2[] =
   {
-      0,  1,  3,  6,                                     // Upper left tile
-      10, 11, 13, 16,                                    // Upper right tile
-      20, 21, 23, 26,                                    // Lower left tile
-      30, 31, 33, 36                                     // Lower right tile
+      0,  1,  3,  6,                                             // Upper left tile
+      10, 11, 13, 16,                                            // Upper right tile
+      20, 21, 23, 26,                                            // Lower left tile
+      30, 31, 33, 36                                             // Lower right tile
   };
   char buffer_var_a2[] =
-      "abbcccdddd"                                       // Upper left tile
-      "effggghhhh"                                       // Upper right tile
-      "ijjkkkllll"                                       // Lower left tile
-      "mnnooopppp";                                      // Lower right tile
+      "abbcccdddd"                                               // Upper left tile
+      "effggghhhh"                                               // Upper right tile
+      "ijjkkkllll"                                               // Lower left tile
+      "mnnooopppp";                                              // Lower right tile
   float buffer_a3[] =
   {
       0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,     // Upper left tile

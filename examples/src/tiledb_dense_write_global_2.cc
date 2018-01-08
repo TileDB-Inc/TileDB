@@ -70,6 +70,7 @@ int main() {
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
+  // clang-format off
   int buffer_a1_2[] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   uint64_t buffer_a2_2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2_2[] = "ijjkkkllllmnnooopppp";
@@ -86,6 +87,7 @@ int main() {
       20,                 // 8 cells on a2
       32 * sizeof(float)  // 16 cells on a3 (2 values each)
   };
+  // clang-format on
 
   // Reset buffers
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);

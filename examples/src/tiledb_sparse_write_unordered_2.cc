@@ -75,7 +75,8 @@ int main() {
   int buffer_a1_2[] = {6, 4, 3, 1, 2};
   uint64_t buffer_a2_2[] = {0, 3, 4, 8, 10};
   char buffer_var_a2_2[] = "gggeddddbbccc";
-  float buffer_a3_2[] = {6.1f, 6.2f, 4.1f, 4.2f, 3.1f, 3.2f, 1.1f, 1.2f, 2.1f, 2.2f};
+  float buffer_a3_2[] = {
+      6.1f, 6.2f, 4.1f, 4.2f, 3.1f, 3.2f, 1.1f, 1.2f, 2.1f, 2.2f};
   uint64_t buffer_coords_2[] = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
   void* buffers_2[] = {
       buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};

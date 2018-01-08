@@ -28,7 +28,11 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   CHECK(uri.to_string() == "file:///path");
   uri = URI("file://path");
   CHECK(uri.is_invalid());
-  uri = URI("file:///path/is/too/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long/long");
+  uri =
+      URI("file:///path/is/too/long/long/long/long/long/long/long/long/long/"
+          "long/long/long/long/long/long/long/long/long/long/long/long/long/"
+          "long/long/long/long/long/long/long/long/long/long/long/long/long/"
+          "long/long/long/long/long/long/long/long/long/long/long/long/long");
   CHECK(uri.is_invalid());
 
   // TODO: re-enable these checks if appropriate for posix_filesystem.
@@ -49,8 +53,7 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
 #ifdef _WIN32
-  CHECK(
-      uri.to_string() == win::uri_from_path(win::current_dir()) + "/path1");
+  CHECK(uri.to_string() == win::uri_from_path(win::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
 #endif

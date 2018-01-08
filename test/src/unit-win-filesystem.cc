@@ -78,15 +78,12 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(win::abs_path("C:\\..") == "C:\\");
   CHECK(win::abs_path("C:\\..\\path1") == "C:\\path1");
   CHECK(win::abs_path("C:\\path1\\.\\..\\path2\\") == "C:\\path2\\");
-  CHECK(
-      win::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
+  CHECK(win::abs_path("C:\\path1\\.\\path2\\..\\path3") == "C:\\path1\\path3");
   CHECK(
       win::abs_path("path1\\path2\\..\\path3") ==
       win::current_dir() + "\\path1\\path3");
   CHECK(win::abs_path("path1") == win::current_dir() + "\\path1");
-  CHECK(
-      win::abs_path("path1\\path2") ==
-      win::current_dir() + "\\path1\\path2");
+  CHECK(win::abs_path("path1\\path2") == win::current_dir() + "\\path1\\path2");
   CHECK(
       win::abs_path("path1\\path2\\..\\path3") ==
       win::current_dir() + "\\path1\\path3");
@@ -175,12 +172,11 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
-  st = win::remove_path(
-      URI("file:///tiledb_test_dir/i_dont_exist").to_string());
+  st =
+      win::remove_path(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
   CHECK(!st.ok());
 
-  st = win::move_path(
-      test_file.to_path(), URI(test_file_path + "2").to_path());
+  st = win::move_path(test_file.to_path(), URI(test_file_path + "2").to_path());
   CHECK(st.ok());
   CHECK(!win::is_file(test_file.to_path()));
   CHECK(win::is_file(URI(test_file_path + "2").to_path()));

@@ -52,7 +52,8 @@ int main() {
   int buffer_a1[] = {112, 113, 114, 115};
   uint64_t buffer_a2[] = {0, 1, 3, 6};
   char buffer_var_a2[] = "MNNOOOPPPP";
-  float buffer_a3[] = {112.1f, 112.2f, 113.1f, 113.2f, 114.1f, 114.2f, 115.1f, 115.2f};
+  float buffer_a3[] = {
+      112.1f, 112.2f, 113.1f, 113.2f, 114.1f, 114.2f, 115.1f, 115.2f};
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),

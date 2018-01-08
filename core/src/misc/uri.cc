@@ -30,8 +30,8 @@
  * This file implements class URI.
  */
 
-#include "logger.h"
 #include "uri.h"
+#include "logger.h"
 #include "utils.h"
 #include "vfs.h"
 

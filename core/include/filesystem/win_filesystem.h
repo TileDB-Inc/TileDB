@@ -190,8 +190,7 @@ Status sync(const std::string& path);
  * @param buffer_size The size of the input buffer.
  * @return Status
  */
-Status write(
-    const std::string& path, const void* buffer, uint64_t buffer_size);
+Status write(const std::string& path, const void* buffer, uint64_t buffer_size);
 
 /**
  * Converts a Windows path to a "file:///" URI.

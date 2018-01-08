@@ -516,8 +516,8 @@ bool is_win_path(const std::string& path) {
     return false;
   } else {
     bool definitely_windows = PathIsUNC(path.c_str()) ||
-                            PathGetDriveNumber(path.c_str()) != -1 ||
-                            path.find('\\') != std::string::npos;
+                              PathGetDriveNumber(path.c_str()) != -1 ||
+                              path.find('\\') != std::string::npos;
     if (definitely_windows) {
       return true;
     } else {
