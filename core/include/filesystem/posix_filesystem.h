@@ -38,7 +38,7 @@
 #include <vector>
 
 #include "buffer.h"
-#include "file_lock.h"
+#include "filelock.h"
 #include "status.h"
 #include "uri.h"
 
@@ -112,7 +112,7 @@ Status file_size(const std::string& path, uint64_t* size);
  *     lock.
  * @return Status
  */
-Status filelock_lock(const std::string& filename, file_lock_t* fd, bool shared);
+Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared);
 
 /**
  * Unlock an opened file descriptor

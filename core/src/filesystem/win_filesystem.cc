@@ -235,7 +235,7 @@ Status file_size(const std::string& path, uint64_t* size) {
 }
 
 Status filelock_lock(
-    const std::string& filename, file_lock_t* fd, bool shared) {
+    const std::string& filename, filelock_t* fd, bool shared) {
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_READ | GENERIC_WRITE,
@@ -257,7 +257,7 @@ Status filelock_lock(
           MAXDWORD,
           &overlapped) == 0) {
     CloseHandle(file_h);
-    *fd = INVALID_FILE_LOCK;
+    *fd = INVALID_FILELOCK;
     return LOG_STATUS(Status::IOError(
         std::string("Failed to lock '" + filename + "'; LockFile error")));
   }
@@ -266,7 +266,7 @@ Status filelock_lock(
   return Status::Ok();
 }
 
-Status filelock_unlock(file_lock_t fd) {
+Status filelock_unlock(filelock_t fd) {
   OVERLAPPED overlapped = {0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);

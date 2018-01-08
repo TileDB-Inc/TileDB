@@ -225,7 +225,7 @@ Status VFS::remove_file(const URI& uri) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::filelock_lock(const URI& uri, file_lock_t* fd, bool shared) const {
+Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   if (uri.is_file())
 #ifdef _WIN32
     return win::filelock_lock(uri.to_path(), fd, shared);
@@ -252,7 +252,7 @@ Status VFS::filelock_lock(const URI& uri, file_lock_t* fd, bool shared) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::filelock_unlock(const URI& uri, file_lock_t fd) const {
+Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::filelock_unlock(fd);

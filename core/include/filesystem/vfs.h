@@ -35,7 +35,7 @@
 
 #include "buffer.h"
 #include "config.h"
-#include "file_lock.h"
+#include "filelock.h"
 #include "filesystem.h"
 #include "status.h"
 #include "uri.h"
@@ -141,7 +141,7 @@ class VFS {
    *     exclusive lock.
    * @return Status
    */
-  Status filelock_lock(const URI& uri, file_lock_t* lock, bool shared) const;
+  Status filelock_lock(const URI& uri, filelock_t* lock, bool shared) const;
 
   /**
    * Unlocks a filelock.
@@ -150,7 +150,7 @@ class VFS {
    * @param lock The handle of the filelock.
    * @return Status
    */
-  Status filelock_unlock(const URI& uri, file_lock_t fd) const;
+  Status filelock_unlock(const URI& uri, filelock_t fd) const;
 
   /**
    * Retrieves the size of a file.

@@ -1,5 +1,5 @@
 /**
- * @file   file_lock.h
+ * @file   filelock.h
  *
  * @section LICENSE
  *
@@ -30,19 +30,19 @@
  * This file declares a simple platform-agnostic file lock type.
  */
 
-#ifndef TILEDB_FILE_LOCK_H
-#define TILEDB_FILE_LOCK_H
+#ifndef TILEDB_FILELOCK_H
+#define TILEDB_FILELOCK_H
 
 namespace tiledb {
 
 #ifdef _WIN32
-typedef void* file_lock_t;
-const file_lock_t INVALID_FILE_LOCK = nullptr;
+typedef void* filelock_t;
+const filelock_t INVALID_FILELOCK = nullptr;
 #else
-typedef int file_lock_t;
-const file_lock_t INVALID_FILE_LOCK = -1;
+typedef int filelock_t;
+const filelock_t INVALID_FILELOCK = -1;
 #endif
 
 }  // namespace tiledb
 
-#endif  // TILEDB_FILE_LOCK_H
+#endif  // TILEDB_FILELOCK_H

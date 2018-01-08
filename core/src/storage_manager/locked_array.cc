@@ -43,7 +43,7 @@ namespace tiledb {
 LockedArray::LockedArray() {
   shared_locks_ = 0;
   total_locks_ = 0;
-  filelock_ = INVALID_FILE_LOCK;
+  filelock_ = INVALID_FILELOCK;
   exclusive_lock_ = false;
 }
 
@@ -79,7 +79,7 @@ Status LockedArray::lock_exclusive(VFS* vfs, const URI& uri) {
   std::unique_lock<std::mutex> lk(mtx_);
   cv_.wait(lk, [this] { return !exclusive_lock_ && (shared_locks_ == 0); });
 
-  if (filelock_ == INVALID_FILE_LOCK)
+  if (filelock_ == INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, false));
 
   exclusive_lock_ = true;
@@ -92,7 +92,7 @@ Status LockedArray::lock_shared(VFS* vfs, const URI& uri) {
   std::unique_lock<std::mutex> lk(mtx_);
   cv_.wait(lk, [this] { return !exclusive_lock_; });
 
-  if (filelock_ == INVALID_FILE_LOCK)
+  if (filelock_ == INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, true));
 
   ++shared_locks_;
@@ -102,9 +102,9 @@ Status LockedArray::lock_shared(VFS* vfs, const URI& uri) {
 }
 
 Status LockedArray::unlock_exclusive(VFS* vfs, const URI& uri) {
-  if (filelock_ != INVALID_FILE_LOCK)
+  if (filelock_ != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
-  filelock_ = INVALID_FILE_LOCK;
+  filelock_ = INVALID_FILELOCK;
 
   exclusive_lock_ = false;
   cv_.notify_all();
@@ -113,9 +113,9 @@ Status LockedArray::unlock_exclusive(VFS* vfs, const URI& uri) {
 }
 
 Status LockedArray::unlock_shared(VFS* vfs, const URI& uri) {
-  if (filelock_ != INVALID_FILE_LOCK)
+  if (filelock_ != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
-  filelock_ = INVALID_FILE_LOCK;
+  filelock_ = INVALID_FILELOCK;
 
   --shared_locks_;
   if (shared_locks_ == 0)
