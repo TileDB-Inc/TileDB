@@ -126,14 +126,15 @@ if (WIN32)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4244: conversion warning of floating point to integer type.
+  #   C4456: local variable hiding previous local variable
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4996: deprecation warning about e.g. sscanf.
-  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4457 /wd4702 /wd4996")
+  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4456 /wd4457 /wd4702 /wd4996")
   # Note: MSVC has the behavior of -fvisibility=hidden by default (you must
   # explicitly export all symbols you want exported).
-  set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 ${MSVC_DISABLE_WARNINGS}")
-  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /Ox ${MSVC_DISABLE_WARNINGS}")
+  set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 /WX ${MSVC_DISABLE_WARNINGS}")
+  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /Ox /W4 /WX ${MSVC_DISABLE_WARNINGS}")
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOGDI")

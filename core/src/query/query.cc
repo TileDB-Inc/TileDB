@@ -577,7 +577,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 /* ****************************** */
 
 void Query::add_coords() {
-  size_t attribute_num = array_schema_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   bool has_coords = false;
 
   for (auto id : attribute_ids_) {

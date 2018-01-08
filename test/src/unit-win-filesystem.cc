@@ -36,7 +36,8 @@ struct WinFx {
   }
 
   ~WinFx() {
-    bool success = remove_path(TEMP_DIR + "tiledb_test_dir");
+    bool success = false;
+    success = remove_path(TEMP_DIR + "tiledb_test_dir");
     assert(success);
   }
 

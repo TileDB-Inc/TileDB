@@ -547,7 +547,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
       int64_t tile_cols = ((j + tile_extent_1) < domain_size_1) ?
                               tile_extent_1 :
                               (domain_size_1 - j);
-      int64_t k, l;
+      int64_t k = 0, l = 0;
       for (k = 0; k < tile_rows; ++k) {
         for (l = 0; l < tile_cols; ++l) {
           index = uint64_t(k * tile_cols + l);
