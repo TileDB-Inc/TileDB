@@ -32,14 +32,17 @@
  * tiledb_attribute_iter_t and tiledb_dimension_iter_t.
  */
 
-#include <unistd.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
 #include <sstream>
 
 #include "catch.hpp"
+#ifdef _WIN32
+#include "win_filesystem.h"
+#else
 #include "posix_filesystem.h"
+#endif
 #include "tiledb.h"
 
 struct ArrayMetadataFx {
@@ -51,10 +54,15 @@ struct ArrayMetadataFx {
   const std::string S3_BUCKET = "s3://tiledb";
   const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
 #endif
+#ifdef _WIN32
+  const std::string FILE_URI_PREFIX = "";
+  const std::string FILE_TEMP_DIR =
+      tiledb::win::current_dir() + "\\tiledb_test\\";
+#else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::posix::current_dir() + "/tiledb_test/";
-
+#endif
   // Constant parameters
   const std::string ARRAY_NAME = "dense_test_100x100_10x10";
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
@@ -118,7 +126,7 @@ ArrayMetadataFx::ArrayMetadataFx() {
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
 
-  // Connect to S3
+// Connect to S3
 #ifdef HAVE_S3
   // Create bucket if it does not exist
   int is_bucket = 0;
@@ -445,8 +453,13 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   FILE* fout = fopen("fout.txt", "w");
   tiledb_array_schema_dump(ctx_, array_schema, fout);
   fclose(fout);
+#ifdef _WIN32
+  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
+#else
   CHECK(!system("diff gold_fout.txt fout.txt"));
-  CHECK(!system("rm gold_fout.txt fout.txt"));
+#endif
+  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "gold_fout.txt") == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "fout.txt") == TILEDB_OK);
 
   // Clean up
   rc = tiledb_attribute_free(ctx_, attr);

@@ -143,7 +143,7 @@ const uint64_t consolidation_buffer_size = 10000000;
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
 /** The maximum name length. */
-const unsigned name_max_len = 256;
+const unsigned uri_max_len = 256;
 
 /** The size of the buffer that holds the sorted cells. */
 const uint64_t sorted_buffer_size = 10000000;

@@ -53,7 +53,8 @@ int main() {
   int buffer_a1[] = {211, 213, 212, 208};
   uint64_t buffer_a2[] = {0, 4, 6, 7};
   char buffer_var_a2[] = "wwwwyyxu";
-  float buffer_a3[] = {211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
+  float buffer_a3[] = {
+      211.1f, 211.2f, 213.1f, 213.2f, 212.1f, 212.2f, 208.1f, 208.2f};
   uint64_t buffer_coords[] = {4, 2, 3, 4, 3, 3, 3, 1};
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};

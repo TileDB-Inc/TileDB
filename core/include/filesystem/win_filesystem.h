@@ -1,5 +1,5 @@
 /**
- * @file   posix_filesystem.h
+ * @file   win_filesystem.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,13 @@
  *
  * @section DESCRIPTION
  *
- * This file includes declarations of posix filesystem functions.
+ * This file includes declarations of Windows filesystem functions.
  */
 
-#ifndef TILEDB_POSIX_FILESYSTEM_H
-#define TILEDB_POSIX_FILESYSTEM_H
+#ifndef TILEDB_WIN_FILESYSTEM_H
+#define TILEDB_WIN_FILESYSTEM_H
+
+#ifdef _WIN32
 
 #include <sys/types.h>
 #include <string>
@@ -44,11 +46,11 @@
 
 namespace tiledb {
 
-namespace posix {
+namespace win {
 
 /**
- * Returns the absolute posix (string) path of the input in the
- * form "file://<absolute path>"
+ * Returns the absolute (string) path of the input in the
+ * form of a Windows path.
  */
 std::string abs_path(const std::string& path);
 
@@ -120,7 +122,7 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared);
  * @param fd the open file descriptor to unlock
  * @return Status
  */
-Status filelock_unlock(int fd);
+Status filelock_unlock(filelock_t fd);
 
 /**
  * Checks if the input is an existing directory.
@@ -158,19 +160,6 @@ Status ls(const std::string& path, std::vector<std::string>* paths);
 Status move_path(const std::string& old_path, const std::string& new_path);
 
 /**
- * It takes as input an **absolute** path, and returns it in its canonicalized
- * form, after appropriately replacing "./" and "../" in the path.
- *
- * @param path The input path passed by reference, which will be modified
- *     by the function to hold the canonicalized absolute path. Note that the
- *     path must be absolute, otherwise the function fails. In case of error
- *     (e.g., if "../" are not properly used in *path*, or if *path* is not
- *     absolute), the function sets the empty string (i.e., "") to *path*.
- * @return void
- */
-void purge_dots_from_path(std::string* path);
-
-/**
  * Reads data from a file into a buffer.
  *
  * @param path The name of the file.
@@ -203,8 +192,34 @@ Status sync(const std::string& path);
  */
 Status write(const std::string& path, const void* buffer, uint64_t buffer_size);
 
-}  // namespace posix
+/**
+ * Converts a Windows path to a "file:///" URI.
+ *
+ * @param path The Windows path to convert.
+ * @status A path file URI.
+ */
+std::string uri_from_path(const std::string& path);
+
+/**
+ * Converts a "file:///" URI to a Windows path.
+ *
+ * @param path The URI to convert.
+ * @status A Windows path.
+ */
+std::string path_from_uri(const std::string& uri);
+
+/**
+ * Returns true if the given string is a Windows path.
+ *
+ * @param path The path to check.
+ * @return True if the path is a Windows path.
+ */
+bool is_win_path(const std::string& path);
+
+}  // namespace win
 
 }  // namespace tiledb
 
-#endif  // TILEDB_POSIX_FILESYSTEM_H
+#endif  // _WIN32
+
+#endif  // TILEDB_WIN_FILESYSTEM_H

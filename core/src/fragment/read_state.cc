@@ -32,7 +32,6 @@
  */
 
 #include "logger.h"
-#include "posix_filesystem.h"
 #include "query.h"
 #include "utils.h"
 
