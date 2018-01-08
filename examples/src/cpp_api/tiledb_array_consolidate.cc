@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_consolidate.cc
+ * @file   tiledb_array_consolidate.cc
  *
  * @section LICENSE
  *
@@ -37,6 +37,6 @@
 
 int main() {
   tdb::Context ctx;
-  ctx.consolidate("my_dense_array");
+  tdb::Array::consolidate(ctx, "my_dense_array");
   return 0;
 }

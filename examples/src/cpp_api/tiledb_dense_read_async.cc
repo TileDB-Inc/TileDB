@@ -34,7 +34,7 @@
 #include <iomanip>
 #include <tiledb>
 
-void* print_upon_completion(void* s);
+void print_upon_completion(void* s);
 
 int main() {
   using std::setw;
@@ -58,7 +58,7 @@ int main() {
 
   // Submit query with callback
   std::string msg = "(Callback) Query completed.\n";
-  query.submit_async(&print_upon_completion, (void*)msg.c_str());
+  query.submit_async(print_upon_completion, (void*)msg.c_str());
 
   std::cout << "Query in progress\n";
   tdb::Query::Status status;
@@ -91,7 +91,6 @@ int main() {
   return 0;
 }
 
-void* print_upon_completion(void* s) {
+void print_upon_completion(void* s) {
   std::cout << std::string(static_cast<char*>(s)) << std::endl;
-  return nullptr;
 }

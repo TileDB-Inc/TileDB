@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_query.cc
+ * @file   tiledb_cpp_api_query.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,21 +29,21 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines the C++ API for the TileDB Query object.
  */
 
-#include "tdbpp_query.h"
+#include "tiledb_cpp_api_query.h"
 
 tdb::Query &tdb::Query::set_layout(tiledb_layout_t layout) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_set_layout(ctx, _query.get(), layout));
+  ctx.handle_error(tiledb_query_set_layout(ctx.ptr(), _query.get(), layout));
   return *this;
 }
 
 tdb::Query::Status tdb::Query::submit() {
   auto &ctx = _ctx.get();
   _prepare_submission();
-  ctx.handle_error(tiledb_query_submit(ctx, _query.get()));
+  ctx.handle_error(tiledb_query_submit(ctx.ptr(), _query.get()));
   return query_status();
 }
 
@@ -76,7 +76,7 @@ void tdb::Query::_prepare_submission() {
 
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_set_buffers(
-      ctx,
+      ctx.ptr(),
       _query.get(),
       _attr_names.data(),
       _attr_names.size(),
@@ -87,7 +87,7 @@ void tdb::Query::_prepare_submission() {
 tdb::Query::Status tdb::Query::query_status() {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_query_get_status(ctx, _query.get(), &status));
+  ctx.handle_error(tiledb_query_get_status(ctx.ptr(), _query.get(), &status));
   return tiledb_to_status(status);
 }
 
@@ -95,7 +95,7 @@ tdb::Query::Status tdb::Query::attribute_status(const std::string &attr) {
   tiledb_query_status_t status;
   auto &ctx = _ctx.get();
   ctx.handle_error(tiledb_query_get_attribute_status(
-      ctx, _query.get(), attr.c_str(), &status));
+      ctx.ptr(), _query.get(), attr.c_str(), &status));
   return tiledb_to_status(status);
 }
 
@@ -115,11 +115,11 @@ tdb::Query::Status tdb::Query::tiledb_to_status(
 }
 
 tdb::Query::Status tdb::Query::submit_async(
-    void *(*callback)(void *), void *data) {
+    void (*callback)(void *), void *data) {
   auto &ctx = _ctx.get();
   _prepare_submission();
   ctx.handle_error(
-      tiledb_query_submit_async(ctx, _query.get(), callback, data));
+      tiledb_query_submit_async(ctx.ptr(), _query.get(), callback, data));
   return query_status();
 }
 
@@ -142,8 +142,7 @@ tdb::Query::Query(
     , _schema(ctx, array)
     , _deleter(_ctx) {
   tiledb_query_t *q;
-  _ctx.get().handle_error(
-      tiledb_query_create(_ctx.get(), &q, array.c_str(), type));
+  ctx.handle_error(tiledb_query_create(ctx.ptr(), &q, array.c_str(), type));
   _query = std::shared_ptr<tiledb_query_t>(q, _deleter);
   _array_attributes = _schema.attributes();
 }

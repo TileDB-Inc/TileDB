@@ -1,5 +1,6 @@
 /**
- * @file   tdbpp_error.h
+ * @file   tiledb_cpp_api_type.cc
+ *
  *
  * @author Ravi Gaddipati
  *
@@ -29,24 +30,35 @@
  *
  * @section DESCRIPTION
  *
- * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
+ * This defines TileDB datatypes for the C++ API.
  */
 
-#include <tiledb>
+#include "tiledb_cpp_api_type.h"
 
-int main() {
-  tdb::Context ctx;
-
-  // default: throws runtime_error
-  try {
-    tdb::Group::create(ctx, "my_group");
-    tdb::Group::create(ctx, "my_group");
-  } catch (std::runtime_error &e) {
-    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
+std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
+  switch (type) {
+    case TILEDB_CHAR:
+      return "char";
+    case TILEDB_INT8:
+      return "int8";
+    case TILEDB_UINT8:
+      return "uint8";
+    case TILEDB_INT16:
+      return "int16";
+    case TILEDB_UINT16:
+      return "uint16";
+    case TILEDB_INT32:
+      return "int32";
+    case TILEDB_UINT32:
+      return "uint32";
+    case TILEDB_INT64:
+      return "int64";
+    case TILEDB_UINT64:
+      return "uint64";
+    case TILEDB_FLOAT32:
+      return "float32";
+    case TILEDB_FLOAT64:
+      return "float64";
   }
-
-  // Set a different handler
-  ctx.set_error_handler(
-      [](std::string msg) { std::cout << "Callback:\n\t" << msg << "\n"; });
-  tdb::Group::create(ctx, "my_group");
+  return "";
 }

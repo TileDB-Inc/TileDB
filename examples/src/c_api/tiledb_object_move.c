@@ -1,13 +1,12 @@
 /**
- * @file   tdbpp_delete.h
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_object_move.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,22 +28,28 @@
  *
  * @section DESCRIPTION
  *
- * Deleting objects.
+ * It shows how to move/rename a TileDB resource.
  */
 
-#include <string>
-#include <tiledb>
+#include <tiledb.h>
 
 int main() {
-  tdb::Context ctx;
-  ctx.del("my_group");
-  ctx.del("my_dense_array");
+  // Create context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx, NULL);
 
-  try {
-    ctx.del("invalid_path");
-  } catch (std::runtime_error &e) {
-    std::cout << "Failed to delete invalid path\n";
-  }
+  // Rename a valid group and array
+  tiledb_object_move(ctx, "my_group", "my_group_2", 1);
+  tiledb_object_move(
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", 0);
+
+  // Rename an invalid path
+  int rc = tiledb_object_move(ctx, "some_invalid_path", "path", 0);
+  if (rc == TILEDB_ERR)
+    printf("Failed moving invalid path\n");
+
+  // Clean up
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

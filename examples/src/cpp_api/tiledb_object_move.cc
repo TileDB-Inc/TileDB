@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_walk.c
+ * @file   tiledb_object_move.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,49 +28,22 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to explore the contents of a TileDB directory.
+ * It shows how to move/rename a TileDB object.
  */
 
-#include <tiledb.h>
-
-int print_path(const char* path, tiledb_object_t type, void* data);
+#include <tiledb>
 
 int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tdb::Context ctx;
 
-  // Walk in a path with a pre- and post-order traversal
-  printf("Preorder traversal:\n");
-  tiledb_walk(ctx, "my_group", TILEDB_PREORDER, print_path, NULL);
-  printf("\nPostorder traversal:\n");
-  tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, NULL);
+  tdb::Object::move(ctx, "my_group", "my_group_2", true);
+  tdb::Object::move(
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
 
-  // Finalize context
-  tiledb_ctx_free(ctx);
-
-  return 0;
-}
-
-int print_path(const char* path, tiledb_object_t type, void* data) {
-  // Simply print the path and type
-  (void)data;
-  printf("%s ", path);
-  switch (type) {
-    case TILEDB_ARRAY:
-      printf("ARRAY");
-      break;
-    case TILEDB_KEY_VALUE:
-      printf("KEY_VALUE");
-      break;
-    case TILEDB_GROUP:
-      printf("GROUP");
-      break;
-    default:
-      printf("INVALID");
+  try {
+    tdb::Object::move(ctx, "invalid_path", "path", false);
+  } catch (std::runtime_error &e) {
+    std::cout << "Failed to move invalid path.\n";
   }
-  printf("\n");
-
-  // Always iterate till the end
-  return 1;
+  return 0;
 }

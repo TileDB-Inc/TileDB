@@ -1,12 +1,13 @@
 /**
- * @file   tiledb_consolidate.cc
+ * @file   tiledb_cpp_api_group.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,32 +29,29 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to consolidate arrays.
- *
- * One way to make this work is:
- *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_write_global_subarray
- * $ ./tiledb_dense_write_unordered
- * $ ./tiledb_consolidate
- *
- * The first three programs create three different fragments. The last program
- * consolidates the three fragments in a single one.
+ * This file declares the C++ API for the TileDB groups.
  */
 
-#include <tiledb.h>
+#ifndef TILEDB_CPP_API_GROUP_H
+#define TILEDB_CPP_API_GROUP_H
 
-int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+#include "tiledb.h"
+#include "tiledb_cpp_api_context.h"
 
-  // Consolidate the input array
-  tiledb_array_consolidate(ctx, "my_dense_array");
+namespace tdb {
 
-  // Clean up
-  tiledb_ctx_free(ctx);
+namespace Group {
+/**
+ * Creates a new group.
+ *
+ * @param ctx The TileDB context.
+ * @param group The group URI.
+ * @return void
+ */
+void create(const Context& ctx, const std::string& group);
 
-  return 0;
-}
+}  // namespace Group
+
+}  // namespace tdb
+
+#endif  // TILEDB_CPP_API_GROUP_H

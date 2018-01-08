@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_kv_read.cc
+ * @file   tiledb_kv_read.c
  *
  * @section LICENSE
  *

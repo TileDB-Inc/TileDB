@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_write_global_1.cc
+ * @file   tiledb_dense_write_global_1.c
  *
  * @section LICENSE
  *

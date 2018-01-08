@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_group_create.cc
+ * @file   tiledb_group_create.c
  *
  * @section LICENSE
  *

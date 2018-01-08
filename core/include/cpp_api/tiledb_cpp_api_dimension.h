@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dimension.h
+ * @file   tiledb_cpp_api_dimension.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,15 +29,16 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Dimension object.
  */
 
-#ifndef TILEDB_GENOMICS_DOMENSION_H
-#define TILEDB_GENOMICS_DOMENSION_H
+#ifndef TILEDB_CPP_API_DIMENSION_H
+#define TILEDB_CPP_API_DIMENSION_H
 
-#include "tdbpp_object.h"
-#include "tdbpp_type.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_type.h"
 
 #include <functional>
 #include <memory>
@@ -171,7 +172,7 @@ class Dimension {
 
  private:
   std::reference_wrapper<Context> _ctx;
-  _Deleter _deleter;
+  impl::Deleter _deleter;
   std::shared_ptr<tiledb_dimension_t> _dim;
 
   void _init(tiledb_dimension_t *dim);
@@ -188,4 +189,4 @@ std::ostream &operator<<(std::ostream &os, const Dimension &dim);
 
 }  // namespace tdb
 
-#endif  // TILEDB_GENOMICS_DOMENSION_H
+#endif  // TILEDB_CPP_API_DIMENSION_H

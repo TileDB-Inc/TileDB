@@ -41,7 +41,7 @@
 
 int main() {
   tdb::Context ctx;
-  ctx.create_group("my_group");
-  ctx.create_group("my_group/dense_arrays");
-  ctx.create_group("my_group/sparse_arrays");
+  tdb::Group::create(ctx, "my_group");
+  tdb::Group::create(ctx, "my_group/dense_arrays");
+  tdb::Group::create(ctx, "my_group/sparse_arrays");
 }

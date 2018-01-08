@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_write_global_subarray.cc
+ * @file   tiledb_dense_write_global_subarray.c
  *
  * @section LICENSE
  *

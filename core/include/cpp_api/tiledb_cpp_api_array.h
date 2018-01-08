@@ -1,12 +1,13 @@
 /**
- * @file   tdbpp_move.cc
+ * @file   tiledb_cpp_api_array.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,21 +29,40 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * This file declares the C++ API for the TileDB arrays.
  */
 
-#include <tiledb>
+#ifndef TILEDB_CPP_API_ARRAY_H
+#define TILEDB_CPP_API_ARRAY_H
 
-int main() {
-  tdb::Context ctx;
+#include "tiledb.h"
+#include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_context.h"
 
-  ctx.move("my_group", "my_group_2", true);
-  ctx.move("my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
+namespace tdb {
 
-  try {
-    ctx.move("invalid_path", "path", false);
-  } catch (std::runtime_error &e) {
-    std::cout << "Failed to move invalid path.\n";
-  }
-  return 0;
-}
+namespace Array {
+
+/**
+ * Consolidates the fragments of an array.
+ *
+ * @param ctx The TileDB context.
+ * @param name The URI of the array.
+ */
+void consolidate(const Context& ctx, const std::string& array);
+
+/**
+ * Creates an array on disk from a schema definition.
+ *
+ * @param ctx The TileDB context.
+ * @param name The URI of the array.
+ * @param schema The array schema.
+ */
+void create(
+    const Context& ctx, const std::string& array, const ArraySchema& schema);
+
+}  // namespace Array
+
+}  // namespace tdb
+
+#endif  // TILEDB_CPP_API_ARRAY_H

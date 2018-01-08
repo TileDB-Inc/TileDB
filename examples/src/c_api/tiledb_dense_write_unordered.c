@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_write_unordered.cc
+ * @file   tiledb_dense_write_unordered.c
  *
  * @section LICENSE
  *

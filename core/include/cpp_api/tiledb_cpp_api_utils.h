@@ -1,12 +1,11 @@
 /**
- * @file   tdbpp_urils.h
+ * @file   tiledb_cpp_api_utils.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +30,8 @@
  * Utils for C++ API.
  */
 
-#ifndef TILEDB_TDBPP_UTILS_H
-#define TILEDB_TDBPP_UTILS_H
+#ifndef TILEDB_CPP_API_UTILS_H
+#define TILEDB_CPP_API_UTILS_H
 
 #include <array>
 #include <functional>
@@ -40,19 +39,6 @@
 #include "tiledb.h"
 
 namespace tdb {
-
-struct Version {
-  int major, minor, rev;
-};
-
-/**
- * @return TileDB library version
- */
-inline const Version version() {
-  Version ret;
-  tiledb_version(&ret.major, &ret.minor, &ret.rev);
-  return ret;
-}
 
 /**
  * Covert an offset, data vector pair into a single vector of vectors.
@@ -180,9 +166,4 @@ std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
 
 }  // namespace tdb
 
-inline std::ostream &operator<<(std::ostream &os, const tdb::Version &v) {
-  os << "TileDB v" << v.major << '.' << v.minor << '.' << v.rev;
-  return os;
-}
-
-#endif  // TILEDB_TDBPP_UTILS_H
+#endif  // TILEDB_CPP_API_UTILS_H

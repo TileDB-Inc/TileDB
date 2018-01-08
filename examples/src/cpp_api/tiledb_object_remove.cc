@@ -1,12 +1,13 @@
 /**
- * @file   tiledb_error.c
+ * @file   tiledb_object_remove.h
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,48 +29,22 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors. Program output:
- *
- * $ ./tiledb_error
- * Group created successfully!
- * [TileDB::OS] Error: Cannot create directory \
- * '<current_working_dir>/my_group'; Directory already exists
+ * Deleting objects.
  */
 
-#include <tiledb.h>
-
-void print_error(tiledb_ctx_t* ctx);
+#include <string>
+#include <tiledb>
 
 int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tdb::Context ctx;
+  tdb::Object::remove(ctx, "my_group");
+  tdb::Object::remove(ctx, "my_dense_array");
 
-  // Create a group
-  int rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
-
-  // Create the same group again - ERROR
-  rc = tiledb_group_create(ctx, "my_group");
-  if (rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if (rc == TILEDB_ERR)
-    print_error(ctx);
-
-  // Clean up
-  tiledb_ctx_free(ctx);
+  try {
+    tdb::Object::remove(ctx, "invalid_path");
+  } catch (std::runtime_error &e) {
+    std::cout << "Failed to delete invalid path\n";
+  }
 
   return 0;
-}
-
-void print_error(tiledb_ctx_t* ctx) {
-  tiledb_error_t* err;
-  tiledb_ctx_get_last_error(ctx, &err);
-  const char* msg;
-  tiledb_error_message(err, &msg);
-  printf("%s\n", msg);
-  tiledb_error_free(err);
 }

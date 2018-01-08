@@ -207,7 +207,7 @@ class StorageManager {
   Status remove_path(const URI& uri) const;
 
   /** Safely moves a TileDB resource. */
-  Status move(const URI& old_uri, const URI& new_uri, bool force = false) const;
+  Status move(const URI& old_uri, const URI& new_uri, int force = 0) const;
 
   /**
    * Creates a TileDB group.

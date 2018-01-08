@@ -1813,7 +1813,7 @@ int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
 }
 
 int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force) {
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto old_uri = tiledb::URI(old_path);
@@ -1875,7 +1875,7 @@ int tiledb_object_walk(
   return TILEDB_OK;
 }
 
-int tiledb_ls(
+int tiledb_object_ls(
     tiledb_ctx_t* ctx,
     const char* path,
     int (*callback)(const char*, tiledb_object_t, void*),

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.h
+ * @file   tiledb_cpp_api_attribute.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,12 +29,12 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines the C++ API for the TileDB Attribute object.
  */
 
-#include "tdbpp_attribute.h"
-#include "tdbpp_context.h"
-#include "tdbpp_type.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_type.h"
 
 void tdb::Attribute::_init(tiledb_attribute_t *attr) {
   _attr = std::shared_ptr<tiledb_attribute_t>(attr, _deleter);
@@ -43,49 +43,54 @@ void tdb::Attribute::_init(tiledb_attribute_t *attr) {
 std::string tdb::Attribute::name() const {
   auto &ctx = _ctx.get();
   const char *name;
-  ctx.handle_error(tiledb_attribute_get_name(ctx, _attr.get(), &name));
+  ctx.handle_error(tiledb_attribute_get_name(ctx.ptr(), _attr.get(), &name));
   return name;
 }
 
 tiledb_datatype_t tdb::Attribute::type() const {
   auto &ctx = _ctx.get();
   tiledb_datatype_t type;
-  ctx.handle_error(tiledb_attribute_get_type(ctx, _attr.get(), &type));
+  ctx.handle_error(tiledb_attribute_get_type(ctx.ptr(), _attr.get(), &type));
   return type;
 }
 
 unsigned tdb::Attribute::num() const {
   auto &ctx = _ctx.get();
   unsigned num;
-  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, _attr.get(), &num));
+  ctx.handle_error(
+      tiledb_attribute_get_cell_val_num(ctx.ptr(), _attr.get(), &num));
   return num;
 }
 
 tdb::Attribute &tdb::Attribute::set_num(unsigned num) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, _attr.get(), num));
+  ctx.handle_error(
+      tiledb_attribute_set_cell_val_num(ctx.ptr(), _attr.get(), num));
   return *this;
 }
 
 tdb::Compressor tdb::Attribute::compressor() const {
   auto &ctx = _ctx.get();
-  Compressor cmp;
+  tiledb_compressor_t compressor;
+  int level;
   ctx.handle_error(tiledb_attribute_get_compressor(
-      ctx, _attr.get(), &(cmp.compressor), &(cmp.level)));
+      ctx.ptr(), _attr.get(), &compressor, &level));
+  Compressor cmp(compressor, level);
   return cmp;
 }
 
 tdb::Attribute &tdb::Attribute::set_compressor(tdb::Compressor c) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(
-      tiledb_attribute_set_compressor(ctx, _attr.get(), c.compressor, c.level));
+  ctx.handle_error(tiledb_attribute_set_compressor(
+      ctx.ptr(), _attr.get(), c.compressor(), c.level()));
   return *this;
 }
 
 void tdb::Attribute::_create(const std::string &name, tiledb_datatype_t type) {
   auto &ctx = _ctx.get();
   tiledb_attribute_t *attr;
-  ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
+  ctx.handle_error(
+      tiledb_attribute_create(ctx.ptr(), &attr, name.c_str(), type));
   _init(attr);
 }
 

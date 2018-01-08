@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_read_async.cc
+ * @file   tiledb_dense_read_async.c
  *
  * @section LICENSE
  *

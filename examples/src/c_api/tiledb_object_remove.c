@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_delete.cc
+ * @file   tiledb_object_remove.c
  *
  * @section LICENSE
  *
@@ -40,11 +40,11 @@ int main() {
   tiledb_ctx_create(&ctx, NULL);
 
   // Deletes a valid group and array
-  tiledb_delete(ctx, "my_group");
-  tiledb_delete(ctx, "my_dense_array");
+  tiledb_object_remove(ctx, "my_group");
+  tiledb_object_remove(ctx, "my_dense_array");
 
   // Deletes an invalid path
-  int rc = tiledb_delete(ctx, "some_invalid_path");
+  int rc = tiledb_object_remove(ctx, "some_invalid_path");
   if (rc == TILEDB_ERR)
     printf("Failed deleting invalid path\n");
 

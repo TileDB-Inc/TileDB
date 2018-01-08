@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_query.h
+ * @file   tiledb_cpp_api_query.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,17 +29,18 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Query object.
  */
 
-#ifndef TILEDB_TDBPP_QUERY_H
-#define TILEDB_TDBPP_QUERY_H
+#ifndef TILEDB_CPP_API_QUERY_H
+#define TILEDB_CPP_API_QUERY_H
 
-#include "tdbpp_arrayschema.h"
-#include "tdbpp_context.h"
-#include "tdbpp_type.h"
-#include "tdbpp_utils.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_type.h"
+#include "tiledb_cpp_api_utils.h"
 
 #include <functional>
 #include <iterator>
@@ -86,7 +87,7 @@ class Query {
           "dimension.");
     }
     ctx.handle_error(
-        tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
+        tiledb_query_set_subarray(ctx.ptr(), _query.get(), pairs.data()));
     _subarray_cells = pairs[1] - pairs[0] + 1;
     for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
       _subarray_cells = _subarray_cells * (pairs[i + 1] - pairs[i] + 1);
@@ -106,7 +107,7 @@ class Query {
     auto &ctx = _ctx.get();
     _type_check<T>(_schema.domain().type());
     ctx.handle_error(
-        tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
+        tiledb_query_set_subarray(ctx.ptr(), _query.get(), pairs.data()));
     _subarray_cells = pairs[0][1] - pairs[0][0] + 1;
     for (unsigned i = 1; i < pairs.size(); ++i) {
       _subarray_cells = _subarray_cells * (pairs[i][1] - pairs[i][0] + 1);
@@ -410,7 +411,7 @@ class Query {
    * @param data data to pass to callback.
    * @return Status of submitted query.
    */
-  Status submit_async(void *(*callback)(void *), void *data);
+  Status submit_async(void (*callback)(void *), void *data);
 
   /**
    * @return Returned buffer sizes, in number of elements.
@@ -505,7 +506,7 @@ class Query {
 
   std::reference_wrapper<Context> _ctx;
   ArraySchema _schema;
-  _Deleter _deleter;
+  impl::Deleter _deleter;
   std::set<std::string> _attrs;
 
   // Size of the vector, size of vector::value_type, vector.data()
@@ -529,4 +530,4 @@ std::ostream &operator<<(std::ostream &os, const Query::Status &stat);
 
 }  // namespace tdb
 
-#endif  // TILEDB_TDBPP_QUERY_H
+#endif  // TILEDB_CPP_API_QUERY_H

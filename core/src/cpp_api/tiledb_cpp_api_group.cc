@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_error.h
+ * @file   tiledb_cpp_api_group.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,24 +29,19 @@
  *
  * @section DESCRIPTION
  *
- * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
+ * This file defines the C++ API for the TileDB groups.
  */
 
-#include <tiledb>
+#include "tiledb_cpp_api_group.h"
 
-int main() {
-  tdb::Context ctx;
+namespace tdb {
 
-  // default: throws runtime_error
-  try {
-    tdb::Group::create(ctx, "my_group");
-    tdb::Group::create(ctx, "my_group");
-  } catch (std::runtime_error &e) {
-    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
-  }
+namespace Group {
 
-  // Set a different handler
-  ctx.set_error_handler(
-      [](std::string msg) { std::cout << "Callback:\n\t" << msg << "\n"; });
-  tdb::Group::create(ctx, "my_group");
+void create(const Context& ctx, const std::string& group) {
+  ctx.handle_error(tiledb_group_create(ctx.ptr(), group.c_str()));
 }
+
+}  // namespace Group
+
+}  // namespace tdb
