@@ -166,7 +166,7 @@ void ArrayMetadataFx::delete_array(const std::string& path) {
   if (!is_array(path))
     return;
 
-  CHECK(tiledb_delete(ctx_, path.c_str()) == TILEDB_OK);
+  CHECK(tiledb_object_remove(ctx_, path.c_str()) == TILEDB_OK);
 }
 
 void ArrayMetadataFx::create_array(const std::string& path) {

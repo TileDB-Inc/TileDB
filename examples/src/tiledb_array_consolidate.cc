@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_delete.cc
+ * @file   tiledb_array_consolidate.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,25 +28,29 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * It shows how to consolidate arrays.
+ *
+ * One way to make this work is:
+ *
+ * $ ./tiledb_dense_create
+ * $ ./tiledb_dense_write_global_1
+ * $ ./tiledb_dense_write_global_subarray
+ * $ ./tiledb_dense_write_unordered
+ * $ ./tiledb_array_consolidate
+ *
+ * The first three programs create three different fragments. The last program
+ * consolidates the three fragments in a single one.
  */
 
 #include <tiledb.h>
-#include <iostream>
 
 int main() {
-  // Create context
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Deletes a valid group and array
-  tiledb_delete(ctx, "my_group");
-  tiledb_delete(ctx, "my_dense_array");
-
-  // Deletes an invalid path
-  int rc = tiledb_delete(ctx, "some_invalid_path");
-  if (rc == TILEDB_ERR)
-    std::cout << "Failed deleting invalid path\n";
+  // Consolidate the input array
+  tiledb_array_consolidate(ctx, "my_dense_array");
 
   // Clean up
   tiledb_ctx_free(ctx);

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_move.cc
+ * @file   tiledb_object_remove.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * It shows how to move/rename a TileDB object.
  */
 
 #include <tiledb.h>
@@ -39,15 +39,14 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Rename a valid group and array
-  tiledb_move(ctx, "my_group", "my_group_2", true);
-  tiledb_move(
-      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
+  // Deletes a valid group and array
+  tiledb_object_remove(ctx, "my_group");
+  tiledb_object_remove(ctx, "my_dense_array");
 
-  // Rename an invalid path
-  int rc = tiledb_move(ctx, "some_invalid_path", "path", false);
+  // Deletes an invalid path
+  int rc = tiledb_object_remove(ctx, "some_invalid_path");
   if (rc == TILEDB_ERR)
-    std::cout << "Failed moving invalid path\n";
+    std::cout << "Failed deleting invalid path\n";
 
   // Clean up
   tiledb_ctx_free(ctx);
