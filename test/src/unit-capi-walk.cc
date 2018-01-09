@@ -71,7 +71,8 @@ struct WalkFx {
   ~WalkFx();
   void remove_temp_dir(const std::string &path);
   void create_hierarchy(const std::string &path);
-  std::string get_golden_output(const std::string &path);
+  std::string get_golden_walk(const std::string &path);
+  std::string get_golden_ls(const std::string &path);
   static int write_path(const char *path, tiledb_object_t type, void *data);
 };
 
@@ -177,7 +178,7 @@ void WalkFx::create_hierarchy(const std::string &path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
-std::string WalkFx::get_golden_output(const std::string &path) {
+std::string WalkFx::get_golden_walk(const std::string &path) {
   std::string golden;
 
   // Preorder traversal
@@ -196,6 +197,15 @@ std::string WalkFx::get_golden_output(const std::string &path) {
   golden += path + "dense_arrays GROUP\n";
   golden += path + "sparse_arrays/array_C ARRAY\n";
   golden += path + "sparse_arrays/array_D ARRAY\n";
+  golden += path + "sparse_arrays GROUP\n";
+
+  return golden;
+}
+
+std::string WalkFx::get_golden_ls(const std::string &path) {
+  std::string golden;
+
+  golden += path + "dense_arrays GROUP\n";
   golden += path + "sparse_arrays GROUP\n";
 
   return golden;
@@ -227,8 +237,7 @@ int WalkFx::write_path(const char *path, tiledb_object_t type, void *data) {
 }
 
 TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
-  std::string golden;
-  std::string walk_str;
+  std::string golden_walk, golden_ls, walk_str, ls_str;
   int rc;
 
   // File
@@ -236,9 +245,11 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
   create_hierarchy(FILE_FULL_TEMP_DIR);
 #ifdef _WIN32
   // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
-  golden = get_golden_output(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+  golden_walk = get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+  golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
 #else
-  golden = get_golden_output(FILE_FULL_TEMP_DIR);
+  golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
+  golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);
 #endif
   walk_str.clear();
   rc = tiledb_walk(
@@ -251,36 +262,49 @@ TEST_CASE_METHOD(WalkFx, "C API: Test walk", "[capi], [walk]") {
       write_path,
       &walk_str);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden, Catch::Equals(walk_str));
+  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+  rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(FILE_FULL_TEMP_DIR);
 
 #ifdef HAVE_S3
   remove_temp_dir(S3_TEMP_DIR);
   create_hierarchy(S3_TEMP_DIR);
-  golden = get_golden_output(S3_TEMP_DIR);
+  golden_walk = get_golden_walk(S3_TEMP_DIR);
+  golden_ls = get_golden_ls(S3_TEMP_DIR);
   walk_str.clear();
+  ls_str.clear();
   rc = tiledb_walk(
       ctx_, S3_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_walk(
       ctx_, S3_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden, Catch::Equals(walk_str));
+  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+  rc = tiledb_ls(ctx_, S3_TEMP_DIR.c_str(), write_path, &ls_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   remove_temp_dir(HDFS_TEMP_DIR);
   create_hierarchy(HDFS_TEMP_DIR);
-  golden = get_golden_output(HDFS_FULL_TEMP_DIR);
+  golden_walk = get_golden_walk(HDFS_FULL_TEMP_DIR);
+  golden_ls = get_golden_ls(HDFS_FULL_TEMP_DIR);
   walk_str.clear();
+  ls_str.clear();
   rc = tiledb_walk(
       ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_walk(
       ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden, Catch::Equals(walk_str));
+  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+  rc = tiledb_ls(ctx_, HDFS_TEMP_DIR.c_str(), write_path, &ls_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
