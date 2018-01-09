@@ -47,6 +47,10 @@ int main() {
   std::cout << "\nPostorder traversal:\n";
   tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, nullptr);
 
+  // List only children directories (ls)
+  std::cout << "\nList children:\n";
+  tiledb_ls(ctx, "my_group", print_path, nullptr);
+
   // Finalize context
   tiledb_ctx_free(ctx);
 

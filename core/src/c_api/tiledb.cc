@@ -1668,6 +1668,55 @@ int tiledb_walk(
   return TILEDB_OK;
 }
 
+int tiledb_ls(
+    tiledb_ctx_t* ctx,
+    const char* path,
+    int (*callback)(const char*, tiledb_object_t, void*),
+    void* data) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (callback == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Cannot initiate ls; Invalid callback function");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Create an object iterator
+  tiledb::StorageManager::ObjectIter* obj_iter;
+  if (save_error(
+          ctx, ctx->storage_manager_->object_iter_begin(&obj_iter, path)))
+    return TILEDB_ERR;
+
+  // For as long as there is another object and the callback indicates to
+  // continue, walk over the TileDB objects in the path
+  const char* obj_name;
+  tiledb::ObjectType obj_type;
+  bool has_next;
+  int rc = 0;
+  do {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->object_iter_next(
+                obj_iter, &obj_name, &obj_type, &has_next))) {
+      ctx->storage_manager_->object_iter_free(obj_iter);
+      return TILEDB_ERR;
+    }
+    if (!has_next)
+      break;
+    rc = callback(obj_name, tiledb_object_t(obj_type), data);
+  } while (rc == 1);
+
+  // Clean up
+  ctx->storage_manager_->object_iter_free(obj_iter);
+
+  if (rc == -1)
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*             KEY-VALUE          */
 /* ****************************** */

@@ -425,6 +425,7 @@ Status StorageManager::object_iter_begin(
   // Create a new object iterator
   *obj_iter = new ObjectIter();
   (*obj_iter)->order_ = order;
+  (*obj_iter)->recursive_ = true;
 
   // Include the uris that are TileDB objects in the iterator state
   for (auto& uri : uris) {
@@ -433,6 +434,33 @@ Status StorageManager::object_iter_begin(
       if (order == WalkOrder::POSTORDER)
         (*obj_iter)->expanded_.push_back(false);
     }
+  }
+
+  return Status::Ok();
+}
+
+Status StorageManager::object_iter_begin(
+    ObjectIter** obj_iter, const char* path) {
+  // Sanity check
+  URI path_uri(path);
+  if (path_uri.is_invalid()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot create object iterator; Invalid input path"));
+  }
+
+  // Get all contents of path
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(path_uri, &uris));
+
+  // Create a new object iterator
+  *obj_iter = new ObjectIter();
+  (*obj_iter)->order_ = WalkOrder::PREORDER;
+  (*obj_iter)->recursive_ = false;
+
+  // Include the uris that are TileDB objects in the iterator state
+  for (auto& uri : uris) {
+    if (object_type(uri) != ObjectType::INVALID)
+      (*obj_iter)->objs_.push_back(uri);
   }
 
   return Status::Ok();
@@ -510,6 +538,10 @@ Status StorageManager::object_iter_next_preorder(
 
   // Pop the front (next URI) of the iterator's object list
   obj_iter->objs_.pop_front();
+
+  // Return if no recursion is needed
+  if (!obj_iter->recursive_)
+    return Status::Ok();
 
   // Get all contents of the next URI
   std::vector<URI> uris;

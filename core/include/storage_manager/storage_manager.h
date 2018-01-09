@@ -81,6 +81,8 @@ class StorageManager {
     std::list<URI> objs_;
     /** The traversal order of the iterator. */
     WalkOrder order_;
+    /** `True` if the iterator will recursively visit the directory tree. */
+    bool recursive_;
   };
 
   /* ********************************* */
@@ -224,7 +226,9 @@ class StorageManager {
   Status load_fragment_metadata(FragmentMetadata* metadata);
 
   /**
-   * Creates a new object iterator for the input path.
+   * Creates a new object iterator for the input path. The iteration
+   * in this case will be recursive in the entire directory tree rooted
+   * at `path`.
    *
    * @param obj_iter The object iterator to be created (memory is allocated for
    *     it by the function).
@@ -234,6 +238,17 @@ class StorageManager {
    */
   Status object_iter_begin(
       ObjectIter** obj_iter, const char* path, WalkOrder order);
+
+  /**
+   * Creates a new object iterator for the input path. The iteration will
+   * not be recursive, and only the children of `path` will be visited.
+   *
+   * @param obj_iter The object iterator to be created (memory is allocated for
+   *     it by the function).
+   * @param path The path the iterator will target at.
+   * @return Status
+   */
+  Status object_iter_begin(ObjectIter** obj_iter, const char* path);
 
   /** Frees the object iterator. */
   void object_iter_free(ObjectIter* obj_iter);

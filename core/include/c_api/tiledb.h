@@ -1302,6 +1302,27 @@ TILEDB_EXPORT int tiledb_walk(
     int (*callback)(const char*, tiledb_object_t, void*),
     void* data);
 
+/**
+ * Similar to `tiledb_walk`, but now the function visits only the children of
+ * `path` (i.e., it does not recursively continue to the children directories.
+ *
+ * @param ctx The TileDB context.
+ * @param path The path in which the traversal will occur.
+ * @param callback The callback function to be applied on every visited object.
+ *     The callback should return 0 if the iteration must stop, and 1
+ *     if the iteration must continue. It takes as input the currently visited
+ *     path, the type of that path (e.g., array or group), and the data
+ *     provided by the user for the callback. The callback returns -1 upon
+ *     error. Note that `path` in the callback will be an **absolute** path.
+ * @param data The data passed in the callback as the last argument.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ls(
+    tiledb_ctx_t* ctx,
+    const char* path,
+    int (*callback)(const char*, tiledb_object_t, void*),
+    void* data);
+
 /* ****************************** */
 /*             KEY-VALUE          */
 /* ****************************** */
