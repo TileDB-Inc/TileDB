@@ -1,51 +1,60 @@
-sudo: required
-dist: trusty
 language: cpp
-services:
-  - docker
-env:
-    matrix:
-        - USE_HDFS="ON" USE_S3="OFF" 
-        - USE_HDFS="OFF" USE_S3="ON"
-        - USE_HDFS="OFF" USE_S3="OFF"
-        - USE_HDFS="ON" USE_S3="ON"
+
+dist: trusty
+sudo: required
+services: docker
+
+matrix:
+  include:
+    - os: linux
+
+    - os: linux
+      env: USE_HDFS="ON"
+
+    - os: linux
+      env: USE_S3="ON"
+
+    - os: osx
 
 install:
-    # Install lcov to coveralls conversion + upload tool
-    - sudo apt-get install lcov
-    - gem install coveralls-lcov
-
     # Install clangformat (v5.0)
-    - sudo scripts/install-clangformat.sh
-
-    # Install library dependencies
-    - sudo scripts/install-deps.sh
-
-    # Install hadoop if HDFS is enabled
-    - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
-
-    # Install minio if S3 is enabled
-    - if [ "$USE_S3" == "ON" ]; then 
-        source scripts/install-s3.sh && source scripts/install-minio.sh; 
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        sudo scripts/install-clangformat.sh;
+      else
+        scripts/install-clangformat.sh;
       fi
 
-    # Build TileDB
+    # Install library dependencies
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        sudo scripts/install-deps.sh;
+      else
+        scripts/install-deps.sh;
+      fi
+
+    # Install hadoop if HDFS is enabled
+    - if [[ "$USE_HDFS" == "ON" ]]; then
+        source scripts/install-hadoop.sh;
+      fi
+
+    # Install minio if S3 is enabled
+    - if [[ "$USE_S3" == "ON" ]]; then
+        source scripts/install-s3.sh && source scripts/install-minio.sh;
+      fi
+
     - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build
-    - if [ "$USE_HDFS" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-hdfs; fi
-    - if [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3; fi
-    - if [ "$USE_HDFS" == "OFF" ] && [ "$USE_S3" == "OFF" ]; then ../bootstrap --enable-coverage --enable-verbose; fi
-    - if [ "$USE_HDFS" == "ON" ] && [ "$USE_S3" == "ON" ]; then ../bootstrap --enable-coverage --enable-verbose --enable-s3 --enable-hdfs; fi
+
+      # Build TileDB
+    - if [[ "$USE_HDFS" == "ON" ]]; then
+        ../bootstrap --enable-coverage --enable-verbose --enable-hdfs;
+      elif [[ "$USE_S3" == "ON" ]]; then
+        ../bootstrap --enable-coverage --enable-verbose --enable-s3;
+      else
+        ../bootstrap --enable-coverage --enable-verbose;
+      fi
+
     - make -j4
     - make examples -j4
     
-before_script:
-    - lcov --directory $TRAVIS_BUILD_DIR/build --zerocounters
-
 script:
     - make check-format
     - make check
-
-after_success:
-    - cd $TILEDB_BUILD_DIR/build
-    - lcov --directory . --capture --output-file coverage.info
-    - lcov --list coverage.info # debug before upload
