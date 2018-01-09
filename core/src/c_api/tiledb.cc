@@ -841,7 +841,7 @@ int tiledb_dimension_from_name(
 }
 
 /* ****************************** */
-/*           ARRAY METADATA       */
+/*           ARRAY SCHEMA         */
 /* ****************************** */
 
 int tiledb_array_schema_create(
@@ -1584,7 +1584,7 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
 }
 
 /* ****************************** */
-/*       RESOURCE  MANAGEMENT     */
+/*         OBJECT MANAGEMENT      */
 /* ****************************** */
 
 int tiledb_object_type(
@@ -1596,7 +1596,7 @@ int tiledb_object_type(
   return TILEDB_OK;
 }
 
-int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
+int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto uri = tiledb::URI(path);
@@ -1605,7 +1605,7 @@ int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
   return TILEDB_OK;
 }
 
-int tiledb_move(
+int tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1616,7 +1616,7 @@ int tiledb_move(
   return TILEDB_OK;
 }
 
-int tiledb_walk(
+int tiledb_object_walk(
     tiledb_ctx_t* ctx,
     const char* path,
     tiledb_walk_order_t order,

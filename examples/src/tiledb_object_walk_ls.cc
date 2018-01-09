@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_consolidate.cc
+ * @file   tiledb_object_walk_ls.cc
  *
  * @section LICENSE
  *
@@ -28,32 +28,55 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to consolidate arrays.
- *
- * One way to make this work is:
- *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_write_global_subarray
- * $ ./tiledb_dense_write_unordered
- * $ ./tiledb_consolidate
- *
- * The first three programs create three different fragments. The last program
- * consolidates the three fragments in a single one.
+ * It shows how to explore the contents of a TileDB object (group, array
+ * or key-value).
  */
 
 #include <tiledb.h>
+#include <iostream>
+
+int print_path(const char* path, tiledb_object_t type, void* data);
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Consolidate the input array
-  tiledb_array_consolidate(ctx, "my_dense_array");
+  // Walk in a path with a pre- and post-order traversal
+  std::cout << "Preorder traversal:\n";
+  tiledb_object_walk(ctx, "my_group", TILEDB_PREORDER, print_path, nullptr);
+  std::cout << "\nPostorder traversal:\n";
+  tiledb_object_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, nullptr);
 
-  // Clean up
+  // List only children directories (ls)
+  std::cout << "\nList children:\n";
+  tiledb_ls(ctx, "my_group", print_path, nullptr);
+
+  // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+int print_path(const char* path, tiledb_object_t type, void* data) {
+  // Simply print the path and type
+  (void)data;
+  std::cout << path << " ";
+  switch (type) {
+    case TILEDB_ARRAY:
+      std::cout << "ARRAY";
+      break;
+    case TILEDB_KEY_VALUE:
+      std::cout << "KEY_VALUE";
+      break;
+    case TILEDB_GROUP:
+      std::cout << "GROUP";
+      break;
+    default:
+      std::cout << "INVALID";
+  }
+  std::cout << "\n";
+
+  // Always iterate till the end
+  return 1;
 }

@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_walk.cc
+ * @file   tiledb_object_move.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,54 +28,29 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to explore the contents of a TileDB directory.
+ * It shows how to move/rename a TileDB object.
  */
 
 #include <tiledb.h>
 #include <iostream>
 
-int print_path(const char* path, tiledb_object_t type, void* data);
-
 int main() {
-  // Create TileDB context
+  // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Walk in a path with a pre- and post-order traversal
-  std::cout << "Preorder traversal:\n";
-  tiledb_walk(ctx, "my_group", TILEDB_PREORDER, print_path, nullptr);
-  std::cout << "\nPostorder traversal:\n";
-  tiledb_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, nullptr);
+  // Rename a valid group and array
+  tiledb_object_move(ctx, "my_group", "my_group_2", true);
+  tiledb_object_move(
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
 
-  // List only children directories (ls)
-  std::cout << "\nList children:\n";
-  tiledb_ls(ctx, "my_group", print_path, nullptr);
+  // Rename an invalid path
+  int rc = tiledb_object_move(ctx, "some_invalid_path", "path", false);
+  if (rc == TILEDB_ERR)
+    std::cout << "Failed moving invalid path\n";
 
-  // Finalize context
+  // Clean up
   tiledb_ctx_free(ctx);
 
   return 0;
-}
-
-int print_path(const char* path, tiledb_object_t type, void* data) {
-  // Simply print the path and type
-  (void)data;
-  std::cout << path << " ";
-  switch (type) {
-    case TILEDB_ARRAY:
-      std::cout << "ARRAY";
-      break;
-    case TILEDB_KEY_VALUE:
-      std::cout << "KEY_VALUE";
-      break;
-    case TILEDB_GROUP:
-      std::cout << "GROUP";
-      break;
-    default:
-      std::cout << "INVALID";
-  }
-  std::cout << "\n";
-
-  // Always iterate till the end
-  return 1;
 }

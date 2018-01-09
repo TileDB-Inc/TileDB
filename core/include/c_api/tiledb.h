@@ -640,7 +640,7 @@ TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
 
 /* ********************************* */
-/*           ARRAY METADATA          */
+/*            ARRAY SCHEMA           */
 /* ********************************* */
 
 /**
@@ -1238,7 +1238,7 @@ TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri);
 
 /* ********************************* */
-/*        RESOURCE MANAGEMENT        */
+/*          OBJECT MANAGEMENT        */
 /* ********************************* */
 
 /**
@@ -1259,7 +1259,7 @@ TILEDB_EXPORT int tiledb_object_type(
  * @param path The URI path to the tiledb resource.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
+TILEDB_EXPORT int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
 
 /**
  * Moves a TileDB resource (group or array).
@@ -1271,7 +1271,7 @@ TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* path);
  *     path
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_move(
+TILEDB_EXPORT int tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
 
 /**
@@ -1295,7 +1295,7 @@ TILEDB_EXPORT int tiledb_move(
  * @param data The data passed in the callback as the last argument.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_walk(
+TILEDB_EXPORT int tiledb_object_walk(
     tiledb_ctx_t* ctx,
     const char* path,
     tiledb_walk_order_t order,
