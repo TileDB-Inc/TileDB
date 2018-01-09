@@ -74,7 +74,7 @@ install_deps() {
       die "homebrew is not installed!"
     fi
   else
-    die "unsupported package management system"
+    die "unsupported OS"
   fi 
 }
 

@@ -59,10 +59,8 @@ VFS::~VFS() {
     // Status st = hdfs::disconnect(hdfs_);
   }
 #endif
-#ifdef HAVE_S3
-// Do not disconnect - may lead to problems
-// Status st = s3_.disconnect();
-#endif
+  // Do not disconnect - may lead to problems
+  // Status st = s3_.disconnect();
 }
 
 /* ********************************* */
