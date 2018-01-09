@@ -45,7 +45,7 @@ Status GZip::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with GZip; invalid buffer format"));
 
-  ssize_t ret;
+  int ret;
   z_stream strm;
 
   // Allocate deflate state

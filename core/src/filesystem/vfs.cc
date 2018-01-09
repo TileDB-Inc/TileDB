@@ -35,6 +35,7 @@
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
+#include "win_filesystem.h"
 
 namespace tiledb {
 
@@ -67,8 +68,15 @@ VFS::~VFS() {
 /* ********************************* */
 
 std::string VFS::abs_path(const std::string& path) {
-  if (URI::is_posix(path))
+#ifdef _WIN32
+  if (win::is_win_path(path))
+    return win::uri_from_path(win::abs_path(path));
+  else if (URI::is_file(path))
+    return win::uri_from_path(win::abs_path(win::path_from_uri(path)));
+#else
+  if (URI::is_file(path))
     return posix::abs_path(path);
+#endif
   if (URI::is_hdfs(path))
     return path;
   if (URI::is_s3(path))
@@ -78,8 +86,12 @@ std::string VFS::abs_path(const std::string& path) {
 }
 
 Status VFS::create_dir(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::create_dir(uri.to_path());
+#else
     return posix::create_dir(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -104,8 +116,12 @@ Status VFS::create_file(const URI& uri) const {
   if (is_file(uri))
     return Status::Ok();
 
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::create_file(uri.to_path());
+#else
     return posix::create_file(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -155,8 +171,12 @@ Status VFS::remove_bucket(const URI& uri) const {
 }
 
 Status VFS::remove_path(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::remove_path(uri.to_path());
+#else
     return posix::remove_path(uri.to_path());
+#endif
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
     return hdfs::remove_path(hdfs_, uri);
@@ -177,8 +197,12 @@ Status VFS::remove_path(const URI& uri) const {
 }
 
 Status VFS::remove_file(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::remove_file(uri.to_path());
+#else
     return posix::remove_file(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -199,9 +223,14 @@ Status VFS::remove_file(const URI& uri) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
-  if (uri.is_posix())
+Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
+  if (uri.is_file())
+#ifdef _WIN32
+    return win::filelock_lock(uri.to_path(), fd, shared);
+#else
     return posix::filelock_lock(uri.to_path(), fd, shared);
+#endif
+
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
     return Status::Ok();
@@ -221,9 +250,13 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::filelock_unlock(const URI& uri, int fd) const {
-  if (uri.is_posix()) {
+Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::filelock_unlock(fd);
+#else
     return posix::filelock_unlock(fd);
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -245,8 +278,12 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::file_size(uri.to_path(), size);
+#else
     return posix::file_size(uri.to_path(), size);
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -268,8 +305,12 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 }
 
 bool VFS::is_dir(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::is_dir(uri.to_path());
+#else
     return posix::is_dir(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -289,8 +330,12 @@ bool VFS::is_dir(const URI& uri) const {
 }
 
 bool VFS::is_file(const URI& uri) const {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::is_file(uri.to_path());
+#else
     return posix::is_file(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -345,8 +390,12 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   std::vector<std::string> paths;
-  if (parent.is_posix()) {
+  if (parent.is_file()) {
+#ifdef _WIN32
+    RETURN_NOT_OK(win::ls(parent.to_path(), &paths));
+#else
     RETURN_NOT_OK(posix::ls(parent.to_path(), &paths));
+#endif
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
     RETURN_NOT_OK(hdfs::ls(hdfs_, parent, &paths));
@@ -372,10 +421,15 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
-  // Posix
-  if (old_uri.is_posix()) {
-    if (new_uri.is_posix())
+  // File
+  if (old_uri.is_file()) {
+    if (new_uri.is_file()) {
+#ifdef _WIN32
+      return win::move_path(old_uri.to_path(), new_uri.to_path());
+#else
       return posix::move_path(old_uri.to_path(), new_uri.to_path());
+#endif
+    }
     return LOG_STATUS(Status::VFSError(
         "Moving files across filesystems is not supported yet"));
   }
@@ -418,8 +472,12 @@ Status VFS::read(
     return LOG_STATUS(
         Status::VFSError("Cannot read from file; File does not exist"));
 
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::read(uri.to_path(), offset, buffer, nbytes);
+#else
     return posix::read(uri.to_path(), offset, buffer, nbytes);
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -445,8 +503,12 @@ bool VFS::supports_fs(Filesystem fs) const {
 }
 
 Status VFS::sync(const URI& uri) {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::sync(uri.to_path());
+#else
     return posix::sync(uri.to_path());
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -468,8 +530,12 @@ Status VFS::sync(const URI& uri) {
 }
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
-  if (uri.is_posix()) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::write(uri.to_path(), buffer, buffer_size);
+#else
     return posix::write(uri.to_path(), buffer, buffer_size);
+#endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS

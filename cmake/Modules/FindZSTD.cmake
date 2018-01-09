@@ -29,6 +29,13 @@
 #   - ZSTD_LIBRARIES, the Zstandard library path
 #   - ZSTD_FOUND, whether Zstandard has been found
 
+# Set the name of the zstd shared object
+if (WIN32)
+  set(ZSTD_LIB_NAME libzstd)
+else()
+  set(ZSTD_LIB_NAME zstd)
+endif()
+
 # Find header files  
 if(ZSTD_SEARCH_HEADER_PATHS)
   find_path( 
@@ -43,12 +50,12 @@ endif()
 # Find library
 if(ZSTD_SEARCH_LIB_PATH)
   find_library(
-      ZSTD_LIBRARIES NAMES zstd
+      ZSTD_LIBRARIES NAMES ${ZSTD_LIB_NAME}
       PATHS ${ZSTD_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(ZSTD_LIBRARIES NAMES zstd)
+  find_library(ZSTD_LIBRARIES NAMES ${ZSTD_LIB_NAME})
 endif()
 
 if(ZSTD_INCLUDE_DIR AND ZSTD_LIBRARIES)

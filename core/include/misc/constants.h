@@ -145,7 +145,7 @@ extern const uint64_t consolidation_buffer_size;
 extern const uint64_t max_write_bytes;
 
 /** The maximum name length. */
-extern const unsigned name_max_len;
+extern const unsigned uri_max_len;
 
 /** The size of the buffer that holds the sorted cells. */
 extern const uint64_t sorted_buffer_size;

@@ -30,6 +30,8 @@
  * This file includes definitions of POSIX filesystem functions.
  */
 
+#ifndef _WIN32
+
 #include "posix_filesystem.h"
 #include "constants.h"
 #include "logger.h"
@@ -179,7 +181,7 @@ Status file_size(const std::string& path, uint64_t* size) {
   return Status::Ok();
 }
 
-Status filelock_lock(const std::string& filename, int* fd, bool shared) {
+Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   // Prepare the flock struct
   struct flock fl;
   memset(&fl, 0, sizeof(struct flock));
@@ -206,7 +208,7 @@ Status filelock_lock(const std::string& filename, int* fd, bool shared) {
   return Status::Ok();
 }
 
-Status filelock_unlock(int fd) {
+Status filelock_unlock(filelock_t fd) {
   if (::close(fd) == -1)
     return LOG_STATUS(Status::IOError(
         "Cannot unlock consolidation filelock: Cannot close filelock"));
@@ -412,3 +414,5 @@ Status write(
 }  // namespace posix
 
 }  // namespace tiledb
+
+#endif  // !_WIN32

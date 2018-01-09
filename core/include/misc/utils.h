@@ -270,6 +270,11 @@ bool starts_with(const std::string& value, const std::string& prefix);
  */
 std::string tile_extent_str(const void* tile_extent, Datatype type);
 
+/**
+ * Returns the current time in milliseconds.
+ */
+uint64_t timestamp_ms();
+
 }  // namespace utils
 
 }  // namespace tiledb

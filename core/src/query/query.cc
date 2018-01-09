@@ -34,7 +34,6 @@
 #include "logger.h"
 #include "utils.h"
 
-#include <sys/time.h>
 #include <set>
 #include <sstream>
 
@@ -132,7 +131,7 @@ Status Query::async_process() {
 
     // Invoke the callback
     if (callback_ != nullptr)
-      (*callback_)(callback_data_);
+      callback_(callback_data_);
   } else {  // Error
     set_status(QueryStatus::FAILED);
   }
@@ -450,7 +449,8 @@ void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   buffer_sizes_ = buffer_sizes;
 }
 
-void Query::set_callback(void* (*callback)(void*), void* callback_data) {
+void Query::set_callback(
+    std::function<void(void*)> callback, void* callback_data) {
   callback_ = callback;
   callback_data_ = callback_data;
 }
@@ -578,7 +578,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 /* ****************************** */
 
 void Query::add_coords() {
-  size_t attribute_num = array_schema_->attribute_num();
+  unsigned int attribute_num = array_schema_->attribute_num();
   bool has_coords = false;
 
   for (auto id : attribute_ids_) {
@@ -729,10 +729,7 @@ Status Query::new_fragment() {
 }
 
 std::string Query::new_fragment_name() const {
-  struct timeval tp;
-  memset(&tp, 0, sizeof(struct timeval));
-  gettimeofday(&tp, nullptr);
-  auto ms = static_cast<uint64_t>(tp.tv_sec * 1000L + tp.tv_usec / 1000);
+  uint64_t ms = utils::timestamp_ms();
   std::stringstream ss;
   ss << array_schema_->array_uri().to_string() << "/__"
      << std::this_thread::get_id() << "_" << ms;
@@ -761,10 +758,10 @@ Status Query::set_attributes(
       attributes_vec.emplace_back(constants::coords);
   } else {  // Custom attributes
     // Get attributes
-    unsigned name_max_len = constants::name_max_len;
+    unsigned uri_max_len = constants::uri_max_len;
     for (unsigned int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
+      if (attributes[i] == nullptr || strlen(attributes[i]) > uri_max_len)
         return LOG_STATUS(Status::QueryError("Invalid attribute name length"));
       attributes_vec.emplace_back(attributes[i]);
     }

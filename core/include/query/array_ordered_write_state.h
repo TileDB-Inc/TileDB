@@ -313,7 +313,7 @@ class ArrayOrderedWriteState {
    * @param data A ASWS_Request object.
    * @return void
    */
-  static void* async_done(void* data);
+  static void async_done(void* data);
 
   /** Notifies an async condition on the input tile slab id. */
   void async_notify(unsigned int id);

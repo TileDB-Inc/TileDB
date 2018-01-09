@@ -49,6 +49,8 @@ extern "C" {
 /** C Library export. */
 #if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
 #define TILEDB_EXPORT __attribute__((visibility("default")))
+#elif defined _MSC_VER
+#define TILEDB_EXPORT __declspec(dllexport)
 #else
 #define TILEDB_EXPORT
 #pragma message("TILEDB_EXPORT is not defined for this compiler")
@@ -57,6 +59,8 @@ extern "C" {
 
 #if (defined __GNUC__) || defined __INTEL_COMPILER
 #define TILEDB_DEPRECATED __attribute__((deprecated, visibility("default")))
+#elif defined _MSC_VER
+#define TILEDB_DEPRECATED __declspec(deprecated)
 #else
 #define DEPRECATED
 #pragma message("TILEDB_DEPRECATED is not defined for this compiler")
@@ -1160,7 +1164,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    void* (*callback)(void*),
+    void (*callback)(void*),
     void* callback_data);
 
 /**

@@ -1,0 +1,15 @@
+version: '{build}'
+image: Visual Studio 2017
+build_script:
+- ps: >-
+    mkdir build
+
+    cd build
+
+    $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+
+    ..\scripts\install-deps.ps1
+
+    ..\bootstrap.ps1
+test_script:
+- ps: cmake --build . --target check --config Release

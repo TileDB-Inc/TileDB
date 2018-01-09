@@ -410,14 +410,12 @@ void ArrayOrderedWriteState::advance_cell_slab_row(unsigned int aid) {
   update_current_tile_and_offset<T>(aid);
 }
 
-void* ArrayOrderedWriteState::async_done(void* data) {
+void ArrayOrderedWriteState::async_done(void* data) {
   // Retrieve data
   ArrayOrderedWriteState* asws = ((ASWS_Data*)data)->asws_;
   unsigned int id = ((ASWS_Data*)data)->id_;
 
   asws->async_notify(id);
-
-  return nullptr;
 }
 
 void ArrayOrderedWriteState::async_notify(unsigned int id) {
@@ -972,7 +970,7 @@ void ArrayOrderedWriteState::copy_tile_slab_var(
   update_current_tile_and_offset(aid);
 
   // Fill the local buffer offsets with zeros
-  bzero(local_buffer, local_buffer_size);
+  memset(local_buffer, 0, local_buffer_size);
 
   // Handle offsets first
   for (;;) {

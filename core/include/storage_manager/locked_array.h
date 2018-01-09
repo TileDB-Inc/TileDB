@@ -33,6 +33,7 @@
 #ifndef TILEDB_LOCKED_ARRAY_H
 #define TILEDB_LOCKED_ARRAY_H
 
+#include "filelock.h"
 #include "status.h"
 #include "vfs.h"
 
@@ -96,7 +97,7 @@ class LockedArray {
   bool exclusive_lock_;
 
   /** Filelock handle. */
-  int filelock_;
+  filelock_t filelock_;
 
   /** The locked array mutex. */
   std::mutex mtx_;
