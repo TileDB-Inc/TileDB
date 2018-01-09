@@ -29,6 +29,12 @@
 #   - LIBHDFS_LIBRARY, the libhdfs library path
 #   - LIBHDFS_FOUND, the hdfs.h header, libjvm and libhdfs libraries have been found
 
+# Set the name of the HDFS shared object
+if (WIN32)
+  set(HDFS_LIB_NAME hdfs)
+else()
+  set(HDFS_LIB_NAME libhdfs)
+endif()
 
 if(NOT LIBHDFS_FOUND)
     message(STATUS "Searching for libhdfs")
@@ -43,6 +49,7 @@ if(NOT LIBHDFS_FOUND)
 	message(STATUS "HADOOP_HOME is set to ${HADOOP_HOME}")
         list(APPEND POSSILE_PATHS
              "${HADOOP_HOME}"
+             "${HADOOP_HOME}/bin"
              "${HADOOP_HOME}/lib"
              "${HADOOP_HOME}/lib/native"
 	     "${HADOOP_HOME}/include"
@@ -52,8 +59,8 @@ if(NOT LIBHDFS_FOUND)
     find_path(LIBHDFS_INCLUDE_DIR NAMES hdfs.h PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
 
     find_library(LIBHDFS_LIBRARY NAMES
-        libhdfs${CMAKE_SHARED_LIBRARY_SUFFIX}
-	libhdfs${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${HDFS_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
+	${HDFS_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
 	PATHS ${POSSILE_PATHS}
         NO_DEFAULT_PATH)
 

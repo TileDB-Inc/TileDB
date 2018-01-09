@@ -98,6 +98,12 @@ if (WIN32)
   # Handle escaped semicolons. See
   # https://cmake.org/pipermail/cmake/2010-December/041176.html
   set(PATH_STRING "$ENV{PATH};${TILEDB_DEPENDENCY_INSTALL_DIR}/bin")
+  if (USE_HDFS)
+    get_filename_component(LIBHDFS_LIB_DIR "${LIBHDFS_LIBRARY}" DIRECTORY)
+    get_filename_component(LIBJVM_LIB_DIR "${LIBJVM_LIBRARIES}" DIRECTORY)
+    get_filename_component(JDK_DIR "${LIBJVM_LIB_DIR}" DIRECTORY)
+    set(PATH_STRING "${PATH_STRING};${LIBHDFS_LIB_DIR};${LIBJVM_LIB_DIR};${JDK_DIR}/jre/bin/server")
+  endif()
   string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
   string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
   set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
