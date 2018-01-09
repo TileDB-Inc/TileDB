@@ -42,6 +42,7 @@
 #include "status.h"
 #include "storage_manager.h"
 
+#include <functional>
 #include <vector>
 
 namespace tiledb {
@@ -269,7 +270,7 @@ class Query {
    * Sets the callback function and its data input that will be called
    * upon the completion of an asynchronous query.
    */
-  void set_callback(void* (*callback)(void*), void* callback_data);
+  void set_callback(std::function<void(void*)> callback, void* callback_data);
 
   /** Sets and initializes the fragment metadata. */
   Status set_fragment_metadata(
@@ -363,7 +364,7 @@ class Query {
   uint64_t* buffer_sizes_;
 
   /** A function that will be called upon the completion of an async query. */
-  void* (*callback_)(void*);
+  std::function<void(void*)> callback_;
 
   /** The data input to the callback function. */
   void* callback_data_;

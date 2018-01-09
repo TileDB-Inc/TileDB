@@ -1164,7 +1164,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    void* (*callback)(void*),
+    void (*callback)(void*),
     void* callback_data);
 
 /**

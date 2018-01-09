@@ -594,7 +594,7 @@ Status StorageManager::query_submit(Query* query) {
 }
 
 Status StorageManager::query_submit_async(
-    Query* query, void* (*callback)(void*), void* callback_data) {
+    Query* query, std::function<void(void*)> callback, void* callback_data) {
   // Initialize query
   if (query->status() != QueryStatus::INCOMPLETE)
     RETURN_NOT_OK(query->init());

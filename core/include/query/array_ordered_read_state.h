@@ -381,7 +381,7 @@ class ArrayOrderedReadState {
    * @param data A ASRS_Request object.
    * @return void
    */
-  static void* async_done(void* data);
+  static void async_done(void* data);
 
   /** Notifies async conditions on the input tile slab id. */
   void async_notify(unsigned int id);

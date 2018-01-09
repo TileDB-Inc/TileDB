@@ -40,7 +40,7 @@
 #include <tiledb.h>
 
 // Simply prints the input string to stdout
-void* print_upon_completion(void* s);
+void print_upon_completion(void* s);
 
 int main() {
   // Create TileDB context
@@ -112,8 +112,6 @@ int main() {
   return 0;
 }
 
-void* print_upon_completion(void* s) {
+void print_upon_completion(void* s) {
   printf("%s\n", (char*)s);
-
-  return nullptr;
 }
