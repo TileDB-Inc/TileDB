@@ -168,3 +168,13 @@ std::ostream &tdb::operator<<(
   }
   return os;
 }
+
+std::string tdb::Query::to_str(tiledb_query_type_t type) {
+  switch (type) {
+    case TILEDB_READ:
+      return "READ";
+    case TILEDB_WRITE:
+      return "WRITE";
+  }
+  return "";  // silence error
+}

@@ -102,7 +102,6 @@ class ArraySchema {
   /** Returns the input array type in string format. */
   static std::string to_str(tiledb_array_type_t type);
   static std::string to_str(tiledb_layout_t layout);
-  static std::string to_str(tiledb_query_type_t type);
 
   /**
    * Create new schema for an array with name uri
