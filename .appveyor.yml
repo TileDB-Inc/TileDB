@@ -10,6 +10,6 @@ build_script:
 
     ..\scripts\install-deps.ps1
 
-    ..\bootstrap.ps1
+    ..\bootstrap.ps1 -EnableVerbose
 test_script:
 - ps: cmake --build . --target check --config Release
