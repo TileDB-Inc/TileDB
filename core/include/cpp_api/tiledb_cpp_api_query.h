@@ -121,7 +121,7 @@ class Query {
     return set_subarray<typename type::type_from_native<T>::type>(pairs);
   };
 
-    static std::string to_str(tiledb_query_type_t type);
+  static std::string to_str(tiledb_query_type_t type);
 
   /**
    * Set a buffer for a particular attribute

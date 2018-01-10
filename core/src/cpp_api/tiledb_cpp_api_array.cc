@@ -36,19 +36,15 @@
 
 namespace tdb {
 
-namespace Array {
-
-void consolidate(const Context& ctx, const std::string& array) {
+void consolidate_array(const Context& ctx, const std::string& array) {
   ctx.handle_error(tiledb_array_consolidate(ctx.ptr(), array.c_str()));
 }
 
-void create(
+void create_array(
     const Context& ctx, const std::string& array, const ArraySchema& schema) {
   ctx.handle_error(tiledb_array_schema_check(ctx.ptr(), schema.ptr().get()));
   ctx.handle_error(
       tiledb_array_create(ctx.ptr(), array.c_str(), schema.ptr().get()));
 }
-
-}  // namespace Array
 
 }  // namespace tdb

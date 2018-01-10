@@ -37,6 +37,6 @@
 
 int main() {
   tdb::Context ctx;
-  tdb::Array::consolidate(ctx, "my_dense_array");
+  tdb::consolidate_array(ctx, "my_dense_array");
   return 0;
 }

@@ -39,8 +39,8 @@ int main() {
 
   // default: throws runtime_error
   try {
-    tdb::Group::create(ctx, "my_group");
-    tdb::Group::create(ctx, "my_group");
+    tdb::create_group(ctx, "my_group");
+    tdb::create_group(ctx, "my_group");
   } catch (std::runtime_error &e) {
     std::cout << "Runtime exception:\n\t" << e.what() << "\n";
   }
@@ -48,5 +48,5 @@ int main() {
   // Set a different handler
   ctx.set_error_handler(
       [](std::string msg) { std::cout << "Callback:\n\t" << msg << "\n"; });
-  tdb::Group::create(ctx, "my_group");
+  tdb::create_group(ctx, "my_group");
 }

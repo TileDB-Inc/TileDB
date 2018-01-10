@@ -41,15 +41,13 @@
 
 namespace tdb {
 
-namespace Array {
-
 /**
  * Consolidates the fragments of an array.
  *
  * @param ctx The TileDB context.
  * @param name The URI of the array.
  */
-void consolidate(const Context& ctx, const std::string& array);
+void consolidate_array(const Context& ctx, const std::string& array);
 
 /**
  * Creates an array on disk from a schema definition.
@@ -58,10 +56,8 @@ void consolidate(const Context& ctx, const std::string& array);
  * @param name The URI of the array.
  * @param schema The array schema.
  */
-void create(
+void create_array(
     const Context& ctx, const std::string& array, const ArraySchema& schema);
-
-}  // namespace Array
 
 }  // namespace tdb
 

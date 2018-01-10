@@ -286,5 +286,3 @@ std::string tdb::ArraySchema::to_str(tiledb_layout_t layout) {
   }
   return "";
 }
-
-

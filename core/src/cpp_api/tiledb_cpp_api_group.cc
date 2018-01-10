@@ -36,12 +36,8 @@
 
 namespace tdb {
 
-namespace Group {
-
-void create(const Context& ctx, const std::string& group) {
+void create_group(const Context& ctx, const std::string& group) {
   ctx.handle_error(tiledb_group_create(ctx.ptr(), group.c_str()));
 }
-
-}  // namespace Group
 
 }  // namespace tdb
