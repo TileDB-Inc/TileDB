@@ -117,6 +117,11 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   CHECK(st.ok());
   CHECK(s3_.is_dir(URI(folder2)));
 
+  st = s3_.create_dir(URI("file:///tiledb/tiledb_test_dir/testfolder"));
+  CHECK(!st.ok());
+  st = s3_.create_dir(URI("/tiledb/tiledb_test_dir/testfolder"));
+  CHECK(!st.ok());
+
   auto file1 = folder2 + "file1";
   auto file2 = folder2 + "file2";
   st = s3_.write(URI(file1), write_buffer_small, buffer_size_small);

@@ -85,6 +85,11 @@ Status S3::connect(const S3Config& s3_config) {
 }
 
 Status S3::create_bucket(const URI& bucket) const {
+  if (!bucket.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + bucket.to_string())));
+  }
+
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::CreateBucketRequest createBucketRequest;
   createBucketRequest.SetBucket(aws_uri.GetAuthority());
@@ -101,6 +106,11 @@ Status S3::create_bucket(const URI& bucket) const {
 }
 
 Status S3::create_dir(const URI& uri) const {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   std::string directory = uri.to_string();
   if (directory.back() == '/')
     directory.pop_back();
@@ -126,6 +136,11 @@ Status S3::create_dir(const URI& uri) const {
 }
 
 Status S3::create_file(const URI& uri) const {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::PutObjectRequest putObjectRequest;
   putObjectRequest.WithKey(aws_uri.GetPath())
@@ -146,6 +161,11 @@ Status S3::create_file(const URI& uri) const {
 }
 
 Status S3::delete_bucket(const URI& bucket) const {
+  if (!bucket.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + bucket.to_string())));
+  }
+
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::HeadBucketRequest headBucketRequest;
   headBucketRequest.SetBucket(aws_uri.GetAuthority());
@@ -200,7 +220,12 @@ Status S3::disconnect() {
 }
 
 Status S3::file_size(const URI& uri, uint64_t* nbytes) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
+  Aws::Http::URI aws_uri = uri.to_string().c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
   listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
@@ -218,6 +243,11 @@ Status S3::file_size(const URI& uri, uint64_t* nbytes) const {
 }
 
 Status S3::flush_file(const URI& uri) {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   if (is_dir(uri))
     return Status::Ok();
 
@@ -265,6 +295,10 @@ Status S3::flush_file(const URI& uri) {
 }
 
 bool S3::is_bucket(const URI& bucket) const {
+  if (!bucket.is_s3()) {
+    return false;
+  }
+
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::HeadBucketRequest headBucketRequest;
   headBucketRequest.SetBucket(aws_uri.GetAuthority());
@@ -273,7 +307,11 @@ bool S3::is_bucket(const URI& bucket) const {
 }
 
 bool S3::is_dir(const URI& uri) const {
-  auto path = uri.to_path();
+  if (!uri.is_s3()) {
+    return false;
+  }
+
+  auto path = uri.to_string();
   if (path.back() == '/')
     path.pop_back();
   Aws::Http::URI aws_uri = path.c_str();
@@ -292,7 +330,11 @@ bool S3::is_dir(const URI& uri) const {
 }
 
 bool S3::is_file(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  if (!uri.is_s3()) {
+    return false;
+  }
+
+  Aws::Http::URI aws_uri = uri.to_string().c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
   listObjectsRequest.SetBucket(aws_uri.GetAuthority());
   listObjectsRequest.SetPrefix(fix_path(aws_uri.GetPath()));
@@ -307,7 +349,12 @@ bool S3::is_file(const URI& uri) const {
 }
 
 Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
-  auto uri_path = uri.to_path();
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
+  auto uri_path = uri.to_string();
   Aws::Http::URI aws_uri =
       (uri_path + (uri_path.back() != '/' ? "/" : "")).c_str();
   Aws::S3::Model::ListObjectsRequest listObjectsRequest;
@@ -335,6 +382,16 @@ Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
 }
 
 Status S3::move_path(const URI& old_uri, const URI& new_uri) {
+  if (!old_uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + old_uri.to_string())));
+  }
+
+  if (!new_uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + new_uri.to_string())));
+  }
+
   if (is_dir(new_uri)) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to move s3 path: ") + old_uri.c_str() +
@@ -356,6 +413,11 @@ Status S3::move_path(const URI& old_uri, const URI& new_uri) {
 
 Status S3::read(
     const URI& uri, off_t offset, void* buffer, uint64_t length) const {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::GetObjectRequest getObjectRequest;
   getObjectRequest.WithBucket(aws_uri.GetAuthority())
@@ -386,7 +448,12 @@ Status S3::read(
 }
 
 Status S3::remove_file(const URI& uri) const {
-  Aws::Http::URI aws_uri = uri.to_path().c_str();
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
+  Aws::Http::URI aws_uri = uri.to_string().c_str();
   Aws::S3::Model::DeleteObjectRequest deleteObjectRequest;
   deleteObjectRequest.SetBucket(aws_uri.GetAuthority());
   deleteObjectRequest.SetKey(aws_uri.GetPath());
@@ -407,6 +474,11 @@ Status S3::remove_file(const URI& uri) const {
 }
 
 Status S3::remove_path(const URI& uri) const {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   if (is_file(uri))
     return remove_file(uri);
 
@@ -463,6 +535,11 @@ Status S3::remove_path(const URI& uri) const {
 }
 
 Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
   // Get file buffer
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
