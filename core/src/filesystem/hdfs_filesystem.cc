@@ -188,8 +188,8 @@ Status remove_file(hdfsFS fs, const URI& uri) {
   return Status::Ok();
 }
 
-// Read length bytes from file give by path from byte offset offset into pre
-// allocated buffer buffer.
+// Read length bytes from file give by path from byte offset offset into
+// pre-allocated buffer buffer.
 Status read(
     hdfsFS fs, const URI& uri, off_t offset, void* buffer, uint64_t length) {
   hdfsFile readFile =
@@ -199,7 +199,13 @@ Status read(
         std::string("Cannot read file ") + uri.to_string() +
         ": file open error"));
   }
-  int ret = hdfsSeek(fs, readFile, (tOffset)offset);
+  if (offset > std::numeric_limits<tOffset>::max()) {
+    return LOG_STATUS(Status::HDFSError(
+        std::string("Cannot read from from '") + uri.to_string() +
+        "'; offset > typemax(tOffset)"));
+  }
+  tOffset off = static_cast<tOffset>(offset);
+  int ret = hdfsSeek(fs, readFile, off);
   if (ret < 0) {
     return LOG_STATUS(Status::HDFSError(
         std::string("Cannot seek to offset ") + uri.to_string()));
