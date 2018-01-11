@@ -83,7 +83,10 @@ class Attribute {
   Attribute &set_compressor(Compressor c);
 
   /** Returns the C TileDB attribute object pointer. */
-  tiledb_attribute_t *ptr() const;
+  std::shared_ptr<tiledb_attribute_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_attribute_t *() const;
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */

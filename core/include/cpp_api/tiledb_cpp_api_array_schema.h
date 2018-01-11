@@ -99,6 +99,9 @@ class ArraySchema {
     _init(uri);
   }
 
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_array_schema_t *() const;
+
   /** Returns the input array type in string format. */
   static std::string to_str(tiledb_array_type_t type);
   static std::string to_str(tiledb_layout_t layout);
@@ -129,7 +132,7 @@ class ArraySchema {
   ArraySchema &set_type(tiledb_array_type_t type) {
     auto &ctx = _ctx.get();
     ctx.handle_error(
-        tiledb_array_schema_set_array_type(ctx.ptr(), _schema.get(), type));
+        tiledb_array_schema_set_array_type(ctx, _schema.get(), type));
     return *this;
   }
 

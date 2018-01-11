@@ -55,29 +55,27 @@ Attribute::Attribute(const Context &ctx, tiledb_attribute_t *attr)
 std::string Attribute::name() const {
   auto &ctx = ctx_.get();
   const char *name;
-  ctx.handle_error(tiledb_attribute_get_name(ctx.ptr(), attr_.get(), &name));
+  ctx.handle_error(tiledb_attribute_get_name(ctx, attr_.get(), &name));
   return name;
 }
 
 tiledb_datatype_t Attribute::type() const {
   auto &ctx = ctx_.get();
   tiledb_datatype_t type;
-  ctx.handle_error(tiledb_attribute_get_type(ctx.ptr(), attr_.get(), &type));
+  ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
   return type;
 }
 
 unsigned Attribute::cell_val_num() const {
   auto &ctx = ctx_.get();
   unsigned num;
-  ctx.handle_error(
-      tiledb_attribute_get_cell_val_num(ctx.ptr(), attr_.get(), &num));
+  ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr_.get(), &num));
   return num;
 }
 
 Attribute &Attribute::set_cell_val_num(unsigned num) {
   auto &ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_attribute_set_cell_val_num(ctx.ptr(), attr_.get(), num));
+  ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, attr_.get(), num));
   return *this;
 }
 
@@ -85,8 +83,8 @@ Compressor Attribute::compressor() const {
   auto &ctx = ctx_.get();
   tiledb_compressor_t compressor;
   int level;
-  ctx.handle_error(tiledb_attribute_get_compressor(
-      ctx.ptr(), attr_.get(), &compressor, &level));
+  ctx.handle_error(
+      tiledb_attribute_get_compressor(ctx, attr_.get(), &compressor, &level));
   Compressor cmp(compressor, level);
   return cmp;
 }
@@ -94,11 +92,15 @@ Compressor Attribute::compressor() const {
 Attribute &Attribute::set_compressor(Compressor c) {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_attribute_set_compressor(
-      ctx.ptr(), attr_.get(), c.compressor(), c.level()));
+      ctx, attr_.get(), c.compressor(), c.level()));
   return *this;
 }
 
-tiledb_attribute_t *Attribute::ptr() const {
+std::shared_ptr<tiledb_attribute_t> Attribute::ptr() const {
+  return attr_;
+}
+
+Attribute::operator tiledb_attribute_t *() const {
   return attr_.get();
 }
 
@@ -109,8 +111,7 @@ tiledb_attribute_t *Attribute::ptr() const {
 Attribute Attribute::create(
     const Context &ctx, const std::string &name, tiledb_datatype_t type) {
   tiledb_attribute_t *attr;
-  ctx.handle_error(
-      tiledb_attribute_create(ctx.ptr(), &attr, name.c_str(), type));
+  ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
   return Attribute(ctx, attr);
 }
 

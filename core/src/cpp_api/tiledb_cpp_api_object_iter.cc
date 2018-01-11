@@ -95,10 +95,9 @@ ObjectIter::iterator ObjectIter::begin() {
     ObjGetterData data(objs_, array_, group_, kv_);
     if (recursive_)
       ctx.handle_error(tiledb_object_walk(
-          ctx.ptr(), root_.c_str(), walk_order_, obj_getter, &data));
+          ctx, root_.c_str(), walk_order_, obj_getter, &data));
     else
-      ctx.handle_error(
-          tiledb_object_ls(ctx.ptr(), root_.c_str(), obj_getter, &data));
+      ctx.handle_error(tiledb_object_ls(ctx, root_.c_str(), obj_getter, &data));
     retrieve_objs_ = false;
   }
 

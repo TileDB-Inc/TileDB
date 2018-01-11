@@ -66,14 +66,17 @@ class Config {
    * @param filename The name of the file where the parameters will be read
    *     from.
    */
-  Config(const std::string& filename);
+  explicit Config(const std::string& filename);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the pointer to the TileDB C config object. */
-  tiledb_config_t* ptr() const;
+  std::shared_ptr<tiledb_config_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_config_t*() const;
 
   /**
    * Sets a config parameter-value pair.

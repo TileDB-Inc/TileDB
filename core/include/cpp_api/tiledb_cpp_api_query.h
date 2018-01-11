@@ -87,7 +87,7 @@ class Query {
           "dimension.");
     }
     ctx.handle_error(
-        tiledb_query_set_subarray(ctx.ptr(), _query.get(), pairs.data()));
+        tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
     _subarray_cells = pairs[1] - pairs[0] + 1;
     for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
       _subarray_cells = _subarray_cells * (pairs[i + 1] - pairs[i] + 1);
@@ -107,7 +107,7 @@ class Query {
     auto &ctx = _ctx.get();
     _type_check<T>(_schema.domain().type());
     ctx.handle_error(
-        tiledb_query_set_subarray(ctx.ptr(), _query.get(), pairs.data()));
+        tiledb_query_set_subarray(ctx, _query.get(), pairs.data()));
     _subarray_cells = pairs[0][1] - pairs[0][0] + 1;
     for (unsigned i = 1; i < pairs.size(); ++i) {
       _subarray_cells = _subarray_cells * (pairs[i][1] - pairs[i][0] + 1);

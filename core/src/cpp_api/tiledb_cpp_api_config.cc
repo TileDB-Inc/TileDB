@@ -58,7 +58,11 @@ Config::Config(const std::string& filename)
 /*                API                */
 /* ********************************* */
 
-tiledb_config_t* Config::ptr() const {
+std::shared_ptr<tiledb_config_t> Config::ptr() const {
+  return config_;
+}
+
+Config::operator tiledb_config_t*() const {
   return config_.get();
 }
 

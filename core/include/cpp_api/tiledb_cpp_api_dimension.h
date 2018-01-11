@@ -170,6 +170,9 @@ class Dimension {
     return _dim;
   }
 
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_dimension_t *() const;
+
  private:
   std::reference_wrapper<Context> _ctx;
   impl::Deleter _deleter;

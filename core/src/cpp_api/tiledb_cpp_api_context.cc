@@ -52,7 +52,7 @@ Context::Context() {
 
 Context::Context(const Config &config) {
   tiledb_ctx_t *ctx;
-  if (tiledb_ctx_create(&ctx, config.ptr()) != TILEDB_OK)
+  if (tiledb_ctx_create(&ctx, config) != TILEDB_OK)
     throw std::runtime_error(
         "[TileDB::C++API] Error: Failed to create context");
   ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, tiledb_ctx_free);
@@ -93,7 +93,11 @@ void Context::handle_error(int rc) const {
   error_handler_(msg_str);
 }
 
-tiledb_ctx_t *Context::ptr() const {
+std::shared_ptr<tiledb_ctx_t> Context::ptr() const {
+  return ctx_;
+}
+
+Context::operator tiledb_ctx_t *() const {
   return ctx_.get();
 }
 

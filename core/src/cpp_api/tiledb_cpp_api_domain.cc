@@ -44,10 +44,10 @@ const std::vector<tdb::Dimension> tdb::Domain::dimensions() const {
   unsigned int ndim;
   tiledb_dimension_t *dimptr;
   std::vector<Dimension> dims;
-  ctx.handle_error(tiledb_domain_get_rank(ctx.ptr(), _domain.get(), &ndim));
+  ctx.handle_error(tiledb_domain_get_rank(ctx, _domain.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
     ctx.handle_error(
-        tiledb_dimension_from_index(ctx.ptr(), _domain.get(), i, &dimptr));
+        tiledb_dimension_from_index(ctx, _domain.get(), i, &dimptr));
     dims.emplace_back(_ctx, &dimptr);
   }
   return dims;
@@ -56,28 +56,27 @@ const std::vector<tdb::Dimension> tdb::Domain::dimensions() const {
 tiledb_datatype_t tdb::Domain::type() const {
   auto &ctx = _ctx.get();
   tiledb_datatype_t type;
-  ctx.handle_error(tiledb_domain_get_type(ctx.ptr(), _domain.get(), &type));
+  ctx.handle_error(tiledb_domain_get_type(ctx, _domain.get(), &type));
   return type;
 }
 
 unsigned tdb::Domain::size() const {
   unsigned rank;
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_domain_get_rank(ctx.ptr(), _domain.get(), &rank));
+  ctx.handle_error(tiledb_domain_get_rank(ctx, _domain.get(), &rank));
   return rank;
 }
 
 void tdb::Domain::_create() {
   auto &ctx = _ctx.get();
   tiledb_domain_t *d;
-  ctx.handle_error(tiledb_domain_create(ctx.ptr(), &d));
+  ctx.handle_error(tiledb_domain_create(ctx, &d));
   _init(d);
 }
 
 tdb::Domain &tdb::Domain::add_dimension(const tdb::Dimension &d) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(
-      tiledb_domain_add_dimension(ctx.ptr(), _domain.get(), d.ptr().get()));
+  ctx.handle_error(tiledb_domain_add_dimension(ctx, _domain.get(), d));
   return *this;
 }
 
