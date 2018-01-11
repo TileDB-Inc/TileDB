@@ -2170,3 +2170,21 @@ int tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
 
   return TILEDB_OK;
 }
+
+int tiledb_uri_to_path(
+    tiledb_ctx_t* ctx, const char* uri, char* path_out, unsigned* path_length) {
+  if (sanity_check(ctx) == TILEDB_ERR || uri == nullptr ||
+      path_out == nullptr || path_length == nullptr)
+    return TILEDB_ERR;
+
+  std::string path = tiledb::URI::to_path(uri);
+  if (path.empty() || path.length() + 1 > *path_length) {
+    *path_length = 0;
+    return TILEDB_ERR;
+  } else {
+    *path_length = static_cast<unsigned>(path.length());
+    path.copy(path_out, path.length());
+    path_out[path.length()] = '\0';
+    return TILEDB_OK;
+  }
+}

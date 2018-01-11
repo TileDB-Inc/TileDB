@@ -136,20 +136,24 @@ URI URI::parent() const {
   return URI(uri_.substr(0, pos));
 }
 
-std::string URI::to_path() const {
-  if (is_file()) {
+std::string URI::to_path(const std::string& uri) {
+  if (is_file(uri)) {
 #ifdef _WIN32
-    return win::path_from_uri(uri_);
+    return win::path_from_uri(uri);
 #else
-    return uri_.substr(std::string("file://").size());
+    return uri.substr(std::string("file://").size());
 #endif
   }
 
-  if (is_hdfs() || is_s3())
-    return uri_;
+  if (is_hdfs(uri) || is_s3(uri))
+    return uri;
 
   // Error
   return "";
+}
+
+std::string URI::to_path() const {
+  return to_path(uri_);
 }
 
 std::string URI::to_string() const {

@@ -1763,6 +1763,23 @@ TILEDB_EXPORT int tiledb_vfs_supports_fs(
 TILEDB_EXPORT int tiledb_vfs_touch(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
 
+/**
+ * Converts the given file URI to a null-terminated platform-native file path.
+ *
+ * @param ctx The TileDB context.
+ * @param uri The URI to be converted.
+ * @param path_out The buffer where the converted path string is stored.
+ * @param path_length The length of the path buffer. On return, this is set to
+ * the length of the converted path string, or 0 on error.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note The path_out buffer must be allocated according to the platform's
+ * maximum path length (e.g. PATH_MAX), which includes space for the terminating
+ * null character.
+ */
+TILEDB_EXPORT int tiledb_uri_to_path(
+    tiledb_ctx_t* ctx, const char* uri, char* path_out, unsigned* path_length);
+
 #undef TILEDB_EXPORT
 #ifdef __cplusplus
 }

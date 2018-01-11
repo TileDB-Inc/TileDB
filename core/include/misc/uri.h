@@ -129,9 +129,23 @@ class URI {
   /** Returns the parent of the URI. */
   URI parent() const;
 
-  /** Returns the URI path, stripping the resource. For examples,
-   *  "file:///my/path/" is the URI, this function will return
-   *  "/my/path/".
+  /**
+   * Returns the URI path for the current platform, stripping the resource. For
+   * example, if "file:///my/path/" is the URI, this function will return
+   * "/my/path/" on Mac and Linux. If "file:///C:/my/path" is the URI, this
+   * function will return "C:\my\path" on Windows. HDFS and S3 URIs are returned
+   * unmodified.
+   *
+   * @param uri The URI to convert.
+   * @return std::string The converted path, or empty string on error.
+   */
+  static std::string to_path(const std::string& uri);
+
+  /** Returns the URI path for the current platform, stripping the resource. For
+   * example, if "file:///my/path/" is the URI, this function will return
+   * "/my/path/" on Mac and Linux. If "file:///C:/my/path" is the URI, this
+   * function will return "C:\my\path" on Windows. HDFS and S3 URIs are returned
+   * unmodified.
    */
   std::string to_path() const;
 
