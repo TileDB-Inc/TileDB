@@ -60,10 +60,9 @@ int main() {
   domain << d1 << d2;
   schema << domain;
 
-  tdb::Attribute a1(ctx), a2(ctx);
-  a1.create<int>("");
-  a2.create<float>("a2");
-  a1.set_num(3);
+  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "");
+  tdb::Attribute a2 = tdb::Attribute::create<float>(ctx, "a2");
+  a1.set_cell_val_num(3);
   a2.set_compressor({TILEDB_GZIP, -1});
   schema << a1 << a2;
 

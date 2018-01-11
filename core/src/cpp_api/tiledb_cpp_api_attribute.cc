@@ -36,76 +36,94 @@
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_type.h"
 
-void tdb::Attribute::_init(tiledb_attribute_t *attr) {
-  _attr = std::shared_ptr<tiledb_attribute_t>(attr, _deleter);
+namespace tdb {
+
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
+Attribute::Attribute(const Context &ctx, tiledb_attribute_t *attr)
+    : ctx_(ctx)
+    , deleter_(ctx) {
+  attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
 }
 
-std::string tdb::Attribute::name() const {
-  auto &ctx = _ctx.get();
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+std::string Attribute::name() const {
+  auto &ctx = ctx_.get();
   const char *name;
-  ctx.handle_error(tiledb_attribute_get_name(ctx.ptr(), _attr.get(), &name));
+  ctx.handle_error(tiledb_attribute_get_name(ctx.ptr(), attr_.get(), &name));
   return name;
 }
 
-tiledb_datatype_t tdb::Attribute::type() const {
-  auto &ctx = _ctx.get();
+tiledb_datatype_t Attribute::type() const {
+  auto &ctx = ctx_.get();
   tiledb_datatype_t type;
-  ctx.handle_error(tiledb_attribute_get_type(ctx.ptr(), _attr.get(), &type));
+  ctx.handle_error(tiledb_attribute_get_type(ctx.ptr(), attr_.get(), &type));
   return type;
 }
 
-unsigned tdb::Attribute::num() const {
-  auto &ctx = _ctx.get();
+unsigned Attribute::cell_val_num() const {
+  auto &ctx = ctx_.get();
   unsigned num;
   ctx.handle_error(
-      tiledb_attribute_get_cell_val_num(ctx.ptr(), _attr.get(), &num));
+      tiledb_attribute_get_cell_val_num(ctx.ptr(), attr_.get(), &num));
   return num;
 }
 
-tdb::Attribute &tdb::Attribute::set_num(unsigned num) {
-  auto &ctx = _ctx.get();
+Attribute &Attribute::set_cell_val_num(unsigned num) {
+  auto &ctx = ctx_.get();
   ctx.handle_error(
-      tiledb_attribute_set_cell_val_num(ctx.ptr(), _attr.get(), num));
+      tiledb_attribute_set_cell_val_num(ctx.ptr(), attr_.get(), num));
   return *this;
 }
 
-tdb::Compressor tdb::Attribute::compressor() const {
-  auto &ctx = _ctx.get();
+Compressor Attribute::compressor() const {
+  auto &ctx = ctx_.get();
   tiledb_compressor_t compressor;
   int level;
   ctx.handle_error(tiledb_attribute_get_compressor(
-      ctx.ptr(), _attr.get(), &compressor, &level));
+      ctx.ptr(), attr_.get(), &compressor, &level));
   Compressor cmp(compressor, level);
   return cmp;
 }
 
-tdb::Attribute &tdb::Attribute::set_compressor(tdb::Compressor c) {
-  auto &ctx = _ctx.get();
+Attribute &Attribute::set_compressor(Compressor c) {
+  auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_attribute_set_compressor(
-      ctx.ptr(), _attr.get(), c.compressor(), c.level()));
+      ctx.ptr(), attr_.get(), c.compressor(), c.level()));
   return *this;
 }
 
-void tdb::Attribute::_create(const std::string &name, tiledb_datatype_t type) {
-  auto &ctx = _ctx.get();
+tiledb_attribute_t *Attribute::ptr() const {
+  return attr_.get();
+}
+
+/* ********************************* */
+/*     PRIVATE STATIC FUNCTIONS      */
+/* ********************************* */
+
+Attribute Attribute::create(
+    const Context &ctx, const std::string &name, tiledb_datatype_t type) {
   tiledb_attribute_t *attr;
   ctx.handle_error(
       tiledb_attribute_create(ctx.ptr(), &attr, name.c_str(), type));
-  _init(attr);
+  return Attribute(ctx, attr);
 }
 
-std::ostream &tdb::operator<<(std::ostream &os, const Attribute &a) {
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+std::ostream &operator<<(std::ostream &os, const Attribute &a) {
   os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
-     << (a.num() == TILEDB_VAR_NUM ? "VAR" : std::to_string(a.num())) << '>';
+     << (a.cell_val_num() == TILEDB_VAR_NUM ? "VAR" :
+                                              std::to_string(a.cell_val_num()))
+     << '>';
   return os;
 }
 
-tdb::Attribute &tdb::operator<<(Attribute &attr, const Compressor &c) {
-  attr.set_compressor(c);
-  return attr;
-}
-
-tdb::Attribute &tdb::operator<<(Attribute &attr, unsigned num) {
-  attr.set_num(num);
-  return attr;
-}
+}  // namespace tdb

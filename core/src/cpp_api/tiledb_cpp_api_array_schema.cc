@@ -116,8 +116,8 @@ tdb::ArraySchema &tdb::ArraySchema::set_domain(const Domain &domain) {
 }
 tdb::ArraySchema &tdb::ArraySchema::add_attribute(const tdb::Attribute &attr) {
   auto &ctx = _ctx.get();
-  ctx.handle_error(tiledb_array_schema_add_attribute(
-      ctx.ptr(), _schema.get(), attr.ptr().get()));
+  ctx.handle_error(
+      tiledb_array_schema_add_attribute(ctx.ptr(), _schema.get(), attr.ptr()));
   return *this;
 }
 
@@ -137,7 +137,7 @@ tdb::ArraySchema::attributes() const {
   for (unsigned int i = 0; i < nattr; ++i) {
     ctx.handle_error(
         tiledb_attribute_from_index(ctx.ptr(), _schema.get(), i, &attrptr));
-    auto attr = Attribute(_ctx, &attrptr);
+    auto attr = Attribute(_ctx, attrptr);
     attrs.emplace(
         std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
   }

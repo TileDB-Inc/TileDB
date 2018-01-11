@@ -47,135 +47,100 @@
 
 namespace tdb {
 
+/** Implements the attribute functionality. */
 class Attribute {
  public:
-  Attribute(Context &ctx)
-      : _ctx(ctx)
-      , _deleter(ctx) {
-  }
-  Attribute(Context &ctx, tiledb_attribute_t **attr)
-      : Attribute(ctx) {
-    load(attr);
-  }
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  Attribute(const Context &ctx, tiledb_attribute_t *attr);
   Attribute(const Attribute &attr) = default;
   Attribute(Attribute &&o) = default;
   Attribute &operator=(const Attribute &) = default;
   Attribute &operator=(Attribute &&o) = default;
 
-  /**
-   * Load an array from tiledb, and take ownership.
-   *
-   * @param attr attribute to load
-   */
-  void load(tiledb_attribute_t **attr) {
-    if (attr && *attr) {
-      _init(*attr);
-      *attr = nullptr;
-    }
-  }
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
 
-  /**
-   * Create a new attribute of type DataT
-   *
-   * @tparam DataT tdb::type::*
-   * @param name Attribute name
-   * @return *this
-   */
-  template <typename DataT, typename = typename DataT::type>
-  void create(const std::string &name) {
-    _create(name, DataT::tiledb_datatype);
-  }
-
-  /**
-   * Create a new attribute with datatype T. Reverse lookup for DataT.
-   *
-   * @tparam T int,char, etc...
-   * @param name
-   */
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, void>::type create(
-      const std::string &name) {
-    create<typename type::type_from_native<T>::type>(name);
-  }
-
-  /**
-   * Create an attribute by naming the type at runtime.
-   *
-   * @param name
-   * @param type
-   */
-  void create(const std::string &name, tiledb_datatype_t type) {
-    _create(name, type);
-  }
-
-  /**
-   * @return name of attribute
-   */
+  /** Returns the name of the attribute. */
   std::string name() const;
 
-  /**
-   * @return Attribute datatype
-   */
+  /** Returns the attribute datatype. */
   tiledb_datatype_t type() const;
 
-  /**
-   * @return The number of elements in each cell.
-   */
-  unsigned num() const;
+  /** Returns the number of values stored in each cell. */
+  unsigned cell_val_num() const;
 
-  /**
-   * Set the number of attribute elements per cell.
-   *
-   * @param num
-   */
-  Attribute &set_num(unsigned num);
+  /** Sets the number of attribute values per cell. */
+  Attribute &set_cell_val_num(unsigned num);
 
-  /**
-   * @return Get the current compressor.
-   */
+  /** Returns the attribute compressor. */
   Compressor compressor() const;
 
-  /**
-   * Set the attribute compressor.
-   *
-   * @param c
-   */
+  /** Sets the attribute compressor. */
   Attribute &set_compressor(Compressor c);
 
-  std::shared_ptr<tiledb_attribute_t> ptr() const {
-    return _attr;
+  /** Returns the C TileDB attribute object pointer. */
+  tiledb_attribute_t *ptr() const;
+
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Factory function for creating a new attribute with datatype T.
+   *
+   * @tparam T int, char, etc...
+   * @param ctx The TileDB context.
+   * @param name The attribute name.
+   * @return A new `Attribute` object.
+   */
+  template <typename T>
+  static typename std::enable_if<std::is_fundamental<T>::value, Attribute>::type
+  create(const Context &ctx, const std::string &name) {
+    return create<typename type::type_from_native<T>::type>(ctx, name);
   }
 
- protected:
-  void _init(tiledb_attribute_t *attr);
-  void _create(const std::string &name, tiledb_datatype_t type);
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
-  std::reference_wrapper<Context> _ctx;
-  impl::Deleter _deleter;
-  std::shared_ptr<tiledb_attribute_t> _attr;
+  /** The TileDB context. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** An auxiliary deleter. */
+  impl::Deleter deleter_;
+
+  /** The pointer to the C TileDB attribute object. */
+  std::shared_ptr<tiledb_attribute_t> attr_;
+
+  /* ********************************* */
+  /*     PRIVATE STATIC FUNCTIONS      */
+  /* ********************************* */
+
+  /**
+   * Auxiliary function that converts a basic datatype to a TileDB C
+   * datatype.
+   */
+  template <typename DataT, typename = typename DataT::type>
+  static Attribute create(const Context &ctx, const std::string &name) {
+    return create(ctx, name, DataT::tiledb_datatype);
+  }
+
+  /** Creates an attribute with the input name and datatype. */
+  static Attribute create(
+      const Context &ctx, const std::string &name, tiledb_datatype_t type);
 };
 
-/**
- * Get a string repr of the attribute.
- *
- * @param os
- * @param a
- */
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Get a string representation of an attribute for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Attribute &a);
-
-/**
- * Set the attribute compressor.
- *
- * @param c
- */
-Attribute &operator<<(Attribute &attr, const Compressor &c);
-
-/**
- * Set the number of attribute elements per cell.
- *
- * @param num
- */
-Attribute &operator<<(Attribute &attr, unsigned num);
 
 }  // namespace tdb
 

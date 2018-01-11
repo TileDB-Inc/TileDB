@@ -44,15 +44,15 @@ int main() {
   d2.create<uint64_t>("d2", dim_domain, 2);
   domain << d1 << d2;  // Add dims to domain
 
-  tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
-  a1.create<int>("a1");
-  a2.create<char>("a2");
-  a3.create<float>("a3");
+  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
+  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
+  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
 
   // Set attr compressors and number
-  a1 << tdb::Compressor{TILEDB_BLOSC, -1} << 1;
-  a2 << tdb::Compressor{TILEDB_GZIP, -1} << TILEDB_VAR_NUM;
-  a3 << tdb::Compressor{TILEDB_ZSTD, -1} << 2;
+  a1.set_compressor(tdb::Compressor{TILEDB_BLOSC, -1}).set_cell_val_num(1);
+  a2.set_compressor(tdb::Compressor{TILEDB_GZIP, -1})
+      .set_cell_val_num(TILEDB_VAR_NUM);
+  a3.set_compressor(tdb::Compressor{TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
   tdb::ArraySchema schema(ctx);
   schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});

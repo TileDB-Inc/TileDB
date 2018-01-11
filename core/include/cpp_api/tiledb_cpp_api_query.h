@@ -221,7 +221,7 @@ class Query {
       uint64_t max_el = 0) {
     uint64_t num = 1;
     if (_array_attributes.count(attr)) {
-      num = _array_attributes.at(attr).num();
+      num = _array_attributes.at(attr).cell_val_num();
       if (num == TILEDB_VAR_NUM)
         throw std::runtime_error("Offsets required for var size attribute.");
     } else if (attr == TILEDB_COORDS) {
@@ -269,7 +269,7 @@ class Query {
       uint64_t max_el = 0) {
     uint64_t num;
     if (_array_attributes.count(attr)) {
-      num = _array_attributes.at(attr).num();
+      num = _array_attributes.at(attr).cell_val_num();
       if (num != TILEDB_VAR_NUM)
         throw std::runtime_error("Offsets provided for fixed size attribute.");
     }
@@ -447,7 +447,8 @@ class Query {
     if (_array_attributes.count(attr)) {
       // Type check if an attribute
       _type_check<DataT>(_array_attributes.at(attr).type());
-      if (varcmp == (_schema.attributes().at(attr).num() == TILEDB_VAR_NUM)) {
+      if (varcmp ==
+          (_schema.attributes().at(attr).cell_val_num() == TILEDB_VAR_NUM)) {
         throw std::invalid_argument(
             "Offsets must be provided for variable length attributes.");
       }
