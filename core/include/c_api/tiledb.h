@@ -83,10 +83,14 @@ TILEDB_EXPORT const char* tiledb_coords();
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT unsigned int tiledb_var_num();
 
+/** Returns the maximum path length on the current platform. */
+TILEDB_EXPORT unsigned int tiledb_max_path();
+
 /**@{*/
 /** Constants wrapping special functions. */
 #define TILEDB_COORDS tiledb_coords()
 #define TILEDB_VAR_NUM tiledb_var_num()
+#define TILEDB_MAX_PATH tiledb_max_path()
 /**@}*/
 
 /* ****************************** */

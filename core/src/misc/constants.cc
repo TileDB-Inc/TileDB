@@ -33,6 +33,15 @@
 #include <cstdint>
 #include <limits>
 
+// Include files for platform path max definition.
+#ifdef _WIN32
+#include "win_constants.h"
+#elif __APPLE__
+#include <sys/syslimits.h>
+#else
+#include <limits.h>
+#endif
+
 #include "compressor.h"
 #include "datatype.h"
 
@@ -144,6 +153,11 @@ const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
 /** The maximum name length. */
 const unsigned uri_max_len = 256;
+
+/** The maximum file path length (depending on platform). */
+#ifndef _WIN32
+const unsigned path_max_len = PATH_MAX;
+#endif
 
 /** The size of the buffer that holds the sorted cells. */
 const uint64_t sorted_buffer_size = 10000000;
