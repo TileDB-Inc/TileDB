@@ -45,7 +45,7 @@ template <typename T>
 const uint64_t PQFragmentCellRange<T>::INVALID_UINT64 = UINT64_MAX;
 
 template <typename T>
-const unsigned int PQFragmentCellRange<T>::INVALID_UINT = UINT_MAX;
+const unsigned int PQFragmentCellRange<T>::INVALID_UINT = UINT32_MAX;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */

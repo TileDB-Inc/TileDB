@@ -317,10 +317,23 @@ Status read(
     return LOG_STATUS(
         Status::IOError("Cannot read from file; File opening error"));
   }
-  // Read
-  lseek(fd, offset, SEEK_SET);
-  int64_t bytes_read = ::read(fd, buffer, nbytes);
-  if (bytes_read != int64_t(nbytes)) {
+  if (offset > std::numeric_limits<off_t>::max()) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot read from file ' ") + path.c_str() +
+        "'; offset > typemax(off_t)"));
+  }
+  if (nbytes > SSIZE_MAX) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot read from file ' ") + path.c_str() +
+        "'; nbytes > SSIZE_MAX"));
+  }
+  ssize_t bytes_read = ::pread(fd, buffer, nbytes, offset);
+  if (bytes_read < 0) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot read from file '") + path.c_str() + "'; " +
+        strerror(bytes_read)));
+  }
+  if (bytes_read != ssize_t(nbytes)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot read from file '") + path.c_str() +
         "'; File reading error"));
