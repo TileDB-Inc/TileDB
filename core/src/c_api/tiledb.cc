@@ -349,7 +349,9 @@ int tiledb_ctx_free(tiledb_ctx_t* ctx) {
 /* ********************************* */
 
 int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
-  if (sanity_check(ctx) == TILEDB_ERR)
+
+  // sanity check
+  if (ctx == nullptr)
     return TILEDB_ERR;
 
   {
@@ -364,10 +366,6 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     // Create error struct
     *err = new (std::nothrow) tiledb_error_t;
     if (*err == nullptr) {
-      tiledb::Status st =
-          tiledb::Status::Error("Failed to allocate error struct");
-      LOG_STATUS(st);
-      save_error(ctx, st);
       return TILEDB_OOM;
     }
 
@@ -375,10 +373,6 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     (*err)->status_ = new (std::nothrow) tiledb::Status(*(ctx->last_error_));
     if ((*err)->status_ == nullptr) {
       delete *err;
-      tiledb::Status st = tiledb::Status::Error(
-          "Failed to allocate status object in TileDB error struct");
-      LOG_STATUS(st);
-      save_error(ctx, st);
       return TILEDB_OOM;
     }
 
