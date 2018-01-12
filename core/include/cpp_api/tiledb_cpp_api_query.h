@@ -81,7 +81,7 @@ class Query {
   Query &set_subarray(const std::vector<typename T::type> &pairs) {
     auto &ctx = _ctx.get();
     _type_check<T>(_schema.domain().type());
-    if (pairs.size() != _schema.domain().size() * 2) {
+    if (pairs.size() != _schema.domain().dim_num() * 2) {
       throw std::invalid_argument(
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");

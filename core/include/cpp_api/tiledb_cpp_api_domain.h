@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_DOMAIN_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_dimension.h"
 #include "tiledb_cpp_api_type.h"
@@ -46,65 +47,66 @@
 
 namespace tdb {
 
-class Context;
-
+/** Implements the domain functionality. */
 class Domain {
  public:
-  Domain(Context &ctx)
-      : _ctx(ctx)
-      , _deleter(ctx) {
-    _create();
-  }
-  Domain(Context &ctx, tiledb_domain_t **domain)
-      : Domain(ctx) {
-    load(domain);
-  }
-  Domain(const Domain &o) = default;
-  Domain(Domain &&o) = default;
-  Domain &operator=(const Domain &) = default;
-  Domain &operator=(Domain &&o) = default;
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-  /**
-   * Load and take ownership of a domain.
-   *
-   * @param domain
-   */
-  void load(tiledb_domain_t **domain);
+  Domain(const Context &ctx);
+  Domain(const Context &ctx, tiledb_domain_t *domain);
+  Domain(const Domain &domain) = default;
+  Domain(Domain &&domain) = default;
+  Domain &operator=(const Domain &domain) = default;
+  Domain &operator=(Domain &&domain) = default;
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns the domain type. */
   tiledb_datatype_t type() const;
 
-  /**
-   * @return Current set of dimensions in domain.
-   */
+  /** Returns the current set of dimensions in domain. */
   const std::vector<Dimension> dimensions() const;
 
-  /**
-   * Add a new dimension to the domain.
-   *
-   * @param d dimension to add
-   */
+  /** Adds a new dimension to the domain. */
   Domain &add_dimension(const Dimension &d);
 
-  /**
-   * @return Number of dimensions in the domain.
-   */
-  unsigned size() const;
+  /** Returns the number of dimensions in the domain. */
+  unsigned dim_num() const;
 
-  std::shared_ptr<tiledb_domain_t> ptr() const {
-    return _domain;
-  }
+  /** Returns a shared pointer to the C TileDB domain object. */
+  std::shared_ptr<tiledb_domain_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_domain_t *() const;
 
  private:
-  void _init(tiledb_domain_t *domain);
-  void _create();
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
-  std::reference_wrapper<Context> _ctx;
-  impl::Deleter _deleter;
-  std::shared_ptr<tiledb_domain_t> _domain;
+  /** The TileDB context. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** Deleter wrapper. */
+  impl::Deleter deleter_;
+
+  /** Pointer to the C TileDB domain object. */
+  std::shared_ptr<tiledb_domain_t> domain_;
 };
 
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Operator tha add a dimension to the domain. */
+Domain &operator<<(Domain &d, const Dimension &dim);
+
+/** Get a string representation of an attribute for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Domain &d);
-tdb::Domain &operator<<(tdb::Domain &d, const Dimension &dim);
 
 }  // namespace tdb
 

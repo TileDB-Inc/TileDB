@@ -63,6 +63,10 @@ std::shared_ptr<tiledb_dimension_t> Dimension::ptr() const {
   return dim_;
 }
 
+Dimension::operator tiledb_dimension_t *() const {
+  return dim_.get();
+}
+
 tiledb_datatype_t Dimension::type() const {
   tiledb_datatype_t type;
   auto &ctx = ctx_.get();
@@ -223,10 +227,6 @@ void *Dimension::_extent() const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_dimension_get_tile_extent(ctx, dim_.get(), &extent));
   return extent;
-}
-
-Dimension::operator tiledb_dimension_t *() const {
-  return dim_.get();
 }
 
 /* ********************************* */

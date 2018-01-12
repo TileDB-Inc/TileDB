@@ -104,7 +104,7 @@ tdb::Domain tdb::ArraySchema::domain() const {
   auto &ctx = _ctx.get();
   tiledb_domain_t *domain;
   ctx.handle_error(tiledb_array_schema_get_domain(ctx, _schema.get(), &domain));
-  return Domain(ctx, &domain);
+  return Domain(ctx, domain);
 }
 
 tdb::ArraySchema &tdb::ArraySchema::set_domain(const Domain &domain) {

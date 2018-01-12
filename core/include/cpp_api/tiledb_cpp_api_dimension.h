@@ -59,6 +59,10 @@ class Dimension {
   Dimension &operator=(const Dimension &) = default;
   Dimension &operator=(Dimension &&o) = default;
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
   /** Returns the name of the dimension. */
   const std::string name() const;
 
