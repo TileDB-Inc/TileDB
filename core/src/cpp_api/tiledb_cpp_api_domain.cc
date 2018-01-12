@@ -48,7 +48,7 @@ const std::vector<tdb::Dimension> tdb::Domain::dimensions() const {
   for (unsigned int i = 0; i < ndim; ++i) {
     ctx.handle_error(
         tiledb_dimension_from_index(ctx, _domain.get(), i, &dimptr));
-    dims.emplace_back(_ctx, &dimptr);
+    dims.emplace_back(Dimension(ctx, dimptr));
   }
   return dims;
 }

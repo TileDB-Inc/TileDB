@@ -54,9 +54,10 @@ int main() {
   schema.dump(stdout);
 
   tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {{0, 1000}}, 10);
-  d2.create<uint64_t>("d2", {{100, 10000}}, 100);
+  tdb::Dimension d1 =
+      tdb::Dimension::create<uint64_t>(ctx, "d1", {{0, 1000}}, 10);
+  tdb::Dimension d2 =
+      tdb::Dimension::create<uint64_t>(ctx, "d2", {{100, 10000}}, 100);
   domain << d1 << d2;
   schema << domain;
 

@@ -38,10 +38,8 @@ int main() {
   tdb::Context ctx;
 
   tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-
-  d1.create<uint64_t>("d1", {{1, 4}}, 2);
-  d2.create<uint64_t>("d2", {{1, 4}}, 2);
+  tdb::Dimension d1 = tdb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  tdb::Dimension d2 = tdb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
   domain << d1 << d2;  // Add dims to domain
 
   tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");

@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_DIMENSION_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_type.h"
@@ -45,80 +46,33 @@
 
 namespace tdb {
 
-class Context;
-
+/** Implements the dimension functionality. */
 class Dimension {
  public:
-  Dimension(Context &ctx)
-      : _ctx(ctx)
-      , _deleter(ctx) {
-  }
-  Dimension(Context &ctx, tiledb_dimension_t **dim)
-      : Dimension(ctx) {
-    load(dim);
-  }
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  Dimension(const Context &ctx, tiledb_dimension_t *dim);
   Dimension(const Dimension &) = default;
   Dimension(Dimension &&o) = default;
   Dimension &operator=(const Dimension &) = default;
   Dimension &operator=(Dimension &&o) = default;
 
-  /**
-   * Load and take ownership of a tiledb_dimension
-   *
-   * @param dim
-   */
-  void load(tiledb_dimension_t **dim);
-
-  /**
-   * Create a new dimension with a domain datatype of DataT.
-   *
-   * @tparam DataT tdb::type::*
-   * @param name name of dimension
-   * @param domain bounds of dimension, inclusive coordinates
-   * @param extent Tile length in this dimension
-   */
-  template <typename DataT>
-  Dimension &create(
-      const std::string &name,
-      std::array<typename DataT::type, 2> domain,
-      typename DataT::type extent) {
-    void *p = domain.data();
-    p = (typename DataT::type *)p;
-    _create(name, DataT::tiledb_datatype, domain.data(), &extent);
-    return *this;
-  }
-
-  /**
-   * Create a dimension with a native datatype
-   *
-   * @tparam T int, char,...
-   * @param name name of dimension
-   * @param domain bounds of dimension, inclusive coordinates
-   * @param extent Tile length in this dimension
-   */
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, Dimension &>::type
-  create(const std::string &name, std::array<T, 2> domain, T extent) {
-    return create<typename type::type_from_native<T>::type>(
-        name, domain, extent);
-  }
-
-  /**
-   * @return Name of the dimension
-   */
+  /** Returns the name of the dimension. */
   const std::string name() const;
 
-  /**
-   * @return Dimension datatype
-   */
+  /** Returns the dimension datatype. */
   tiledb_datatype_t type() const;
 
-  /**
-   * Get the bounds of the dimension.
-   *
-   * @tparam T Type of underlying dimension.
-   * @return
-   */
+  /** Returns the dimension domain. */
+  template <typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
+  domain() {
+    domain<typename type::type_from_native<T>::type>();
+  }
+
+  /** Returns the dimension domain. */
   template <typename T>
   std::pair<typename T::type, typename T::type> domain() const {
     auto tdbtype = type();
@@ -131,17 +85,67 @@ class Dimension {
     return std::pair<typename T::type, typename T::type>(d[0], d[1]);
   };
 
+  /** Returns a string representation of the domain. */
+  std::string domain_to_str() const;
+
+  /** Returns the tile extent of the dimension. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
-  domain() {
-    domain<typename type::type_from_native<T>::type>();
+  typename std::enable_if<std::is_fundamental<T>::value, T>::type extent() {
+    extent<typename type::type_from_native<T>::type>();
   }
 
+  /** Returns a string representation of the extent. */
+  std::string extent_to_str() const;
+
+  /** Returns a shared pointer to the C TileDB dimension object. */
+  std::shared_ptr<tiledb_dimension_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_dimension_t *() const;
+
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
   /**
-   * Get the tile extent of the dimension.
+   * Factory function for creating a new dimension with datatype T.
    *
-   * @tparam T datatype of the extent.
+   * @tparam T int, char, etc...
+   * @param ctx The TileDB context.
+   * @param name The dimension name.
+   * @param domain The dimension domain.
+   * @return A new `Attribute` object.
    */
+  template <typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, Dimension>::
+      type static create(
+          const Context &ctx,
+          const std::string &name,
+          const std::array<T, 2> &domain,
+          T extent) {
+    return create<typename type::type_from_native<T>::type>(
+        ctx, name, domain, extent);
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** The TileDB context. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** A deleter wrapper. */
+  impl::Deleter deleter_;
+
+  /** The C TileDB dimension object. */
+  std::shared_ptr<tiledb_dimension_t> dim_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Returns the tile extent of the dimension. */
   template <typename T>
   typename T::type extent() const {
     auto tdbtype = type();
@@ -153,41 +157,43 @@ class Dimension {
     return *static_cast<typename T::type *>(_extent());
   };
 
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type extent() {
-    extent<typename type::type_from_native<T>::type>();
+  /** Returns the binary representation of the dimension domain. */
+  void *_domain() const;
+
+  /** Returns the binary representation of the dimension extent. */
+  void *_extent() const;
+
+  /* ********************************* */
+  /*     PRIVATE STATIC FUNCTIONS      */
+  /* ********************************* */
+
+  /**
+   * Create a new dimension with a domain datatype of DataT.
+   *
+   * @tparam DataT tdb::type::*
+   * @param name name of dimension
+   * @param domain bounds of dimension, inclusive coordinates
+   * @param extent Tile length in this dimension
+   */
+  template <typename DataT>
+  static Dimension create(
+      const Context &ctx,
+      const std::string &name,
+      const std::array<typename DataT::type, 2> &domain,
+      typename DataT::type extent) {
+    return create(ctx, name, DataT::tiledb_datatype, domain.data(), &extent);
   }
 
-  const tiledb_dimension_t &dim() const {
-    return *_dim;
-  }
-
-  tiledb_dimension_t &dim() {
-    return *_dim;
-  }
-
-  std::shared_ptr<tiledb_dimension_t> ptr() const {
-    return _dim;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_dimension_t *() const;
-
- private:
-  std::reference_wrapper<Context> _ctx;
-  impl::Deleter _deleter;
-  std::shared_ptr<tiledb_dimension_t> _dim;
-
-  void _init(tiledb_dimension_t *dim);
-  void _create(
+  /** Creates a dimension with the input name, datatype, domain and extent. */
+  static Dimension create(
+      const Context &ctx,
       const std::string &name,
       tiledb_datatype_t type,
       const void *domain,
       const void *extent);
-  void *_domain() const;
-  void *_extent() const;
 };
 
+/** Get a string representation of a dimension for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Dimension &dim);
 
 }  // namespace tdb
