@@ -354,8 +354,9 @@ int tiledb_ctx_free(tiledb_ctx_t* ctx) {
 
 int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   // sanity check
-  if (ctx == nullptr || ctx->mtx_ == nullptr)
+  if (ctx == nullptr || ctx->mtx_ == nullptr) {
     return TILEDB_ERR;
+  }
 
   {
     std::lock_guard<std::mutex> lock(*(ctx->mtx_));
@@ -390,7 +391,11 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
 
 int tiledb_error_message(
     tiledb_ctx_t* ctx, tiledb_error_t* err, const char** errmsg) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, err) == TILEDB_ERR)
+  // sanity check ctx
+  if (ctx == nullptr || ctx->mtx_ == nullptr)
+    return TILEDB_ERR;
+  // sanity check err
+  if (sanity_check(ctx, err) == TILEDB_ERR)
     return TILEDB_ERR;
   // Set error message
   if (err->status_->ok() || err->errmsg_ == nullptr)
@@ -401,8 +406,14 @@ int tiledb_error_message(
 }
 
 int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, err) == TILEDB_ERR)
+  // sanity check ctx
+  if (ctx == nullptr || ctx->mtx_ == nullptr) {
     return TILEDB_ERR;
+  }
+  // sanity check err
+  if (sanity_check(ctx, err) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
   delete err->status_;
   delete err->errmsg_;
   delete err;
