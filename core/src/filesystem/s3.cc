@@ -524,7 +524,7 @@ Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
     copyObjectRequest.SetBucket(src_uri.GetAuthority());
     copyObjectRequest.WithBucket(dst_uri.GetAuthority());
     copyObjectRequest.WithCopySource(
-        src_uri.GetAuthority() + "/" + object.GetKey());
+        join_authority_and_path(src_uri.GetAuthority(), object.GetKey()));
     std::string new_file(("/" + object.GetKey()).c_str());
     replace(
         new_file,
@@ -553,7 +553,7 @@ Status S3::copy_file(const URI& old_uri, const URI& new_uri) {
   Aws::Http::URI dst_uri = new_uri.c_str();
   Aws::S3::Model::CopyObjectRequest copyObjectRequest;
   copyObjectRequest.WithCopySource(
-      src_uri.GetAuthority() + "/" + src_uri.GetPath());
+      join_authority_and_path(src_uri.GetAuthority(), src_uri.GetPath()));
   copyObjectRequest.WithBucket(dst_uri.GetAuthority());
   copyObjectRequest.WithKey(dst_uri.GetPath());
 
@@ -678,6 +678,14 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   multipart_upload_request_[path_c_str] = completeMultipartUploadRequest;
 
   return Status::Ok();
+}
+
+std::string S3::join_authority_and_path(
+    const std::string& authority, const std::string& path) const {
+  bool path_has_slash = !path.empty() && path.front() == '/';
+  bool authority_has_slash = !authority.empty() && authority.back() == '/';
+  bool need_slash = !(path_has_slash || authority_has_slash);
+  return authority + (need_slash ? "/" : "") + path;
 }
 
 bool S3::replace(

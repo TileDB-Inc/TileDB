@@ -372,6 +372,13 @@ class S3 {
   Status initiate_multipart_request(Aws::Http::URI aws_uri);
 
   /**
+   * Return the given authority and path strings joined with a '/'
+   * character.
+   */
+  std::string join_authority_and_path(
+      const std::string& authority, const std::string& path) const;
+
+  /**
    * Replaces in the `str` string the string `from` with string `to`.
    *
    * @param str The target string.

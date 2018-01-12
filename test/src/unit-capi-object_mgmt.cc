@@ -39,6 +39,9 @@
 #endif
 
 #include "tiledb.h"
+#include "utils.h"
+
+#include <thread>
 
 struct ObjectMgmtFx {
 #ifdef HAVE_HDFS
@@ -46,8 +49,9 @@ struct ObjectMgmtFx {
   const std::string HDFS_FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
-  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
+  const std::string S3_PREFIX = "s3://";
+  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
@@ -82,6 +86,7 @@ struct ObjectMgmtFx {
   std::string get_golden_walk(const std::string& path);
   std::string get_golden_ls(const std::string& path);
   static int write_path(const char* path, tiledb_object_t type, void* data);
+  static std::string random_bucket_name(const std::string& prefix);
 };
 
 ObjectMgmtFx::ObjectMgmtFx() {
@@ -112,6 +117,15 @@ ObjectMgmtFx::ObjectMgmtFx() {
 }
 
 ObjectMgmtFx::~ObjectMgmtFx() {
+#ifdef HAVE_S3
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  CHECK(rc == TILEDB_OK);
+  if (is_bucket) {
+    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  }
+#endif
+
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
@@ -381,6 +395,13 @@ int ObjectMgmtFx::write_path(
 
   // Always iterate till the end
   return 1;
+}
+
+std::string ObjectMgmtFx::random_bucket_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::utils::timestamp_ms();
+  return ss.str();
 }
 
 TEST_CASE_METHOD(

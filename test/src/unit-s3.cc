@@ -34,16 +34,29 @@
 
 #include "catch.hpp"
 #include "s3.h"
+#include "utils.h"
 
 #include <fstream>
+#include <thread>
 
 using namespace tiledb;
 
 struct S3Fx {
   tiledb::S3 s3_;
-  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb/");
-  const std::string TEST_DIR = "s3://tiledb/tiledb_test_dir/";
+  const std::string S3_PREFIX = "s3://";
+  const tiledb::URI S3_BUCKET =
+      tiledb::URI(S3_PREFIX + random_bucket_name("tiledb") + "/");
+  const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
+
+  static std::string random_bucket_name(const std::string& prefix);
 };
+
+std::string S3Fx::random_bucket_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::utils::timestamp_ms();
+  return ss.str();
+}
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   S3::S3Config s3_config;
@@ -165,6 +178,11 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
 
   st = s3_.remove_path(URI(TEST_DIR));
   CHECK(st.ok());
+
+  if (s3_.is_bucket(S3_BUCKET)) {
+    st = s3_.delete_bucket(S3_BUCKET);
+    CHECK(st.ok());
+  }
 }
 
 #endif
