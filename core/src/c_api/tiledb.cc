@@ -139,7 +139,7 @@ inline int sanity_check(tiledb_config_t* config) {
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx) {
-  if (ctx == nullptr)
+  if (ctx == nullptr || ctx->mtx_ == nullptr)
     return TILEDB_ERR;
   if (ctx->storage_manager_ == nullptr) {
     tiledb::Status st = tiledb::Status::Error("Invalid TileDB context");
@@ -349,9 +349,8 @@ int tiledb_ctx_free(tiledb_ctx_t* ctx) {
 /* ********************************* */
 
 int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
-
   // sanity check
-  if (ctx == nullptr)
+  if (ctx == nullptr || ctx->mtx_ == nullptr)
     return TILEDB_ERR;
 
   {
