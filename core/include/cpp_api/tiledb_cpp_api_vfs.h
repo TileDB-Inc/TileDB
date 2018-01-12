@@ -54,18 +54,24 @@ class VFS {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param ctx A TileDB context.
    */
   explicit VFS(const Context& ctx);
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param ctx TileDB context.
    * @param config TileDB config.
    */
   VFS(const Context& ctx, const Config& config);
+  VFS(const VFS&)  = default;
+  VFS(VFS&&)  = default;
+  VFS &operator=(const VFS &) = default;
+  VFS &operator=(VFS&&) = default;
 
   /* ********************************* */
   /*                API                */
