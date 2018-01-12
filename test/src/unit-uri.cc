@@ -65,6 +65,51 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_path() == current_dir());
 }
 
+TEST_CASE("URI: Test URI to path", "[uri]") {
+  URI uri = URI("file:///my/path");
+#ifdef _WIN32
+  // Absolute paths with no drive letter are relative to the current working
+  // directory's drive.
+  CHECK(uri.to_path() == "\\my\\path");
+#else
+  CHECK(uri.to_path() == "/my/path");
+#endif
+
+  uri = URI("file:///my/path/../relative/path");
+#ifdef _WIN32
+  CHECK(uri.to_path() == "\\my\\relative\\path");
+#else
+  CHECK(uri.to_path() == "/my/path/../relative/path");
+#endif
+
+  uri = URI("s3://path/on/s3");
+  CHECK(uri.to_path() == "s3://path/on/s3");
+  uri = URI("s3://relative/../path/on/s3");
+  CHECK(uri.to_path() == "s3://relative/../path/on/s3");
+  uri = URI("hdfs://path/on/hdfs");
+  CHECK(uri.to_path() == "hdfs://path/on/hdfs");
+  uri = URI("hdfs://relative/../path/on/hdfs");
+  CHECK(uri.to_path() == "hdfs://relative/../path/on/hdfs");
+
+  uri = URI("C:\\my\\path");
+#ifdef _WIN32
+  CHECK(uri.to_string() == "file:///C:/my/path");
+  CHECK(uri.to_path() == "C:\\my\\path");
+#else
+  // Windows paths on non-Windows platforms are nonsensical, but have defined
+  // behavior.
+  CHECK(uri.to_string() == "file://" + current_dir() + "/" + "C:\\my\\path");
+  CHECK(uri.to_path() == current_dir() + "/" + "C:\\my\\path");
+#endif
+
+  uri = URI("file:///C:/my/path");
+#ifdef _WIN32
+  CHECK(uri.to_path() == "C:\\my\\path");
+#else
+  CHECK(uri.to_path() == "/C:/my/path");
+#endif
+}
+
 #ifdef _WIN32
 
 TEST_CASE("URI: Test Windows paths", "[uri]") {
