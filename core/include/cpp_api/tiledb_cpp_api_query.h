@@ -73,7 +73,7 @@ class Query {
   Query &set_layout(tiledb_layout_t layout);
 
   /**
-   * @tparam T should be a type from tdb::type::*
+   * @tparam T should be a type from tdb::impl::*
    * @param pair vector of pairs defining each dimensions [start,stop].
    * Inclusive.
    */
@@ -98,7 +98,7 @@ class Query {
   template <typename T = uint64_t>
   typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
   set_subarray(const std::vector<T> &pairs) {
-    return set_subarray<typename type::type_from_native<T>::type>(pairs);
+    return set_subarray<typename impl::type_from_native<T>::type>(pairs);
   };
 
   template <typename T>
@@ -118,7 +118,7 @@ class Query {
   template <typename T = uint64_t>
   typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
   set_subarray(const std::vector<std::array<T, 2>> &pairs) {
-    return set_subarray<typename type::type_from_native<T>::type>(pairs);
+    return set_subarray<typename impl::type_from_native<T>::type>(pairs);
   };
 
   static std::string to_str(tiledb_query_type_t type);
@@ -126,7 +126,7 @@ class Query {
   /**
    * Set a buffer for a particular attribute
    *
-   * @tparam T buffer type, tdb::type::*
+   * @tparam T buffer type, tdb::impl::*
    * @param attr Attribute name
    * @param buf data buffer
    * @return *this
@@ -144,13 +144,13 @@ class Query {
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
   set_buffer(const std::string &attr, std::vector<T> &buf) {
-    return set_buffer<typename type::type_from_native<T>::type>(attr, buf);
+    return set_buffer<typename impl::type_from_native<T>::type>(attr, buf);
   };
 
   /**
    * Set a buffer for a particular attribute (variable size)
    *
-   * @tparam T buffer type, tdb::type::*
+   * @tparam T buffer type, tdb::impl::*
    * @param attr Attribute name
    * @param offsets list of offsets for the data buffer
    * @param buf data buffer
@@ -176,14 +176,14 @@ class Query {
       const std::string &attr,
       std::vector<uint64_t> &offsets,
       std::vector<T> &buf) {
-    return set_buffer<typename type::type_from_native<T>::type>(
+    return set_buffer<typename impl::type_from_native<T>::type>(
         attr, offsets, buf);
   };
 
   /**
    * Set a buffer for a particular attribute (variable size)
    *
-   * @tparam T buffer type, tdb::type::*
+   * @tparam T buffer type, tdb::impl::*
    * @param attr Attribute name
    * @param buf buffer, a pair of offsets and data buffs
    * @return *this
@@ -200,21 +200,21 @@ class Query {
   set_buffer(
       const std::string &attr,
       std::pair<std::vector<uint64_t>, std::vector<T>> &buf) {
-    return set_buffer<typename type::type_from_native<T>::type>(attr, buf);
+    return set_buffer<typename impl::type_from_native<T>::type>(attr, buf);
   };
 
   /**
    * Resize a buffer for a particular attribute. Attempts to find an ideal
    * buffer size.
    *
-   * @tparam DataT tdb::type::*
-   * @tparam DomainT type of the dimensions, tdb::type::*
+   * @tparam DataT tdb::impl::*
+   * @tparam DomainT type of the dimensions, tdb::impl::*
    * @param attr Attribute name
    * @param buff databuff to resize
    * @param max_el upper bound on buffer size, in number of elements
    * @return *this
    */
-  template <typename DataT, typename DomainT = type::UINT64>
+  template <typename DataT, typename DomainT = impl::UINT64>
   Query &resize_buffer(
       const std::string &attr,
       std::vector<typename DataT::type> &buff,
@@ -239,16 +239,16 @@ class Query {
   resize_buffer(
       const std::string &attr, std::vector<T> &buff, uint64_t max_el = 0) {
     return resize_buffer<
-        typename type::type_from_native<T>::type,
-        typename type::type_from_native<D>::type>(attr, buff, max_el);
+        typename impl::type_from_native<T>::type,
+        typename impl::type_from_native<D>::type>(attr, buff, max_el);
   };
 
   /**
    * Resize a buffer for a particular (varsize) attribute. Attempts to find an
    * ideal buffer size.
    *
-   * @tparam DataT tdb::type::*
-   * @tparam DomainT type of the dimensions, tdb::type::*
+   * @tparam DataT tdb::impl::*
+   * @tparam DomainT type of the dimensions, tdb::impl::*
    * @param attr Attribute name
    * @param offsets Offsets buffer
    * @param buff databuff to resize
@@ -259,7 +259,7 @@ class Query {
    * @param max_el upper bound on buffer size, in number of elements.
    * @return *this
    */
-  template <typename DataT, typename DomainT = type::UINT64>
+  template <typename DataT, typename DomainT = impl::UINT64>
   Query &resize_buffer(
       const std::string &attr,
       std::vector<uint64_t> &offsets,
@@ -293,21 +293,21 @@ class Query {
       uint64_t max_offset = 0,
       uint64_t max_el = 0) {
     return resize_buffer<
-        typename type::type_from_native<T>::type,
-        typename type::type_from_native<D>::type>(
+        typename impl::type_from_native<T>::type,
+        typename impl::type_from_native<D>::type>(
         attr, offsets, buff, expected_size, max_offset, max_el);
   };
 
   /**
    * Make a simple buffer for a fixed size attribute.
    *
-   * @tparam DataT tdb::type::*
-   * @tparam DomainT tdb::type::*, underlying dimension type
+   * @tparam DataT tdb::impl::*
+   * @tparam DomainT tdb::::*, underlying dimension type
    * @param attr attribute name
    * @param max_el upper bound on buffer size, number of elements
    * @return Buffer
    */
-  template <typename DataT, typename DomainT = type::UINT64>
+  template <typename DataT, typename DomainT = impl::UINT64>
   std::vector<typename DataT::type> make_buffer(
       const std::string &attr, uint64_t max_el = 0) {
     std::vector<typename DataT::type> ret;
@@ -319,22 +319,22 @@ class Query {
   typename std::enable_if<std::is_fundamental<T>::value, std::vector<T>>::type
   make_buffer(const std::string &attr, uint64_t max_el = 0) {
     return make_buffer<
-        typename type::type_from_native<T>::type,
-        typename type::type_from_native<D>::type>(attr, max_el);
+        typename impl::type_from_native<T>::type,
+        typename impl::type_from_native<D>::type>(attr, max_el);
   };
 
   /**
    * Make a pair of buffers for a variable sized attr
    *
-   * @tparam DataT tdb::type::*
-   * @tparam DomainT tdb::type::*, underlying dimension type
+   * @tparam DataT tdb::impl::*
+   * @tparam DomainT tdb::impl::*, underlying dimension type
    * @param attr attribute name
    * @param expected expected size of the attribute
    * @param max_offset upper bound on number of cells buffer can hold
    * @param max_el upper bound on data buffer
    * @return pair<offset buff,data buff>
    */
-  template <typename DataT, typename DomainT = type::UINT64>
+  template <typename DataT, typename DomainT = impl::UINT64>
   std::pair<std::vector<uint64_t>, std::vector<typename DataT::type>>
   make_var_buffers(
       const std::string &attr,
@@ -358,8 +358,8 @@ class Query {
       uint64_t max_offset = 0,
       uint64_t max_el = 0) {
     return make_var_buffers<
-        typename type::type_from_native<T>::type,
-        typename type::type_from_native<D>::type>(
+        typename impl::type_from_native<T>::type,
+        typename impl::type_from_native<D>::type>(
         attr, expected, max_offset, max_el);
   };
 
@@ -431,14 +431,14 @@ class Query {
     if (DataT::tiledb_datatype != type) {
       throw std::invalid_argument(
           "Attempting to use buffer of type " + std::string(DataT::name) +
-          " for attribute of type " + type::from_tiledb(type));
+          " for attribute of type " + impl::to_str(type));
     }
   }
 
   /**
    * Check if type matches the attribute and expected num
    *
-   * @tparam DataT Type attr should be, tdb::type::*
+   * @tparam DataT Type attr should be, tdb::impl::*
    * @param attr Attribute name
    * @param varcmp If we expect the attribute to be variable length
    */
@@ -479,15 +479,15 @@ class Query {
   /**
    * Computes the required buffer size to hold a query result.
    *
-   * @tparam DataT Datatype of attrbute, tdb::type::*
-   * @tparam DomainT Datatype of Domain, tdb::type::*
+   * @tparam DataT Datatype of attrbute, tdb::impl::*
+   * @tparam DomainT Datatype of Domain, tdb::impl::*
    * @param attr Attribute name
    * @param buff Buffer to resize
    * @param num Number of elements per cell
    * @param max_el Upper bound on buffer size (# of elements)
    * @return Ideal buffer size. buff is resized to this, bound by max_el.
    */
-  template <typename DataT, typename DomainT = type::UINT64>
+  template <typename DataT, typename DomainT = impl::UINT64>
   uint64_t _make_buffer_impl(
       const std::string &attr,
       std::vector<typename DataT::type> &buff,

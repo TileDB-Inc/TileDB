@@ -110,7 +110,7 @@ Domain &operator<<(Domain &d, const Dimension &dim) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Domain &d) {
-  os << "Domain<(" << type::from_tiledb(d.type()) << ")";
+  os << "Domain<(" << impl::to_str(d.type()) << ")";
   for (const auto &dimension : d.dimensions()) {
     os << " " << dimension;
   }

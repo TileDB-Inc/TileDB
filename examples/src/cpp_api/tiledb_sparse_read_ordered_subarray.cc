@@ -49,8 +49,7 @@ int main() {
   tdb::Query query(ctx, "my_sparse_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.set_layout(TILEDB_GLOBAL_ORDER)
-      .set_subarray<tdb::type::UINT64>({3, 4, 2, 4});
+  query.set_layout(TILEDB_GLOBAL_ORDER).set_subarray<uint64_t>({3, 4, 2, 4});
   auto a1_buff = query.make_buffer<int>("a1");
   auto a2_buff = query.make_var_buffers<char>(
       "a2", 3);  // variable sized attr makes a pair of buffs

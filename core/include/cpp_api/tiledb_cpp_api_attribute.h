@@ -103,7 +103,7 @@ class Attribute {
   template <typename T>
   static typename std::enable_if<std::is_fundamental<T>::value, Attribute>::type
   create(const Context &ctx, const std::string &name) {
-    return create<typename type::type_from_native<T>::type>(ctx, name);
+    return create<typename impl::type_from_native<T>::type>(ctx, name);
   }
 
  private:

@@ -49,8 +49,8 @@ int main() {
   query.set_layout(TILEDB_ROW_MAJOR);
 
   // Limit buff size to 2
-  auto a1_data = query.make_buffer<tdb::type::INT32>("a1", 2);
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
+  auto a1_data = query.make_buffer<int>("a1", 2);
+  query.set_buffer<int>("a1", a1_data);
 
   std::cout << "a1\n---\n";
   do {

@@ -120,7 +120,7 @@ Attribute Attribute::create(
 /* ********************************* */
 
 std::ostream &operator<<(std::ostream &os, const Attribute &a) {
-  os << "Attr<" << a.name() << ',' << tdb::type::from_tiledb(a.type()) << ','
+  os << "Attr<" << a.name() << ',' << tdb::impl::to_str(a.type()) << ','
      << (a.cell_val_num() == TILEDB_VAR_NUM ? "VAR" :
                                               std::to_string(a.cell_val_num()))
      << '>';

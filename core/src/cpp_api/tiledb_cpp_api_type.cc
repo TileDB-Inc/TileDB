@@ -35,7 +35,11 @@
 
 #include "tiledb_cpp_api_type.h"
 
-std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
+namespace tdb {
+
+namespace impl {
+
+std::string to_str(const tiledb_datatype_t &type) {
   switch (type) {
     case TILEDB_CHAR:
       return "char";
@@ -62,3 +66,7 @@ std::string tdb::type::from_tiledb(const tiledb_datatype_t &type) {
   }
   return "";
 }
+
+}  // namespace impl
+
+}  // namespace tdb

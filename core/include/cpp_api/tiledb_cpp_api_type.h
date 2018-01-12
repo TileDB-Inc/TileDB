@@ -35,13 +35,16 @@
 #ifndef TILEDB_CPP_API_TYPE_H
 #define TILEDB_CPP_API_TYPE_H
 
+#include "tiledb.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "tiledb.h"
 
 namespace tdb {
-namespace type {
+
+namespace impl {
+
 constexpr char char_repr[] = "CHAR";
 constexpr char int8_repr[] = "INT8";
 constexpr char uint8_repr[] = "UINT8";
@@ -55,17 +58,17 @@ constexpr char float32_repr[] = "FLOAT32";
 constexpr char float64_repr[] = "FLOAT64";
 
 /**
- * Repr of a datatype, tiledb datatype, and name.
+ * Representation of a native datatype, tiledb datatype, and name.
  *
- * @tparam T underlying type
- * @tparam TDB_TYPE tiledb_data_type repr
- * @tparam NAME string repr
+ * @tparam T Native datatype.
+ * @tparam TILEDB_TYPE `tiledb_datatype` representation.
+ * @tparam NAME String representation of datatype.
  */
-template <typename T, tiledb_datatype_t TDB_TYPE, const char *NAME>
+template <typename T, tiledb_datatype_t TILEDB_TYPE, const char *NAME>
 struct Type {
   Type() = delete;
   using type = T;
-  static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
+  static constexpr tiledb_datatype_t tiledb_datatype = TILEDB_TYPE;
   static constexpr const char *name = NAME;
 };
 
@@ -83,46 +86,57 @@ using FLOAT64 = Type<double, TILEDB_FLOAT64, float64_repr>;
 
 template <tiledb_datatype_t T>
 struct type_from_tiledb;
+
 template <>
 struct type_from_tiledb<TILEDB_CHAR> {
   using type = CHAR;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_INT8> {
   using type = INT8;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_UINT8> {
   using type = UINT8;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_INT16> {
   using type = INT16;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_UINT16> {
   using type = UINT16;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_INT32> {
   using type = INT32;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_UINT32> {
   using type = UINT32;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_INT64> {
   using type = INT64;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_UINT64> {
   using type = UINT64;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_FLOAT32> {
   using type = FLOAT32;
 };
+
 template <>
 struct type_from_tiledb<TILEDB_FLOAT64> {
   using type = FLOAT64;
@@ -130,59 +144,72 @@ struct type_from_tiledb<TILEDB_FLOAT64> {
 
 template <typename T>
 struct type_from_native;
+
 template <>
 struct type_from_native<char> {
   using type = CHAR;
 };
+
 template <>
 struct type_from_native<int8_t> {
   using type = INT8;
 };
+
 template <>
 struct type_from_native<uint8_t> {
   using type = UINT8;
 };
+
 template <>
 struct type_from_native<int16_t> {
   using type = INT16;
 };
+
 template <>
 struct type_from_native<uint16_t> {
   using type = UINT16;
 };
+
 template <>
 struct type_from_native<int32_t> {
   using type = INT32;
 };
+
 template <>
 struct type_from_native<uint32_t> {
   using type = UINT32;
 };
+
 template <>
 struct type_from_native<int64_t> {
   using type = INT64;
 };
+
 template <>
 struct type_from_native<uint64_t> {
   using type = UINT64;
 };
+
 template <>
 struct type_from_native<float> {
   using type = FLOAT32;
 };
+
 template <>
 struct type_from_native<double> {
   using type = FLOAT64;
 };
 
-std::string from_tiledb(const tiledb_datatype_t &type);
-}  // namespace type
+std::string to_str(const tiledb_datatype_t &type);
+
+}  // namespace impl
 
 template <class T, template <class...> class Template>
 struct is_specialization : std::false_type {};
 
 template <template <class...> class Template, class... Args>
 struct is_specialization<Template<Args...>, Template> : std::true_type {};
+
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_TYPE_H

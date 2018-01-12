@@ -73,7 +73,7 @@ class Dimension {
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
   domain() {
-    domain<typename type::type_from_native<T>::type>();
+    domain<typename impl::type_from_native<T>::type>();
   }
 
   /** Returns the dimension domain. */
@@ -83,7 +83,7 @@ class Dimension {
     if (T::tiledb_datatype != tdbtype) {
       throw std::invalid_argument(
           "Attempting to use type of " + std::string(T::name) +
-          " for dimension of type " + type::from_tiledb(tdbtype));
+          " for dimension of type " + impl::to_str(tdbtype));
     }
     typename T::type *d = static_cast<typename T::type *>(_domain());
     return std::pair<typename T::type, typename T::type>(d[0], d[1]);
@@ -95,7 +95,7 @@ class Dimension {
   /** Returns the tile extent of the dimension. */
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, T>::type extent() {
-    extent<typename type::type_from_native<T>::type>();
+    extent<typename impl::type_from_native<T>::type>();
   }
 
   /** Returns a string representation of the extent. */
@@ -127,7 +127,7 @@ class Dimension {
           const std::string &name,
           const std::array<T, 2> &domain,
           T extent) {
-    return create<typename type::type_from_native<T>::type>(
+    return create<typename impl::type_from_native<T>::type>(
         ctx, name, domain, extent);
   }
 
@@ -156,7 +156,7 @@ class Dimension {
     if (T::tiledb_datatype != tdbtype) {
       throw std::invalid_argument(
           "Attempting to use extent of type " + std::string(T::name) +
-          " for dimension of type " + type::from_tiledb(tdbtype));
+          " for dimension of type " + impl::to_str(tdbtype));
     }
     return *static_cast<typename T::type *>(_extent());
   };
