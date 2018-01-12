@@ -71,7 +71,7 @@ int main() {
   schema.dump(stdout);
 
   std::cout << "\nFrom getters:"
-            << "\n- Array type: " << schema.type()
+            << "\n- Array type: " << schema.array_type()
             << "\n- Cell order: " << schema.cell_order()
             << "\n- Tile order: " << schema.tile_order()
             << "\n- Capacity: " << schema.capacity()

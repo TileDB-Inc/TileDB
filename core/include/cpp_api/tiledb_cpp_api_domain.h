@@ -54,7 +54,7 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Domain(const Context &ctx);
+  explicit Domain(const Context &ctx);
   Domain(const Context &ctx, tiledb_domain_t *domain);
   Domain(const Domain &domain) = default;
   Domain(Domain &&domain) = default;
