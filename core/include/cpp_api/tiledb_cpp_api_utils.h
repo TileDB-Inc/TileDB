@@ -151,6 +151,7 @@ std::vector<std::array<T, N>> group_by_cell(
  * @param data data to unpack
  * @return pair where .first is the offset buffer, and .second is data buffer
  */
+
 template <typename T, typename R = typename T::value_type>
 std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
     const std::vector<T> &data) {
@@ -162,7 +163,7 @@ std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
   }
   ret.first.pop_back();
   return ret;
-};
+}
 
 }  // namespace tdb
 

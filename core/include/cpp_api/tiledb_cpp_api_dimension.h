@@ -72,8 +72,8 @@ class Dimension {
   /** Returns the dimension domain. */
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
-  domain() {
-    domain<typename impl::type_from_native<T>::type>();
+  domain() const {
+    return domain<typename impl::type_from_native<T>::type>();
   }
 
   /** Returns the dimension domain. */
@@ -87,7 +87,7 @@ class Dimension {
     }
     typename T::type *d = static_cast<typename T::type *>(_domain());
     return std::pair<typename T::type, typename T::type>(d[0], d[1]);
-  };
+  }
 
   /** Returns a string representation of the domain. */
   std::string domain_to_str() const;
@@ -196,6 +196,10 @@ class Dimension {
       const void *domain,
       const void *extent);
 };
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
 
 /** Get a string representation of a dimension for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Dimension &dim);

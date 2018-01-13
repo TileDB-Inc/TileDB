@@ -58,6 +58,53 @@ Domain::Domain(const Context &ctx, tiledb_domain_t *domain)
 /*                API                */
 /* ********************************* */
 
+uint64_t Domain::cell_num() const {
+  auto type = this->type();
+  if (type == TILEDB_FLOAT32 || type == TILEDB_FLOAT64)
+    throw std::runtime_error(
+        "[TileDB::C++API::Domain] Cannot compute number of cells for a "
+        "non-integer domain");
+
+  switch (type) {
+    case TILEDB_CHAR:
+      return cell_num<char>();
+    case TILEDB_INT8:
+      return cell_num<int8_t>();
+    case TILEDB_UINT8:
+      return cell_num<uint8_t>();
+    case TILEDB_INT16:
+      return cell_num<int16_t>();
+    case TILEDB_UINT16:
+      return cell_num<uint16_t>();
+    case TILEDB_INT32:
+      return cell_num<int32_t>();
+    case TILEDB_UINT32:
+      return cell_num<uint32_t>();
+    case TILEDB_INT64:
+      return cell_num<int64_t>();
+    case TILEDB_UINT64:
+      return cell_num<uint64_t>();
+    default:
+      throw std::runtime_error(
+          "[TileDB::C++API::Domain] Cannot compute number of cells; Unknown "
+          "domain type");
+  }
+
+  return 0;
+}
+
+template <class T>
+uint64_t Domain::cell_num() const {
+  uint64_t ret = 1;
+  auto dimensions = this->dimensions();
+  for (const auto &dim : dimensions) {
+    const auto &d = dim.domain<T>();
+    ret *= (d.second - d.first + 1);
+  }
+
+  return ret;
+}
+
 std::shared_ptr<tiledb_domain_t> Domain::ptr() const {
   return domain_;
 }

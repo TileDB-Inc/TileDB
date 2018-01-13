@@ -65,6 +65,20 @@ class Domain {
   /*                API                */
   /* ********************************* */
 
+  /**
+   * Returns the total number of cells in the domain. Throws an exception
+   * if the domain type is `float32` or `float64`.
+   */
+  uint64_t cell_num() const;
+
+  /**
+   * Returns the total number of cells in the domain.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  uint64_t cell_num() const;
+
   /** Returns the domain type. */
   tiledb_datatype_t type() const;
 
