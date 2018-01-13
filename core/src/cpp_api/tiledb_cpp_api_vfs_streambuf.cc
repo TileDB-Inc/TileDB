@@ -34,106 +34,113 @@
 
 #include "tiledb_cpp_api_vfs_streambuf.h"
 
-tdb::impl::VFSStreambuf::VFSStreambuf(const tdb::Context &ctx, const std::string &uri,
-                                      std::shared_ptr<tiledb_config_t> config)
-: ctx_(ctx), deleter_(ctx), uri_(uri) {
-  tiledb_vfs_t *vfs;
-  ctx.handle_error(tiledb_vfs_create(ctx, &vfs, config.get()));
-  vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
-}
+namespace tdb {
+  namespace impl {
 
-pos_type
-tdb::impl::VFSStreambuf::seekoff(long offset, std::ios_base::seekdir seekdir, std::ios_base::openmode openmode) {
-  if (openmode & std::ios_base::in) {
-    throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
-  }
-  uint64_t fsize = _file_size();
-  // Note convoluted logic is to get rid of signed/unsigned comparison errors
-  switch (seekdir) {
-    case std::ios_base::beg: {
-      if (offset < 0 || static_cast<uint64_t>(offset) > fsize) {
-        throw std::invalid_argument("Invalid offset.");
-      }
-      offset_ = static_cast<uint64_t>(offset);
-      break;
+    VFSStreambuf::VFSStreambuf(const Context &ctx, const std::string &uri,
+                                          std::shared_ptr<tiledb_config_t> config)
+    : ctx_(ctx), deleter_(ctx), uri_(uri) {
+      tiledb_vfs_t *vfs;
+      ctx.handle_error(tiledb_vfs_create(ctx, &vfs, config.get()));
+      vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
     }
-    case std::ios_base::cur: {
-      if (offset + offset_ > fsize || (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > offset_)) {
-        throw std::invalid_argument("Invalid offset.");
+
+    std::streambuf::pos_type
+    VFSStreambuf::seekoff(long offset, std::ios_base::seekdir seekdir, std::ios_base::openmode openmode) {
+      if (openmode & std::ios_base::in) {
+        throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
       }
-      offset_ = static_cast<uint64_t>(offset + offset_);
-      break;
-    }
-    case std::ios_base::end: {
-      if (offset + fsize > fsize || (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > fsize)) {
-        throw std::invalid_argument("Invalid offset.");
+      uint64_t fsize = _file_size();
+      // Note convoluted logic is to get rid of signed/unsigned comparison errors
+      switch (seekdir) {
+        case std::ios_base::beg: {
+          if (offset < 0 || static_cast<uint64_t>(offset) > fsize) {
+            throw std::invalid_argument("Invalid offset.");
+          }
+          offset_ = static_cast<uint64_t>(offset);
+          break;
+        }
+        case std::ios_base::cur: {
+          if (offset + offset_ > fsize || (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > offset_)) {
+            throw std::invalid_argument("Invalid offset.");
+          }
+          offset_ = static_cast<uint64_t>(offset + offset_);
+          break;
+        }
+        case std::ios_base::end: {
+          if (offset + fsize > fsize || (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > fsize)) {
+            throw std::invalid_argument("Invalid offset.");
+          }
+          offset_ = static_cast<uint64_t>(offset + fsize);
+          break;
+        }
+        default:
+          throw std::invalid_argument("Invalid offset.");
       }
-      offset_ = static_cast<uint64_t>(offset + fsize);
-      break;
+      // This returns a static constant
+      return std::streambuf::seekoff(offset, seekdir, openmode);
     }
-    default: throw std::invalid_argument("Invalid offset.");
+
+    std::streambuf::pos_type VFSStreambuf::seekpos(std::fpos<mbstate_t> pos, std::ios_base::openmode openmode) {
+      if (openmode & std::ios_base::in) {
+        throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
+      }
+      uint64_t fsize = _file_size();
+      if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
+        throw std::invalid_argument("Invalid pos.");
+      }
+      offset_ = static_cast<uint64_t>(pos);
+      // This returns a static constant
+      return std::streambuf::seekpos(pos, openmode);
+    }
+
+    std::streambuf::int_type VFSStreambuf::sync() {
+      auto &ctx = ctx_.get();
+      ctx.handle_error(tiledb_vfs_sync(ctx, vfs_.get(), uri_.c_str()));
+      return 0;
+    }
+
+    std::streamsize VFSStreambuf::showmanyc() {
+      return _file_size() - offset_;
+    }
+
+    std::streamsize VFSStreambuf::xsgetn(char *s, std::streamsize n) {
+      auto &ctx = ctx_.get();
+      uint64_t fsize = _file_size();
+      if (offset_ + n >= fsize) {
+        n = fsize - offset_;
+      }
+      if (n == 0) return traits_type::eof();
+      ctx.handle_error(tiledb_vfs_read(ctx, vfs_.get(), uri_.c_str(), offset_, s, static_cast<uint64_t>(n)));
+      offset_ += n;
+      return n;
+    }
+
+    std::streambuf::int_type VFSStreambuf::underflow() {
+      char_type c;
+      xsgetn(&c, 1);
+      return c;
+    }
+
+    std::streamsize VFSStreambuf::xsputn(const char *s, std::streamsize n) {
+      if (offset_ != _file_size()) throw std::runtime_error("VFS can only append to file.");
+      auto &ctx = ctx_.get();
+      ctx.handle_error(tiledb_vfs_write(ctx, vfs_.get(), uri_.c_str(), s, static_cast<uint64_t>(n)));
+      return n;
+    }
+
+    std::streambuf::int_type VFSStreambuf::overflow(int c) {
+      char_type ch = traits_type::to_char_type(c);
+      xsputn(&ch, 1);
+      return traits_type::to_int_type(ch);
+    }
+
+    uint64_t VFSStreambuf::_file_size() const {
+      auto &ctx = ctx_.get();
+      uint64_t fsize;
+      ctx.handle_error(tiledb_vfs_file_size(ctx, vfs_.get(), uri_.c_str(), &fsize));
+      return fsize;
+    }
+
   }
-  // This returns a static constant
-  return std::streambuf::seekoff(offset, seekdir, openmode);
-}
-
-pos_type tdb::impl::VFSStreambuf::seekpos(std::fpos<mbstate_t> pos, std::ios_base::openmode openmode) {
-  if (openmode & std::ios_base::in) {
-    throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
-  }
-  uint64_t fsize = _file_size();
-  if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
-    throw std::invalid_argument("Invalid pos.");
-  }
-  offset_ = static_cast<uint64_t>(pos);
-  // This returns a static constant
-  return std::streambuf::seekpos(pos, openmode);
-}
-
-int_type tdb::impl::VFSStreambuf::sync() {
-  auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_sync(ctx, vfs_.get(), uri_.c_str()));
-  return 0;
-}
-
-std::streamsize tdb::impl::VFSStreambuf::showmanyc() {
-  return _file_size() - offset_;
-}
-
-std::streamsize tdb::impl::VFSStreambuf::xsgetn(char *s, std::streamsize n) {
-  auto &ctx = ctx_.get();
-  uint64_t fsize = _file_size();
-  if (offset_ + n >= fsize) {
-    n = fsize - offset_;
-  }
-  if (n == 0) return traits_type::eof();
-  ctx.handle_error(tiledb_vfs_read(ctx, vfs_.get(), uri_.c_str(), offset_, s, static_cast<uint64_t>(n)));
-  offset_ += n;
-  return n;
-}
-
-int_type tdb::impl::VFSStreambuf::underflow() {
-  char_type c;
-  xsgetn(&c, 1);
-  return c;
-}
-
-std::streamsize tdb::impl::VFSStreambuf::xsputn(const char *s, std::streamsize n) {
-  if (offset_ != _file_size()) throw std::runtime_error("VFS can only append to file.");
-  auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_write(ctx, vfs_.get(), uri_.c_str(), s, static_cast<uint64_t>(n)));
-  return n;
-}
-
-int_type tdb::impl::VFSStreambuf::overflow(int c) {
-  char_type ch = traits_type::to_char_type(c);
-  xsputn(&ch, 1);
-  return traits_type::to_int_type(ch);
-}
-
-uint64_t tdb::impl::VFSStreambuf::_file_size() const {
-  auto &ctx = ctx_.get();
-  uint64_t fsize;
-  ctx.handle_error(tiledb_vfs_file_size(ctx, vfs_.get(), uri_.c_str(), &fsize));
-  return fsize;
 }
