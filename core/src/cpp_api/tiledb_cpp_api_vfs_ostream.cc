@@ -34,7 +34,9 @@
 
 #include "tiledb_cpp_api_vfs_ostream.h"
 
-void tdb::VFSostream::open(const std::string &fname, std::ios_base::openmode openmode) {
+namespace tdb {
+
+void VFSostream::open(const std::string &fname, std::ios_base::openmode openmode) {
   close();
   if ((openmode & std::ios::app) == 0) {
     throw std::runtime_error("VFS ostream must be opened in app mode.");
@@ -50,33 +52,34 @@ void tdb::VFSostream::open(const std::string &fname, std::ios_base::openmode ope
   openmode_ = openmode;
 }
 
-bool tdb::VFSostream::is_open() const {
+bool VFSostream::is_open() const {
   return sbuf_.get_uri().size() != 0;
 }
 
-void tdb::VFSostream::close() {
+void VFSostream::close() {
   if (is_open()) {
     sbuf_.pubsync();
     sbuf_.set_uri("");
   }
 }
 
-tdb::VFSostream &tdb::VFSostream::write(const char *s, uint64_t size) {
+VFSostream &VFSostream::write(const char *s, uint64_t size) {
   sbuf_.sputn(s, size);
   return *this;
 }
 
-tdb::VFSostream &tdb::VFSostream::write(const std::string &s) {
+VFSostream &VFSostream::write(const std::string &s) {
   return write(s.c_str(), s.size());
 }
 
-tdb::VFSostream &tdb::VFSostream::operator<<(const char *s) {
+VFSostream &VFSostream::operator<<(const char *s) {
   std::string str(s);
   return write(s);
 }
 
-tdb::VFSostream &tdb::VFSostream::operator<<(const std::string &s) {
+VFSostream &VFSostream::operator<<(const std::string &s) {
   return write(s);
 }
 
+}
 

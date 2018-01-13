@@ -74,7 +74,7 @@ namespace tdb {
        * @param uri URI of file
        * @param config configuration. Default none.
        */
-      // TODO get the config directly from context ptr
+      // TODO get the config directly from context ptr once exposed in C API
       explicit VFSstreambuf(const Context &ctx, std::shared_ptr<tiledb_config_t> config=nullptr);
       VFSstreambuf(const VFSstreambuf &buf) = default;
       VFSstreambuf(VFSstreambuf &&buf) = default;
