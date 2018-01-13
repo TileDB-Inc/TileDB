@@ -92,9 +92,7 @@ int main() {
 
   // Init the array & query for the array
   tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
-
   query.set_layout(TILEDB_GLOBAL_ORDER);
-
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_data);

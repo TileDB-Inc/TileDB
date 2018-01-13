@@ -66,7 +66,7 @@ int main() {
   // first.
   const auto buff_sizes = query.returned_buff_sizes();
 
-  // chunk the continous buffer by cell
+  // chunk the continuous buffer by cell
   auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
   auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
 
