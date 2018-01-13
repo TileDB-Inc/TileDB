@@ -149,6 +149,12 @@ class VFS {
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const;
 
+  /** Get the underlying context **/
+  const Context& context() const;
+
+  /** Get the underlying tiledb object **/
+  std::shared_ptr<tiledb_vfs_t> ptr() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

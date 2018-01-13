@@ -37,20 +37,25 @@
 namespace tdb {
   namespace impl {
 
-    VFSStreambuf::VFSStreambuf(const Context &ctx, const std::string &uri,
-                                          std::shared_ptr<tiledb_config_t> config)
-    : ctx_(ctx), deleter_(ctx), uri_(uri) {
+    void VFSstreambuf::set_uri(const std::string &uri) {
+      uri_ = uri;
+    }
+
+    const std::string &VFSstreambuf::get_uri() const {
+      return uri_;
+    }
+
+    VFSstreambuf::VFSstreambuf(const Context &ctx, std::shared_ptr<tiledb_config_t> config)
+    : ctx_(ctx), deleter_(ctx) {
       tiledb_vfs_t *vfs;
       ctx.handle_error(tiledb_vfs_create(ctx, &vfs, config.get()));
       vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
     }
 
     std::streambuf::pos_type
-    VFSStreambuf::seekoff(long offset, std::ios_base::seekdir seekdir, std::ios_base::openmode openmode) {
-      if (openmode & std::ios_base::in) {
-        throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
-      }
+    VFSstreambuf::seekoff(long offset, std::ios_base::seekdir seekdir, std::ios_base::openmode openmode) {
       uint64_t fsize = _file_size();
+      (void) openmode; // unused arg rror
       // Note convoluted logic is to get rid of signed/unsigned comparison errors
       switch (seekdir) {
         case std::ios_base::beg: {
@@ -78,33 +83,31 @@ namespace tdb {
           throw std::invalid_argument("Invalid offset.");
       }
       // This returns a static constant
-      return std::streambuf::seekoff(offset, seekdir, openmode);
+      return std::streampos(offset);
     }
 
-    std::streambuf::pos_type VFSStreambuf::seekpos(std::fpos<mbstate_t> pos, std::ios_base::openmode openmode) {
-      if (openmode & std::ios_base::in) {
-        throw std::runtime_error("Tiledb VFS does not support in openmode, only out and app.");
-      }
+    std::streambuf::pos_type VFSstreambuf::seekpos(std::fpos<mbstate_t> pos, std::ios_base::openmode openmode) {
+      (void) openmode;
       uint64_t fsize = _file_size();
       if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
         throw std::invalid_argument("Invalid pos.");
       }
       offset_ = static_cast<uint64_t>(pos);
       // This returns a static constant
-      return std::streambuf::seekpos(pos, openmode);
+      return std::streampos(pos);
     }
 
-    std::streambuf::int_type VFSStreambuf::sync() {
+    std::streambuf::int_type VFSstreambuf::sync() {
       auto &ctx = ctx_.get();
       ctx.handle_error(tiledb_vfs_sync(ctx, vfs_.get(), uri_.c_str()));
       return 0;
     }
 
-    std::streamsize VFSStreambuf::showmanyc() {
+    std::streamsize VFSstreambuf::showmanyc() {
       return _file_size() - offset_;
     }
 
-    std::streamsize VFSStreambuf::xsgetn(char *s, std::streamsize n) {
+    std::streamsize VFSstreambuf::xsgetn(char *s, std::streamsize n) {
       auto &ctx = ctx_.get();
       uint64_t fsize = _file_size();
       if (offset_ + n >= fsize) {
@@ -116,26 +119,27 @@ namespace tdb {
       return n;
     }
 
-    std::streambuf::int_type VFSStreambuf::underflow() {
+    std::streambuf::int_type VFSstreambuf::underflow() {
       char_type c;
       xsgetn(&c, 1);
       return c;
     }
 
-    std::streamsize VFSStreambuf::xsputn(const char *s, std::streamsize n) {
+    std::streamsize VFSstreambuf::xsputn(const char *s, std::streamsize n) {
       if (offset_ != _file_size()) throw std::runtime_error("VFS can only append to file.");
       auto &ctx = ctx_.get();
       ctx.handle_error(tiledb_vfs_write(ctx, vfs_.get(), uri_.c_str(), s, static_cast<uint64_t>(n)));
+      offset_ += n;
       return n;
     }
 
-    std::streambuf::int_type VFSStreambuf::overflow(int c) {
+    std::streambuf::int_type VFSstreambuf::overflow(int c) {
       char_type ch = traits_type::to_char_type(c);
       xsputn(&ch, 1);
       return traits_type::to_int_type(ch);
     }
 
-    uint64_t VFSStreambuf::_file_size() const {
+    uint64_t VFSstreambuf::_file_size() const {
       auto &ctx = ctx_.get();
       uint64_t fsize;
       ctx.handle_error(tiledb_vfs_file_size(ctx, vfs_.get(), uri_.c_str(), &fsize));

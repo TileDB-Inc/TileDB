@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_vfs_write.cc
+ * @file   tiledb_cpp_api_vfs_ostream.cc
  *
  * @author Ravi Gaddipati
  *
@@ -32,42 +32,51 @@
  * Write a file with the VFS.
  */
 
-#include <tiledb>
+#include "tiledb_cpp_api_vfs_ostream.h"
 
-/** Any structs must be POD **/
-struct Data {
-  int a;
-  double b;
-  const char* c;
-};
-
-int main() {
-  tdb::Context ctx;
-  tdb::VFS vfs(ctx);
-  tdb::VFSostream os(vfs, "tiledb_vfs.txt", std::ios::app);
-
-  // Data to write
-  std::vector<int> ints = {1,2,3,4,5,6,7,8,9,10};
-  Data d;
-  d.a = 1;
-  d.b = 2.0;
-  d.c = "abcd";
-  std::vector<Data> dvec(5, d); // 5 copies of d.
-
-  os << "tiledb " << 543 << " " << 123.4 << ' ' << ints;
-
-  try {
-    os << d << dvec;
-  } catch (std::runtime_error &e) {
-    std::cout << "Cannot write POD data in ASCII mode.\n";
+void tdb::VFSostream::open(const std::string &fname, std::ios_base::openmode openmode) {
+  close();
+  if ((openmode & std::ios::app) == 0) {
+    throw std::runtime_error("VFS ostream must be opened in app mode.");
   }
-
-  // close file and open a new one in binary format.
-  os.open("tiledb_vfs.bin", std::ios::app | std::ios::binary);
-
-  os << "tiledb" << 543 << 123.4 << ints << d << dvec;
-
-  // Syncs on stream destruction.
-  return 0;
-
+  if (vfs_.get().is_file(fname)) {
+    sbuf_.set_uri(fname);
+    sbuf_.pubseekoff(0, std::ios_base::end);
+  } else {
+    vfs_.get().touch(fname);
+    sbuf_.set_uri(fname);
+    sbuf_.pubseekpos(0);
+  }
+  openmode_ = openmode;
 }
+
+bool tdb::VFSostream::is_open() const {
+  return sbuf_.get_uri().size() != 0;
+}
+
+void tdb::VFSostream::close() {
+  if (is_open()) {
+    sbuf_.pubsync();
+    sbuf_.set_uri("");
+  }
+}
+
+tdb::VFSostream &tdb::VFSostream::write(const char *s, uint64_t size) {
+  sbuf_.sputn(s, size);
+  return *this;
+}
+
+tdb::VFSostream &tdb::VFSostream::write(const std::string &s) {
+  return write(s.c_str(), s.size());
+}
+
+tdb::VFSostream &tdb::VFSostream::operator<<(const char *s) {
+  std::string str(s);
+  return write(s);
+}
+
+tdb::VFSostream &tdb::VFSostream::operator<<(const std::string &s) {
+  return write(s);
+}
+
+

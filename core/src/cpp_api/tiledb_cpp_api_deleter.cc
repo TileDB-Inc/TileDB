@@ -38,32 +38,32 @@ namespace tdb {
 
 namespace impl {
 
-void Deleter::operator()(tiledb_query_t *p) {
+void Deleter::operator()(tiledb_query_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_query_free(ctx, p));
 }
 
-void Deleter::operator()(tiledb_array_schema_t *p) {
+void Deleter::operator()(tiledb_array_schema_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_array_schema_free(ctx, p));
 }
 
-void Deleter::operator()(tiledb_attribute_t *p) {
+void Deleter::operator()(tiledb_attribute_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_attribute_free(ctx, p));
 }
 
-void Deleter::operator()(tiledb_dimension_t *p) {
+void Deleter::operator()(tiledb_dimension_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_dimension_free(ctx, p));
 }
 
-void Deleter::operator()(tiledb_domain_t *p) {
+void Deleter::operator()(tiledb_domain_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_domain_free(ctx, p));
 }
 
-void Deleter::operator()(tiledb_vfs_t *p) {
+void Deleter::operator()(tiledb_vfs_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_vfs_free(ctx, p));
 }

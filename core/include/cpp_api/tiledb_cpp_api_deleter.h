@@ -66,12 +66,12 @@ class Deleter {
   /*              DELETERS             */
   /* ********************************* */
 
-  void operator()(tiledb_query_t *p);
-  void operator()(tiledb_array_schema_t *p);
-  void operator()(tiledb_attribute_t *p);
-  void operator()(tiledb_dimension_t *p);
-  void operator()(tiledb_domain_t *p);
-  void operator()(tiledb_vfs_t *p);
+  void operator()(tiledb_query_t *p) const;
+  void operator()(tiledb_array_schema_t *p) const;
+  void operator()(tiledb_attribute_t *p) const;
+  void operator()(tiledb_dimension_t *p) const;
+  void operator()(tiledb_domain_t *p) const;
+  void operator()(tiledb_vfs_t *p) const;
 
  private:
   /* ********************************* */

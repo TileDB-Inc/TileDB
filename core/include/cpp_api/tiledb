@@ -53,5 +53,7 @@
 #include "tiledb_cpp_api_utils.h"
 #include "tiledb_cpp_api_vfs.h"
 #include "tiledb_cpp_api_vfs_streambuf.h"
+#include "tiledb_cpp_api_vfs_ostream.h"
+#include "tiledb_cpp_api_vfs_istream.h"
 
 #endif // TILEDB_CPP_H

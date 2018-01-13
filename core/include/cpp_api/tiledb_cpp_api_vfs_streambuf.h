@@ -48,11 +48,11 @@ namespace tdb {
 
     /**
      * @brief
-     * Stream buffer for a Tiledb VFS. The buffer should be used to make a stream.
+     * Stream buffer for a Tiledb VFS. The buffer should be used to make a vfsstream.
      *
      * @details
      * This is unbuffered; each write is directly dispatched to TileDB. As such
-     * it is recommended to fewer, larger, writes/
+     * it is recommended to fewer, larger, writes.
      *
      * @code{.cpp}
      *   tdb::Context ctx;
@@ -61,7 +61,7 @@ namespace tdb {
      *   os << "abcdefghijklmnopqrstuvwxyz";
      * @endcode
      */
-    class VFSStreambuf : public std::streambuf {
+    class VFSstreambuf : public std::streambuf {
     public:
       /* ********************************* */
       /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -74,11 +74,24 @@ namespace tdb {
        * @param uri URI of file
        * @param config configuration. Default none.
        */
-      explicit VFSStreambuf(const Context &ctx, const std::string &uri, std::shared_ptr<tiledb_config_t> config=nullptr);
-      VFSStreambuf(const VFSStreambuf &buf)  = default;
-      VFSStreambuf(VFSStreambuf &&buf)  = default;
-      VFSStreambuf &operator=(const VFSStreambuf &) = default;
-      VFSStreambuf &operator=(VFSStreambuf &&o) = default;
+      // TODO get the config directly from context ptr
+      explicit VFSstreambuf(const Context &ctx, std::shared_ptr<tiledb_config_t> config=nullptr);
+      VFSstreambuf(const VFSstreambuf &buf) = default;
+      VFSstreambuf(VFSstreambuf &&buf) = default;
+      VFSstreambuf &operator=(const VFSstreambuf &) = default;
+      VFSstreambuf &operator=(VFSstreambuf &&o) = default;
+
+      /**
+       * Set the file URI.
+       *
+       * @param uri Filename
+       */
+      void set_uri(const std::string &uri);
+
+      /**
+       * @return Current opened URI.
+       */
+      const std::string &get_uri() const;
 
     protected:
 
@@ -94,7 +107,7 @@ namespace tdb {
        * @param openmode File openmode, accepts app and/or out
        */
       pos_type seekoff(off_type offset, std::ios_base::seekdir seekdir,
-                       std::ios_base::openmode openmode = std::ios_base::app | std::ios_base::out) override;
+                       std::ios_base::openmode openmode = std::ios_base::app | std::ios_base::in) override;
 
 
       /**
@@ -175,13 +188,13 @@ namespace tdb {
       std::shared_ptr<tiledb_vfs_t> vfs_;
 
       /** Deleter for vfs_ **/
-      Deleter deleter_;
-
-      /** Current offset from the file beginning **/
-      uint64_t offset_;
+      const Deleter deleter_;
 
       /** File URI **/
       std::string uri_;
+
+      /** Current offset from the file beginning **/
+      uint64_t offset_ = 0;
 
     };
 
