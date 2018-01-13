@@ -149,7 +149,7 @@ void VFS::touch(const std::string& uri) const {
   ctx.handle_error(tiledb_vfs_touch(ctx, vfs_.get(), uri.c_str()));
 }
 
-const Context &VFS::context() const {
+const Context& VFS::context() const {
   return ctx_.get();
 }
 
@@ -170,7 +170,5 @@ void VFS::create_vfs(tiledb_config_t* config) {
 
   vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
 }
-
-
 
 }  // namespace tdb

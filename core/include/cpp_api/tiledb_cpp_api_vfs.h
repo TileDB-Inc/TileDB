@@ -68,10 +68,10 @@ class VFS {
    * @param config TileDB config.
    */
   VFS(const Context& ctx, const Config& config);
-  VFS(const VFS&)  = default;
-  VFS(VFS&&)  = default;
-  VFS &operator=(const VFS &) = default;
-  VFS &operator=(VFS&&) = default;
+  VFS(const VFS&) = default;
+  VFS(VFS&&) = default;
+  VFS& operator=(const VFS&) = default;
+  VFS& operator=(VFS&&) = default;
 
   /* ********************************* */
   /*                API                */

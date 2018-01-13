@@ -47,18 +47,18 @@ int main() {
   tdb::VFSostream os(vfs, "tiledb_vfs.txt", std::ios::app);
 
   // Data to write
-  std::vector<int> ints = {1,2,3,4,5,6,7,8,9,10};
+  std::vector<int> ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   Data d;
   d.a = 1;
   d.b = 2.0;
   d.c = "abcd";
-  std::vector<Data> dvec(5, d); // 5 copies of d.
+  std::vector<Data> dvec(5, d);  // 5 copies of d.
 
   os << "tiledb " << 543 << " " << 123.4 << ' ' << ints;
 
   try {
     os << d << dvec;
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cout << "Cannot write POD data in ASCII mode.\n";
   }
 
@@ -69,5 +69,4 @@ int main() {
 
   // Syncs on stream destruction.
   return 0;
-
 }

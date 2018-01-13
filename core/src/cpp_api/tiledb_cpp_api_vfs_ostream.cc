@@ -36,7 +36,8 @@
 
 namespace tdb {
 
-void VFSostream::open(const std::string &fname, std::ios_base::openmode openmode) {
+void VFSostream::open(
+    const std::string &fname, std::ios_base::openmode openmode) {
   close();
   if ((openmode & std::ios::app) == 0) {
     throw std::runtime_error("VFS ostream must be opened in app mode.");
@@ -81,5 +82,4 @@ VFSostream &VFSostream::operator<<(const std::string &s) {
   return write(s);
 }
 
-}
-
+}  // namespace tdb
