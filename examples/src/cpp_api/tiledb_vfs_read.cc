@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_vfs_write.cc
+ * @file   tiledb_vfs_read.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * Write a file with the VFS.
+ * Read a file with the VFS. Run tiledb_vfs_write.cc before this.
  */
 
 #include <tiledb>
@@ -39,19 +39,33 @@ int main() {
   tdb::Context ctx;
   tdb::VFS vfs(ctx);
 
-  tdb::VFSfilebuf sbuf(vfs);
-  sbuf.open("tiledb_vfs.txt", std::ios::out | std::ios::app);
-  std::ostream os(&sbuf);
+  {
+    // Read string data
+    tdb::VFSfilebuf sbuf(vfs);
+    sbuf.open("tiledb_vfs.txt", std::ios::in);
+    std::istream is(&sbuf);
 
-  // Write formatted output
-  os << "tiledb " << 543 << " " << 123.4 << ' ';
+    std::string field;
+    while (std::getline(is, field, ' ')) {
+      std::cout << field << '\n';
+    }
+  }
 
-  // Write binary data
-  sbuf.open("tiledb_vfs.bin", std::ios::out | std::ios::app);
-  float f1 = 153.234;
-  std::string s1 = "abcdefghijkl";
-  os.write((char*)&f1, sizeof(f1));
-  os.write(s1.data(), s1.size());
+  {
+    // Read binary data
+    tdb::VFSfilebuf sbuf(vfs);
+    sbuf.open("tiledb_vfs.bin", std::ios::in);
+    std::istream is(&sbuf);
+
+    float f1;
+    std::string s1;
+    s1.resize(12);
+
+    is.read((char *) &f1, sizeof(f1));
+    is.read((char *) s1.data(), 12);
+
+    std::cout << "\nBinary read:\n" << f1 << '\n' << s1 << '\n';
+  }
 
   return 0;
 }

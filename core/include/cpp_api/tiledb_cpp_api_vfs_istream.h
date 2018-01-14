@@ -1,8 +1,0 @@
-//
-// Created by gaddra on 1/13/18.
-//
-
-#ifndef TILEDB_TILEDB_CPP_API_VFS_ISTREAM_H
-#define TILEDB_TILEDB_CPP_API_VFS_ISTREAM_H
-
-#endif  // TILEDB_TILEDB_CPP_API_VFS_ISTREAM_H

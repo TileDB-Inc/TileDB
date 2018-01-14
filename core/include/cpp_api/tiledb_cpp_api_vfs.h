@@ -155,6 +155,9 @@ class VFS {
   /** Get the underlying tiledb object **/
   std::shared_ptr<tiledb_vfs_t> ptr() const;
 
+  /** Get the config **/
+  std::shared_ptr<tiledb_config_t> config() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -162,6 +165,9 @@ class VFS {
 
   /** TileDB context. */
   std::reference_wrapper<const Context> ctx_;
+
+  /** Config **/
+  std::shared_ptr<tiledb_config_t> config_ = nullptr;
 
   /** A deleter wrapper. */
   impl::Deleter deleter_;

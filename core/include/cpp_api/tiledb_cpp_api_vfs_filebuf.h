@@ -35,7 +35,7 @@
 #ifndef TILEDB_TILEDB_CPP_API_VFS_STREAMBUF_H
 #define TILEDB_TILEDB_CPP_API_VFS_STREAMBUF_H
 
-#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_vfs.h"
 #include "tiledb_cpp_api_deleter.h"
 
 #include <functional>
@@ -44,12 +44,10 @@
 #include <streambuf>
 
 namespace tdb {
-namespace impl {
 
 /**
  * @brief
- * Stream buffer for a Tiledb VFS. The buffer should be used to make a
- * vfsstream.
+ * Stream buffer for a Tiledb VFS.
  *
  * @details
  * This is unbuffered; each write is directly dispatched to TileDB. As such
@@ -57,12 +55,14 @@ namespace impl {
  *
  * @code{.cpp}
  *   tdb::Context ctx;
- *   tdb::impl::VFSStreambuf buf(ctx, "vfs.test");
+ *   tdb::VFS vfs(ctx);
+ *   tdb::VFSfilebuf buf(vfs);
+ *   buf.open("file.txt", std::ios::out | std::ios::app);
  *   std::ostream os(&buf);
  *   os << "abcdefghijklmnopqrstuvwxyz";
  * @endcode
  */
-class VFSstreambuf : public std::streambuf {
+class VFSfilebuf : public std::streambuf {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -71,29 +71,38 @@ class VFSstreambuf : public std::streambuf {
   /**
    * Constructor.
    *
-   * @param ctx tiledb Context
-   * @param uri URI of file
-   * @param config configuration. Default none.
+   * @param vfs tiledb VFS
    */
-  // TODO get the config directly from context ptr once exposed in C API
-  explicit VFSstreambuf(
-      const Context &ctx, std::shared_ptr<tiledb_config_t> config = nullptr);
-  VFSstreambuf(const VFSstreambuf &buf) = default;
-  VFSstreambuf(VFSstreambuf &&buf) = default;
-  VFSstreambuf &operator=(const VFSstreambuf &) = default;
-  VFSstreambuf &operator=(VFSstreambuf &&o) = default;
+  explicit VFSfilebuf(const VFS &vfs) : vfs_(vfs), deleter_(vfs.context()) {}
+  VFSfilebuf(const VFSfilebuf &buf) = default;
+  VFSfilebuf(VFSfilebuf &&buf) = default;
+  VFSfilebuf &operator=(const VFSfilebuf &) = default;
+  VFSfilebuf &operator=(VFSfilebuf &&o) = default;
+
+  /* ********************************* */
+  /*            PUBLIC API             */
+  /* ********************************* */
 
   /**
-   * Set the file URI.
+   * Open a file.
    *
-   * @param uri Filename
+   * @param uri
+   * @param openmode Must be either (std::ios::in) or (std::ios::out | std::ios::app)
    */
-  void set_uri(const std::string &uri);
+  VFSfilebuf *open(const std::string &uri, std::ios::openmode openmode = std::ios::in);
 
-  /**
-   * @return Current opened URI.
-   */
-  const std::string &get_uri() const;
+  /** Check if a file is open **/
+  bool is_open() const {
+    return uri_.size() != 0;
+  }
+
+  /** Close a file after syncing **/
+  VFSfilebuf *close();
+
+   /** Current opened URI. **/
+  const std::string &get_uri() const {
+     return uri_;
+   }
 
  protected:
   /* ********************************* */
@@ -109,9 +118,8 @@ class VFSstreambuf : public std::streambuf {
    */
   pos_type seekoff(
       off_type offset,
-      std::ios_base::seekdir seekdir,
-      std::ios_base::openmode openmode = std::ios_base::app |
-                                         std::ios_base::in) override;
+      std::ios::seekdir seekdir,
+      std::ios::openmode openmode) override;
 
   /**
    * Seek a byte position in the file.
@@ -119,7 +127,7 @@ class VFSstreambuf : public std::streambuf {
    * @param pos
    * @param openmode in, and/or app (append)
    */
-  pos_type seekpos(pos_type pos, std::ios_base::openmode openmode) override;
+  pos_type seekpos(pos_type pos, std::ios::openmode openmode) override;
 
   /** Sync all writes to the file **/
   int_type sync() override;
@@ -150,6 +158,13 @@ class VFSstreambuf : public std::streambuf {
    */
   int_type underflow() override;
 
+  /**
+ * Get a character in the file and advance position.
+ *
+ * @return character at current pos
+ */
+  int_type uflow() override;
+
   /* ********************************* */
   /*           PROTECTED PUT           */
   /* ********************************* */
@@ -178,25 +193,22 @@ class VFSstreambuf : public std::streambuf {
   /* ********************************* */
 
   /** Get the file size of the file in bytes **/
-  uint64_t _file_size() const;
+  uint64_t file_size() const;
 
-  /** Underlying Context **/
-  std::reference_wrapper<const Context> ctx_;
-
-  /** Underlying vfs object **/
-  std::shared_ptr<tiledb_vfs_t> vfs_;
+  /** Underlying VFS **/
+  std::reference_wrapper<const VFS> vfs_;
 
   /** Deleter for vfs_ **/
-  const Deleter deleter_;
+  const impl::Deleter deleter_;
 
   /** File URI **/
   std::string uri_;
 
   /** Current offset from the file beginning **/
   uint64_t offset_ = 0;
+
 };
 
-}  // namespace impl
 }  // namespace tdb
 
 #endif  // TILEDB_TILEDB_CPP_API_VFS_STREAMBUF_H

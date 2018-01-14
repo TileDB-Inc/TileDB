@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_vfs_ostream.cc
+ * @file   tiledb_vfs.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,57 +29,41 @@
  *
  * @section DESCRIPTION
  *
- * Write a file with the VFS.
+ * VFS tools.
  */
 
-#include "tiledb_cpp_api_vfs_ostream.h"
+#include <tiledb>
 
-namespace tdb {
+int main() {
+  tdb::Context ctx;
+  tdb::VFS vfs(ctx);
 
-void VFSostream::open(
-    const std::string &fname, std::ios_base::openmode openmode) {
-  close();
-  if ((openmode & std::ios::app) == 0) {
-    throw std::runtime_error("VFS ostream must be opened in app mode.");
-  }
-  if (vfs_.get().is_file(fname)) {
-    sbuf_.set_uri(fname);
-    sbuf_.pubseekoff(0, std::ios_base::end);
+  if (!vfs.is_dir("dirA")) {
+    vfs.create_dir("dirA");
+    std::cout << "Made dirA.\n";
   } else {
-    vfs_.get().touch(fname);
-    sbuf_.set_uri(fname);
-    sbuf_.pubseekpos(0);
+    std::cout << "dirA already exists.\n";
   }
-  openmode_ = openmode;
-}
 
-bool VFSostream::is_open() const {
-  return sbuf_.get_uri().size() != 0;
-}
-
-void VFSostream::close() {
-  if (is_open()) {
-    sbuf_.pubsync();
-    sbuf_.set_uri("");
+  if (!vfs.is_file("dirA/fileA")) {
+    vfs.touch("dirA/fileA");
+    std::cout << "Made file dirA/fileA.\n";
+  } else {
+    std::cout << "dirA/fileA already exists.\n";
   }
-}
 
-VFSostream &VFSostream::write(const char *s, uint64_t size) {
-  sbuf_.sputn(s, size);
-  return *this;
-}
+  std::cout << "Appending data to dirA/fileA.\n";
+  const char *data = "abcdef";
+  vfs.write("dirA/fileA", data, 6);
+  std::cout << "File size: " << vfs.file_size("dirA/fileA") << "\n";
 
-VFSostream &VFSostream::write(const std::string &s) {
-  return write(s.c_str(), s.size());
-}
+  std::cout << "Moving file dirA/fileA to dirA/fileB.\n";
+  vfs.move("dirA/fileA", "dirA/fileB");
 
-VFSostream &VFSostream::operator<<(const char *s) {
-  std::string str(s);
-  return write(s);
-}
+  std::cout << "deleting fileB and dirA.\n";
+  vfs.remove_file("dirA/fileB");
+  vfs.remove_dir("dirA");
 
-VFSostream &VFSostream::operator<<(const std::string &s) {
-  return write(s);
-}
+  return 0;
 
-}  // namespace tdb
+}
