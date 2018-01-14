@@ -82,9 +82,7 @@ class Dimension {
   std::pair<typename T::type, typename T::type> domain() const {
     auto tdbtype = type();
     if (T::tiledb_datatype != tdbtype) {
-      throw TypeError(
-          "Attempting to use type of " + std::string(T::name) +
-          " for dimension of type " + impl::to_str(tdbtype));
+      throw TypeError::create<T>(tdbtype);
     }
     typename T::type *d = static_cast<typename T::type *>(_domain());
     return std::pair<typename T::type, typename T::type>(d[0], d[1]);
@@ -155,9 +153,7 @@ class Dimension {
   typename T::type extent() const {
     auto tdbtype = type();
     if (T::tiledb_datatype != tdbtype) {
-      throw TypeError(
-          "Attempting to use extent of type " + std::string(T::name) +
-          " for dimension of type " + impl::to_str(tdbtype));
+      throw TypeError::create<T>(tdbtype);
     }
     return *static_cast<typename T::type *>(_extent());
   };

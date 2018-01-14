@@ -291,9 +291,7 @@ class Query {
   template <typename DataT>
   void type_check(tiledb_datatype_t type) {
     if (DataT::tiledb_datatype != type) {
-      throw TypeError(
-          "Attempting to use buffer of type " + std::string(DataT::name) +
-          " for attribute of type " + impl::to_str(type));
+      throw TypeError::create<DataT>(type);
     }
   }
 
