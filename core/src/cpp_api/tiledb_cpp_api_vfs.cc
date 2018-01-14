@@ -162,7 +162,6 @@ std::shared_ptr<tiledb_config_t> VFS::config() const {
   return config_;
 }
 
-
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

@@ -51,37 +51,51 @@ namespace impl {
  * @tparam T underlying type
  * @tparam TDB_TYPE tiledb_data_type repr
  */
-  template <typename T, tiledb_datatype_t TDB_TYPE>
-  struct Type {
-    Type() = delete;
-    using type = T;
-    static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
-    static constexpr const char *name =
-    std::is_same<T, char>::value ? "char" :
-    (std::is_same<T, int8_t>::value ? "int8_t" :
-     (std::is_same<T, uint8_t>::value ? "uint8_t" :
-      (std::is_same<T, int16_t>::value ? "int16_t" :
-       (std::is_same<T, uint16_t>::value ? "uint16_t" :
-        (std::is_same<T, int32_t>::value ? "int32_t" :
-         (std::is_same<T, uint32_t>::value ? "uint32_t" :
-          (std::is_same<T, int64_t>::value ? "int64_t" :
-           (std::is_same<T, uint64_t>::value ? "uint64_t" :
-            (std::is_same<T, float>::value ? "float" :
-             (std::is_same<T, double>::value ? "double" :
-              "INVALID"))))))))));
-  };
+template <typename T, tiledb_datatype_t TDB_TYPE>
+struct Type {
+  Type() = delete;
+  using type = T;
+  static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
+  static constexpr const char *name =
+      std::is_same<T, char>::value ?
+          "char" :
+          (std::is_same<T, int8_t>::value ?
+               "int8_t" :
+               (std::is_same<T, uint8_t>::value ?
+                    "uint8_t" :
+                    (std::is_same<T, int16_t>::value ?
+                         "int16_t" :
+                         (std::is_same<T, uint16_t>::value ?
+                              "uint16_t" :
+                              (std::is_same<T, int32_t>::value ?
+                                   "int32_t" :
+                                   (std::is_same<T, uint32_t>::value ?
+                                        "uint32_t" :
+                                        (std::is_same<T, int64_t>::value ?
+                                             "int64_t" :
+                                             (std::is_same<T, uint64_t>::value ?
+                                                  "uint64_t" :
+                                                  (std::is_same<T, float>::
+                                                           value ?
+                                                       "float" :
+                                                       (std::is_same<
+                                                            T,
+                                                            double>::value ?
+                                                            "double" :
+                                                            "INVALID"))))))))));
+};
 
-  using CHAR = Type<char, TILEDB_CHAR>;
-  using INT8 = Type<int8_t, TILEDB_INT8>;
-  using UINT8 = Type<uint8_t, TILEDB_UINT8>;
-  using INT16 = Type<int16_t, TILEDB_INT16>;
-  using UINT16 = Type<uint16_t, TILEDB_UINT16>;
-  using INT32 = Type<int32_t, TILEDB_INT32>;
-  using UINT32 = Type<uint32_t, TILEDB_UINT32>;
-  using INT64 = Type<int64_t, TILEDB_INT64>;
-  using UINT64 = Type<uint64_t, TILEDB_UINT64>;
-  using FLOAT32 = Type<float, TILEDB_FLOAT32>;
-  using FLOAT64 = Type<double, TILEDB_FLOAT64>;
+using CHAR = Type<char, TILEDB_CHAR>;
+using INT8 = Type<int8_t, TILEDB_INT8>;
+using UINT8 = Type<uint8_t, TILEDB_UINT8>;
+using INT16 = Type<int16_t, TILEDB_INT16>;
+using UINT16 = Type<uint16_t, TILEDB_UINT16>;
+using INT32 = Type<int32_t, TILEDB_INT32>;
+using UINT32 = Type<uint32_t, TILEDB_UINT32>;
+using INT64 = Type<int64_t, TILEDB_INT64>;
+using UINT64 = Type<uint64_t, TILEDB_UINT64>;
+using FLOAT32 = Type<float, TILEDB_FLOAT32>;
+using FLOAT64 = Type<double, TILEDB_FLOAT64>;
 
 template <tiledb_datatype_t T>
 struct type_from_tiledb;

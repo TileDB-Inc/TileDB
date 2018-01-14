@@ -36,49 +36,52 @@
 
 namespace tdb {
 
-  /* ********************************* */
-  /*            PUBLIC API             */
-  /* ********************************* */
+/* ********************************* */
+/*            PUBLIC API             */
+/* ********************************* */
 
-  VFSfilebuf *VFSfilebuf::open(const std::string &uri, std::ios::openmode openmode) {
-    close();
-    if ((openmode & std::ios::out) && !(openmode & std::ios::app)) {
-      // Need append mode
-      return nullptr;
-    }
-    if (vfs_.get().is_file(uri)) {
-      // File exists
-      uri_ = uri;
-      seekoff(0, openmode & std::ios::out ? std::ios::end : std::ios::beg, openmode);
-    } else if (openmode & std::ios::app) {
-      // Make file
-      vfs_.get().touch(uri);
-      uri_ = uri;
-      seekpos(0, openmode);
-    } else {
-      // File does not exist.
-      return nullptr;
-    }
-    return this;
-  }
+VFSFilebuf *VFSFilebuf::open(
+    const std::string &uri, std::ios::openmode openmode) {
+  close();
 
-  VFSfilebuf *VFSfilebuf::close() {
-    if (is_open()) {
-      sync();
-      uri_ = "";
-      return this;
-    }
+  // Check mode
+  if (!(openmode & std::ios::out) && !(openmode & std::ios::in))
+    return nullptr;
+
+  // TODO:  try {
+  bool is_file = vfs_.get().is_file(uri);
+  if (is_file) {
+    // In case of writes, delete the file (overwrite)
+    if ((openmode & std::ios::out))
+      vfs_.get().remove_file(uri);
+
+    uri_ = uri;
+    seekoff(0, std::ios::beg, openmode);
+  } else if (openmode & std::ios::in) {  // File does not exist
     return nullptr;
   }
+  // TODO:  } catch { // TODO: change this to catch TileDB exception
+  // TODO:    return nullptr;
+  // TODO:  }
 
-  /* ********************************* */
-  /*       PROTECTED POSITIONING       */
-  /* ********************************* */
+  return this;
+}
 
-std::streambuf::pos_type VFSfilebuf::seekoff(
-    long offset,
-    std::ios::seekdir seekdir,
-    std::ios::openmode openmode) {
+VFSFilebuf *VFSFilebuf::close() {
+  if (is_open()) {
+    sync();
+    uri_ = "";
+    return this;
+  }
+  return nullptr;
+}
+
+/* ********************************* */
+/*       PROTECTED POSITIONING       */
+/* ********************************* */
+
+std::streambuf::pos_type VFSFilebuf::seekoff(
+    off_type offset, std::ios::seekdir seekdir, std::ios::openmode openmode) {
   uint64_t fsize = file_size();
   (void)openmode;  // unused arg error
   // Note logic is to get rid of signed/unsigned comparison errors
@@ -113,7 +116,8 @@ std::streambuf::pos_type VFSfilebuf::seekoff(
   return std::streampos(offset);
 }
 
-std::streambuf::pos_type VFSfilebuf::seekpos(pos_type pos, std::ios::openmode openmode) {
+std::streambuf::pos_type VFSFilebuf::seekpos(
+    pos_type pos, std::ios::openmode openmode) {
   (void)openmode;
   uint64_t fsize = file_size();
   if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
@@ -124,20 +128,21 @@ std::streambuf::pos_type VFSfilebuf::seekpos(pos_type pos, std::ios::openmode op
   return std::streampos(pos);
 }
 
-std::streambuf::int_type VFSfilebuf::sync() {
+std::streambuf::int_type VFSFilebuf::sync() {
+  // TODO: catch exception here. don't know what to do in case we catch one.
   vfs_.get().sync(uri_);
   return traits_type::to_int_type(0);
 }
 
-  /* ********************************* */
-  /*           PROTECTED GET           */
-  /* ********************************* */
+/* ********************************* */
+/*           PROTECTED GET           */
+/* ********************************* */
 
-std::streamsize VFSfilebuf::showmanyc() {
+std::streamsize VFSFilebuf::showmanyc() {
   return std::streamsize(file_size() - offset_);
 }
 
-std::streamsize VFSfilebuf::xsgetn(char_type *s, std::streamsize n) {
+std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   uint64_t fsize = file_size();
   std::streamsize readlen = n;
   if (offset_ + n >= fsize) {
@@ -145,12 +150,13 @@ std::streamsize VFSfilebuf::xsgetn(char_type *s, std::streamsize n) {
   }
   if (readlen == 0)
     return traits_type::eof();
-  vfs_.get().read(uri_,offset_, s, static_cast<uint64_t>(readlen));
+  // TODO: catch exception here. don't know what to do in case we catch one.
+  vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
   offset_ += readlen;
   return readlen;
 }
 
-std::streambuf::int_type VFSfilebuf::underflow() {
+std::streambuf::int_type VFSFilebuf::underflow() {
   char_type c;
   if (xsgetn(&c, sizeof(c)) != traits_type::eof()) {
     --offset_;
@@ -159,7 +165,7 @@ std::streambuf::int_type VFSfilebuf::underflow() {
   return traits_type::eof();
 }
 
-std::streambuf::int_type VFSfilebuf::uflow() {
+std::streambuf::int_type VFSFilebuf::uflow() {
   char_type c;
   if (xsgetn(&c, sizeof(c)) != traits_type::eof()) {
     return traits_type::to_int_type(c);
@@ -167,19 +173,20 @@ std::streambuf::int_type VFSfilebuf::uflow() {
   return traits_type::eof();
 }
 
-  /* ********************************* */
-  /*           PROTECTED PUT           */
-  /* ********************************* */
+/* ********************************* */
+/*           PROTECTED PUT           */
+/* ********************************* */
 
-std::streamsize VFSfilebuf::xsputn(const char_type *s, std::streamsize n) {
+std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
   if (offset_ != file_size())
     return traits_type::eof();
+  // TODO: catch exception here. don't know what to do in case we catch one.
   vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
   offset_ += n;
   return n;
 }
 
-std::streambuf::int_type VFSfilebuf::overflow(int_type c) {
+std::streambuf::int_type VFSFilebuf::overflow(int_type c) {
   if (c != traits_type::eof()) {
     char_type ch = traits_type::to_char_type(c);
     if (xsputn(&ch, sizeof(ch)) != traits_type::eof())
@@ -188,11 +195,12 @@ std::streambuf::int_type VFSfilebuf::overflow(int_type c) {
   return traits_type::eof();
 }
 
-  /* ********************************* */
-  /*              PRIVATE              */
-  /* ********************************* */
+/* ********************************* */
+/*              PRIVATE              */
+/* ********************************* */
 
-uint64_t VFSfilebuf::file_size() const {
+uint64_t VFSFilebuf::file_size() const {
+  // TODO: catch exception here. don't know what to do in case we catch one.
   return vfs_.get().file_size(uri_);
 }
 

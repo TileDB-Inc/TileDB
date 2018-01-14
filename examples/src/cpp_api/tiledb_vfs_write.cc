@@ -32,22 +32,22 @@
  * Write a file with the VFS.
  */
 
-#include <tiledb>
 #include <fstream>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
   tdb::VFS vfs(ctx);
 
-  tdb::VFSfilebuf sbuf(vfs);
-  sbuf.open("tiledb_vfs.txt", std::ios::out | std::ios::app);
+  tdb::VFSFilebuf sbuf(vfs);
+  sbuf.open("tiledb_vfs.txt", std::ios::out);
   std::ostream os(&sbuf);
 
   // Write formatted output
   os << "tiledb " << 543 << " " << 123.4 << ' ';
 
   // Write binary data
-  sbuf.open("tiledb_vfs.bin", std::ios::out | std::ios::app);
+  sbuf.open("tiledb_vfs.bin", std::ios::out);
   float f1 = 153.234;
   std::string s1 = "abcdefghijkl";
   os.write((char*)&f1, sizeof(f1));

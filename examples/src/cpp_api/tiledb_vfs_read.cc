@@ -32,8 +32,8 @@
  * Read a file with the VFS. Run tiledb_vfs_write.cc before this.
  */
 
-#include <tiledb>
 #include <fstream>
+#include <tiledb>
 
 int main() {
   tdb::Context ctx;
@@ -41,7 +41,7 @@ int main() {
 
   {
     // Read string data
-    tdb::VFSfilebuf sbuf(vfs);
+    tdb::VFSFilebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.txt", std::ios::in);
     std::istream is(&sbuf);
 
@@ -53,7 +53,7 @@ int main() {
 
   {
     // Read binary data
-    tdb::VFSfilebuf sbuf(vfs);
+    tdb::VFSFilebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.bin", std::ios::in);
     std::istream is(&sbuf);
 
@@ -61,8 +61,8 @@ int main() {
     std::string s1;
     s1.resize(12);
 
-    is.read((char *) &f1, sizeof(f1));
-    is.read((char *) s1.data(), 12);
+    is.read((char *)&f1, sizeof(f1));
+    is.read((char *)s1.data(), 12);
 
     std::cout << "\nBinary read:\n" << f1 << '\n' << s1 << '\n';
   }

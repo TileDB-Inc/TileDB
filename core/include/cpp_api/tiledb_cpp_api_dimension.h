@@ -36,9 +36,9 @@
 #define TILEDB_CPP_API_DIMENSION_H
 
 #include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_type.h"
 

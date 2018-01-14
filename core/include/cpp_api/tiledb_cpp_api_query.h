@@ -36,10 +36,10 @@
 #define TILEDB_CPP_API_QUERY_H
 
 #include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_array_schema.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_type.h"
 #include "tiledb_cpp_api_utils.h"
 
@@ -535,7 +535,8 @@ class Query {
     if (array_attributes_.count(attr)) {
       cell_val_num = array_attributes_.at(attr).cell_val_num();
       if (cell_val_num != TILEDB_VAR_NUM)
-        throw std::invalid_argument("Offsets provided for fixed size attribute.");
+        throw std::invalid_argument(
+            "Offsets provided for fixed size attribute.");
     }
 
     if (max_offset && !max_el)

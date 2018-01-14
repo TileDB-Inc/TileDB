@@ -41,25 +41,28 @@
 
 namespace tdb {
 
-  /** Exception indicating a mismatch between a static and runtime type **/
-  struct TypeError : public std::runtime_error {
-    TypeError(const std::string &msg) : std::runtime_error(msg) {}
+/** Exception indicating a mismatch between a static and runtime type **/
+struct TypeError : public std::runtime_error {
+  TypeError(const std::string &msg)
+      : std::runtime_error(msg) {
+  }
 
-    /** Make a type error between static type DataT and expected_type **/
-    template<typename DataT>
-    static TypeError create(tiledb_datatype_t expected_type) {
-      return TypeError(
-      "Attempting to use static type " + std::string(DataT::name) +
-      " for expected type " + impl::to_str(expected_type));
-    }
-  };
+  /** Make a type error between static type DataT and expected_type **/
+  template <typename DataT>
+  static TypeError create(tiledb_datatype_t expected_type) {
+    return TypeError(
+        "Attempting to use static type " + std::string(DataT::name) +
+        " for expected type " + impl::to_str(expected_type));
+  }
+};
 
-  /** Exception indicating the requested operation does not match array schema **/
-  struct SchemaMismatch : public std::runtime_error {
-    SchemaMismatch(const std::string &msg) : std::runtime_error(msg) {}
-  };
+/** Exception indicating the requested operation does not match array schema **/
+struct SchemaMismatch : public std::runtime_error {
+  SchemaMismatch(const std::string &msg)
+      : std::runtime_error(msg) {
+  }
+};
 
-}
+}  // namespace tdb
 
-
-#endif //TILEDB_TILEDB_CPP_API_EXCEPTION_H
+#endif  // TILEDB_CPP_API_EXCEPTION_H

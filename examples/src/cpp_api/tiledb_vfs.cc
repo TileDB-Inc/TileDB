@@ -65,5 +65,4 @@ int main() {
   vfs.remove_dir("dirA");
 
   return 0;
-
 }
