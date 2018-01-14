@@ -113,8 +113,7 @@ std::streambuf::pos_type VFSfilebuf::seekoff(
   return std::streampos(offset);
 }
 
-std::streambuf::pos_type VFSfilebuf::seekpos(
-    std::fpos<mbstate_t> pos, std::ios::openmode openmode) {
+std::streambuf::pos_type VFSfilebuf::seekpos(pos_type pos, std::ios::openmode openmode) {
   (void)openmode;
   uint64_t fsize = file_size();
   if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
@@ -160,7 +159,7 @@ std::streambuf::int_type VFSfilebuf::underflow() {
   return traits_type::eof();
 }
 
-int VFSfilebuf::uflow() {
+std::streambuf::int_type VFSfilebuf::uflow() {
   char_type c;
   if (xsgetn(&c, sizeof(c)) != traits_type::eof()) {
     return traits_type::to_int_type(c);
