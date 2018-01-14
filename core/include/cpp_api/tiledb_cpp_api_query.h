@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_QUERY_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_array_schema.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
@@ -290,7 +291,7 @@ class Query {
   template <typename DataT>
   void type_check(tiledb_datatype_t type) {
     if (DataT::tiledb_datatype != type) {
-      throw std::invalid_argument(
+      throw TypeError(
           "Attempting to use buffer of type " + std::string(DataT::name) +
           " for attribute of type " + impl::to_str(type));
     }
@@ -325,7 +326,7 @@ class Query {
     auto &ctx = ctx_.get();
     type_check<T>(schema_.domain().type());
     if (pairs.size() != schema_.domain().dim_num() * 2) {
-      throw std::invalid_argument(
+      throw SchemaMismatch(
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
     }
@@ -500,7 +501,7 @@ class Query {
     } else if (attr == TILEDB_COORDS) {
       cell_val_num = schema_.domain().dim_num();
     } else {
-      throw std::out_of_range("Invalid attribute: " + attr);
+      throw SchemaMismatch("Invalid attribute: " + attr);
     }
 
     make_buffer_impl<DataT>(attr, buff, cell_val_num, max_el);
@@ -536,7 +537,7 @@ class Query {
     if (array_attributes_.count(attr)) {
       cell_val_num = array_attributes_.at(attr).cell_val_num();
       if (cell_val_num != TILEDB_VAR_NUM)
-        throw std::runtime_error("Offsets provided for fixed size attribute.");
+        throw std::invalid_argument("Offsets provided for fixed size attribute.");
     }
 
     if (max_offset && !max_el)

@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp
+ * @file   tiledb_cpp_api_exception.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,30 +29,26 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares exceptions used by the C++ API.
  */
+#ifndef TILEDB_TILEDB_CPP_API_EXCEPTION_H
+#define TILEDB_TILEDB_CPP_API_EXCEPTION_H
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#include <stdexcept>
 
-#include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_version.h"
-#include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_group.h"
-#include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_array.h"
-#include "tiledb_cpp_api_deleter.h"
-#include "tiledb_cpp_api_compressor.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_dimension.h"
-#include "tiledb_cpp_api_domain.h"
-#include "tiledb_cpp_api_object.h"
-#include "tiledb_cpp_api_object_iter.h"
-#include "tiledb_cpp_api_query.h"
-#include "tiledb_cpp_api_utils.h"
-#include "tiledb_cpp_api_vfs.h"
-#include "tiledb_cpp_api_vfs_filebuf.h"
+namespace tdb {
 
-#endif // TILEDB_CPP_H
+  /** Exception indicating a mismatch between a static and runtime type **/
+  struct TypeError : public std::runtime_error {
+    TypeError(const std::string &msg) : std::runtime_error(msg) {}
+  };
+
+  /** Exception indicating the requested operation does not match array schema **/
+  struct SchemaMismatch : public std::runtime_error {
+    SchemaMismatch(const std::string &msg) : std::runtime_error(msg) {}
+  };
+
+}
+
+
+#endif //TILEDB_TILEDB_CPP_API_EXCEPTION_H

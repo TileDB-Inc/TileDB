@@ -85,7 +85,7 @@ std::streambuf::pos_type VFSfilebuf::seekoff(
   switch (seekdir) {
     case std::ios::beg: {
       if (offset < 0 || static_cast<uint64_t>(offset) > fsize) {
-        throw std::invalid_argument("Invalid offset.");
+        return std::streampos(std::streamoff(-1));
       }
       offset_ = static_cast<uint64_t>(offset);
       break;
@@ -93,7 +93,7 @@ std::streambuf::pos_type VFSfilebuf::seekoff(
     case std::ios::cur: {
       if (offset + offset_ > fsize ||
           (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > offset_)) {
-        throw std::invalid_argument("Invalid offset.");
+        return std::streampos(std::streamoff(-1));
       }
       offset_ = static_cast<uint64_t>(offset + offset_);
       break;
@@ -101,13 +101,13 @@ std::streambuf::pos_type VFSfilebuf::seekoff(
     case std::ios::end: {
       if (offset + fsize > fsize ||
           (offset < 0 && static_cast<uint64_t>(std::abs(offset)) > fsize)) {
-        throw std::invalid_argument("Invalid offset.");
+        return std::streampos(std::streamoff(-1));
       }
       offset_ = static_cast<uint64_t>(offset + fsize);
       break;
     }
     default:
-      throw std::invalid_argument("Invalid offset.");
+      return std::streampos(std::streamoff(-1));
   }
   // This returns a static constant
   return std::streampos(offset);
@@ -118,7 +118,7 @@ std::streambuf::pos_type VFSfilebuf::seekpos(
   (void)openmode;
   uint64_t fsize = file_size();
   if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
-    throw std::invalid_argument("Invalid pos.");
+    return std::streampos(std::streamoff(-1));
   }
   offset_ = static_cast<uint64_t>(pos);
   // This returns a static constant

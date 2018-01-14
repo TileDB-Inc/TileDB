@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_DIMENSION_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_object.h"
@@ -81,7 +82,7 @@ class Dimension {
   std::pair<typename T::type, typename T::type> domain() const {
     auto tdbtype = type();
     if (T::tiledb_datatype != tdbtype) {
-      throw std::invalid_argument(
+      throw TypeError(
           "Attempting to use type of " + std::string(T::name) +
           " for dimension of type " + impl::to_str(tdbtype));
     }
@@ -154,7 +155,7 @@ class Dimension {
   typename T::type extent() const {
     auto tdbtype = type();
     if (T::tiledb_datatype != tdbtype) {
-      throw std::invalid_argument(
+      throw TypeError(
           "Attempting to use extent of type " + std::string(T::name) +
           " for dimension of type " + impl::to_str(tdbtype));
     }
