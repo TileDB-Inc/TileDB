@@ -41,11 +41,13 @@
 
 namespace tdb {
 
-/** Exception indicating a mismatch between a static and runtime type **/
-struct TypeError : public std::runtime_error {
-  TypeError(const std::string &msg)
-      : std::runtime_error(msg) {
-  }
+  struct TileDBError : std::runtime_error {
+    TileDBError(const std::string &msg) : std::runtime_error(msg) {}
+  };
+
+  /** Exception indicating a mismatch between a static and runtime type **/
+  struct TypeError : public TileDBError {
+    TypeError(const std::string &msg) : TileDBError(msg) {}
 
   /** Make a type error between static type DataT and expected_type **/
   template <typename DataT>
@@ -56,12 +58,15 @@ struct TypeError : public std::runtime_error {
   }
 };
 
-/** Exception indicating the requested operation does not match array schema **/
-struct SchemaMismatch : public std::runtime_error {
-  SchemaMismatch(const std::string &msg)
-      : std::runtime_error(msg) {
-  }
-};
+  /** Exception indicating the requested operation does not match array schema **/
+  struct SchemaMismatch : public TileDBError {
+    SchemaMismatch(const std::string &msg) : TileDBError(msg) {}
+  };
+
+  /** Error related to attributes **/
+  struct AttributeError : public TileDBError {
+    AttributeError(const std::string &msg) : TileDBError(msg) {}
+  };
 
 }  // namespace tdb
 
