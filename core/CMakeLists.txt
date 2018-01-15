@@ -56,6 +56,9 @@ target_include_directories(
     "${CMAKE_SOURCE_DIR}/external/include"
 )
 
+# C++ library, allow the VISIBLITY_PRESET for each c++ target to work
+cmake_policy(SET CMP0063 NEW) 
+
 # Create static library
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledb")
@@ -77,20 +80,6 @@ if (WIN32)
     target_link_libraries(tiledb_shared ${LIB})
   endforeach()
 endif()
-
-# C++ library
-cmake_policy(SET CMP0063 NEW) # ALlow the VISIBLITY_PRESET for each c++ target to work
-file(GLOB CPPAPI_SOURCE "src/cpp_api/*")
-
-# C++ library, static
-add_library(tdbpp_static STATIC ${CPPAPI_SOURCE})
-set_target_properties(tdbpp_static PROPERTIES OUTPUT_NAME "tdbpp")
-set_target_properties(tdbpp_static PROPERTIES CXX_VISIBILITY_PRESET "default")
-
-# C++ library, dynamic
-add_library(tdbpp_shared SHARED ${CPPAPI_SOURCE})
-set_target_properties(tdbpp_shared PROPERTIES OUTPUT_NAME "tdbpp")
-set_target_properties(tdbpp_shared PROPERTIES CXX_VISIBILITY_PRESET "default")
 
 # Install libraries
 install(
