@@ -195,13 +195,13 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 
-  // Check invalid parameter
+  // Check invalid parameters are ignored
   rc = tiledb_config_set(config, "sm.tile_cache_size", "10");
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "slkjs", "10");
+  rc = tiledb_config_set(config, "sm.unknown_config_param", "10");
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_create(&ctx, config);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 

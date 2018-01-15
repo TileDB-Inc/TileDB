@@ -98,12 +98,8 @@ Status Config::init() {
       RETURN_NOT_OK(set_vfs_s3_connect_timeout_ms(pv.second));
     } else if (pv.first == "vfs.s3.request_timeout_ms") {
       RETURN_NOT_OK(set_vfs_s3_request_timeout_ms(pv.second));
-    } else {
-      return LOG_STATUS(Status::ConfigError(
-          std::string("Invalid config parameter '") + pv.first + "'"));
     }
   }
-
   return Status::Ok();
 }
 
