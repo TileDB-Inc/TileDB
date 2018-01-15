@@ -147,6 +147,9 @@ extern const uint64_t max_write_bytes;
 /** The maximum name length. */
 extern const unsigned uri_max_len;
 
+/** The maximum file path length (depending on platform). */
+extern const unsigned path_max_len;
+
 /** The size of the buffer that holds the sorted cells. */
 extern const uint64_t sorted_buffer_size;
 

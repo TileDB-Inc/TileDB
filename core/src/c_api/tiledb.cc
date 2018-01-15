@@ -53,6 +53,10 @@ unsigned int tiledb_var_num() {
   return tiledb::constants::var_num;
 }
 
+unsigned int tiledb_max_path() {
+  return tiledb::constants::path_max_len;
+}
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
