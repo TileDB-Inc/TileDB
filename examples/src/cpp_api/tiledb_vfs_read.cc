@@ -41,9 +41,13 @@ int main() {
 
   {
     // Read string data
-    tdb::VFSFilebuf sbuf(vfs);
+    tdb::VFS::filebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.txt", std::ios::in);
     std::istream is(&sbuf);
+    if (!is.good()) {
+      std::cerr << "Error opening file.\n";
+      return 1;
+    }
 
     std::string field;
     while (std::getline(is, field, ' ')) {
@@ -53,9 +57,13 @@ int main() {
 
   {
     // Read binary data
-    tdb::VFSFilebuf sbuf(vfs);
+    tdb::VFS::filebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.bin", std::ios::in);
     std::istream is(&sbuf);
+    if (!is.good()) {
+      std::cerr << "Error opening file.\n";
+      return 1;
+    }
 
     float f1;
     std::string s1;

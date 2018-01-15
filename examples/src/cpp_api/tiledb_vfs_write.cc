@@ -39,15 +39,23 @@ int main() {
   tdb::Context ctx;
   tdb::VFS vfs(ctx);
 
-  tdb::VFSFilebuf sbuf(vfs);
+  tdb::VFS::filebuf sbuf(vfs);
   sbuf.open("tiledb_vfs.txt", std::ios::out);
   std::ostream os(&sbuf);
+  if (!os.good()) {
+    std::cerr << "Error opening file.\n";
+    return 1;
+  }
 
   // Write formatted output
   os << "tiledb " << 543 << " " << 123.4 << ' ';
 
   // Write binary data
   sbuf.open("tiledb_vfs.bin", std::ios::out);
+  if (!os.good()) {
+    std::cerr << "Error opening file.\n";
+    return 1;
+  }
   float f1 = 153.234;
   std::string s1 = "abcdefghijkl";
   os.write((char*)&f1, sizeof(f1));

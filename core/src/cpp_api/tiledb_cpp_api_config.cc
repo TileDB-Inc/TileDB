@@ -33,6 +33,7 @@
  */
 
 #include "tiledb_cpp_api_config.h"
+#include "tiledb_cpp_api_exception.h"
 
 namespace tdb {
 
@@ -49,7 +50,7 @@ Config::Config(const std::string& filename)
   create_config();
   int rc = tiledb_config_set_from_file(config_.get(), filename_.c_str());
   if (rc != TILEDB_OK)
-    throw std::runtime_error(
+    throw TileDBError(
         "[TileDB::C++API] Error: Failed to create config object; Could not set "
         "config file name");
 }
@@ -69,7 +70,7 @@ Config::operator tiledb_config_t*() const {
 Config& Config::set(const std::string& param, const std::string& value) {
   int rc = tiledb_config_set(config_.get(), param.c_str(), value.c_str());
   if (rc != TILEDB_OK)
-    throw std::runtime_error(
+    throw TileDBError(
         "[TileDB::C++API] Error: Failed to set config parameter");
   return *this;
 }
@@ -77,7 +78,7 @@ Config& Config::set(const std::string& param, const std::string& value) {
 Config& Config::unset(const std::string& param) {
   int rc = tiledb_config_unset(config_.get(), param.c_str());
   if (rc != TILEDB_OK)
-    throw std::runtime_error(
+    throw TileDBError(
         "[TileDB::C++API] Error: Failed to unset config parameter");
   return *this;
 }
@@ -90,7 +91,7 @@ void Config::create_config() {
   tiledb_config_t* config;
   int rc = tiledb_config_create(&config);
   if (rc != TILEDB_OK)
-    throw std::runtime_error(
+    throw TileDBError(
         "[TileDB::C++API] Error: Failed to create config object");
 
   config_ = std::shared_ptr<tiledb_config_t>(config, tiledb_config_free);

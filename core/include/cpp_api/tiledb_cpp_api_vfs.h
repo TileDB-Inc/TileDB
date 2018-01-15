@@ -42,6 +42,9 @@
 #include <memory>
 
 namespace tdb {
+  namespace impl {
+    class VFSFilebuf;
+  }
 
 /**
  * Implements a virtual filesystem that enables performing directory/file
@@ -53,6 +56,8 @@ class VFS {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  using filebuf = impl::VFSFilebuf;
 
   /**
    * Constructor.

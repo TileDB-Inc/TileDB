@@ -309,7 +309,7 @@ class Query {
       type_check<DataT>(array_attributes_.at(attr).type());
       if (varcmp ==
           (schema_.attributes().at(attr).cell_val_num() == TILEDB_VAR_NUM)) {
-        throw std::invalid_argument(
+        throw AttributeError(
             "Offsets must be provided for variable-lengthed attributes.");
       }
     }
@@ -535,7 +535,7 @@ class Query {
     if (array_attributes_.count(attr)) {
       cell_val_num = array_attributes_.at(attr).cell_val_num();
       if (cell_val_num != TILEDB_VAR_NUM)
-        throw std::invalid_argument(
+        throw AttributeError(
             "Offsets provided for fixed size attribute.");
     }
 

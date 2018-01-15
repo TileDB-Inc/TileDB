@@ -44,6 +44,7 @@
 #include <streambuf>
 
 namespace tdb {
+namespace impl {
 
 /**
  * @brief
@@ -90,8 +91,7 @@ class VFSFilebuf : public std::streambuf {
    * Open a file.
    *
    * @param uri
-   * @param openmode Must be either (std::ios::in) or (std::ios::out |
-   * std::ios::app)
+   * @param openmode Must be either std::ios::in or std::ios::out
    */
   VFSFilebuf *open(
       const std::string &uri, std::ios::openmode openmode = std::ios::in);
@@ -134,8 +134,6 @@ class VFSFilebuf : public std::streambuf {
    */
   pos_type seekpos(pos_type pos, std::ios::openmode openmode) override;
 
-  /** Sync all writes to the file **/
-  int_type sync() override;
 
   /* ********************************* */
   /*           PROTECTED GET           */
@@ -213,6 +211,7 @@ class VFSFilebuf : public std::streambuf {
   uint64_t offset_ = 0;
 };
 
+}  // namespace impl
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_VFS_STREAMBUF_H

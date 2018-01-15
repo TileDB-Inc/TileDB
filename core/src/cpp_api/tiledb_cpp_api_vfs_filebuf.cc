@@ -33,8 +33,10 @@
  */
 
 #include "tiledb_cpp_api_vfs_filebuf.h"
+#include "tiledb_cpp_api_exception.h"
 
 namespace tdb {
+namespace impl {
 
 /* ********************************* */
 /*            PUBLIC API             */
@@ -45,31 +47,35 @@ VFSFilebuf *VFSFilebuf::open(
   close();
 
   // Check mode
-  if (!(openmode & std::ios::out) && !(openmode & std::ios::in))
+  if (openmode != std::ios::in && openmode != std::ios::out)
     return nullptr;
 
-  // TODO:  try {
-  bool is_file = vfs_.get().is_file(uri);
-  if (is_file) {
-    // In case of writes, delete the file (overwrite)
-    if ((openmode & std::ios::out))
-      vfs_.get().remove_file(uri);
+  try {
+    bool is_file = vfs_.get().is_file(uri);
+    if (is_file) {
+      // In case of writes, delete the file (overwrite)
+      if ((openmode & std::ios::out))
+        vfs_.get().remove_file(uri);
 
-    uri_ = uri;
-    seekoff(0, std::ios::beg, openmode);
-  } else if (openmode & std::ios::in) {  // File does not exist
+      uri_ = uri;
+      seekoff(0, std::ios::beg, openmode);
+    } else if (openmode & std::ios::in) {  // File does not exist
+      return nullptr;
+    }
+  } catch (TileDBError &e) {
     return nullptr;
   }
-  // TODO:  } catch { // TODO: change this to catch TileDB exception
-  // TODO:    return nullptr;
-  // TODO:  }
 
   return this;
 }
 
 VFSFilebuf *VFSFilebuf::close() {
   if (is_open()) {
-    sync();
+    try {
+      vfs_.get().sync(uri_);
+    } catch (TileDBError &e) {
+      return nullptr;
+    }
     uri_ = "";
     return this;
   }
@@ -128,12 +134,6 @@ std::streambuf::pos_type VFSFilebuf::seekpos(
   return std::streampos(pos);
 }
 
-std::streambuf::int_type VFSFilebuf::sync() {
-  // TODO: catch exception here. don't know what to do in case we catch one.
-  vfs_.get().sync(uri_);
-  return traits_type::to_int_type(0);
-}
-
 /* ********************************* */
 /*           PROTECTED GET           */
 /* ********************************* */
@@ -150,8 +150,11 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   }
   if (readlen == 0)
     return traits_type::eof();
-  // TODO: catch exception here. don't know what to do in case we catch one.
-  vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
+  try {
+    vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
+  } catch (TileDBError &e) {
+      return traits_type::eof();
+    }
   offset_ += readlen;
   return readlen;
 }
@@ -180,8 +183,11 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
   if (offset_ != file_size())
     return traits_type::eof();
-  // TODO: catch exception here. don't know what to do in case we catch one.
-  vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
+  try {
+    vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
+  } catch (TileDBError &e) {
+    return traits_type::eof();
+  }
   offset_ += n;
   return n;
 }
@@ -200,8 +206,12 @@ std::streambuf::int_type VFSFilebuf::overflow(int_type c) {
 /* ********************************* */
 
 uint64_t VFSFilebuf::file_size() const {
-  // TODO: catch exception here. don't know what to do in case we catch one.
-  return vfs_.get().file_size(uri_);
+  try {
+    return vfs_.get().file_size(uri_);
+  } catch (TileDBError &e) {
+    return 0;
+  }
 }
 
+}  // namespace impl
 }  // namespace tdb

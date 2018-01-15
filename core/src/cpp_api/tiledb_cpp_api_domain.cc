@@ -61,7 +61,7 @@ Domain::Domain(const Context &ctx, tiledb_domain_t *domain)
 uint64_t Domain::cell_num() const {
   auto type = this->type();
   if (type == TILEDB_FLOAT32 || type == TILEDB_FLOAT64)
-    throw std::runtime_error(
+    throw TileDBError(
         "[TileDB::C++API::Domain] Cannot compute number of cells for a "
         "non-integer domain");
 
@@ -85,7 +85,7 @@ uint64_t Domain::cell_num() const {
     case TILEDB_UINT64:
       return cell_num<uint64_t>();
     default:
-      throw std::runtime_error(
+      throw TileDBError(
           "[TileDB::C++API::Domain] Cannot compute number of cells; Unknown "
           "domain type");
   }

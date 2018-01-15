@@ -155,7 +155,7 @@ void Query::prepare_submission() {
 
   for (const auto &a : attrs_) {
     if (attr_buffs_.count(a) == 0) {
-      throw std::runtime_error("No buffer for attribute " + a);
+      throw AttributeError("No buffer for attribute " + a);
     }
     if (var_offsets_.count(a)) {
       std::tie(bufsize, tsize, ptr) = var_offsets_[a];
