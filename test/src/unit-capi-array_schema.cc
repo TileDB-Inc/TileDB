@@ -36,6 +36,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 #include "catch.hpp"
 #ifdef _WIN32
@@ -44,6 +45,7 @@
 #include "posix_filesystem.h"
 #endif
 #include "tiledb.h"
+#include "utils.h"
 
 struct ArrayMetadataFx {
 // Filesystem related
@@ -51,8 +53,9 @@ struct ArrayMetadataFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  const std::string S3_BUCKET = "s3://tiledb";
-  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
+  const std::string S3_PREFIX = "s3://";
+  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
@@ -109,6 +112,7 @@ struct ArrayMetadataFx {
   void delete_array(const std::string& path);
   bool is_array(const std::string& path);
   void load_and_check_array_schema(const std::string& path);
+  static std::string random_bucket_name(const std::string& prefix);
 };
 
 ArrayMetadataFx::ArrayMetadataFx() {
@@ -140,6 +144,15 @@ ArrayMetadataFx::ArrayMetadataFx() {
 }
 
 ArrayMetadataFx::~ArrayMetadataFx() {
+#ifdef HAVE_S3
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  CHECK(rc == TILEDB_OK);
+  if (is_bucket) {
+    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  }
+#endif
+
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
@@ -470,6 +483,13 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_free(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
+}
+
+std::string ArrayMetadataFx::random_bucket_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::utils::timestamp_ms();
+  return ss.str();
 }
 
 TEST_CASE_METHOD(

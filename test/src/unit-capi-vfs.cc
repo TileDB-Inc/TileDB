@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "tiledb.h"
+#include "utils.h"
 #ifdef _WIN32
 #include "win_filesystem.h"
 #else
@@ -39,14 +40,16 @@
 #endif
 
 #include <iostream>
+#include <thread>
 
 struct VFSFx {
 #ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  const std::string S3_BUCKET = "s3://tiledb/";
-  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
+  const std::string S3_PREFIX = "s3://";
+  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #endif
 #ifdef _WIN32
   const std::string FILE_TEMP_DIR =
@@ -69,6 +72,7 @@ struct VFSFx {
   void check_read(const std::string& path);
   void check_append(const std::string& path);
   void check_append_after_sync(const std::string& path);
+  static std::string random_bucket_name(const std::string& prefix);
 };
 
 VFSFx::VFSFx() {
@@ -311,7 +315,7 @@ void VFSFx::check_move(const std::string& path) {
 // Move from one bucket to another (only for S3)
 #ifdef HAVE_S3
   if (path == S3_TEMP_DIR) {
-    std::string bucket2 = "s3://tiledb2/";
+    std::string bucket2 = S3_PREFIX + random_bucket_name("tiledb") + "/";
     std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
     std::string file3 = subdir3 + "file2";
     int is_bucket = 0;
@@ -467,6 +471,13 @@ file.c_str(), &file_size); REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
    */
+}
+
+std::string VFSFx::random_bucket_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::utils::timestamp_ms();
+  return ss.str();
 }
 
 TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {

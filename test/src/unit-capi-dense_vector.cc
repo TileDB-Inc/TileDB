@@ -37,6 +37,9 @@
 #include "posix_filesystem.h"
 #endif
 #include "tiledb.h"
+#include "utils.h"
+
+#include <thread>
 
 struct DenseVectorFx {
   const char* ATTR_NAME = "val";
@@ -47,8 +50,9 @@ struct DenseVectorFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif
 #ifdef HAVE_S3
-  const tiledb::URI S3_BUCKET = tiledb::URI("s3://tiledb");
-  const std::string S3_TEMP_DIR = "s3://tiledb/tiledb_test/";
+  const std::string S3_PREFIX = "s3://";
+  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
@@ -73,6 +77,7 @@ struct DenseVectorFx {
   void check_update(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
+  static std::string random_bucket_name(const std::string& prefix);
 };
 
 DenseVectorFx::DenseVectorFx() {
@@ -103,6 +108,15 @@ DenseVectorFx::DenseVectorFx() {
 }
 
 DenseVectorFx::~DenseVectorFx() {
+#ifdef HAVE_S3
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+  CHECK(rc == TILEDB_OK);
+  if (is_bucket) {
+    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  }
+#endif
+
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
@@ -117,6 +131,13 @@ void DenseVectorFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
+}
+
+std::string DenseVectorFx::random_bucket_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::utils::timestamp_ms();
+  return ss.str();
 }
 
 void DenseVectorFx::create_dense_vector(const std::string& path) {
