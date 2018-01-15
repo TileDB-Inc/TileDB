@@ -64,7 +64,6 @@ int main() {
       "effggghhhh"   // Upper right tile
       "ijjkkkllll"   // Lower left tile
       "mnnooopppp";  // Lower right tile
-  std::vector<char> a2_data(a2str.begin(), a2str.end());
   std::vector<uint64_t> a2_offsets = {
       0,
       1,
@@ -94,7 +93,7 @@ int main() {
   tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
 
   query.submit();

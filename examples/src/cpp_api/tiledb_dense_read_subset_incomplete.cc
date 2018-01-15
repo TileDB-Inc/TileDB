@@ -50,7 +50,7 @@ int main() {
 
   // Limit buff size to 2
   auto a1_data = query.make_buffer<int>("a1", 2);
-  query.set_buffer<int>("a1", a1_data);
+  query.set_buffer("a1", a1_data);
 
   std::cout << "a1\n---\n";
   do {

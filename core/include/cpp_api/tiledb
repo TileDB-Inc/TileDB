@@ -55,4 +55,6 @@
 #include "tiledb_cpp_api_vfs.h"
 #include "tiledb_cpp_api_vfs_filebuf.h"
 
+namespace tiledb = tdb;
+
 #endif // TILEDB_CPP_H

@@ -137,19 +137,19 @@ class Query {
 
   /** Sets a buffer for a fixed-sized attrobute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
-  set_buffer(const std::string &attr, std::vector<T> &buf) {
-    return set_buffer<typename impl::type_from_native<T>::type>(attr, buf);
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
+  set_buffer(const std::string &attr, T &buf) {
+    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf);
   }
 
   /** Sets a buffer for a variable-sized attrobute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
   set_buffer(
       const std::string &attr,
       std::vector<uint64_t> &offsets,
-      std::vector<T> &buf) {
-    return set_buffer<typename impl::type_from_native<T>::type>(
+      T &buf) {
+    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
         attr, offsets, buf);
   }
 
@@ -363,12 +363,15 @@ class Query {
    * @param buf Data buffer
    * @return *this
    */
-  template <typename T>
-  Query &set_buffer(
-      const std::string &attr, std::vector<typename T::type> &buf) {
+  template <typename T, typename Vec>
+  typename std::enable_if<std::is_same<typename Vec::value_type, typename T::type>::value, Query>::type
+  &set_buffer(
+      const std::string &attr, Vec &buf) {
     type_check_attr<T>(attr, true);
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
-        buf.size(), sizeof(typename T::type), buf.data());
+        static_cast<uint64_t>(buf.size()),
+        sizeof(typename T::type),
+        const_cast<void*>(reinterpret_cast<const void*>(buf.data()))); // To enable const char * storage
     attrs_.insert(attr);
     return *this;
   }
@@ -382,16 +385,19 @@ class Query {
    * @param data Data buffer
    * @return *this
    */
-  template <typename T>
-  Query &set_buffer(
+  template <typename T, typename Vec>
+  typename std::enable_if<std::is_same<typename Vec::value_type, typename T::type>::value, Query>::type
+  &set_buffer(
       const std::string &attr,
       std::vector<uint64_t> &offsets,
-      std::vector<typename T::type> &data) {
+      Vec &data) {
     type_check_attr<T>(attr, false);
     var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
         offsets.size(), sizeof(uint64_t), offsets.data());
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
-        data.size(), sizeof(typename T::type), data.data());
+        static_cast<uint64_t>(data.size()),
+        sizeof(typename T::type),
+        const_cast<void*>(reinterpret_cast<const void*>(data.data()))); // To enable const char * storage
     attrs_.insert(attr);
     return *this;
   }

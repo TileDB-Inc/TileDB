@@ -58,10 +58,10 @@ int main() {
       211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
   std::vector<uint64_t> coords = {4, 2, 3, 4, 3, 3, 3, 1};
 
-  query.set_buffer<int>("a1", a1_data);
-  query.set_buffer<char>("a2", a2buff);
-  query.set_buffer<float>("a3", a3_data);
-  query.set_buffer<uint64_t>(TILEDB_COORDS, coords);
+  query.set_buffer("a1", a1_data);
+  query.set_buffer("a2", a2buff);
+  query.set_buffer("a3", a3_data);
+  query.set_buffer(TILEDB_COORDS, coords);
 
   query.submit();
   return 0;

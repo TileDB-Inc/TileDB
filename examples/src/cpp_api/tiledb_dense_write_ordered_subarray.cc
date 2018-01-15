@@ -49,12 +49,11 @@ int main() {
   std::vector<int> a1_data = {9, 12, 13, 11, 14, 15};
   std::vector<uint64_t> a2_offsets = {0, 2, 3, 5, 9, 12};
   const std::string a2str = "jjmnnllllooopppp";
-  std::vector<char> a2_data{a2str.begin(), a2str.end()};
   std::vector<float> a3_data = {
       9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
 
   query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
 
   query.submit();
