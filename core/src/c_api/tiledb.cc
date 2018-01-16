@@ -1255,7 +1255,9 @@ int tiledb_attribute_from_name(
   auto found_attr = array_schema->array_schema_->attribute(name_string);
   if (found_attr == nullptr) {
     tiledb::Status st = tiledb::Status::ArraySchemaError(
-        std::string("Attribute name: ") + name + " does not exist for array " +
+        std::string("Attribute name: ") +
+        (name_string.empty() ? "<anonymous>" : name) +
+        " does not exist for array " +
         array_schema->array_schema_->array_uri().to_string());
     LOG_STATUS(st);
     save_error(ctx, st);
