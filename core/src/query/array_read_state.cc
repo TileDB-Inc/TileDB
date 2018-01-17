@@ -120,10 +120,10 @@ ArrayReadState::~ArrayReadState() {
 /* ****************************** */
 
 bool ArrayReadState::overflow() const {
-  auto attribute_num = (unsigned int)query_->attribute_ids().size();
-  for (unsigned int i = 0; i < attribute_num; ++i)
+  for (unsigned int i = 0; i < attribute_num_ + 1; ++i) {
     if (overflow_[i])
       return true;
+  }
 
   return false;
 }

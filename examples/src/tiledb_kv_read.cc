@@ -37,6 +37,7 @@
  */
 
 #include <tiledb.h>
+#include <cassert>
 #include <iostream>
 #include <string>
 
@@ -45,11 +46,6 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
 
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3"};
-  tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-  unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
-
   // Prepare key
   int key = 100;
   tiledb_datatype_t key_type = TILEDB_INT32;
@@ -57,40 +53,42 @@ int main() {
 
   // Create key-values
   tiledb_kv_t* kv;
-  tiledb_kv_create(ctx, &kv, 3, attributes, types, nitems);
+  tiledb_kv_open(ctx, &kv, "my_kv", nullptr, 0);
 
-  // Create query
-  tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, "my_kv", TILEDB_READ);
-  tiledb_query_set_kv_key(ctx, query, &key, key_type, key_size);
-  tiledb_query_set_kv(ctx, query, kv);
+  // Get key-value item
+  tiledb_kv_item_t* kv_item = nullptr;
+  tiledb_kv_get_item(ctx, kv, &kv_item, &key, key_type, key_size);
 
-  // Submit query
-  tiledb_query_submit(ctx, query);
+  // Check if item exists
+  if (kv_item == nullptr) {
+    std::cout << "Item does not exist.\n";
+    return 0;
+  }
 
-  // Key is not retrieved
-  void* key_r;
-  uint64_t key_size_r;
-  tiledb_datatype_t key_type_r;
-  if (tiledb_kv_get_key(ctx, kv, 0, &key_r, &key_type_r, &key_size_r) ==
-      TILEDB_ERR)
-    printf("Key attributes are not retrieved when reading with a single key\n");
+  // Get values
+  const void *a1, *a2, *a3;
+  tiledb_datatype_t a1_type, a2_type, a3_type;
+  uint64_t a1_size, a2_size, a3_size;
+  tiledb_kv_item_get_value(ctx, kv_item, "a1", &a1, &a1_type, &a1_size);
+  tiledb_kv_item_get_value(ctx, kv_item, "a2", &a2, &a2_type, &a2_size);
+  tiledb_kv_item_get_value(ctx, kv_item, "a3", &a3, &a3_type, &a3_size);
+
+  // Verify correct types
+  assert(
+      a1_type == TILEDB_INT32 && a2_type == TILEDB_CHAR &&
+      a3_type == TILEDB_FLOAT32);
 
   // Print result
-  void *a1, *a2, *a3;
-  uint64_t a2_size;
   std::cout << "a1, a2, (a3.first, a3.second)\n";
   std::cout << "-----------------------------\n";
-  tiledb_kv_get_value(ctx, kv, 0, 0, &a1);
-  tiledb_kv_get_value_var(ctx, kv, 0, 1, &a2, &a2_size);
-  tiledb_kv_get_value(ctx, kv, 0, 2, &a3);
-  std::cout << *((int*)a1);
+  std::cout << *((const int*)a1);
   std::cout << ", " << std::string((const char*)a2, a2_size);
-  std::cout << ", (" << ((float*)a3)[0] << ", " << ((float*)a3)[1] << ")\n";
+  std::cout << ", (" << ((const float*)a3)[0] << ", " << ((const float*)a3)[1]
+            << ")\n";
 
   // Clean up
-  tiledb_kv_free(ctx, kv);
-  tiledb_query_free(ctx, query);
+  tiledb_kv_close(ctx, kv);
+  tiledb_kv_item_free(ctx, kv_item);
   tiledb_ctx_free(ctx);
 
   return 0;

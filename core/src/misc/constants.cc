@@ -315,7 +315,10 @@ const char* kv_filename = "__kv.tdb";
  * Default size to be allocated for an internal key-value buffer when reading
  * from a key-value store.
  */
-uint64_t kv_buffer_size = 100000;
+uint64_t kv_buffer_size = 1000;
+
+/** Maximum number of items to be buffered before a flush. */
+uint64_t kv_max_items = 1000;
 
 /** A directory file suffix (in S3, directories are also files). */
 const char* s3_dir_suffix = ".dir";

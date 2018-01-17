@@ -321,7 +321,8 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
 
   // get first attribute by index
   tiledb_attribute_t* attr;
-  rc = tiledb_attribute_from_index(ctx_, array_schema, 0, &attr);
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, array_schema, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   const char* attr_name;
@@ -331,7 +332,8 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   tiledb_attribute_free(ctx_, attr);
 
   // get first attribute by name
-  rc = tiledb_attribute_from_name(ctx_, array_schema, ATTR_NAME, &attr);
+  rc = tiledb_array_schema_get_attribute_from_name(
+      ctx_, array_schema, ATTR_NAME, &attr);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
@@ -356,7 +358,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   CHECK(cell_val_num == CELL_VAL_NUM);
 
   unsigned int num_attributes = 0;
-  rc = tiledb_array_schema_get_num_attributes(
+  rc = tiledb_array_schema_get_attribute_num(
       ctx_, array_schema, &num_attributes);
   REQUIRE(rc == TILEDB_OK);
   CHECK(num_attributes == 1);
@@ -369,7 +371,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   // Check first dimension
   // get first dimension by name
   tiledb_dimension_t* dim;
-  rc = tiledb_dimension_from_name(ctx_, domain, DIM1_NAME, &dim);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, DIM1_NAME, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   const char* dim_name;
@@ -381,7 +383,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // get first dimension by index
-  rc = tiledb_dimension_from_index(ctx_, domain, 0, &dim);
+  rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 0, &dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
@@ -402,7 +404,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
 
   // Check second dimension
   // get second dimension by name
-  rc = tiledb_dimension_from_name(ctx_, domain, DIM2_NAME, &dim);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, DIM2_NAME, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
@@ -413,7 +415,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // get from index
-  rc = tiledb_dimension_from_index(ctx_, domain, 1, &dim);
+  rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 1, &dim);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
@@ -429,7 +431,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[1], TILE_EXTENT_SIZE));
 
   // check that indexing > 1 returns an error for this domain
-  rc = tiledb_dimension_from_index(ctx_, domain, 2, &dim);
+  rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 2, &dim);
   CHECK(rc != TILEDB_OK);
 
   // check that the rank of the domain is 2
@@ -552,12 +554,12 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_dimension_t* get_dim = nullptr;
-  rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "", &get_dim);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_dimension_free(ctx_, get_dim);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_dimension_from_name(ctx_, domain, "d2", &get_dim);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d2", &get_dim);
   const char* get_name = nullptr;
   CHECK(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, get_dim, &get_name);
@@ -599,11 +601,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_dimension_t* get_dim = nullptr;
-  rc = tiledb_dimension_from_name(ctx_, domain, "", &get_dim);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "", &get_dim);
   // getting multiple anonymous dimension by name is an error
   CHECK(rc == TILEDB_ERR);
 
-  rc = tiledb_dimension_from_index(ctx_, domain, 0, &get_dim);
+  rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 0, &get_dim);
   CHECK(rc == TILEDB_OK);
   CHECK(get_dim != nullptr);
   rc = tiledb_dimension_free(ctx_, get_dim);
@@ -656,14 +658,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_attribute_t* get_attr = nullptr;
-  rc = tiledb_attribute_from_name(ctx_, array_schema, "", &get_attr);
+  rc = tiledb_array_schema_get_attribute_from_name(
+      ctx_, array_schema, "", &get_attr);
   // from name when there are multiple anon attributes is an error
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   rc = tiledb_attribute_free(ctx_, get_attr);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_from_name(ctx_, array_schema, "foo", &get_attr);
+  rc = tiledb_array_schema_get_attribute_from_name(
+      ctx_, array_schema, "foo", &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   const char* get_name = nullptr;
@@ -724,10 +728,12 @@ TEST_CASE_METHOD(
   CHECK(rc != TILEDB_OK);
 
   tiledb_attribute_t* get_attr = nullptr;
-  rc = tiledb_attribute_from_name(ctx_, array_schema, "", &get_attr);
+  rc = tiledb_array_schema_get_attribute_from_name(
+      ctx_, array_schema, "", &get_attr);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_from_index(ctx_, array_schema, 0, &get_attr);
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, array_schema, 0, &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   rc = tiledb_attribute_free(ctx_, get_attr);

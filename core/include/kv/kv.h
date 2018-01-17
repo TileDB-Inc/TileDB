@@ -1,5 +1,5 @@
 /**
- * @file   kv_item.h
+ * @file   kv.h
  *
  * @section LICENSE
  *
@@ -33,25 +33,29 @@
 #ifndef TILEDB_KV_H
 #define TILEDB_KV_H
 
+#include "storage_manager.h"
+
 #include "array_type.h"
 #include "buffer.h"
 #include "datatype.h"
+#include "kv_item.h"
 #include "query_type.h"
 #include "status.h"
 
 #include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
 namespace tiledb {
 
 /**
- * This class enables storing key-value items, which are used for writing to or
- * reading from a TileDB array. The keys can have arbitrary types and sizes.
- * Each value can have an arbitrary number of attributes, with arbitrary types.
- * The underlying TileDB array that store such a key-value store is a 2D sparse
- * array, where the coordinates are computed on the keys as a 16-byte
- * (2 * uint64_t) MD5 digest.
+ * This is a key-value store. It enables both reading/writing with
+ * thread- and process-safety. Upon writes, the written items are
+ * available for reading. Written items are buffered and periodically
+ * flushed into the disk. The user can call `flush` to force-write
+ * the buffered items to the disk at any point. All items are
+ * flushed upon `close` or destroying a `KV` object.
  */
 class KV {
  public:
@@ -59,20 +63,8 @@ class KV {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Empty constructor. */
-  KV() = default;
-
-  /**
-   * Constructor.
-   *
-   * @param attributes The attributes in the key-value store.
-   * @param types The types of the attributes.
-   * @param nitems The number of items that each attribute value can store
-   *     (can be variable).
-   */
-  KV(const std::vector<std::string>& attributes,
-     const std::vector<tiledb::Datatype>& types,
-     const std::vector<unsigned int>& nitems);
+  /** Constructor. */
+  explicit KV(StorageManager* storage_manager);
 
   /** Destructor. */
   ~KV();
@@ -81,168 +73,51 @@ class KV {
   /*                API                */
   /* ********************************* */
 
+  /** Adds a key-value item to the store. */
+  Status add_item(const KVItem* kv_item);
+
+  /** Flushes the buffered written items to persistent storage. */
+  Status flush();
+
   /**
-   * Adds a key to the store.
+   * Gets a key-value item from the key-value store.
    *
-   * @param key The key to be stored.
+   * @param key The key to query on.
    * @param key_type The key type.
    * @param key_size The key size.
+   * @param kv_item The key-value item result.
    * @return Status
    */
-  Status add_key(const void* key, Datatype key_type, uint64_t key_size);
+  Status get_item(
+      const void* key, Datatype key_type, uint64_t key_size, KVItem** kv_item);
 
   /**
-   * Adds a (fixed-sized) value to the store on a particular attribute.
-   * The function will return an error if the attribute index is out
-   * of bounds, or if the attribute is variable-sized.
+   * Opens the key-value store for reading/writing.
    *
-   * @param attribute_idx The index of the attribute that will store the value.
-   * @param value The value to be stored.
-   * @return Status
-   */
-  Status add_value(unsigned int attribute_idx, const void* value);
-
-  /**
-   * Adds a variable-sized value to the store on a particular attribute.
-   * The function will return an error if the attribute index is out
-   * of bounds, or if the attribute is fixed-sized.
-   *
-   * @param attribute_idx The index of the attribute that will store the value.
-   * @param value The value to be stored.
-   * @param value_size The value size.
-   * @return Status
-   */
-  Status add_value(
-      unsigned int attribute_idx, const void* value, uint64_t value_size);
-
-  /**
-   * This function is used to retrieve the attribute names and number
-   * that will be used when writing the key-value store to a TileDB
-   * array, or reading a key-value store from a TileDB array. The
-   * calculation depends on whether the key attributes and/or coordinates
-   * will participate in the query or not.
-   *
-   * @param attributes The attributes names to be retrieved.
-   * @param attribute_num The number of attributes retrieved.
-   * @param get_coords It should be `true` if the coordinates will participate
-   *     in the query (this happens when the query is a write query).
-   * @param get_key It should be `true` if the key attributes will participate
-   *     in the query.
-   * @return Status
-   */
-  Status get_array_attributes(
-      const char*** attributes,
-      unsigned int* attribute_num,
-      bool get_coords,
-      bool get_key);
-
-  /**
-   * Retrieves the buffers and buffer sizes to be used when writing the
-   * key-value store into a TileDB array, or reading the key-value store
-   * from a TileDB array. The buffers follow the
-   * order of attributes returned from `get_array_attributes`. There will be
-   * one buffer per fixed-sized attribute, and two buffers per variable-sized
-   * attribute.
-   *
-   * @param buffers The buffers to be retrieved.
-   * @param buffer_sizes the buffer sizes to be retrieved.
+   * @param uri The URI of the key-value store.
+   * @param attributes The attributes of the key-value store schema to focus on.
+   *     Use `nullptr` to indicate **all** attributes.
+   * @param attribute_num The number of attributes.
    * @return Status
    *
-   * @note `get_array_attributes` must be invoked before this function to
-   *     calculate the corresponding attributes involved, otherwise an error
-   *     will be returned.
+   * @note If the key-value store will be used for writes, `attributes` **must**
+   *     be set to `nullptr`, indicating that all attributes will participate in
+   *     the write.
    */
-  Status get_array_buffers(void*** buffers, uint64_t** buffer_sizes);
+  Status open(
+      const std::string& uri, const char** attributes, unsigned attribute_num);
+
+  /** Clears the key-value store. */
+  void clear();
 
   /**
-   * Retrieves a key based on a provided index.
-   *
-   * @param idx The index of the key to be retrieved.
-   * @param key The key to be retrieved. Note that essentially only a pointer
-   *     to the internal key buffers is retrieved.
-   * @param key_type They key type.
-   * @param key_size The key size.
-   * @return Status
-   *
-   * @note No particular order is assumed on the keys.
+   * Closes teh key-value store and frees all memory. All buffered values will
+   * be flushed to persistent storage.
    */
-  Status get_key(
-      uint64_t idx, void** key, Datatype* key_type, uint64_t* key_size) const;
+  Status close();
 
-  /**
-   * Retrieves a value based on an object and attribute index.
-   *
-   * @param obj_idx The object index.
-   * @param attr_idx The attribute index. The order of the attributes is the
-   *     same as that used in the constructor.
-   * @param value The value to be retrieved. Note that only a pointer to the
-   *     internal value buffer is retrieved.
-   * @return Status
-   *
-   * @note No particular order is assumed on the values.
-   */
-  Status get_value(uint64_t obj_idx, unsigned int attr_idx, void** value) const;
-
-  /**
-   * Retrieves a variable-sized value based on an object and attribute index.
-   *
-   * @param obj_idx The object index.
-   * @param attr_idx The attribute index. The order of the attributes is the
-   *     same as that used in the constructor.
-   * @param value The value to be retrieved. Note that obly a pointer to the
-   *     internal value buffer is retrieved.
-   * @param value_size The size of the value to be retrieved.
-   * @return Status
-   *
-   * @note No particular order is assumed on the values.
-   */
-  Status get_value(
-      uint64_t obj_idx,
-      unsigned int attr_idx,
-      void** value,
-      uint64_t* value_size) const;
-
-  /** Returns the number of keys in the key-value store. */
-  uint64_t key_num() const;
-
-  /**
-   * Sets the size to be allocated for the internal buffers. This is applicable
-   * when the key-value store is read from a TileDB array, so pre-allocation
-   * provides control over memory management.
-   *
-   * @param nbytes Size to be set.
-   */
-  void set_buffer_alloc_size(uint64_t nbytes);
-
-  /**
-   * Retrieves the number of values on a particular attribute in the key-value
-   * store.
-   */
-  Status value_num(unsigned int attribute_idx, uint64_t* num) const;
-
-  /* ********************************* */
-  /*         STATIC FUNCTIONS          */
-  /* ********************************* */
-
-  /**
-   * Computes the (unary) subarray for a particular key. The single pair of
-   * coordinates that defines this subarray is computed as the 16-byte
-   * (2 * uint64_t) MD5 digest of the <key_type | key_size | key> tuple.
-   * The subarray result is will be stored
-   * in the user-provided uint64_t[4] array `subarray`.
-   *
-   * @param key The key.
-   * @param key_type The key type.
-   * @param key_size The key size.
-   * @param subarray This will store the result. The user must make sure that
-   *     this is a 4-element uint64_t array.
-   * @return void
-   */
-  static void compute_subarray(
-      const void* key,
-      Datatype key_type,
-      uint64_t key_size,
-      uint64_t* subarray);
+  /** Sets the number of maximum written items buffered before being flushed. */
+  Status set_max_items(uint64_t max_items);
 
  private:
   /* ********************************* */
@@ -250,109 +125,185 @@ class KV {
   /* ********************************* */
 
   /**
-   * Stores the attribute names to be used when this key-value store is written
-   * into or read from a TileDB array.
+   * The attributes with which the key-value store is opened.
+   * Note that these exclude the special key attributes and coordinates.
    */
-  const char** array_attributes_;
-
-  /**
-   * Stores the number of attributes to be used when this key-value store is
-   * written into or read from a TileDB array.
-   */
-  unsigned int array_attribute_num_;
-
-  /**
-   * Stores the buffers to be used when this key-value store is written
-   * into or read from a TileDB array.
-   */
-  void** array_buffers_;
-
-  /**
-   * Stores the buffer sizes to be used when this key-value store is written
-   * into or read from a TileDB array.
-   */
-  uint64_t* array_buffer_sizes_;
-
-  /** The number of array buffers created. */
-  unsigned int array_buffer_num_;
-
-  /**
-   * For each attribute, it stores the index of its corresponding buffer
-   * in `array_buffers_`. For variable-sized attributes, this is the index
-   * to the corresponding offsets buffer.
-   */
-  std::vector<unsigned int> array_buffer_idx_;
-
-  /** The attributes of the key-value store. */
   std::vector<std::string> attributes_;
 
-  /** Number of attributes. */
-  unsigned int attribute_num_;
-
-  /** The size to be allocated for the internal buffers upon reads. */
-  uint64_t buffer_alloc_size_;
+  /**
+   * Indicates whether an attribute is variable-sized or not.
+   * There is a one-to-one correspondence with `read_attributes_`.
+   * This is a map (attribute) -> (`true` for var size or `false` otherwise)
+   */
+  std::vector<bool> read_attribute_var_sizes_;
 
   /**
-   * The buffer for the coordinates to be calculated on the keys and
-   * key types upon writes.
+   * Types of `read_attributes_`. This is necessary when getting key-value
+   * items, since these should also store the types of each
+   * attribute value.
    */
-  Buffer buff_coords_;
+  std::vector<Datatype> read_attribute_types_;
+
+  /** These are the attributes to be passed to a TileDB read query. */
+  char** read_attributes_;
+
+  /** The number of read query attributes. */
+  unsigned read_attribute_num_;
+
+  /** Buffers to be used in read queries. */
+  void** read_buffers_;
+
+  /** The read buffer sizes. */
+  uint64_t* read_buffer_sizes_;
+
+  /** The number of read buffers. */
+  unsigned read_buffer_num_;
 
   /**
-   * Buffers for the attribute value offsets (one per attribute). This
-   * is applicable only to variable-sized attributes. For the fixed-sized
-   * ones, the corresponding buffer will just be empty.
+   * Buffers holding the actual data to be read across all attributes.
+   * The buffers are sorted in the order the attributes are sorted
+   * in `read_attributes_`. Note that a variable-sized attribute
+   * adds two adjacent buffers in the vector, the first is for offsets
+   * and the second for the actual variable data.
    */
-  std::vector<Buffer> buff_value_offsets_;
+  std::vector<Buffer*> read_buff_vec_;
 
-  /** Buffers for the attribute values (one per attribute). */
-  std::vector<Buffer> buff_values_;
+  /**
+   * Indicates whether an attribute is variable-sized or not.
+   * There is a one-to-one correspondence with `write_attributes_`.
+   * This is a map (attribute) -> (`true` for var size or `false` otherwise)
+   */
+  std::vector<bool> write_attribute_var_sizes_;
 
-  /** The buffer for the key offsets. */
-  Buffer buff_key_offsets_;
+  /** These are the attributes to be passed to a TileDB write query. */
+  char** write_attributes_;
 
-  /** The buffer for the keys. */
-  Buffer buff_keys_;
+  /** The number of write query attributes. */
+  unsigned write_attribute_num_;
 
-  /** The buffer for the key types. */
-  Buffer buff_key_types_;
+  /** Buffers to be used in write queries. */
+  void** write_buffers_;
 
-  /** The number of keys in the store. */
-  uint64_t key_num_;
+  /** The write buffer sizes. */
+  uint64_t* write_buffer_sizes_;
 
-  /** The number of items stored in a single value for each attribute. */
-  std::vector<unsigned int> nitems_;
+  /** The number of write buffers. */
+  unsigned write_buffer_num_;
 
-  /** The attribute types. */
-  std::vector<Datatype> types_;
+  /**
+   * Buffers holding the actual data to be written across all attributes.
+   * The buffers are sorted in the order the attributes are sorted
+   * in `write_attributes_`. Note that a variable-sized attribute
+   * adds two adjacent buffers in the vector, the first is for offsets
+   * and the second for the actual variable data.
+   */
+  std::vector<Buffer*> write_buff_vec_;
 
-  /** Stores the number of values written in each attribute buffer. */
-  std::vector<uint64_t> value_num_;
+  /**
+   * `True` if the key-value store is good for writes. This happens when
+   * the user specifies `nullptr` for attributes in `open`, meaning that
+   * all attributes must be participate in the write.
+   */
+  bool write_good_;
 
-  /** The value sizes for each attribute. */
-  std::vector<uint64_t> value_sizes_;
+  /** Items to be written to disk indexed on their hash. */
+  std::map<KVItem::Hash, KVItem*> items_;
+
+  /** The key-value URI.*/
+  URI kv_uri_;
+
+  /** Maximum number of items to be buffered. */
+  uint64_t max_items_;
+
+  /** The key-value store schema. */
+  ArraySchema* schema_;
+
+  /** TileDB storage manager. */
+  StorageManager* storage_manager_;
+
+  /** Mutex for thread-safety. */
+  std::mutex mtx_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Allocates memory for the internal buffers in preparation for reading. */
-  Status alloc_buffers(bool has_keys);
-
-  /** Computes the coordinates from the keys (using MD5) upon writing. */
-  Status compute_coords();
+  /** Adds the key contents to the appropriate write buffers. */
+  Status add_key(const KVItem::Key& key);
 
   /**
-   * Returns `true` if the coordinates will participate in an underlying
-   * TileDB array read or write query.
+   * Adds a value to a write buffer.
+   *
+   * @param value The value to be stored.
+   * @param bid The index of the write buffer to store the value.
+   * @param var `True` if the attribute is variable-sized.
+   * @return Status
    */
-  bool has_coords() const;
+  Status add_value(const KVItem::Value& value, unsigned bid, bool var);
+
+  /** Frees memory of items. */
+  void clear_items();
+
+  /** It deletes the attributes passed in the read/write queries. */
+  void clear_query_attributes();
+
+  /** Clears the read/write query buffers. */
+  void clear_query_buffers();
+
+  /** Clears the read buffers. */
+  void clear_read_buffers();
+
+  /** Clears the read buffer vector. */
+  void clear_read_buff_vec();
+
+  /** Clears the write buffers. */
+  void clear_write_buffers();
+
+  /** Clears the write buffer vector. */
+  void clear_write_buff_vec();
+
+  /** Allocates space for the read buffers. */
+  Status init_read_buffers();
+
+  /** Prepares the attributes to be passed to the read/write TileDB queries. */
+  Status prepare_query_attributes();
+
+  /** Prepares the attributes to be passed to the read TileDB queries. */
+  Status prepare_read_attributes();
+
+  /** Prepares the buffers for reading. */
+  Status prepare_read_buffers();
+
+  /** Prepares the attributes to be passed to the write TileDB queries. */
+  Status prepare_write_attributes();
+
+  /** Prepares the buffers for writing. */
+  Status prepare_write_buffers();
+
+  /** Populates the write buffers with the buffered key-value items. */
+  Status populate_write_buffers();
 
   /**
-   * Returns `true` if the key attribites will participate in an underlying
-   * TileDB array read or write query.
+   * Reads a key-value item from persistent storage and into the local
+   * read buffers, given the input key information.
+   *
+   * @param hash The hash of the key to search on.
+   * @param found Set to `true` if the item is found, and `false` otherwise.
+   * @return Status
    */
-  bool has_keys() const;
+  Status read_item(const KVItem::Hash& hash, bool* found);
+
+  /**
+   * Reallocate memory for read buffers that results in an incomplete
+   * read query.
+   */
+  Status realloc_read_buffers();
+
+  /** Submits a read query, retrieving the query status. */
+  Status submit_read_query(const uint64_t* subarray, QueryStatus* status);
+
+  /** Submits a write query. */
+  Status submit_write_query();
 };
 
 }  // namespace tiledb
