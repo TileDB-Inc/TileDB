@@ -444,33 +444,33 @@ void VFSFx::check_read(const std::string& path) {
 }
 
 void VFSFx::check_append_after_sync(const std::string& path) {
-  (void)path;
-  /*
   // File write and file size
   auto file = path + "file";
   std::string to_write = "This will be written to the file";
-  int rc = tiledb_vfs_write(ctx_, vfs_, file.c_str(), to_write.c_str(),
-to_write.size()); REQUIRE(rc == TILEDB_OK);
-//  rc = tiledb_vfs_sync(ctx_, vfs, file.c_str());
-//  REQUIRE(rc == TILEDB_OK);
-//  rc = tiledb_vfs_is_file(ctx_, vfs, file.c_str(), &is_file);
-//  REQUIRE(rc == TILEDB_OK);
-//  REQUIRE(is_file);
+  int rc = tiledb_vfs_write(
+      ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  int is_file = 0;
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
   uint64_t file_size = 0;
-//  rc = tiledb_vfs_file_size(ctx_, vfs, file.c_str(), &file_size);
-//  REQUIRE(rc == TILEDB_OK);
-//  REQUIRE(file_size == to_write.size());
+  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(file_size == to_write.size());
   std::string to_write_2 = "This will be appended to the end of the file";
-  rc = tiledb_vfs_write(ctx_, vfs, file.c_str(), to_write_2.c_str(),
-to_write_2.size()); REQUIRE(rc == TILEDB_OK); rc = tiledb_vfs_sync(ctx_, vfs,
-file.c_str()); REQUIRE(rc == TILEDB_OK); rc = tiledb_vfs_file_size(ctx_, vfs,
-file.c_str(), &file_size); REQUIRE(rc == TILEDB_OK);
-
+  rc = tiledb_vfs_write(
+      ctx_, vfs_, file.c_str(), to_write_2.c_str(), to_write_2.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(file_size == to_write.size() + to_write_2.size());
-
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
-   */
 }
 
 std::string VFSFx::random_bucket_name(const std::string& prefix) {

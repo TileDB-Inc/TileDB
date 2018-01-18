@@ -2067,6 +2067,24 @@ int tiledb_kv_item_set_value(
   return TILEDB_OK;
 }
 
+int tiledb_kv_item_get_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_item_t* kv_item,
+    const void** key,
+    tiledb_datatype_t* key_type,
+    uint64_t* key_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_item) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto key_ptr = kv_item->kv_item_->key();
+  *key = key_ptr->key_;
+  *key_size = key_ptr->key_size_;
+  *key_type = static_cast<tiledb_datatype_t>(key_ptr->key_type_);
+
+  return TILEDB_OK;
+}
+
 int tiledb_kv_item_get_value(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
