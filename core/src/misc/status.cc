@@ -164,6 +164,9 @@ std::string Status::code_to_string() const {
     case StatusCode::KV:
       type = "[TileDB::KV] Error";
       break;
+    case StatusCode::KVItem:
+      type = "[TileDB::KVItem] Error";
+      break;
     case StatusCode::Config:
       type = "[TileDB::Config] Error";
       break;

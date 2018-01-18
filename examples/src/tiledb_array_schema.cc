@@ -132,12 +132,12 @@ int main() {
   printf("\nArray schema attribute names: \n");
 
   unsigned int nattr = 0;
-  tiledb_array_schema_get_num_attributes(ctx, array_schema, &nattr);
+  tiledb_array_schema_get_attribute_num(ctx, array_schema, &nattr);
 
   tiledb_attribute_t* attr = nullptr;
   const char* attr_name = nullptr;
   for (unsigned int i = 0; i < nattr; i++) {
-    tiledb_attribute_from_index(ctx, array_schema, i, &attr);
+    tiledb_array_schema_get_attribute_from_index(ctx, array_schema, i, &attr);
     tiledb_attribute_get_name(ctx, attr, &attr_name);
     printf("* %s\n", attr_name);
     tiledb_attribute_free(ctx, attr);
@@ -157,7 +157,7 @@ int main() {
   tiledb_dimension_t* dim = nullptr;
   const char* dim_name = nullptr;
   for (unsigned int i = 0; i < rank; i++) {
-    tiledb_dimension_from_index(ctx, domain, i, &dim);
+    tiledb_domain_get_dimension_from_index(ctx, domain, i, &dim);
     tiledb_dimension_get_name(ctx, dim, &dim_name);
     printf("* %s\n", dim_name);
     tiledb_dimension_free(ctx, dim);

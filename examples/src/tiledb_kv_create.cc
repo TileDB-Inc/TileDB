@@ -54,37 +54,31 @@ int main() {
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
-  // Create array schema
-  const char* array_uri = "my_kv";
-  tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a1);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a2);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a3);
+  // Create kv schema
+  const char* kv_uri = "my_kv";
+  tiledb_kv_schema_t* kv_schema;
+  tiledb_kv_schema_create(ctx, &kv_schema);
+  tiledb_kv_schema_add_attribute(ctx, kv_schema, a1);
+  tiledb_kv_schema_add_attribute(ctx, kv_schema, a2);
+  tiledb_kv_schema_add_attribute(ctx, kv_schema, a3);
 
-  // Set array as key-value
-  tiledb_array_schema_set_as_kv(ctx, array_schema);
-
-  // Check array schema
-  if (tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK) {
-    printf("Invalid array schema\n");
+  // Check kv schema
+  if (tiledb_kv_schema_check(ctx, kv_schema) != TILEDB_OK) {
+    printf("Invalid key-value schema\n");
     return -1;
   }
 
-  // Check if array is defined as kv
-  int as_kv;
-  tiledb_array_schema_get_as_kv(ctx, array_schema, &as_kv);
-  if (as_kv)
-    printf("Array is defined as a key-value store\n");
+  // Dump the key-value schema in ASCII format in standard output
+  tiledb_kv_schema_dump(ctx, kv_schema, stdout);
 
-  // Create array (which is defined as a key-value store)
-  tiledb_array_create(ctx, array_uri, array_schema);
+  // Create kv
+  tiledb_kv_create(ctx, kv_uri, kv_schema);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);
   tiledb_attribute_free(ctx, a2);
   tiledb_attribute_free(ctx, a3);
-  tiledb_array_schema_free(ctx, array_schema);
+  tiledb_kv_schema_free(ctx, kv_schema);
   tiledb_ctx_free(ctx);
 
   return 0;

@@ -32,7 +32,8 @@
 
 #include "kv.h"
 #include "logger.h"
-#include "md5/md5.h"
+
+#include <cassert>
 
 namespace tiledb {
 
@@ -40,409 +41,539 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-KV::KV(
-    const std::vector<std::string>& attributes,
-    const std::vector<tiledb::Datatype>& types,
-    const std::vector<unsigned int>& nitems)
-    : attributes_(attributes)
-    , nitems_(nitems)
-    , types_(types) {
-  array_attributes_ = nullptr;
-  array_attribute_num_ = 0;
-  array_buffers_ = nullptr;
-  array_buffer_sizes_ = nullptr;
-  array_buffer_num_ = 0;
-  buffer_alloc_size_ = constants::kv_buffer_size;
-  key_num_ = 0;
-  attribute_num_ = (unsigned int)attributes_.size();
-  buff_value_offsets_.resize(attribute_num_);
-  buff_values_.resize(attribute_num_);
-  for (unsigned int i = 0; i < attribute_num_; ++i) {
-    value_sizes_.emplace_back(
-        (nitems[i] == constants::var_num) ?
-            constants::var_size :
-            nitems[i] * datatype_size(types[i]));
-    value_num_.emplace_back(0);
-  }
+KV::KV(StorageManager* storage_manager)
+    : storage_manager_(storage_manager) {
+  read_attribute_num_ = 0;
+  read_attributes_ = nullptr;
+  write_attribute_num_ = 0;
+  write_attributes_ = nullptr;
+  max_items_ = constants::kv_max_items;
+  write_buffers_ = nullptr;
+  write_buffer_sizes_ = nullptr;
+  read_buffers_ = nullptr;
+  read_buffer_sizes_ = nullptr;
 }
 
 KV::~KV() {
-  if (array_attributes_ != nullptr)
-    std::free(array_attributes_);
-  if (array_buffers_ != nullptr)
-    std::free(array_buffers_);
-  if (array_buffer_sizes_ != nullptr)
-    std::free(array_buffer_sizes_);
+  close();
 }
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
 
-Status KV::add_key(const void* key, Datatype key_type, uint64_t key_size) {
-  if (key == nullptr || key_size == 0)
-    return LOG_STATUS(Status::KVError("Cannot add key; Key cannot be empty"));
+Status KV::open(
+    const std::string& kv_uri,
+    const char** attributes,
+    unsigned attribute_num) {
+  kv_uri_ = URI(kv_uri);
+  RETURN_NOT_OK(storage_manager_->load_array_schema(kv_uri_, &schema_));
 
-  uint64_t offset = buff_keys_.size();
-  RETURN_NOT_OK(buff_key_offsets_.write(&offset, sizeof(offset)));
-  RETURN_NOT_OK(buff_keys_.write(key, key_size));
-  auto key_type_c = static_cast<char>(key_type);
-  RETURN_NOT_OK(buff_key_types_.write(&key_type_c, sizeof(key_type_c)));
+  if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
+    write_good_ = true;
+    auto attr_num = schema_->attribute_num();
+    for (unsigned i = 2; i < attr_num; ++i) {  // Skip the first two attributes
+      auto attr_name = schema_->attribute_name(i);
+      attributes_.emplace_back(attr_name);
+    }
+  } else {  // Load input attributes
+    write_good_ = false;
+    unsigned attr_id;
+    for (unsigned i = 0; i < attribute_num; ++i) {
+      auto attr_name = attributes[i];
+      RETURN_NOT_OK(schema_->attribute_id(attr_name, &attr_id));
+      attributes_.emplace_back(attr_name);
+    }
+  }
 
-  ++key_num_;
+  RETURN_NOT_OK(prepare_query_attributes());
+  RETURN_NOT_OK(schema_->buffer_num(
+      (const char**)read_attributes_, read_attribute_num_, &read_buffer_num_));
+  RETURN_NOT_OK(init_read_buffers());
+  RETURN_NOT_OK(schema_->buffer_num(
+      (const char**)write_attributes_,
+      write_attribute_num_,
+      &write_buffer_num_));
 
   return Status::Ok();
 }
 
-Status KV::add_value(unsigned int attribute_idx, const void* value) {
-  if (attribute_idx >= attribute_num_)
-    return LOG_STATUS(Status::KVError(
-        "Cannot add fixed-sized value; Invalid attribute index"));
+void KV::clear() {
+  attributes_.clear();
+  read_attribute_var_sizes_.clear();
+  write_attribute_var_sizes_.clear();
+  delete schema_;
+  schema_ = nullptr;
+  kv_uri_ = URI("");
 
-  if (value == nullptr)
+  clear_items();
+  clear_query_attributes();
+  clear_query_buffers();
+}
+
+Status KV::close() {
+  flush();
+  clear();
+
+  return Status::Ok();
+}
+
+Status KV::add_item(const KVItem* kv_item) {
+  if (items_.size() == max_items_)
+    RETURN_NOT_OK(flush());
+
+  mtx_.lock();
+
+  if (!kv_item->good(attributes_)) {
+    mtx_.unlock();
+    return LOG_STATUS(Status::KVError("Cannot add item; Invalid item"));
+  }
+
+  auto new_item = new KVItem();
+  *new_item = *kv_item;
+  items_[new_item->key()->hash_] = new_item;
+
+  mtx_.unlock();
+
+  return Status::Ok();
+}
+
+Status KV::get_item(
+    const void* key, Datatype key_type, uint64_t key_size, KVItem** kv_item) {
+  mtx_.lock();
+
+  // Create key-value item
+  *kv_item = new (std::nothrow) KVItem();
+  if (*kv_item == nullptr)
     return LOG_STATUS(
-        Status::KVError("Cannot add fixed-sized value; Value cannot be empty"));
+        Status::KVError("Cannot get item; Memory allocation failed"));
 
-  if (nitems_[attribute_idx] == constants::var_num)
-    return LOG_STATUS(Status::KVError(
-        "Cannot add fixed-sized value; Attribute is variable-sized"));
+  // Set key
+  auto st = (*kv_item)->set_key(key, key_type, key_size);
+  if (!st.ok()) {
+    delete *kv_item;
+    *kv_item = nullptr;
+    mtx_.unlock();
+    return st;
+  }
 
-  RETURN_NOT_OK(
-      buff_values_[attribute_idx].write(value, value_sizes_[attribute_idx]));
-
-  ++value_num_[attribute_idx];
-
-  return Status::Ok();
-}
-
-Status KV::add_value(
-    unsigned int attribute_idx, const void* value, uint64_t value_size) {
-  if (attribute_idx >= attribute_num_)
-    return LOG_STATUS(Status::KVError(
-        "Cannot add variable-sized value; Invalid attribute index"));
-
-  if (value == nullptr || value_size == 0)
-    return LOG_STATUS(Status::KVError(
-        "Cannot add variable-sized value; Value cannot be empty"));
-
-  if (nitems_[attribute_idx] != constants::var_num)
-    return LOG_STATUS(Status::KVError(
-        "Cannot add variable-sized value; Attribute is fixed-sized"));
-
-  uint64_t offset = buff_values_[attribute_idx].size();
-  RETURN_NOT_OK(
-      buff_value_offsets_[attribute_idx].write(&offset, sizeof(offset)));
-  RETURN_NOT_OK(buff_values_[attribute_idx].write(value, value_size));
-
-  ++value_num_[attribute_idx];
-
-  return Status::Ok();
-}
-
-Status KV::get_array_attributes(
-    const char*** attributes,
-    unsigned int* attribute_num,
-    bool get_coords,
-    bool get_key) {
-  // Trivial case when the array attributes have been already computed
-  if (array_attributes_ != nullptr) {
-    *attributes = array_attributes_;
-    *attribute_num = array_attribute_num_;
+  // If the item is buffered, copy and return
+  auto it = items_.find((*kv_item)->key()->hash_);
+  if (it != items_.end()) {
+    **kv_item = *(it->second);
+    mtx_.unlock();
     return Status::Ok();
   }
 
-  // Compute array attributes and attribute number
-  array_attribute_num_ = attribute_num_ + (int)get_coords + 2 * (int)get_key;
-  array_attributes_ =
-      (const char**)std::malloc(array_attribute_num_ * sizeof(const char*));
-  for (unsigned int i = 0; i < attribute_num_; ++i)
-    array_attributes_[i] = attributes_[i].c_str();
-  if (get_key) {
-    array_attributes_[attribute_num_] = constants::key_attr_name;
-    array_attributes_[attribute_num_ + 1] = constants::key_type_attr_name;
+  // Query
+  bool found = false;
+  st = read_item((*kv_item)->hash(), &found);
+  if (!st.ok() || !found) {
+    delete *kv_item;
+    *kv_item = nullptr;
+    mtx_.unlock();
+    return st;
   }
-  if (get_coords)
-    array_attributes_[attribute_num_ + 2 * (int)get_key] = constants::coords;
 
-  // Set array attributes and attribute number
-  *attributes = array_attributes_;
-  *attribute_num = array_attribute_num_;
-
-  return Status::Ok();
-}
-
-Status KV::get_array_buffers(void*** buffers, uint64_t** buffer_sizes) {
-  // Check buffers in the case of writes
-  bool has_coords = this->has_coords();
-  if (has_coords) {
-    for (unsigned int i = 0; i < attribute_num_; ++i) {
-      if (value_num_[i] != key_num_)
-        return LOG_STATUS(Status::KVError(
-            "Cannot get array buffers; Number of keys/values mismatch"));
+  // Set values
+  unsigned bid = 0, aid = 0;
+  const void* value = nullptr;
+  uint64_t value_size = 0;
+  for (const auto& attr : attributes_) {
+    auto var = read_attribute_var_sizes_[aid];
+    value = read_buffers_[bid + int(var)];
+    value_size = read_buffer_sizes_[bid + (int)var];
+    st = (*kv_item)->set_value(
+        attr, value, read_attribute_types_[aid++], value_size);
+    if (!st.ok()) {
+      delete *kv_item;
+      *kv_item = nullptr;
+      mtx_.unlock();
+      return st;
     }
+    bid += 1 + (int)var;
   }
 
-  // Make sure that the array attributes have been retrieved first
-  if (array_attributes_ == nullptr)
-    return LOG_STATUS(Status::KVError(
-        "Cannot get array buffers; Array attributes have not been calculated"));
+  mtx_.unlock();
 
-  // Check if keys are included
-  bool has_keys = this->has_keys();
+  return Status::Ok();
+}
 
-  // Calculate number of buffers (2 buffers for the key and 1 for the key type)
-  unsigned int buffer_num = 3 * (unsigned int)has_keys;
-  for (unsigned int i = 0; i < attribute_num_; ++i)
-    buffer_num += 1 + (unsigned int)(nitems_[i] != constants::var_num);
-  buffer_num += (unsigned int)has_coords;
+Status KV::flush() {
+  mtx_.lock();
 
-  // Allocate array buffers
-  array_buffers_ = (void**)malloc(buffer_num * sizeof(void*));
-  if (array_buffers_ == nullptr)
-    return LOG_STATUS(
-        Status::KVError("Cannot get array buffers; Failed to allocate memory "
-                        "for array buffers"));
-  array_buffer_sizes_ = (uint64_t*)malloc(buffer_num * sizeof(uint64_t));
-  if (array_buffer_sizes_ == nullptr)
-    return LOG_STATUS(
-        Status::KVError("Cannot get array buffers; Failed to allocate memory "
-                        "for array buffer sizes"));
-
-  // Allocate buffers in case of reads (no coordinates specified)
-  if (!has_coords)
-    alloc_buffers(has_keys);
-
-  // Set array buffers
-  unsigned int b = 0;
-  array_buffer_idx_.resize(attribute_num_);
-  for (unsigned int i = 0; i < attribute_num_; ++i) {
-    array_buffer_idx_[i] = b;
-    if (nitems_[i] == constants::var_num) {
-      array_buffers_[b] = buff_value_offsets_[i].data();
-      array_buffer_sizes_[b++] = (has_coords) ?
-                                     buff_value_offsets_[i].size() :
-                                     buff_value_offsets_[i].alloced_size();
-    }
-    array_buffers_[b] = buff_values_[i].data();
-    array_buffer_sizes_[b++] =
-        (has_coords) ? buff_values_[i].size() : buff_values_[i].alloced_size();
+  // No items to flush
+  if (items_.empty()) {
+    mtx_.unlock();
+    return Status::Ok();
   }
-  if (has_keys) {
-    array_buffers_[b] = buff_key_offsets_.data();
-    array_buffer_sizes_[b++] = (has_coords) ? buff_key_offsets_.size() :
-                                              buff_key_offsets_.alloced_size();
-    array_buffers_[b] = buff_keys_.data();
-    array_buffer_sizes_[b++] =
-        (has_coords) ? buff_keys_.size() : buff_keys_.alloced_size();
-    array_buffers_[b] = buff_key_types_.data();
-    array_buffer_sizes_[b++] =
-        (has_coords) ? buff_key_types_.size() : buff_key_types_.alloced_size();
+
+  // Check if we are good for writes
+  if (!write_good_) {
+    mtx_.unlock();
+    return LOG_STATUS(
+        Status::KVError("Cannot flush items; Key-value store was not opened "
+                        "properly for writes"));
   }
-  if (has_coords) {
-    RETURN_NOT_OK(compute_coords());
-    array_buffers_[b] = buff_coords_.data();
-    array_buffer_sizes_[b++] = buff_coords_.size();
+
+  auto st = prepare_write_buffers();
+  if (!st.ok()) {
+    mtx_.unlock();
+    return st;
   }
-  array_buffer_num_ = b;
 
-  // Retrieve buffers
-  *buffers = array_buffers_;
-  *buffer_sizes = array_buffer_sizes_;
+  st = submit_write_query();
+  if (st.ok())
+    clear_items();
 
-  return Status::Ok();
+  mtx_.unlock();
+  return st;
 }
 
-Status KV::get_key(
-    uint64_t idx, void** key, Datatype* key_type, uint64_t* key_size) const {
-  // Sanity check
-  if (!has_keys())
+void KV::clear_items() {
+  for (auto& i : items_)
+    delete i.second;
+  items_.clear();
+}
+
+Status KV::set_max_items(uint64_t max_items) {
+  if (max_items == 0)
     return LOG_STATUS(
-        Status::KVError("Cannot get key; Keys were not retrieved"));
+        Status::KVError("Cannot set maximum items; Maximum items cannot be 0"));
 
-  uint64_t num = key_num();
-  uint64_t buff_keys_size = (has_coords()) ?
-                                buff_keys_.size() :
-                                array_buffer_sizes_[array_buffer_num_ - 2];
-
-  // Sanity check
-  if (idx >= num)
-    return LOG_STATUS(
-        Status::KVError("Cannot get key; Key index out of bounds"));
-
-  uint64_t key_offset = ((uint64_t*)buff_key_offsets_.data())[idx];
-  *key_size = (idx == num - 1) ?
-                  buff_keys_size - key_offset :
-                  ((uint64_t*)buff_key_offsets_.data())[idx + 1] - key_offset;
-  *key = buff_keys_.value_ptr(((uint64_t*)buff_key_offsets_.data())[idx]);
-  char key_type_c = (((char*)(buff_key_types_.data()))[idx]);
-  *key_type = static_cast<Datatype>(key_type_c);
-
+  mtx_.lock();
+  max_items_ = max_items;
+  mtx_.unlock();
   return Status::Ok();
-}
-
-Status KV::get_value(
-    uint64_t obj_idx, unsigned int attr_idx, void** value) const {
-  // Get number of values
-  uint64_t num = 0;
-  RETURN_NOT_OK(value_num(attr_idx, &num));
-
-  // Sanity check
-  if (obj_idx >= num)
-    return LOG_STATUS(
-        Status::KVError("Cannot get value; Value index out of bounds"));
-
-  // Get value
-  uint64_t offset = obj_idx * value_sizes_[attr_idx];
-  *value = buff_values_[attr_idx].value_ptr(offset);
-
-  return Status::Ok();
-}
-
-Status KV::get_value(
-    uint64_t obj_idx,
-    unsigned int attr_idx,
-    void** value,
-    uint64_t* value_size) const {
-  // Get number of values and size of the value buffer
-  uint64_t num = 0;
-  RETURN_NOT_OK(value_num(attr_idx, &num));
-
-  uint64_t buff_values_size =
-      (has_coords()) ? buff_values_[attr_idx].size() :
-                       array_buffer_sizes_[array_buffer_idx_[attr_idx] + 1];
-
-  // Sanity check
-  if (obj_idx >= num)
-    return LOG_STATUS(
-        Status::KVError("Cannot get value; Value index out of bounds"));
-
-  uint64_t offset = ((uint64_t*)buff_value_offsets_[attr_idx].data())[obj_idx];
-  *value = buff_values_[attr_idx].value_ptr(offset);
-  *value_size =
-      (obj_idx == num - 1) ?
-          buff_values_size - offset :
-          ((uint64_t*)buff_value_offsets_[attr_idx].data())[obj_idx + 1] -
-              offset;
-
-  return Status::Ok();
-}
-
-uint64_t KV::key_num() const {
-  if (has_coords())
-    return key_num_;
-
-  if (!has_keys())
-    return 0;
-
-  uint64_t key_num = array_buffer_sizes_[array_buffer_num_ - 3] /
-                     constants::cell_var_offset_size;
-  uint64_t key_types_num =
-      array_buffer_sizes_[array_buffer_num_ - 1] / sizeof(char);
-
-  return std::min(key_num, key_types_num);
-}
-
-void KV::set_buffer_alloc_size(uint64_t nbytes) {
-  buffer_alloc_size_ = nbytes;
-}
-
-Status KV::value_num(unsigned int attribute_idx, uint64_t* num) const {
-  if (attribute_idx >= attribute_num_)
-    return LOG_STATUS(Status::KVError(
-        "Cannot get number of values; Invalid attribute index"));
-
-  if (has_coords())
-    *num = value_num_[attribute_idx];
-  else if (array_buffers_ == nullptr)
-    *num = 0;
-  else
-    *num = array_buffer_sizes_[array_buffer_idx_[attribute_idx]] /
-           ((nitems_[attribute_idx] == constants::var_num) ?
-                constants::cell_var_offset_size :
-                value_sizes_[attribute_idx]);
-
-  return Status::Ok();
-}
-
-/* ********************************* */
-/*         STATIC FUNCTIONS          */
-/* ********************************* */
-
-void KV::compute_subarray(
-    const void* key, Datatype key_type, uint64_t key_size, uint64_t* subarray) {
-  // Compute an MD5 digest for the <key_type | key_size | key> tuple
-  md5::MD5_CTX md5_ctx;
-  uint64_t coord_size = sizeof(md5_ctx.digest) / 2;
-  assert(coord_size == sizeof(uint64_t));
-  auto key_type_c = static_cast<char>(key_type);
-  md5::MD5Init(&md5_ctx);
-  md5::MD5Update(&md5_ctx, (unsigned char*)&key_type_c, sizeof(char));
-  md5::MD5Update(&md5_ctx, (unsigned char*)&key_size, sizeof(uint64_t));
-  md5::MD5Update(&md5_ctx, (unsigned char*)key, (unsigned int)key_size);
-  md5::MD5Final(&md5_ctx);
-  std::memcpy(subarray, md5_ctx.digest, coord_size);
-  std::memcpy(&subarray[1], md5_ctx.digest, coord_size);
-  std::memcpy(&subarray[2], md5_ctx.digest + coord_size, coord_size);
-  std::memcpy(&subarray[3], md5_ctx.digest + coord_size, coord_size);
 }
 
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */
 
-Status KV::alloc_buffers(bool has_keys) {
-  for (unsigned int i = 0; i < attribute_num_; ++i) {
-    if (nitems_[i] == constants::var_num)
-      RETURN_NOT_OK(buff_value_offsets_[i].realloc(buffer_alloc_size_));
-    RETURN_NOT_OK(buff_values_[i].realloc(buffer_alloc_size_));
+Status KV::add_key(const KVItem::Key& key) {
+  assert(key.key_ != nullptr && key.key_size_ > 0);
+
+  // Aliases
+  auto& buff_coords = *write_buff_vec_[0];
+  auto& buff_key_offsets = *write_buff_vec_[1];
+  auto& buff_keys = *write_buff_vec_[2];
+  auto& buff_key_types = *write_buff_vec_[3];
+
+  RETURN_NOT_OK(buff_coords.write(&(key.hash_.first), sizeof(key.hash_.first)));
+  RETURN_NOT_OK(
+      buff_coords.write(&(key.hash_.second), sizeof(key.hash_.second)));
+  uint64_t offset = buff_keys.size();
+  RETURN_NOT_OK(buff_key_offsets.write(&offset, sizeof(offset)));
+  RETURN_NOT_OK(buff_keys.write(key.key_, key.key_size_));
+  auto key_type_c = static_cast<char>(key.key_type_);
+  RETURN_NOT_OK(buff_key_types.write(&key_type_c, sizeof(key_type_c)));
+
+  return Status::Ok();
+}
+
+Status KV::add_value(const KVItem::Value& value, unsigned bid, bool var) {
+  assert(bid < write_buffer_num_);
+
+  auto idx = bid;
+
+  // Add offset only for variable-sized attributes
+  if (var) {
+    uint64_t offset = write_buff_vec_[idx + 1]->size();
+    RETURN_NOT_OK(write_buff_vec_[idx++]->write(&offset, sizeof(offset)));
   }
-  if (has_keys) {
-    RETURN_NOT_OK(buff_key_offsets_.realloc(buffer_alloc_size_));
-    RETURN_NOT_OK(buff_keys_.realloc(buffer_alloc_size_));
-    RETURN_NOT_OK(buff_key_types_.realloc(buffer_alloc_size_));
+
+  // Add value
+  RETURN_NOT_OK(write_buff_vec_[idx]->write(value.value_, value.value_size_));
+
+  return Status::Ok();
+}
+
+void KV::clear_query_attributes() {
+  // Read attributes
+  if (read_attributes_ != nullptr) {
+    for (unsigned int i = 0; i < read_attribute_num_; ++i)
+      delete[] read_attributes_[i];
+    delete[] read_attributes_;
+    read_attributes_ = nullptr;
+    read_attribute_num_ = 0;
+  }
+
+  // Write attributes
+  if (write_attributes_ != nullptr) {
+    for (unsigned int i = 0; i < write_attribute_num_; ++i)
+      delete[] write_attributes_[i];
+    delete[] write_attributes_;
+    write_attributes_ = nullptr;
+    write_attribute_num_ = 0;
+  }
+}
+
+void KV::clear_query_buffers() {
+  clear_read_buffers();
+  clear_read_buff_vec();
+  clear_write_buffers();
+  clear_write_buff_vec();
+}
+
+void KV::clear_read_buff_vec() {
+  for (auto& buff : read_buff_vec_)
+    delete buff;
+  read_buff_vec_.clear();
+}
+
+void KV::clear_read_buffers() {
+  delete[] read_buffers_;
+  read_buffers_ = nullptr;
+  delete[] read_buffer_sizes_;
+  read_buffer_sizes_ = nullptr;
+}
+
+void KV::clear_write_buff_vec() {
+  for (auto& buff : write_buff_vec_)
+    delete buff;
+  write_buff_vec_.clear();
+}
+
+void KV::clear_write_buffers() {
+  delete[] write_buffers_;
+  write_buffers_ = nullptr;
+  delete[] write_buffer_sizes_;
+  write_buffer_sizes_ = nullptr;
+}
+
+Status KV::init_read_buffers() {
+  for (unsigned i = 0; i < read_buffer_num_; ++i) {
+    auto buff = new Buffer();
+    buff->realloc(constants::kv_buffer_size);
+    read_buff_vec_.emplace_back(buff);
   }
 
   return Status::Ok();
 }
 
-Status KV::compute_coords() {
-  // For easy reference
-  auto keys = (uint64_t*)buff_key_offsets_.data();
-  auto keys_var = (unsigned char*)buff_keys_.data();
-  auto types = (unsigned char*)buff_key_types_.data();
-  auto keys_var_size = buff_keys_.size();
-  uint64_t coords[2];
+Status KV::populate_write_buffers() {
+  // Reset buffers
+  for (auto buff : write_buff_vec_)
+    buff->reset_size();
 
-  // Compute an MD5 digest per <key_type | key_size | key> tuple
-  md5::MD5_CTX md5_ctx;
-  uint64_t coords_size = sizeof(md5_ctx.digest);
-  assert(coords_size == 2 * sizeof(uint64_t));
-  uint64_t key_size;
-  for (uint64_t i = 0; i < key_num_; ++i) {
-    key_size = (i != key_num_ - 1) ? (keys[i + 1] - keys[i]) :
-                                     (keys_var_size - keys[i]);
-    md5::MD5Init(&md5_ctx);
-    md5::MD5Update(&md5_ctx, &types[i], sizeof(char));
-    md5::MD5Update(&md5_ctx, (unsigned char*)&key_size, sizeof(uint64_t));
-    md5::MD5Update(&md5_ctx, &keys_var[keys[i]], (unsigned int)key_size);
-    md5::MD5Final(&md5_ctx);
-    std::memcpy(coords, md5_ctx.digest, coords_size);
-    RETURN_NOT_OK(buff_coords_.write(coords, coords_size));
+  // If this is the first time to populate the write buffers
+  if (write_buff_vec_.empty()) {
+    for (unsigned i = 0; i < write_buffer_num_; ++i) {
+      auto buff = new Buffer();
+      write_buff_vec_.emplace_back(buff);
+    }
+  }
+
+  for (const auto& item : items_) {
+    auto key = (item.second)->key();
+    assert(key != nullptr);
+    RETURN_NOT_OK(add_key(*key));
+    unsigned bid = 4;  // Skip the buffers of the first 3 attributes
+
+    for (unsigned aid = 3; aid < write_attribute_num_; ++aid) {
+      auto value = (item.second)->value(write_attributes_[aid]);
+      assert(value != nullptr);
+      RETURN_NOT_OK(add_value(*value, bid, write_attribute_var_sizes_[aid]));
+      bid += (write_attribute_var_sizes_[aid]) ? 2 : 1;
+    }
+    assert(bid == write_buff_vec_.size());
   }
 
   return Status::Ok();
 }
 
-bool KV::has_coords() const {
-  if (array_attributes_ == nullptr)
-    return false;
-  return (array_attributes_[array_attribute_num_ - 1] == constants::coords);
+Status KV::prepare_read_buffers() {
+  clear_read_buffers();
+  auto buffer_num = read_buff_vec_.size();
+  read_buffers_ = new (std::nothrow) void*[buffer_num];
+  read_buffer_sizes_ = new (std::nothrow) uint64_t[buffer_num];
+
+  if (read_buffers_ == nullptr || read_buffer_sizes_ == nullptr)
+    return LOG_STATUS(Status::KVError(
+        "Cannot prepare read buffers; Memory allocation failed"));
+
+  for (unsigned i = 0; i < buffer_num; ++i) {
+    read_buffers_[i] = read_buff_vec_[i]->data();
+    read_buffer_sizes_[i] = read_buff_vec_[i]->alloced_size();
+  }
+
+  return Status::Ok();
 }
 
-bool KV::has_keys() const {
-  if (array_attributes_ == nullptr || array_attribute_num_ <= attribute_num_)
-    return false;
-  return (array_attributes_[attribute_num_] == constants::key_attr_name);
+Status KV::prepare_write_buffers() {
+  clear_write_buffers();
+
+  RETURN_NOT_OK(populate_write_buffers());
+
+  auto buffer_num = write_buff_vec_.size();
+  write_buffers_ = new (std::nothrow) void*[buffer_num];
+  write_buffer_sizes_ = new (std::nothrow) uint64_t[buffer_num];
+
+  if (write_buffers_ == nullptr || write_buffer_sizes_ == nullptr)
+    return LOG_STATUS(Status::KVError(
+        "Cannot prepare read buffers; Memory allocation failed"));
+
+  for (unsigned i = 0; i < buffer_num; ++i) {
+    write_buffers_[i] = write_buff_vec_[i]->data();
+    write_buffer_sizes_[i] = write_buff_vec_[i]->size();
+  }
+
+  return Status::Ok();
+}
+
+Status KV::prepare_query_attributes() {
+  RETURN_NOT_OK(prepare_read_attributes());
+  return prepare_write_attributes();
+}
+
+Status KV::prepare_read_attributes() {
+  read_attribute_num_ = (unsigned)attributes_.size();
+  read_attributes_ = new (std::nothrow) char*[read_attribute_num_];
+  if (read_attributes_ == nullptr)
+    return LOG_STATUS(Status::KVItemError(
+        "Cannot prepare read attributes; Memory allocation failed"));
+  read_attribute_var_sizes_.resize(read_attribute_num_);
+  read_attribute_types_.resize(read_attribute_num_);
+
+  unsigned int i = 0, aid;
+  for (const auto& attr : attributes_) {
+    read_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
+    strcpy(read_attributes_[i], attr.data());
+    RETURN_NOT_OK(schema_->attribute_id(attr, &aid));
+    read_attribute_types_[i] = schema_->attribute(aid)->type();
+    read_attribute_var_sizes_[i++] = schema_->var_size(aid);
+  }
+
+  return Status::Ok();
+}
+
+Status KV::prepare_write_attributes() {
+  // +3 because of the two special key attributes and coordinates
+  write_attribute_num_ = (unsigned)attributes_.size() + 3;
+  write_attributes_ = new (std::nothrow) char*[write_attribute_num_];
+  if (write_attributes_ == nullptr)
+    return LOG_STATUS(Status::KVItemError(
+        "Cannot prepare write attributes; Memory allocation failed"));
+  write_attribute_var_sizes_.resize(write_attribute_num_);
+
+  // Coords
+  write_attributes_[0] = new (std::nothrow) char[strlen(constants::coords) + 1];
+  if (write_attributes_[0] == nullptr)
+    return LOG_STATUS(Status::KVItemError(
+        "Cannot prepare write attributes; Memory allocation failed"));
+  strcpy(write_attributes_[0], constants::coords);
+  write_attribute_var_sizes_[0] = false;
+
+  // Key
+  write_attributes_[1] =
+      new (std::nothrow) char[strlen(constants::key_attr_name) + 1];
+  if (write_attributes_[1] == nullptr)
+    return LOG_STATUS(Status::KVItemError(
+        "Cannot prepare write attributes; Memory allocation failed"));
+  strcpy(write_attributes_[1], constants::key_attr_name);
+  write_attribute_var_sizes_[1] = true;
+
+  // Key type
+  write_attributes_[2] =
+      new (std::nothrow) char[strlen(constants::key_type_attr_name) + 1];
+  if (write_attributes_[2] == nullptr)
+    return LOG_STATUS(Status::KVItemError(
+        "Cannot prepare write attributes; Memory allocation failed"));
+  strcpy(write_attributes_[2], constants::key_type_attr_name);
+  write_attribute_var_sizes_[2] = false;
+
+  // User attributes
+  unsigned int i = 3, aid;
+  for (const auto& attr : attributes_) {
+    write_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
+    strcpy(write_attributes_[i], attr.data());
+    RETURN_NOT_OK(schema_->attribute_id(attr, &aid));
+    write_attribute_var_sizes_[i++] = schema_->var_size(aid);
+  }
+
+  return Status::Ok();
+}
+
+Status KV::read_item(const KVItem::Hash& hash, bool* found) {
+  RETURN_NOT_OK(prepare_read_buffers());
+
+  // Prepare subarray
+  uint64_t subarray[4];
+  subarray[0] = hash.first;
+  subarray[1] = hash.first;
+  subarray[2] = hash.second;
+  subarray[3] = hash.second;
+
+  QueryStatus query_status;
+  do {
+    RETURN_NOT_OK(submit_read_query(subarray, &query_status));
+    if (query_status == QueryStatus::INCOMPLETE)
+      RETURN_NOT_OK(realloc_read_buffers());
+  } while (query_status != QueryStatus::COMPLETED);
+
+  // Check if item exists
+  *found = true;
+  for (unsigned i = 0; i < read_buffer_num_; ++i) {
+    if (read_buffer_sizes_[i] == 0) {
+      *found = false;
+      break;
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status KV::realloc_read_buffers() {
+  for (unsigned i = 0; i < read_buffer_num_; ++i) {
+    if (read_buffer_sizes_[i] == 0) {
+      read_buff_vec_[i]->realloc(2 * read_buff_vec_[i]->alloced_size());
+      read_buffers_[i] = read_buff_vec_[i]->data();
+      read_buffer_sizes_[i] = read_buff_vec_[i]->alloced_size();
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status KV::submit_read_query(const uint64_t* subarray, QueryStatus* status) {
+  // Create and send query
+  auto query = new Query();
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->query_init(query, kv_uri_.c_str(), QueryType::READ),
+      delete query);
+  RETURN_NOT_OK_ELSE(
+      query->set_buffers(
+          (const char**)read_attributes_,
+          read_attribute_num_,
+          read_buffers_,
+          read_buffer_sizes_),
+      delete query);
+  RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
+  RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
+  RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
+  *status = query->status();
+  delete query;
+
+  return Status::Ok();
+}
+
+Status KV::submit_write_query() {
+  auto query = new Query();
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->query_init(query, kv_uri_.c_str(), QueryType::WRITE),
+      delete query);
+  RETURN_NOT_OK_ELSE(
+      query->set_buffers(
+          (const char**)write_attributes_,
+          write_attribute_num_,
+          write_buffers_,
+          write_buffer_sizes_),
+      delete query);
+  RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
+  RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
+
+  return Status::Ok();
 }
 
 }  // namespace tiledb

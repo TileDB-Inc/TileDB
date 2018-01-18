@@ -37,16 +37,12 @@
 
 #include <tiledb.h>
 #include <cstring>
+#include <iostream>
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, nullptr);
-
-  // Attributes and value sizes
-  const char* attributes[] = {"a1", "a2", "a3"};
-  tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-  unsigned int nitems[] = {1, tiledb_var_num(), 2};
 
   // Key-values with three attributes
   int key1 = 100;
@@ -69,45 +65,78 @@ int main() {
   const char* key4_a2 = "dddd";
   float key4_a3[] = {4.1f, 4.2f};
 
-  // Create key-values
+  // Open the key-value store
   tiledb_kv_t* kv;
-  tiledb_kv_create(ctx, &kv, 3, attributes, types, nitems);
+  tiledb_kv_open(ctx, &kv, "my_kv", nullptr, 0);
 
-  // Add keys
-  tiledb_kv_add_key(ctx, kv, &key1, TILEDB_INT32, sizeof(key1));
-  tiledb_kv_add_key(ctx, kv, &key2, TILEDB_FLOAT32, sizeof(key2));
-  tiledb_kv_add_key(ctx, kv, &key3, TILEDB_FLOAT64, sizeof(key3));
-  tiledb_kv_add_key(ctx, kv, &key4, TILEDB_CHAR, strlen(key4));
+  // Flush every 100 added items
+  tiledb_kv_set_max_items(ctx, kv, 100);
 
-  // Add attribute "a1" values
-  tiledb_kv_add_value(ctx, kv, 0, &key1_a1);
-  tiledb_kv_add_value(ctx, kv, 0, &key2_a1);
-  tiledb_kv_add_value(ctx, kv, 0, &key3_a1);
-  tiledb_kv_add_value(ctx, kv, 0, &key4_a1);
+  // Create first key-value item object
+  tiledb_kv_item_t* kv_item1;
+  tiledb_kv_item_create(ctx, &kv_item1);
+  tiledb_kv_item_set_key(ctx, kv_item1, &key1, TILEDB_INT32, sizeof(key1));
+  tiledb_kv_item_set_value(
+      ctx, kv_item1, "a1", &key1_a1, TILEDB_INT32, sizeof(key1_a1));
+  tiledb_kv_item_set_value(
+      ctx, kv_item1, "a2", key1_a2, TILEDB_CHAR, strlen(key1_a2));
+  tiledb_kv_item_set_value(
+      ctx, kv_item1, "a3", &key1_a3, TILEDB_FLOAT32, sizeof(key1_a3));
 
-  // Add attribute "a2" values
-  tiledb_kv_add_value_var(ctx, kv, 1, key1_a2, strlen(key1_a2));
-  tiledb_kv_add_value_var(ctx, kv, 1, key2_a2, strlen(key2_a2));
-  tiledb_kv_add_value_var(ctx, kv, 1, key3_a2, strlen(key3_a2));
-  tiledb_kv_add_value_var(ctx, kv, 1, key4_a2, strlen(key4_a2));
+  // Create second key-value item object
+  tiledb_kv_item_t* kv_item2;
+  tiledb_kv_item_create(ctx, &kv_item2);
+  tiledb_kv_item_set_key(ctx, kv_item2, &key2, TILEDB_FLOAT32, sizeof(key2));
+  tiledb_kv_item_set_value(
+      ctx, kv_item2, "a1", &key2_a1, TILEDB_INT32, sizeof(key2_a1));
+  tiledb_kv_item_set_value(
+      ctx, kv_item2, "a2", key2_a2, TILEDB_CHAR, strlen(key2_a2));
+  tiledb_kv_item_set_value(
+      ctx, kv_item2, "a3", &key2_a3, TILEDB_FLOAT32, sizeof(key2_a3));
 
-  // Add attribute "a3" values
-  tiledb_kv_add_value(ctx, kv, 2, &key1_a3);
-  tiledb_kv_add_value(ctx, kv, 2, &key2_a3);
-  tiledb_kv_add_value(ctx, kv, 2, &key3_a3);
-  tiledb_kv_add_value(ctx, kv, 2, &key4_a3);
+  // Create third key-value item object
+  tiledb_kv_item_t* kv_item3;
+  tiledb_kv_item_create(ctx, &kv_item3);
+  tiledb_kv_item_set_key(ctx, kv_item3, &key3, TILEDB_FLOAT64, sizeof(key3));
+  tiledb_kv_item_set_value(
+      ctx, kv_item3, "a1", &key3_a1, TILEDB_INT32, sizeof(key3_a1));
+  tiledb_kv_item_set_value(
+      ctx, kv_item3, "a2", key3_a2, TILEDB_CHAR, strlen(key3_a2));
+  tiledb_kv_item_set_value(
+      ctx, kv_item3, "a3", &key3_a3, TILEDB_FLOAT32, sizeof(key3_a3));
 
-  // Create query
-  tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, "my_kv", TILEDB_WRITE);
-  tiledb_query_set_kv(ctx, query, kv);
+  // Create fourth key-value item object
+  tiledb_kv_item_t* kv_item4;
+  tiledb_kv_item_create(ctx, &kv_item4);
+  tiledb_kv_item_set_key(ctx, kv_item4, &key4, TILEDB_CHAR, strlen(key4));
+  tiledb_kv_item_set_value(
+      ctx, kv_item4, "a1", &key4_a1, TILEDB_INT32, sizeof(key4_a1));
+  tiledb_kv_item_set_value(
+      ctx, kv_item4, "a2", key4_a2, TILEDB_CHAR, strlen(key4_a2));
+  tiledb_kv_item_set_value(
+      ctx, kv_item4, "a3", &key4_a3, TILEDB_FLOAT32, sizeof(key4_a3));
 
-  // Submit query
-  tiledb_query_submit(ctx, query);
+  // Add key-value items to key-value store
+  tiledb_kv_add_item(ctx, kv, kv_item1);
+  tiledb_kv_add_item(ctx, kv, kv_item2);
+
+  // Force-write the buffered items to the persistent storage
+  tiledb_kv_flush(ctx, kv);
+
+  tiledb_kv_add_item(ctx, kv, kv_item3);
+  tiledb_kv_add_item(ctx, kv, kv_item4);
+
+  // The following will flush the buffered key-value items to the disk
+  tiledb_kv_close(ctx, kv);
+
+  // Consolidate key-value store (optional)
+  tiledb_kv_consolidate(ctx, "my_kv");
 
   // Clean up
-  tiledb_query_free(ctx, query);
-  tiledb_kv_free(ctx, kv);
+  tiledb_kv_item_free(ctx, kv_item1);
+  tiledb_kv_item_free(ctx, kv_item2);
+  tiledb_kv_item_free(ctx, kv_item3);
+  tiledb_kv_item_free(ctx, kv_item4);
   tiledb_ctx_free(ctx);
 
   return 0;

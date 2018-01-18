@@ -44,40 +44,45 @@ void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 void print_key(void* key, tiledb_datatype_t key_type, uint64_t key_size);
 
 int main() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, nullptr);
+  /* TODO
+// Create TileDB context
+tiledb_ctx_t* ctx;
+tiledb_ctx_create(&ctx, nullptr);
 
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3"};
-  tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-  unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
+// Set attributes
+const char* attributes[] = {"a1", "a2", "a3"};
+tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
+unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
 
-  // Create key-values
-  tiledb_kv_t* kv;
-  tiledb_kv_create(ctx, &kv, 3, attributes, types, nitems);
-  tiledb_kv_set_buffer_size(ctx, kv, 1000);
+// Create key-values
+tiledb_kv_t* kv;
+tiledb_kv_create(ctx, &kv, 3, attributes, types, nitems);
+tiledb_kv_set_buffer_size(ctx, kv, 1000);
 
-  // Create query
-  tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, "my_kv", TILEDB_READ);
-  tiledb_query_set_kv(ctx, query, kv);
+// Create query
+tiledb_query_t* query;
+tiledb_query_create(ctx, &query, "my_kv", TILEDB_READ);
+tiledb_query_set_kv(ctx, query, kv);
 
-  // Submit query
-  tiledb_query_submit(ctx, query);
+// Submit query
+tiledb_query_submit(ctx, query);
 
-  // Print the results
-  print_results(ctx, kv);
+// Print the results
+print_results(ctx, kv);
 
-  // Clean up
-  tiledb_kv_free(ctx, kv);
-  tiledb_query_free(ctx, query);
-  tiledb_ctx_free(ctx);
+// Clean up
+tiledb_kv_free(ctx, kv);
+tiledb_query_free(ctx, query);
+tiledb_ctx_free(ctx);
+   */
 
   return 0;
 }
 
 void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+  (void)ctx;
+  (void)kv;
+  /* TODO
   uint64_t key_num, a1_num, a2_num, a3_num;
   tiledb_kv_get_key_num(ctx, kv, &key_num);
   tiledb_kv_get_value_num(ctx, kv, 0, &a1_num);
@@ -108,6 +113,7 @@ void print_results(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
     std::cout << ", " << std::string((const char*)a2, a2_size);
     std::cout << ", (" << ((float*)a3)[0] << ", " << ((float*)a3)[1] << ")\n";
   }
+   */
 }
 
 void print_key(void* key, tiledb_datatype_t key_type, uint64_t key_size) {
