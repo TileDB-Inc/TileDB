@@ -1314,47 +1314,6 @@ TILEDB_EXPORT int tiledb_kv_schema_check(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema);
 
 /**
- * Sets the tile capacity.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param capacity The capacity to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_set_capacity(
-    tiledb_ctx_t* ctx, tiledb_kv_schema_t* array_schema, uint64_t capacity);
-
-/**
- * Sets the coordinates compressor.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param compressor The coordinates compressor.
- * @param compression_level The coordinates compression level.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_set_coords_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t compressor,
-    int compression_level);
-
-/**
- * Sets the variable-sized attribute value offsets compressor.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param compressor The offsets compressor.
- * @param compression_level The coordinates compression level.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_set_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t compressor,
-    int compression_level);
-
-/**
  * Retrieves the schema of a key-value store from the disk, creating a
  * key-value schema struct.
  *
@@ -1365,47 +1324,6 @@ TILEDB_EXPORT int tiledb_kv_schema_set_offsets_compressor(
  */
 TILEDB_EXPORT int tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema, const char* kv_uri);
-
-/**
- * Retrieves the capacity.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param capacity The capacity to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_get_capacity(
-    tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema, uint64_t* capacity);
-
-/**
- * Retrieves the compressor info of the coordinates.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_get_coords_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t* compressor,
-    int* compression_level);
-
-/**
- * Retrieves the compressor info of the offsets.
- *
- * @param ctx The TileDB context.
- * @param kv_schema The key-value schema.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_kv_schema_get_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t* compressor,
-    int* compression_level);
 
 /**
  * Retrieves the number of array attributes.
@@ -1449,7 +1367,7 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_from_index(
  */
 TILEDB_EXPORT int tiledb_kv_schema_get_attribute_from_name(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_kv_schema_t* kv_schema,
     const char* name,
     tiledb_attribute_t** attr);
 
