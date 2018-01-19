@@ -1752,44 +1752,6 @@ int tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_set_capacity(
-    tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, uint64_t capacity) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  kv_schema->array_schema_->set_capacity(capacity);
-  return TILEDB_OK;
-}
-
-int tiledb_kv_schema_set_coords_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t compressor,
-    int compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  kv_schema->array_schema_->set_coords_compressor(
-      static_cast<tiledb::Compressor>(compressor));
-  kv_schema->array_schema_->set_coords_compression_level(compression_level);
-  return TILEDB_OK;
-}
-
-int tiledb_kv_schema_set_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t compressor,
-    int compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  kv_schema->array_schema_->set_cell_var_offsets_compressor(
-      static_cast<tiledb::Compressor>(compressor));
-  kv_schema->array_schema_->set_cell_var_offsets_compression_level(
-      compression_level);
-  return TILEDB_OK;
-}
-
 int tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema, const char* kv_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -1814,47 +1776,6 @@ int tiledb_kv_schema_load(
     return TILEDB_ERR;
   }
 
-  return TILEDB_OK;
-}
-
-int tiledb_kv_schema_get_capacity(
-    tiledb_ctx_t* ctx,
-    const tiledb_kv_schema_t* kv_schema,
-    uint64_t* capacity) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  *capacity = kv_schema->array_schema_->capacity();
-  return TILEDB_OK;
-}
-int tiledb_kv_schema_get_coords_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t* compressor,
-    int* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *compressor = static_cast<tiledb_compressor_t>(
-      kv_schema->array_schema_->coords_compression());
-  *compression_level = kv_schema->array_schema_->coords_compression_level();
-  return TILEDB_OK;
-}
-
-int tiledb_kv_schema_get_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_kv_schema_t* kv_schema,
-    tiledb_compressor_t* compressor,
-    int* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *compressor = static_cast<tiledb_compressor_t>(
-      kv_schema->array_schema_->cell_var_offsets_compression());
-  *compression_level =
-      kv_schema->array_schema_->cell_var_offsets_compression_level();
   return TILEDB_OK;
 }
 
