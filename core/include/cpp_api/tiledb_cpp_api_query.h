@@ -135,14 +135,14 @@ class Query {
     return set_subarray<typename impl::type_from_native<T>::type>(pairs);
   }
 
-  /** Sets a buffer for a fixed-sized attrobute. */
+  /** Sets a buffer for a fixed-sized attribute. */
   template <typename T>
   typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
   set_buffer(const std::string &attr, T &buf) {
     return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf);
   }
 
-  /** Sets a buffer for a variable-sized attrobute. */
+  /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
   typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
   set_buffer(
@@ -153,27 +153,13 @@ class Query {
         attr, offsets, buf);
   }
 
-  /**
-   * Set a buffer for a particular attribute (variable size)
-   *
-   * @tparam T buffer type, tdb::impl::*
-   * @param attr Attribute name
-   * @param buf buffer, a pair of offsets and data buffs
-   * @return *this
-   */
+  /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
-  Query &set_buffer(
-      const std::string &attr,
-      std::pair<std::vector<uint64_t>, std::vector<typename T::type>> &buf) {
-    return set_buffer<T>(attr, buf.first, buf.second);
-  }
-
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
   set_buffer(
       const std::string &attr,
-      std::pair<std::vector<uint64_t>, std::vector<T>> &buf) {
-    return set_buffer<typename impl::type_from_native<T>::type>(attr, buf);
+      std::pair<std::vector<uint64_t>, T> &buf) {
+    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf.first, buf.second);
   }
 
   /**
