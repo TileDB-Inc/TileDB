@@ -1527,6 +1527,23 @@ TILEDB_EXPORT int tiledb_kv_item_set_value(
     uint64_t value_size);
 
 /**
+ * Gets the key in the key-value item.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_item The key-value item.
+ * @param key The key to be retrieved.
+ * @param key_type The key type to be retrieved.
+ * @param key_size The key size (in bytes).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_item_get_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_item_t* kv_item,
+    const void** key,
+    tiledb_datatype_t* key_type,
+    uint64_t* key_size);
+
+/**
  * Gets the value and value size on a given attribute from a key-value item.
  *
  * @param ctx The TileDB context.
