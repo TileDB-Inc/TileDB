@@ -135,14 +135,8 @@ class ArraySchema {
   /** Adds an attribute to the array. */
   ArraySchema &add_attribute(const Attribute &attr);
 
-  /** Marks the array as a key-value store. */
-  ArraySchema &set_kv();
-
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_array_schema_t> ptr() const;
-
-  /** Checks if the array is a key-value store. */
-  bool is_kv() const;
 
   /** Validates the schema. */
   void check() const;

@@ -121,7 +121,7 @@ const std::vector<tdb::Dimension> Domain::dimensions() const {
   ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
     ctx.handle_error(
-        tiledb_dimension_from_index(ctx, domain_.get(), i, &dimptr));
+        tiledb_domain_get_dimension_from_index(ctx, domain_.get(), i, &dimptr));
     dims.emplace_back(Dimension(ctx, dimptr));
   }
   return dims;

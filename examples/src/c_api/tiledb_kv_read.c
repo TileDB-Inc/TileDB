@@ -37,9 +37,7 @@
  */
 
 #include <tiledb.h>
-#include <cassert>
-#include <iostream>
-#include <string>
+#include <assert.h>
 
 
 int main() {
@@ -54,15 +52,15 @@ int main() {
 
   // Create key-values
   tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", nullptr, 0);
+  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
 
   // Get key-value item
-  tiledb_kv_item_t* kv_item = nullptr;
+  tiledb_kv_item_t* kv_item = NULL;
   tiledb_kv_get_item(ctx, kv, &kv_item, &key, key_type, key_size);
 
   // Check if item exists
-  if (kv_item == nullptr) {
-    std::cout << "Item does not exist.\n";
+  if (kv_item == NULL) {
+    printf("Item does not exist.\n");
     return 0;
   }
 
@@ -80,12 +78,11 @@ int main() {
       a3_type == TILEDB_FLOAT32);
 
   // Print result
-  std::cout << "a1, a2, (a3.first, a3.second)\n";
-  std::cout << "-----------------------------\n";
-  std::cout << *((const int*)a1);
-  std::cout << ", " << std::string((const char*)a2, a2_size);
-  std::cout << ", (" << ((const float*)a3)[0] << ", " << ((const float*)a3)[1]
-            << ")\n";
+  printf("a1, a2, (a3.first, a3.second)\n");
+  printf("-----------------------------\n");
+  printf("%d", *((const int*)a1));
+  printf(", %.*s", (int)a2_size, (const char*)a2);
+  printf( ", (%f, %f)\n", ((const float*)a3)[0], ((const float*)a3)[1]);
 
   // Clean up
   tiledb_kv_close(ctx, kv);

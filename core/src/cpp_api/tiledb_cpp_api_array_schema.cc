@@ -157,10 +157,10 @@ const std::unordered_map<std::string, Attribute> tdb::ArraySchema::attributes()
   unsigned int nattr;
   std::unordered_map<std::string, Attribute> attrs;
   ctx.handle_error(
-      tiledb_array_schema_get_num_attributes(ctx, schema_.get(), &nattr));
+      tiledb_array_schema_get_attribute_num(ctx, schema_.get(), &nattr));
   for (unsigned int i = 0; i < nattr; ++i) {
     ctx.handle_error(
-        tiledb_attribute_from_index(ctx, schema_.get(), i, &attrptr));
+        tiledb_array_schema_get_attribute_from_index(ctx, schema_.get(), i, &attrptr));
     auto attr = Attribute(ctx_, attrptr);
     attrs.emplace(
         std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
@@ -217,19 +217,6 @@ ArraySchema &ArraySchema::set_capacity(uint64_t capacity) {
   ctx.handle_error(
       tiledb_array_schema_set_capacity(ctx, schema_.get(), capacity));
   return *this;
-}
-
-ArraySchema &ArraySchema::set_kv() {
-  auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_array_schema_set_as_kv(ctx, schema_.get()));
-  return *this;
-}
-
-bool ArraySchema::is_kv() const {
-  auto &ctx = ctx_.get();
-  int kv;
-  ctx.handle_error(tiledb_array_schema_get_as_kv(ctx, schema_.get(), &kv));
-  return kv != 0;
 }
 
 /* ********************************* */
