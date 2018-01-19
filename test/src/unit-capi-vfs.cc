@@ -446,6 +446,8 @@ void VFSFx::check_read(const std::string& path) {
 void VFSFx::check_append_after_sync(const std::string& path) {
   // File write and file size
   auto file = path + "file";
+
+  // First write
   std::string to_write = "This will be written to the file";
   int rc = tiledb_vfs_write(
       ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
@@ -460,7 +462,13 @@ void VFSFx::check_append_after_sync(const std::string& path) {
   rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(file_size == to_write.size());
-  std::string to_write_2 = "This will be appended to the end of the file";
+
+  std::string to_write_2;
+  if (path.find("s3://") == 0)
+    to_write_2 = "This will overwrite the file";
+  else
+    to_write_2 = "This will be appended to the end of the file";
+
   rc = tiledb_vfs_write(
       ctx_, vfs_, file.c_str(), to_write_2.c_str(), to_write_2.size());
   REQUIRE(rc == TILEDB_OK);
@@ -468,7 +476,12 @@ void VFSFx::check_append_after_sync(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(file_size == to_write.size() + to_write_2.size());
+
+  if (path.find("s3://") == 0)
+    CHECK(file_size == to_write_2.size());
+  else
+    CHECK(file_size == to_write.size() + to_write_2.size());
+
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
 }

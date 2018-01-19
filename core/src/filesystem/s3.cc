@@ -524,7 +524,9 @@ Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
     copyObjectRequest.SetBucket(src_uri.GetAuthority());
     copyObjectRequest.WithBucket(dst_uri.GetAuthority());
     copyObjectRequest.WithCopySource(
-        join_authority_and_path(src_uri.GetAuthority(), object.GetKey()));
+        join_authority_and_path(
+            src_uri.GetAuthority().c_str(), object.GetKey().c_str())
+            .c_str());
     std::string new_file(("/" + object.GetKey()).c_str());
     replace(
         new_file,
@@ -553,7 +555,9 @@ Status S3::copy_file(const URI& old_uri, const URI& new_uri) {
   Aws::Http::URI dst_uri = new_uri.c_str();
   Aws::S3::Model::CopyObjectRequest copyObjectRequest;
   copyObjectRequest.WithCopySource(
-      join_authority_and_path(src_uri.GetAuthority(), src_uri.GetPath()));
+      join_authority_and_path(
+          src_uri.GetAuthority().c_str(), src_uri.GetPath().c_str())
+          .c_str());
   copyObjectRequest.WithBucket(dst_uri.GetAuthority());
   copyObjectRequest.WithKey(dst_uri.GetPath());
 
@@ -755,7 +759,8 @@ Status S3::write_multipart(
   auto& path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
   if (multipart_upload_IDs_.find(path_c_str) == multipart_upload_IDs_.end()) {
-    // If file not open initiate a multipart upload
+    // Delete file if it exists (overwrite) and initiate multipart request
+    RETURN_NOT_OK(remove_file(uri));
     Status st = initiate_multipart_request(aws_uri);
     if (!st.ok()) {
       return st;
