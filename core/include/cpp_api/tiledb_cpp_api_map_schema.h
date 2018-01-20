@@ -51,77 +51,72 @@ namespace tdb {
 
 /** Implements the array schema functionality. */
   class MapSchema : public Schema {
-  public:
-    /* ********************************* */
-    /*     CONSTRUCTORS & DESTRUCTORS    */
-    /* ********************************* */
+public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-    /** Creates a new array schema. */
-    explicit MapSchema(const Context &ctx);
+  /** Creates a new array schema. */
+  explicit MapSchema(const Context &ctx);
 
-    /** Loads the schema of an existing array with the input URI. */
-    MapSchema(const Context &ctx, const std::string &uri);
+  /** Loads the schema of an existing array with the input URI. */
+  MapSchema(const Context &ctx, const std::string &uri);
 
-    MapSchema(const MapSchema &) = default;
-    MapSchema(MapSchema &&o) = default;
-    MapSchema &operator=(const MapSchema &) = default;
-    MapSchema &operator=(MapSchema &&o) = default;
+  MapSchema(const MapSchema &) = default;
+  MapSchema(MapSchema &&o) = default;
+  MapSchema &operator=(const MapSchema &) = default;
+  MapSchema &operator=(MapSchema &&o) = default;
 
-    /* ********************************* */
-    /*                API                */
-    /* ********************************* */
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
 
-    /** Auxiliary operator for getting the underlying C TileDB object. */
-    operator tiledb_kv_schema_t *() const {
-      return schema_.get();
-    }
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_kv_schema_t *() const {
+    return schema_.get();
+  }
 
-    /** Dumps the array schema in an ASCII representation to an output. */
-    void dump(FILE *out = stdout) const override;
+  /** Dumps the array schema in an ASCII representation to an output. */
+  void dump(FILE *out = stdout) const override;
 
-    /** Adds an attribute to the array. */
-    MapSchema &add_attribute(const Attribute &attr) override;
+  /** Adds an attribute to the array. */
+  MapSchema &add_attribute(const Attribute &attr) override;
 
-    /** Returns a shared pointer to the C TileDB domain object. */
-    std::shared_ptr<tiledb_kv_schema_t> ptr() const {
-      return schema_;
-    }
+  /** Returns a shared pointer to the C TileDB domain object. */
+  std::shared_ptr<tiledb_kv_schema_t> ptr() const {
+    return schema_;
+  }
 
-    /** Validates the schema. */
-    void check() const override;
+  /** Validates the schema. */
+  void check() const override;
 
-    /** Gets all attributes in the array. */
-    const std::unordered_map<std::string, Attribute> attributes() const override;;
+  /** Gets all attributes in the array. */
+  const std::unordered_map<std::string, Attribute> attributes() const override;;
 
-    /** Get an attribute by name. **/
-    Attribute attribute(const std::string &name) const override {
-    auto &ctx = ctx_.get();
-      tiledb_attribute_t *attr;
-      ctx.handle_error(tiledb_kv_schema_get_attribute_from_name(ctx, schema_.get(), name.c_str(), &attr));
-      return {ctx, attr};
-    }
+  /** Get an attribute by name. **/
+  Attribute attribute(const std::string &name) const override;
 
-    /** Get an attribute by index **/
-    Attribute attribute(unsigned int i) const override;
+  /** Get an attribute by index **/
+  Attribute attribute(unsigned int i) const override;
 
-  private:
-    /* ********************************* */
-    /*         PRIVATE ATTRIBUTES        */
-    /* ********************************* */
+private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
-    /** The pointer to the C TileDB KV schema object. */
-    std::shared_ptr<tiledb_kv_schema_t> schema_;
-  };
+  /** The pointer to the C TileDB KV schema object. */
+  std::shared_ptr<tiledb_kv_schema_t> schema_;
+};
 
 /* ********************************* */
 /*               MISC                */
 /* ********************************* */
 
 /** Converts the array schema into a string representation. */
-  std::ostream &operator<<(std::ostream &os, const MapSchema &schema);
+std::ostream &operator<<(std::ostream &os, const MapSchema &schema);
 
 /** Adds an attribute to the array schema. */
-  MapSchema &operator<<(MapSchema &schema, const Attribute &attr);
+MapSchema &operator<<(MapSchema &schema, const Attribute &attr);
 
 }  // namespace tdb
 

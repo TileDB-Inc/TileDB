@@ -74,13 +74,13 @@ namespace tdb {
     virtual void dump(FILE *out) const = 0;
 
     /** Adds an attribute to the array. */
-    virtual Schema &add_attribute(const Attribute &attr)  = 0;
+    virtual Schema &add_attribute(const Attribute &attr) = 0;
 
     /** Validates the schema. */
     virtual void check() const  = 0;
 
     /** Gets all attributes in the array. */
-    virtual const std::unordered_map<std::string, Attribute> attributes() const  = 0;
+    virtual const std::unordered_map<std::string, Attribute> attributes() const = 0;
 
     /** Get an attribute by name. **/
     virtual Attribute attribute(const std::string &name) const = 0;

@@ -44,8 +44,23 @@
 
 namespace tdb {
 
+  /**
+   * A Key value store backed by a TileDB Sparse array. The Map is composed
+   * of MapItems. After an Item is created and populated with values, defined
+   * by the MapScema, the item can be added to the map.
+   */
   class Map {
   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /**
+     * Load a map.
+     *
+     * @param ctx Context
+     * @param uri URI of map.
+     */
     Map(const Context &ctx, const std::string &uri) : schema_(ctx, uri), deleter_(ctx) {
       tiledb_kv_t *kv;
       ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
@@ -56,10 +71,19 @@ namespace tdb {
     Map(Map &&o) = default;
     Map &operator=(const Map &) = default;
     Map &operator=(Map &&o) = default;
-    ~Map() {
-      flush();
-    }
 
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /**
+     * Create an item for the currrent map with the given key. Note the map
+     * does not contain the key until the item is added with add_item().
+     *
+     * @tparam T Key type
+     * @param key Key value
+     * @return MapItem
+     */
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
     create_item(const T &key) {
@@ -69,6 +93,14 @@ namespace tdb {
                      sizeof(T));
     }
 
+    /**
+     * Create an item for the current map with the given key. Note the map
+     * does not contain the key until the item is added with add_item().
+     *
+     * @tparam T Key type, compound type (ex. vector, string)
+     * @param key Key value
+     * @return MapItem
+     */
     template<typename T>
     typename std::enable_if<std::is_fundamental<typename T::value_type>::value, MapItem>::type
     create_item(const T &key) {
@@ -78,6 +110,7 @@ namespace tdb {
                      sizeof(typename T::value_type) * key.size());
     }
 
+    /** Get an item from the map given a key. Fundamental key types. **/
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
     get_item(const T &key) {
@@ -93,6 +126,7 @@ namespace tdb {
       return MapItem(*this, &item);
     }
 
+    /** Get an item from the map given a key. Compound key types. **/
     template<typename T>
     typename std::enable_if<std::is_fundamental<typename T::value_type>::value, MapItem>::type
     get_item(const T &key) {
@@ -108,43 +142,69 @@ namespace tdb {
       return MapItem(*this, &item);
     }
 
+    /** Add an item to the map. This populates the map with the key and attribute values. **/
     void add_item(const MapItem &item) {
       auto &ctx = schema_.context();
       ctx.handle_error(tiledb_kv_add_item(ctx, kv_.get(), item.ptr().get()));
     }
 
+    /** Max number of items to buffer in memory before flushing to storage. **/
     void set_max_buffered_items(uint64_t num) {
       auto &ctx = context();
       ctx.handle_error(tiledb_kv_set_max_items(ctx, kv_.get(), num));
     }
 
+    /** Flush to storage. **/
     void flush() {
       auto &ctx = context();
       ctx.handle_error(tiledb_kv_flush(ctx, kv_.get()));
     }
 
+    /** Get the schema of the map. **/
     const MapSchema &schema() const {
       return schema_;
     }
 
+    /** Get the underlying context. **/
     const Context &context() const {
       return schema_.context();
     }
 
   private:
+
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
     friend class MapItem;
+
+    /** Schema of the map. **/
     MapSchema schema_;
+
+    /** ptr to underlying TileDB object. **/
     std::shared_ptr<tiledb_kv_t> kv_;
 
-    /** Closes the map **/
+    /** Closes the map on destruction. **/
     impl::Deleter deleter_;
 
   };
 
+  /* ********************************* */
+  /*        NON MEMBER MAP FUNC        */
+  /* ********************************* */
+
+  /**
+   * Create a new map.
+   *
+   * @param uri URI to make map at.
+   * @param schema schema defining the map structure.
+   */
   void create_map(const std::string &uri, const MapSchema &schema);
 
+  /** Consolidate map fragments. **/
   void consolidate_map(const Context& ctx, const std::string& map);
 
+  /** Add an item to the map. **/
   Map &operator<<(Map &map, const MapItem &item);
 
 }
