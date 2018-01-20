@@ -42,6 +42,10 @@
 
 namespace tdb {
 
+namespace impl {
+class ConfigProxy;
+}
+
 /** Carries configuration parameters that will be passed to a Context object. */
 class Config {
  public:
@@ -54,7 +58,7 @@ class Config {
 
   /**
    * Constructor that takes as input a filename (URI) that stores the config
-   * paramters. The file must have the following (text) format:
+   * parameters. The file must have the following (text) format:
    *
    * parameter value
    *
@@ -109,6 +113,8 @@ class Config {
    */
   Config& set(const std::string& param, const std::string& value);
 
+  impl::ConfigProxy operator[](const std::string &param);
+
   /** Unsets a config parameter. */
   Config& unset(const std::string& param);
 
@@ -130,6 +136,22 @@ class Config {
   /** Creates the TileDB C config object. */
   void create_config();
 };
+
+namespace impl {
+
+/** Proxy to set params via operator[] **/
+struct ConfigProxy {
+  ConfigProxy(Config &conf, const std::string &param) : conf(conf), param(param) {}
+
+  void operator=(const std::string &val) {
+    conf.set(param, val);
+  }
+
+  Config &conf;
+  const std::string param;
+};
+
+}
 
 }  // namespace tdb
 

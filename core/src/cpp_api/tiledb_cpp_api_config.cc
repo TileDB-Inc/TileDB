@@ -75,7 +75,12 @@ Config& Config::set(const std::string& param, const std::string& value) {
   return *this;
 }
 
-Config& Config::unset(const std::string& param) {
+impl::ConfigProxy Config::operator[](const std::string &param) {
+  return {*this, param};
+}
+
+
+  Config& Config::unset(const std::string& param) {
   int rc = tiledb_config_unset(config_.get(), param.c_str());
   if (rc != TILEDB_OK)
     throw TileDBError(
