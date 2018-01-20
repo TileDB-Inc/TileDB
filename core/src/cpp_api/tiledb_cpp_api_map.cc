@@ -38,6 +38,7 @@ namespace tdb {
 
   void create_map(const std::string &uri, const MapSchema &schema) {
     auto &ctx = schema.context();
+    schema.check();
     ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
   }
 

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_map_create.cc
+ * @file   tiledb_map_write.cc
  *
  * @section LICENSE
  *
@@ -27,28 +27,52 @@
  *
  * @section DESCRIPTION
  *
- * Create a Map.
+ * Write to a Map. Run map_create before this.
  */
 
 #include <tiledb>
 
 int main() {
-  tiledb::Context ctx;
-  tiledb::MapSchema schema(ctx);
+  tdb::Context ctx;
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  {
+    tiledb::Map map(ctx, "my_map");
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
+    auto item1 = map.create_item(100);
+    item1["a1"] = 1;
+    item1["a2"] = std::string("a");
+    item1["a3"] = std::vector<float>{1.1, 1.2};
 
-  schema << a1 << a2 << a3;
+    auto item2 = map.create_item(200.0);
+    item2["a1"] = 2;
+    item2["a2"] = std::string("bb");
+    item2["a3"] = std::vector<float>{2.1, 2.2};
 
-  schema.dump(stdout);
+    auto item3 = map.create_item(std::vector<double>{300.0, 300.1});
+    item3["a1"] = 3;
+    item3["a2"] = std::string("ccc");
+    item3["a3"] = std::vector<float>{3.1, 3.2};
 
-  tiledb::create_map("my_map", schema);
-  
+    auto item4 = map.create_item(std::string("key_4"));
+    item4["a1"] = 4;
+    item4["a2"] = std::string("dddd");
+    item4["a3"] = std::vector<float>{4.1, 4.2};
+
+    // Flush every 100 items
+    map.set_max_buffered_items(100);
+
+    // Add items to map
+    map << item1 << item2;
+
+    // Force write to storage backend
+    map.flush();
+
+    // Write other items. These will be flushed on map destruction.
+    map << item3 << item4;
+  }
+
+  // Consolidate fragments (optional)
+  tiledb::consolidate_map(ctx, "my_map");
+
   return 0;
 }

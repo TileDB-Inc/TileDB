@@ -56,6 +56,9 @@ namespace tdb {
     Map(Map &&o) = default;
     Map &operator=(const Map &) = default;
     Map &operator=(Map &&o) = default;
+    ~Map() {
+      flush();
+    }
 
     template<typename T>
     typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type

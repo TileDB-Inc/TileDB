@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_map_create.cc
+ * @file   tiledb_map_read.cc
  *
  * @section LICENSE
  *
@@ -27,28 +27,36 @@
  *
  * @section DESCRIPTION
  *
- * Create a Map.
+ * Read a Map. Run map_write before this.
  */
 
 #include <tiledb>
 
 int main() {
   tiledb::Context ctx;
-  tiledb::MapSchema schema(ctx);
+  tiledb::Map map(ctx, "my_map");
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  // Get item with key 100
+  auto item1 = map.get_item(100);
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
+  std::cout << "a1, a2, (a3.first, a3.second)\n"
+            << "-----------------------------\n"
+            // Get a attr known to be a primitive
+            << item1.get_single<int>("a1") << ", "
+            // Get a >1 element attr with a std::string container.
+            // Default container is std::vector<T>.
+            << item1.get<char, std::string>("a2") << ", ";
 
-  schema << a1 << a2 << a3;
 
-  schema.dump(stdout);
+  // Get value by implicit cast. Only available for std::vector<T>
+  std::vector<float> a3 = item1["a3"];
 
-  tiledb::create_map("my_map", schema);
-  
+  std::cout << "(" << a3[0] << ", " << a3[1] << ")\n"
+            << "-----------------------------\n";
+
+  auto data = item1.get_ptr<char>("a2");
+  std::cout << "\nNo copy get of attribute 2: " << std::string(data.first, data.second) << '\n';
+
   return 0;
 }
+
