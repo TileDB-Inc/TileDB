@@ -35,8 +35,8 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::VFS vfs(ctx);
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
 
   if (!vfs.is_dir("dirA")) {
     vfs.create_dir("dirA");

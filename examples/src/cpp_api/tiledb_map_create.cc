@@ -36,9 +36,9 @@ int main() {
   tiledb::Context ctx;
   tiledb::MapSchema schema(ctx);
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
+  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
+  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
 
   a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);

@@ -36,10 +36,10 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::VFS vfs(ctx);
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
 
-  tdb::VFS::filebuf sbuf(vfs);
+  tiledb::VFS::filebuf sbuf(vfs);
   sbuf.open("tiledb_vfs.txt", std::ios::out);
   std::ostream os(&sbuf);
   if (!os.good()) {

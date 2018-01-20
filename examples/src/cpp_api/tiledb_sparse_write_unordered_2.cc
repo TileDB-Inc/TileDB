@@ -39,12 +39,12 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
   // clang-format off
   std::vector<int> a1_buff = {7, 5, 0};
-  auto a2_buff = tdb::make_var_buffers<std::string>({"hhhh", "ff", "a"});
+  auto a2_buff = tiledb::make_var_buffers<std::string>({"hhhh", "ff", "a"});
   std::vector<float> a3_buff = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
   std::vector<uint64_t> coords_buff = {3, 4, 4, 2, 1, 1};
 
@@ -57,7 +57,7 @@ int main() {
   query.submit();
 
   a1_buff = {6, 4, 3, 1, 2};
-  auto a2_2_buff = tdb::make_var_buffers<std::string>({"ggg", "e", "dddd", "bb", "ccc"});
+  auto a2_2_buff = tiledb::make_var_buffers<std::string>({"ggg", "e", "dddd", "bb", "ccc"});
   a3_buff = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
   coords_buff = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
 

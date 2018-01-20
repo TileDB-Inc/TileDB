@@ -37,8 +37,8 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::ArraySchema schema(ctx);
+  tiledb::Context ctx;
+  tiledb::ArraySchema schema(ctx);
 
   std::cout << "\nFirst dump:\n";
   schema.dump(stdout);
@@ -53,16 +53,16 @@ int main() {
   std::cout << "Second dump:\n";
   schema.dump(stdout);
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1 =
-      tdb::Dimension::create<uint64_t>(ctx, "d1", {{0, 1000}}, 10);
-  tdb::Dimension d2 =
-      tdb::Dimension::create<uint64_t>(ctx, "d2", {{100, 10000}}, 100);
+  tiledb::Domain domain(ctx);
+  tiledb::Dimension d1 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d1", {{0, 1000}}, 10);
+  tiledb::Dimension d2 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d2", {{100, 10000}}, 100);
   domain << d1 << d2;
   schema << domain;
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "");
-  tdb::Attribute a2 = tdb::Attribute::create<float>(ctx, "a2");
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "");
+  tiledb::Attribute a2 = tiledb::Attribute::create<float>(ctx, "a2");
   a1.set_cell_val_num(3);
   a2.set_compressor({TILEDB_GZIP, -1});
   schema << a1 << a2;

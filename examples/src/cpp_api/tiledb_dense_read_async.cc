@@ -38,10 +38,10 @@ void print_upon_completion(void* s);
 
 int main() {
   using std::setw;
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
   query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -61,11 +61,11 @@ int main() {
   query.submit_async(print_upon_completion, (void*)msg.c_str());
 
   std::cout << "Query in progress\n";
-  tdb::Query::Status status;
+  tiledb::Query::Status status;
   do {
     // Wait till query is done
     status = query.query_status();
-  } while (status == tdb::Query::Status::INPROGRESS);
+  } while (status == tiledb::Query::Status::INPROGRESS);
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes
@@ -73,9 +73,9 @@ int main() {
   const auto& buff_sizes = query.returned_buff_sizes();
 
   // chunk the continous buffer by cell
-  auto a2 = tdb::group_by_cell(
+  auto a2 = tiledb::group_by_cell(
       a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
-  auto a3 = tdb::group_by_cell<2>(
+  auto a3 = tiledb::group_by_cell<2>(
       a3_buff, buff_sizes[3]);  // std::vector<std::array<T, 2>>
 
   std::cout << "Result num: " << buff_sizes[0]

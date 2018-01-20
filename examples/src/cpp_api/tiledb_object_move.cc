@@ -33,14 +33,14 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
-  tdb::Object::move(ctx, "my_group", "my_group_2", true);
-  tdb::Object::move(
+  tiledb::Object::move(ctx, "my_group", "my_group_2", true);
+  tiledb::Object::move(
       ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
 
   try {
-    tdb::Object::move(ctx, "invalid_path", "path", false);
+    tiledb::Object::move(ctx, "invalid_path", "path", false);
   } catch (std::runtime_error &e) {
     std::cout << "Failed to move invalid path.\n";
   }

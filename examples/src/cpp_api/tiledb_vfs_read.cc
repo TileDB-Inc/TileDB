@@ -36,12 +36,12 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::VFS vfs(ctx);
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
 
   {
     // Read string data
-    tdb::VFS::filebuf sbuf(vfs);
+    tiledb::VFS::filebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.txt", std::ios::in);
     std::istream is(&sbuf);
     if (!is.good()) {
@@ -57,7 +57,7 @@ int main() {
 
   {
     // Read binary data
-    tdb::VFS::filebuf sbuf(vfs);
+    tiledb::VFS::filebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.bin", std::ios::in);
     std::istream is(&sbuf);
     if (!is.good()) {

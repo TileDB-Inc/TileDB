@@ -43,10 +43,10 @@
 
 int main() {
   using std::setw;
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set set_subarray. Templated on domain type.
   query.set_subarray<uint64_t>({3, 4, 2, 4});
@@ -70,9 +70,9 @@ int main() {
   const auto &buff_sizes = query.returned_buff_sizes();
 
   // chunk the continuous buffer by cell
-  auto a2 = tdb::group_by_cell(
+  auto a2 = tiledb::group_by_cell(
       a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
-  auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
 
   std::cout << "Result num: " << buff_sizes[0]
             << '\n';  // This assumes all attributes were fully read.

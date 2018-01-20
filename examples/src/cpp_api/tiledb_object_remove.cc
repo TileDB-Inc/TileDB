@@ -36,12 +36,12 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Object::remove(ctx, "my_group");
-  tdb::Object::remove(ctx, "my_dense_array");
+  tiledb::Context ctx;
+  tiledb::Object::remove(ctx, "my_group");
+  tiledb::Object::remove(ctx, "my_dense_array");
 
   try {
-    tdb::Object::remove(ctx, "invalid_path");
+    tiledb::Object::remove(ctx, "invalid_path");
   } catch (std::runtime_error &e) {
     std::cout << "Failed to delete invalid path\n";
   }

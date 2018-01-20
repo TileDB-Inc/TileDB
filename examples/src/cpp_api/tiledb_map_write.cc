@@ -33,7 +33,7 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   {
     tiledb::Map map(ctx, "my_map");

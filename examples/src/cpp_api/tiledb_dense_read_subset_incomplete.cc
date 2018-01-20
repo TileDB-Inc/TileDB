@@ -39,10 +39,10 @@
 
 int main() {
   using std::setw;
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set set_subarray. Templated on domain type.
   query.set_subarray<uint64_t>({3, 4, 2, 4});
@@ -61,7 +61,7 @@ int main() {
     for (unsigned i = 0; i < buff_sizes[0]; ++i) {
       std::cout << a1_data[i] << "\n";
     }
-  } while (query.query_status() == tdb::Query::Status::INCOMPLETE);
+  } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);
 
   return 0;
 }

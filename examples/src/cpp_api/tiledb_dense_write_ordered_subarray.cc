@@ -41,8 +41,8 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_subarray<uint64_t>({3, 4, 2, 4}).set_layout(TILEDB_ROW_MAJOR);
 

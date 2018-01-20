@@ -41,7 +41,7 @@
 void print_upon_completion(void* s);
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Buffers
   std::vector<int> a1_data = {
@@ -94,7 +94,7 @@ int main() {
   };
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
@@ -106,11 +106,11 @@ int main() {
   query.submit_async(print_upon_completion, (void*)msg.c_str());
 
   std::cout << "Query in progress\n";
-  tdb::Query::Status status;
+  tiledb::Query::Status status;
   do {
     // Wait till query is done
     status = query.query_status();
-  } while (status == tdb::Query::Status::INPROGRESS);
+  } while (status == tiledb::Query::Status::INPROGRESS);
 
   return 0;
 }

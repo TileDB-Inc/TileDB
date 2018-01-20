@@ -33,7 +33,7 @@
 #include "tiledb"
 
 int main() {
-  tdb::Version version = tdb::Version::version();
+  tiledb::Version version = tiledb::Version::version();
   std::cout << version << '\n';
   return 0;
 }

@@ -38,7 +38,7 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Buffers
   std::vector<int> a1_data = {
@@ -90,7 +90,7 @@ int main() {
   };
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2str);

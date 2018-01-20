@@ -42,8 +42,8 @@
 #include <tuple>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_layout(TILEDB_UNORDERED);
   query.set_subarray<uint64_t>({{{3, 4}}, {{3, 4}}});
@@ -52,7 +52,7 @@ int main() {
 
   // Make buffers for var size attr
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
-  auto a2buff = tdb::make_var_buffers(a2);
+  auto a2buff = tiledb::make_var_buffers(a2);
 
   std::vector<float> a3_data = {
       211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};

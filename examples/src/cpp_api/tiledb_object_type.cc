@@ -33,9 +33,9 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  std::cout << tdb::Object::object(ctx, "my_group") << "\n";
-  std::cout << tdb::Object::object(ctx, "my_dense_array") << "\n";
-  std::cout << tdb::Object::object(ctx, "invalid_path") << "\n";
+  tiledb::Context ctx;
+  std::cout << tiledb::Object::object(ctx, "my_group") << "\n";
+  std::cout << tiledb::Object::object(ctx, "my_dense_array") << "\n";
+  std::cout << tiledb::Object::object(ctx, "invalid_path") << "\n";
   return 0;
 }

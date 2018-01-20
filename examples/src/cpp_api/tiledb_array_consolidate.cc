@@ -35,7 +35,7 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::consolidate_array(ctx, "my_dense_array");
+  tiledb::Context ctx;
+  tiledb::consolidate_array(ctx, "my_dense_array");
   return 0;
 }

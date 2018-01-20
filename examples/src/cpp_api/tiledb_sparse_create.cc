@@ -35,24 +35,24 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1 = tdb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  tdb::Dimension d2 = tdb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
+  tiledb::Domain domain(ctx);
+  tiledb::Dimension d1 = tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  tiledb::Dimension d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
   domain << d1 << d2;  // Add dims to domain
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
+  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
+  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
 
   // Set attr compressors and number
-  a1.set_compressor(tdb::Compressor{TILEDB_BLOSC, -1}).set_cell_val_num(1);
-  a2.set_compressor(tdb::Compressor{TILEDB_GZIP, -1})
+  a1.set_compressor(tiledb::Compressor{TILEDB_BLOSC, -1}).set_cell_val_num(1);
+  a2.set_compressor(tiledb::Compressor{TILEDB_GZIP, -1})
       .set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor(tdb::Compressor{TILEDB_ZSTD, -1}).set_cell_val_num(2);
+  a3.set_compressor(tiledb::Compressor{TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
-  tdb::ArraySchema schema(ctx);
+  tiledb::ArraySchema schema(ctx);
   schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema << TILEDB_SPARSE    // Type of array
          << 2                // set capacity
@@ -60,7 +60,7 @@ int main() {
          << a1 << a2 << a3;  // set attributes
 
   // Check the schema, and make the array.
-  tdb::create_array("my_sparse_array", schema);
+  tiledb::create_array("my_sparse_array", schema);
 
   std::cout << "Array created with schema: " << schema << std::endl;
 

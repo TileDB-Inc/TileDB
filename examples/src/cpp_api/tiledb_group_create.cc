@@ -39,8 +39,8 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::create_group(ctx, "my_group");
-  tdb::create_group(ctx, "my_group/dense_arrays");
-  tdb::create_group(ctx, "my_group/sparse_arrays");
+  tiledb::Context ctx;
+  tiledb::create_group(ctx, "my_group");
+  tiledb::create_group(ctx, "my_group/dense_arrays");
+  tiledb::create_group(ctx, "my_group/sparse_arrays");
 }

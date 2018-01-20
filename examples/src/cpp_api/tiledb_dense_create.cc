@@ -35,27 +35,27 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1 = tdb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  tdb::Dimension d2 = tdb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
+  tiledb::Domain domain(ctx);
+  tiledb::Dimension d1 = tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  tiledb::Dimension d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
   domain << d1 << d2;  // Add dims to domain
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
+  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
+  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
 
   a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
-  tdb::ArraySchema schema(ctx);
+  tiledb::ArraySchema schema(ctx);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
   schema << domain << a1 << a2 << a3;  // Add attributes to array
 
   // Check the schema, and make the array.
-  tdb::create_array("my_dense_array", schema);
+  tiledb::create_array("my_dense_array", schema);
 
   std::cout << schema << std::endl;
 
