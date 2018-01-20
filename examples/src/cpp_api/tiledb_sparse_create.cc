@@ -60,7 +60,7 @@ int main() {
          << a1 << a2 << a3;  // set attributes
 
   // Check the schema, and make the array.
-  tdb::create_array(ctx, "my_sparse_array", schema);
+  tdb::create_array("my_sparse_array", schema);
 
   std::cout << "Array created with schema: " << schema << std::endl;
 

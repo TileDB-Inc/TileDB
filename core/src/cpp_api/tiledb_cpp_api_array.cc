@@ -40,8 +40,8 @@ void consolidate_array(const Context& ctx, const std::string& array) {
   ctx.handle_error(tiledb_array_consolidate(ctx, array.c_str()));
 }
 
-void create_array(
-    const Context& ctx, const std::string& array, const ArraySchema& schema) {
+void create_array(const std::string& array, const ArraySchema& schema) {
+  auto &ctx = schema.context();
   ctx.handle_error(tiledb_array_schema_check(ctx, schema));
   ctx.handle_error(tiledb_array_create(ctx, array.c_str(), schema));
 }

@@ -41,6 +41,7 @@
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_type.h"
+#include "tiledb_cpp_api_exception.h"
 
 #include <functional>
 #include <memory>
@@ -144,6 +145,27 @@ class Attribute {
 
 /** Get a string representation of an attribute for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Attribute &a);
+
+namespace impl {
+
+/**
+ * Checks if type matches the attribute and expected number of cell values.
+ *
+ * @tparam DataT Type `attr` should be (tdb::impl::*)
+ * @param attr Attribute name
+ * @param len Length of attribute value to check
+ */
+template <typename DataT>
+void type_check_attr(const Attribute &a, unsigned len) {
+  auto expected_num = a.cell_val_num();
+  impl::type_check<DataT>(a.type());
+  if (expected_num != TILEDB_VAR_NUM && len != expected_num) {
+    throw AttributeError("Attribute size does not match expected number.");
+  }
+
+}
+
+}
 
 }  // namespace tdb
 

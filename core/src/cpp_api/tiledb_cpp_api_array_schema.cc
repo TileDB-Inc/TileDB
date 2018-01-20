@@ -44,16 +44,14 @@ namespace tdb {
 /* ********************************* */
 
 ArraySchema::ArraySchema(const Context &ctx)
-    : ctx_(ctx)
-    , deleter_(ctx) {
+    : Schema(ctx) {
   tiledb_array_schema_t *schema;
   ctx.handle_error(tiledb_array_schema_create(ctx, &schema));
   schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
 };
 
 ArraySchema::ArraySchema(const Context &ctx, const std::string &uri)
-    : ctx_(ctx)
-    , deleter_(ctx) {
+    : Schema(ctx) {
   tiledb_array_schema_t *schema;
   ctx.handle_error(tiledb_array_schema_load(ctx, &schema, uri.c_str()));
   schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
@@ -276,6 +274,20 @@ std::string ArraySchema::to_str(tiledb_layout_t layout) {
       return "UNORDERED";
   }
   return "";
+}
+
+Attribute ArraySchema::attribute(const std::string &name) const {
+  auto &ctx = ctx_.get();
+  tiledb_attribute_t *attr;
+  ctx.handle_error(tiledb_array_schema_get_attribute_from_name(ctx, schema_.get(), name.c_str(), &attr));
+  return Attribute(ctx, attr);
+}
+
+Attribute ArraySchema::attribute(unsigned int i) const {
+  auto &ctx = ctx_.get();
+  tiledb_attribute_t *attr;
+  ctx.handle_error(tiledb_array_schema_get_attribute_from_index(ctx, schema_.get(), i, &attr));
+  return Attribute(ctx, attr);
 }
 
 }  // namespace tdb

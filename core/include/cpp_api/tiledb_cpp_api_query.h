@@ -273,34 +273,6 @@ class Query {
   /** Collate buffers and attach them to the query. */
   void prepare_submission();
 
-  /** Checks if the input type complies with the template type. */
-  template <typename DataT>
-  void type_check(tiledb_datatype_t type) {
-    if (DataT::tiledb_datatype != type) {
-      throw TypeError::create<DataT>(type);
-    }
-  }
-
-  /**
-   * Checks if type matches the attribute and expected number of cell values.
-   *
-   * @tparam DataT Type `attr` should be (tdb::impl::*)
-   * @param attr Attribute name
-   * @param varcmp `True` if we expect the attribute to be variable length
-   */
-  template <typename DataT>
-  void type_check_attr(const std::string &attr, bool varcmp) {
-    if (array_attributes_.count(attr)) {
-      // Type check if an attribute
-      type_check<DataT>(array_attributes_.at(attr).type());
-      if (varcmp ==
-          (schema_.attributes().at(attr).cell_val_num() == TILEDB_VAR_NUM)) {
-        throw AttributeError(
-            "Offsets must be provided for variable-lengthed attributes.");
-      }
-    }
-  }
-
   /**
    * Sets a subarray. The subarray defined as pairs of [start, stop] per
    * dimension. It also calculates the number of cells in the subarray.
@@ -308,7 +280,7 @@ class Query {
   template <typename T>
   Query &set_subarray(const std::vector<typename T::type> &pairs) {
     auto &ctx = ctx_.get();
-    type_check<T>(schema_.domain().type());
+    impl::type_check<T>(schema_.domain().type());
     if (pairs.size() != schema_.domain().dim_num() * 2) {
       throw SchemaMismatch(
           "Subarray should have num_dims * 2 values: (low, high) for each "
@@ -331,7 +303,7 @@ class Query {
   Query &set_subarray(
       const std::vector<std::array<typename T::type, 2>> &pairs) {
     auto &ctx = ctx_.get();
-    type_check<T>(schema_.domain().type());
+    impl::type_check<T>(schema_.domain().type());
     ctx.handle_error(
         tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
     subarray_cell_num_ = pairs[0][1] - pairs[0][0] + 1;
@@ -353,7 +325,12 @@ class Query {
   typename std::enable_if<std::is_same<typename Vec::value_type, typename T::type>::value, Query>::type
   &set_buffer(
       const std::string &attr, Vec &buf) {
-    type_check_attr<T>(attr, true);
+    if (array_attributes_.count(attr)) {
+      const auto &a = array_attributes_.at(attr);
+      impl::type_check_attr<T>(a, a.cell_val_num());
+    } else {
+      throw AttributeError("Attribute does not exist: " + attr);
+    }
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
         static_cast<uint64_t>(buf.size()),
         sizeof(typename T::type),
@@ -377,7 +354,11 @@ class Query {
       const std::string &attr,
       std::vector<uint64_t> &offsets,
       Vec &data) {
-    type_check_attr<T>(attr, false);
+    if (array_attributes_.count(attr)) {
+      impl::type_check_attr<T>(array_attributes_.at(attr), TILEDB_VAR_NUM);
+    } else {
+      throw AttributeError("Attribute does not exist: " + attr);
+    }
     var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
         offsets.size(), sizeof(uint64_t), offsets.data());
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
@@ -462,7 +443,7 @@ class Query {
       type = schema_.domain().type();
     else
       type = array_attributes_.at(attr).type();
-    type_check<DataT>(type);
+    impl::type_check<DataT>(type);
     ret = get_buffer_size(cell_val_num);
     buff.resize((max_el != 0 && ret > max_el) ? max_el : ret);
     return ret;

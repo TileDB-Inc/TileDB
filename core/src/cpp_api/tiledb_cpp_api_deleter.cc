@@ -43,9 +43,22 @@ void Deleter::operator()(tiledb_query_t *p) const {
   ctx.handle_error(tiledb_query_free(ctx, p));
 }
 
+void Deleter::operator()(tiledb_kv_t *p) const {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_kv_close(ctx, p));
+}
+
 void Deleter::operator()(tiledb_array_schema_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_array_schema_free(ctx, p));
+}
+
+void Deleter::operator()(tiledb_kv_schema_t *p) const {
+  ctx_.get().handle_error(tiledb_kv_schema_free(ctx_.get(), p));
+}
+
+void Deleter::operator()(tiledb_kv_item_t *p) const {
+  ctx_.get().handle_error(tiledb_kv_item_free(ctx_.get(), p));
 }
 
 void Deleter::operator()(tiledb_attribute_t *p) const {

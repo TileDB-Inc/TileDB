@@ -37,20 +37,23 @@
 
 #include "tiledb.h"
 #include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_domain.h"
 #include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_schema_base.h"
 
-#include <functional>
 #include <memory>
+#include <string>
+#include <array>
 #include <unordered_map>
-#include <vector>
 
 namespace tdb {
 
-/** Implements the array schema functionality. */
-class ArraySchema {
+/**
+ * Schema describing an array. The schema describes all information
+ * about an array including memory ordering, types, and compression
+ * details.
+ */
+class ArraySchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -81,7 +84,7 @@ class ArraySchema {
   static std::string to_str(tiledb_layout_t layout);
 
   /** Dumps the array schema in an ASCII representation to an output. */
-  void dump(FILE *out = stdout) const;
+  void dump(FILE *out = stdout) const override;
 
   /** Returns the array type. */
   tiledb_array_type_t array_type() const;
@@ -133,27 +136,27 @@ class ArraySchema {
   ArraySchema &set_domain(const Domain &domain);
 
   /** Adds an attribute to the array. */
-  ArraySchema &add_attribute(const Attribute &attr);
+  ArraySchema &add_attribute(const Attribute &attr) override;
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_array_schema_t> ptr() const;
 
   /** Validates the schema. */
-  void check() const;
+  void check() const override;
 
   /** Gets all attributes in the array. */
-  const std::unordered_map<std::string, Attribute> attributes() const;
+  const std::unordered_map<std::string, Attribute> attributes() const override;
+
+  /** Get an attribute by name. **/
+  Attribute attribute(const std::string &name) const override;
+
+  /** Get an attribute by index **/
+  Attribute attribute(unsigned int i) const override;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The TileDB context. */
-  std::reference_wrapper<const Context> ctx_;
-
-  /** Deleter wrapper. */
-  impl::Deleter deleter_;
 
   /** The pointer to the C TileDB array schema object. */
   std::shared_ptr<tiledb_array_schema_t> schema_;

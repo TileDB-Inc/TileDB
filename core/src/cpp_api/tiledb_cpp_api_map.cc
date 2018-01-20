@@ -1,5 +1,7 @@
 /**
- * @file   tdbpp_dense_create.cc
+ * @file  tiledb_cpp_api_map.cc
+ *
+ * @author Ravi Gaddipati
  *
  * @section LICENSE
  *
@@ -27,37 +29,28 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * This file declares the C++ API for the TileDB Map object.
  */
 
-#include <tiledb>
+#include "tiledb_cpp_api_map.h"
 
-int main() {
-  tdb::Context ctx;
+namespace tdb {
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1 = tdb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  tdb::Dimension d2 = tdb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
-  domain << d1 << d2;  // Add dims to domain
+  void create_map(const std::string &uri, const MapSchema &schema) {
+    auto &ctx = schema.context();
+    ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
+  }
 
-  tdb::Attribute a1 = tdb::Attribute::create<int>(ctx, "a1");
-  tdb::Attribute a2 = tdb::Attribute::create<char>(ctx, "a2");
-  tdb::Attribute a3 = tdb::Attribute::create<float>(ctx, "a3");
+  void consolidate_map(const Context &ctx, const std::string &map) {
+    ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
+  }
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
+  Map &operator<<(Map &map, const MapItem &item) {
+    map.add_item(item);
+    return map;
+  }
 
-  tdb::ArraySchema schema(ctx);
-  schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  schema << domain << a1 << a2 << a3;  // Add attributes to array
 
-  // Check the schema, and make the array.
-  tdb::create_array("my_dense_array", schema);
 
-  std::cout << schema << std::endl;
-
-  return 0;
 }
+

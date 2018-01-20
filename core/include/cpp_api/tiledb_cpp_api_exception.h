@@ -68,6 +68,16 @@ namespace tdb {
     AttributeError(const std::string &msg) : TileDBError(msg) {}
   };
 
+namespace impl {
+  /** Checks if the input type complies with the template type. */
+  template <typename DataT>
+  void type_check(tiledb_datatype_t type) {
+    if (DataT::tiledb_datatype != type) {
+      throw TypeError::create<DataT>(type);
+    }
+  }
+}
+
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_EXCEPTION_H

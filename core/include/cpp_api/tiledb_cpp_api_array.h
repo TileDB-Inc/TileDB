@@ -56,8 +56,7 @@ void consolidate_array(const Context& ctx, const std::string& array);
  * @param name The URI of the array.
  * @param schema The array schema.
  */
-void create_array(
-    const Context& ctx, const std::string& array, const ArraySchema& schema);
+void create_array(const std::string& array, const ArraySchema& schema);
 
 }  // namespace tdb
 
