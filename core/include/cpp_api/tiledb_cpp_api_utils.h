@@ -36,6 +36,7 @@
 #include <array>
 #include <functional>
 #include <iostream>
+#include <algorithm>
 
 #include "tiledb.h"
 
@@ -165,6 +166,29 @@ std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
   ret.first.pop_back();
   return ret;
 }
+
+/**
+ * Take a vector-of-vectors and flatten it into a single vector.
+ * @tparam V Container type
+ * @tparam T Return element type
+ * @param vec
+ * @return std::vector<T>
+ */
+template<typename V, typename T = typename V::value_type::value_type>
+std::vector<T> flatten(const V &vec) {
+  std::vector<T> ret;
+
+  size_t size = 0;
+  std::for_each(std::begin(vec), std::end(vec),
+                [&size](const typename V::value_type &i){size += i.size();});
+  ret.reserve(size);
+
+  std::for_each(std::begin(vec), std::end(vec),
+                [&ret](const typename V::value_type &i){
+                  std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
+                });
+  return ret;
+};
 
 }  // namespace tdb
 

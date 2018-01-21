@@ -93,6 +93,13 @@ tdb::Attribute tdb::MapSchema::attribute(const std::string &name) const {
   return {ctx, attr};
 }
 
+unsigned tdb::MapSchema::num_attributes() const {
+  auto &ctx = context();
+  unsigned num;
+  ctx.handle_error(tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &num));
+  return num;
+}
+
 std::ostream &::tdb::operator<<(std::ostream &os, const tdb::MapSchema &schema) {
   os << "MapSchema<Attributes:";
   for (const auto &a : schema.attributes()) {

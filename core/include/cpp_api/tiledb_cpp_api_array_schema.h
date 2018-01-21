@@ -150,6 +150,9 @@ class ArraySchema : public Schema {
   /** Get an attribute by name. **/
   Attribute attribute(const std::string &name) const override;
 
+  /** Number of attributes. **/
+  unsigned num_attributes() const override;
+
   /** Get an attribute by index **/
   Attribute attribute(unsigned int i) const override;
 

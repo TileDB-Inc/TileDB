@@ -283,6 +283,13 @@ Attribute ArraySchema::attribute(const std::string &name) const {
   return Attribute(ctx, attr);
 }
 
+unsigned ArraySchema::num_attributes() const {
+  auto &ctx = ctx_.get();
+  unsigned num;
+  ctx.handle_error(tiledb_array_schema_get_attribute_num(ctx, schema_.get(), &num));
+  return num;
+}
+
 Attribute ArraySchema::attribute(unsigned int i) const {
   auto &ctx = ctx_.get();
   tiledb_attribute_t *attr;

@@ -94,7 +94,7 @@ class Dimension {
   /** Returns the tile extent of the dimension. */
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, T>::type extent() {
-    extent<typename impl::type_from_native<T>::type>();
+    return extent<typename impl::type_from_native<T>::type>();
   }
 
   /** Returns a string representation of the extent. */

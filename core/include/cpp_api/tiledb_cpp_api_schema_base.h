@@ -82,6 +82,9 @@ namespace tdb {
     /** Gets all attributes in the array. */
     virtual const std::unordered_map<std::string, Attribute> attributes() const = 0;
 
+    /** Number of attributes **/
+    virtual unsigned num_attributes() const = 0;
+
     /** Get an attribute by name. **/
     virtual Attribute attribute(const std::string &name) const = 0;
 
