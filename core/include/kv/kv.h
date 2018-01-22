@@ -80,7 +80,8 @@ class KV {
   Status flush();
 
   /**
-   * Gets a key-value item from the key-value store.
+   * Gets a key-value item from the key-value store. This function first
+   * searches in the buffered items.
    *
    * @param key The key to query on.
    * @param key_type The key type.
@@ -92,29 +93,43 @@ class KV {
       const void* key, Datatype key_type, uint64_t key_size, KVItem** kv_item);
 
   /**
-   * Opens the key-value store for reading/writing.
+   * Gets a key-value item from the key-value store based on its hash value.
+   * This function does not search in the buffered items.
+   *
+   * @param hash The hash of the key-value item.
+   * @param kv_item The key-value item result.
+   * @return Status
+   */
+  Status get_item(const KVItem::Hash& hash, KVItem** kv_item);
+
+  /**
+   * Initializes the key-value store for reading/writing.
    *
    * @param uri The URI of the key-value store.
    * @param attributes The attributes of the key-value store schema to focus on.
    *     Use `nullptr` to indicate **all** attributes.
    * @param attribute_num The number of attributes.
+   * @param include_keys If `true` the special key attributes will be included.
    * @return Status
    *
    * @note If the key-value store will be used for writes, `attributes` **must**
    *     be set to `nullptr`, indicating that all attributes will participate in
    *     the write.
    */
-  Status open(
-      const std::string& uri, const char** attributes, unsigned attribute_num);
+  Status init(
+      const std::string& uri,
+      const char** attributes,
+      unsigned attribute_num,
+      bool include_keys = false);
 
   /** Clears the key-value store. */
   void clear();
 
   /**
-   * Closes teh key-value store and frees all memory. All buffered values will
-   * be flushed to persistent storage.
+   * Finalizes the key-value store and frees all memory. All buffered values
+   * will be flushed to persistent storage.
    */
-  Status close();
+  Status finalize();
 
   /** Sets the number of maximum written items buffered before being flushed. */
   Status set_max_items(uint64_t max_items);

@@ -36,6 +36,7 @@
 #include "config.h"
 #include "kv.h"
 #include "kv_item.h"
+#include "kv_iter.h"
 #include "logger.h"
 #include "query.h"
 #include "utils.h"
@@ -118,6 +119,10 @@ struct tiledb_kv_t {
 
 struct tiledb_kv_item_t {
   tiledb::KVItem* kv_item_;
+};
+
+struct tiledb_kv_iter_t {
+  tiledb::KVIter* kv_iter_;
 };
 
 struct tiledb_vfs_t {
@@ -243,6 +248,17 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   if (kv == nullptr || kv->kv_ == nullptr) {
     tiledb::Status st = tiledb::Status::Error(
         "Invalid TileDB in-memory key-value store struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_iter_t* kv_iter) {
+  if (kv_iter == nullptr || kv_iter->kv_iter_ == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Invalid TileDB in-memory key-value iterator struct");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -1938,12 +1954,14 @@ int tiledb_kv_item_create(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item) {
 }
 
 int tiledb_kv_item_free(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_item) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  delete kv_item->kv_item_;
-  delete kv_item;
+  if (kv_item != nullptr) {
+    if (kv_item->kv_item_ != nullptr)
+      delete kv_item->kv_item_;
+    delete kv_item;
+  }
 
   return TILEDB_OK;
 }
@@ -2163,7 +2181,7 @@ int tiledb_kv_open(
   }
 
   // Prepare the key-value store
-  if (save_error(ctx, (*kv)->kv_->open(kv_uri, attributes, attribute_num)))
+  if (save_error(ctx, (*kv)->kv_->init(kv_uri, attributes, attribute_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2173,7 +2191,7 @@ int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, kv->kv_->close()))
+  if (save_error(ctx, kv->kv_->finalize()))
     return TILEDB_ERR;
 
   delete kv->kv_;
@@ -2204,7 +2222,111 @@ int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   return TILEDB_OK;
 }
 
-// TODO iter
+/* ****************************** */
+/*          KEY-VALUE ITER        */
+/* ****************************** */
+
+int tiledb_kv_iter_create(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_iter_t** kv_iter,
+    const char* kv_uri,
+    const char** attributes,
+    unsigned int attribute_num) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create KVIter struct
+  *kv_iter = new (std::nothrow) tiledb_kv_iter_t;
+  if (*kv_iter == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB key-value iterator struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create KVIter object
+  (*kv_iter)->kv_iter_ = new tiledb::KVIter(ctx->storage_manager_);
+  if ((*kv_iter)->kv_iter_ == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB key-value iterator object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    delete *kv_iter;
+    return TILEDB_OOM;
+  }
+
+  // Initialize KVIter object
+  if (save_error(
+          ctx, (*kv_iter)->kv_iter_->init(kv_uri, attributes, attribute_num))) {
+    delete (*kv_iter)->kv_iter_;
+    delete (*kv_iter);
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_kv_iter_free(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, kv_iter->kv_iter_->finalize()))
+    return TILEDB_ERR;
+
+  delete kv_iter->kv_iter_;
+  delete kv_iter;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_iter_here(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, tiledb_kv_item_t** kv_item) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create key-value item struct
+  *kv_item = new (std::nothrow) tiledb_kv_item_t;
+  if (*kv_item == nullptr) {
+    tiledb::Status st = tiledb::Status::Error(
+        "Failed to allocate TileDB key-value item struct");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (save_error(ctx, kv_iter->kv_iter_->here(&((*kv_item)->kv_item_)))) {
+    tiledb_kv_item_free(ctx, *kv_item);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, kv_iter->kv_iter_->next()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_iter_done(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int* done) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *done = kv_iter->kv_iter_->done();
+
+  return TILEDB_OK;
+}
 
 /* ****************************** */
 /*        VIRTUAL FILESYSTEM      */

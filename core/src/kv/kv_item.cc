@@ -117,6 +117,12 @@ const KVItem::Value* KVItem::value(const std::string& attribute) const {
 }
 
 Status KVItem::set_key(const void* key, Datatype key_type, uint64_t key_size) {
+  auto hash = compute_hash(key, key_type, key_size);
+  return set_key(key, key_type, key_size, hash);
+}
+
+Status KVItem::set_key(
+    const void* key, Datatype key_type, uint64_t key_size, const Hash& hash) {
   if (key == nullptr || key_size == 0)
     return LOG_STATUS(
         Status::KVItemError("Cannot add key; Key cannot be empty"));
@@ -130,7 +136,8 @@ Status KVItem::set_key(const void* key, Datatype key_type, uint64_t key_size) {
   std::memcpy(key_.key_, key, key_size);
   key_.key_type_ = key_type;
   key_.key_size_ = key_size;
-  compute_hash(key_);
+  key_.hash_.first = hash.first;
+  key_.hash_.second = hash.second;
 
   return Status::Ok();
 }
@@ -181,24 +188,26 @@ Status KVItem::set_value(
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
 
-void KVItem::compute_hash(Key& key) {
+KVItem::Hash KVItem::compute_hash(
+    const void* key, Datatype key_type, uint64_t key_size) {
   // Case of empty key
-  if (key.key_ == nullptr)
-    return;
+  if (key == nullptr)
+    return Hash();
 
   Hash hash;
   md5::MD5_CTX md5_ctx;
   uint64_t coord_size = sizeof(md5_ctx.digest) / 2;
   assert(coord_size == sizeof(uint64_t));
-  auto key_type_c = static_cast<char>(key.key_type_);
+  auto key_type_c = static_cast<char>(key_type);
   md5::MD5Init(&md5_ctx);
   md5::MD5Update(&md5_ctx, (unsigned char*)&key_type_c, sizeof(char));
-  md5::MD5Update(&md5_ctx, (unsigned char*)&key.key_size_, sizeof(uint64_t));
-  md5::MD5Update(
-      &md5_ctx, (unsigned char*)key.key_, (unsigned int)key.key_size_);
+  md5::MD5Update(&md5_ctx, (unsigned char*)&key_size, sizeof(uint64_t));
+  md5::MD5Update(&md5_ctx, (unsigned char*)key, (unsigned int)key_size);
   md5::MD5Final(&md5_ctx);
-  std::memcpy(&(key.hash_.first), md5_ctx.digest, coord_size);
-  std::memcpy(&(key.hash_.second), md5_ctx.digest + coord_size, coord_size);
+  std::memcpy(&(hash.first), md5_ctx.digest, coord_size);
+  std::memcpy(&(hash.second), md5_ctx.digest + coord_size, coord_size);
+
+  return hash;
 }
 
 /* ********************************* */

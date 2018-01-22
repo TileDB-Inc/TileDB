@@ -102,6 +102,7 @@ enum class StatusCode : char {
   LRUCache,
   KV,
   KVItem,
+  KVIter,
   Config,
   Utils,
   FS_S3,
@@ -270,6 +271,11 @@ class Status {
   /** Return a KVItemError error class Status with a given message **/
   static Status KVItemError(const std::string& msg) {
     return Status(StatusCode::KVItem, msg, -1);
+  }
+
+  /** Return a KVIterError error class Status with a given message **/
+  static Status KVIterError(const std::string& msg) {
+    return Status(StatusCode::KVIter, msg, -1);
   }
 
   /** Return a ConfigError error class Status with a given message **/

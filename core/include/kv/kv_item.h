@@ -113,7 +113,8 @@ class KVItem {
   const Value* value(const std::string& attribute) const;
 
   /**
-   * Sets the key of the key-value item.
+   * Sets the key of the key-value item. This function also computes and
+   * sets the hash of the key.
    *
    * @param key The key to be set.
    * @param key_type The key type to be set.
@@ -121,6 +122,18 @@ class KVItem {
    * @return Status
    */
   Status set_key(const void* key, Datatype key_type, uint64_t key_size);
+
+  /**
+   * Sets the key of the key-value item.
+   *
+   * @param key The key to be set.
+   * @param key_type The key type to be set.
+   * @param key_size The key size (in bytes).
+   * @param hash The key hash.
+   * @return Status
+   */
+  Status set_key(
+      const void* key, Datatype key_type, uint64_t key_size, const Hash& hash);
 
   /**
    * Sets the value for a particular attribute of the key-value item.
@@ -141,10 +154,11 @@ class KVItem {
   /* ********************************* */
 
   /**
-   * Computes and returns  a hash on a key, key type and key size tuple as a
-   * pair of `uint64_t` values. The hash is set in member `hash_` of `key`.
+   * Computes and returns a hash on a key, key type and key size tuple as a
+   * pair of `uint64_t` values.
    */
-  static void compute_hash(KVItem::Key& key);
+  static Hash compute_hash(
+      const void* key, Datatype key_type, uint64_t key_size);
 
  private:
   /* ********************************* */

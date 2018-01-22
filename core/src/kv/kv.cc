@@ -45,39 +45,48 @@ KV::KV(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
   read_attribute_num_ = 0;
   read_attributes_ = nullptr;
+  schema_ = nullptr;
   write_attribute_num_ = 0;
   write_attributes_ = nullptr;
   max_items_ = constants::kv_max_items;
   write_buffers_ = nullptr;
   write_buffer_sizes_ = nullptr;
+  write_buffer_num_ = 0;
   read_buffers_ = nullptr;
   read_buffer_sizes_ = nullptr;
+  read_buffer_num_ = 0;
 }
 
 KV::~KV() {
-  close();
+  finalize();
 }
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
 
-Status KV::open(
+Status KV::init(
     const std::string& kv_uri,
     const char** attributes,
-    unsigned attribute_num) {
+    unsigned attribute_num,
+    bool include_keys) {
   kv_uri_ = URI(kv_uri);
   RETURN_NOT_OK(storage_manager_->load_array_schema(kv_uri_, &schema_));
 
   if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
     write_good_ = true;
     auto attr_num = schema_->attribute_num();
-    for (unsigned i = 2; i < attr_num; ++i) {  // Skip the first two attributes
+    unsigned i = (include_keys) ? 0 : 2;
+    for (; i < attr_num; ++i) {
       auto attr_name = schema_->attribute_name(i);
       attributes_.emplace_back(attr_name);
     }
   } else {  // Load input attributes
     write_good_ = false;
+    if (include_keys) {
+      attributes_.emplace_back(constants::key_attr_name);
+      attributes_.emplace_back(constants::key_type_attr_name);
+    }
     unsigned attr_id;
     for (unsigned i = 0; i < attribute_num; ++i) {
       auto attr_name = attributes[i];
@@ -101,6 +110,7 @@ Status KV::open(
 void KV::clear() {
   attributes_.clear();
   read_attribute_var_sizes_.clear();
+  read_attribute_types_.clear();
   write_attribute_var_sizes_.clear();
   delete schema_;
   schema_ = nullptr;
@@ -111,7 +121,7 @@ void KV::clear() {
   clear_query_buffers();
 }
 
-Status KV::close() {
+Status KV::finalize() {
   flush();
   clear();
 
@@ -119,7 +129,7 @@ Status KV::close() {
 }
 
 Status KV::add_item(const KVItem* kv_item) {
-  if (items_.size() == max_items_)
+  if (items_.size() >= max_items_)
     RETURN_NOT_OK(flush());
 
   mtx_.lock();
@@ -195,6 +205,79 @@ Status KV::get_item(
   }
 
   mtx_.unlock();
+
+  return Status::Ok();
+}
+
+Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
+  // Create key-value item
+  *kv_item = new (std::nothrow) KVItem();
+  if (*kv_item == nullptr)
+    return LOG_STATUS(
+        Status::KVError("Cannot get item; Memory allocation failed"));
+
+  // Query
+  bool found = false;
+  auto st = read_item(hash, &found);
+  if (!st.ok() || !found) {
+    delete *kv_item;
+    *kv_item = nullptr;
+    return st;
+  }
+
+  // Set key and values
+  unsigned bid = 0, aid = 0;
+  const void* value = nullptr;
+  const void* key = nullptr;
+  uint64_t key_size = 0;
+  uint64_t value_size = 0;
+  Datatype key_type = Datatype::CHAR;
+  bool key_found = false;
+  bool key_type_found = false;
+  for (const auto& attr : attributes_) {
+    // Set key
+    if (attr == constants::key_attr_name) {
+      key = read_buffers_[bid + 1];
+      key_size = read_buffer_sizes_[bid + 1];
+      aid++;
+      bid += 2;
+      key_found = true;
+      continue;
+    }
+
+    // Set key type
+    if (attr == constants::key_type_attr_name) {
+      key_type = static_cast<Datatype>(((char*)read_buffers_[bid])[0]);
+      aid++;
+      bid++;
+      key_type_found = true;
+      continue;
+    }
+
+    // Set values
+    auto var = read_attribute_var_sizes_[aid];
+    value = read_buffers_[bid + int(var)];
+    value_size = read_buffer_sizes_[bid + (int)var];
+    st = (*kv_item)->set_value(
+        attr, value, read_attribute_types_[aid++], value_size);
+    if (!st.ok()) {
+      delete *kv_item;
+      *kv_item = nullptr;
+      return st;
+    }
+    bid += 1 + (int)var;
+  }
+
+  // Set key
+  assert(key_found && key_type_found);
+  if (key_found && key_type_found) {
+    auto st = (*kv_item)->set_key(key, key_type, key_size, hash);
+    if (!st.ok()) {
+      delete *kv_item;
+      *kv_item = nullptr;
+      return st;
+    }
+  }
 
   return Status::Ok();
 }
