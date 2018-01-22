@@ -1,5 +1,7 @@
 version: '{build}'
 image: Visual Studio 2017
+environment:
+  USE_S3: false
 build_script:
 - ps: >-
     mkdir build
@@ -10,6 +12,12 @@ build_script:
 
     ..\scripts\install-deps.ps1
 
-    ..\bootstrap.ps1 -EnableVerbose
+    if ($env:USE_S3 -eq "true") {
+      ..\scripts\install-s3.ps1
+      ..\scripts\install-minio.ps1
+      ..\bootstrap.ps1 -S3 -EnableVerbose
+    } else {
+      ..\bootstrap.ps1 -EnableVerbose
+    }
 test_script:
 - ps: cmake --build . --target check --config Release
