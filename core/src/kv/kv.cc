@@ -122,13 +122,21 @@ void KV::clear() {
 }
 
 Status KV::finalize() {
-  flush();
+  RETURN_NOT_OK(flush());
   clear();
 
   return Status::Ok();
 }
 
 Status KV::add_item(const KVItem* kv_item) {
+  // Check if we are good for writes
+  if (!write_good_) {
+    mtx_.unlock();
+    return LOG_STATUS(
+        Status::KVError("Cannot add item; Key-value store was not opened "
+                        "properly for writes"));
+  }
+
   if (items_.size() >= max_items_)
     RETURN_NOT_OK(flush());
 
@@ -289,14 +297,6 @@ Status KV::flush() {
   if (items_.empty()) {
     mtx_.unlock();
     return Status::Ok();
-  }
-
-  // Check if we are good for writes
-  if (!write_good_) {
-    mtx_.unlock();
-    return LOG_STATUS(
-        Status::KVError("Cannot flush items; Key-value store was not opened "
-                        "properly for writes"));
   }
 
   auto st = prepare_write_buffers();

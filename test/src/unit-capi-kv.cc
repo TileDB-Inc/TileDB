@@ -90,6 +90,7 @@ struct KVFx {
   KVFx();
   ~KVFx();
   void check_single_read(const std::string& path);
+  void check_read_on_attribute_subset(const std::string& path);
   void check_iter(const std::string& path);
   void check_kv_item();
   void check_kv_item(tiledb_kv_item_t* kv_item);
@@ -506,6 +507,113 @@ void KVFx::check_single_read(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
+void KVFx::check_read_on_attribute_subset(const std::string& path) {
+  // Open key-value store
+  const char* attributes[] = {ATTR_1};
+  tiledb_kv_t* kv;
+  int rc = tiledb_kv_open(ctx_, &kv, path.c_str(), attributes, 1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // For retrieving values
+  const void *a1, *a2;
+  uint64_t a1_size, a2_size;
+  tiledb_datatype_t a1_type, a2_type;
+
+  // Prepare keys
+  int key1 = 100;
+  tiledb_datatype_t key1_type = TILEDB_INT32;
+  uint64_t key1_size = sizeof(int);
+
+  float key2 = 200.0;
+  tiledb_datatype_t key2_type = TILEDB_FLOAT32;
+  uint64_t key2_size = sizeof(float);
+
+  double key3[] = {300.0, 300.1};
+  tiledb_datatype_t key3_type = TILEDB_FLOAT64;
+  uint64_t key3_size = 2 * sizeof(double);
+
+  char key4[] = "key_4";
+  const char* key5 = "invalid";
+  tiledb_datatype_t key4_type = TILEDB_CHAR;
+  uint64_t key4_size = strlen(key4) + 1;
+
+  // Get key-value item #1
+  tiledb_kv_item_t* kv_item1;
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item1, &key1, key1_type, key1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_kv_item_get_value(ctx_, kv_item1, ATTR_1, &a1, &a1_type, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(int*)a1 == KEY1_A1);
+  CHECK(a1_type == TILEDB_INT32);
+  CHECK(a1_size == sizeof(int));
+
+  // Attempt to get value for a2 (should give error)
+  rc =
+      tiledb_kv_item_get_value(ctx_, kv_item1, ATTR_2, &a2, &a2_type, &a2_size);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get key-value item #2
+  tiledb_kv_item_t* kv_item2;
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item2, &key2, key2_type, key2_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_kv_item_get_value(ctx_, kv_item2, ATTR_1, &a1, &a1_type, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(int*)a1 == KEY2_A1);
+  CHECK(a1_type == TILEDB_INT32);
+  CHECK(a1_size == sizeof(int));
+
+  // Get key-value item #3
+  tiledb_kv_item_t* kv_item3;
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item3, key3, key3_type, key3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_kv_item_get_value(ctx_, kv_item3, ATTR_1, &a1, &a1_type, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(int*)a1 == KEY3_A1);
+  CHECK(a1_type == TILEDB_INT32);
+  CHECK(a1_size == sizeof(int));
+
+  // Get key-value item #4
+  tiledb_kv_item_t* kv_item4;
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item4, key4, key4_type, key4_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_kv_item_get_value(ctx_, kv_item4, ATTR_1, &a1, &a1_type, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(int*)a1 == KEY4_A1);
+  CHECK(a1_type == TILEDB_INT32);
+  CHECK(a1_size == sizeof(int));
+
+  // Invalid key
+  tiledb_kv_item_t* kv_item5;
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item5, key5, key4_type, key4_size);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(kv_item5 == nullptr);
+
+  // Attempt to write (should give error)
+  tiledb_kv_item_t* kv_item6;
+  rc = tiledb_kv_item_create(ctx_, &kv_item6);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_add_item(ctx_, kv, kv_item6);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close key-value store
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_kv_item_free(ctx_, kv_item1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_free(ctx_, kv_item2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_free(ctx_, kv_item3);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_free(ctx_, kv_item4);
+  REQUIRE(rc == TILEDB_OK);
+}
+
 void KVFx::check_interleaved_read_write(const std::string& path) {
   // Open the key-value store
   tiledb_kv_t* kv;
@@ -728,6 +836,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   check_kv_item();
   check_write(array_name);
   check_single_read(array_name);
+  check_read_on_attribute_subset(array_name);
   check_iter(array_name);
   check_interleaved_read_write(array_name);
 
@@ -740,6 +849,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   create_kv(array_name);
   check_write(array_name);
   check_single_read(array_name);
+  check_read_on_attribute_subset(array_name);
   check_iter(array_name);
   check_interleaved_read_write(array_name);
 
@@ -753,6 +863,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   create_kv(array_name);
   check_write(array_name);
   check_single_read(array_name);
+  check_read_on_attribute_subset(array_name);
   check_iter(array_name);
   check_interleaved_read_write(array_name);
 
