@@ -66,13 +66,16 @@ int main() {
     map << item4;
 
     // Create an item, assign values, and add to the map in a single op
-    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] =
-      std::make_tuple(int(3), std::string("ccc"), std::vector<float>{3.1,3.2});
+    int t1 = 3;
+    std::string t2{"CCC"};
+    std::vector<float> t3{3.1, 3.2};
+    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] = std::make_tuple(t1, t2, t3);
 
     // Ok; the key already exists; old values for a2, a3 will be carried over.
     map[100]["a1"] = 3;
 
-    // Error; key doesn't exist yet, can't assign a single attribute. since a2 and a3 are undefined.
+    // Error; key doesn't exist yet so can't just assign a single attribute
+    // since a2 and a3 are undefined. Either all need to be defined, or use the approach above.
     try {
       map[143523]["a1"] = 3;
     } catch (tiledb::TileDBError &e) {

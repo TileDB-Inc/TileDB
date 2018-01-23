@@ -40,8 +40,8 @@ int main() {
   int i = 0;
   for (auto &item : map) {
     item["a1"] = ++i << 2;
-    item["a2"] = std::string((unsigned) i*2, 'x');
-    item["a3"] = std::vector<float>{(float)(i/.15), (float)(i/.05)};
+    // Or use a tuple
+    item[{"a2", "a3"}] = std::make_tuple(std::string((unsigned) i*2, 'x'), std::vector<float>{i/.15f, i/.05f});
   }
 
   // After iteration, map is flushed.
