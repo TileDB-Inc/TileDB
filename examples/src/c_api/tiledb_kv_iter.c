@@ -105,7 +105,7 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
 }
 
 void print(const void* v, tiledb_datatype_t type, uint64_t size) {
-  auto nitems = 0;
+  int nitems = 0;
   switch (type) {
     case TILEDB_INT32:
       nitems = (int)(size / sizeof(int));
