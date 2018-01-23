@@ -71,6 +71,7 @@ class Deleter {
   void operator()(tiledb_kv_t *p) const;
   void operator()(tiledb_kv_schema_t *p) const;
   void operator()(tiledb_kv_item_t *p) const;
+  void operator()(tiledb_kv_iter_t *p) const;
   void operator()(tiledb_attribute_t *p) const;
   void operator()(tiledb_dimension_t *p) const;
   void operator()(tiledb_domain_t *p) const;

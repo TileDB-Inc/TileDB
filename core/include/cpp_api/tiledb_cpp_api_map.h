@@ -38,6 +38,7 @@
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_iter.h"
 #include "tiledb_cpp_api_utils.h"
 
 #include <string>
@@ -52,6 +53,9 @@ namespace tdb {
    */
   class Map {
   public:
+
+    using iterator = impl::MapIter;
+
     /* ********************************* */
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
@@ -62,7 +66,7 @@ namespace tdb {
      * @param ctx Context
      * @param uri URI of map.
      */
-    Map(const Context &ctx, const std::string &uri) : schema_(ctx, uri), deleter_(ctx) {
+    Map(const Context &ctx, const std::string &uri) : schema_(ctx, uri), deleter_(ctx), uri_(uri) {
       tiledb_kv_t *kv;
       ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
       kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
@@ -146,6 +150,21 @@ namespace tdb {
       return schema_.context();
     }
 
+    /** URI **/
+    const std::string &uri() const {
+      return uri_;
+    }
+
+    /** Iterator to beginning of map. **/
+    iterator begin() {
+      return *this;
+    }
+
+    /** Iterator to end of map. **/
+    iterator end() {
+      return {*this, true};
+    }
+
   private:
 
     /* ********************************* */
@@ -212,6 +231,9 @@ namespace tdb {
 
     /** Closes the map on destruction. **/
     impl::Deleter deleter_;
+
+    /** URI **/
+    const std::string uri_;
 
   };
 

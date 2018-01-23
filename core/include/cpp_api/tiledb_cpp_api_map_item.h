@@ -57,6 +57,13 @@ namespace impl {
 /** Object representing a Map key and its values. **/
 class MapItem {
 public:
+  /** Load a MapItem given a pointer. **/
+  MapItem(const Context &ctx, tiledb_kv_item_t **item, Map *map=nullptr)
+  : ctx_(ctx), deleter_(ctx), map_(map) {
+    item_ = std::shared_ptr<tiledb_kv_item_t>(*item, deleter_);
+    *item = nullptr;
+  }
+
   MapItem(const MapItem &) = default;
   MapItem(MapItem &&o) = default;
   MapItem &operator=(const MapItem &) = default;
@@ -70,6 +77,16 @@ public:
   template<typename T>
   void set(const std::string &attr, const T &val) {
     set_impl(attr, val);
+  }
+
+  /**
+   * Get the key for the item.
+   *
+   * @tparam T
+   */
+  template<typename T>
+  T key() const {
+    return key_impl<T>();
   }
 
   /**
@@ -132,16 +149,38 @@ private:
     item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
   }
 
-  /** Load a MapItem given a pointer. **/
-  MapItem(const Context &ctx, tiledb_kv_item_t **item, Map *map=nullptr)
-  : ctx_(ctx), deleter_(ctx), map_(map) {
-    item_ = std::shared_ptr<tiledb_kv_item_t>(*item, deleter_);
-    *item = nullptr;
-  }
-
   /* ********************************* */
   /*        TYPE SPECIALIZATIONS       */
   /* ********************************* */
+
+  template<typename T, typename = typename T::value_type>
+  T key_impl() const {
+    auto &ctx = ctx_.get();
+    T ret;
+    const typename T::value_type* key;
+    tiledb_datatype_t type;
+    uint64_t size;
+    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(), (const void **)&key, &type, &size));
+    impl::type_check<typename impl::type_from_native<typename T::value_type>::type>(type);
+    unsigned num = (unsigned)size/sizeof(typename T::value_type);
+    ret.resize(num);
+    std::copy(key, key + num, std::begin(ret));
+    return ret;
+  };
+
+  template<typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, T>::type
+  key_impl() const {
+    auto &ctx = ctx_.get();
+    const T* key;
+    tiledb_datatype_t type;
+    uint64_t size;
+    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(), (const void**)&key, &type, &size));
+    impl::type_check<typename impl::type_from_native<T>::type>(type);
+    unsigned num = (unsigned)size/sizeof(T);
+    if (num != 1) throw TileDBError("Expected key size of 1, got " + std::to_string(num));
+    return *key;
+  };
 
   /** Set an attribute to the given value, fundamental type. **/
   template <typename V>

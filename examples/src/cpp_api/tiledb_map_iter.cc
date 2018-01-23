@@ -1,7 +1,5 @@
 /**
- * @file   tdbpp
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_map_read.cc
  *
  * @section LICENSE
  *
@@ -29,37 +27,29 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * Read a Map. Run map_write before this.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#include <tiledb>
 
-#include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_version.h"
-#include "tiledb_cpp_api_schema_base.h"
-#include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_map_schema.h"
-#include "tiledb_cpp_api_map_item.h"
-#include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_iter.h"
-#include "tiledb_cpp_api_group.h"
-#include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_array.h"
-#include "tiledb_cpp_api_deleter.h"
-#include "tiledb_cpp_api_compressor.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_dimension.h"
-#include "tiledb_cpp_api_domain.h"
-#include "tiledb_cpp_api_object.h"
-#include "tiledb_cpp_api_object_iter.h"
-#include "tiledb_cpp_api_query.h"
-#include "tiledb_cpp_api_utils.h"
-#include "tiledb_cpp_api_vfs.h"
-#include "tiledb_cpp_api_vfs_filebuf.h"
+int main() {
+  tiledb::Context ctx;
+  tiledb::Map map(ctx, "my_map");
 
-namespace tiledb = tdb;
+  // Write using iterator
+  int i = 0;
+  for (auto &item : map) {
+    item["a1"] = ++i << 2;
+    item["a2"] = std::string((unsigned) i*2, 'x');
+    item["a3"] = std::vector<float>{(float)(i/.15), (float)(i/.05)};
+  }
 
-#endif // TILEDB_CPP_H
+  // After iteration, map is flushed.
+
+  // Read using iterator
+  for (auto &item : map) {
+    std::tuple<int, std::string, std::vector<float>> vals = item[{"a1", "a2", "a3"}];
+    std::cout << std::get<0>(vals) << ", " << std::get<1>(vals)
+              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
+  }
+}
