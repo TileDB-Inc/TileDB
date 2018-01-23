@@ -210,6 +210,9 @@ typedef struct tiledb_kv_t tiledb_kv_t;
 /** A key-value item. */
 typedef struct tiledb_kv_item_t tiledb_kv_item_t;
 
+/** A key-value store iterator. */
+typedef struct tiledb_kv_iter_t tiledb_kv_iter_t;
+
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
 
@@ -1520,11 +1523,13 @@ TILEDB_EXPORT int tiledb_kv_set_max_items(
  * Prepares a key-value store for reading/writing.
  *
  * @param ctx The TileDB context.
+ * @param kv The key-value store.
  * @param kv_uri The URI of the key-value store.
  * @param kv_schema The key-value store schema.
  * @param attributes The attributes to focus on. `nullptr` indicates all
  *     attributes. If the key-value object is used for writing key-value
  *     items, **all** attributes must be specified.
+ * @param attribute_num The number of `attributes`.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_kv_open(
@@ -1586,7 +1591,73 @@ TILEDB_EXPORT int tiledb_kv_get_item(
     tiledb_datatype_t key_type,
     uint64_t key_size);
 
-// TODO: KV iter
+/* ****************************** */
+/*          KEY-VALUE ITER        */
+/* ****************************** */
+
+/**
+ * Creates an iterator for a key-value store. This can be used only
+ * for reading. This sets the pointer to the first key-value item.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator to be created.
+ * @param kv_uri The URI of the key-value store.
+ * @param kv_schema The key-value store schema.
+ * @param attributes The attributes to focus on. `nullptr` indicates all
+ *     attributes. If the key-value object is used for writing key-value
+ *     items, **all** attributes must be specified.
+ * @param attribute_num The number of `attributes`.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_create(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_iter_t** kv_iter,
+    const char* kv_uri,
+    const char** attributes,
+    unsigned int attribute_num);
+
+/**
+ * Frees a key-value store iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_free(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
+
+/**
+ * Retrieves the key-value item currently pointed by the iterator.
+ * Note that this function creates a new key-value item.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator.
+ * @param kv_item The current key-value item to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_here(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, tiledb_kv_item_t** kv_item);
+
+/**
+ * Moves the iterator to the next item.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_next(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
+
+/**
+ * Checks if the iterator is done.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator.
+ * @param done Sets this to `true` if the iterator is done.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_done(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int* done);
 
 /* ****************************** */
 /*        VIRTUAL FILESYSTEM      */

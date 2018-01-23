@@ -39,6 +39,7 @@
 #include "tiledb.h"
 #include "utils.h"
 
+#include <iostream>
 #include <thread>
 
 struct KVFx {
@@ -91,6 +92,7 @@ struct KVFx {
   void check_single_read(const std::string& path);
   void check_iter(const std::string& path);
   void check_kv_item();
+  void check_kv_item(tiledb_kv_item_t* kv_item);
   void check_interleaved_read_write(const std::string& path);
   void check_write(const std::string& path);
   void create_kv(const std::string& path);
@@ -327,7 +329,8 @@ void KVFx::check_write(const std::string& path) {
   tiledb_kv_item_t* kv_item4;
   rc = tiledb_kv_item_create(ctx_, &kv_item4);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_set_key(ctx_, kv_item4, KEY4, TILEDB_CHAR, strlen(KEY4));
+  rc = tiledb_kv_item_set_key(
+      ctx_, kv_item4, KEY4, TILEDB_CHAR, strlen(KEY4) + 1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_kv_item_set_value(
       ctx_, kv_item4, ATTR_1, &KEY4_A1, TILEDB_INT32, sizeof(int));
@@ -388,7 +391,7 @@ void KVFx::check_single_read(const std::string& path) {
   char key4[] = "key_4";
   const char* key5 = "invalid";
   tiledb_datatype_t key4_type = TILEDB_CHAR;
-  uint64_t key4_size = strlen(key4);
+  uint64_t key4_size = strlen(key4) + 1;
 
   // Get key-value item #1
   tiledb_kv_item_t* kv_item1;
@@ -595,129 +598,124 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
-void KVFx::check_iter(const std::string& path) {
-  (void)path;
-  /*
-// Set attributes
-const char* attributes[] = {ATTR_1, ATTR_2, ATTR_3};
-tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32};
-unsigned int nitems[] = {1, TILEDB_VAR_NUM, 2};
+void KVFx::check_kv_item(tiledb_kv_item_t* kv_item) {
+  const void *key, *value;
+  tiledb_datatype_t key_type, value_type;
+  uint64_t key_size, value_size;
+  int rc = tiledb_kv_item_get_key(ctx_, kv_item, &key, &key_type, &key_size);
+  REQUIRE(rc == TILEDB_OK);
 
-// Create key-values
-tiledb_kv_t* kv;
-int rc = tiledb_kv_create(ctx_, &kv, 3, attributes, types, nitems);
-CHECK(rc == TILEDB_OK);
-rc = tiledb_kv_set_buffer_size(ctx_, kv, 1000);
-CHECK(rc == TILEDB_OK);
-
-// Create query
-tiledb_query_t* query;
-rc = tiledb_query_create(ctx_, &query, path.c_str(), TILEDB_READ);
-REQUIRE(rc == TILEDB_OK);
-rc = tiledb_query_set_kv(ctx_, query, kv);
-CHECK(rc == TILEDB_OK);
-
-// Submit query
-rc = tiledb_query_submit(ctx_, query);
-CHECK(rc == TILEDB_OK);
-
-// Check the number of results
-uint64_t key_num, a1_num, a2_num, a3_num;
-rc = tiledb_kv_get_key_num(ctx_, kv, &key_num);
-CHECK(rc == TILEDB_OK);
-CHECK(key_num == 4);
-rc = tiledb_kv_get_value_num(ctx_, kv, 0, &a1_num);
-CHECK(rc == TILEDB_OK);
-CHECK(a1_num == 4);
-rc = tiledb_kv_get_value_num(ctx_, kv, 1, &a2_num);
-CHECK(rc == TILEDB_OK);
-CHECK(a2_num == 4);
-rc = tiledb_kv_get_value_num(ctx_, kv, 2, &a3_num);
-CHECK(rc == TILEDB_OK);
-CHECK(a3_num == 4);
-
-// Get the key-value order
-uint64_t order[4] = {0, 1, 2, 3};
-void* key;
-uint64_t key_size;
-tiledb_datatype_t key_type;
-for (uint64_t i = 0; i < 4; ++i) {
-  rc = tiledb_kv_get_key(ctx_, kv, i, &key, &key_type, &key_size);
-  CHECK(rc == TILEDB_OK);
-  if (key_type == TILEDB_INT32) {
-    CHECK(key_size == sizeof(int));
-    CHECK(!memcmp(key, &KEY1, key_size));
-    order[0] = i;
-  } else if (key_type == TILEDB_FLOAT32) {
-    CHECK(key_size == sizeof(float));
-    CHECK(!memcmp(key, &KEY2, key_size));
-    order[1] = i;
-  } else if (key_type == TILEDB_FLOAT64) {
-    CHECK(key_size == 2 * sizeof(double));
-    CHECK(!memcmp(key, KEY3, key_size));
-    order[2] = i;
-  } else if (key_type == TILEDB_CHAR) {
-    CHECK(key_size == strlen(KEY4));
-    CHECK(!memcmp(key, KEY4, key_size));
-    order[3] = i;
+  if (key_size == sizeof(int) && !memcmp(key, &KEY1, key_size)) {
+    REQUIRE(key_type == TILEDB_INT32);
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a1", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_INT32);
+    REQUIRE(value_size == sizeof(int));
+    REQUIRE(!memcmp(value, &KEY1_A1, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a2", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_CHAR);
+    REQUIRE(value_size == strlen(KEY1_A2) + 1);
+    REQUIRE(!memcmp(value, KEY1_A2, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a3", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_FLOAT32);
+    REQUIRE(value_size == 2 * sizeof(float));
+    REQUIRE(!memcmp(value, KEY1_A3, value_size));
+  } else if (key_size == sizeof(float) && !memcmp(key, &KEY2, key_size)) {
+    REQUIRE(key_type == TILEDB_FLOAT32);
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a1", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_INT32);
+    REQUIRE(value_size == sizeof(int));
+    REQUIRE(!memcmp(value, &KEY2_A1, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a2", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_CHAR);
+    REQUIRE(value_size == strlen(KEY2_A2) + 1);
+    REQUIRE(!memcmp(value, KEY2_A2, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a3", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_FLOAT32);
+    REQUIRE(value_size == 2 * sizeof(float));
+    REQUIRE(!memcmp(value, KEY2_A3, value_size));
+  } else if (key_size == 2 * sizeof(double) && !memcmp(key, KEY3, key_size)) {
+    REQUIRE(key_type == TILEDB_FLOAT64);
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a1", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_INT32);
+    REQUIRE(value_size == sizeof(int));
+    REQUIRE(!memcmp(value, &KEY3_A1, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a2", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_CHAR);
+    REQUIRE(value_size == strlen(KEY3_A2) + 1);
+    REQUIRE(!memcmp(value, KEY3_A2, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a3", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_FLOAT32);
+    REQUIRE(value_size == 2 * sizeof(float));
+    REQUIRE(!memcmp(value, KEY3_A3, value_size));
+  } else if ((key_size == strlen(KEY4) + 1) && !memcmp(key, KEY4, key_size)) {
+    REQUIRE(key_type == TILEDB_CHAR);
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a1", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_INT32);
+    REQUIRE(value_size == sizeof(int));
+    REQUIRE(!memcmp(value, &KEY4_A1, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a2", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_CHAR);
+    REQUIRE(value_size == strlen(KEY4_A2) + 1);
+    REQUIRE(!memcmp(value, KEY4_A2, value_size));
+    rc = tiledb_kv_item_get_value(
+        ctx_, kv_item, "a3", &value, &value_type, &value_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(value_type == TILEDB_FLOAT32);
+    REQUIRE(value_size == 2 * sizeof(float));
+    REQUIRE(!memcmp(value, KEY4_A3, value_size));
   } else {
-    CHECK(false);
+    REQUIRE(false);  // This should never happen
   }
 }
 
-// Check the results
-void *a1, *a2, *a3;
-uint64_t a2_size;
-rc = tiledb_kv_get_value(ctx_, kv, order[0], 0, &a1);
-CHECK(rc == TILEDB_OK);
-CHECK((*(int*)a1) == KEY1_A1);
-rc = tiledb_kv_get_value_var(ctx_, kv, order[0], 1, &a2, &a2_size);
-CHECK(rc == TILEDB_OK);
-CHECK(a2_size == 1 * sizeof(char));
-CHECK(!memcmp(a2, KEY1_A2, a2_size));
-rc = tiledb_kv_get_value(ctx_, kv, order[0], 2, &a3);
-CHECK(rc == TILEDB_OK);
-CHECK(!memcmp(a3, &KEY1_A3, 2 * sizeof(float)));
+void KVFx::check_iter(const std::string& path) {
+  // Create key-value iterator
+  const char* attributes[] = {"a1", "a2", "a3"};
+  tiledb_kv_iter_t* kv_iter;
+  int rc = tiledb_kv_iter_create(ctx_, &kv_iter, path.c_str(), attributes, 3);
+  REQUIRE(rc == TILEDB_OK);
 
-rc = tiledb_kv_get_value(ctx_, kv, order[1], 0, &a1);
-CHECK(rc == TILEDB_OK);
-CHECK((*(int*)a1) == KEY2_A1);
-rc = tiledb_kv_get_value_var(ctx_, kv, order[1], 1, &a2, &a2_size);
-CHECK(rc == TILEDB_OK);
-CHECK(a2_size == 2 * sizeof(char));
-CHECK(!memcmp(a2, KEY2_A2, a2_size));
-rc = tiledb_kv_get_value(ctx_, kv, order[1], 2, &a3);
-CHECK(rc == TILEDB_OK);
-CHECK(!memcmp(a3, &KEY2_A3, 2 * sizeof(float)));
+  int done;
+  rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
+  REQUIRE(rc == TILEDB_OK);
+  while (!(bool)done) {
+    tiledb_kv_item_t* kv_item;
+    rc = tiledb_kv_iter_here(ctx_, kv_iter, &kv_item);
+    REQUIRE(rc == TILEDB_OK);
+    check_kv_item(kv_item);
+    rc = tiledb_kv_item_free(ctx_, kv_item);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_kv_iter_next(ctx_, kv_iter);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
-rc = tiledb_kv_get_value(ctx_, kv, order[2], 0, &a1);
-CHECK(rc == TILEDB_OK);
-CHECK((*(int*)a1) == KEY3_A1);
-rc = tiledb_kv_get_value_var(ctx_, kv, order[2], 1, &a2, &a2_size);
-CHECK(rc == TILEDB_OK);
-CHECK(a2_size == 3 * sizeof(char));
-CHECK(!memcmp(a2, KEY3_A2, a2_size));
-rc = tiledb_kv_get_value(ctx_, kv, order[2], 2, &a3);
-CHECK(rc == TILEDB_OK);
-CHECK(!memcmp(a3, &KEY3_A3, 2 * sizeof(float)));
-
-rc = tiledb_kv_get_value(ctx_, kv, order[3], 0, &a1);
-CHECK(rc == TILEDB_OK);
-CHECK((*(int*)a1) == KEY4_A1);
-rc = tiledb_kv_get_value_var(ctx_, kv, order[3], 1, &a2, &a2_size);
-CHECK(rc == TILEDB_OK);
-CHECK(a2_size == 4 * sizeof(char));
-CHECK(!memcmp(a2, KEY4_A2, a2_size));
-rc = tiledb_kv_get_value(ctx_, kv, order[3], 2, &a3);
-CHECK(rc == TILEDB_OK);
-CHECK(!memcmp(a3, &KEY4_A3, 2 * sizeof(float)));
-
-// Clean up
-rc = tiledb_kv_free(ctx_, kv);
-CHECK(rc == TILEDB_OK);
-rc = tiledb_query_free(ctx_, query);
-CHECK(rc == TILEDB_OK);
-   */
+  // Clean up
+  rc = tiledb_kv_iter_free(ctx_, kv_iter);
+  REQUIRE(rc == TILEDB_OK);
 }
 
 TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
@@ -730,8 +728,8 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   check_kv_item();
   check_write(array_name);
   check_single_read(array_name);
-  check_interleaved_read_write(array_name);
   check_iter(array_name);
+  check_interleaved_read_write(array_name);
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -742,8 +740,8 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   create_kv(array_name);
   check_write(array_name);
   check_single_read(array_name);
-  check_interleaved_read_write(array_name);
   check_iter(array_name);
+  check_interleaved_read_write(array_name);
 
   remove_temp_dir(S3_TEMP_DIR);
 #endif
@@ -755,8 +753,8 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   create_kv(array_name);
   check_write(array_name);
   check_single_read(array_name);
-  check_interleaved_read_write(array_name);
   check_iter(array_name);
+  check_interleaved_read_write(array_name);
 
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
