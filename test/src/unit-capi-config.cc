@@ -163,6 +163,17 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 
+  // Check get for existing argument
+  const char* value;
+  rc = tiledb_config_get(config, "sm.tile_cache_size", &value);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!strcmp(value, "100"));
+
+  // Check get for non-existing argument
+  rc = tiledb_config_get(config, "foo", &value);
+  CHECK(rc == TILEDB_OK);
+  CHECK(value == nullptr);
+
   // Check correct parameter, correct argument
   rc = tiledb_config_set(config, "sm.tile_cache_size", "+100");
   CHECK(rc == TILEDB_OK);

@@ -325,6 +325,16 @@ int tiledb_config_set(
   return TILEDB_OK;
 }
 
+int tiledb_config_get(
+    tiledb_config_t* config, const char* param, const char** value) {
+  if (sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  config->config_->get(param, value);
+
+  return TILEDB_OK;
+}
+
 int tiledb_config_set_from_file(tiledb_config_t* config, const char* filename) {
   if (sanity_check(config) == TILEDB_ERR || filename == nullptr)
     return TILEDB_ERR;

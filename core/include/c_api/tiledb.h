@@ -253,6 +253,18 @@ TILEDB_EXPORT int tiledb_config_set(
     tiledb_config_t* config, const char* param, const char* value);
 
 /**
+ * Gets a config parameter.
+ *
+ * @param config The config object.
+ * @param param The parameter to be set.
+ * @param value A pointer to the value of the parameter to be retrieved
+ *    (`nullptr` if it does not exist).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_get(
+    tiledb_config_t* config, const char* param, const char** value);
+
+/**
  * Sets config parameters read from a text file.
  *
  * @param config The config object.
