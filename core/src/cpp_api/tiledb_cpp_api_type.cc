@@ -67,6 +67,23 @@ std::string to_str(const tiledb_datatype_t &type) {
   return "";
 }
 
+size_t type_size(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_CHAR: return sizeof(typename CHAR::type);
+    case TILEDB_INT8: return sizeof(typename INT8::type);
+    case TILEDB_UINT8: return sizeof(typename UINT8::type);
+    case TILEDB_INT16: return sizeof(typename INT16::type);
+    case TILEDB_UINT16: return sizeof(typename UINT16::type);
+    case TILEDB_INT32: return sizeof(typename INT32::type);
+    case TILEDB_UINT32: return sizeof(typename UINT32::type);
+    case TILEDB_INT64: return sizeof(typename INT64::type);
+    case TILEDB_UINT64: return sizeof(typename UINT64::type);
+    case TILEDB_FLOAT32: return sizeof(typename FLOAT32::type);
+    case TILEDB_FLOAT64: return sizeof(typename FLOAT64::type);
+  }
+  return 0;
+}
+
 }  // namespace impl
 
 }  // namespace tdb

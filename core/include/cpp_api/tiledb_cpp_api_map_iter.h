@@ -35,6 +35,7 @@
 #ifndef TILEDB_TILEDB_CPP_API_MAP_ITER_H
 #define TILEDB_TILEDB_CPP_API_MAP_ITER_H
 
+#include "tiledb_cpp_api_type.h"
 #include "tiledb_cpp_api_map_schema.h"
 #include "tiledb_cpp_api_map_item.h"
 #include "tiledb.h"
@@ -54,8 +55,27 @@ namespace impl {
     MapIter &operator=(const MapIter&) = delete;
     MapIter &operator=(MapIter&&) = default;
 
+    /** Init iter. This must manually be invoked. **/
+    void init();
+
     /** Flush on iterator destruction. **/
     ~MapIter();
+
+    /** Only iterate over keys with some type **/
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, void>::type
+    limit_key_type() {
+      limit_type_ = true;
+      only_single_ = true;
+      type_ = impl::type_from_native<T>::type::tiledb_datatype;
+    }
+
+    template<typename T, typename = typename T::value_type>
+    void limit_key_type() {
+      limit_type_ = true;
+      only_single_ = false;
+      type_ = impl::type_from_native<typename T::value_type>::type::tiledb_datatype;
+    }
 
     /** Iterators are only equal when both are end. **/
     bool operator==(const MapIter &o) {
@@ -70,13 +90,14 @@ namespace impl {
       return *item_;
     }
 
-    MapItem &operator->() const {
-      return *item_;
+    MapItem *operator->() const {
+      return item_.get();
     }
 
     MapIter &operator++();
 
   private:
+
     /** Base map. **/
     Map *map_;
     Deleter deleter_;
@@ -89,6 +110,10 @@ namespace impl {
 
     /** Whether the iterator has reached the end **/
     int done_;
+
+    bool limit_type_ = false;
+    tiledb_datatype_t type_;
+    bool only_single_;
   };
 
 }

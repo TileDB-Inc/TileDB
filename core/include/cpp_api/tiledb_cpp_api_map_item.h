@@ -89,6 +89,16 @@ public:
     return key_impl<T>();
   }
 
+  /** Get tiledb datatype and size **/
+  std::pair<tiledb_datatype_t, uint64_t>key_type() const {
+    auto &ctx = ctx_.get();
+    const void* key;
+    tiledb_datatype_t type;
+    uint64_t size;
+    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+    return {type, size};
+  }
+
   /**
    * Get the value for a given attribute.
    *

@@ -157,7 +157,18 @@ namespace tdb {
 
     /** Iterator to beginning of map. **/
     iterator begin() {
-      return *this;
+      iterator i(*this);
+      i.init();
+      return i;
+    }
+
+    /** Iterate over keys of type T **/
+    template <typename T>
+    iterator begin() {
+      iterator i(*this);
+      i.limit_key_type<T>();
+      i.init();
+      return i;
     }
 
     /** Iterator to end of map. **/

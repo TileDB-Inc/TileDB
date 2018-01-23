@@ -97,6 +97,8 @@ using UINT64 = Type<uint64_t, TILEDB_UINT64>;
 using FLOAT32 = Type<float, TILEDB_FLOAT32>;
 using FLOAT64 = Type<double, TILEDB_FLOAT64>;
 
+size_t type_size(tiledb_datatype_t type);
+
 template <tiledb_datatype_t T>
 struct type_from_tiledb;
 
