@@ -42,13 +42,16 @@
 #include <memory>
 #include <functional>
 #include <type_traits>
+#include <tuple>
+#include <utility>
 
 namespace tdb {
 
 /** Forward declarations. **/
 class Map;
 namespace impl {
-  class map_item_proxy;
+  class MultiMapItemProxy;
+  class MapItemProxy;
 }
 
 /** Object representing a Map key and its values. **/
@@ -63,29 +66,10 @@ public:
   /*                API                */
   /* ********************************* */
 
-  /** Set an attribute to the given value, fundamental type. **/
-  template <typename V>
-  typename std::enable_if<std::is_fundamental<V>::value, void>::type
-  set(const std::string &attr, const V &val) {
-    using AttrT = typename impl::type_from_native<V>::type;
-    const Context &ctx = get_context();
-    Attribute attribute = get_attribute(attr);
-    impl::type_check_attr<AttrT>(attribute, 1);
-    ctx.handle_error(tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
-                                              &val, AttrT::tiledb_datatype, sizeof(V)));
-  }
-
-  /** Set an attribute to the given value, compound type. **/
-  template <typename V>
-  typename std::enable_if<std::is_fundamental<typename V::value_type>::value, void>::type
-  set(const std::string &attr, const V &val) {
-    using AttrT = typename impl::type_from_native<typename V::value_type>::type;
-    const Context &ctx = get_context();
-    Attribute attribute = get_attribute(attr);
-    impl::type_check_attr<AttrT>(attribute, val.size());
-    ctx.handle_error(tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
-                                              const_cast<void*>(reinterpret_cast<const void*>(val.data())),
-                                              AttrT::tiledb_datatype, sizeof(typename V::value_type) * val.size()));
+  /** Set an attribute to the given value **/
+  template<typename T>
+  void set(const std::string &attr, const T &val) {
+    set_impl(attr, val);
   }
 
   /**
@@ -98,16 +82,8 @@ public:
    */
   template <typename T>
   std::pair<const T*, uint64_t>
-  get_ptr(const std::string &attr, unsigned expected_num=TILEDB_VAR_NUM) const {
-    const Context &ctx = get_context();
-
-    Attribute attribute = get_attribute(attr);
-    if (expected_num == TILEDB_VAR_NUM) {
-      impl::type_check<typename impl::type_from_native<T>::type>(attribute.type());
-    }
-    else {
-      impl::type_check_attr<typename impl::type_from_native<T>::type>(attribute, expected_num);
-    }
+  get_ptr(const std::string &attr) const {
+    const Context &ctx = ctx_.get();
 
     const T *data;
     tiledb_datatype_t type;
@@ -116,61 +92,22 @@ public:
     ctx.handle_error(tiledb_kv_item_get_value(ctx, item_.get(), attr.c_str(),
                                               (const void**)&data, &type, &size));
 
+    impl::type_check<typename impl::type_from_native<T>::type>(type);
+
     unsigned num = static_cast<unsigned>(size/sizeof(T));
     return std::pair<const T*, uint64_t>(data, num);
   }
 
-  /**
-   * Get a value as a compound type.
-   *
-   * @tparam T Data type.
-   * @tparam V Container type, default vector.
-   * @param attr Attribute name
-   * @return value
-   */
-  template <typename T, typename V = std::vector<T>, typename = typename V::value_type>
-  V get(const std::string &attr) const {
-    const T *data;
-    unsigned num;
-    std::tie(data, num) = get_ptr<T>(attr);
-
-    V ret;
-    ret.resize(num);
-    std::copy<const T*, T*>(data, data + num, const_cast<T*>(ret.data()));
-    return ret;
-  }
-
-  /**
-   * Get a value as an array type.
-   *
-   * @tparam T Data type.
-   * @tparam N Number of elements.
-   * @param attr Attribute name
-   * @return value
-   */
-  template <typename T, unsigned N>
-  std::array<T,N> get(const std::string &attr) const {
-    const T *data;
-    unsigned num;
-    std::tie(data, num) = get_ptr<T>(attr, N);
-
-    std::array<T,N> ret;
-    std::copy(data, data + N, ret.data());
-    return ret;
-  }
-
-  /** Get an attribute value as a fundamental type **/
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type
-  get_single(const std::string &attr) const {
-    const T *data;
-    unsigned num;
-    std::tie(data, num) = get_ptr<T>(attr, 1);
-    return *data;
+  /** Get a attribute with a given return type. **/
+  template<typename T>
+  T get(const std::string &attr) const {
+    return get_impl<T>(attr);
   }
 
   /** Get a proxy to set/get with operator[] **/
-  impl::map_item_proxy operator[](const std::string &attr);
+  impl::MapItemProxy operator[](const std::string &attr);
+
+  impl::MultiMapItemProxy operator[](const std::vector<std::string> &attrs);;
 
   /** Ptr to underlying object. **/
   std::shared_ptr<tiledb_kv_item_t> ptr() const {
@@ -179,82 +116,216 @@ public:
 
 private:
   friend class Map;
+  friend class impl::MapItemProxy;
+  friend class impl::MultiMapItemProxy;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Base constructor **/
-  MapItem(Map &map);
-
   /** Make an item with the given key. **/
-  MapItem(Map &map, void *key, tiledb_datatype_t type, size_t size) : MapItem(map) {
+  MapItem(const Context &ctx, void *key, tiledb_datatype_t type, size_t size, Map *map=nullptr)
+  : ctx_(ctx), deleter_(ctx), map_(map) {
     tiledb_kv_item_t *p;
-    const Context &ctx = get_context();
     ctx.handle_error(tiledb_kv_item_create(ctx, &p));
     ctx.handle_error(tiledb_kv_item_set_key(ctx, p, key, type, size));
     item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
   }
 
   /** Load a MapItem given a pointer. **/
-  MapItem(Map &map, tiledb_kv_item_t **item) : MapItem(map) {
+  MapItem(const Context &ctx, tiledb_kv_item_t **item, Map *map=nullptr)
+  : ctx_(ctx), deleter_(ctx), map_(map) {
     item_ = std::shared_ptr<tiledb_kv_item_t>(*item, deleter_);
     *item = nullptr;
   }
 
-  /** Wrapper function to get an attribute. **/
-  Attribute get_attribute(const std::string &name) const;
+  /* ********************************* */
+  /*        TYPE SPECIALIZATIONS       */
+  /* ********************************* */
 
-  /** Wrapper function to get the context. **/
-  const Context &get_context() const;
+  /** Set an attribute to the given value, fundamental type. **/
+  template <typename V>
+  typename std::enable_if<std::is_fundamental<V>::value, void>::type
+  set_impl(const std::string &attr, const V &val) {
+    auto &ctx = ctx_.get();
+    using AttrT = typename impl::type_from_native<V>::type;
+    ctx.handle_error(tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
+                                              &val, AttrT::tiledb_datatype, sizeof(V)));
+  }
 
-  /** Underlying Map. **/
-  std::reference_wrapper<Map> map_;
+  /** Set an attribute to the given value, compound type. **/
+  template <typename V>
+  typename std::enable_if<std::is_fundamental<typename V::value_type>::value, void>::type
+  set_impl(const std::string &attr, const V &val) {
+    auto &ctx = ctx_.get();
+    using AttrT = typename impl::type_from_native<typename V::value_type>::type;
+    ctx.handle_error(tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
+                                              const_cast<void*>(reinterpret_cast<const void*>(val.data())),
+                                              AttrT::tiledb_datatype, sizeof(typename V::value_type) * val.size()));
+  }
+
+  /**
+ * Get a value as a compound type.
+ *
+ * @tparam T Data type.
+ * @tparam V Container type, default vector.
+ * @param attr Attribute name
+ * @return value
+ */
+  template <typename T, typename = typename T::value_type>
+  T get_impl(const std::string &attr) const {
+    const typename T::value_type *data;
+    unsigned num;
+    std::tie(data, num) = get_ptr<typename T::value_type>(attr);
+
+    T ret;
+    ret.resize(num);
+    std::copy(data, data + num, const_cast<typename T::value_type*>(ret.data()));
+    return ret;
+  }
+
+  /** Get an attribute value as a fundamental type **/
+  template <typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, T>::type
+  get_impl(const std::string &attr) const {
+    const T *data;
+    unsigned num;
+    std::tie(data, num) = get_ptr<T>(attr);
+    if (num != 1) {
+      throw AttributeError("Expected one element, got " + std::to_string(num));
+    }
+    return *data;
+  }
+
+  std::reference_wrapper<const Context> ctx_;
 
   /** Ptr to TileDB object. **/
   std::shared_ptr<tiledb_kv_item_t> item_;
 
   /** Deleter for tiledb object **/
   impl::Deleter deleter_;
+
+  /** Underlying Map **/
+  Map *map_ = nullptr;
 };
 
 
 namespace impl {
 
+  /** Proxy class for multi-attribute set and get **/
+  struct MultiMapItemProxy {
+    /** Used to compiler can resolve func without user typing .get<....>() **/
+    template<typename T> struct type_tag{};
+
+  public:
+    MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item) : attrs(attrs), item(item) {}
+
+    /** Get multiple attributes **/
+    template <typename T>
+    T get() const {
+      if (attrs.size() != std::tuple_size<T>::value) {
+        throw TileDBError("Attribute list size does not match tuple length.");
+      }
+      return get(type_tag<T>{});
+    }
+
+    /** Set the attributes **/
+    template <typename T>
+    void set(const T &vals) {
+      iter_tuple(vals);
+      add_to_map();
+    }
+
+    /** Implicit cast to a tuple. **/
+    template<typename T>
+    operator T() const {
+      return get<T>();
+    }
+
+    /** Set the attributes with a tuple **/
+    template<typename T>
+    void operator=(const T &vals) {
+      return set<T>(vals);
+    }
+
+  private:
+
+    /** Iterate over a tuple. Set version (non const) **/
+    /** Base case. Do nothing and terminate recursion. **/
+    template<std::size_t I = 0, typename... Tp>
+    inline typename std::enable_if<I == sizeof...(Tp), void>::type
+    iter_tuple(const std::tuple<Tp...>&){}
+
+    template<std::size_t I = 0, typename... Tp>
+    inline typename std::enable_if<I < sizeof...(Tp), void>::type
+    iter_tuple(const std::tuple<Tp...> &t) {
+        item.set(attrs[I], std::get<I>(t));
+      iter_tuple<I + 1, Tp...>(t);
+    }
+
+    /** Iterate over a tuple. Get version (const) **/
+    /** Base case. Do nothing and terminate recursion. **/
+    template<std::size_t I = 0, typename... Tp>
+    inline typename std::enable_if<I == sizeof...(Tp), void>::type
+    iter_tuple(std::tuple<Tp...>&) const {}
+
+    template<std::size_t I = 0, typename... Tp>
+    inline typename std::enable_if<I < sizeof...(Tp), void>::type
+    iter_tuple(std::tuple<Tp...> &t) const {
+      std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<Tp...>>::type>(attrs[I]);
+      iter_tuple<I + 1, Tp...>(t);
+    }
+
+    /** Get multiple values into tuple. **/
+    template <typename... Tp>
+    std::tuple<Tp...> get(type_tag<std::tuple<Tp...>>) const {
+      if (attrs.size() != sizeof...(Tp)) {
+        throw TileDBError("Attribute list size does not match provided values.");
+      }
+      std::tuple<Tp...> ret;
+      iter_tuple(ret);
+      return ret;
+    }
+
+    /** Keyed attributes **/
+    const std::vector<std::string> &attrs;
+
+    /** Item that created proxy. **/
+    MapItem &item;
+
+    /** Add to underlying map, if associated with one. Otherwise pass. **/
+    bool add_to_map() const;
+  };
+
   /** Proxy struct to set a value with operator[] **/
-  struct map_item_proxy {
+  struct MapItemProxy {
     /** Create a proxy for the given attribute and underlying MapItem **/
-    map_item_proxy(const std::string &attr, MapItem &item) : attr(attr), item(item) {}
+    MapItemProxy(const std::string &attr, MapItem &item) : attr(attr), item(item) {}
 
     /** Set the value **/
     template<typename T>
     void set(const T &val) {
       item.set<T>(attr, val);
+      add_to_map();
     }
 
-    /** Get the value, compound type. **/
-    template <typename V, typename T = typename V::value_type>
-    V get() const {
-      return item.get<T, V>(attr);
-    }
-
-    /** Get the value, findamental type. **/
+    /** Get the value, fundamental type. **/
     template <typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, T>::type
-    get() const {
-      return item.get_single<T>(attr);
+    T get() const {
+      return item.get<T>(attr);
     }
 
     /** Set value with operator= **/
     template <typename T>
     void operator=(const T &val) {
       set(val);
+      add_to_map();
     }
 
-    /** Implicit cast for compountd types (vector, string) **/
-    template <typename V, typename = typename V::value_type>
-    operator V() {
-      return get<V>();
+    /** Implicit cast **/
+    template <typename T>
+    operator T() {
+      return get<T>();
     }
 
     /** Bound attribute name **/
@@ -262,6 +333,12 @@ namespace impl {
 
     /** Underlying Item **/
     MapItem &item;
+
+  private:
+
+    /** Add to underlying map, if associated with one. Otherwise pass. **/
+    bool add_to_map() const;
+
   };
 
 }

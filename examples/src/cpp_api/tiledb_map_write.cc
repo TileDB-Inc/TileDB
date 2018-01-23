@@ -38,22 +38,17 @@ int main() {
   {
     tiledb::Map map(ctx, "my_map");
 
-    auto item1 = map.create_item(100);
+    auto item1 = tiledb::Map::create_item(ctx, 100);
     item1["a1"] = 1;
     item1["a2"] = std::string("a");
     item1["a3"] = std::vector<float>{1.1, 1.2};
 
-    auto item2 = map.create_item(200.0);
+    auto item2 = tiledb::Map::create_item(ctx, 200.0);
     item2["a1"] = 2;
     item2["a2"] = std::string("bb");
     item2["a3"] = std::vector<float>{2.1, 2.2};
 
-    auto item3 = map.create_item(std::vector<double>{300.0, 300.1});
-    item3["a1"] = 3;
-    item3["a2"] = std::string("ccc");
-    item3["a3"] = std::vector<float>{3.1, 3.2};
-
-    auto item4 = map.create_item(std::string("key_4"));
+    auto item4 = tiledb::Map::create_item(ctx, std::string("key_4"));
     item4["a1"] = 4;
     item4["a2"] = std::string("dddd");
     item4["a3"] = std::vector<float>{4.1, 4.2};
@@ -67,8 +62,23 @@ int main() {
     // Force write to storage backend
     map.flush();
 
-    // Write other items. These will be flushed on map destruction.
-    map << item3 << item4;
+    // Write other item. These will be flushed on map destruction.
+    map << item4;
+
+    // Create an item, assign values, and add to the map in a single op
+    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] =
+      std::make_tuple(int(3), std::string("ccc"), std::vector<float>{3.1,3.2});
+
+    // Ok; the key already exists; old values for a2, a3 will be carried over.
+    map[100]["a1"] = 3;
+
+    // Error; key doesn't exist yet, can't assign a single attribute. since a2 and a3 are undefined.
+    try {
+      map[143523]["a1"] = 3;
+    } catch (tiledb::TileDBError &e) {
+      std::cout << "Item expects all 3 attributes to be assigned, only a1 set.\n";
+    }
+
   }
 
   // Consolidate fragments (optional)

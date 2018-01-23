@@ -38,6 +38,7 @@
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_utils.h"
 
 #include <string>
 #include <memory>
@@ -77,69 +78,44 @@ namespace tdb {
     /* ********************************* */
 
     /**
-     * Create an item for the currrent map with the given key. Note the map
-     * does not contain the key until the item is added with add_item().
+     * Create a map item with the given key. Once populated with attributes,
+     * it can be added to a Map with map.add_item()
      *
      * @tparam T Key type
      * @param key Key value
      * @return MapItem
      */
     template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
-    create_item(const T &key) {
-      return MapItem(*this,
-                     const_cast<void*>(reinterpret_cast<const void*>(&key)),
-                     impl::type_from_native<T>::type::tiledb_datatype,
-                     sizeof(T));
+    static MapItem create_item(const Context &ctx, const T &key) {
+      return create_item_impl(ctx, key);
+    }
+
+    /** Get an item from the map given a key. Throws TileDBError on missing key. **/
+    template<typename T>
+    MapItem get_item(const T &key) {
+      tiledb_kv_item_t *item = get_impl<T>(key);
+      if (item == nullptr) {
+        throw TileDBError("Key does not exist.");
+      }
+      return MapItem(schema_.context(), &item, this);
     }
 
     /**
-     * Create an item for the current map with the given key. Note the map
-     * does not contain the key until the item is added with add_item().
+     * Get an item with a given key. If the item doesn't exist; create it.
      *
-     * @tparam T Key type, compound type (ex. vector, string)
-     * @param key Key value
+     * @tparam T
+     * @param key
      * @return MapItem
      */
     template<typename T>
-    typename std::enable_if<std::is_fundamental<typename T::value_type>::value, MapItem>::type
-    create_item(const T &key) {
-      return MapItem(*this,
-                     const_cast<void*>(reinterpret_cast<const void*>(key.data())),
-                     impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
-                     sizeof(typename T::value_type) * key.size());
-    }
-
-    /** Get an item from the map given a key. Fundamental key types. **/
-    template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
-    get_item(const T &key) {
-      auto &ctx = context();
-      tiledb_kv_item_t *item;
-      ctx.handle_error(tiledb_kv_get_item(ctx, kv_.get(), &item,
-                                          const_cast<void*>(reinterpret_cast<const void*>(&key)),
-                                          impl::type_from_native<T>::type::tiledb_datatype,
-                                          sizeof(T)));
+    MapItem operator[](const T &key) {
+      tiledb_kv_item_t *item = get_impl<T>(key);
       if (item == nullptr) {
-        throw TileDBError("Key does not exist.");
+        MapItem mapitem = create_item(schema_.context(), key);
+        mapitem.map_ = this;
+        return mapitem;
       }
-      return MapItem(*this, &item);
-    }
-
-    /** Get an item from the map given a key. Compound key types. **/
-    template<typename T>
-    typename std::enable_if<std::is_fundamental<typename T::value_type>::value, MapItem>::type
-    get_item(const T &key) {
-      auto &ctx = context();
-      tiledb_kv_item_t *item;
-      ctx.handle_error(tiledb_kv_get_item(ctx, kv_.get(), &item,
-                                          const_cast<void*>(reinterpret_cast<const void*>(key.data())),
-                                          impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
-                                          sizeof(typename T::value_type) * key.size()));
-      if (item == nullptr) {
-        throw TileDBError("Key does not exist.");
-      }
-      return MapItem(*this, &item);
+      return MapItem(schema_.context(), &item, this);
     }
 
     /** Add an item to the map. This populates the map with the key and attribute values. **/
@@ -171,6 +147,56 @@ namespace tdb {
     }
 
   private:
+
+    /* ********************************* */
+    /*        TYPE SPECIALIZATIONS       */
+    /* ********************************* */
+
+    /** Get for compound types. **/
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<typename T::value_type>::value, tiledb_kv_item_t>::type
+    *get_impl(const T &key) {
+      auto &ctx = context();
+      tiledb_kv_item_t *item;
+      ctx.handle_error(tiledb_kv_get_item(ctx, kv_.get(), &item,
+                                          const_cast<void*>(reinterpret_cast<const void*>(key.data())),
+                                          impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
+                                          sizeof(typename T::value_type) * key.size()));
+      return item;
+    };
+
+    /** Get for native types. **/
+    template<typename T>
+    typename std::enable_if<std::is_fundamental<T>::value, tiledb_kv_item_t>::type
+    *get_impl(const T &key) {
+      auto &ctx = context();
+      tiledb_kv_item_t *item;
+      ctx.handle_error(tiledb_kv_get_item(ctx, kv_.get(), &item,
+                                          const_cast<void*>(reinterpret_cast<const void*>(&key)),
+                                          impl::type_from_native<T>::type::tiledb_datatype,
+                                          sizeof(T)));
+      return item;
+    };
+
+    /** Create for native types. **/
+    template<typename T>
+    static
+    typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
+    create_item_impl(const Context &ctx, const T &key) {
+      return MapItem(ctx, const_cast<void*>(reinterpret_cast<const void*>(&key)),
+                     impl::type_from_native<T>::type::tiledb_datatype,
+                     sizeof(T), nullptr);
+    }
+
+    /** Create for compound types. **/
+    template<typename T>
+    static
+    typename std::enable_if<std::is_fundamental<typename T::value_type>::value, MapItem>::type
+    create_item_impl(const Context &ctx, const T &key) {
+      return MapItem(ctx, const_cast<void*>(reinterpret_cast<const void*>(key.data())),
+                     impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
+                     sizeof(typename T::value_type) * key.size(), nullptr);
+    }
 
     /* ********************************* */
     /*         PRIVATE ATTRIBUTES        */

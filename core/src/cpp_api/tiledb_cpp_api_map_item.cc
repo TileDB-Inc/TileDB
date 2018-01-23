@@ -36,18 +36,28 @@
 #include "tiledb_cpp_api_map_item.h"
 
 namespace tdb {
-  MapItem::MapItem(Map &map) : map_(map), deleter_(map.context()) {}
 
-  Attribute MapItem::get_attribute(const std::string &name) const {
-    return map_.get().schema().attribute(name);
+  impl::MapItemProxy MapItem::operator[](const std::string &attr) {
+    return impl::MapItemProxy(attr, *this);
   }
 
-  const Context &MapItem::get_context() const {
-    return map_.get().context();
+  impl::MultiMapItemProxy MapItem::operator[](const std::vector<std::string> &attrs) {
+    return impl::MultiMapItemProxy(attrs, *this);
   }
 
-  impl::map_item_proxy MapItem::operator[](const std::string &attr) {
-    return impl::map_item_proxy(attr, *this);
+  bool impl::MapItemProxy::add_to_map() const {
+    if (item.map_ != nullptr) {
+      item.map_->add_item(item);
+      return true;
+    }
+    return false;
   }
 
+  bool impl::MultiMapItemProxy::add_to_map() const {
+    if (item.map_ != nullptr) {
+      item.map_->add_item(item);
+      return true;
+    }
+    return false;
+  }
 }
