@@ -683,10 +683,13 @@ TILEDB_EXPORT int tiledb_dimension_dump(
  *
  * @param ctx The TileDB context.
  * @param array_schema The TileDB array schema to be created.
+ * @param array_type The array type.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_create(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema);
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    tiledb_array_type_t array_type);
 
 /**
  * Destroys an array schema, freeing-up memory.
@@ -760,19 +763,6 @@ TILEDB_EXPORT int tiledb_array_schema_set_tile_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_layout_t tile_order);
-
-/**
- * Sets the array type.
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param array_type The array type to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_schema_set_array_type(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_array_type_t array_type);
 
 /**
  * Sets the coordinates compressor.

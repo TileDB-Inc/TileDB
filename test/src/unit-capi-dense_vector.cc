@@ -163,13 +163,11 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema);
+  rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);

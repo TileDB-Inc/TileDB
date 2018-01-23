@@ -62,6 +62,9 @@ class ArraySchema {
   /** Constructor. */
   ArraySchema();
 
+  /** Constructor. */
+  ArraySchema(ArrayType array_type);
+
   /**
    * Constructor. Clones the input.
    *

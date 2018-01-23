@@ -285,15 +285,13 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema);
+  rc = tiledb_array_schema_create(ctx_, &array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, capacity);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, cell_order);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, tile_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
