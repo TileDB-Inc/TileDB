@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp
+ * @file  tiledb_cpp_api_map_proxy.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,38 +29,26 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Map Item proxies.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_version.h"
-#include "tiledb_cpp_api_schema_base.h"
-#include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_map_schema.h"
-#include "tiledb_cpp_api_map_item.h"
 #include "tiledb_cpp_api_map_proxy.h"
 #include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_iter.h"
-#include "tiledb_cpp_api_group.h"
-#include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_array.h"
-#include "tiledb_cpp_api_deleter.h"
-#include "tiledb_cpp_api_compressor.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_dimension.h"
-#include "tiledb_cpp_api_domain.h"
-#include "tiledb_cpp_api_object.h"
-#include "tiledb_cpp_api_object_iter.h"
-#include "tiledb_cpp_api_query.h"
-#include "tiledb_cpp_api_utils.h"
-#include "tiledb_cpp_api_vfs.h"
-#include "tiledb_cpp_api_vfs_filebuf.h"
 
-namespace tiledb = tdb;
+namespace tdb {
+  bool impl::MapItemProxy::add_to_map() const {
+    if (item.map_ != nullptr) {
+      item.map_->add_item(item);
+      return true;
+    }
+    return false;
+  }
 
-#endif // TILEDB_CPP_H
+  bool impl::MultiMapItemProxy::add_to_map() const {
+    if (item.map_ != nullptr) {
+      item.map_->add_item(item);
+      return true;
+    }
+    return false;
+  }
+}

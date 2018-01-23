@@ -50,7 +50,7 @@ int main() {
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
-  tiledb::ArraySchema schema(ctx);
+  tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
   schema << domain << a1 << a2 << a3;  // Add attributes to array
 

@@ -57,6 +57,10 @@ namespace impl {
 /** Object representing a Map key and its values. **/
 class MapItem {
 public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** Load a MapItem given a pointer. **/
   MapItem(const Context &ctx, tiledb_kv_item_t **item, Map *map=nullptr)
   : ctx_(ctx), deleter_(ctx), map_(map) {
@@ -116,8 +120,8 @@ public:
     tiledb_datatype_t type;
     uint64_t size;
 
-    ctx.handle_error(tiledb_kv_item_get_value(ctx, item_.get(), attr.c_str(),
-                                              (const void**)&data, &type, &size));
+    ctx.handle_error(tiledb_kv_item_get_value(
+        ctx, item_.get(), attr.c_str(),(const void**)&data, &type, &size));
 
     impl::type_check<typename impl::type_from_native<T>::type>(type);
 
@@ -151,7 +155,8 @@ private:
   /* ********************************* */
 
   /** Make an item with the given key. **/
-  MapItem(const Context &ctx, void *key, tiledb_datatype_t type, size_t size, Map *map=nullptr)
+  MapItem(const Context &ctx, void *key,
+          tiledb_datatype_t type, size_t size, Map *map=nullptr)
   : ctx_(ctx), deleter_(ctx), map_(map) {
     tiledb_kv_item_t *p;
     ctx.handle_error(tiledb_kv_item_create(ctx, &p));
@@ -170,9 +175,10 @@ private:
     const typename T::value_type* key;
     tiledb_datatype_t type;
     uint64_t size;
-    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(), (const void **)&key, &type, &size));
+    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(),
+                                            (const void **)&key, &type, &size));
     impl::type_check<typename impl::type_from_native<typename T::value_type>::type>(type);
-    unsigned num = (unsigned)size/sizeof(typename T::value_type);
+    unsigned num = (unsigned)size / sizeof(typename T::value_type);
     ret.resize(num);
     std::copy(key, key + num, std::begin(ret));
     return ret;
@@ -185,9 +191,10 @@ private:
     const T* key;
     tiledb_datatype_t type;
     uint64_t size;
-    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(), (const void**)&key, &type, &size));
+    ctx.handle_error(tiledb_kv_item_get_key(ctx, item_.get(),
+                                            (const void**)&key, &type, &size));
     impl::type_check<typename impl::type_from_native<T>::type>(type);
-    unsigned num = (unsigned)size/sizeof(T);
+    unsigned num = (unsigned)size / sizeof(T);
     if (num != 1) throw TileDBError("Expected key size of 1, got " + std::to_string(num));
     return *key;
   };
@@ -208,9 +215,10 @@ private:
   set_impl(const std::string &attr, const V &val) {
     auto &ctx = ctx_.get();
     using AttrT = typename impl::type_from_native<typename V::value_type>::type;
-    ctx.handle_error(tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
-                                              const_cast<void*>(reinterpret_cast<const void*>(val.data())),
-                                              AttrT::tiledb_datatype, sizeof(typename V::value_type) * val.size()));
+    ctx.handle_error(
+        tiledb_kv_item_set_value(ctx, item_.get(), attr.c_str(),
+                                 const_cast<void*>(reinterpret_cast<const void*>(val.data())),
+                                 AttrT::tiledb_datatype, sizeof(typename V::value_type) * val.size()));
   }
 
   /**
@@ -229,7 +237,8 @@ private:
 
     T ret;
     ret.resize(num);
-    std::copy(data, data + num, const_cast<typename T::value_type*>(ret.data()));
+    std::copy(data, data + num,
+              const_cast<typename T::value_type*>(ret.data()));
     return ret;
   }
 
@@ -257,143 +266,6 @@ private:
   /** Underlying Map **/
   Map *map_ = nullptr;
 };
-
-
-namespace impl {
-
-  /** Proxy class for multi-attribute set and get **/
-  struct MultiMapItemProxy {
-    /** Used to compiler can resolve func without user typing .get<....>() **/
-    template<typename T> struct type_tag{};
-
-  public:
-    MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item) : attrs(attrs), item(item) {}
-
-    /** Get multiple attributes **/
-    template <typename T>
-    T get() const {
-      if (attrs.size() != std::tuple_size<T>::value) {
-        throw TileDBError("Attribute list size does not match tuple length.");
-      }
-      return get(type_tag<T>{});
-    }
-
-    /** Set the attributes **/
-    template <typename T>
-    void set(const T &vals) {
-      if (attrs.size() != std::tuple_size<T>::value) {
-        throw TileDBError("Attribute list size does not match tuple length.");
-      }
-      iter_tuple(vals);
-      add_to_map();
-    }
-
-    /** Implicit cast to a tuple. **/
-    template<typename T>
-    operator T() const {
-      return get<T>();
-    }
-
-    /** Set the attributes with a tuple **/
-    template<typename T>
-    void operator=(const T &vals) {
-      return set<T>(vals);
-    }
-
-  private:
-
-    /** Iterate over a tuple. Set version (non const) **/
-    /** Base case. Do nothing and terminate recursion. **/
-    template<std::size_t I = 0, typename... Tp>
-    inline typename std::enable_if<I == sizeof...(Tp), void>::type
-    iter_tuple(const std::tuple<Tp...>&){}
-
-    template<std::size_t I = 0, typename... Tp>
-    inline typename std::enable_if<I < sizeof...(Tp), void>::type
-    iter_tuple(const std::tuple<Tp...> &t) {
-        item.set(attrs[I], std::get<I>(t));
-      iter_tuple<I + 1, Tp...>(t);
-    }
-
-    /** Iterate over a tuple. Get version (const) **/
-    /** Base case. Do nothing and terminate recursion. **/
-    template<std::size_t I = 0, typename... Tp>
-    inline typename std::enable_if<I == sizeof...(Tp), void>::type
-    iter_tuple(std::tuple<Tp...>&) const {}
-
-    template<std::size_t I = 0, typename... Tp>
-    inline typename std::enable_if<I < sizeof...(Tp), void>::type
-    iter_tuple(std::tuple<Tp...> &t) const {
-      std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<Tp...>>::type>(attrs[I]);
-      iter_tuple<I + 1, Tp...>(t);
-    }
-
-    /** Get multiple values into tuple. **/
-    template <typename... Tp>
-    std::tuple<Tp...> get(type_tag<std::tuple<Tp...>>) const {
-      if (attrs.size() != sizeof...(Tp)) {
-        throw TileDBError("Attribute list size does not match provided values.");
-      }
-      std::tuple<Tp...> ret;
-      iter_tuple(ret);
-      return ret;
-    }
-
-    /** Keyed attributes **/
-    const std::vector<std::string> &attrs;
-
-    /** Item that created proxy. **/
-    MapItem &item;
-
-    /** Add to underlying map, if associated with one. Otherwise pass. **/
-    bool add_to_map() const;
-  };
-
-  /** Proxy struct to set a value with operator[] **/
-  struct MapItemProxy {
-    /** Create a proxy for the given attribute and underlying MapItem **/
-    MapItemProxy(const std::string &attr, MapItem &item) : attr(attr), item(item) {}
-
-    /** Set the value **/
-    template<typename T>
-    void set(const T &val) {
-      item.set<T>(attr, val);
-      add_to_map();
-    }
-
-    /** Get the value, fundamental type. **/
-    template <typename T>
-    T get() const {
-      return item.get<T>(attr);
-    }
-
-    /** Set value with operator= **/
-    template <typename T>
-    void operator=(const T &val) {
-      set(val);
-      add_to_map();
-    }
-
-    /** Implicit cast **/
-    template <typename T>
-    operator T() {
-      return get<T>();
-    }
-
-    /** Bound attribute name **/
-    const std::string attr;
-
-    /** Underlying Item **/
-    MapItem &item;
-
-  private:
-
-    /** Add to underlying map, if associated with one. Otherwise pass. **/
-    bool add_to_map() const;
-
-  };
-
-}
 
 }
 

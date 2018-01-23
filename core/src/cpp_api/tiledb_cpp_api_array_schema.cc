@@ -43,10 +43,10 @@ namespace tdb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-ArraySchema::ArraySchema(const Context &ctx)
+ArraySchema::ArraySchema(const Context &ctx, tiledb_array_type_t type)
     : Schema(ctx) {
   tiledb_array_schema_t *schema;
-  ctx.handle_error(tiledb_array_schema_create(ctx, &schema));
+  ctx.handle_error(tiledb_array_schema_create(ctx, &schema, type));
   schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
 };
 
@@ -72,13 +72,6 @@ tiledb_array_type_t ArraySchema::array_type() const {
   ctx.handle_error(
       tiledb_array_schema_get_array_type(ctx, schema_.get(), &type));
   return type;
-}
-
-ArraySchema &ArraySchema::set_array_type(tiledb_array_type_t type) {
-  auto &ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_array_schema_set_array_type(ctx, schema_.get(), type));
-  return *this;
 }
 
 Compressor ArraySchema::coord_compressor() const {
@@ -239,11 +232,6 @@ ArraySchema &operator<<(ArraySchema &schema, const Domain &d) {
 
 ArraySchema &operator<<(ArraySchema &schema, const tdb::Attribute &a) {
   schema.add_attribute(a);
-  return schema;
-}
-
-ArraySchema &operator<<(ArraySchema &schema, const tiledb_array_type_t type) {
-  schema.set_array_type(type);
   return schema;
 }
 

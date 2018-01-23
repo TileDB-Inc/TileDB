@@ -113,6 +113,14 @@ class Config {
    */
   Config& set(const std::string& param, const std::string& value);
 
+  /**
+   * Get a parameter from the configuration by key.
+   * @param param Key
+   * @return Value
+   */
+  std::string get(const std::string& param) const;
+
+
   impl::ConfigProxy operator[](const std::string &param);
 
   /** Unsets a config parameter. */
@@ -145,6 +153,10 @@ struct ConfigProxy {
 
   void operator=(const std::string &val) {
     conf.set(param, val);
+  }
+
+  operator std::string() {
+    return conf.get(param);
   }
 
   Config &conf;

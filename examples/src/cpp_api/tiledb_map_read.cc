@@ -56,7 +56,10 @@ int main() {
   std::cout << "(" << a3[0] << ", " << a3[1] << ")\n"
             << "-----------------------------\n";
 
-  std::tuple<int, std::string, std::vector<float>> vals = map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}];
+  // Get values into a tuple
+  std::tuple<int, std::string, std::vector<float>> vals =
+      map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}];
+
   std::cout << "\nGet with tuple:\n"
             << "-----------------------------\n"
             << std::get<0>(vals) << ", " << std::get<1>(vals)
@@ -72,7 +75,7 @@ int main() {
     std::cout << "Error: key doesn't exist.\n";
   }
 
-  // Get pointer to data with no internal copies.
+  // Get pointer to data with no C++ API copies.
   auto data = item1.get_ptr<char>("a2");
   std::cout << "\nNo copy get of attribute 2: " << std::string(data.first, data.second) << '\n'
             << "Implicit casts: " << a1 << ", " << a2;

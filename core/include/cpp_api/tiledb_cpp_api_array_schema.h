@@ -60,7 +60,7 @@ class ArraySchema : public Schema {
   /* ********************************* */
 
   /** Creates a new array schema. */
-  explicit ArraySchema(const Context &ctx);
+  explicit ArraySchema(const Context &ctx, tiledb_array_type_t type);
 
   /** Loads the schema of an existing array with the input URI. */
   ArraySchema(const Context &ctx, const std::string &uri);
@@ -88,9 +88,6 @@ class ArraySchema : public Schema {
 
   /** Returns the array type. */
   tiledb_array_type_t array_type() const;
-
-  /** Sets the array type. */
-  ArraySchema &set_array_type(tiledb_array_type_t type);
 
   /** Returns the tile capacity. */
   uint64_t capacity() const;
@@ -177,9 +174,6 @@ ArraySchema &operator<<(ArraySchema &schema, const Domain &domain);
 
 /** Adds an attribute to the array schema. */
 ArraySchema &operator<<(ArraySchema &schema, const Attribute &attr);
-
-/** Sets the array type. */
-ArraySchema &operator<<(ArraySchema &schema, const tiledb_array_type_t type);
 
 /**
  * Sets the tile and cell order of the array.

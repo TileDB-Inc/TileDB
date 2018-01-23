@@ -33,7 +33,7 @@
  */
 
 #include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_proxy.h"
 
 namespace tdb {
 
@@ -45,19 +45,4 @@ namespace tdb {
     return impl::MultiMapItemProxy(attrs, *this);
   }
 
-  bool impl::MapItemProxy::add_to_map() const {
-    if (item.map_ != nullptr) {
-      item.map_->add_item(item);
-      return true;
-    }
-    return false;
-  }
-
-  bool impl::MultiMapItemProxy::add_to_map() const {
-    if (item.map_ != nullptr) {
-      item.map_->add_item(item);
-      return true;
-    }
-    return false;
-  }
 }

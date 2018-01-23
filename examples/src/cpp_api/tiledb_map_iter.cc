@@ -41,7 +41,8 @@ int main() {
   for (auto &item : map) {
     item["a1"] = ++i << 2;
     // Or use a tuple
-    item[{"a2", "a3"}] = std::make_tuple(std::string((unsigned) i*2, 'x'), std::vector<float>{i/.15f, i/.05f});
+    item[std::vector<std::string>({"a2", "a3"})] =
+      std::make_tuple(std::string((unsigned) i*2, 'x'), std::vector<float>{i/.15f, i/.05f});
   }
 
   // After iteration, map is flushed.

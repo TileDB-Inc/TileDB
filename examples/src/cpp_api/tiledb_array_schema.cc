@@ -38,13 +38,13 @@
 
 int main() {
   tiledb::Context ctx;
-  tiledb::ArraySchema schema(ctx);
+  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
 
   std::cout << "\nFirst dump:\n";
   schema.dump(stdout);
 
   // sparse array with tile capacity 10
-  schema << TILEDB_SPARSE << 10;
+  schema.set_capacity(10);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
   schema.set_coord_compressor({TILEDB_ZSTD, 4});

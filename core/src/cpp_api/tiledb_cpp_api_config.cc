@@ -75,10 +75,18 @@ Config& Config::set(const std::string& param, const std::string& value) {
   return *this;
 }
 
+std::string Config::get(const std::string &param) const {
+  const char *val;
+  int rc = tiledb_config_get(config_.get(), param.c_str(), &val);
+  if (rc != TILEDB_OK)
+    throw TileDBError(
+        "[TileDB::C++API] Error: Failed to get config key " + param);
+  return val;
+}
+
 impl::ConfigProxy Config::operator[](const std::string &param) {
   return {*this, param};
 }
-
 
   Config& Config::unset(const std::string& param) {
   int rc = tiledb_config_unset(config_.get(), param.c_str());
