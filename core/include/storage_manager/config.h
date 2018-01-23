@@ -105,6 +105,9 @@ class Config {
    */
   Status set(const std::string& param, const std::string& value);
 
+  /** Gets a config parameter value (`nullptr` if `param` does not exist). */
+  void get(const std::string& param, const char** value) const;
+
   /**
    * Sets the name of the file from which the config parameters will be read
    * upon initialization.

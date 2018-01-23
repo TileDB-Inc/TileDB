@@ -253,6 +253,18 @@ TILEDB_EXPORT int tiledb_config_set(
     tiledb_config_t* config, const char* param, const char* value);
 
 /**
+ * Gets a config parameter.
+ *
+ * @param config The config object.
+ * @param param The parameter to be set.
+ * @param value A pointer to the value of the parameter to be retrieved
+ *    (`nullptr` if it does not exist).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_get(
+    tiledb_config_t* config, const char* param, const char** value);
+
+/**
  * Sets config parameters read from a text file.
  *
  * @param config The config object.
@@ -300,6 +312,16 @@ TILEDB_EXPORT int tiledb_ctx_create(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
+
+/**
+ * Retrieves the config from a TileDB context.
+ *
+ * @param ctx The TileDB context to be created.
+ * @param config The config to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ctx_get_config(
+    tiledb_ctx_t* ctx, tiledb_config_t** config);
 
 /* ********************************* */
 /*              ERROR                */

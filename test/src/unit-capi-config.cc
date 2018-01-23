@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb.h"
 
+#include <cstring>
 #include <fstream>
 
 void check_correct_file() {
@@ -159,6 +160,31 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_t* ctx;
   rc = tiledb_ctx_create(&ctx, config);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_ctx_free(ctx);
+  CHECK(rc == TILEDB_OK);
+
+  // Check get for existing argument
+  const char* value;
+  rc = tiledb_config_get(config, "sm.tile_cache_size", &value);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!strcmp(value, "100"));
+
+  // Check get for non-existing argument
+  rc = tiledb_config_get(config, "foo", &value);
+  CHECK(rc == TILEDB_OK);
+  CHECK(value == nullptr);
+
+  // Check get config from context
+  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_t* get_config;
+  rc = tiledb_ctx_get_config(ctx, &get_config);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_get(get_config, "sm.tile_cache_size", &value);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!strcmp(value, "100"));
+  rc = tiledb_config_free(get_config);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);

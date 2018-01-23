@@ -108,6 +108,11 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
+void Config::get(const std::string& param, const char** value) const {
+  auto it = param_values_.find(param);
+  *value = (it == param_values_.end()) ? nullptr : it->second.c_str();
+}
+
 Status Config::set_config_filename(const std::string& filename) {
   config_filename_ = filename;
   return Status::Ok();
