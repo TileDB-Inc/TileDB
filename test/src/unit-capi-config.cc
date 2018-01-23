@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb.h"
 
+#include <cstring>
 #include <fstream>
 
 void check_correct_file() {
