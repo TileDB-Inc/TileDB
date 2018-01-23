@@ -232,6 +232,9 @@ namespace impl {
     /** Set the attributes **/
     template <typename T>
     void set(const T &vals) {
+      if (attrs.size() != std::tuple_size<T>::value) {
+        throw TileDBError("Attribute list size does not match tuple length.");
+      }
       iter_tuple(vals);
       add_to_map();
     }
