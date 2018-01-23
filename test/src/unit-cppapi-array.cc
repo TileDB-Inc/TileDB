@@ -54,7 +54,7 @@ struct CPPArrayFx {
     a2.set_cell_val_num(TILEDB_VAR_NUM);
     a3.set_cell_val_num(2);
 
-    ArraySchema schema(ctx);
+    ArraySchema schema(ctx, TILEDB_DENSE);
     schema << domain << a1 << a2 << a3;
 
     create_array("cpp_unit_array", schema);

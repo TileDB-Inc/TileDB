@@ -50,14 +50,13 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   a3.set_cell_val_num(2);
 
   SECTION("Array Schema") {
-    ArraySchema schema(ctx);
+    ArraySchema schema(ctx, TILEDB_DENSE);
     schema << domain;
     schema << a1 << a2 << a3;
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_offset_compressor({TILEDB_DOUBLE_DELTA, -1});
     schema.set_coord_compressor({TILEDB_ZSTD, -1});
-    schema.set_array_type(TILEDB_DENSE);
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);
