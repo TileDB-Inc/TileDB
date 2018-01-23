@@ -63,6 +63,23 @@ ArraySchema::ArraySchema() {
   std::memcpy(version_, constants::version, sizeof(version_));
 }
 
+ArraySchema::ArraySchema(ArrayType array_type)
+    : array_type_(array_type) {
+  attribute_num_ = 0;
+  array_uri_ = URI();
+  capacity_ = constants::capacity;
+  cell_order_ = Layout::ROW_MAJOR;
+  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
+  cell_var_offsets_compression_level_ =
+      constants::cell_var_offsets_compression_level;
+  coords_compression_ = constants::coords_compression;
+  coords_compression_level_ = constants::coords_compression_level;
+  is_kv_ = false;
+  domain_ = nullptr;
+  tile_order_ = Layout::ROW_MAJOR;
+  std::memcpy(version_, constants::version, sizeof(version_));
+}
+
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
@@ -636,6 +653,20 @@ Status ArraySchema::set_domain(Domain* domain) {
   if (is_kv_)
     return Status::ArraySchemaError(
         "Cannot set domain; The array is defined as a key-value store");
+
+  if (array_type_ == ArrayType::DENSE) {
+    if (domain->null_tile_extents()) {
+      return LOG_STATUS(
+          Status::ArraySchemaError("Cannot set domain; Dense arrays "
+                                   "cannot have null tile extents"));
+    }
+    if (domain->type() == Datatype::FLOAT32 ||
+        domain->type() == Datatype::FLOAT64) {
+      return LOG_STATUS(
+          Status::ArraySchemaError("Cannot set domain; Dense arrays "
+                                   "cannot have floating point domains"));
+    }
+  }
 
   // Set domain
   delete domain_;

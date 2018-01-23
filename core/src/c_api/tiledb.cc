@@ -928,7 +928,9 @@ int tiledb_domain_get_dimension_from_name(
 /* ****************************** */
 
 int tiledb_array_schema_create(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema) {
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    tiledb_array_type_t array_type) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -943,7 +945,8 @@ int tiledb_array_schema_create(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ = new (std::nothrow) tiledb::ArraySchema();
+  (*array_schema)->array_schema_ = new (std::nothrow)
+      tiledb::ArraySchema(static_cast<tiledb::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     delete *array_schema;
     *array_schema = nullptr;
@@ -1025,21 +1028,6 @@ int tiledb_array_schema_set_tile_order(
     return TILEDB_ERR;
   array_schema->array_schema_->set_tile_order(
       static_cast<tiledb::Layout>(tile_order));
-  return TILEDB_OK;
-}
-
-int tiledb_array_schema_set_array_type(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_array_type_t array_type) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  if (save_error(
-          ctx,
-          array_schema->array_schema_->set_array_type(
-              static_cast<tiledb::ArrayType>(array_type))))
-    return TILEDB_ERR;
   return TILEDB_OK;
 }
 

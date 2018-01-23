@@ -71,10 +71,9 @@ int main() {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema);
+  tiledb_array_schema_create(ctx, &array_schema, TILEDB_SPARSE);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
-  tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_SPARSE);
   tiledb_array_schema_set_capacity(ctx, array_schema, 2);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx, array_schema, a1);

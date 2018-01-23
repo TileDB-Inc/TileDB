@@ -185,12 +185,10 @@ void ArrayMetadataFx::delete_array(const std::string& path) {
 void ArrayMetadataFx::create_array(const std::string& path) {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema);
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
   // Set schema members
-  rc = tiledb_array_schema_set_array_type(ctx_, array_schema, ARRAY_TYPE);
-  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, CELL_ORDER);
@@ -626,7 +624,7 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema);
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -696,7 +694,7 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema);
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -744,6 +742,41 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_free(ctx_, attr2);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_dimension_free(ctx_, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_free(ctx_, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_free(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    ArrayMetadataFx,
+    "C API: Test array schema with invalid domain",
+    "[capi], [array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  double dim_domain[] = {0, 9};
+  double tile_extent = 5;
+  rc = tiledb_dimension_create(
+      ctx_, &d1, "", TILEDB_FLOAT64, dim_domain, &tile_extent);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
   rc = tiledb_dimension_free(ctx_, d1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);

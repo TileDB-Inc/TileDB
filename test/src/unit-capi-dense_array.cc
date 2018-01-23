@@ -359,7 +359,7 @@ void DenseArrayFx::create_dense_array_2D(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema);
+  rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, capacity);
   REQUIRE(rc == TILEDB_OK);
