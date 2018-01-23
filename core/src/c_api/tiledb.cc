@@ -406,6 +406,23 @@ int tiledb_ctx_free(tiledb_ctx_t* ctx) {
   return TILEDB_OK;
 }
 
+int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Create storage manager
+  (*config)->config_ = new (std::nothrow) tiledb::Config();
+  if ((*config)->config_ == nullptr)
+    return TILEDB_OOM;
+
+  *((*config)->config_) = ctx->storage_manager_->config();
+
+  // Success
+  return TILEDB_OK;
+}
+
 /* ********************************* */
 /*              ERROR                */
 /* ********************************* */

@@ -313,6 +313,16 @@ TILEDB_EXPORT int tiledb_ctx_create(
  */
 TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
 
+/**
+ * Retrieves the config from a TileDB context.
+ *
+ * @param ctx The TileDB context to be created.
+ * @param config The config to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ctx_get_config(
+    tiledb_ctx_t* ctx, tiledb_config_t** config);
+
 /* ********************************* */
 /*              ERROR                */
 /* ********************************* */
