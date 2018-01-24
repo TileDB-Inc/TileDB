@@ -397,7 +397,7 @@ bool VFS::is_bucket(const URI& uri) const {
 
 Status VFS::init(const Config::VFSParams& vfs_params) {
 #ifdef HAVE_HDFS
-  RETURN_NOT_OK(hdfs::connect(hdfs_));
+  RETURN_NOT_OK(hdfs::connect(hdfs_, vfs_params.hdfs_params_));
 #endif
 #ifdef HAVE_S3
   S3::S3Config s3_config;

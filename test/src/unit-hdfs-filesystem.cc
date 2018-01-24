@@ -33,6 +33,7 @@
 #ifdef HAVE_HDFS
 
 #include "catch.hpp"
+#include "config.h"
 #include "hdfs_filesystem.h"
 
 #include <fstream>
@@ -42,7 +43,9 @@ using namespace tiledb;
 
 TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   hdfsFS fs;
-  Status st = hdfs::connect(fs);
+  const Config::HDFSParams config;
+
+  Status st = hdfs::connect(fs, config);
   REQUIRE(st.ok());
 
   if (hdfs::is_dir(fs, URI("hdfs:///tiledb_test"))) {

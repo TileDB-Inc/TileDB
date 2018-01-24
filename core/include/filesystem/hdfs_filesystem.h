@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "buffer.h"
+#include "config.h"
 #include "hdfs.h"
 #include "status.h"
 #include "uri.h"
@@ -54,7 +55,7 @@ namespace hdfs {
  * @param fs Reference to a hdfsFS filesystem handle.
  * @return Status
  */
-Status connect(hdfsFS& fs);
+Status connect(hdfsFS& fs, const Config::HDFSParams& config);
 
 /**
  * Disconnects an HDFS filesystem
