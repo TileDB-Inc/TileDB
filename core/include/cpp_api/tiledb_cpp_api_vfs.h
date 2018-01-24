@@ -91,6 +91,12 @@ class VFS {
   /** Checks if an object-store bucket with the input URI exists. */
   bool is_bucket(const std::string& uri) const;
 
+  /** Empty a bucket **/
+  void empty_bucket(const std::string &bucket);
+
+  /** Check if a bucket is empty **/
+  bool is_empty_bucket(const std::string &bucket);
+
   /** Creates a directory with the input URI. */
   void create_dir(const std::string& uri) const;
 
