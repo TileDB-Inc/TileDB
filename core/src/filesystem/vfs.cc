@@ -170,6 +170,35 @@ Status VFS::remove_bucket(const URI& uri) const {
       uri.to_string()));
 }
 
+Status VFS::empty_bucket(const URI& uri) const {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3_.empty_bucket(uri);
+#else
+    (void)uri;
+    return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
+#endif
+  }
+  return LOG_STATUS(Status::VFSError(
+      std::string("Cannot remove bucket; Unsupported URI scheme: ") +
+      uri.to_string()));
+}
+
+Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3_.is_empty_bucket(uri, is_empty);
+#else
+    (void)uri;
+    (void)is_empty;
+    return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
+#endif
+  }
+  return LOG_STATUS(Status::VFSError(
+      std::string("Cannot remove bucket; Unsupported URI scheme: ") +
+      uri.to_string()));
+}
+
 Status VFS::remove_path(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32

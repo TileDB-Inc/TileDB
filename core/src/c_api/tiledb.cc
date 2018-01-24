@@ -2436,6 +2436,30 @@ int tiledb_vfs_remove_bucket(
   return TILEDB_OK;
 }
 
+int tiledb_vfs_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, vfs->vfs_->empty_bucket(tiledb::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_is_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_empty) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool b;
+  if (save_error(ctx, vfs->vfs_->is_empty_bucket(tiledb::URI(uri), &b)))
+    return TILEDB_ERR;
+  *is_empty = (int)b;
+
+  return TILEDB_OK;
+}
+
 int tiledb_vfs_is_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_bucket) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)

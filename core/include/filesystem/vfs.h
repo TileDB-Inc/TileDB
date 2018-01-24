@@ -116,6 +116,14 @@ class VFS {
   Status remove_bucket(const URI& uri) const;
 
   /**
+   * Deletes the contents of an object-store bucket.
+   *
+   * @param uri The name of the bucket to be emptied.
+   * @return Status
+   */
+  Status empty_bucket(const URI& uri) const;
+
+  /**
    * Removes a given path (recursive)
    *
    * @param uri The uri of the path to be removed
@@ -184,6 +192,14 @@ class VFS {
    * @return `True` if the bucket exists and `false` otherwise.
    */
   bool is_bucket(const URI& uri) const;
+
+  /**
+   * Checks if an object-store bucket is empty.
+   *
+   * @param uri The name of the S3 bucket.
+   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
+   */
+  Status is_empty_bucket(const URI& uri, bool* is_empty) const;
 
   /** Initializes the virtual filesystem. */
   Status init(const Config::VFSParams& vfs_params);

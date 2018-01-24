@@ -197,6 +197,39 @@ Status S3::delete_bucket(const URI& bucket) const {
   return Status::Ok();
 }
 
+Status S3::empty_bucket(const URI& bucket) const {
+  if (!is_bucket(bucket))
+    return LOG_STATUS(
+        Status::S3Error("Cannot empty bucket; Bucket does not exist"));
+
+  Aws::Http::URI aws_uri = bucket.c_str();
+  return empty_bucket(aws_uri.GetAuthority());
+}
+
+Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
+  if (!is_bucket(bucket))
+    return LOG_STATUS(Status::S3Error(
+        "Cannot check if bucket is empty; Bucket does not exist"));
+
+  Aws::Http::URI aws_uri = bucket.c_str();
+  Aws::S3::Model::ListObjectsRequest listObjectsRequest;
+  listObjectsRequest.SetBucket(aws_uri.GetAuthority());
+  auto listObjectsOutcome = client_->ListObjects(listObjectsRequest);
+
+  if (!listObjectsOutcome.IsSuccess()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("Failed to list s3 objects in bucket ") + bucket.c_str() +
+        std::string("\nException:  ") +
+        listObjectsOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        listObjectsOutcome.GetError().GetMessage().c_str()));
+  }
+
+  *is_empty = listObjectsOutcome.GetResult().GetContents().empty();
+
+  return Status::Ok();
+}
+
 Status S3::disconnect() {
   for (const auto& record : multipart_upload_request_) {
     auto completedMultipartUpload = multipart_upload_[record.first];

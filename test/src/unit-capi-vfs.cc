@@ -217,12 +217,30 @@ void VFSFx::check_vfs(const std::string& path) {
   CHECK(!supports);
 #endif
 
-  // Clean up
+#ifdef HAVE_S3
+  if (path == S3_TEMP_DIR) {
+    int is_empty;
+    rc = tiledb_vfs_is_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_empty);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(!(bool)is_empty);
+  }
+#endif
+
+#ifndef HAVE_S3
   rc = tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str());
   REQUIRE(rc == TILEDB_OK);
+#endif
 
 #ifdef HAVE_S3
   if (path == S3_TEMP_DIR) {
+    rc = tiledb_vfs_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+    REQUIRE(rc == TILEDB_OK);
+
+    int is_empty;
+    rc = tiledb_vfs_is_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_empty);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE((bool)is_empty);
+
     rc = tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
