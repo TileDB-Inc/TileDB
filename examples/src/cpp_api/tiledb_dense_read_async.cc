@@ -55,8 +55,7 @@ int main() {
   query.set_buffer("a3", a3_buff);
 
   // Submit query with callback
-  std::function<void(void*)> callback = [](void*){std::cout << "Callback: query completed.\n";};
-  query.submit_async(callback);
+  query.submit_async([](){std::cout << "Callback: query completed.\n";});
 
   std::cout << "Query in progress\n";
   tiledb::Query::Status status;

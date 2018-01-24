@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_QUERY_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_core_interface.h"
 #include "tiledb_cpp_api_array_schema.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
@@ -103,7 +104,14 @@ class Query {
    * @param data Data to pass to callback.
    * @return Status of submitted query.
    */
-  void submit_async(std::function<void(void*)> callback, void *data=nullptr);
+  template<typename Fn>
+  void submit_async(const Fn &callback) {
+    std::function<void(void*)> wrapper = [=](void*){callback();};
+    auto &ctx = ctx_.get();
+    prepare_submission();
+    ctx.handle_error(
+        tdb::impl::tiledb_query_submit_async(ctx, query_.get(), wrapper, nullptr));
+  }
 
   /** Buffer sizes, in number of elements. */
   std::vector<uint64_t> returned_buff_sizes();
