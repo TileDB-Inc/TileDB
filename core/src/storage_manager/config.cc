@@ -98,6 +98,12 @@ Status Config::init() {
       RETURN_NOT_OK(set_vfs_s3_connect_timeout_ms(pv.second));
     } else if (pv.first == "vfs.s3.request_timeout_ms") {
       RETURN_NOT_OK(set_vfs_s3_request_timeout_ms(pv.second));
+    } else if (pv.first == "vfs.hdfs.name_node") {
+      RETURN_NOT_OK(set_vfs_hdfs_name_node(pv.second));
+    } else if (pv.first == "vfs.hdfs.username") {
+      RETURN_NOT_OK(set_vfs_hdfs_username(pv.second));
+    } else if (pv.first == "vfs.hdfs.kerb_ticket_cache_path") {
+      RETURN_NOT_OK(set_vfs_hdfs_kerb_ticket_cache_path(pv.second))
     }
   }
   return Status::Ok();
@@ -263,6 +269,21 @@ Status Config::set_vfs_s3_request_timeout_ms(const std::string& value) {
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.s3_params_.request_timeout_ms_ = v;
 
+  return Status::Ok();
+}
+
+Status Config::set_vfs_hdfs_name_node(const std::string& value) {
+  vfs_params_.hdfs_params_.name_node_uri_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_hdfs_username(const std::string& value) {
+  vfs_params_.hdfs_params_.username_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_hdfs_kerb_ticket_cache_path(const std::string& value) {
+  vfs_params_.hdfs_params_.kerb_ticket_cache_path_ = value;
   return Status::Ok();
 }
 

@@ -63,7 +63,11 @@ class Config {
     long request_timeout_ms_;
   };
 
-  struct HDFSParams {};
+  struct HDFSParams {
+    std::string name_node_uri_;
+    std::string username_;
+    std::string kerb_ticket_cache_path_;
+  };
 
   struct VFSParams {
     S3Params s3_params_;
@@ -197,6 +201,15 @@ class Config {
 
   /** Sets the S3 request timeout in milliseconds. */
   Status set_vfs_s3_request_timeout_ms(const std::string& value);
+
+  /** Sets the HDFS namenode hostname and port (uri) */
+  Status set_vfs_hdfs_name_node(const std::string& value);
+
+  /** Sets the HDFS username */
+  Status set_vfs_hdfs_username(const std::string& value);
+
+  /** Sets the Kerberos auth ticket cache path */
+  Status set_vfs_hdfs_kerb_ticket_cache_path(const std::string& value);
 };
 
 }  // namespace tiledb

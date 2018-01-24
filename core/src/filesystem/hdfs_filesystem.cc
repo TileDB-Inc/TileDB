@@ -43,15 +43,26 @@ namespace tiledb {
 
 namespace hdfs {
 
-Status connect(hdfsFS& fs) {
+Status connect(hdfsFS& fs, const Config::HDFSParams& config) {
   struct hdfsBuilder* builder = hdfsNewBuilder();
   if (builder == nullptr) {
     return LOG_STATUS(Status::HDFSError(
         "Failed to connect to hdfs, could not create connection builder"));
   }
-  // TODO: builder options
   hdfsBuilderSetForceNewInstance(builder);
-  hdfsBuilderSetNameNode(builder, "default");
+  if (!config.name_node_uri_.empty()) {
+    hdfsBuilderSetNameNode(builder, config.name_node_uri_.c_str());
+  } else {
+    hdfsBuilderSetNameNode(builder, "default");
+  }
+  if (!config.username_.empty()) {
+    hdfsBuilderSetUserName(builder, config.username_.c_str());
+  }
+  if (!config.kerb_ticket_cache_path_.empty()) {
+    hdfsBuilderSetKerbTicketCachePath(
+        builder, config.kerb_ticket_cache_path_.c_str());
+  }
+  // TODO: Set config strings
   fs = hdfsBuilderConnect(builder);
   if (fs == nullptr) {
     // TODO: errno for better options
