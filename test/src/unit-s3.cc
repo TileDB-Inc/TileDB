@@ -64,10 +64,20 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   Status st = s3_.connect(s3_config);
   REQUIRE(st.ok());
 
-  if (!s3_.is_bucket(S3_BUCKET)) {
-    st = s3_.create_bucket(S3_BUCKET);
-    CHECK(st.ok());
+  if (s3_.is_bucket(S3_BUCKET)) {
+    st = s3_.delete_bucket(S3_BUCKET);
+    REQUIRE(st.ok());
   }
+
+  REQUIRE(!s3_.is_bucket(S3_BUCKET));
+  st = s3_.create_bucket(S3_BUCKET);
+  CHECK(st.ok());
+
+  // Check if bucket is empty
+  bool is_empty;
+  st = s3_.is_empty_bucket(S3_BUCKET, &is_empty);
+  CHECK(st.ok());
+  CHECK(is_empty);
 
   st = s3_.create_dir(URI(TEST_DIR));
   CHECK(st.ok());
@@ -76,6 +86,11 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   CHECK(st.ok());
   st = s3_.create_dir(URI(TEST_DIR + "subfolder"));
   CHECK(st.ok());
+
+  // Check if bucket is not empty
+  st = s3_.is_empty_bucket(S3_BUCKET, &is_empty);
+  CHECK(st.ok());
+  CHECK(!is_empty);
 
   int buffer_size = 5 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
@@ -181,13 +196,17 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem", "[s3]") {
   CHECK(st.ok());
   CHECK(paths3.size() == 2);
 
-  st = s3_.remove_path(URI(TEST_DIR));
+  st = s3_.is_empty_bucket(S3_BUCKET, &is_empty);
   CHECK(st.ok());
+  CHECK(!is_empty);
+  st = s3_.empty_bucket(S3_BUCKET);
+  CHECK(st.ok());
+  st = s3_.is_empty_bucket(S3_BUCKET, &is_empty);
+  CHECK(st.ok());
+  CHECK(is_empty);
 
-  if (s3_.is_bucket(S3_BUCKET)) {
-    st = s3_.delete_bucket(S3_BUCKET);
-    CHECK(st.ok());
-  }
+  st = s3_.delete_bucket(S3_BUCKET);
+  CHECK(st.ok());
 }
 
 #endif

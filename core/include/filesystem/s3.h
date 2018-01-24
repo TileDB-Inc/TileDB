@@ -166,6 +166,12 @@ class S3 {
    */
   Status delete_bucket(const URI& bucket) const;
 
+  /** Removes the contents of an S3 bucket. */
+  Status empty_bucket(const URI& bucket) const;
+
+  /** Checks if a bucket is empty. */
+  Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
+
   /**
    * Returns the size of the input file with a given URI in bytes.
    *
@@ -323,7 +329,7 @@ class S3 {
    */
   Status copy_file(const URI& old_uri, const URI& new_uri);
 
-  /** Removes the contents of an S3 bucker. */
+  /** Removes the contents of an S3 bucket. */
   Status empty_bucket(const Aws::String& bucketName) const;
 
   /**

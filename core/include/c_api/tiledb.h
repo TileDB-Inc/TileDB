@@ -1718,6 +1718,29 @@ TILEDB_EXPORT int tiledb_vfs_remove_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
 
 /**
+ * Deletes the contents of an object-store bucket.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the bucket to be emptied.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if an object-store bucket is empty.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the bucket.
+ * @param is_empty Sets it to `1` if the input bucket is empty.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_is_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_empty);
+
+/**
  * Checks if an object-store bucket exists.
  *
  * @param ctx The TileDB context.
