@@ -33,6 +33,7 @@
  */
 
 #include "tiledb_cpp_api_query.h"
+#include "tiledb_cpp_api_core_interface.h"
 
 namespace tdb {
 
@@ -83,15 +84,15 @@ Query::Status Query::attribute_status(const std::string &attr) {
   return to_status(status);
 }
 
-void Query::submit_async(void (*callback)(void *), void *data) {
+void Query::submit_async(std::function<void(void*)> callback, void *data) {
   auto &ctx = ctx_.get();
   prepare_submission();
   ctx.handle_error(
-      tiledb_query_submit_async(ctx, query_.get(), callback, data));
+      tdb::impl::tiledb_query_submit_async(ctx, query_.get(), callback, data));
 }
 
 void Query::submit_async() {
-  submit_async(nullptr, nullptr);
+  submit_async({}, nullptr);
 }
 
 std::vector<uint64_t> Query::returned_buff_sizes() {

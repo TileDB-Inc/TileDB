@@ -34,8 +34,6 @@
 #include <iomanip>
 #include <tiledb>
 
-void print_upon_completion(void* s);
-
 int main() {
   using std::setw;
   tiledb::Context ctx;
@@ -57,8 +55,8 @@ int main() {
   query.set_buffer("a3", a3_buff);
 
   // Submit query with callback
-  std::string msg = "(Callback) Query completed.\n";
-  query.submit_async(print_upon_completion, (void*)msg.c_str());
+  std::function<void(void*)> callback = [](void*){std::cout << "Callback: query completed.\n";};
+  query.submit_async(callback);
 
   std::cout << "Query in progress\n";
   tiledb::Query::Status status;
@@ -89,8 +87,4 @@ int main() {
   }
 
   return 0;
-}
-
-void print_upon_completion(void* s) {
-  std::cout << std::string(static_cast<char*>(s)) << std::endl;
 }

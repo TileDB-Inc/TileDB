@@ -103,7 +103,7 @@ class Query {
    * @param data Data to pass to callback.
    * @return Status of submitted query.
    */
-  void submit_async(void (*callback)(void *), void *data);
+  void submit_async(std::function<void(void*)> callback, void *data=nullptr);
 
   /** Buffer sizes, in number of elements. */
   std::vector<uint64_t> returned_buff_sizes();
@@ -112,9 +112,10 @@ class Query {
   void reset_buffers();
 
   /**
-   * Sets a subarray.
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
    *
-   * @tparam A native data type.
+   * @tparam T A native data type.
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
@@ -124,9 +125,10 @@ class Query {
   }
 
   /**
-   * Sets a subarray.
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
    *
-   * @tparam A native data type.
+   * @tparam T A native data type.
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
