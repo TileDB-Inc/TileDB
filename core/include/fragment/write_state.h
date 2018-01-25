@@ -108,6 +108,9 @@ class WriteState {
    */
   std::vector<uint64_t> buffer_var_offsets_;
 
+  /** Number of cells written in the fragment per attribute. */
+  std::vector<uint64_t> cells_written_;
+
   /** The fragment the write state belongs to. */
   const Fragment* fragment_;
 

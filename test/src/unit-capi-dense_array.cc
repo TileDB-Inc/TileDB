@@ -85,6 +85,7 @@ struct DenseArrayFx {
   void remove_temp_dir(const std::string& path);
   void check_sorted_reads(const std::string& path);
   void check_sorted_writes(const std::string& path);
+  void check_invalid_global_writes(const std::string& path);
   void check_sparse_writes(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
 
@@ -802,6 +803,58 @@ void DenseArrayFx::check_sorted_writes(const std::string& path) {
   }
 }
 
+void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
+  // Parameters used in this test
+  int64_t domain_size_0 = 100;
+  int64_t domain_size_1 = 100;
+  int64_t tile_extent_0 = 10;
+  int64_t tile_extent_1 = 10;
+  int64_t domain_0_lo = 0;
+  int64_t domain_0_hi = domain_size_0 - 1;
+  int64_t domain_1_lo = 0;
+  int64_t domain_1_hi = domain_size_1 - 1;
+  uint64_t capacity = 1000;
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  std::string array_name = path + "invalid_writes_array";
+
+  // Create a dense integer array
+  create_dense_array_2D(
+      array_name,
+      tile_extent_0,
+      tile_extent_1,
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      capacity,
+      cell_order,
+      tile_order);
+
+  const char* attributes[] = {ATTR_NAME};
+  int buffer[3] = {1, 2, 3};
+  void* buffers[] = {buffer};
+  uint64_t buffer_sizes[] = {sizeof(buffer)};
+
+  // Create query
+  tiledb_query_t* query;
+  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 1, buffers, buffer_sizes);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Free/finalize query - this should fail
+  rc = tiledb_query_free(ctx_, query);
+  REQUIRE(rc == TILEDB_ERR);
+}
+
 void DenseArrayFx::check_sparse_writes(const std::string& path) {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
@@ -916,6 +969,24 @@ TEST_CASE_METHOD(
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_sorted_reads(HDFS_TEMP_DIR);
+#endif
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, invalid global writes",
+    "[capi], [dense]") {
+  // File
+  check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+#ifdef HAVE_S3
+  // S3
+  check_invalid_global_writes(S3_TEMP_DIR);
+#endif
+
+#ifdef HAVE_HDFS
+  // HDFS
+  check_invalid_global_writes(HDFS_TEMP_DIR);
 #endif
 }
 

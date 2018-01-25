@@ -76,6 +76,8 @@ WriteState::WriteState(const Fragment* fragment)
   mbr_ = std::malloc(2 * coords_size);
   bounding_coords_ = std::malloc(2 * coords_size);
   tile_coords_aux_ = std::malloc(coords_size);
+
+  cells_written_.resize(attribute_num + 1);
 }
 
 WriteState::~WriteState() {
@@ -108,7 +110,21 @@ WriteState::~WriteState() {
 Status WriteState::finalize() {
   // For easy reference
   auto array_schema = fragment_->query()->array_schema();
-  int attribute_num = array_schema->attribute_num();
+  unsigned attribute_num = array_schema->attribute_num();
+  auto cell_num = metadata_->cell_num_in_domain();
+  auto storage_manager = fragment_->query()->storage_manager();
+  auto& fragment_uri = fragment_->fragment_uri();
+
+  // Check number of cells written (for a dense fragment that exists)
+  if (metadata_->dense() && storage_manager->is_dir(fragment_uri)) {
+    for (unsigned i = 0; i < attribute_num; ++i) {
+      if (cells_written_[i] != 0 && cells_written_[i] != cell_num)
+        return LOG_STATUS(Status::WriteStateError(
+            std::string("Cannot finalize write state for attribute '") +
+            array_schema->attribute_name(i) +
+            "'; Incorrect number of cells written"));
+    }
+  }
 
   // Write last tile (applicable only to the sparse case)
   if (!tiles_[attribute_num]->empty())
@@ -452,8 +468,12 @@ Status WriteState::write_attr(
   if (buffer_size == 0)
     return Status::Ok();
 
+  // For easy reference
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
+
   // Update metadata in the case of sparse fragment coordinates
-  if (attribute_id == fragment_->query()->array_schema()->attribute_num())
+  if (attribute_id == attribute_num)
     update_bookkeeping(buffer, buffer_size);
 
   // Preparation
@@ -475,6 +495,9 @@ Status WriteState::write_attr(
 
   // Clean up
   delete buf;
+
+  cells_written_[attribute_id] +=
+      buffer_size / array_schema->cell_size(attribute_id);
 
   return Status::Ok();
 }
@@ -546,6 +569,8 @@ Status WriteState::write_attr_var(
   // Clean up
   delete buf;
   delete buf_var;
+
+  cells_written_[attribute_id] += buffer_size / constants::cell_var_offset_size;
 
   return Status::Ok();
 }

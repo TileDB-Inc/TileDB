@@ -557,9 +557,13 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_finalize(Query* query) {
-  RETURN_NOT_OK(query->finalize());
-  RETURN_NOT_OK(array_close(query->array_schema()->array_uri()));
+  auto st_query = query->finalize();
+  auto st_array = array_close(query->array_schema()->array_uri());
 
+  if (!st_query.ok())
+    return st_query;
+  if (!st_array.ok())
+    return st_array;
   return Status::Ok();
 }
 
