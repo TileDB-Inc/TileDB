@@ -449,7 +449,11 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-Status VFS::move_path(const URI& old_uri, const URI& new_uri) {
+Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
+  // If new_uri exists, delete it
+  if (force && (is_dir(new_uri) || is_file(new_uri)))
+    RETURN_NOT_OK(remove_path(new_uri));
+
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {

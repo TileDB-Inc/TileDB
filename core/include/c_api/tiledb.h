@@ -1896,19 +1896,22 @@ TILEDB_EXPORT int tiledb_vfs_file_size(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
 
 /**
- * Renames a TileDB resource path.
+ * Renames a file or directory.
  *
  * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object.
  * @param old_uri The old URI.
  * @param new_uri The new URI.
+ * @param force Move the file/directory even if the destination URI exists.
+ *     In the latter case, the destination URI is overwritten.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_vfs_move(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri);
+    const char* new_uri,
+    bool force);
 
 /**
  * Reads from a file.

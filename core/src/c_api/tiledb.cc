@@ -2641,13 +2641,15 @@ int tiledb_vfs_move(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri) {
+    const char* new_uri,
+    bool force) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (save_error(
           ctx,
-          vfs->vfs_->move_path(tiledb::URI(old_uri), tiledb::URI(new_uri))))
+          vfs->vfs_->move_path(
+              tiledb::URI(old_uri), tiledb::URI(new_uri), force)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
