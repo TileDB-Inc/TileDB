@@ -119,6 +119,20 @@ void Config::get(const std::string& param, const char** value) const {
   *value = (it == param_values_.end()) ? nullptr : it->second.c_str();
 }
 
+std::map<std::string, std::string> Config::param_values(
+    const std::string& prefix) const {
+  if (prefix.empty())
+    return param_values_;
+
+  std::map<std::string, std::string> ret;
+  for (auto& pv : param_values_) {
+    if (pv.first.find(prefix) == 0)
+      ret[pv.first.substr(prefix.size())] = pv.second;
+  }
+
+  return ret;
+};
+
 Status Config::set_config_filename(const std::string& filename) {
   config_filename_ = filename;
   return Status::Ok();

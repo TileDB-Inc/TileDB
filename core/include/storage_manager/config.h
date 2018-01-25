@@ -35,7 +35,7 @@
 
 #include "status.h"
 
-#include <unordered_map>
+#include <map>
 
 namespace tiledb {
 
@@ -113,6 +113,18 @@ class Config {
   void get(const std::string& param, const char** value) const;
 
   /**
+   * Returns a map with the param-value pairs in the config.
+   *
+   * @param prefix If equal to an empty string, all param-value pairs are
+   *     retrieved. Otherwise, only those that start with `prefix.*` will
+   *     be retrieved noting that the prefix will be stripped from the
+   *     returned params.
+   * @return A map with the param-value.
+   */
+  std::map<std::string, std::string> param_values(
+      const std::string& prefix) const;
+
+  /**
    * Sets the name of the file from which the config parameters will be read
    * upon initialization.
    *
@@ -141,7 +153,7 @@ class Config {
   std::string config_filename_;
 
   /** Stores a map of param -> value. */
-  std::unordered_map<std::string, std::string> param_values_;
+  std::map<std::string, std::string> param_values_;
 
   /** The storage manager parameters. */
   SMParams sm_params_;

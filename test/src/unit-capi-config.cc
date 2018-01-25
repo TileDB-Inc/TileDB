@@ -35,6 +35,8 @@
 
 #include <cstring>
 #include <fstream>
+#include <iostream>
+#include <map>
 
 void check_correct_file() {
   // Create a test config file
@@ -242,6 +244,112 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_config_free(config);
+  CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE("C API: Test config iter", "[capi], [config]") {
+  tiledb_ctx_t* ctx;
+  int rc = tiledb_ctx_create(&ctx, nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Populate a config
+  tiledb_config_t* config;
+  rc = tiledb_config_create(&config);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.array_schema_cache_size", "1000");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.scheme", "https");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros");
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare maps
+  std::map<std::string, std::string> all_param_values;
+  all_param_values["sm.tile_cache_size"] = "100";
+  all_param_values["sm.array_schema_cache_size"] = "1000";
+  all_param_values["vfs.s3.scheme"] = "https";
+  all_param_values["vfs.hdfs.username"] = "stavros";
+  std::map<std::string, std::string> vfs_param_values;
+  vfs_param_values["s3.scheme"] = "https";
+  vfs_param_values["hdfs.username"] = "stavros";
+  std::map<std::string, std::string> s3_param_values;
+  s3_param_values["scheme"] = "https";
+
+  // Create an iterator and iterate over all parameters
+  tiledb_config_iter_t* config_iter;
+  rc = tiledb_config_iter_create(ctx, config, &config_iter, nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  int done;
+  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!(bool)done);
+  const char *param, *value;
+  std::map<std::string, std::string> all_iter_map;
+  do {
+    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    CHECK(rc == TILEDB_OK);
+    CHECK(param != nullptr);
+    CHECK(value != nullptr);
+    all_iter_map[std::string(param)] = std::string(value);
+    rc = tiledb_config_iter_next(ctx, config_iter);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(rc == TILEDB_OK);
+  } while (!done);
+  CHECK(all_param_values == all_iter_map);
+  rc = tiledb_config_iter_free(ctx, config_iter);
+  CHECK(rc == TILEDB_OK);
+
+  // Create an iterator and iterate over vfs parameters
+  rc = tiledb_config_iter_create(ctx, config, &config_iter, "vfs.");
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!(bool)done);
+  std::map<std::string, std::string> vfs_iter_map;
+  do {
+    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    CHECK(rc == TILEDB_OK);
+    CHECK(param != nullptr);
+    CHECK(value != nullptr);
+    vfs_iter_map[std::string(param)] = std::string(value);
+    rc = tiledb_config_iter_next(ctx, config_iter);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(rc == TILEDB_OK);
+  } while (!done);
+  CHECK(vfs_param_values == vfs_iter_map);
+  rc = tiledb_config_iter_free(ctx, config_iter);
+  CHECK(rc == TILEDB_OK);
+
+  // Create an iterator and iterate over s3 parameters
+  rc = tiledb_config_iter_create(ctx, config, &config_iter, "vfs.s3.");
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!(bool)done);
+  std::map<std::string, std::string> s3_iter_map;
+  do {
+    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    CHECK(rc == TILEDB_OK);
+    CHECK(param != nullptr);
+    CHECK(value != nullptr);
+    s3_iter_map[std::string(param)] = std::string(value);
+    rc = tiledb_config_iter_next(ctx, config_iter);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(rc == TILEDB_OK);
+  } while (!done);
+  CHECK(s3_param_values == s3_iter_map);
+  rc = tiledb_config_iter_free(ctx, config_iter);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_config_free(config);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 }
 
