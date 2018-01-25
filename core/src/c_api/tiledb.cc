@@ -111,6 +111,10 @@ struct tiledb_domain_t {
   tiledb::Domain* domain_;
 };
 
+struct tiledb_datatype_t {
+  tiledb::Datatype datatype_;
+};
+
 struct tiledb_query_t {
   tiledb::Query* query_;
 };
@@ -302,6 +306,124 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
     return TILEDB_ERR;
   }
   return TILEDB_OK;
+}
+
+static tiledb_datatype_t* make_datatype(tiledb::Datatype datatype) {
+  // Return a known pointer for the builtin types.
+  switch (datatype) {
+    case tiledb::Datatype::INT32:
+      return tiledb_int32();
+    case tiledb::Datatype::INT64:
+      return tiledb_int64();
+    case tiledb::Datatype::FLOAT32:
+      return tiledb_float32();
+    case tiledb::Datatype::FLOAT64:
+      return tiledb_float64();
+    case tiledb::Datatype::CHAR:
+      return tiledb_char();
+    case tiledb::Datatype::INT8:
+      return tiledb_int8();
+    case tiledb::Datatype::UINT8:
+      return tiledb_uint8();
+    case tiledb::Datatype::INT16:
+      return tiledb_int16();
+    case tiledb::Datatype::UINT16:
+      return tiledb_uint16();
+    case tiledb::Datatype::UINT32:
+      return tiledb_uint32();
+    case tiledb::Datatype::UINT64:
+      return tiledb_uint64();
+    default:
+      return nullptr;
+  }
+}
+
+/* ********************************* */
+/*             DATATYPE              */
+/* ********************************* */
+
+tiledb_datatype_t* tiledb_int32() {
+  static tiledb_datatype_t type = {tiledb::Datatype::INT32};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_int64() {
+  static tiledb_datatype_t type = {tiledb::Datatype::INT64};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_float32() {
+  static tiledb_datatype_t type = {tiledb::Datatype::FLOAT32};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_float64() {
+  static tiledb_datatype_t type = {tiledb::Datatype::FLOAT64};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_char() {
+  static tiledb_datatype_t type = {tiledb::Datatype::CHAR};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_int8() {
+  static tiledb_datatype_t type = {tiledb::Datatype::INT8};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_uint8() {
+  static tiledb_datatype_t type = {tiledb::Datatype::UINT8};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_int16() {
+  static tiledb_datatype_t type = {tiledb::Datatype::INT16};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_uint16() {
+  static tiledb_datatype_t type = {tiledb::Datatype::UINT16};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_uint32() {
+  static tiledb_datatype_t type = {tiledb::Datatype::UINT32};
+  return &type;
+}
+
+tiledb_datatype_t* tiledb_uint64() {
+  static tiledb_datatype_t type = {tiledb::Datatype::UINT64};
+  return &type;
+}
+
+int tiledb_datatype_free(tiledb_ctx_t* ctx, tiledb_datatype_t* datatype) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (datatype == nullptr) {
+    return TILEDB_OK;
+  }
+
+  switch (datatype->datatype_) {
+    // Don't delete the default types.
+    case tiledb::Datatype::INT32:
+    case tiledb::Datatype::INT64:
+    case tiledb::Datatype::FLOAT32:
+    case tiledb::Datatype::FLOAT64:
+    case tiledb::Datatype::CHAR:
+    case tiledb::Datatype::INT8:
+    case tiledb::Datatype::UINT8:
+    case tiledb::Datatype::INT16:
+    case tiledb::Datatype::UINT16:
+    case tiledb::Datatype::UINT32:
+    case tiledb::Datatype::UINT64:
+      return TILEDB_OK;
+    default:
+      delete datatype;
+      return TILEDB_OK;
+  }
 }
 
 /* ****************************** */
@@ -623,7 +745,7 @@ int tiledb_attribute_create(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t** attr,
     const char* name,
-    tiledb_datatype_t type) {
+    const tiledb_datatype_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -638,8 +760,7 @@ int tiledb_attribute_create(
   }
 
   // Create a new Attribute object
-  (*attr)->attr_ = new (std::nothrow)
-      tiledb::Attribute(name, static_cast<tiledb::Datatype>(type));
+  (*attr)->attr_ = new (std::nothrow) tiledb::Attribute(name, type->datatype_);
   if ((*attr)->attr_ == nullptr) {
     delete *attr;
     tiledb::Status st =
@@ -692,10 +813,19 @@ int tiledb_attribute_get_name(
 int tiledb_attribute_get_type(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
-    tiledb_datatype_t* type) {
+    tiledb_datatype_t** type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  *type = static_cast<tiledb_datatype_t>(attr->attr_->type());
+
+  *type = make_datatype(attr->attr_->type());
+  if (*type == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB datatype object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
   return TILEDB_OK;
 }
 
@@ -770,11 +900,22 @@ int tiledb_domain_free(tiledb_ctx_t* ctx, tiledb_domain_t* domain) {
 }
 
 int tiledb_domain_get_type(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type) {
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_datatype_t** type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
-  *type = static_cast<tiledb_datatype_t>(domain->domain_->type());
+
+  *type = make_datatype(domain->domain_->type());
+  if (*type == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB datatype object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
   return TILEDB_OK;
 }
 
@@ -816,7 +957,7 @@ int tiledb_dimension_create(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t** dim,
     const char* name,
-    tiledb_datatype_t type,
+    const tiledb_datatype_t* type,
     const void* dim_domain,
     const void* tile_extent) {
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -833,8 +974,7 @@ int tiledb_dimension_create(
   }
 
   // Create a new Dimension object
-  (*dim)->dim_ = new (std::nothrow)
-      tiledb::Dimension(name, static_cast<tiledb::Datatype>(type));
+  (*dim)->dim_ = new (std::nothrow) tiledb::Dimension(name, type->datatype_);
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
     tiledb::Status st =
@@ -879,10 +1019,21 @@ int tiledb_dimension_get_name(
 }
 
 int tiledb_dimension_get_type(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type) {
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    tiledb_datatype_t** type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
-  *type = static_cast<tiledb_datatype_t>(dim->dim_->type());
+
+  *type = make_datatype(dim->dim_->type());
+  if (*type == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB datatype object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
   return TILEDB_OK;
 }
 
@@ -2080,16 +2231,14 @@ int tiledb_kv_item_set_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void* key,
-    tiledb_datatype_t key_type,
+    const tiledb_datatype_t* key_type,
     uint64_t key_size) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_item) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (save_error(
-          ctx,
-          kv_item->kv_item_->set_key(
-              key, static_cast<tiledb::Datatype>(key_type), key_size)))
+          ctx, kv_item->kv_item_->set_key(key, key_type->datatype_, key_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2100,7 +2249,7 @@ int tiledb_kv_item_set_value(
     tiledb_kv_item_t* kv_item,
     const char* attribute,
     const void* value,
-    tiledb_datatype_t value_type,
+    const tiledb_datatype_t* value_type,
     uint64_t value_size) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_item) == TILEDB_ERR)
@@ -2109,10 +2258,7 @@ int tiledb_kv_item_set_value(
   if (save_error(
           ctx,
           kv_item->kv_item_->set_value(
-              attribute,
-              value,
-              static_cast<tiledb::Datatype>(value_type),
-              value_size)))
+              attribute, value, value_type->datatype_, value_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2122,7 +2268,7 @@ int tiledb_kv_item_get_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void** key,
-    tiledb_datatype_t* key_type,
+    tiledb_datatype_t** key_type,
     uint64_t* key_size) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_item) == TILEDB_ERR)
@@ -2131,7 +2277,15 @@ int tiledb_kv_item_get_key(
   auto key_ptr = kv_item->kv_item_->key();
   *key = key_ptr->key_;
   *key_size = key_ptr->key_size_;
-  *key_type = static_cast<tiledb_datatype_t>(key_ptr->key_type_);
+
+  *key_type = make_datatype(key_ptr->key_type_);
+  if (*key_type == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB datatype object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
 
   return TILEDB_OK;
 }
@@ -2141,7 +2295,7 @@ int tiledb_kv_item_get_value(
     tiledb_kv_item_t* kv_item,
     const char* attribute,
     const void** value,
-    tiledb_datatype_t* value_type,
+    tiledb_datatype_t** value_type,
     uint64_t* value_size) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_item) == TILEDB_ERR)
@@ -2167,7 +2321,15 @@ int tiledb_kv_item_get_value(
 
   *value = value_ptr->value_;
   *value_size = value_ptr->value_size_;
-  *value_type = static_cast<tiledb_datatype_t>(value_ptr->value_type_);
+
+  *value_type = make_datatype(value_ptr->value_type_);
+  if (*value_type == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Failed to allocate TileDB datatype object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
 
   return TILEDB_OK;
 }
@@ -2177,7 +2339,7 @@ int tiledb_kv_get_item(
     tiledb_kv_t* kv,
     tiledb_kv_item_t** kv_item,
     const void* key,
-    tiledb_datatype_t key_type,
+    const tiledb_datatype_t* key_type,
     uint64_t key_size) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2197,10 +2359,7 @@ int tiledb_kv_get_item(
   if (save_error(
           ctx,
           kv->kv_->get_item(
-              key,
-              static_cast<tiledb::Datatype>(key_type),
-              key_size,
-              &((*kv_item)->kv_item_))))
+              key, key_type->datatype_, key_size, &((*kv_item)->kv_item_))))
     return TILEDB_ERR;
 
   // Handle case where item does not exist

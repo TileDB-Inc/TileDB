@@ -125,13 +125,6 @@ typedef enum {
 #undef TILEDB_FILESYSTEM_ENUM
 } tiledb_filesystem_t;
 
-/** Data type. */
-typedef enum {
-#define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
-#undef TILEDB_DATATYPE_ENUM
-} tiledb_datatype_t;
-
 /** Array type. */
 typedef enum {
 #define TILEDB_ARRAY_TYPE_ENUM(id) TILEDB_##id
@@ -201,6 +194,9 @@ typedef struct tiledb_dimension_t tiledb_dimension_t;
 /** A TileDB domain. */
 typedef struct tiledb_domain_t tiledb_domain_t;
 
+/** A TileDB datatype. */
+typedef struct tiledb_datatype_t tiledb_datatype_t;
+
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
 
@@ -218,6 +214,61 @@ typedef struct tiledb_kv_iter_t tiledb_kv_iter_t;
 
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
+
+/* ********************************* */
+/*             DATATYPE              */
+/* ********************************* */
+
+/** Returns a pointer to a static int32 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_int32();
+
+/** Returns a pointer to a static int64 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_int64();
+
+/** Returns a pointer to a static float32 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_float32();
+
+/** Returns a pointer to a static float64 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_float64();
+
+/** Returns a pointer to a static char datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_char();
+
+/** Returns a pointer to a static int8 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_int8();
+
+/** Returns a pointer to a static uint8 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_uint8();
+
+/** Returns a pointer to a static int16 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_int16();
+
+/** Returns a pointer to a static uint16 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_uint16();
+
+/** Returns a pointer to a static uint32 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_uint32();
+
+/** Returns a pointer to a static uint64 datatype instance. */
+TILEDB_EXPORT tiledb_datatype_t* tiledb_uint64();
+
+TILEDB_EXPORT int tiledb_datatype_free(
+    tiledb_ctx_t* ctx, tiledb_datatype_t* datatype);
+
+/**@{*/
+/** Constants wrapping datatype functions. */
+#define TILEDB_INT32 tiledb_int32()
+#define TILEDB_INT64 tiledb_int64()
+#define TILEDB_FLOAT32 tiledb_float32()
+#define TILEDB_FLOAT64 tiledb_float64()
+#define TILEDB_CHAR tiledb_char()
+#define TILEDB_INT8 tiledb_int8()
+#define TILEDB_UINT8 tiledb_uint8()
+#define TILEDB_INT16 tiledb_int16()
+#define TILEDB_UINT16 tiledb_uint16()
+#define TILEDB_UINT32 tiledb_uint32()
+#define TILEDB_UINT64 tiledb_uint64()
+/**@}*/
 
 /* ********************************* */
 /*              CONFIG               */
@@ -459,7 +510,7 @@ TILEDB_EXPORT int tiledb_attribute_create(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t** attr,
     const char* name,
-    tiledb_datatype_t type);
+    const tiledb_datatype_t* type);
 
 /**
  * Destroys a TileDB attribute, freeing-up memory.
@@ -517,7 +568,9 @@ TILEDB_EXPORT int tiledb_attribute_get_name(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_get_type(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    tiledb_datatype_t** type);
 
 /**
  * Retrieves the attribute compressor and the compression level.
@@ -592,7 +645,7 @@ TILEDB_EXPORT int tiledb_domain_free(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_domain_get_type(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t** type);
 
 /**
  * Retrieves the domain's rank (number of dimensions).
@@ -677,7 +730,7 @@ TILEDB_EXPORT int tiledb_dimension_create(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t** dim,
     const char* name,
-    tiledb_datatype_t type,
+    const tiledb_datatype_t* type,
     const void* dim_domain,
     const void* tile_extent);
 
@@ -711,7 +764,7 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_type(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t** type);
 
 /**
  * Retrieves the domain of the dimension.
@@ -1508,7 +1561,7 @@ TILEDB_EXPORT int tiledb_kv_item_set_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void* key,
-    tiledb_datatype_t key_type,
+    const tiledb_datatype_t* key_type,
     uint64_t key_size);
 
 /**
@@ -1529,7 +1582,7 @@ TILEDB_EXPORT int tiledb_kv_item_set_value(
     tiledb_kv_item_t* kv_item,
     const char* attribute,
     const void* value,
-    tiledb_datatype_t value_type,
+    const tiledb_datatype_t* value_type,
     uint64_t value_size);
 
 /**
@@ -1546,7 +1599,7 @@ TILEDB_EXPORT int tiledb_kv_item_get_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void** key,
-    tiledb_datatype_t* key_type,
+    tiledb_datatype_t** key_type,
     uint64_t* key_size);
 
 /**
@@ -1565,7 +1618,7 @@ TILEDB_EXPORT int tiledb_kv_item_get_value(
     tiledb_kv_item_t* kv_item,
     const char* attribute,
     const void** value,
-    tiledb_datatype_t* value_type,
+    tiledb_datatype_t** value_type,
     uint64_t* value_size);
 
 /* ****************************** */
@@ -1673,7 +1726,7 @@ TILEDB_EXPORT int tiledb_kv_get_item(
     tiledb_kv_t* kv,
     tiledb_kv_item_t** kv_item,
     const void* key,
-    tiledb_datatype_t key_type,
+    const tiledb_datatype_t* key_type,
     uint64_t key_size);
 
 /* ****************************** */

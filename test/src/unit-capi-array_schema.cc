@@ -77,7 +77,7 @@ struct ArrayMetadataFx {
   const tiledb_layout_t TILE_ORDER = TILEDB_ROW_MAJOR;
   const char* TILE_ORDER_STR = "row-major";
   const char* ATTR_NAME = "a";
-  const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
+  const tiledb_datatype_t* ATTR_TYPE = TILEDB_INT32;
   const char* ATTR_TYPE_STR = "INT32";
   const tiledb_compressor_t ATTR_COMPRESSOR = TILEDB_NO_COMPRESSION;
   const char* ATTR_COMPRESSOR_STR = "NO_COMPRESSION";
@@ -88,7 +88,7 @@ struct ArrayMetadataFx {
   const int DIM_NUM = 2;
   const char* DIM1_NAME = "d1";
   const char* DIM2_NAME = "d2";
-  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t* DIM_TYPE = TILEDB_INT64;
   const char* DIM_TYPE_STR = "INT64";
   const int64_t DIM_DOMAIN[4] = {0, 99, 20, 60};
   const char* DIM1_DOMAIN_STR = "[0,99]";
@@ -222,7 +222,7 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_datatype_t domain_type;
+  tiledb_datatype_t* domain_type;
   rc = tiledb_domain_get_type(ctx_, domain, &domain_type);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(domain_type == TILEDB_INT64);
@@ -271,6 +271,8 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   rc = tiledb_dimension_free(ctx_, d1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_free(ctx_, d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_datatype_free(ctx_, domain_type);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);
@@ -337,10 +339,12 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
 
-  tiledb_datatype_t attr_type;
+  tiledb_datatype_t* attr_type;
   rc = tiledb_attribute_get_type(ctx_, attr, &attr_type);
   REQUIRE(rc == TILEDB_OK);
   CHECK(attr_type == ATTR_TYPE);
+  rc = tiledb_datatype_free(ctx_, attr_type);
+  REQUIRE(rc == TILEDB_OK);
 
   tiledb_compressor_t attr_compressor;
   int attr_compression_level;

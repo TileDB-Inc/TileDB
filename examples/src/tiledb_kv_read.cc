@@ -48,7 +48,7 @@ int main() {
 
   // Prepare key
   int key = 100;
-  tiledb_datatype_t key_type = TILEDB_INT32;
+  tiledb_datatype_t* key_type = TILEDB_INT32;
   uint64_t key_size = sizeof(int);
 
   // Create key-values
@@ -67,7 +67,7 @@ int main() {
 
   // Get values
   const void *a1, *a2, *a3;
-  tiledb_datatype_t a1_type, a2_type, a3_type;
+  tiledb_datatype_t *a1_type, *a2_type, *a3_type;
   uint64_t a1_size, a2_size, a3_size;
   tiledb_kv_item_get_value(ctx, kv_item, "a1", &a1, &a1_type, &a1_size);
   tiledb_kv_item_get_value(ctx, kv_item, "a2", &a2, &a2_type, &a2_size);

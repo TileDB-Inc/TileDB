@@ -51,10 +51,10 @@
 struct DenseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";
-  const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
+  const tiledb_datatype_t* ATTR_TYPE = TILEDB_INT32;
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
-  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t* DIM_TYPE = TILEDB_INT64;
 #ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif

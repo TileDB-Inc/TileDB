@@ -43,9 +43,9 @@
 
 struct DenseVectorFx {
   const char* ATTR_NAME = "val";
-  const tiledb_datatype_t ATTR_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t* ATTR_TYPE = TILEDB_INT64;
   const char* DIM0_NAME = "dim0";
-  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t* DIM_TYPE = TILEDB_INT64;
 #ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
 #endif

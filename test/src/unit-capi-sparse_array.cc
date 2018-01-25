@@ -53,8 +53,8 @@ struct SparseArrayFx {
   const char* ATTR_NAME = "a";
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
-  const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
-  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t* ATTR_TYPE = TILEDB_INT32;
+  const tiledb_datatype_t* DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
 #ifdef HAVE_HDFS

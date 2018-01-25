@@ -223,7 +223,7 @@ void KVFx::check_kv_item() {
 
   const void* key;
   uint64_t key_size;
-  tiledb_datatype_t key_type;
+  tiledb_datatype_t* key_type;
   rc = tiledb_kv_item_get_key(ctx_, kv_item, &key, &key_type, &key_size);
   REQUIRE(rc == TILEDB_OK);
   CHECK(key == nullptr);
@@ -240,7 +240,7 @@ void KVFx::check_kv_item() {
 
   const void* value;
   uint64_t value_size;
-  tiledb_datatype_t value_type;
+  tiledb_datatype_t* value_type;
   rc = tiledb_kv_item_get_value(
       ctx_, kv_item, "foo", &value, &value_type, &value_size);
   REQUIRE(rc == TILEDB_ERR);
@@ -378,24 +378,24 @@ void KVFx::check_single_read(const std::string& path) {
   // For retrieving values
   const void *a1, *a2, *a3;
   uint64_t a1_size, a2_size, a3_size;
-  tiledb_datatype_t a1_type, a2_type, a3_type;
+  tiledb_datatype_t *a1_type, *a2_type, *a3_type;
 
   // Prepare keys
   int key1 = 100;
-  tiledb_datatype_t key1_type = TILEDB_INT32;
+  tiledb_datatype_t* key1_type = TILEDB_INT32;
   uint64_t key1_size = sizeof(int);
 
   float key2 = 200.0;
-  tiledb_datatype_t key2_type = TILEDB_FLOAT32;
+  tiledb_datatype_t* key2_type = TILEDB_FLOAT32;
   uint64_t key2_size = sizeof(float);
 
   double key3[] = {300.0, 300.1};
-  tiledb_datatype_t key3_type = TILEDB_FLOAT64;
+  tiledb_datatype_t* key3_type = TILEDB_FLOAT64;
   uint64_t key3_size = 2 * sizeof(double);
 
   char key4[] = "key_4";
   const char* key5 = "invalid";
-  tiledb_datatype_t key4_type = TILEDB_CHAR;
+  tiledb_datatype_t* key4_type = TILEDB_CHAR;
   uint64_t key4_size = strlen(key4) + 1;
 
   // Get key-value item #1
@@ -521,24 +521,24 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
   // For retrieving values
   const void *a1, *a2;
   uint64_t a1_size, a2_size;
-  tiledb_datatype_t a1_type, a2_type;
+  tiledb_datatype_t *a1_type, *a2_type;
 
   // Prepare keys
   int key1 = 100;
-  tiledb_datatype_t key1_type = TILEDB_INT32;
+  tiledb_datatype_t* key1_type = TILEDB_INT32;
   uint64_t key1_size = sizeof(int);
 
   float key2 = 200.0;
-  tiledb_datatype_t key2_type = TILEDB_FLOAT32;
+  tiledb_datatype_t* key2_type = TILEDB_FLOAT32;
   uint64_t key2_size = sizeof(float);
 
   double key3[] = {300.0, 300.1};
-  tiledb_datatype_t key3_type = TILEDB_FLOAT64;
+  tiledb_datatype_t* key3_type = TILEDB_FLOAT64;
   uint64_t key3_size = 2 * sizeof(double);
 
   char key4[] = "key_4";
   const char* key5 = "invalid";
-  tiledb_datatype_t key4_type = TILEDB_CHAR;
+  tiledb_datatype_t* key4_type = TILEDB_CHAR;
   uint64_t key4_size = strlen(key4) + 1;
 
   // Get key-value item #1
@@ -647,7 +647,7 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   // Read the new item
   tiledb_kv_item_t* kv_item2;
   const void *a1, *a2, *a3;
-  tiledb_datatype_t a1_type, a2_type, a3_type;
+  tiledb_datatype_t *a1_type, *a2_type, *a3_type;
   uint64_t a1_size, a2_size, a3_size;
   rc = tiledb_kv_get_item(
       ctx_, kv, &kv_item2, &new_key, TILEDB_INT32, sizeof(int));
@@ -712,7 +712,7 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
 
 void KVFx::check_kv_item(tiledb_kv_item_t* kv_item) {
   const void *key, *value;
-  tiledb_datatype_t key_type, value_type;
+  tiledb_datatype_t *key_type, *value_type;
   uint64_t key_size, value_size;
   int rc = tiledb_kv_item_get_key(ctx_, kv_item, &key, &key_type, &key_size);
   REQUIRE(rc == TILEDB_OK);

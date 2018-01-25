@@ -40,7 +40,7 @@
 #include <iostream>
 
 void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item);
-void print(const void* v, tiledb_datatype_t type, uint64_t size);
+void print(const void* v, tiledb_datatype_t* type, uint64_t size);
 
 int main() {
   // Create TileDB context
@@ -73,7 +73,7 @@ int main() {
 void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
   // Get and print key
   const void* key;
-  tiledb_datatype_t key_type;
+  tiledb_datatype_t* key_type;
   uint64_t key_size;
   tiledb_kv_item_get_key(ctx, kv_item, &key, &key_type, &key_size);
   printf("-- Key: ");
@@ -82,7 +82,7 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
 
   // Get and print value for attribute "a1"
   const void* value;
-  tiledb_datatype_t value_type;
+  tiledb_datatype_t* value_type;
   uint64_t value_size;
   printf("a1: ");
   tiledb_kv_item_get_value(
@@ -105,36 +105,31 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
   printf("\n");
 }
 
-void print(const void* v, tiledb_datatype_t type, uint64_t size) {
+void print(const void* v, tiledb_datatype_t* type, uint64_t size) {
   auto nitems = 0;
-  switch (type) {
-    case TILEDB_INT32:
-      nitems = (int)(size / sizeof(int));
-      for (int i = 0; i < nitems; ++i)
-        std::cout << ((int*)v)[i] << " ";
-      std::cout << "\b, int";
-      break;
-    case TILEDB_FLOAT32:
-      nitems = (int)(size / sizeof(float));
-      for (int i = 0; i < nitems; ++i)
-        std::cout << ((float*)v)[i] << " ";
-      std::cout << "\b, float32";
-      break;
-    case TILEDB_FLOAT64:
-      nitems = (int)(size / sizeof(double));
-      for (int i = 0; i < nitems; ++i)
-        std::cout << ((double*)v)[i] << " ";
-      std::cout << "\b, float64";
-      break;
-    case TILEDB_CHAR:
-      nitems = (int)(size / sizeof(char));
-      for (int i = 0; i < nitems; ++i)
-        std::cout << ((char*)v)[i];
-      std::cout << ", char";
-      break;
-    default:
-      std::cout << "Other types than int32, float32, float64 and char are not "
-                   "supported in this example. It should be trivial "
-                   "to extend to other types following this example\n";
+  if (type == TILEDB_INT32) {
+    nitems = (int)(size / sizeof(int));
+    for (int i = 0; i < nitems; ++i)
+      std::cout << ((int*)v)[i] << " ";
+    std::cout << "\b, int";
+  } else if (type == TILEDB_FLOAT32) {
+    nitems = (int)(size / sizeof(float));
+    for (int i = 0; i < nitems; ++i)
+      std::cout << ((float*)v)[i] << " ";
+    std::cout << "\b, float32";
+  } else if (type == TILEDB_FLOAT64) {
+    nitems = (int)(size / sizeof(double));
+    for (int i = 0; i < nitems; ++i)
+      std::cout << ((double*)v)[i] << " ";
+    std::cout << "\b, float64";
+  } else if (type == TILEDB_CHAR) {
+    nitems = (int)(size / sizeof(char));
+    for (int i = 0; i < nitems; ++i)
+      std::cout << ((char*)v)[i];
+    std::cout << ", char";
+  } else {
+    std::cout << "Other types than int32, float32, float64 and char are not "
+                 "supported in this example. It should be trivial "
+                 "to extend to other types following this example\n";
   }
 }
