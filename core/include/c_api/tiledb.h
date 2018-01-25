@@ -180,6 +180,9 @@ TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 /** A config object. */
 typedef struct tiledb_config_t tiledb_config_t;
 
+/** A config iterator. */
+typedef struct tiledb_config_iter_t tiledb_config_iter_t;
+
 /** A TileDB context. */
 typedef struct tiledb_ctx_t tiledb_ctx_t;
 
@@ -289,6 +292,76 @@ TILEDB_EXPORT int tiledb_config_set_from_file(
  */
 TILEDB_EXPORT int tiledb_config_unset(
     tiledb_config_t* config, const char* param);
+
+/* ****************************** */
+/*            CONFIG ITER         */
+/* ****************************** */
+
+/**
+ * Creates an iterator on a config object.
+ *
+ * @param ctx The TileDB context.
+ * @param config A config object the iterator will operate on.
+ * @param config_iter The config iterator to be created.
+ * @param prefix If not `nullptr`, only the config parameters starting
+ *     with `prefix.*` will be iterated on. Moreover, the prefix will
+ *     be stripped from the parameters. Otherwise, all parameters will
+ *     be iterated on and their full name will be retrieved.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_create(
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    tiledb_config_iter_t** config_iter,
+    const char* prefix);
+
+/**
+ * Frees a config iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param config_iter The config iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_free(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter);
+
+/**
+ * Retrieves the config param and value currently pointed by the iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param config_iter The config iterator.
+ * @param param The config parameter to be retrieved (`nullptr` if the iterator
+ *     is at the end).
+ * @param value The config value to be retrieved (`nullptr` if the iterator
+ *     is at the end).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_config_iter_t* config_iter,
+    const char** param,
+    const char** value);
+
+/**
+ * Moves the iterator to the next param.
+ *
+ * @param ctx The TileDB context.
+ * @param config_iter The config iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_next(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter);
+
+/**
+ * Checks if the iterator is done.
+ *
+ * @param ctx The TileDB context.
+ * @param config_iter The config iterator.
+ * @param done Sets this to `true` if the iterator is done.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_done(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter, int* done);
 
 /* ********************************* */
 /*              CONTEXT              */

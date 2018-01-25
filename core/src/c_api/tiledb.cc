@@ -41,6 +41,7 @@
 #include "query.h"
 #include "utils.h"
 
+#include <map>
 #include <sstream>
 
 /* ****************************** */
@@ -75,6 +76,11 @@ void tiledb_version(int* major, int* minor, int* rev) {
 
 struct tiledb_config_t {
   tiledb::Config* config_;
+};
+
+struct tiledb_config_iter_t {
+  std::map<std::string, std::string> param_values_;
+  std::map<std::string, std::string>::iterator it_;
 };
 
 struct tiledb_ctx_t {
@@ -153,6 +159,18 @@ static bool save_error(tiledb_ctx_t* ctx, const tiledb::Status& st) {
 inline int sanity_check(tiledb_config_t* config) {
   if (config == nullptr || config->config_ == nullptr)
     return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+inline int sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_config_iter_t* config_iter) {
+  if (config_iter == nullptr) {
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB config iterator object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
@@ -246,8 +264,8 @@ inline int sanity_check(
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   if (kv == nullptr || kv->kv_ == nullptr) {
-    tiledb::Status st = tiledb::Status::Error(
-        "Invalid TileDB in-memory key-value store object");
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB key-value store object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -257,8 +275,8 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_iter_t* kv_iter) {
   if (kv_iter == nullptr || kv_iter->kv_iter_ == nullptr) {
-    tiledb::Status st = tiledb::Status::Error(
-        "Invalid TileDB in-memory key-value iterator object");
+    tiledb::Status st =
+        tiledb::Status::Error("Invalid TileDB key-value iterator object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -349,6 +367,83 @@ int tiledb_config_unset(tiledb_config_t* config, const char* param) {
     return TILEDB_ERR;
 
   config->config_->unset(param);
+
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*           CONFIG ITER          */
+/* ****************************** */
+
+int tiledb_config_iter_create(
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    tiledb_config_iter_t** config_iter,
+    const char* prefix) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *config_iter = new (std::nothrow) tiledb_config_iter_t;
+  if (*config_iter == nullptr)
+    return TILEDB_OOM;
+
+  std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
+  (*config_iter)->param_values_ = config->config_->param_values(prefix_str);
+  (*config_iter)->it_ = (*config_iter)->param_values_.begin();
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_iter_free(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (config_iter != nullptr)
+    delete config_iter;
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_config_iter_t* config_iter,
+    const char** param,
+    const char** value) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, config_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (config_iter->it_ == config_iter->param_values_.end()) {
+    *param = nullptr;
+    *value = nullptr;
+  } else {
+    *param = config_iter->it_->first.c_str();
+    *value = config_iter->it_->second.c_str();
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_iter_next(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, config_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (config_iter->it_ != config_iter->param_values_.end())
+    config_iter->it_++;
+
+  return TILEDB_OK;
+}
+
+int tiledb_config_iter_done(
+    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter, int* done) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, config_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *done = config_iter->it_ != config_iter->param_values_.end() ? 0 : 1;
 
   return TILEDB_OK;
 }
