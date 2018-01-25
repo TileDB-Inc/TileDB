@@ -778,7 +778,7 @@ Status StorageManager::write_to_cache(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot write to cache; Object memory allocation failed"));
   std::memcpy(object, buffer->data(), object_size);
-  RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size));
+  RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size, false));
 
   return Status::Ok();
 }

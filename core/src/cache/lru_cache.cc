@@ -71,7 +71,8 @@ void LRUCache::clear() {
   item_ll_.clear();
 }
 
-Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
+Status LRUCache::insert(
+    const std::string &key, void *object, uint64_t size, bool overwrite) {
   // Do nothing if the object size is bigger than the cache maximum size
   if (size > max_size_)
     return Status::Ok();
@@ -83,13 +84,21 @@ Status LRUCache::insert(const std::string &key, void *object, uint64_t size) {
   // Lock mutex
   mtx_.lock();
 
+  auto item_it = item_map_.find(key);
+  bool exists = item_it != item_map_.end();
+
+  if (exists && !overwrite) {
+    std::free(object);
+    mtx_.unlock();
+    return Status::Ok();
+  }
+
   // Evict if necessary
   while (size_ + size > max_size_)
     evict();
 
   // Key exists
-  auto item_it = item_map_.find(key);
-  if (item_it != item_map_.end()) {
+  if (exists) {
     // Replace cache item
     auto &node = item_it->second;
     auto &item = *node;

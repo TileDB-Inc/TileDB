@@ -106,15 +106,21 @@ class LRUCache {
   std::list<LRUCacheItem>::const_iterator item_iter_end() const;
 
   /**
-   * Inserts an object with a given key and size into the cache. If an object
-   * exists with the same key, the new object overwrites the old one.
+   * Inserts an object with a given key and size into the cache. Note that
+   * the cache *owns* the object after insertion.
    *
    * @param key The key that describes the inserted object.
    * @param object The opaque object to be stored.
    * @param size The size of the object.
+   * @param overwrite If `true`, if the object exists in the cache it will be
+   *     overwritten. Otherwise, the new object will be deleted.
    * @return Status
    */
-  Status insert(const std::string& key, void* object, uint64_t size);
+  Status insert(
+      const std::string& key,
+      void* object,
+      uint64_t size,
+      bool overwrite = true);
 
   /** Returns the maximum size of the cache. */
   uint64_t max_size() const;
