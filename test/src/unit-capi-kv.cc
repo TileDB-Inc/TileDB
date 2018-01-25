@@ -245,6 +245,10 @@ void KVFx::check_kv_item() {
       ctx_, kv_item, "foo", &value, &value_type, &value_size);
   REQUIRE(rc == TILEDB_ERR);
 
+  rc = tiledb_kv_item_get_value(
+      ctx_, kv_item, nullptr, &value, &value_type, &value_size);
+  REQUIRE(rc == TILEDB_ERR);
+
   int value_int;
   rc = tiledb_kv_item_set_value(
       ctx_, kv_item, "attr", &value_int, TILEDB_INT32, sizeof(int));

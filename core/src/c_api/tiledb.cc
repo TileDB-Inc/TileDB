@@ -2052,6 +2052,14 @@ int tiledb_kv_item_get_value(
       sanity_check(ctx, kv_item) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  if (attribute == nullptr) {
+    auto st = tiledb::Status::Error(
+        "Failed to get key-value item value; Attribute cannot be null.");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   auto value_ptr = kv_item->kv_item_->value(attribute);
   if (value_ptr == nullptr) {
     auto st = tiledb::Status::Error(
