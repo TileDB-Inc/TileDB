@@ -214,13 +214,15 @@ class VFS {
   Status ls(const URI& parent, std::vector<URI>* uris) const;
 
   /**
-   * Renames a TileDB resource path.
+   * Renames a path.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
+   * @param force Force the rename even if `new_uri` exists. In the latter
+   *     case `new_uri` will be overwritten.
    * @return Status
    */
-  Status move_path(const URI& old_uri, const URI& new_uri);
+  Status move_path(const URI& old_uri, const URI& new_uri, bool force);
 
   /**
    * Reads from a file.

@@ -159,7 +159,7 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_dir);
   auto subdir2 = path + "subdir2/";
-  rc = tiledb_vfs_move(ctx_, vfs_, subdir.c_str(), subdir2.c_str());
+  rc = tiledb_vfs_move(ctx_, vfs_, subdir.c_str(), subdir2.c_str(), true);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
@@ -257,7 +257,7 @@ void VFSFx::check_move(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
-  rc = tiledb_vfs_move(ctx_, vfs_, file.c_str(), file2.c_str());
+  rc = tiledb_vfs_move(ctx_, vfs_, file.c_str(), file2.c_str(), true);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -301,7 +301,7 @@ void VFSFx::check_move(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
-  rc = tiledb_vfs_move(ctx_, vfs_, dir.c_str(), dir2.c_str());
+  rc = tiledb_vfs_move(ctx_, vfs_, dir.c_str(), dir2.c_str(), true);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
@@ -348,7 +348,7 @@ void VFSFx::check_move(const std::string& path) {
     rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str());
     REQUIRE(rc == TILEDB_OK);
 
-    rc = tiledb_vfs_move(ctx_, vfs_, subdir2.c_str(), subdir3.c_str());
+    rc = tiledb_vfs_move(ctx_, vfs_, subdir2.c_str(), subdir3.c_str(), true);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
     REQUIRE(rc == TILEDB_OK);

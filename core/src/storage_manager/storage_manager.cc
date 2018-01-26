@@ -230,10 +230,7 @@ Status StorageManager::move(
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));
   }
-  if (force && vfs_->is_dir(new_uri)) {
-    RETURN_NOT_OK(remove_path(new_uri));
-  }
-  return vfs_->move_path(old_uri, new_uri);
+  return vfs_->move_path(old_uri, new_uri, force);
 }
 
 Status StorageManager::group_create(const std::string& group) const {
@@ -395,7 +392,7 @@ Status StorageManager::load_fragment_metadata(
 }
 
 Status StorageManager::move_path(const URI& old_uri, const URI& new_uri) {
-  return vfs_->move_path(old_uri, new_uri);
+  return vfs_->move_path(old_uri, new_uri, false);
 }
 
 ObjectType StorageManager::object_type(const URI& uri) const {
