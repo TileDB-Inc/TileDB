@@ -253,7 +253,6 @@ Status StorageManager::group_create(const std::string& group) const {
 Status StorageManager::init(Config* config) {
   if (config != nullptr)
     config_ = *config;
-  RETURN_NOT_OK(config_.init());
   consolidator_ = new Consolidator(this);
   Config::SMParams sm_params = config_.sm_params();
   array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);

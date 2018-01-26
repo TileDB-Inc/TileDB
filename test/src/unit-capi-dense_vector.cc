@@ -83,16 +83,21 @@ struct DenseVectorFx {
 DenseVectorFx::DenseVectorFx() {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
-  REQUIRE(tiledb_config_create(&config) == TILEDB_OK);
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
 #ifdef HAVE_S3
   REQUIRE(
-      tiledb_config_set(config, "vfs.s3.endpoint_override", "localhost:9999") ==
+      tiledb_config_set(
+          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
       TILEDB_OK);
+  REQUIRE(error == nullptr);
 #endif
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+  REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_config_free(config, &error) == TILEDB_OK);
 
 // Connect to S3
 #ifdef HAVE_S3

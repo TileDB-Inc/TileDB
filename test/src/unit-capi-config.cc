@@ -38,7 +38,19 @@
 #include <iostream>
 #include <map>
 
-void check_correct_file() {
+void remove_file(const std::string& filename) {
+  // Remove file
+  tiledb_ctx_t* ctx = nullptr;
+  int rc = tiledb_ctx_create(&ctx, nullptr);
+  tiledb_vfs_t* vfs = nullptr;
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+  CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
+  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
+  rc = tiledb_ctx_free(ctx);
+  CHECK(rc == TILEDB_OK);
+}
+
+void check_load_correct_file() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
@@ -49,44 +61,52 @@ void check_correct_file() {
   ofs.close();
 
   // Set config from file
-  tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  int rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set_from_file(config, "test_config.txt");
+  CHECK(error == nullptr);
+  rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
   CHECK(rc == TILEDB_OK);
-  tiledb_ctx_t* ctx;
+  CHECK(error == nullptr);
+  tiledb_ctx_t* ctx = nullptr;
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
-
-  // Remove file
-  tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
-
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  remove_file("test_config.txt");
 }
 
-void check_incorrect_file_cannot_open() {
+void check_error(tiledb_error_t* error, const std::string& msg) {
+  const char* err_msg;
+  int rc = tiledb_error_message(error, &err_msg);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string(err_msg) == msg);
+}
+
+void check_load_incorrect_file_cannot_open() {
   // Set config from file
-  tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  int rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set_from_file(config, "non_existent_file");
-  CHECK(rc == TILEDB_OK);
-  tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(error == nullptr);
+  rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(error, "[TileDB::Config] Error: Failed to open config file");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 }
 
-void check_incorrect_file_missing_value() {
+void check_load_incorrect_file_missing_value() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
@@ -97,29 +117,27 @@ void check_incorrect_file_missing_value() {
   ofs.close();
 
   // Set config from file
-  tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  int rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set_from_file(config, "test_config.txt");
-  CHECK(rc == TILEDB_OK);
-  tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(error == nullptr);
+  rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Config] Error: Failed to parse config file; Missing parameter "
+      "value");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
-
-  // Remove file (with a new valid context).
-  tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(ctx) == TILEDB_OK);
+  CHECK(error == nullptr);
+  remove_file("test_config.txt");
 }
 
-void check_incorrect_file_extra_word() {
+void check_load_incorrect_file_extra_word() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
@@ -130,36 +148,68 @@ void check_incorrect_file_extra_word() {
   ofs.close();
 
   // Set config from file
-  tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  int rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set_from_file(config, "test_config.txt");
-  CHECK(rc == TILEDB_OK);
-  tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(error == nullptr);
+  rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Config] Error: Failed to parse config file; Invalid line "
+      "format");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  remove_file("test_config.txt");
+}
 
-  // Remove file (with a new valid context).
-  tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "test_config.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(ctx) == TILEDB_OK);
+void check_save_to_file() {
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  int rc = tiledb_config_create(&config, &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::stringstream ss;
+  ss << "sm.array_schema_cache_size 10000000\n";
+  ss << "sm.fragment_metadata_cache_size 10000000\n";
+  ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.s3.connect_timeout_ms 3000\n";
+  ss << "vfs.s3.endpoint_override localhost:9000\n";
+  ss << "vfs.s3.file_buffer_size 5242880\n";
+  ss << "vfs.s3.request_timeout_ms 3000\n";
+  ss << "vfs.s3.scheme http\n";
+  ss << "vfs.s3.use_virtual_addressing false\n";
+
+  std::ifstream ifs("test_config.txt");
+  std::stringstream ss_file;
+  for (std::string line; std::getline(ifs, line);)
+    ss_file << line << "\n";
+  ifs.close();
+
+  CHECK(ss.str() == ss_file.str());
+  remove_file("test_config.txt");
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {
-  tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  int rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   tiledb_ctx_t* ctx;
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
@@ -167,84 +217,104 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
 
   // Check get for existing argument
-  const char* value;
-  rc = tiledb_config_get(config, "sm.tile_cache_size", &value);
+  const char* value = nullptr;
+  rc = tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
 
   // Check get for non-existing argument
-  rc = tiledb_config_get(config, "foo", &value);
+  rc = tiledb_config_get(config, "foo", &value, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(value == nullptr);
 
   // Check get config from context
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
-  tiledb_config_t* get_config;
+  tiledb_config_t* get_config = nullptr;
   rc = tiledb_ctx_get_config(ctx, &get_config);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_get(get_config, "sm.tile_cache_size", &value);
+  rc = tiledb_config_get(get_config, "sm.tile_cache_size", &value, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
-  rc = tiledb_config_free(get_config);
+  rc = tiledb_config_free(get_config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "+100");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "+100", &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "xadf");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "xadf", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
+      "argument");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "10xadf");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "10xadf", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
+      "argument");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "-10");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "-10", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
+      "argument");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
 
   // Check invalid parameters are ignored
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "10");
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "10", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "sm.unknown_config_param", "10");
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "sm.unknown_config_param", "10", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
+  CHECK(error == nullptr);
+
+  // Unset invalid parameter (ignore)
+  rc = tiledb_config_unset(config, "slkjs", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(ctx);
-  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Check out of range argument for correct parameter
-  rc = tiledb_config_unset(config, "slkjs");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100000000000000000000");
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_config_set(
+      config, "sm.tile_cache_size", "100000000000000000000", &error);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_ctx_free(ctx);
+  CHECK(error != nullptr);
+  check_error(
+      error,
+      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Value out "
+      "of range");
+  rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 }
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {
@@ -253,109 +323,159 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   REQUIRE(rc == TILEDB_OK);
 
   // Populate a config
-  tiledb_config_t* config;
-  rc = tiledb_config_create(&config);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_config_create(&config, &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100");
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "sm.array_schema_cache_size", "1000");
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "sm.array_schema_cache_size", "1000", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "vfs.s3.scheme", "https");
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros");
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros", &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.array_schema_cache_size"] = "1000";
+  all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
   all_param_values["vfs.s3.scheme"] = "https";
+  all_param_values["vfs.s3.region"] = "";
+  all_param_values["vfs.s3.endpoint_override"] = "localhost:9000";
+  all_param_values["vfs.s3.use_virtual_addressing"] = "false";
+  all_param_values["vfs.s3.file_buffer_size"] = "5242880";
+  all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.request_timeout_ms"] = "3000";
   all_param_values["vfs.hdfs.username"] = "stavros";
+  all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
+  all_param_values["vfs.hdfs.name_node_uri"] = "";
+
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["s3.scheme"] = "https";
+  vfs_param_values["s3.region"] = "";
+  vfs_param_values["s3.endpoint_override"] = "localhost:9000";
+  vfs_param_values["s3.use_virtual_addressing"] = "false";
+  vfs_param_values["s3.file_buffer_size"] = "5242880";
+  vfs_param_values["s3.connect_timeout_ms"] = "3000";
+  vfs_param_values["s3.request_timeout_ms"] = "3000";
   vfs_param_values["hdfs.username"] = "stavros";
+  vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
+  vfs_param_values["hdfs.name_node_uri"] = "";
+
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
+  s3_param_values["region"] = "";
+  s3_param_values["endpoint_override"] = "localhost:9000";
+  s3_param_values["use_virtual_addressing"] = "false";
+  s3_param_values["file_buffer_size"] = "5242880";
+  s3_param_values["connect_timeout_ms"] = "3000";
+  s3_param_values["request_timeout_ms"] = "3000";
 
   // Create an iterator and iterate over all parameters
-  tiledb_config_iter_t* config_iter;
-  rc = tiledb_config_iter_create(ctx, config, &config_iter, nullptr);
+  tiledb_config_iter_t* config_iter = nullptr;
+  rc = tiledb_config_iter_create(config, &config_iter, nullptr, &error);
   REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   int done;
-  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  rc = tiledb_config_iter_done(config_iter, &done, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(!(bool)done);
   const char *param, *value;
   std::map<std::string, std::string> all_iter_map;
   do {
-    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    rc = tiledb_config_iter_here(config_iter, &param, &value, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
     CHECK(param != nullptr);
     CHECK(value != nullptr);
     all_iter_map[std::string(param)] = std::string(value);
-    rc = tiledb_config_iter_next(ctx, config_iter);
+    rc = tiledb_config_iter_next(config_iter, &error);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(error == nullptr);
+    rc = tiledb_config_iter_done(config_iter, &done, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
   } while (!done);
   CHECK(all_param_values == all_iter_map);
-  rc = tiledb_config_iter_free(ctx, config_iter);
+  rc = tiledb_config_iter_free(config_iter, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Create an iterator and iterate over vfs parameters
-  rc = tiledb_config_iter_create(ctx, config, &config_iter, "vfs.");
+  rc = tiledb_config_iter_create(config, &config_iter, "vfs.", &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  CHECK(error == nullptr);
+  rc = tiledb_config_iter_done(config_iter, &done, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(!(bool)done);
   std::map<std::string, std::string> vfs_iter_map;
   do {
-    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    rc = tiledb_config_iter_here(config_iter, &param, &value, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
     CHECK(param != nullptr);
     CHECK(value != nullptr);
     vfs_iter_map[std::string(param)] = std::string(value);
-    rc = tiledb_config_iter_next(ctx, config_iter);
+    rc = tiledb_config_iter_next(config_iter, &error);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(error == nullptr);
+    rc = tiledb_config_iter_done(config_iter, &done, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
   } while (!done);
   CHECK(vfs_param_values == vfs_iter_map);
-  rc = tiledb_config_iter_free(ctx, config_iter);
+  rc = tiledb_config_iter_free(config_iter, &error);
   CHECK(rc == TILEDB_OK);
 
   // Create an iterator and iterate over s3 parameters
-  rc = tiledb_config_iter_create(ctx, config, &config_iter, "vfs.s3.");
+  rc = tiledb_config_iter_create(config, &config_iter, "vfs.s3.", &error);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_iter_done(ctx, config_iter, &done);
+  CHECK(error == nullptr);
+  rc = tiledb_config_iter_done(config_iter, &done, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   CHECK(!(bool)done);
   std::map<std::string, std::string> s3_iter_map;
   do {
-    rc = tiledb_config_iter_here(ctx, config_iter, &param, &value);
+    rc = tiledb_config_iter_here(config_iter, &param, &value, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
     CHECK(param != nullptr);
     CHECK(value != nullptr);
     s3_iter_map[std::string(param)] = std::string(value);
-    rc = tiledb_config_iter_next(ctx, config_iter);
+    rc = tiledb_config_iter_next(config_iter, &error);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_config_iter_done(ctx, config_iter, &done);
+    CHECK(error == nullptr);
+    rc = tiledb_config_iter_done(config_iter, &done, &error);
     CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
   } while (!done);
   CHECK(s3_param_values == s3_iter_map);
-  rc = tiledb_config_iter_free(ctx, config_iter);
+  rc = tiledb_config_iter_free(config_iter, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Clean up
-  rc = tiledb_config_free(config);
+  rc = tiledb_config_free(config, &error);
   CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 }
 
 TEST_CASE("C API: Test config from file", "[capi], [config]") {
-  check_correct_file();
-  check_incorrect_file_cannot_open();
-  check_incorrect_file_missing_value();
-  check_incorrect_file_extra_word();
+  check_load_correct_file();
+  check_load_incorrect_file_cannot_open();
+  check_load_incorrect_file_missing_value();
+  check_load_incorrect_file_extra_word();
+  check_save_to_file();
 }

@@ -220,6 +220,28 @@ typedef struct tiledb_kv_iter_t tiledb_kv_iter_t;
 typedef struct tiledb_vfs_t tiledb_vfs_t;
 
 /* ********************************* */
+/*              ERROR                */
+/* ********************************* */
+
+/**
+ * Returns the error message associated with a TileDB error object.
+ *
+ * @param err A TileDB error object.
+ * @param errmsg A constant pointer to the error message.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_error_message(
+    tiledb_error_t* err, const char** errmsg);
+
+/**
+ * Free's the resources associated with a TileDB error object.
+ *
+ * @param err The TileDB error object.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
+
+/* ********************************* */
 /*              CONFIG               */
 /* ********************************* */
 
@@ -227,17 +249,23 @@ typedef struct tiledb_vfs_t tiledb_vfs_t;
  * Creates a TileDB config.
  *
  * @param config The config to be created.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_config_create(tiledb_config_t** config);
+TILEDB_EXPORT int tiledb_config_create(
+    tiledb_config_t** config, tiledb_error_t** error);
 
 /**
  * Frees a TileDB config.
  *
  * @param config The config to be freed.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
+TILEDB_EXPORT int tiledb_config_free(
+    tiledb_config_t* config, tiledb_error_t** error);
 
 /**
  * Sets a config parameter.
@@ -245,15 +273,15 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
  * @param config The config object.
  * @param param The parameter to be set.
  * @param value The value of the parameter to be set.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
- *
- * @note There are no correctness checks performed here. This function simply
- *     stores each parameter value in the config object, and the correctness
- *     of all the set parameters in the config object is checked in
- *     `tiledb_ctx_create`.
  */
 TILEDB_EXPORT int tiledb_config_set(
-    tiledb_config_t* config, const char* param, const char* value);
+    tiledb_config_t* config,
+    const char* param,
+    const char* value,
+    tiledb_error_t** error);
 
 /**
  * Gets a config parameter.
@@ -262,25 +290,27 @@ TILEDB_EXPORT int tiledb_config_set(
  * @param param The parameter to be set.
  * @param value A pointer to the value of the parameter to be retrieved
  *    (`nullptr` if it does not exist).
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_get(
-    tiledb_config_t* config, const char* param, const char** value);
+    tiledb_config_t* config,
+    const char* param,
+    const char** value,
+    tiledb_error_t** error);
 
 /**
- * Sets config parameters read from a text file.
+ * Loads config parameters from a (local) text file.
  *
  * @param config The config object.
  * @param filename The name of the file.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
- *
- * @note There are no correctness checks performed here for the parameters.
- *     This function simply stores each parameter value in the config object,
- *     and the correctness of all the set parameters in the config object is
- *     checked in `tiledb_ctx_create`.
  */
-TILEDB_EXPORT int tiledb_config_set_from_file(
-    tiledb_config_t* config, const char* filename);
+TILEDB_EXPORT int tiledb_config_load_from_file(
+    tiledb_config_t* config, const char* filename, tiledb_error_t** error);
 
 /**
  * Unsets a config parameter. Potentially useful upon errors, to remove a
@@ -288,10 +318,24 @@ TILEDB_EXPORT int tiledb_config_set_from_file(
  *
  * @param config The config object.
  * @param param The parameter to be unset.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_unset(
-    tiledb_config_t* config, const char* param);
+    tiledb_config_t* config, const char* param, tiledb_error_t** error);
+
+/**
+ * Saves the config parameters to a (local) text file.
+ *
+ * @param config The config object.
+ * @param filename The name of the file.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_save_to_file(
+    tiledb_config_t* config, const char* filename, tiledb_error_t** error);
 
 /* ****************************** */
 /*            CONFIG ITER         */
@@ -300,68 +344,73 @@ TILEDB_EXPORT int tiledb_config_unset(
 /**
  * Creates an iterator on a config object.
  *
- * @param ctx The TileDB context.
  * @param config A config object the iterator will operate on.
  * @param config_iter The config iterator to be created.
  * @param prefix If not `nullptr`, only the config parameters starting
  *     with `prefix.*` will be iterated on. Moreover, the prefix will
  *     be stripped from the parameters. Otherwise, all parameters will
  *     be iterated on and their full name will be retrieved.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_iter_create(
-    tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     tiledb_config_iter_t** config_iter,
-    const char* prefix);
+    const char* prefix,
+    tiledb_error_t** error);
 
 /**
  * Frees a config iterator.
  *
- * @param ctx The TileDB context.
  * @param config_iter The config iterator to be freed.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_iter_free(
-    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter);
+    tiledb_config_iter_t* config_iter, tiledb_error_t** error);
 
 /**
  * Retrieves the config param and value currently pointed by the iterator.
  *
- * @param ctx The TileDB context.
  * @param config_iter The config iterator.
  * @param param The config parameter to be retrieved (`nullptr` if the iterator
  *     is at the end).
  * @param value The config value to be retrieved (`nullptr` if the iterator
  *     is at the end).
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_iter_here(
-    tiledb_ctx_t* ctx,
     tiledb_config_iter_t* config_iter,
     const char** param,
-    const char** value);
+    const char** value,
+    tiledb_error_t** error);
 
 /**
  * Moves the iterator to the next param.
  *
- * @param ctx The TileDB context.
  * @param config_iter The config iterator.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_iter_next(
-    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter);
+    tiledb_config_iter_t* config_iter, tiledb_error_t** error);
 
 /**
  * Checks if the iterator is done.
  *
- * @param ctx The TileDB context.
  * @param config_iter The config iterator.
  * @param done Sets this to `true` if the iterator is done.
+ * @param error Error object returned upon error (`nullptr` if there is
+ *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_config_iter_done(
-    tiledb_ctx_t* ctx, tiledb_config_iter_t* config_iter, int* done);
+    tiledb_config_iter_t* config_iter, int* done, tiledb_error_t** error);
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -396,10 +445,6 @@ TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
 TILEDB_EXPORT int tiledb_ctx_get_config(
     tiledb_ctx_t* ctx, tiledb_config_t** config);
 
-/* ********************************* */
-/*              ERROR                */
-/* ********************************* */
-
 /**
  * Retrieves the last TileDB error associated with a TileDB context.
  *
@@ -407,27 +452,8 @@ TILEDB_EXPORT int tiledb_ctx_get_config(
  * @param err The last error, or NULL if no error has been raised.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err);
-
-/**
- * Returns the error message associated with a TileDB error object.
- *
- * @param ctx The TileDB context.
- * @param err A TileDB error object.
- * @param errmsg A constant pointer to the error message.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_error_message(
-    tiledb_ctx_t* ctx, tiledb_error_t* err, const char** errmsg);
-
-/**
- * Free's the resources associated with a TileDB error object.
- *
- * @param ctx The TileDB context.
- * @param err The TileDB error object.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err);
+TILEDB_EXPORT int tiledb_ctx_get_last_error(
+    tiledb_ctx_t* ctx, tiledb_error_t** err);
 
 /* ********************************* */
 /*                GROUP              */
