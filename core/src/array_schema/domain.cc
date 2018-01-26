@@ -156,6 +156,42 @@ Status Domain::add_dimension(Dimension* dim) {
   return Status::Ok();
 }
 
+uint64_t Domain::cell_num(const void* domain) const {
+  switch (type_) {
+    case Datatype::INT32:
+      return cell_num<int>(static_cast<const int*>(domain));
+    case Datatype::INT64:
+      return cell_num<int64_t>(static_cast<const int64_t*>(domain));
+    case Datatype::INT8:
+      return cell_num<int8_t>(static_cast<const int8_t*>(domain));
+    case Datatype::UINT8:
+      return cell_num<uint8_t>(static_cast<const uint8_t*>(domain));
+    case Datatype::INT16:
+      return cell_num<int16_t>(static_cast<const int16_t*>(domain));
+    case Datatype::UINT16:
+      return cell_num<uint16_t>(static_cast<const uint16_t*>(domain));
+    case Datatype::UINT32:
+      return cell_num<uint32_t>(static_cast<const uint32_t*>(domain));
+    case Datatype::UINT64:
+      return cell_num<uint64_t>(static_cast<const uint64_t*>(domain));
+    case Datatype::FLOAT32:
+      return 0;
+    case Datatype::FLOAT64:
+      return 0;
+    default:
+      assert(0);
+      return 0;
+  }
+}
+
+template <class T>
+uint64_t Domain::cell_num(const T* domain) const {
+  uint64_t cell_num = 1;
+  for (unsigned i = 0; i < dim_num_; ++i)
+    cell_num *= (domain[2 * i + 1] - domain[2 * i] + 1);
+  return cell_num;
+}
+
 uint64_t Domain::cell_num_per_tile() const {
   return cell_num_per_tile_;
 }
@@ -283,8 +319,8 @@ void Domain::expand_domain(void* domain) const {
     case Datatype::UINT64:
       expand_domain<uint64_t>(static_cast<uint64_t*>(domain));
       break;
-    default:
-      assert(0);
+    default:  // Non-applicable to non-integer domains
+      break;
   }
 }
 
@@ -298,9 +334,11 @@ void Domain::expand_domain(T* domain) const {
   auto array_domain = static_cast<const T*>(domain_);
 
   for (unsigned int i = 0; i < dim_num_; ++i) {
+    // This will always make the first bound coincide with a tile
     domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
                      tile_extents[i]) +
                     array_domain[2 * i];
+
     domain[2 * i + 1] =
         ((domain[2 * i + 1] - array_domain[2 * i]) / tile_extents[i] + 1) *
             tile_extents[i] -

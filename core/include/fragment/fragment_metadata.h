@@ -121,6 +121,9 @@ class FragmentMetadata {
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
 
+  /** Returns the number of cells in the expanded domain. */
+  uint64_t cell_num_in_domain() const;
+
   /**
    * Returns ture if the corresponding fragment is dense, and false if it
    * is sparse.
@@ -203,6 +206,9 @@ class FragmentMetadata {
 
   /** A vector storing the first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;
+
+  /** Number of cells in `domain_`. */
+  uint64_t cell_num_in_domain_;
 
   /** True if the fragment is dense, and false if it is sparse. */
   bool dense_;

@@ -144,16 +144,25 @@ const std::vector<unsigned int>& Query::attribute_ids() const {
 }
 
 Status Query::clear_fragments() {
+  Status st_last = Status::Ok();
+
   if (!fragments_borrowed_) {
     for (auto& fragment : fragments_) {
-      RETURN_NOT_OK(fragment->finalize());
+      auto st = fragment->finalize();
+      if (!st.ok()) {
+        st_last = st;
+        if (storage_manager_->is_dir(fragment->fragment_uri()))
+          storage_manager_->vfs()->remove_path(fragment->fragment_uri());
+      }
+
       delete fragment;
     }
   }
 
   fragments_.clear();
 
-  return Status::Ok();
+  // Report the last encountered error (if any)
+  return st_last;
 }
 
 Status Query::coords_buffer_i(int* coords_buffer_i) const {

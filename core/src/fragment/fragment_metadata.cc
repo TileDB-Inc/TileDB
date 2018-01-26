@@ -49,6 +49,7 @@ FragmentMetadata::FragmentMetadata(
     : array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri) {
+  cell_num_in_domain_ = 0;
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
   std::memcpy(version_, constants::version, sizeof(version_));
@@ -131,6 +132,10 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   return last_tile_cell_num();
 }
 
+uint64_t FragmentMetadata::cell_num_in_domain() const {
+  return cell_num_in_domain_;
+}
+
 bool FragmentMetadata::dense() const {
   return dense_;
 }
@@ -189,6 +194,9 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
   domain_ = std::malloc(domain_size);
   std::memcpy(domain_, non_empty_domain_, domain_size);
   domain->expand_domain(domain_);
+
+  // Compute cell num in expanded domain
+  cell_num_in_domain_ = domain->cell_num(domain_);
 
   // Set last tile cell number
   last_tile_cell_num_ = 0;
