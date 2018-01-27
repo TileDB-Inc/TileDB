@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp
+ * @file   tiledb_config.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,39 +29,30 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * Manipulating a configuration.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#include <tiledb>
 
-#include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_version.h"
-#include "tiledb_cpp_api_schema_base.h"
-#include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_map_schema.h"
-#include "tiledb_cpp_api_map_item.h"
-#include "tiledb_cpp_api_map_proxy.h"
-#include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_iter.h"
-#include "tiledb_cpp_api_group.h"
-#include "tiledb_cpp_api_config_iter.h"
-#include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_array.h"
-#include "tiledb_cpp_api_deleter.h"
-#include "tiledb_cpp_api_compressor.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_dimension.h"
-#include "tiledb_cpp_api_domain.h"
-#include "tiledb_cpp_api_object.h"
-#include "tiledb_cpp_api_object_iter.h"
-#include "tiledb_cpp_api_query.h"
-#include "tiledb_cpp_api_utils.h"
-#include "tiledb_cpp_api_vfs.h"
-#include "tiledb_cpp_api_vfs_filebuf.h"
+int main() {
+  tiledb::Config conf;
 
-namespace tiledb = tdb;
+  // Default conf
+  std::cout << "Default settings:\n";
+  for (auto &p : conf) {
+    std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
+  }
 
-#endif // TILEDB_CPP_H
+  // Change values
+  conf["vfs.s3.connect_timeout_ms"] = 5000;
+  conf["vfs.s3.endpoint_override"] = "localhost:8888";
+
+  // Only vfs settings
+  std::cout << "\nVFS settings:\n";
+  for (auto i = conf.begin("vfs."); i != conf.end(); ++i ) {
+    auto &p = *i;
+    std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
+  }
+
+  return 0;
+}

@@ -122,10 +122,10 @@ uint64_t VFS::file_size(const std::string& uri) const {
   return ret;
 }
 
-void VFS::move(const std::string& old_uri, const std::string& new_uri) const {
+void VFS::move(const std::string& old_uri, const std::string& new_uri, bool force) const {
   auto& ctx = ctx_.get();
   ctx.handle_error(
-      tiledb_vfs_move(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str()));
+      tiledb_vfs_move(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str(), (int)force));
 }
 
 void VFS::read(

@@ -116,7 +116,7 @@ class VFS {
   uint64_t file_size(const std::string& uri) const;
 
   /** Renames a TileDB path from an old URI to a new URI. */
-  void move(const std::string& old_uri, const std::string& new_uri) const;
+  void move(const std::string& old_uri, const std::string& new_uri, bool force) const;
 
   /**
    * Reads from a file.

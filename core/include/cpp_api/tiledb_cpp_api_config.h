@@ -35,6 +35,8 @@
 #ifndef TILEDB_CPP_API_CONFIG_H
 #define TILEDB_CPP_API_CONFIG_H
 
+#include "tiledb_cpp_api_config_iter.h"
+#include "tiledb_cpp_api_utils.h"
 #include "tiledb.h"
 
 #include <memory>
@@ -44,11 +46,22 @@ namespace tdb {
 
 namespace impl {
 class ConfigProxy;
+
+struct ConfigDeleter {
+  tiledb_error_t *err;
+
+  void operator()(tiledb_config_t *p) {
+    tiledb_error_t *err;
+    tiledb_config_free(p, &err);
+    check_error(err);
+  }
+};
 }
 
 /** Carries configuration parameters that will be passed to a Context object. */
 class Config {
  public:
+  using iterator = impl::ConfigIter;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -126,6 +139,21 @@ class Config {
   /** Unsets a config parameter. */
   Config& unset(const std::string& param);
 
+  /** Iterate over params starting with a prefix **/
+  iterator begin(const std::string &prefix) {
+    return iterator{*this, prefix, false};
+  }
+
+  /** Iterate over some params. **/
+  iterator begin() {
+    return iterator{*this, "", false};
+  }
+
+  /** End iterator **/
+  iterator end() {
+    return iterator{*this, "", true};
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -136,6 +164,8 @@ class Config {
 
   /** The URI path to the config file. */
   std::string filename_;
+
+  impl::ConfigDeleter deleter_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -150,6 +180,15 @@ namespace impl {
 /** Proxy to set params via operator[] **/
 struct ConfigProxy {
   ConfigProxy(Config &conf, const std::string &param) : conf(conf), param(param) {}
+
+  template<typename T>
+  void operator=(const T &val) {
+    conf.set(param, std::to_string(val));
+  }
+
+  void operator=(const char *val) {
+    conf.set(param, std::string(val));
+  }
 
   void operator=(const std::string &val) {
     conf.set(param, val);

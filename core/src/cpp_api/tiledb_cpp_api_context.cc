@@ -35,6 +35,7 @@
 #include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_utils.h"
 
 namespace tdb {
 
@@ -73,22 +74,22 @@ void Context::handle_error(int rc) const {
   const auto &ctx = ctx_.get();
   tiledb_error_t *err = nullptr;
   const char *msg = nullptr;
-  rc = tiledb_error_last(ctx, &err);
+  rc = tiledb_ctx_get_last_error(ctx, &err);
   if (rc != TILEDB_OK) {
-    tiledb_error_free(ctx, err);
+    tiledb_error_free(err);
     error_handler_("[TileDB::C++API] Error: Non-retrievable error occurred");
   }
 
   // Get error message
-  rc = tiledb_error_message(ctx, err, &msg);
+  rc = tiledb_error_message(err, &msg);
   if (rc != TILEDB_OK) {
-    tiledb_error_free(ctx, err);
+    tiledb_error_free(err);
     error_handler_("[TileDB::C++API] Error: Non-retrievable error occurred");
   }
   auto msg_str = std::string(msg);
 
   // Clean up
-  tiledb_error_free(ctx, err);
+  tiledb_error_free(err);
 
   // Throw exception
   error_handler_(msg_str);

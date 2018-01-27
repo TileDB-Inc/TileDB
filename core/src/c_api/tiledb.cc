@@ -2718,7 +2718,7 @@ int tiledb_vfs_move(
     tiledb_vfs_t* vfs,
     const char* old_uri,
     const char* new_uri,
-    bool force) {
+    int force) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 

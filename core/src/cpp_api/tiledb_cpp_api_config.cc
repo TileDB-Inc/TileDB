@@ -34,6 +34,7 @@
 
 #include "tiledb_cpp_api_config.h"
 #include "tiledb_cpp_api_exception.h"
+#include "tiledb_cpp_api_utils.h"
 
 namespace tdb {
 
@@ -48,11 +49,9 @@ Config::Config() {
 Config::Config(const std::string& filename)
     : filename_(filename) {
   create_config();
-  int rc = tiledb_config_set_from_file(config_.get(), filename_.c_str());
-  if (rc != TILEDB_OK)
-    throw TileDBError(
-        "[TileDB::C++API] Error: Failed to create config object; Could not set "
-        "config file name");
+  tiledb_error_t *err;
+  tiledb_config_load_from_file(config_.get(), filename_.c_str(), &err);
+  impl::check_error(err);
 }
 
 /* ********************************* */
@@ -68,19 +67,18 @@ Config::operator tiledb_config_t*() const {
 }
 
 Config& Config::set(const std::string& param, const std::string& value) {
-  int rc = tiledb_config_set(config_.get(), param.c_str(), value.c_str());
-  if (rc != TILEDB_OK)
-    throw TileDBError(
-        "[TileDB::C++API] Error: Failed to set config parameter");
+  tiledb_error_t *err;
+  tiledb_config_set(config_.get(), param.c_str(), value.c_str(), &err);
+  impl::check_error(err);
   return *this;
 }
 
 std::string Config::get(const std::string &param) const {
   const char *val;
-  int rc = tiledb_config_get(config_.get(), param.c_str(), &val);
-  if (rc != TILEDB_OK)
-    throw TileDBError(
-        "[TileDB::C++API] Error: Failed to get config key " + param);
+  tiledb_error_t *err;
+  tiledb_config_get(config_.get(), param.c_str(), &val, &err);
+  impl::check_error(err);
+
   return val;
 }
 
@@ -88,11 +86,11 @@ impl::ConfigProxy Config::operator[](const std::string &param) {
   return {*this, param};
 }
 
-  Config& Config::unset(const std::string& param) {
-  int rc = tiledb_config_unset(config_.get(), param.c_str());
-  if (rc != TILEDB_OK)
-    throw TileDBError(
-        "[TileDB::C++API] Error: Failed to unset config parameter");
+Config& Config::unset(const std::string& param) {
+  tiledb_error_t *err;
+  tiledb_config_unset(config_.get(), param.c_str(), &err);
+  impl::check_error(err);
+
   return *this;
 }
 
@@ -102,12 +100,11 @@ impl::ConfigProxy Config::operator[](const std::string &param) {
 
 void Config::create_config() {
   tiledb_config_t* config;
-  int rc = tiledb_config_create(&config);
-  if (rc != TILEDB_OK)
-    throw TileDBError(
-        "[TileDB::C++API] Error: Failed to create config object");
+  tiledb_error_t *err;
+  tiledb_config_create(&config, &err);
+  impl::check_error(err);
 
-  config_ = std::shared_ptr<tiledb_config_t>(config, tiledb_config_free);
+  config_ = std::shared_ptr<tiledb_config_t>(config, deleter_);
 }
 
 }  // namespace tdb

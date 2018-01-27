@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp
+ * @file   tiledb_cpp_api_config_iter.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,39 +29,48 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Config Iter object.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#include "tiledb.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_version.h"
-#include "tiledb_cpp_api_schema_base.h"
-#include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_map_schema.h"
-#include "tiledb_cpp_api_map_item.h"
-#include "tiledb_cpp_api_map_proxy.h"
-#include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_iter.h"
-#include "tiledb_cpp_api_group.h"
 #include "tiledb_cpp_api_config_iter.h"
 #include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_array.h"
-#include "tiledb_cpp_api_deleter.h"
-#include "tiledb_cpp_api_compressor.h"
-#include "tiledb_cpp_api_context.h"
-#include "tiledb_cpp_api_attribute.h"
-#include "tiledb_cpp_api_dimension.h"
-#include "tiledb_cpp_api_domain.h"
-#include "tiledb_cpp_api_object.h"
-#include "tiledb_cpp_api_object_iter.h"
-#include "tiledb_cpp_api_query.h"
 #include "tiledb_cpp_api_utils.h"
-#include "tiledb_cpp_api_vfs.h"
-#include "tiledb_cpp_api_vfs_filebuf.h"
 
-namespace tiledb = tdb;
+namespace tdb {
+namespace impl {
 
-#endif // TILEDB_CPP_H
+void ConfigIter::init(const Config &config) {
+  tiledb_config_iter_t *iter;
+  tiledb_error_t *err;
+  const char *p = prefix_.size() ? prefix_.c_str() : nullptr;
+  tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
+  check_error(err);
+
+  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, deleter_);
+}
+
+  ConfigIter &ConfigIter::operator++() {
+    if (done_) return *this;
+    int done;
+    tiledb_error_t *err;
+
+    tiledb_config_iter_next(iter_.get(), &err);
+    check_error(err);
+
+    tiledb_config_iter_done(iter_.get(), &done, &err);
+    check_error(err);
+    if (done == 1) {
+      done_ = true;
+      return *this;
+    }
+
+    const char *param, *value;
+    tiledb_config_iter_here(iter_.get(), &param, &value, &err);
+    check_error(err);
+    here_ = std::pair<std::string, std::string>(param, value);
+    return *this;
+  }
+
+
+}
+}

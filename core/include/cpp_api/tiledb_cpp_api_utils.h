@@ -33,12 +33,13 @@
 #ifndef TILEDB_CPP_API_UTILS_H
 #define TILEDB_CPP_API_UTILS_H
 
+#include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
+
 #include <array>
 #include <functional>
 #include <iostream>
 #include <algorithm>
-
-#include "tiledb.h"
 
 namespace tdb {
 
@@ -189,6 +190,20 @@ std::vector<T> flatten(const V &vec) {
                 });
   return ret;
 };
+
+namespace impl {
+
+/** Check an error, free, and throw if there is one. **/
+inline void check_error(tiledb_error_t *err) {
+  if (err != nullptr) {
+    const char *msg;
+    tiledb_error_message(err, &msg);
+    tiledb_error_free(err);
+    throw TileDBError("Config Iterator Error: " + std::string(msg));
+  }
+}
+
+}
 
 }  // namespace tdb
 
