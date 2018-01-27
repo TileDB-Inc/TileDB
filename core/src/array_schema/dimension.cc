@@ -227,6 +227,8 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   }
   std::memcpy(tile_extent_, tile_extent, type_size);
 
+  RETURN_NOT_OK(check_tile_extent());
+
   return Status::Ok();
 }
 
@@ -236,6 +238,59 @@ void* Dimension::tile_extent() const {
 
 Datatype Dimension::type() const {
   return type_;
+}
+
+/* ********************************* */
+/*          PRIVATE METHODS          */
+/* ********************************* */
+
+Status Dimension::check_tile_extent() const {
+  switch (type_) {
+    case Datatype::INT32:
+      return check_tile_extent<int>();
+    case Datatype::INT64:
+      return check_tile_extent<int64_t>();
+    case Datatype::INT8:
+      return check_tile_extent<int8_t>();
+    case Datatype::UINT8:
+      return check_tile_extent<uint8_t>();
+    case Datatype::INT16:
+      return check_tile_extent<int16_t>();
+    case Datatype::UINT16:
+      return check_tile_extent<uint16_t>();
+    case Datatype::UINT32:
+      return check_tile_extent<uint32_t>();
+    case Datatype::UINT64:
+      return check_tile_extent<uint64_t>();
+    case Datatype::FLOAT32:
+      return check_tile_extent<float>();
+    case Datatype::FLOAT64:
+      return check_tile_extent<double>();
+    default:
+      assert(0);
+      return LOG_STATUS(Status::DimensionError(
+          "Tile extent check failed; Invalid dimension domain type"));
+  }
+}
+
+template <class T>
+Status Dimension::check_tile_extent() const {
+  auto tile_extent = static_cast<T*>(tile_extent_);
+  auto domain = static_cast<T*>(domain_);
+
+  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double)) {
+    if (*tile_extent > domain[1] - domain[0])
+      return LOG_STATUS(
+          Status::DimensionError("Tile extent check failed; Tile extent "
+                                 "exceeds dimension domain range"));
+  } else {
+    if (*tile_extent > domain[1] - domain[0] + 1)
+      return LOG_STATUS(
+          Status::DimensionError("Tile extent check failed; Tile extent "
+                                 "exceeds dimension domain range"));
+  }
+
+  return Status::Ok();
 }
 
 }  // namespace tiledb

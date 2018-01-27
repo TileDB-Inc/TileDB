@@ -218,9 +218,20 @@ void ArrayMetadataFx::create_array(const std::string& path) {
       ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* d3;  // This will be an invalid dimension
+  int dim_domain_int[] = {0, 10};
   rc = tiledb_dimension_create(
-      ctx_, &d3, DIM2_NAME, TILEDB_INT32, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+      ctx_, &d3, DIM2_NAME, TILEDB_INT32, dim_domain_int, &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* d4;  // This will be an invalid dimension
+  int tile_extent = 10000;
+  rc = tiledb_dimension_create(  // This will not even be created
+      ctx_,
+      &d4,
+      DIM2_NAME,
+      TILEDB_INT32,
+      dim_domain_int,
+      &tile_extent);
+  REQUIRE(rc == TILEDB_ERR);
 
   // Set domain
   tiledb_domain_t* domain;
