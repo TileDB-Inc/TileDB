@@ -96,81 +96,103 @@ Status StorageManager::array_create(
         Status::StorageManagerError("Cannot create array; Empty array schema"));
   }
 
+  object_create_mtx_.lock();
+
   array_schema->set_array_uri(array_uri);
-  RETURN_NOT_OK(array_schema->check());
+  auto st = array_schema->check();
+  if (!st.ok()) {
+    object_create_mtx_.unlock();
+    return st;
+  }
 
   // Create array directory
-  RETURN_NOT_OK(vfs_->create_dir(array_uri));
+  st = vfs_->create_dir(array_uri);
+  if (!st.ok()) {
+    object_create_mtx_.unlock();
+    return st;
+  }
 
   // Store array schema
-  RETURN_NOT_OK_ELSE(
-      store_array_schema(array_schema), vfs_->remove_path(array_uri));
+  st = store_array_schema(array_schema);
+  if (!st.ok()) {
+    vfs_->remove_path(array_uri);
+    object_create_mtx_.unlock();
+    return st;
+  }
 
   // Create array filelock
-  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  RETURN_NOT_OK_ELSE(
-      vfs_->create_file(filelock_uri), vfs_->remove_path(array_uri));
+  URI filelock_uri = array_uri.join_path(constants::filelock_name);
+  st = vfs_->create_file(filelock_uri);
+  if (!st.ok()) {
+    vfs_->remove_path(array_uri);
+    object_create_mtx_.unlock();
+    return st;
+  }
+
+  object_create_mtx_.unlock();
 
   // Success
   return Status::Ok();
 }
 
-Status StorageManager::array_lock(const URI& array_uri, bool shared) {
+Status StorageManager::object_lock(const URI& uri, LockType lock_type) {
   // Lock mutex
-  locked_array_mtx_.lock();
+  locked_object_mtx_.lock();
 
-  // Create a new locked array entry or retrieve an existing one
-  LockedArray* locked_array;
-  auto it = locked_arrays_.find(array_uri.to_string());
-  if (it == locked_arrays_.end()) {
-    locked_array = new LockedArray();
-    locked_arrays_[array_uri.to_string()] = locked_array;
+  // TODO: put uri in some structure with its own mutex?
+
+  // Create a new locked object entry or retrieve an existing one
+  LockedObject* locked_object;
+  auto it = locked_objs_.find(uri.to_string());
+  if (it == locked_objs_.end()) {
+    locked_object = new LockedObject();
+    locked_objs_[uri.to_string()] = locked_object;
   } else {
-    locked_array = it->second;
+    locked_object = it->second;
   }
 
-  locked_array->incr_total_locks();
+  locked_object->incr_total_locks();
 
   // Unlock the mutex
-  locked_array_mtx_.unlock();
+  locked_object_mtx_.unlock();
 
   // Lock the filelock
-  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  Status st = locked_array->lock(vfs_, filelock_uri, shared);
+  URI filelock_uri = uri.join_path(constants::filelock_name);
+  Status st = locked_object->lock(vfs_, filelock_uri, (lock_type == SLOCK));
   if (!st.ok()) {
-    array_unlock(array_uri, shared);
+    object_unlock(uri, lock_type);
     return st;
   }
 
   return Status::Ok();
 }
 
-Status StorageManager::array_unlock(const URI& array_uri, bool shared) {
-  // Lock the array mutex
-  locked_array_mtx_.lock();
+Status StorageManager::object_unlock(const URI& uri, LockType lock_type) {
+  // Lock the object mutex
+  locked_object_mtx_.lock();
 
-  // Find the locked array entry
-  auto it = locked_arrays_.find(array_uri.to_string());
-  if (it == locked_arrays_.end()) {
-    locked_array_mtx_.unlock();
+  // Find the locked object entry
+  auto it = locked_objs_.find(uri.to_string());
+  if (it == locked_objs_.end()) {
+    locked_object_mtx_.unlock();
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot shared-unlock array; Array not locked"));
+        "Cannot shared-unlock object; Object not locked"));
   }
-  auto locked_array = it->second;
+  auto locked_object = it->second;
 
-  // Unlock the array
-  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  Status st = locked_array->unlock(vfs_, filelock_uri, shared);
+  // Unlock the object
+  URI filelock_uri = uri.join_path(constants::filelock_name);
+  Status st = locked_object->unlock(vfs_, filelock_uri, (lock_type == SLOCK));
 
   // Decrement total locks and delete entry if necessary
-  locked_array->decr_total_locks();
-  if (locked_array->no_locks()) {
+  locked_object->decr_total_locks();
+  if (locked_object->no_locks()) {
     delete it->second;
-    locked_arrays_.erase(it);
+    locked_objs_.erase(it);
   }
 
-  // Unlock the open array mutex
-  locked_array_mtx_.unlock();
+  // Unlock the locked object mutex
+  locked_object_mtx_.unlock();
 
   return st;
 }
@@ -230,22 +252,32 @@ Status StorageManager::move(
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));
   }
+
   return vfs_->move_path(old_uri, new_uri, force);
 }
 
-Status StorageManager::group_create(const std::string& group) const {
+Status StorageManager::group_create(const std::string& group) {
   // Create group URI
   URI uri(group);
   if (uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot create group; '" + group + "' invalid group URI"));
 
+  object_create_mtx_.lock();
+
   // Create group directory
-  RETURN_NOT_OK(vfs_->create_dir(uri));
+  RETURN_NOT_OK_ELSE(vfs_->create_dir(uri), object_create_mtx_.unlock());
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  RETURN_NOT_OK(vfs_->create_file(group_filename));
+  auto st = vfs_->create_file(group_filename);
+  if (!st.ok()) {
+    vfs_->remove_path(uri);
+    object_create_mtx_.unlock();
+    return st;
+  }
+
+  object_create_mtx_.unlock();
 
   return Status::Ok();
 }
@@ -824,7 +856,7 @@ Status StorageManager::array_close(URI array_uri) {
   open_array_mtx_.unlock();
 
   // Unlock the array
-  RETURN_NOT_OK(array_unlock(array_uri, true));
+  RETURN_NOT_OK(object_unlock(array_uri, SLOCK));
 
   return Status::Ok();
 }
@@ -841,7 +873,7 @@ Status StorageManager::array_open(
   }
 
   // Lock the array in shared mode
-  RETURN_NOT_OK(array_lock(array_uri, true));
+  RETURN_NOT_OK(object_lock(array_uri, SLOCK));
 
   // Lock mutex
   open_array_mtx_.lock();
