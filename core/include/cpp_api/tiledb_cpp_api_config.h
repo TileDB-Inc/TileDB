@@ -179,7 +179,8 @@ namespace impl {
 
 /** Proxy to set params via operator[] **/
 struct ConfigProxy {
-  ConfigProxy(Config &conf, const std::string &param) : conf(conf), param(param) {}
+  ConfigProxy(Config &conf, const std::string &param)
+  : conf(conf), param(param) {}
 
   template<typename T>
   void operator=(const T &val) {
@@ -192,6 +193,10 @@ struct ConfigProxy {
 
   void operator=(const std::string &val) {
     conf.set(param, val);
+  }
+
+  ConfigProxy operator[](const std::string &append) {
+    return {conf, param + append};
   }
 
   operator std::string() {

@@ -45,7 +45,9 @@ int main() {
 
   // Change values
   conf["vfs.s3.connect_timeout_ms"] = 5000;
-  conf["vfs.s3.endpoint_override"] = "localhost:8888";
+
+  // Append key fragments with successive []
+  conf["vfs."]["s3."]["endpoint_override"] = "localhost:8888";
 
   // Only S3 settings
   std::cout << "\nVFS S3 settings:\n";

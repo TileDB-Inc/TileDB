@@ -50,28 +50,27 @@ void ConfigIter::init(const Config &config) {
   operator++();
 }
 
-  ConfigIter &ConfigIter::operator++() {
-    if (done_) return *this;
-    int done;
-    tiledb_error_t *err;
+ConfigIter &ConfigIter::operator++() {
+  if (done_) return *this;
+  int done;
+  tiledb_error_t *err;
 
-    tiledb_config_iter_next(iter_.get(), &err);
-    check_error(err);
+  tiledb_config_iter_next(iter_.get(), &err);
+  check_error(err);
 
-    tiledb_config_iter_done(iter_.get(), &done, &err);
-    check_error(err);
-    if (done == 1) {
-      done_ = true;
-      return *this;
-    }
-
-    const char *param, *value;
-    tiledb_config_iter_here(iter_.get(), &param, &value, &err);
-    check_error(err);
-    here_ = std::pair<std::string, std::string>(param, value);
+  tiledb_config_iter_done(iter_.get(), &done, &err);
+  check_error(err);
+  if (done == 1) {
+    done_ = true;
     return *this;
   }
 
+  const char *param, *value;
+  tiledb_config_iter_here(iter_.get(), &param, &value, &err);
+  check_error(err);
+  here_ = std::pair<std::string, std::string>(param, value);
+  return *this;
+}
 
 }
 }
