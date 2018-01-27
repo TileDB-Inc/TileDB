@@ -47,9 +47,9 @@ int main() {
   conf["vfs.s3.connect_timeout_ms"] = 5000;
   conf["vfs.s3.endpoint_override"] = "localhost:8888";
 
-  // Only vfs settings
-  std::cout << "\nVFS settings:\n";
-  for (auto i = conf.begin("vfs."); i != conf.end(); ++i ) {
+  // Only S3 settings
+  std::cout << "\nVFS S3 settings:\n";
+  for (auto i = conf.begin("vfs.s3."); i != conf.end(); ++i ) {
     auto &p = *i;
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }

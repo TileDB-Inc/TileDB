@@ -47,6 +47,7 @@ void ConfigIter::init(const Config &config) {
   check_error(err);
 
   iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, deleter_);
+  operator++();
 }
 
   ConfigIter &ConfigIter::operator++() {
