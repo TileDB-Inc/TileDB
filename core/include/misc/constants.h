@@ -341,6 +341,15 @@ extern const char* s3_region;
 /** S3 endpoint override. */
 extern const char* s3_endpoint_override;
 
+/** HDFS default kerb ticket cache path. */
+extern const char* hdfs_kerb_ticket_cache_path;
+
+/** HDFS default name node uri. */
+extern const char* hdfs_name_node_uri;
+
+/** HDFS default username. */
+extern const char* hdfs_username;
+
 /** Prefix indicating a special name reserved by TileDB. */
 extern const char* special_name_prefix;
 

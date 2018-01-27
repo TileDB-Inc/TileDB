@@ -67,9 +67,9 @@ int main() {
 
 void print_error(tiledb_ctx_t* ctx) {
   tiledb_error_t* err;
-  tiledb_error_last(ctx, &err);
+  tiledb_ctx_get_last_error(ctx, &err);
   const char* msg;
-  tiledb_error_message(ctx, err, &msg);
+  tiledb_error_message(err, &msg);
   printf("%s\n", msg);
-  tiledb_error_free(ctx, err);
+  tiledb_error_free(err);
 }

@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
+#include "constants.h"
 #include "status.h"
 
 #include <map>
@@ -51,6 +52,12 @@ class Config {
     uint64_t array_schema_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     uint64_t tile_cache_size_;
+
+    SMParams() {
+      array_schema_cache_size_ = constants::array_schema_cache_size;
+      fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
+      tile_cache_size_ = constants::tile_cache_size;
+    }
   };
 
   struct S3Params {
@@ -61,17 +68,36 @@ class Config {
     uint64_t file_buffer_size_;
     long connect_timeout_ms_;
     long request_timeout_ms_;
+
+    S3Params() {
+      region_ = constants::s3_region;
+      scheme_ = constants::s3_scheme;
+      endpoint_override_ = constants::s3_endpoint_override;
+      use_virtual_addressing_ = constants::s3_use_virtual_addressing;
+      file_buffer_size_ = constants::s3_file_buffer_size;
+      connect_timeout_ms_ = constants::s3_connect_timeout_ms;
+      request_timeout_ms_ = constants::s3_request_timeout_ms;
+    }
   };
 
   struct HDFSParams {
     std::string name_node_uri_;
     std::string username_;
     std::string kerb_ticket_cache_path_;
+
+    HDFSParams() {
+      kerb_ticket_cache_path_ = constants::hdfs_kerb_ticket_cache_path;
+      name_node_uri_ = constants::hdfs_name_node_uri;
+      username_ = constants::hdfs_username;
+    }
   };
 
   struct VFSParams {
     S3Params s3_params_;
     HDFSParams hdfs_params_;
+
+    VFSParams() {
+    }
   };
 
   /* ********************************* */
@@ -88,6 +114,12 @@ class Config {
   /*                API                */
   /* ********************************* */
 
+  /** Loads the config parameters from a configuration (local) file. */
+  Status load_from_file(const std::string& filename);
+
+  /** Saves the config parameters to a configuration (local) file. */
+  Status save_to_file(const std::string& filename);
+
   /** Returns the storage manager parameters. */
   SMParams sm_params() const;
 
@@ -97,20 +129,11 @@ class Config {
   /** Returns the S3 parameters. */
   S3Params s3_params() const;
 
-  /**
-   * Initializes the config. This function will return error if there is
-   * any problem with the set parameters.
-   */
-  Status init();
-
-  /**
-   * Sets a config parameter. Note that this does not have any effect
-   * until the object is initialized with `init`.
-   */
+  /** Sets a config parameter. */
   Status set(const std::string& param, const std::string& value);
 
   /** Gets a config parameter value (`nullptr` if `param` does not exist). */
-  void get(const std::string& param, const char** value) const;
+  Status get(const std::string& param, const char** value) const;
 
   /**
    * Returns a map with the param-value pairs in the config.
@@ -124,33 +147,13 @@ class Config {
   std::map<std::string, std::string> param_values(
       const std::string& prefix) const;
 
-  /**
-   * Sets the name of the file from which the config parameters will be read
-   * upon initialization.
-   *
-   * @note If the user sets parameter-value pairs from both a file and
-   *     through the `set` function, in the case of conflicts, the parameters
-   *     set through the `set` function take priority over those set via
-   *     the file.
-   */
-  Status set_config_filename(const std::string& filename);
-
-  /**
-   * Set the VFS parameters. Note that this has effect immediately, and does
-   * not require `init` to be called.
-   */
-  Status set_vfs_params(const VFSParams& vfs_params);
-
-  /** Unsets a parameter. */
+  /** Unsets a parameter (ignores it if it does not exist). */
   Status unset(const std::string& param);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The name of the filename the config parameters will be read from. */
-  std::string config_filename_;
 
   /** Stores a map of param -> value. */
   std::map<std::string, std::string> param_values_;
@@ -172,17 +175,8 @@ class Config {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Sets the default storage manager parameters. */
-  void set_default_sm_params();
-
-  /** Sets the default VFS parameters. */
-  void set_default_vfs_params();
-
-  /** Sets the default S3 parameters. */
-  void set_default_vfs_s3_params();
-
-  /** Sets the config parameters from a configuration file. */
-  Status set_from_file();
+  /** Populates `param_values_` map with the default values. */
+  void set_default_param_values();
 
   /** Sets the array metadata cache size, properly parsing the input value. */
   Status set_sm_array_schema_cache_size(const std::string& value);

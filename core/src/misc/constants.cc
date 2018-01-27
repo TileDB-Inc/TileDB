@@ -175,10 +175,10 @@ const char* no_compression_str = "NO_COMPRESSION";
 const uint64_t array_schema_cache_size = 10000000;
 
 /** The fragment metadata cache size. */
-const uint64_t fragment_metadata_cache_size = 100000000;
+const uint64_t fragment_metadata_cache_size = 10000000;
 
 /** The tile cache size. */
-const uint64_t tile_cache_size = 100000000;
+const uint64_t tile_cache_size = 10000000;
 
 /** String describing GZIP. */
 const char* gzip_str = "GZIP";
@@ -349,6 +349,15 @@ const char* s3_region = "";
 
 /** S3 endpoint override. */
 const char* s3_endpoint_override = "localhost:9000";
+
+/** HDFS default kerb ticket cache path. */
+const char* hdfs_kerb_ticket_cache_path = "";
+
+/** HDFS default name node uri. */
+const char* hdfs_name_node_uri = "";
+
+/** HDFS default username. */
+const char* hdfs_username = "";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const char* special_name_prefix = "__";
