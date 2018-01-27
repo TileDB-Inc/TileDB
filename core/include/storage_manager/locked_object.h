@@ -1,5 +1,5 @@
 /**
- * @file   locked_array.h
+ * @file   locked_object.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class LockedArray.
+ * This file defines class LockedObject.
  */
 
-#ifndef TILEDB_LOCKED_ARRAY_H
-#define TILEDB_LOCKED_ARRAY_H
+#ifndef TILEDB_LOCKED_OBJECT_H
+#define TILEDB_LOCKED_OBJECT_H
 
 #include "filelock.h"
 #include "status.h"
@@ -42,15 +42,15 @@
 
 namespace tiledb {
 
-/** Stores information about a locked array. */
-class LockedArray {
+/** Stores information about a locked object (array or group). */
+class LockedObject {
  public:
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
   /* ****************************** */
 
   /** Constructor.  */
-  LockedArray();
+  LockedObject();
 
   /* ****************************** */
   /*               API              */
@@ -63,7 +63,7 @@ class LockedArray {
   void incr_total_locks();
 
   /**
-   * Locks the array.
+   * Locks the object.
    *
    * @param vfs The virtual file system that will lock the filelock.
    * @param uri The URI of the file to be locked.
@@ -76,7 +76,7 @@ class LockedArray {
   bool no_locks() const;
 
   /**
-   * Unlocks the array.
+   * Unlocks the object.
    *
    * @param vfs The virtual file system that will unlock the filelock.
    * @param uri The URI of the file to be unlocked.
@@ -93,13 +93,13 @@ class LockedArray {
   /** The condition variable. */
   std::condition_variable cv_;
 
-  /** True if the array is locked with an exclusive lock. */
+  /** True if the object is locked with an exclusive lock. */
   bool exclusive_lock_;
 
   /** Filelock handle. */
   filelock_t filelock_;
 
-  /** The locked array mutex. */
+  /** The locked object mutex. */
   std::mutex mtx_;
 
   /** Number of shared locks. */
@@ -113,7 +113,7 @@ class LockedArray {
   /* ****************************** */
 
   /**
-   * Exclusive-locks the array.
+   * Exclusive-locks the object.
    *
    * @param vfs The virtual file system that will lock the filelock.
    * @param uri The URI of the file to be locked.
@@ -122,7 +122,7 @@ class LockedArray {
   Status lock_exclusive(VFS* vfs, const URI& uri);
 
   /**
-   * Share-locks the array.
+   * Share-locks the object.
    *
    * @param vfs The virtual file system that will lock the filelock.
    * @param uri The URI of the file to be locked.
@@ -131,7 +131,7 @@ class LockedArray {
   Status lock_shared(VFS* vfs, const URI& uri);
 
   /**
-   * Share-unlocks the array.
+   * Share-unlocks the object.
    *
    * @param vfs The virtual file system that will unlock the filelock.
    * @param uri The URI of the file to be unlocked.
@@ -140,7 +140,7 @@ class LockedArray {
   Status unlock_shared(VFS* vfs, const URI& uri);
 
   /**
-   * Exclusive-unlocks the array.
+   * Exclusive-unlocks the object.
    *
    * @param vfs The virtual file system that will unlock the filelock.
    * @param uri The URI of the file to be unlocked.
@@ -151,4 +151,4 @@ class LockedArray {
 
 }  // namespace tiledb
 
-#endif  // TILEDB_LOCKED_ARRAY_H
+#endif  // TILEDB_LOCKED_OBJECT_H

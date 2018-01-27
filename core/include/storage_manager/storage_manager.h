@@ -46,7 +46,7 @@
 #include "array_schema.h"
 #include "config.h"
 #include "consolidator.h"
-#include "locked_array.h"
+#include "locked_object.h"
 #include "lru_cache.h"
 #include "object_type.h"
 #include "open_array.h"
@@ -85,6 +85,9 @@ class StorageManager {
     bool recursive_;
   };
 
+  /** Lock type (shared, exclusive). */
+  enum LockType { SLOCK, XLOCK };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -117,22 +120,22 @@ class StorageManager {
   Status array_create(const URI& array_uri, ArraySchema* array_schema);
 
   /**
-   * Locks the array.
+   * Locks a TileDB object (array or group).
    *
-   * @param array_uri The array to be locked
-   * @param shared True if this is a shared lock, false if it is exclusive.
+   * @param uri The object to be locked
+   * @param lock_type The lock type.
    * @return Status
    */
-  Status array_lock(const URI& array_uri, bool shared);
+  Status object_lock(const URI& uri, LockType lock_type);
 
   /**
-   * Unlocks the array.
+   * Unlocks a TileDB object (array or group).
    *
-   * @param array_uri The array to be unlocked
-   * @param shared True if this was a shared lock, false if it was exclusive.
+   * @param uri The object to be unlocked
+   * @param lock_type The lock type.
    * @return Status
    */
-  Status array_unlock(const URI& array_uri, bool shared);
+  Status object_unlock(const URI& uri, LockType lock_type);
 
   /**
    * Pushes an async query to the queue.
@@ -176,7 +179,7 @@ class StorageManager {
    * @param group The URI of the group to be created.
    * @return Status
    */
-  Status group_create(const std::string& group) const;
+  Status group_create(const std::string& group);
 
   /**
    * Initializes the storage manager. It spawns two threads. The first is for
@@ -454,6 +457,9 @@ class StorageManager {
   /** An array schema cache. */
   LRUCache* array_schema_cache_;
 
+  /** Mutex for providing thread-safety upon creating TileDB objects. */
+  std::mutex object_create_mtx_;
+
   /**
    * Async condition variable. The first is for user async queries, the second
    * for internal async queries.
@@ -490,14 +496,14 @@ class StorageManager {
   /** A fragment metadata cache. */
   LRUCache* fragment_metadata_cache_;
 
-  /** Used for array shared and exclusive locking. */
-  std::mutex locked_array_mtx_;
+  /** Used for object shared and exclusive locking. */
+  std::mutex locked_object_mtx_;
 
   /**
-   * Stores locked array entries. The map is indexed by the array URI string
+   * Stores locked object entries. The map is indexed by the object URI string
    * and stores the number of **shared** locks.
    */
-  std::map<std::string, LockedArray*> locked_arrays_;
+  std::map<std::string, LockedObject*> locked_objs_;
 
   /** Mutex for managing OpenArray objects. */
   std::mutex open_array_mtx_;

@@ -42,8 +42,8 @@ enum class Compressor : char;
 
 namespace constants {
 
-/** The array filelock name. */
-extern const char* array_filelock_name;
+/** The object filelock name. */
+extern const char* filelock_name;
 
 /** The array schema file name. */
 extern const char* array_schema_filename;

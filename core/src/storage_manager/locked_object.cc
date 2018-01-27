@@ -1,5 +1,5 @@
 /**
- * @file   locked_array.cc
+ * @file   locked_object.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the LockedArray class.
+ * This file implements the LockedObject class.
  */
 
-#include "locked_array.h"
+#include "locked_object.h"
 
 #include <iostream>
 
@@ -40,7 +40,7 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-LockedArray::LockedArray() {
+LockedObject::LockedObject() {
   shared_locks_ = 0;
   total_locks_ = 0;
   filelock_ = INVALID_FILELOCK;
@@ -51,23 +51,23 @@ LockedArray::LockedArray() {
 /*               API              */
 /* ****************************** */
 
-void LockedArray::decr_total_locks() {
+void LockedObject::decr_total_locks() {
   --total_locks_;
 }
 
-void LockedArray::incr_total_locks() {
+void LockedObject::incr_total_locks() {
   ++total_locks_;
 }
 
-Status LockedArray::lock(VFS* vfs, const URI& uri, bool shared) {
+Status LockedObject::lock(VFS* vfs, const URI& uri, bool shared) {
   return shared ? lock_shared(vfs, uri) : lock_exclusive(vfs, uri);
 }
 
-bool LockedArray::no_locks() const {
+bool LockedObject::no_locks() const {
   return total_locks_ == 0;
 }
 
-Status LockedArray::unlock(VFS* vfs, const URI& uri, bool shared) {
+Status LockedObject::unlock(VFS* vfs, const URI& uri, bool shared) {
   return shared ? unlock_shared(vfs, uri) : unlock_exclusive(vfs, uri);
 }
 
@@ -75,7 +75,7 @@ Status LockedArray::unlock(VFS* vfs, const URI& uri, bool shared) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status LockedArray::lock_exclusive(VFS* vfs, const URI& uri) {
+Status LockedObject::lock_exclusive(VFS* vfs, const URI& uri) {
   std::unique_lock<std::mutex> lk(mtx_);
   cv_.wait(lk, [this] { return !exclusive_lock_ && (shared_locks_ == 0); });
 
@@ -88,7 +88,7 @@ Status LockedArray::lock_exclusive(VFS* vfs, const URI& uri) {
   return Status::Ok();
 }
 
-Status LockedArray::lock_shared(VFS* vfs, const URI& uri) {
+Status LockedObject::lock_shared(VFS* vfs, const URI& uri) {
   std::unique_lock<std::mutex> lk(mtx_);
   cv_.wait(lk, [this] { return !exclusive_lock_; });
 
@@ -101,7 +101,7 @@ Status LockedArray::lock_shared(VFS* vfs, const URI& uri) {
   return Status::Ok();
 }
 
-Status LockedArray::unlock_exclusive(VFS* vfs, const URI& uri) {
+Status LockedObject::unlock_exclusive(VFS* vfs, const URI& uri) {
   if (filelock_ != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
   filelock_ = INVALID_FILELOCK;
@@ -112,7 +112,7 @@ Status LockedArray::unlock_exclusive(VFS* vfs, const URI& uri) {
   return Status::Ok();
 }
 
-Status LockedArray::unlock_shared(VFS* vfs, const URI& uri) {
+Status LockedObject::unlock_shared(VFS* vfs, const URI& uri) {
   if (filelock_ != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
   filelock_ = INVALID_FILELOCK;

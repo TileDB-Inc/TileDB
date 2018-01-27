@@ -101,19 +101,19 @@ Status Consolidator::consolidate(const char* array_name) {
     goto clean_up;
 
   // Lock the array exclusively
-  st = storage_manager_->array_lock(array_uri, false);
+  st = storage_manager_->object_lock(array_uri, StorageManager::XLOCK);
   if (!st.ok())
     goto clean_up;
 
   // Delete old fragments
   st = delete_old_fragments(old_fragment_uris);
   if (!st.ok()) {
-    storage_manager_->array_unlock(array_uri, false);
+    storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
     goto clean_up;
   }
 
   // Unlock the array
-  st = storage_manager_->array_unlock(array_uri, false);
+  st = storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
 
 // Clean up
 clean_up:
