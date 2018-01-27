@@ -74,9 +74,8 @@ void check_load_correct_file() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
 
   remove_file("test_config.txt");
 }
@@ -101,9 +100,8 @@ void check_load_incorrect_file_cannot_open() {
   check_error(error, "[TileDB::Config] Error: Failed to open config file");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
 }
 
 void check_load_incorrect_file_missing_value() {
@@ -131,9 +129,8 @@ void check_load_incorrect_file_missing_value() {
       "value");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   remove_file("test_config.txt");
 }
 
@@ -162,9 +159,8 @@ void check_load_incorrect_file_extra_word() {
       "format");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   remove_file("test_config.txt");
 }
 
@@ -239,9 +235,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
-  rc = tiledb_config_free(get_config, &error);
+  rc = tiledb_config_free(get_config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 
@@ -312,9 +307,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
 }
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {
@@ -405,7 +399,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(all_param_values == all_iter_map);
-  rc = tiledb_config_iter_free(config_iter, &error);
+  rc = tiledb_config_iter_free(config_iter);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -433,7 +427,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(vfs_param_values == vfs_iter_map);
-  rc = tiledb_config_iter_free(config_iter, &error);
+  rc = tiledb_config_iter_free(config_iter);
   CHECK(rc == TILEDB_OK);
 
   // Create an iterator and iterate over s3 parameters
@@ -460,14 +454,13 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(s3_param_values == s3_iter_map);
-  rc = tiledb_config_iter_free(config_iter, &error);
+  rc = tiledb_config_iter_free(config_iter);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
   // Clean up
-  rc = tiledb_config_free(config, &error);
+  rc = tiledb_config_free(config);
   CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   rc = tiledb_ctx_free(ctx);
   CHECK(rc == TILEDB_OK);
 }
