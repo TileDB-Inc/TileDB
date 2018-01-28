@@ -241,12 +241,13 @@ Status Query::init() {
     return LOG_STATUS(
         Status::QueryError("Cannot initialize query; Attributes not set"));
 
-  // Set query status
   status_ = QueryStatus::INPROGRESS;
 
-  // Initializations
   if (subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
+
+  RETURN_NOT_OK(check_buffer_sizes_ordered());
+
   RETURN_NOT_OK(init_fragments(fragment_metadata_));
   RETURN_NOT_OK(init_states());
 
@@ -476,6 +477,13 @@ Status Query::set_layout(Layout layout) {
     return LOG_STATUS(Status::QueryError(
         "Cannot set layout; The array is defined as a key-value store"));
 
+  // Ordered layout for writes in sparse arrays is meaningless
+  if (type_ == QueryType::WRITE && !array_schema_->dense() &&
+      (layout == Layout::COL_MAJOR || layout == Layout::ROW_MAJOR))
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set layout; Ordered layouts can be used when writing to sparse "
+        "arrays - use UNORDERED instead"));
+
   layout_ = layout;
 
   return Status::Ok();
@@ -619,6 +627,36 @@ Status Query::check_attributes() {
       return LOG_STATUS(
           Status::QueryError("Check attributes failed; Unordered writes expect "
                              "all attributes to be set"));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::check_buffer_sizes_ordered() const {
+  if (type_ == QueryType::READ ||
+      (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
+    return Status::Ok();
+
+  assert(array_schema_->dense());
+
+  auto cell_num = array_schema_->domain()->cell_num(subarray_);
+  unsigned bid = 0;
+  for (auto& aid : attribute_ids_) {
+    if (array_schema_->var_size(aid)) {
+      if ((buffer_sizes_[bid] / constants::cell_var_offset_size) != cell_num)
+        return LOG_STATUS(Status::QueryError(
+            std::string("Buffer sizes check failed; Invalid number of cells "
+                        "give for attribute '") +
+            array_schema_->attribute_name(aid) + "'"));
+      bid += 2;
+    } else {
+      if ((buffer_sizes_[bid] / array_schema_->cell_size(aid)) != cell_num)
+        return LOG_STATUS(Status::QueryError(
+            std::string("Buffer sizes check failed; Invalid number of cells "
+                        "give for attribute '") +
+            array_schema_->attribute_name(aid) + "'"));
+      bid++;
+    }
   }
 
   return Status::Ok();
