@@ -106,7 +106,7 @@ ObjectMgmtFx::ObjectMgmtFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
 // Connect to S3
 #ifdef HAVE_S3

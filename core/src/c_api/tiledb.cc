@@ -383,14 +383,12 @@ int tiledb_config_create(tiledb_config_t** config, tiledb_error_t** error) {
   return TILEDB_OK;
 }
 
-int tiledb_config_free(tiledb_config_t* config, tiledb_error_t** error) {
+int tiledb_config_free(tiledb_config_t* config) {
   if (config != nullptr) {
     delete config->config_;
     delete config;
   }
 
-  // Always succeeds
-  *error = nullptr;
   return TILEDB_OK;
 }
 
@@ -501,15 +499,9 @@ int tiledb_config_iter_create(
   return TILEDB_OK;
 }
 
-int tiledb_config_iter_free(
-    tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
-  if (sanity_check(config_iter, error) == TILEDB_ERR)
-    return TILEDB_ERR;
+int tiledb_config_iter_free(tiledb_config_iter_t* config_iter) {
+  delete config_iter;
 
-  if (config_iter != nullptr)
-    delete config_iter;
-
-  *error = nullptr;
   return TILEDB_OK;
 }
 

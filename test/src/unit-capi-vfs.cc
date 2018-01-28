@@ -92,7 +92,7 @@ VFSFx::VFSFx() {
   REQUIRE(error == nullptr);
   int rc = tiledb_vfs_create(ctx_, &vfs_, config);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(tiledb_config_free(config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 }
 
 VFSFx::~VFSFx() {

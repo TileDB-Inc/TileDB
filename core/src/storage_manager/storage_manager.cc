@@ -139,8 +139,6 @@ Status StorageManager::object_lock(const URI& uri, LockType lock_type) {
   // Lock mutex
   locked_object_mtx_.lock();
 
-  // TODO: put uri in some structure with its own mutex?
-
   // Create a new locked object entry or retrieve an existing one
   LockedObject* locked_object;
   auto it = locked_objs_.find(uri.to_string());

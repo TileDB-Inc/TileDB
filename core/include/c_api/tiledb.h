@@ -260,12 +260,9 @@ TILEDB_EXPORT int tiledb_config_create(
  * Frees a TileDB config.
  *
  * @param config The config to be freed.
- * @param error Error object returned upon error (`nullptr` if there is
- *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_config_free(
-    tiledb_config_t* config, tiledb_error_t** error);
+TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
 
 /**
  * Sets a config parameter.
@@ -364,12 +361,9 @@ TILEDB_EXPORT int tiledb_config_iter_create(
  * Frees a config iterator.
  *
  * @param config_iter The config iterator to be freed.
- * @param error Error object returned upon error (`nullptr` if there is
- *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_config_iter_free(
-    tiledb_config_iter_t* config_iter, tiledb_error_t** error);
+TILEDB_EXPORT int tiledb_config_iter_free(tiledb_config_iter_t* config_iter);
 
 /**
  * Retrieves the config param and value currently pointed by the iterator.
