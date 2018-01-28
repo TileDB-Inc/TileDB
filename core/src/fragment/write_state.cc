@@ -126,6 +126,16 @@ Status WriteState::finalize() {
     }
   }
 
+  // Number of cells written in a sparse fragment should be equal across
+  // all attributes
+  if (!metadata_->dense() && storage_manager->is_dir(fragment_uri)) {
+    for (unsigned i = 1; i < cells_written_.size(); ++i)
+      if (cells_written_[i] != cells_written_[i - 1])
+        return LOG_STATUS(Status::WriteStateError(
+            std::string("Cannot finalize write state; The number of cells "
+                        "written across the attributes is not the same")));
+  }
+
   // Write last tile (applicable only to the sparse case)
   if (!tiles_[attribute_num]->empty())
     RETURN_NOT_OK(write_last_tile());

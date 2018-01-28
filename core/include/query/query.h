@@ -421,6 +421,14 @@ class Query {
   /** Checks if attributes has been appropriately set for a query. */
   Status check_attributes();
 
+  /**
+   * Checks if the buffer sizes are correct in the case of writing
+   * in a dense array in an ordered layout.
+   *
+   * @return Status
+   */
+  Status check_buffer_sizes_ordered() const;
+
   /** Checks if `subarray` falls inside the array domain. */
   Status check_subarray(const void* subarray) const;
 
