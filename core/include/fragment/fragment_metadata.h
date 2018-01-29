@@ -137,6 +137,77 @@ class FragmentMetadata {
   uint64_t cell_num_in_domain() const;
 
   /**
+   * Computes an upper bound on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param attributes The targeted attributes.
+   * @param attribute_num The attribute number.
+   * @param buffer_num The number of buffer sizes.
+   * @param buffer_sizes The buffer sizes to be computed. Note that there is
+   *     a single buffer size per fixed-sized attribute, and two for every
+   *     variable-sized attribute (the first is for the offsets, whereas the
+   *     second is for the actual variable-sized attribute values).
+   * @return Status
+   */
+  template <class T>
+  Status compute_max_read_buffer_sizes(
+      const T* subarray,
+      const char** attributes,
+      unsigned attribute_num,
+      unsigned buffer_num,
+      uint64_t* buffer_sizes) const;
+
+  /**
+   * Computes an upper bound on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. This focuses on dense
+   * fragments
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param attributes The targeted attributes.
+   * @param attribute_num The attribute number.
+   * @param buffer_num The number of buffer sizes.
+   * @param buffer_sizes The buffer sizes to be computed. Note that there is
+   *     a single buffer size per fixed-sized attribute, and two for every
+   *     variable-sized attribute (the first is for the offsets, whereas the
+   *     second is for the actual variable-sized attribute values).
+   * @return Status
+   */
+  template <class T>
+  Status compute_max_read_buffer_sizes_dense(
+      const T* subarray,
+      const char** attributes,
+      unsigned attribute_num,
+      unsigned buffer_num,
+      uint64_t* buffer_sizes) const;
+
+  /**
+   * Computes an upper bound on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. This focuses on sparse
+   * fragments
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param attributes The targeted attributes.
+   * @param attribute_num The attribute number.
+   * @param buffer_num The number of buffer sizes.
+   * @param buffer_sizes The buffer sizes to be computed. Note that there is
+   *     a single buffer size per fixed-sized attribute, and two for every
+   *     variable-sized attribute (the first is for the offsets, whereas the
+   *     second is for the actual variable-sized attribute values).
+   * @return Status
+   */
+  template <class T>
+  Status compute_max_read_buffer_sizes_sparse(
+      const T* subarray,
+      const char** attributes,
+      unsigned attribute_num,
+      unsigned buffer_num,
+      uint64_t* buffer_sizes) const;
+
+  /**
    * Returns ture if the corresponding fragment is dense, and false if it
    * is sparse.
    */
@@ -284,6 +355,22 @@ class FragmentMetadata {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Returns the ids (positions) of the tiles overlapping `subarray. */
+  template <class T>
+  std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
+
+  /**
+   * Retrieves the tile domain for the input `subarray` based on the expanded
+   * `domain_`.
+   *
+   * @tparam T The domain type.
+   * @param subarray The targeted subarray.
+   * @param subarray_tile_domain The tile domain to be retrieved.
+   */
+  template <class T>
+  void get_subarray_tile_domain(
+      const T* subarray, T* subarray_tile_domain) const;
 
   /**
    * Expands the non-empty domain using the input MBR.

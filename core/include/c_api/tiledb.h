@@ -1305,6 +1305,31 @@ TILEDB_EXPORT int tiledb_array_consolidate(
 TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, const char* array_uri, void** domain);
 
+/**
+ * Computes an upper bound on the buffer sizes required for a read
+ * query, for a given subarray and set of attributes.
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array URI.
+ * @param subarray The subarray to focus on. Note that it must have the same
+ *     underlying type as the array domain.
+ * @param attributes The attributes to focus on.
+ * @param attribute_num The number of attributes.
+ * @param buffer_sizes The buffer sizes to be retrieved. Note that one
+ *     buffer size corresponds to a fixed-sized attributes, and two
+ *     buffer sizes for a variable-sized attribute (the first is the
+ *     size of the offsets, whereas the second is the size of the
+ *     actual variable-sized cell values.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    uint64_t* buffer_sizes);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */

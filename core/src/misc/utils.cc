@@ -132,13 +132,11 @@ bool is_uint(const std::string& str) {
 /* ****************************** */
 
 template <class T>
-inline bool cell_in_subarray(
-    const T* cell, const T* subarray, unsigned int dim_num) {
+inline bool coords_in_rect(
+    const T* coords, const T* rect, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
-    if (cell[i] >= subarray[2 * i] && cell[i] <= subarray[2 * i + 1])
-      continue;  // Inside this dimension domain
-
-    return false;  // NOT inside this dimension domain
+    if (coords[i] < rect[2 * i] || coords[i] > rect[2 * i + 1])
+      return false;
   }
 
   return true;
@@ -374,10 +372,9 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
 }
 
 template <class T>
-bool is_contained(const T* range_A, const T* range_B, unsigned int dim_num) {
+bool rect_in_rect(const T* a, const T* b, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i)
-    if (range_A[2 * i] < range_B[2 * i] ||
-        range_A[2 * i + 1] > range_B[2 * i + 1])
+    if (a[2 * i] < b[2 * i] || a[2 * i + 1] > b[2 * i + 1])
       return false;
 
   return true;
@@ -407,6 +404,16 @@ template <class T>
 bool is_unary_subarray(const T* subarray, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     if (subarray[2 * i] != subarray[2 * i + 1])
+      return false;
+  }
+
+  return true;
+}
+
+template <class T>
+bool overlap(const T* a, const T* b, unsigned dim_num) {
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
       return false;
   }
 
@@ -531,25 +538,25 @@ template uint64_t cell_num_in_subarray<uint32_t>(
 template uint64_t cell_num_in_subarray<uint64_t>(
     const uint64_t* subarray, unsigned int dim_num);
 
-template bool cell_in_subarray<int>(
+template bool coords_in_rect<int>(
     const int* cell, const int* subarray, unsigned int dim_num);
-template bool cell_in_subarray<int64_t>(
+template bool coords_in_rect<int64_t>(
     const int64_t* cell, const int64_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<float>(
+template bool coords_in_rect<float>(
     const float* cell, const float* subarray, unsigned int dim_num);
-template bool cell_in_subarray<double>(
+template bool coords_in_rect<double>(
     const double* cell, const double* subarray, unsigned int dim_num);
-template bool cell_in_subarray<int8_t>(
+template bool coords_in_rect<int8_t>(
     const int8_t* cell, const int8_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<uint8_t>(
+template bool coords_in_rect<uint8_t>(
     const uint8_t* cell, const uint8_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<int16_t>(
+template bool coords_in_rect<int16_t>(
     const int16_t* cell, const int16_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<uint16_t>(
+template bool coords_in_rect<uint16_t>(
     const uint16_t* cell, const uint16_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<uint32_t>(
+template bool coords_in_rect<uint32_t>(
     const uint32_t* cell, const uint32_t* subarray, unsigned int dim_num);
-template bool cell_in_subarray<uint64_t>(
+template bool coords_in_rect<uint64_t>(
     const uint64_t* cell, const uint64_t* subarray, unsigned int dim_num);
 
 template int cmp_col_order<int>(
@@ -763,25 +770,25 @@ template bool inside_subarray<uint64_t>(
 template bool intersect<std::string>(
     const std::vector<std::string>& v1, const std::vector<std::string>& v2);
 
-template bool is_contained<int>(
+template bool rect_in_rect<int>(
     const int* range_A, const int* range_B, unsigned int dim_num);
-template bool is_contained<int64_t>(
+template bool rect_in_rect<int64_t>(
     const int64_t* range_A, const int64_t* range_B, unsigned int dim_num);
-template bool is_contained<float>(
+template bool rect_in_rect<float>(
     const float* range_A, const float* range_B, unsigned int dim_num);
-template bool is_contained<double>(
+template bool rect_in_rect<double>(
     const double* range_A, const double* range_B, unsigned int dim_num);
-template bool is_contained<int8_t>(
+template bool rect_in_rect<int8_t>(
     const int8_t* range_A, const int8_t* range_B, unsigned int dim_num);
-template bool is_contained<uint8_t>(
+template bool rect_in_rect<uint8_t>(
     const uint8_t* range_A, const uint8_t* range_B, unsigned int dim_num);
-template bool is_contained<int16_t>(
+template bool rect_in_rect<int16_t>(
     const int16_t* range_A, const int16_t* range_B, unsigned int dim_num);
-template bool is_contained<uint16_t>(
+template bool rect_in_rect<uint16_t>(
     const uint16_t* range_A, const uint16_t* range_B, unsigned int dim_num);
-template bool is_contained<uint32_t>(
+template bool rect_in_rect<uint32_t>(
     const uint32_t* range_A, const uint32_t* range_B, unsigned int dim_num);
-template bool is_contained<uint64_t>(
+template bool rect_in_rect<uint64_t>(
     const uint64_t* range_A, const uint64_t* range_B, unsigned int dim_num);
 
 template bool is_unary_subarray<int>(const int* subarray, unsigned int dim_num);
@@ -803,6 +810,25 @@ template bool is_unary_subarray<uint32_t>(
     const uint32_t* subarray, unsigned int dim_num);
 template bool is_unary_subarray<uint64_t>(
     const uint64_t* subarray, unsigned int dim_num);
+
+template bool overlap<int8_t>(
+    const int8_t* a, const int8_t* b, unsigned dim_num);
+template bool overlap<uint8_t>(
+    const uint8_t* a, const uint8_t* b, unsigned dim_num);
+template bool overlap<int16_t>(
+    const int16_t* a, const int16_t* b, unsigned dim_num);
+template bool overlap<uint16_t>(
+    const uint16_t* a, const uint16_t* b, unsigned dim_num);
+template bool overlap<int>(const int* a, const int* b, unsigned dim_num);
+template bool overlap<unsigned>(
+    const unsigned* a, const unsigned* b, unsigned dim_num);
+template bool overlap<int64_t>(
+    const int64_t* a, const int64_t* b, unsigned dim_num);
+template bool overlap<uint64_t>(
+    const uint64_t* a, const uint64_t* b, unsigned dim_num);
+template bool overlap<float>(const float* a, const float* b, unsigned dim_num);
+template bool overlap<double>(
+    const double* a, const double* b, unsigned dim_num);
 
 }  // namespace utils
 

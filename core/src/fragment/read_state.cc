@@ -574,7 +574,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
     for (uint64_t i = start_pos; i <= end_pos; ++i) {
       RETURN_NOT_OK(get_coords_from_search_tile(i, &cell));
 
-      if (utils::cell_in_subarray<T>(
+      if (utils::coords_in_rect<T>(
               static_cast<const T*>(cell), subarray, dim_num)) {
         if (i > 0 && i - 1 == current_end_pos) {  // The range is expanded
           ++current_end_pos;
@@ -695,7 +695,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
           search_tile_overlap_subarray, tile_subarray, temp);
 
       // Check if fragment fully covers the tile
-      subarray_area_covered_ = utils::is_contained<T>(
+      subarray_area_covered_ = utils::rect_in_rect<T>(
           query_tile_overlap_subarray, tile_domain_overlap_subarray, dim_num);
 
       // Clean up

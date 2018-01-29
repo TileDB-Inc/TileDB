@@ -406,8 +406,12 @@ void Domain::get_subarray_tile_domain(
   // Get tile domain
   T tile_num;  // Per dimension
   for (unsigned int i = 0; i < dim_num_; ++i) {
-    tile_num =
-        ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
+    if (&typeid(T) != &typeid(float) && &typeid(T) != &typeid(double))
+      tile_num =
+          ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
+    else
+      tile_num =
+          ceil(double(domain[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
     tile_domain[2 * i] = 0;
     tile_domain[2 * i + 1] = tile_num - 1;
   }
@@ -1254,8 +1258,13 @@ uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
   tile_offsets.push_back(1);
   for (unsigned int i = 1; i < dim_num_; ++i) {
     // Per dimension
-    uint64_t tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
-                        tile_extents[i - 1];
+    uint64_t tile_num;
+    if (&typeid(T) != &typeid(float) && &typeid(T) != &typeid(double))
+      tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
+                 tile_extents[i - 1];
+    else
+      tile_num =
+          (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)]) / tile_extents[i - 1];
     tile_offsets.push_back(tile_offsets.back() * tile_num);
   }
 
@@ -1290,8 +1299,13 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   if (dim_num_ > 1) {
     for (unsigned int i = dim_num_ - 2;; --i) {
       // Per dimension
-      uint64_t tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
-                          tile_extents[i + 1];
+      uint64_t tile_num;
+      if (&typeid(T) != &typeid(float) && &typeid(T) != &typeid(double))
+        tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
+                   tile_extents[i + 1];
+      else
+        tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)]) /
+                   tile_extents[i + 1];
       tile_offsets.push_back(tile_offsets.back() * tile_num);
       if (i == 0)
         break;

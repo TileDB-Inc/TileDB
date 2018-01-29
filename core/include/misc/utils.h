@@ -73,18 +73,18 @@ bool is_uint(const std::string& str);
 /* ********************************* */
 
 /**
- * Checks if the input cell is inside the input subarray.
+ * Checks if `coords` are inside `rect`.
  *
  * @tparam T The type of the cell and subarray.
- * @param cell The cell to be checked.
- * @param subarray The subarray to be checked, expresses as [low, high] pairs
+ * @param coords The coordinates to be checked.
+ * @param rect The hyper-rectangle to be checked, expresses as [low, high] pairs
  *     along each dimension.
- * @param dim_num The number of dimensions for the cell and subarray.
- * @return *true* if the input cell is inside the input range and
- *     *false* otherwise.
+ * @param dim_num The number of dimensions for the coordinates and
+ *     hyper-rectangle.
+ * @return `true` if `coords` are inside `rect` and `false` otherwise.
  */
 template <class T>
-bool cell_in_subarray(const T* cell, const T* subarray, unsigned int dim_num);
+bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
 
 /**
  * Returns the number of cells in the input subarray (considering that the
@@ -234,16 +234,16 @@ template <class T>
 bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
 
 /**
- * Checks if one range is fully contained in another.
+ * Checks if hyper-rectangle `a` is fully contained in hyper-rectangle `b`.
  *
  * @tparam The domain type
- * @param range_A The first range.
- * @param range_B The second range.
+ * @param a The first hyper-rectangle.
+ * @param b The second hyper-rectangle.
  * @param dim_num The number of dimensions.
- * @return True if range_A is fully contained in range_B.
+ * @return True if `a` is fully contained in `b`.
  */
 template <class T>
-bool is_contained(const T* range_A, const T* range_B, unsigned int dim_num);
+bool rect_in_rect(const T* a, const T* b, unsigned int dim_num);
 
 /** Returns *true* if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);
@@ -251,6 +251,10 @@ bool is_positive_integer(const char* s);
 /** Returns *true* if the subarray contains a single element. */
 template <class T>
 bool is_unary_subarray(const T* subarray, unsigned int dim_num);
+
+/** Returns *true* if hyper-rectangles `a` overlaps with `b`. */
+template <class T>
+bool overlap(const T* a, const T* b, unsigned dim_num);
 
 /**
  * Checks if a string starts with a certain prefix.
