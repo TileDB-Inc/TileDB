@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1719,6 +1719,22 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
     return TILEDB_ERR;
 
   if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_uri)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_array_get_non_empty_domain(
+    tiledb_ctx_t* ctx, const char* array_uri, void** domain) {
+  *domain = nullptr;
+
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_get_non_empty_domain(array_uri, domain)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

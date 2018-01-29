@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,12 +77,24 @@ class FragmentMetadata {
   void append_bounding_coords(const void* bounding_coords);
 
   /**
-   * Appends the input MBR to the fragment metadata.
+   * Appends the input MBR to the fragment metadata. It also expands the
+   * non-empty domain of the fragment.
    *
    * @param mbr The MBR to be appended.
-   * @return void
+   * @return Status
    */
-  void append_mbr(const void* mbr);
+  Status append_mbr(const void* mbr);
+
+  /**
+   * Appends the input MBR to the fragment metadata. It also expands the
+   * non-empty domain of the fragment.
+   *
+   * @tparam T The coordinates type.
+   * @param mbr The MBR to be appended.
+   * @return Status
+   */
+  template <class T>
+  Status append_mbr(const void* mbr);
 
   /**
    * Appends a tile offset for the input attribute.
@@ -272,6 +284,16 @@ class FragmentMetadata {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Expands the non-empty domain using the input MBR.
+   *
+   * @tparam T The coordinates type.
+   * @param mbr The MBR to expand the non-empty domain with.
+   * @return Status
+   */
+  template <class T>
+  Status expand_non_empty_domain(const T* mbr);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.

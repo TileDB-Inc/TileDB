@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -95,7 +95,7 @@ class WriteState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The bookkeeping structure of the fragment the write state belongs to. */
+  /** The metadata structure of the fragment the write state belongs to. */
   FragmentMetadata* metadata_;
 
   /** The first and last coordinates of the tile currently being populated. */
@@ -193,26 +193,26 @@ class WriteState {
       std::vector<uint64_t>* cell_pos) const;
 
   /**
-   * Updates the bookkeeping structures as tiles are written. Specifically, it
+   * Updates the metadata structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
    * @param buffer The buffer storing the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
-   * @return void
+   * @return Status
    */
-  void update_bookkeeping(const void* buffer, uint64_t buffer_size);
+  Status update_metadata(const void* buffer, uint64_t buffer_size);
 
   /**
-   * Updates the bookkeeping structures as tiles are written. Specifically, it
+   * Updates the metadata structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
    * @tparam T The coordinates type.
    * @param buffer The buffer storing the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
-   * @return void
+   * @return Status
    */
   template <class T>
-  void update_bookkeeping(const void* buffer, uint64_t buffer_size);
+  Status update_metadata(const void* buffer, uint64_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
