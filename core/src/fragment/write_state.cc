@@ -398,39 +398,44 @@ void WriteState::sort_cell_pos(
   }
 }
 
-void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
+Status WriteState::update_metadata(const void* buffer, uint64_t buffer_size) {
   // For easy reference
   auto array_schema = fragment_->query()->array_schema();
   Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == Datatype::INT32)
-    update_bookkeeping<int>(buffer, buffer_size);
-  else if (coords_type == Datatype::INT64)
-    update_bookkeeping<int64_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::FLOAT32)
-    update_bookkeeping<float>(buffer, buffer_size);
-  else if (coords_type == Datatype::FLOAT64)
-    update_bookkeeping<double>(buffer, buffer_size);
-  else if (coords_type == Datatype::INT8)
-    update_bookkeeping<int8_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::UINT8)
-    update_bookkeeping<uint8_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::INT16)
-    update_bookkeeping<int16_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::UINT16)
-    update_bookkeeping<uint16_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::UINT32)
-    update_bookkeeping<uint32_t>(buffer, buffer_size);
-  else if (coords_type == Datatype::UINT64)
-    update_bookkeeping<uint64_t>(buffer, buffer_size);
+  switch (coords_type) {
+    case Datatype::INT32:
+      return update_metadata<int>(buffer, buffer_size);
+    case Datatype::INT64:
+      return update_metadata<int64_t>(buffer, buffer_size);
+    case Datatype::FLOAT32:
+      return update_metadata<float>(buffer, buffer_size);
+    case Datatype::FLOAT64:
+      return update_metadata<double>(buffer, buffer_size);
+    case Datatype::INT8:
+      return update_metadata<int8_t>(buffer, buffer_size);
+    case Datatype::UINT8:
+      return update_metadata<uint8_t>(buffer, buffer_size);
+    case Datatype::INT16:
+      return update_metadata<int16_t>(buffer, buffer_size);
+    case Datatype::UINT16:
+      return update_metadata<uint16_t>(buffer, buffer_size);
+    case Datatype::UINT32:
+      return update_metadata<uint32_t>(buffer, buffer_size);
+    case Datatype::UINT64:
+      return update_metadata<uint64_t>(buffer, buffer_size);
+    default:
+      return LOG_STATUS(Status::WriteStateError(
+          "Cannot update metadata; Invalid coordinates type"));
+  }
 }
 
 template <class T>
-void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
+Status WriteState::update_metadata(const void* buffer, uint64_t buffer_size) {
   // Trivial case
   if (buffer_size == 0)
-    return;
+    return Status::Ok();
 
   // For easy reference
   auto array_schema = fragment_->query()->array_schema();
@@ -465,11 +470,13 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
 
     // Send MBR and bounding coordinates to metadata
     if (tile_cell_num == capacity) {
-      metadata_->append_mbr(mbr_);
+      RETURN_NOT_OK(metadata_->append_mbr<T>(mbr_));
       metadata_->append_bounding_coords(bounding_coords_);
       tile_cell_num = 0;
     }
   }
+
+  return Status::Ok();
 }
 
 Status WriteState::write_attr(
@@ -484,7 +491,7 @@ Status WriteState::write_attr(
 
   // Update metadata in the case of sparse fragment coordinates
   if (attribute_id == attribute_num)
-    update_bookkeeping(buffer, buffer_size);
+    RETURN_NOT_OK(update_metadata(buffer, buffer_size));
 
   // Preparation
   auto buf = new ConstBuffer(buffer, buffer_size);

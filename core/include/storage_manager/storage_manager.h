@@ -120,6 +120,20 @@ class StorageManager {
   Status array_create(const URI& array_uri, ArraySchema* array_schema);
 
   /**
+   * Retrieves the non-empty domain from an array. This is the union of the
+   * non-empty domains of the array fragments.
+   *
+   * @param array_uri The array URI.
+   * @param domain The domain to be retrieved. The function allocates space
+   *     for `domain` and the user is responsible for deallocating it. Note that
+   *     the type is the same as the array domain type. The domain is given in
+   *     [low,high] pairs per dimension. If the array has no fragments,
+   *     `domain` is set to `nullptr`.
+   * @return Status
+   */
+  Status array_get_non_empty_domain(const char* array_uri, void** domain);
+
+  /**
    * Locks a TileDB object (array or group).
    *
    * @param uri The object to be locked
@@ -529,6 +543,25 @@ class StorageManager {
 
   /** Closes an array. */
   Status array_close(URI array);
+
+  /**
+   * Retrieves the non-empty domain from the input fragment metadata. This is
+   * the union of the non-empty domains of the fragments.
+   *
+   * @param metadata The metadata of all fragments in the array.
+   * @param dim_num The number of dimensions in the domain.
+   * @param domain The domain to be retrieved. The function allocates space
+   *     for `domain` and the user is responsible for deallocating it. Note that
+   *     the type is the same as the array domain type. The domain is given in
+   *     [low,high] pairs per dimension. If the array has no fragments,
+   *     `domain` is set to `nullptr`.
+   * @return void
+   */
+  template <class T>
+  void array_get_non_empty_domain(
+      const std::vector<FragmentMetadata*>& metadata,
+      unsigned dim_num,
+      T* domain);
 
   /**
    * Opens an array, retrieving its schema and fragment metadata.

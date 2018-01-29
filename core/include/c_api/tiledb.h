@@ -1289,6 +1289,22 @@ TILEDB_EXPORT int tiledb_array_create(
 TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri);
 
+/**
+ * Retrieves the non-empty domain from an array. This is the union of the
+ * non-empty domains of the array fragments.
+ *
+ * @param ctx The TileDB context
+ * @param array_uri The array URI.
+ * @param domain The domain to be retrieved. The function allocates space
+ *     for `domain` and the user is responsible for deallocating it. Note that
+ *     the type is the same as the array domain type. The domain is given in
+ *     [low,high] pairs per dimension. If the array has no fragments,
+ *     `domain` is set to `nullptr`.
+ * @return TILEDB_OK for success and TILEDB_ERR or TILEDB_OOM for error.
+ */
+TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
+    tiledb_ctx_t* ctx, const char* array_uri, void** domain);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */

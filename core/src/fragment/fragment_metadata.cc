@@ -34,6 +34,7 @@
 #include "fragment_metadata.h"
 #include "const_buffer.h"
 #include "logger.h"
+#include "utils.h"
 
 #include <cassert>
 #include <iostream>
@@ -87,7 +88,36 @@ void FragmentMetadata::append_bounding_coords(const void* bounding_coords) {
   bounding_coords_.push_back(new_bounding_coords);
 }
 
-void FragmentMetadata::append_mbr(const void* mbr) {
+Status FragmentMetadata::append_mbr(const void* mbr) {
+  switch (array_schema_->coords_type()) {
+    case Datatype::INT8:
+      return append_mbr<int8_t>(static_cast<const int8_t*>(mbr));
+    case Datatype::UINT8:
+      return append_mbr<uint8_t>(static_cast<const uint8_t*>(mbr));
+    case Datatype::INT16:
+      return append_mbr<int16_t>(static_cast<const int16_t*>(mbr));
+    case Datatype::UINT16:
+      return append_mbr<uint16_t>(static_cast<const uint16_t*>(mbr));
+    case Datatype::INT32:
+      return append_mbr<int>(static_cast<const int*>(mbr));
+    case Datatype::UINT32:
+      return append_mbr<unsigned>(static_cast<const unsigned*>(mbr));
+    case Datatype::INT64:
+      return append_mbr<int64_t>(static_cast<const int64_t*>(mbr));
+    case Datatype::UINT64:
+      return append_mbr<uint64_t>(static_cast<const uint64_t*>(mbr));
+    case Datatype::FLOAT32:
+      return append_mbr<float>(static_cast<const float*>(mbr));
+    case Datatype::FLOAT64:
+      return append_mbr<double>(static_cast<const double*>(mbr));
+    default:
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot append mbr; Unsupported coordinates type"));
+  }
+}
+
+template <class T>
+Status FragmentMetadata::append_mbr(const void* mbr) {
   // For easy reference
   uint64_t mbr_size = 2 * array_schema_->coords_size();
 
@@ -95,6 +125,8 @@ void FragmentMetadata::append_mbr(const void* mbr) {
   void* new_mbr = std::malloc(mbr_size);
   std::memcpy(new_mbr, mbr, mbr_size);
   mbrs_.push_back(new_mbr);
+
+  return expand_non_empty_domain(static_cast<const T*>(mbr));
 }
 
 void FragmentMetadata::append_tile_offset(
@@ -179,24 +211,26 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
   auto domain = array_schema_->domain();
 
   // Sanity check
-  assert(non_empty_domain_ == NULL);
-  assert(domain_ == NULL);
+  assert(non_empty_domain != nullptr);
+  assert(non_empty_domain_ == nullptr);
+  assert(domain_ == nullptr);
 
-  // Set non-empty domain
+  // Set non-empty domain for dense arrays (for sparse it will be calculated
+  // via the MBRs)
   uint64_t domain_size = 2 * array_schema_->coords_size();
-  non_empty_domain_ = std::malloc(domain_size);
-  if (non_empty_domain == nullptr)
-    std::memcpy(non_empty_domain_, domain->domain(), domain_size);
-  else
+  if (dense_) {
+    // Set non-empty domain
+    non_empty_domain_ = std::malloc(domain_size);
     std::memcpy(non_empty_domain_, non_empty_domain, domain_size);
 
-  // Set expanded domain
-  domain_ = std::malloc(domain_size);
-  std::memcpy(domain_, non_empty_domain_, domain_size);
-  domain->expand_domain(domain_);
+    // Set expanded domain
+    domain_ = std::malloc(domain_size);
+    std::memcpy(domain_, non_empty_domain_, domain_size);
+    domain->expand_domain(domain_);
 
-  // Compute cell num in expanded domain
-  cell_num_in_domain_ = domain->cell_num(domain_);
+    // Compute cell num in expanded domain
+    cell_num_in_domain_ = domain->cell_num(domain_);
+  }
 
   // Set last tile cell number
   last_tile_cell_num_ = 0;
@@ -275,6 +309,33 @@ const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_var_sizes()
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
+
+template <class T>
+Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
+  if (non_empty_domain_ == nullptr) {
+    auto domain_size = 2 * array_schema_->coords_size();
+    non_empty_domain_ = std::malloc(domain_size);
+    if (non_empty_domain_ == nullptr)
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot expand non-empty domain; Memory allocation failed"));
+
+    std::memcpy(non_empty_domain_, mbr, domain_size);
+    return Status::Ok();
+  }
+
+  auto dim_num = array_schema_->dim_num();
+  auto coords = new T[dim_num];
+  for (unsigned i = 0; i < dim_num; ++i)
+    coords[i] = mbr[2 * i];
+  auto non_empty_domain = static_cast<T*>(non_empty_domain_);
+  utils::expand_mbr(non_empty_domain, coords, dim_num);
+  for (unsigned i = 0; i < dim_num; ++i)
+    coords[i] = mbr[2 * i + 1];
+  utils::expand_mbr(non_empty_domain, coords, dim_num);
+  delete[] coords;
+
+  return Status::Ok();
+}
 
 // ===== FORMAT =====
 //  bounding_coords_num (uint64_t)
