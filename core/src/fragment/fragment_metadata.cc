@@ -859,4 +859,16 @@ Status FragmentMetadata::write_version(Buffer* buff) {
   return Status::Ok();
 }
 
+// Explicit template instantiations
+template Status FragmentMetadata::append_mbr<int8_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<uint8_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<int16_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<uint16_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<int32_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<uint32_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<int64_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<uint64_t>(const void* mbr);
+template Status FragmentMetadata::append_mbr<float>(const void* mbr);
+template Status FragmentMetadata::append_mbr<double>(const void* mbr);
+
 }  // namespace tiledb
