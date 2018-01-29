@@ -1728,13 +1728,31 @@ int tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, const char* array_uri, void** domain) {
   *domain = nullptr;
 
-  // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (save_error(
           ctx,
           ctx->storage_manager_->array_get_non_empty_domain(array_uri, domain)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_array_compute_max_read_buffer_sizes(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    uint64_t* buffer_sizes) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_compute_max_read_buffer_sizes(
+              array_uri, subarray, attributes, attribute_num, buffer_sizes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

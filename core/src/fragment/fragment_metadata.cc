@@ -39,6 +39,13 @@
 #include <cassert>
 #include <iostream>
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 namespace tiledb {
 
 /* ****************************** */
@@ -166,6 +173,107 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 
 uint64_t FragmentMetadata::cell_num_in_domain() const {
   return cell_num_in_domain_;
+}
+
+template <class T>
+Status FragmentMetadata::compute_max_read_buffer_sizes(
+    const T* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const {
+  if (dense_)
+    return compute_max_read_buffer_sizes_dense(
+        subarray, attributes, attribute_num, buffer_num, buffer_sizes);
+  return compute_max_read_buffer_sizes_sparse(
+      subarray, attributes, attribute_num, buffer_num, buffer_sizes);
+}
+
+template <class T>
+Status FragmentMetadata::compute_max_read_buffer_sizes_dense(
+    const T* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const {
+  // Zero out all buffer sizes
+  for (unsigned i = 0; i < buffer_num; ++i)
+    buffer_sizes[i] = 0;
+
+  // Calculate the ids of all tiles overlapping with subarray
+  auto tids = compute_overlapping_tile_ids(subarray);
+
+  // Calculate attribute ids and var sizes
+  std::vector<unsigned> attribute_ids;
+  std::vector<bool> var_sizes;
+  unsigned aid;
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    RETURN_NOT_OK(array_schema_->attribute_id(attributes[i], &aid));
+    attribute_ids.emplace_back(aid);
+    var_sizes.push_back(array_schema_->var_size(aid));
+  }
+
+  // Compute buffer sizes
+  unsigned bid;
+  for (auto& tid : tids) {
+    bid = 0;
+    for (unsigned i = 0; i < attribute_num; ++i) {
+      if (var_sizes[i]) {
+        auto cell_num = this->cell_num(tid);
+        buffer_sizes[bid++] += cell_num * constants::cell_var_offset_size;
+        buffer_sizes[bid++] += tile_var_sizes_[attribute_ids[i]][tid];
+      } else {
+        buffer_sizes[bid++] +=
+            cell_num(tid) * array_schema_->cell_size(attribute_ids[i]);
+      }
+    }
+    assert(bid == buffer_num);
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status FragmentMetadata::compute_max_read_buffer_sizes_sparse(
+    const T* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const {
+  for (unsigned i = 0; i < buffer_num; ++i)
+    buffer_sizes[i] = 0;
+
+  // Calculate attribute ids and var sizes
+  std::vector<unsigned> attribute_ids;
+  std::vector<bool> var_sizes;
+  unsigned aid;
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    RETURN_NOT_OK(array_schema_->attribute_id(attributes[i], &aid));
+    attribute_ids.emplace_back(aid);
+    var_sizes.push_back(array_schema_->var_size(aid));
+  }
+
+  unsigned bid, tid = 0;
+  auto dim_num = array_schema_->dim_num();
+  for (auto& mbr : mbrs_) {
+    bid = 0;
+    if (utils::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
+      for (unsigned i = 0; i < attribute_num; ++i) {
+        if (var_sizes[i]) {
+          auto cell_num = this->cell_num(tid);
+          buffer_sizes[bid++] += cell_num * constants::cell_var_offset_size;
+          buffer_sizes[bid++] += tile_var_sizes_[attribute_ids[i]][tid];
+        } else {
+          buffer_sizes[bid++] +=
+              cell_num(tid) * array_schema_->cell_size(attribute_ids[i]);
+        }
+      }
+      assert(bid == buffer_num);
+    }
+    tid++;
+  }
+
+  return Status::Ok();
 }
 
 bool FragmentMetadata::dense() const {
@@ -309,6 +417,79 @@ const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_var_sizes()
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
+
+template <class T>
+std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
+    const T* subarray) const {
+  assert(dense_);
+  std::vector<uint64_t> tids;
+  auto dim_num = array_schema_->dim_num();
+  auto metadata_domain = static_cast<const T*>(domain_);
+
+  // Check if there is any overlap
+  if (!utils::overlap(subarray, metadata_domain, dim_num))
+    return tids;
+
+  // Initialize subarray tile domain
+  auto subarray_tile_domain = new T[2 * dim_num];
+  get_subarray_tile_domain(subarray, subarray_tile_domain);
+
+  // Initialize tile coordinates
+  auto tile_coords = new T[dim_num];
+  for (unsigned int i = 0; i < dim_num; ++i)
+    tile_coords[i] = subarray_tile_domain[2 * i];
+
+  // Walk through all tiles in subarray tile domain
+  auto domain = array_schema_->domain();
+  uint64_t tile_pos;
+  do {
+    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tids.emplace_back(tile_pos);
+    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+  } while (utils::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
+
+  // Clean up
+  delete[] subarray_tile_domain;
+  delete[] tile_coords;
+
+  return tids;
+}
+
+template <class T>
+void FragmentMetadata::get_subarray_tile_domain(
+    const T* subarray, T* subarray_tile_domain) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+  auto domain = static_cast<const T*>(domain_);
+  auto tile_extents =
+      static_cast<const T*>(array_schema_->domain()->tile_extents());
+
+  // Get tile domain
+  auto tile_domain = new T[2 * dim_num];
+  T tile_num;  // Per dimension
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    if (&typeid(T) != &typeid(float) && &typeid(T) != &typeid(double))
+      tile_num =
+          ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
+    else
+      tile_num =
+          ceil(double(domain[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    tile_domain[2 * i] = 0;
+    tile_domain[2 * i + 1] = tile_num - 1;
+  }
+
+  // Calculate subarray in tile domain
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    auto overlap = MAX(subarray[2 * i], domain[2 * i]);
+    subarray_tile_domain[2 * i] = (overlap - domain[2 * i]) / tile_extents[i];
+
+    overlap = MIN(subarray[2 * i + 1], domain[2 * i + 1]);
+    subarray_tile_domain[2 * i + 1] =
+        (overlap - domain[2 * i]) / tile_extents[i];
+  }
+
+  delete[] tile_domain;
+}
 
 template <class T>
 Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
@@ -820,7 +1001,7 @@ Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
 // tile_var_sizes_attr#0_#1 (uint64_t) tile_sizes_attr#0_#2 (uint64_t) ...
 // ...
 // tile_var_sizes_attr#<attribute_num-1>_num(uint64_t)
-// tile_var_sizes__attr#<attribute_num-1>_#1(uint64_t)
+// tile_var_sizes_attr#<attribute_num-1>_#1(uint64_t)
 //     tile_var_sizes_attr#<attribute_num-1>_#2 (uint64_t) ...
 Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
   Status st;
@@ -870,5 +1051,66 @@ template Status FragmentMetadata::append_mbr<int64_t>(const void* mbr);
 template Status FragmentMetadata::append_mbr<uint64_t>(const void* mbr);
 template Status FragmentMetadata::append_mbr<float>(const void* mbr);
 template Status FragmentMetadata::append_mbr<double>(const void* mbr);
+
+template Status FragmentMetadata::compute_max_read_buffer_sizes<int8_t>(
+    const int8_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<uint8_t>(
+    const uint8_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<int16_t>(
+    const int16_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<uint16_t>(
+    const uint16_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<int>(
+    const int* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<unsigned>(
+    const unsigned* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<int64_t>(
+    const int64_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<uint64_t>(
+    const uint64_t* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<float>(
+    const float* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
+template Status FragmentMetadata::compute_max_read_buffer_sizes<double>(
+    const double* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) const;
 
 }  // namespace tiledb

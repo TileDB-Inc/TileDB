@@ -35,6 +35,7 @@
 #include "logger.h"
 #include "pq_fragment_cell_range.h"
 #include "smaller_pq_fragment_cell_range.h"
+#include "utils.h"
 
 #include <cassert>
 
@@ -1256,14 +1257,7 @@ void ArrayReadState::init_subarray_tile_coords() {
 
   // Check if there is any overlap between the subarray tile domain and the
   // array_schema tile domain
-  bool overlap = true;
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    if (subarray_tile_domain[2 * i] > tile_domain[2 * i + 1] ||
-        subarray_tile_domain[2 * i + 1] < tile_domain[2 * i]) {
-      overlap = false;
-      break;
-    }
-  }
+  bool overlap = utils::overlap(subarray_tile_domain, tile_domain, dim_num);
 
   // Calculate subarray tile coordinates
   if (!overlap) {  // No overlap

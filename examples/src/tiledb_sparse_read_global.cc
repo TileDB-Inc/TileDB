@@ -40,6 +40,8 @@
 #include <tiledb.h>
 #include <cstdlib>
 
+#include <iostream>
+
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;

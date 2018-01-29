@@ -72,6 +72,131 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
+Status StorageManager::array_compute_max_read_buffer_sizes(
+    const char* array_uri,
+    const void* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    uint64_t* buffer_sizes) {
+  // Open the array
+  auto uri = URI(array_uri);
+  std::vector<FragmentMetadata*> metadata;
+  auto array_schema = (const ArraySchema*)nullptr;
+  RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
+
+  // Zero out all buffer sizes
+  unsigned buffer_num;
+  RETURN_NOT_OK_ELSE(
+      array_schema->buffer_num(attributes, attribute_num, &buffer_num),
+      array_close(uri));
+  for (unsigned i = 0; i < buffer_num; ++i)
+    buffer_sizes[i] = 0;
+
+  // Return if there are no metadata
+  if (metadata.empty())
+    return Status::Ok();
+
+  // Compute buffer sizes
+  switch (array_schema->coords_type()) {
+    case Datatype::INT32:
+      array_compute_max_read_buffer_sizes<int>(
+          metadata,
+          static_cast<const int*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::INT64:
+      array_compute_max_read_buffer_sizes<int64_t>(
+          metadata,
+          static_cast<const int64_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::FLOAT32:
+      array_compute_max_read_buffer_sizes<float>(
+          metadata,
+          static_cast<const float*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::FLOAT64:
+      array_compute_max_read_buffer_sizes<double>(
+          metadata,
+          static_cast<const double*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::INT8:
+      array_compute_max_read_buffer_sizes<int8_t>(
+          metadata,
+          static_cast<const int8_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::UINT8:
+      array_compute_max_read_buffer_sizes<uint8_t>(
+          metadata,
+          static_cast<const uint8_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::INT16:
+      array_compute_max_read_buffer_sizes<int16_t>(
+          metadata,
+          static_cast<const int16_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::UINT16:
+      array_compute_max_read_buffer_sizes<uint16_t>(
+          metadata,
+          static_cast<const uint16_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::UINT32:
+      array_compute_max_read_buffer_sizes<unsigned>(
+          metadata,
+          static_cast<const unsigned*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    case Datatype::UINT64:
+      array_compute_max_read_buffer_sizes<uint64_t>(
+          metadata,
+          static_cast<const uint64_t*>(subarray),
+          attributes,
+          attribute_num,
+          buffer_num,
+          buffer_sizes);
+      break;
+    default:
+      return LOG_STATUS(Status::StorageManagerError(
+          "Cannot compute max read buffer sizes; Invalid coordinates type"));
+  }
+
+  // Close array
+  return array_close(uri);
+}
+
 Status StorageManager::array_consolidate(const char* array_name) {
   // Check array URI
   URI array_uri(array_name);
@@ -934,6 +1059,28 @@ Status StorageManager::array_close(URI array_uri) {
 
   // Unlock the array
   RETURN_NOT_OK(object_unlock(array_uri, SLOCK));
+
+  return Status::Ok();
+}
+
+template <class T>
+Status StorageManager::array_compute_max_read_buffer_sizes(
+    const std::vector<FragmentMetadata*>& metadata,
+    const T* subarray,
+    const char** attributes,
+    unsigned attribute_num,
+    unsigned buffer_num,
+    uint64_t* buffer_sizes) {
+  auto meta_buffer_sizes = new uint64_t[buffer_num];
+  for (auto& meta : metadata) {
+    RETURN_NOT_OK_ELSE(
+        meta->compute_max_read_buffer_sizes(
+            subarray, attributes, attribute_num, buffer_num, meta_buffer_sizes),
+        delete[] meta_buffer_sizes);
+    for (unsigned i = 0; i < buffer_num; ++i)
+      buffer_sizes[i] += meta_buffer_sizes[i];
+  }
+  delete[] meta_buffer_sizes;
 
   return Status::Ok();
 }
