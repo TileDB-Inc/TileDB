@@ -636,29 +636,29 @@ Status Query::check_buffer_sizes_ordered() const {
   if (type_ == QueryType::READ ||
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
-
   assert(array_schema_->dense());
-
   auto cell_num = array_schema_->domain()->cell_num(subarray_);
   unsigned bid = 0;
+  uint64_t expected_cell_num = 0;
   for (auto& aid : attribute_ids_) {
-    if (array_schema_->var_size(aid)) {
-      if ((buffer_sizes_[bid] / constants::cell_var_offset_size) != cell_num)
-        return LOG_STATUS(Status::QueryError(
-            std::string("Buffer sizes check failed; Invalid number of cells "
-                        "give for attribute '") +
-            array_schema_->attribute_name(aid) + "'"));
-      bid += 2;
+    bool is_var_attr = array_schema_->var_size(aid);
+    if (is_var_attr) {
+      expected_cell_num = buffer_sizes_[bid] / constants::cell_var_offset_size;
     } else {
-      if ((buffer_sizes_[bid] / array_schema_->cell_size(aid)) != cell_num)
-        return LOG_STATUS(Status::QueryError(
-            std::string("Buffer sizes check failed; Invalid number of cells "
-                        "give for attribute '") +
-            array_schema_->attribute_name(aid) + "'"));
-      bid++;
+      expected_cell_num = buffer_sizes_[bid] / array_schema_->cell_size(aid);
     }
+    if (expected_cell_num != cell_num) {
+      std::stringstream ss;
+      ss << "Buffer sizes check failed; Invalid number of cells given for ";
+      ss << "attribute '" << array_schema_->attribute_name(aid) << "'";
+      ss << " (" << expected_cell_num << " != " << cell_num << ")";
+      return LOG_STATUS(Status::QueryError(ss.str()));
+    }
+    if (is_var_attr)
+      bid += 2;
+    else
+      bid += 1;
   }
-
   return Status::Ok();
 }
 
