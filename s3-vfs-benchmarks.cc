@@ -8,16 +8,19 @@
 #include <thread>
 #include <vector>
 
-static const uint64_t gb = 1024 * 1024 * 1024;
+static const uint64_t mb = 1024 * 1024;
+static const uint64_t gb = 1024 * mb;
 static const uint64_t tb = 1024 * gb;
-static const uint64_t file_bytes = 3 * tb;
-static const uint64_t block_bytes = 2 * gb;
+static const uint64_t file_bytes = 16 * mb;
+static const uint64_t block_bytes = 2 * mb;
 static const uint64_t num_blocks = file_bytes / block_bytes;
 static const uint64_t block_elts = block_bytes / sizeof(uint64_t);
 static const std::string bucket_name("tiledb-s3-benchmarks");
-static const std::string file_name("test-file");
+static const std::string dir_name("testdir");
+static const std::string file_name("testfile");
 static const std::string bucket_uri("s3://" + bucket_name);
-static const std::string file_uri(bucket_uri + "/" + file_name);
+static const std::string dir_uri(bucket_uri + "/" + dir_name);
+static const std::string file_uri(dir_uri + "/" + file_name);
 
 static inline void check_error(int rc, std::string msg = "") {
   if (rc != TILEDB_OK) {
@@ -29,6 +32,21 @@ static inline void check_error(int rc, std::string msg = "") {
 template <typename T>
 inline T ceil(T x, T y) {
   return x / y + (x % y != 0);
+}
+
+static tiledb_config_t *create_config() {
+  tiledb_error_t *error;
+  tiledb_config_t *config;
+  check_error(tiledb_config_create(&config, &error));
+
+  check_error(
+      tiledb_config_set(config, "vfs.s3.endpoint_override", "", &error));
+  check_error(tiledb_config_set(config, "vfs.s3.scheme", "https", &error));
+  check_error(tiledb_config_set(config, "vfs.s3.region", "us-east-1", &error));
+  check_error(tiledb_config_set(
+      config, "vfs.s3.use_virtual_addressing", "true", &error));
+
+  return config;
 }
 
 static void create_file(
@@ -45,19 +63,37 @@ static void create_file(
   int is_file = 0;
   check_error(tiledb_vfs_is_file(ctx, vfs, file_uri.c_str(), &is_file));
   if (is_file) {
+    std::cout << "File " << file_uri << " already exists." << std::endl;
     return;
   }
-
-  std::cout << "Creating file " << file_uri << "..." << std::endl;
 
   int is_bucket = 0;
   check_error(tiledb_vfs_is_bucket(ctx, vfs, bucket_uri.c_str(), &is_bucket));
   if (!is_bucket) {
+    std::cout << "Creating bucket " << bucket_uri << "..." << std::endl;
     check_error(
         tiledb_vfs_create_bucket(ctx, vfs, bucket_uri.c_str()),
         "create bucket");
   }
 
+  int is_dir = 0;
+  check_error(tiledb_vfs_is_dir(ctx, vfs, dir_uri.c_str(), &is_dir));
+  if (!is_dir) {
+    std::cout << "Creating dir " << dir_uri << "..." << std::endl;
+    check_error(tiledb_vfs_create_dir(ctx, vfs, dir_uri.c_str()));
+  }
+
+  if (!is_file) {
+    std::cout << "Creating file " << file_uri << "..." << std::endl;
+    check_error(tiledb_vfs_touch(ctx, vfs, file_uri.c_str()));
+  }
+  check_error(tiledb_vfs_is_file(ctx, vfs, file_uri.c_str(), &is_file));
+  if (!is_file) {
+    throw std::runtime_error("Expected file to exist");
+  }
+
+  std::cout << "Writing file " << file_uri << " in " << num_blocks
+            << " blocks..." << std::endl;
   uint64_t *block = new uint64_t[block_elts];
   for (uint64_t i = 0; i < num_blocks; i++) {
     for (uint64_t j = 0; j < block_elts; j++) {
@@ -67,11 +103,8 @@ static void create_file(
     check_error(
         tiledb_vfs_write(ctx, vfs, file_uri.c_str(), block, block_bytes),
         "vfs write");
-  }
-
-  check_error(tiledb_vfs_is_file(ctx, vfs, file_uri.c_str(), &is_file));
-  if (!is_file) {
-    throw std::runtime_error("Expected file to exist");
+    std::cout << ".";
+    std::cout.flush();
   }
 
   std::cout << "Done." << std::endl;
@@ -100,11 +133,10 @@ static void run_queries(unsigned num_threads) {
               std::min(bytes_to_read, (i + 1) * bytes_per_thread);
           const uint64_t t_len = t_next_off - t_off;
           uint64_t *buffer = new uint64_t[t_len];
-          tiledb_error_t *error;
           tiledb_config_t *config;
           tiledb_ctx_t *ctx;
           tiledb_vfs_t *vfs;
-          check_error(tiledb_config_create(&config, &error), "config");
+          config = create_config();
           check_error(tiledb_ctx_create(&ctx, config), "context");
           check_error(tiledb_vfs_create(ctx, &vfs, config), "vfs");
 
@@ -119,7 +151,6 @@ static void run_queries(unsigned num_threads) {
 
           delete[] buffer;
           tiledb_vfs_free(ctx, vfs);
-          tiledb_error_free(error);
           tiledb_ctx_free(ctx);
           tiledb_config_free(config);
         });
@@ -149,19 +180,17 @@ int main(int argc, char **argv) {
     num_threads = std::atoi(argv[1]);
   }
 
-  tiledb_error_t *error;
   tiledb_config_t *config;
   tiledb_ctx_t *ctx;
   tiledb_vfs_t *vfs;
-  check_error(tiledb_config_create(&config, &error), "config");
+  config = create_config();
   check_error(tiledb_ctx_create(&ctx, config), "context");
   check_error(tiledb_vfs_create(ctx, &vfs, config), "vfs");
 
-  //   create_file(ctx, vfs, bucket_uri, file_uri);
+  create_file(ctx, vfs, bucket_uri, file_uri);
   run_queries(num_threads);
 
   tiledb_vfs_free(ctx, vfs);
-  tiledb_error_free(error);
   tiledb_ctx_free(ctx);
   tiledb_config_free(config);
   return 0;
