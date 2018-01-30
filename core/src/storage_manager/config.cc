@@ -68,34 +68,47 @@ Status Config::load_from_file(const std::string& filename) {
         Status::ConfigError("Cannot load from file; Invalid filename"));
 
   std::ifstream ifs(filename);
-  if (!ifs.is_open())
-    return LOG_STATUS(Status::ConfigError("Failed to open config file"));
+  if (!ifs.is_open()) {
+    std::stringstream msg;
+    msg << "Failed to open config file '" << filename << "'";
+    return LOG_STATUS(Status::ConfigError(msg.str()));
+  }
 
+  size_t linenum = 0;
   std::string param, value, extra;
   for (std::string line; std::getline(ifs, line);) {
     std::stringstream line_ss(line);
 
     // Parse parameter
     line_ss >> param;
-    if (param.empty() || param[0] == COMMENT_START)
+    if (param.empty() || param[0] == COMMENT_START) {
+      linenum += 1;
       continue;
+    }
 
     // Parse value
     line_ss >> value;
-    if (value.empty())
-      return LOG_STATUS(Status::ConfigError(
-          "Failed to parse config file; Missing parameter value"));
+    if (value.empty()) {
+      std::stringstream msg;
+      msg << "Failed to parse config file '" << filename << "'; ";
+      msg << "Missing parameter value (line: " << linenum << ")";
+      return LOG_STATUS(Status::ConfigError(msg.str()));
+    }
 
     // Parse extra
     line_ss >> extra;
-    if (!extra.empty() && extra[0] != COMMENT_START)
-      return LOG_STATUS(Status::ConfigError(
-          "Failed to parse config file; Invalid line format"));
+    if (!extra.empty() && extra[0] != COMMENT_START) {
+      std::stringstream msg;
+      msg << "Failed to parse config file '" << filename << "'; ";
+      msg << "Invalid line format (line: " << linenum << ")";
+      return LOG_STATUS(Status::ConfigError(msg.str()));
+    }
 
     // Set param-value pair
     RETURN_NOT_OK(set(param, value));
-  }
 
+    linenum += 1;
+  }
   return Status::Ok();
 }
 
@@ -106,14 +119,15 @@ Status Config::save_to_file(const std::string& filename) {
         Status::ConfigError("Cannot save to file; Invalid filename"));
 
   std::ofstream ofs(filename);
-  if (!ofs.is_open())
-    return LOG_STATUS(Status::ConfigError("Failed to open config file"));
-
+  if (!ofs.is_open()) {
+    std::stringstream msg;
+    msg << "Failed to open config file '" << filename << "' for writing";
+    return LOG_STATUS(Status::ConfigError(msg.str()));
+  }
   for (auto& pv : param_values_) {
     if (!pv.second.empty())
       ofs << pv.first << " " << pv.second << "\n";
   }
-
   return Status::Ok();
 }
 
