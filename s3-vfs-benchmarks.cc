@@ -11,8 +11,8 @@
 static const uint64_t mb = 1024 * 1024;
 static const uint64_t gb = 1024 * mb;
 static const uint64_t tb = 1024 * gb;
-static const uint64_t file_bytes = 16 * mb;
-static const uint64_t block_bytes = 2 * mb;
+static const uint64_t file_bytes = 10 * gb;
+static const uint64_t block_bytes = 1 * gb;
 static const uint64_t num_blocks = file_bytes / block_bytes;
 static const uint64_t block_elts = block_bytes / sizeof(uint64_t);
 static const std::string bucket_name("tiledb-s3-benchmarks");
@@ -99,6 +99,8 @@ static void create_file(
     for (uint64_t j = 0; j < block_elts; j++) {
       block[j] = i * block_elts + j;
     }
+    std::cout << ".";
+    std::cout.flush();
     // Append block to file.
     check_error(
         tiledb_vfs_write(ctx, vfs, file_uri.c_str(), block, block_bytes),
@@ -107,13 +109,15 @@ static void create_file(
     std::cout.flush();
   }
 
+  tiledb_vfs_sync(ctx, vfs, file_uri.c_str());
+
   std::cout << "Done." << std::endl;
 
   delete[] block;
 }
 
 static void run_queries(unsigned num_threads) {
-  const uint64_t bytes_to_read = 1 * gb;
+  const uint64_t bytes_to_read = 10 * gb;
   std::vector<std::thread> workers;
   std::mutex barrier_mtx;
   std::condition_variable barrier;
@@ -132,7 +136,7 @@ static void run_queries(unsigned num_threads) {
           const uint64_t t_next_off =
               std::min(bytes_to_read, (i + 1) * bytes_per_thread);
           const uint64_t t_len = t_next_off - t_off;
-          uint64_t *buffer = new uint64_t[t_len];
+          uint8_t *buffer = new uint8_t[t_len];
           tiledb_config_t *config;
           tiledb_ctx_t *ctx;
           tiledb_vfs_t *vfs;
