@@ -274,7 +274,6 @@ DenseArrayFx::~DenseArrayFx() {
     CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
   }
 #endif
-
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
@@ -963,17 +962,20 @@ TEST_CASE_METHOD(
   // File
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
   // S3
   create_temp_dir(S3_TEMP_DIR);
   check_sorted_reads(S3_TEMP_DIR);
+  remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_sorted_reads(HDFS_TEMP_DIR);
+  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
 
@@ -982,49 +984,64 @@ TEST_CASE_METHOD(
     "C API: Test dense array, invalid global writes",
     "[capi], [dense]") {
   // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
   // S3
+  create_temp_dir(S3_TEMP_DIR);
   check_invalid_global_writes(S3_TEMP_DIR);
+  remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   // HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
   check_invalid_global_writes(HDFS_TEMP_DIR);
+  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted writes", "[capi], [dense]") {
   // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_sorted_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
   // S3
+  create_temp_dir(S3_TEMP_DIR);
   check_sorted_writes(S3_TEMP_DIR);
+  remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   // HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
   check_sorted_writes(HDFS_TEMP_DIR);
+  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sparse writes", "[capi], [dense]") {
   // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
 #ifdef HAVE_S3
   // S3
+  create_temp_dir(S3_TEMP_DIR);
   check_sparse_writes(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
 #endif
 
 #ifdef HAVE_HDFS
   // HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
   check_sparse_writes(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
 #endif
