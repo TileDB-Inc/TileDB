@@ -147,14 +147,13 @@ class StorageManager {
    * non-empty domains of the array fragments.
    *
    * @param array_uri The array URI.
-   * @param domain The domain to be retrieved. The function allocates space
-   *     for `domain` and the user is responsible for deallocating it. Note that
-   *     the type is the same as the array domain type. The domain is given in
-   *     [low,high] pairs per dimension. If the array has no fragments,
-   *     `domain` is set to `nullptr`.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `ture` if the non-empty domain is empty (the array
+   *     is empty).
    * @return Status
    */
-  Status array_get_non_empty_domain(const char* array_uri, void** domain);
+  Status array_get_non_empty_domain(
+      const char* array_uri, void* domain, bool* is_empty);
 
   /**
    * Locks a TileDB object (array or group).
@@ -600,11 +599,7 @@ class StorageManager {
    *
    * @param metadata The metadata of all fragments in the array.
    * @param dim_num The number of dimensions in the domain.
-   * @param domain The domain to be retrieved. The function allocates space
-   *     for `domain` and the user is responsible for deallocating it. Note that
-   *     the type is the same as the array domain type. The domain is given in
-   *     [low,high] pairs per dimension. If the array has no fragments,
-   *     `domain` is set to `nullptr`.
+   * @param domain The domain to be retrieved.
    * @return void
    */
   template <class T>

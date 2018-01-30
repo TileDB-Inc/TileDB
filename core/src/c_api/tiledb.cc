@@ -1725,16 +1725,19 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
 }
 
 int tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, const char* array_uri, void** domain) {
-  *domain = nullptr;
-
+    tiledb_ctx_t* ctx, const char* array_uri, void* domain, int* is_empty) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  bool is_empty_b;
+
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_get_non_empty_domain(array_uri, domain)))
+          ctx->storage_manager_->array_get_non_empty_domain(
+              array_uri, domain, &is_empty_b)))
     return TILEDB_ERR;
+
+  *is_empty = (int)is_empty_b;
 
   return TILEDB_OK;
 }
