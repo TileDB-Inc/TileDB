@@ -1295,15 +1295,13 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  *
  * @param ctx The TileDB context
  * @param array_uri The array URI.
- * @param domain The domain to be retrieved. The function allocates space
- *     for `domain` and the user is responsible for deallocating it. Note that
- *     the type is the same as the array domain type. The domain is given in
- *     [low,high] pairs per dimension. If the array has no fragments,
- *     `domain` is set to `nullptr`.
- * @return TILEDB_OK for success and TILEDB_ERR or TILEDB_OOM for error.
+ * @param domain The domain to be retrieved.
+ * @param is_empty `true` if the non-empty domain is empty (i.e., the
+ *     array does not contain any data yet).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, const char* array_uri, void** domain);
+    tiledb_ctx_t* ctx, const char* array_uri, void* domain, int* is_empty);
 
 /**
  * Computes an upper bound on the buffer sizes required for a read

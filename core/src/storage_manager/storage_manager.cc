@@ -261,9 +261,9 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_get_non_empty_domain(
-    const char* array_uri, void** domain) {
+    const char* array_uri, void* domain, bool* is_empty) {
   // Open the array
-  *domain = nullptr;
+  *is_empty = true;
   auto uri = URI(array_uri);
   std::vector<FragmentMetadata*> metadata;
   auto array_schema = (const ArraySchema*)nullptr;
@@ -273,70 +273,58 @@ Status StorageManager::array_get_non_empty_domain(
   if (metadata.empty())
     return Status::Ok();
 
-  // Allocate space for somain
-  auto dim_num = array_schema->dim_num();
-  *domain = std::malloc(2 * array_schema->coords_size());
-  if (*domain == nullptr) {
-    array_close(uri);
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot get non-empty domain; Memory allocation failed"));
-  }
-
   // Compute domain
+  auto dim_num = array_schema->dim_num();
   switch (array_schema->coords_type()) {
     case Datatype::INT32:
       array_get_non_empty_domain<int>(
-          metadata, dim_num, static_cast<int*>(*domain));
+          metadata, dim_num, static_cast<int*>(domain));
       break;
     case Datatype::INT64:
       array_get_non_empty_domain<int64_t>(
-          metadata, dim_num, static_cast<int64_t*>(*domain));
+          metadata, dim_num, static_cast<int64_t*>(domain));
       break;
     case Datatype::FLOAT32:
       array_get_non_empty_domain<float>(
-          metadata, dim_num, static_cast<float*>(*domain));
+          metadata, dim_num, static_cast<float*>(domain));
       break;
     case Datatype::FLOAT64:
       array_get_non_empty_domain<double>(
-          metadata, dim_num, static_cast<double*>(*domain));
+          metadata, dim_num, static_cast<double*>(domain));
       break;
     case Datatype::INT8:
       array_get_non_empty_domain<int8_t>(
-          metadata, dim_num, static_cast<int8_t*>(*domain));
+          metadata, dim_num, static_cast<int8_t*>(domain));
       break;
     case Datatype::UINT8:
       array_get_non_empty_domain<uint8_t>(
-          metadata, dim_num, static_cast<uint8_t*>(*domain));
+          metadata, dim_num, static_cast<uint8_t*>(domain));
       break;
     case Datatype::INT16:
       array_get_non_empty_domain<int16_t>(
-          metadata, dim_num, static_cast<int16_t*>(*domain));
+          metadata, dim_num, static_cast<int16_t*>(domain));
       break;
     case Datatype::UINT16:
       array_get_non_empty_domain<uint16_t>(
-          metadata, dim_num, static_cast<uint16_t*>(*domain));
+          metadata, dim_num, static_cast<uint16_t*>(domain));
       break;
     case Datatype::UINT32:
       array_get_non_empty_domain<uint32_t>(
-          metadata, dim_num, static_cast<uint32_t*>(*domain));
+          metadata, dim_num, static_cast<uint32_t*>(domain));
       break;
     case Datatype::UINT64:
       array_get_non_empty_domain<uint64_t>(
-          metadata, dim_num, static_cast<uint64_t*>(*domain));
+          metadata, dim_num, static_cast<uint64_t*>(domain));
       break;
     default:
       return LOG_STATUS(Status::StorageManagerError(
           "Cannot get non-empty domain; Invalid coordinates type"));
   }
 
-  // Close array
-  auto st = array_close(uri);
-  if (!st.ok()) {
-    std::free(domain);
-    *domain = nullptr;
-  }
+  *is_empty = false;
 
-  return st;
+  // Close array
+  return array_close(uri);
 }
 
 Status StorageManager::object_lock(const URI& uri, LockType lock_type) {
