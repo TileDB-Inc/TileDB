@@ -97,7 +97,9 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(error, "[TileDB::Config] Error: Failed to open config file");
+  check_error(
+      error,
+      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_free(config);
@@ -125,8 +127,8 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file; Missing parameter "
-      "value");
+      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Missing parameter value (line: 1)");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_free(config);
@@ -155,8 +157,8 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file; Invalid line "
-      "format");
+      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Invalid line format (line: 3)");
   rc = tiledb_error_free(error);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_free(config);
