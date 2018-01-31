@@ -412,29 +412,27 @@ TEST_CASE_METHOD(
     ObjectMgmtFx,
     "C API: Test object management methods: object_type, delete, move",
     "[capi], [object], [delete], [move], [object_type]") {
+#ifdef HAVE_S3
+  // S3
+  create_temp_dir(S3_TEMP_DIR);
+  check_object_type(S3_TEMP_DIR);
+  check_delete(S3_TEMP_DIR);
+  check_move(S3_TEMP_DIR);
+  remove_temp_dir(S3_TEMP_DIR);
+#elif HAVE_HDFS
+  // HDFS
+  create_temp_dir(HDFS_TEMP_DIR);
+  check_object_type(HDFS_TEMP_DIR);
+  check_delete(HDFS_TEMP_DIR);
+  check_move(HDFS_TEMP_DIR);
+  remove_temp_dir(HDFS_TEMP_DIR);
+#else
   // File
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_object_type(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_delete(FILE_URI_PREFIX + FILE_TEMP_DIR);
   check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-// S3
-#ifdef HAVE_S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_object_type(S3_TEMP_DIR);
-  check_delete(S3_TEMP_DIR);
-  check_move(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-// HDFS
-#ifdef HAVE_HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_object_type(HDFS_TEMP_DIR);
-  check_delete(HDFS_TEMP_DIR);
-  check_move(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
 #endif
 }
 
@@ -445,35 +443,6 @@ TEST_CASE_METHOD(
   std::string golden_walk, golden_ls;
   std::string walk_str, ls_str;
   int rc;
-
-  // File
-  remove_temp_dir(FILE_FULL_TEMP_DIR);
-  create_hierarchy(FILE_FULL_TEMP_DIR);
-#ifdef _WIN32
-  // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
-  golden_walk = get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
-  golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
-#else
-  golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
-  golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);
-#endif
-  walk_str.clear();
-  ls_str.clear();
-  rc = tiledb_object_walk(
-      ctx_, FILE_FULL_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_object_walk(
-      ctx_,
-      FILE_FULL_TEMP_DIR.c_str(),
-      TILEDB_POSTORDER,
-      write_path,
-      &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
-  remove_temp_dir(FILE_FULL_TEMP_DIR);
 
 #ifdef HAVE_S3
   remove_temp_dir(S3_TEMP_DIR);
@@ -493,9 +462,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   remove_temp_dir(HDFS_TEMP_DIR);
   create_hierarchy(HDFS_TEMP_DIR);
   golden_walk = get_golden_walk(HDFS_FULL_TEMP_DIR);
@@ -513,5 +480,35 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(golden_ls, Catch::Equals(ls_str));
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  remove_temp_dir(FILE_FULL_TEMP_DIR);
+  create_hierarchy(FILE_FULL_TEMP_DIR);
+#ifdef _WIN32
+  // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
+  golden_walk = get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+  golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+#else
+  golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
+  golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);
+#endif
+
+  walk_str.clear();
+  ls_str.clear();
+  rc = tiledb_object_walk(
+      ctx_, FILE_FULL_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_object_walk(
+      ctx_,
+      FILE_FULL_TEMP_DIR.c_str(),
+      TILEDB_POSTORDER,
+      write_path,
+      &walk_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+  rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+  remove_temp_dir(FILE_FULL_TEMP_DIR);
 #endif
 }

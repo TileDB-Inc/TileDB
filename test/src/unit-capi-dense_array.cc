@@ -959,23 +959,21 @@ std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted reads", "[capi], [dense]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
 #ifdef HAVE_S3
   // S3
   create_temp_dir(S3_TEMP_DIR);
   check_sorted_reads(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_sorted_reads(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }
 
@@ -983,66 +981,60 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, invalid global writes",
     "[capi], [dense]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
 #ifdef HAVE_S3
   // S3
   create_temp_dir(S3_TEMP_DIR);
   check_invalid_global_writes(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_invalid_global_writes(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted writes", "[capi], [dense]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sorted_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
 #ifdef HAVE_S3
   // S3
   create_temp_dir(S3_TEMP_DIR);
   check_sorted_writes(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_sorted_writes(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  check_sorted_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sparse writes", "[capi], [dense]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
 #ifdef HAVE_S3
   // S3
   create_temp_dir(S3_TEMP_DIR);
   check_sparse_writes(S3_TEMP_DIR);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   check_sparse_writes(HDFS_TEMP_DIR);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }

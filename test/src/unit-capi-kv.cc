@@ -836,24 +836,10 @@ void KVFx::check_iter(const std::string& path) {
 }
 
 TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
-  // create & write
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
-  create_kv(array_name);
-  check_kv_item();
-  check_write(array_name);
-  check_single_read(array_name);
-  check_read_on_attribute_subset(array_name);
-  check_iter(array_name);
-  check_interleaved_read_write(array_name);
-
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name;
 
 #ifdef HAVE_S3
   create_temp_dir(S3_TEMP_DIR);
-
   array_name = S3_TEMP_DIR + KV_NAME;
   create_kv(array_name);
   check_write(array_name);
@@ -861,13 +847,9 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   check_read_on_attribute_subset(array_name);
   check_iter(array_name);
   check_interleaved_read_write(array_name);
-
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   create_temp_dir(HDFS_TEMP_DIR);
-
   array_name = HDFS_TEMP_DIR + KV_NAME;
   create_kv(array_name);
   check_write(array_name);
@@ -875,7 +857,18 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   check_read_on_attribute_subset(array_name);
   check_iter(array_name);
   check_interleaved_read_write(array_name);
-
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  create_kv(array_name);
+  check_kv_item();
+  check_write(array_name);
+  check_single_read(array_name);
+  check_read_on_attribute_subset(array_name);
+  check_iter(array_name);
+  check_interleaved_read_write(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }

@@ -284,14 +284,7 @@ void DenseVectorFx::check_update(const std::string& path) {
 
 TEST_CASE_METHOD(
     DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-  create_dense_vector(vector_name);
-  check_read(vector_name, TILEDB_ROW_MAJOR);
-  check_read(vector_name, TILEDB_COL_MAJOR);
-  check_update(vector_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string vector_name;
 
 #ifdef HAVE_S3
   // S3
@@ -302,9 +295,7 @@ TEST_CASE_METHOD(
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   create_temp_dir(HDFS_TEMP_DIR);
   vector_name = HDFS_TEMP_DIR + VECTOR;
@@ -313,5 +304,14 @@ TEST_CASE_METHOD(
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
+  create_dense_vector(vector_name);
+  check_read(vector_name, TILEDB_ROW_MAJOR);
+  check_read(vector_name, TILEDB_COL_MAJOR);
+  check_update(vector_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }
