@@ -86,6 +86,11 @@ std::string VFS::abs_path(const std::string& path) {
 }
 
 Status VFS::create_dir(const URI& uri) const {
+  if (is_dir(uri))
+    return LOG_STATUS(Status::VFSError(
+        std::string("Cannot create directory '") + uri.c_str() +
+        "'; Directory already exists"));
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::create_dir(uri.to_path());
@@ -545,7 +550,63 @@ Status VFS::sync(const URI& uri) {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
+    return hdfs::sync(hdfs_, uri);
+#else
+    return LOG_STATUS(
+        Status::VFSError("TileDB was built without HDFS support"));
+#endif
+  }
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
     return Status::Ok();
+#else
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
+#endif
+  }
+  return LOG_STATUS(
+      Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+}
+
+Status VFS::open_file(const URI& uri, VFSMode mode) {
+  switch (mode) {
+    case VFSMode::VFS_READ:
+      if (!is_file(uri))
+        return LOG_STATUS(Status::VFSError(
+            std::string("Cannot open file '") + uri.c_str() +
+            "'; File does not exist"));
+      break;
+    case VFSMode::VFS_WRITE:
+      if (is_file(uri))
+        RETURN_NOT_OK(remove_file(uri));
+      break;
+    case VFSMode::VFS_APPEND:
+      if (uri.is_s3()) {
+#ifdef HAVE_S3
+        return LOG_STATUS(Status::VFSError(
+            std::string("Cannot open file '") + uri.c_str() +
+            "'; S3 does not support append mode"));
+#else
+        return LOG_STATUS(Status::VFSError(
+            "Cannot open file; TileDB was built without S3 support"));
+#endif
+      }
+      break;
+  }
+
+  return Status::Ok();
+}
+
+Status VFS::close_file(const URI& uri) {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    return win::sync(uri.to_path());
+#else
+    return posix::sync(uri.to_path());
+#endif
+  }
+  if (uri.is_hdfs()) {
+#ifdef HAVE_HDFS
+    return hdfs::sync(hdfs_, uri);
 #else
     return LOG_STATUS(
         Status::VFSError("TileDB was built without HDFS support"));

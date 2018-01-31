@@ -160,6 +160,13 @@ typedef enum {
 #undef TILEDB_WALK_ORDER_ENUM
 } tiledb_walk_order_t;
 
+/** VFS mode. */
+typedef enum {
+#define TILEDB_VFS_MODE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_VFS_MODE_ENUM
+} tiledb_vfs_mode_t;
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
@@ -218,6 +225,9 @@ typedef struct tiledb_kv_iter_t tiledb_kv_iter_t;
 
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
+
+/** A virtual filesystem file handle. */
+typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 
 /* ********************************* */
 /*              ERROR                */
@@ -1973,11 +1983,59 @@ TILEDB_EXPORT int tiledb_vfs_move(
     bool force);
 
 /**
- * Reads from a file.
+ * Prepares a file for reading/writing.
  *
  * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object.
  * @param uri The URI of the file.
+ * @param mode The mode in which the file is opened:
+ *     - TILEDB_VFS_READ <br>
+ *       The file is opened for reading. An error is returned if the file
+ *       does not exist.
+ *     - TILEDB_VFS_WRITE <br>
+ *       The file is opened for writing. If the file exists, it will be
+ *       overwritten.
+ *     - TILEDB_VFS_APPEND <b>
+ *       The file is opened for writing. If the file exists, the write
+ *       will start from the end of the file. Note that S3 does not
+ *       support this operation and, thus, an error will be thrown in
+ *       that case.
+ * @param fh The file handle that is created. This will be used in
+ *     `tiledb_vfs_read`, `tiledb_vfs_write` and `tiledb_vfs_sync`.
+ * @return TILEDB_OK for success and TILEDB_ERR or TILEDB_OOM for error.
+ *
+ * @note If the file is closed after being opened, without having
+ *     written any data to it, the file will not be created. If you
+ *     wish to create an empty file, use `tiledb_vfs_touch`
+ *     instead.
+ */
+TILEDB_EXPORT int tiledb_vfs_open(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    tiledb_vfs_mode_t mode,
+    tiledb_vfs_fh_t** fh);
+
+/**
+ * Closes a file. This is flushes the buffered data into the file
+ * when the file was opened in write (or append) mode. It is particularly
+ * important to be called after S3 writes, as otherwise the writes will
+ * not take effect.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param fh The file handle.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_close(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh);
+
+/**
+ * Reads from a file.
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param fh The URI file handle.
  * @param offset The offset in the file where the read begins.
  * @param buffer The buffer to read into.
  * @param nbytes Number of bytes to read.
@@ -1986,7 +2044,7 @@ TILEDB_EXPORT int tiledb_vfs_move(
 TILEDB_EXPORT int tiledb_vfs_read(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
-    const char* uri,
+    tiledb_vfs_fh_t* fh,
     uint64_t offset,
     void* buffer,
     uint64_t nbytes);
@@ -1998,7 +2056,7 @@ TILEDB_EXPORT int tiledb_vfs_read(
  *
  * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object.
- * @param uri The URI of the file.
+ * @param fh The URI file handle.
  * @param buffer The buffer to write from.
  * @param nbytes Number of bytes to write.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
@@ -2006,26 +2064,22 @@ TILEDB_EXPORT int tiledb_vfs_read(
 TILEDB_EXPORT int tiledb_vfs_write(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
-    const char* uri,
+    tiledb_vfs_fh_t* fh,
     const void* buffer,
     uint64_t nbytes);
 
 /**
- * Syncs (flushes) a file. This is important to call before starting to read
- * from the file.
+ * Syncs (flushes) a file.
  *
  * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object.
- * @param uri The URI of the file.
+ * @param fh The URI file handle.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  *
- * @note Specifically for S3, this function **finalizes** the file, in the
- *     sense that from this point and onwards it becomes immutable. Any
- *     attempt to write to this file again will result in **overwriting**
- *     the old data.
+ * @note This is a noop for S3.
  */
 TILEDB_EXPORT int tiledb_vfs_sync(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh);
 
 /**
  * Checks if a given storage filesystem backend is supported.

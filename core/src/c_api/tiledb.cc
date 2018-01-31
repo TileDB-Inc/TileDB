@@ -135,6 +135,10 @@ struct tiledb_vfs_t {
   tiledb::VFS* vfs_;
 };
 
+struct tiledb_vfs_fh_t {
+  tiledb::URI uri_;
+};
+
 /* ********************************* */
 /*         AUXILIARY FUNCTIONS       */
 /* ********************************* */
@@ -323,6 +327,17 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_item_t* kv_item) {
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
   if (vfs == nullptr || vfs->vfs_ == nullptr) {
     auto st = tiledb::Status::Error("Invalid TileDB virtual filesystem object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
+  if (fh == nullptr) {
+    auto st =
+        tiledb::Status::Error("Invalid TileDB virtual filesystem file handle");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -2733,18 +2748,59 @@ int tiledb_vfs_move(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_read(
+int tiledb_vfs_open(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes) {
+    tiledb_vfs_mode_t mode,
+    tiledb_vfs_fh_t** fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  *fh = new (std::nothrow) tiledb_vfs_fh_t;
+  if (*fh == nullptr)
+    return TILEDB_OOM;
+  (*fh)->uri_ = tiledb::URI(uri);
+
   if (save_error(
-          ctx, vfs->vfs_->read(tiledb::URI(uri), offset, buffer, nbytes)))
+          ctx,
+          vfs->vfs_->open_file(
+              (*fh)->uri_, static_cast<tiledb::VFSMode>(mode)))) {
+    delete (*fh);
+    *fh = nullptr;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_close(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
+      sanity_check(ctx, fh) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  int rc = TILEDB_OK;
+  if (save_error(ctx, vfs->vfs_->close_file(fh->uri_)))
+    rc = TILEDB_ERR;
+
+  delete fh;
+  return rc;
+}
+
+int tiledb_vfs_read(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    tiledb_vfs_fh_t* fh,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
+      sanity_check(ctx, fh) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx, vfs->vfs_->read(tiledb::URI(fh->uri_), offset, buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2753,23 +2809,25 @@ int tiledb_vfs_read(
 int tiledb_vfs_write(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
-    const char* uri,
+    tiledb_vfs_fh_t* fh,
     const void* buffer,
     uint64_t nbytes) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
+      sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->write(tiledb::URI(uri), buffer, nbytes)))
+  if (save_error(ctx, vfs->vfs_->write(tiledb::URI(fh->uri_), buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
+      sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->sync(tiledb::URI(uri))))
+  if (save_error(ctx, vfs->vfs_->sync(tiledb::URI(fh->uri_))))
     return TILEDB_ERR;
 
   return TILEDB_OK;

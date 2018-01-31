@@ -291,6 +291,34 @@ Status write(
   return Status::Ok();
 }
 
+Status sync(hdfsFS fs, const URI& uri) {
+  if (!is_file(fs, uri))
+    return Status::Ok();
+
+  // Open file
+  hdfsFile file =
+      hdfsOpenFile(fs, uri.to_path().c_str(), O_WRONLY | O_APPEND, 0, 0, 0);
+  if (!file) {
+    return LOG_STATUS(Status::HDFSError(
+        std::string("Cannot sync file '") + uri.to_string() +
+        "'; File open error"));
+  }
+
+  // Sync
+  if (hdfsFlush(fs, file)) {
+    return LOG_STATUS(Status::HDFSError(
+        std::string("Failed syncing file '") + uri.to_string() + "'"));
+  }
+
+  // Close file
+  if (hdfsCloseFile(fs, file)) {
+    return LOG_STATUS(Status::HDFSError(
+        std::string("Cannot sync file ") + uri.to_string() +
+        "; File closing error"));
+  }
+  return Status::Ok();
+}
+
 // List all subdirectories and files for a given path, appending them to paths.
 Status ls(hdfsFS fs, const URI& uri, std::vector<std::string>* paths) {
   int numEntries = 0;

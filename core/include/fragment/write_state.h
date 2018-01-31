@@ -73,11 +73,12 @@ class WriteState {
   Status finalize();
 
   /**
-   * Syncs all attribute files in the fragment.
+   * Closes all attribute files in the fragment, flushing all internal state
+   * to persistent storage.
    *
    * @return Status
    */
-  Status sync();
+  Status close_files();
 
   /**
    * Performs a write operation in the fragment.
