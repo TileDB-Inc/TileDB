@@ -115,8 +115,10 @@ Status WriteState::finalize() {
   auto storage_manager = fragment_->query()->storage_manager();
   auto& fragment_uri = fragment_->fragment_uri();
 
+  auto fragment_exists = storage_manager->is_dir(fragment_uri);
+
   // Check number of cells written (for a dense fragment that exists)
-  if (metadata_->dense() && storage_manager->is_dir(fragment_uri)) {
+  if (metadata_->dense() && fragment_exists) {
     for (unsigned i = 0; i < attribute_num; ++i) {
       if (cells_written_[i] != 0 && cells_written_[i] != cell_num)
         return LOG_STATUS(Status::WriteStateError(
@@ -128,7 +130,7 @@ Status WriteState::finalize() {
 
   // Number of cells written in a sparse fragment should be equal across
   // all attributes
-  if (!metadata_->dense() && storage_manager->is_dir(fragment_uri)) {
+  if (!metadata_->dense() && fragment_exists) {
     for (unsigned i = 1; i < cells_written_.size(); ++i)
       if (cells_written_[i] != cells_written_[i - 1])
         return LOG_STATUS(Status::WriteStateError(
@@ -141,13 +143,14 @@ Status WriteState::finalize() {
     RETURN_NOT_OK(write_last_tile());
 
   // Sync all attributes
-  RETURN_NOT_OK(sync());
+  if (fragment_exists)
+    RETURN_NOT_OK(close_files());
 
   // Success
   return Status::Ok();
 }
 
-Status WriteState::sync() {
+Status WriteState::close_files() {
   // For easy reference
   auto array_schema = fragment_->query()->array_schema();
   auto attribute_num = array_schema->attribute_num();
@@ -158,19 +161,17 @@ Status WriteState::sync() {
   for (auto attribute_id : attribute_ids) {
     // For all attributes
     if (attribute_id == attribute_num) {
-      RETURN_NOT_OK(storage_manager->sync(fragment_->coords_uri()));
+      RETURN_NOT_OK(storage_manager->close_file(fragment_->coords_uri()));
     } else {
-      RETURN_NOT_OK(storage_manager->sync(fragment_->attr_uri(attribute_id)));
+      RETURN_NOT_OK(
+          storage_manager->close_file(fragment_->attr_uri(attribute_id)));
     }
 
     // Only for variable-size attributes (they have an extra file)
     if (array_schema->var_size(attribute_id))
       RETURN_NOT_OK(
-          storage_manager->sync(fragment_->attr_var_uri(attribute_id)));
+          storage_manager->close_file(fragment_->attr_var_uri(attribute_id)));
   }
-
-  // Sync fragment directory
-  RETURN_NOT_OK(storage_manager->sync(fragment_->fragment_uri()));
 
   // Success
   return Status::Ok();

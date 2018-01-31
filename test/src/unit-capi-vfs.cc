@@ -71,7 +71,6 @@ struct VFSFx {
   void check_move(const std::string& path);
   void check_read(const std::string& path);
   void check_append(const std::string& path);
-  void check_append_after_sync(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
 };
 
@@ -122,7 +121,7 @@ void VFSFx::check_vfs(const std::string& path) {
   }
 #endif
 
-  // Create director, is directory, remove directory
+  // Create directory, is directory, remove directory
   int is_dir = 0;
   int rc = tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
@@ -138,6 +137,8 @@ void VFSFx::check_vfs(const std::string& path) {
   rc = tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_dir);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, path.c_str());
+  REQUIRE(rc == TILEDB_ERR);  // Second time should fail
 
   // Remove directory recursively
   auto subdir = path + "subdir/";
@@ -175,15 +176,14 @@ void VFSFx::check_vfs(const std::string& path) {
 
   // Invalid file
   int is_file = 0;
-  void* buffer = nullptr;
-  uint64_t offset = 0;
-  uint64_t nbytes = 10;
   std::string foo_file = path + "foo";
   rc = tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
-  rc = tiledb_vfs_read(ctx_, vfs_, foo_file.c_str(), offset, buffer, nbytes);
+  tiledb_vfs_fh_t* fh;
+  rc = tiledb_vfs_open(ctx_, vfs_, foo_file.c_str(), TILEDB_VFS_READ, &fh);
   REQUIRE(rc == TILEDB_ERR);
+  REQUIRE(fh == nullptr);
 
   // Touch file
   rc = tiledb_vfs_touch(ctx_, vfs_, foo_file.c_str());
@@ -197,7 +197,6 @@ void VFSFx::check_vfs(const std::string& path) {
   // Check write and append
   check_write(path);
   check_append(path);
-  check_append_after_sync(path);
 
   // Read file
   check_read(path);
@@ -379,15 +378,33 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
   std::string to_write = "This will be written to the file";
-  rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
+  tiledb_vfs_fh_t* fh;
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
+  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_sync(ctx_, vfs_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_file);
+
+  // Only for S3, sync still does not create the file
   uint64_t file_size = 0;
+  if (path.find("s3://") == 0) {
+    REQUIRE(!is_file);
+  } else {
+    REQUIRE(is_file);
+    rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(file_size == to_write.size());
+  }
+
+  // Close file
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);  // It is a file even for S3
   rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(file_size == to_write.size());
@@ -395,40 +412,79 @@ void VFSFx::check_write(const std::string& path) {
   // Check correctness with read
   std::string to_read;
   to_read.resize(to_write.size());
-  rc = tiledb_vfs_read(ctx_, vfs_, file.c_str(), 0, &to_read[0], file_size);
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_read(ctx_, vfs_, fh, 0, &to_read[0], file_size);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(to_read, Catch::Equals(to_write));
-
-  // Remove file
-  rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
   REQUIRE(rc == TILEDB_OK);
+
+  // Open in WRITE mode again - previous file will be removed
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(file_size == to_write.size());  // Not 2*to_write.size()
+
+  // Opening and closing the file without writing, first deletes previous
+  // file, but then does not create file as it has no contents
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
 }
 
 void VFSFx::check_append(const std::string& path) {
   // File write and file size
   auto file = path + "file";
-  std::string to_write = "This will be written to the file";
-  int rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
-  REQUIRE(rc == TILEDB_OK);
-  std::string to_write_2 = "This will be appended to the end of the file";
-  rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write_2.c_str(), to_write_2.size());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
-  REQUIRE(rc == TILEDB_OK);
-  uint64_t file_size = 0;
-  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
-  REQUIRE(rc == TILEDB_OK);
-  uint64_t total_size = to_write.size() + to_write_2.size();
-  CHECK(file_size == total_size);
+  tiledb_vfs_fh_t* fh;
 
-  // Check correctness with read
-  std::string to_read;
-  to_read.resize(total_size);
-  rc = tiledb_vfs_read(ctx_, vfs_, file.c_str(), 0, &to_read[0], total_size);
+  // First write
+  std::string to_write = "This will be written to the file";
+  int rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(to_read, Catch::Equals(to_write + to_write_2));
+  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Second write - append
+  std::string to_write_2 = "This will be appended to the end of the file";
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_APPEND, &fh);
+  if (path.find("s3://") == 0) {  // S3 does not support append
+    REQUIRE(rc == TILEDB_ERR);
+    REQUIRE(fh == nullptr);
+  } else {
+    REQUIRE(rc == TILEDB_OK);
+    rc =
+        tiledb_vfs_write(ctx_, vfs_, fh, to_write_2.c_str(), to_write_2.size());
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_close(ctx_, vfs_, fh);
+    uint64_t file_size = 0;
+    rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+    REQUIRE(rc == TILEDB_OK);
+    uint64_t total_size = to_write.size() + to_write_2.size();
+    CHECK(file_size == total_size);
+
+    // Check correctness with read
+    std::string to_read;
+    to_read.resize(total_size);
+    rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_read(ctx_, vfs_, fh, 0, &to_read[0], total_size);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK_THAT(to_read, Catch::Equals(to_write + to_write_2));
+    rc = tiledb_vfs_close(ctx_, vfs_, fh);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Remove file
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
@@ -437,18 +493,13 @@ void VFSFx::check_append(const std::string& path) {
 
 void VFSFx::check_read(const std::string& path) {
   auto file = path + "file";
-  int is_file = 0;
-  int rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-  if (is_file) {
-    rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
-    REQUIRE(rc == TILEDB_OK);
-  }
   std::string to_write = "This will be written to the file";
-  rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
+  tiledb_vfs_fh_t* fh;
+  int rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
+  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Read only the "will be written" portion of the file
@@ -456,55 +507,15 @@ void VFSFx::check_read(const std::string& path) {
   std::string to_read;
   to_read.resize(to_check.size());
   uint64_t offset = 5;
-  rc = tiledb_vfs_read(
-      ctx_, vfs_, file.c_str(), offset, &to_read[0], to_check.size());
+  rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_read(ctx_, vfs_, fh, offset, &to_read[0], to_check.size());
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(to_read, Catch::Equals(to_check));
+  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  REQUIRE(rc == TILEDB_OK);
 
   // Remove file
-  rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
-  REQUIRE(rc == TILEDB_OK);
-}
-
-void VFSFx::check_append_after_sync(const std::string& path) {
-  // File write and file size
-  auto file = path + "file";
-
-  // First write
-  std::string to_write = "This will be written to the file";
-  int rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write.c_str(), to_write.size());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
-  REQUIRE(rc == TILEDB_OK);
-  int is_file = 0;
-  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_file);
-  uint64_t file_size = 0;
-  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(file_size == to_write.size());
-
-  std::string to_write_2;
-  if (path.find("s3://") == 0)
-    to_write_2 = "This will overwrite the file";
-  else
-    to_write_2 = "This will be appended to the end of the file";
-
-  rc = tiledb_vfs_write(
-      ctx_, vfs_, file.c_str(), to_write_2.c_str(), to_write_2.size());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, file.c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
-  REQUIRE(rc == TILEDB_OK);
-
-  if (path.find("s3://") == 0)
-    CHECK(file_size == to_write_2.size());
-  else
-    CHECK(file_size == to_write.size() + to_write_2.size());
-
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
 }

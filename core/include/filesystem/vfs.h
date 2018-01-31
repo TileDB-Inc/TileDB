@@ -39,6 +39,7 @@
 #include "filesystem.h"
 #include "status.h"
 #include "uri.h"
+#include "vfs_mode.h"
 
 #ifdef HAVE_HDFS
 #include "hdfs.h"
@@ -240,12 +241,41 @@ class VFS {
   bool supports_fs(Filesystem fs) const;
 
   /**
-   * Syncs (flushes) a file.
+   * Syncs (flushes) a file. Note that for S3 this is a noop.
    *
    * @param uri The URI of the file.
    * @return Status
    */
   Status sync(const URI& uri);
+
+  /**
+   * Opens a file in a given mode.
+   *
+   *
+   * @param uri The URI of the file.
+   * @param mode The mode in which the file is opened:
+   *     - READ <br>
+   *       The file is opened for reading. An error is returned if the file
+   *       does not exist.
+   *     - WRITE <br>
+   *       The file is opened for writing. If the file exists, it will be
+   *       overwritten.
+   *     - APPEND <b>
+   *       The file is opened for writing. If the file exists, the write
+   *       will start from the end of the file. Note that S3 does not
+   *       support this operation and, thus, an error will be thrown in
+   *       that case.
+   * @return Status
+   */
+  Status open_file(const URI& uri, VFSMode mode);
+
+  /**
+   * Closes a file, flushing its contents to persistent storage.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
+  Status close_file(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.

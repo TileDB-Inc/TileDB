@@ -162,6 +162,15 @@ Status write(
     hdfsFS fs, const URI& uri, const void* buffer, uint64_t buffer_size);
 
 /**
+ * Commits all changes to the persistent storage.
+ *
+ * @param fs The HDFS filesystem object.
+ * @param uri The file to be synced.
+ * @return Status
+ */
+Status sync(hdfsFS fs, const URI& uri);
+
+/**
  * Lists the files one level deep under a given path.
  *
  * @param fs Connected hdfsFS filesystem handle.

@@ -910,7 +910,7 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   auto tile_io = new TileIO(this, array_schema_uri);
   Status st = tile_io->write_generic(tile);
   if (st.ok())
-    st = sync(array_schema_uri);
+    st = close_file(array_schema_uri);
 
   delete tile;
   delete tile_io;
@@ -955,13 +955,17 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   auto tile_io = new TileIO(this, fragment_metadata_uri);
   Status st = tile_io->write_generic(tile);
   if (st.ok())
-    st = sync(fragment_metadata_uri);
+    st = close_file(fragment_metadata_uri);
 
   delete tile;
   delete tile_io;
   delete buff;
 
   return st;
+}
+
+Status StorageManager::close_file(const URI& uri) {
+  return vfs_->close_file(uri);
 }
 
 Status StorageManager::sync(const URI& uri) {

@@ -453,10 +453,10 @@ class StorageManager {
    */
   Status store_fragment_metadata(FragmentMetadata* metadata);
 
-  /**
-   * Syncs a URI (file or directory), i.e., commits its contents
-   * to persistent storage.
-   */
+  /** Closes a file, flushing its contents to persistent storage. */
+  Status close_file(const URI& uri);
+
+  /** Syncs a file or directory, flushing its contents to persistent storage. */
   Status sync(const URI& uri);
 
   /** Returns the virtual filesystem object. */

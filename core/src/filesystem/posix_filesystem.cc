@@ -160,8 +160,8 @@ Status remove_path(const std::string& path) {
 
 Status remove_file(const std::string& path) {
   if (remove(path.c_str()) != 0) {
-    return LOG_STATUS(
-        Status::IOError(std::string("Cannot delete file; ") + strerror(errno)));
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot delete file '") + path + "'; " + strerror(errno)));
   }
   return Status::Ok();
 }
