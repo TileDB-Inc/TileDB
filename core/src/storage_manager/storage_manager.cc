@@ -540,11 +540,13 @@ Status StorageManager::load_array_schema(
     delete tile_io;
   }
 
+  bool is_kv = is_file(array_uri.join_path(constants::kv_filename));
+
   // Deserialize
   auto cbuff = new ConstBuffer(buff);
   *array_schema = new ArraySchema();
   (*array_schema)->set_array_uri(array_uri);
-  Status st = (*array_schema)->deserialize(cbuff);
+  Status st = (*array_schema)->deserialize(cbuff, is_kv);
   delete cbuff;
   if (!st.ok()) {
     delete array_schema;
