@@ -506,252 +506,228 @@ TEST_CASE_METHOD(
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
 #endif
   }
 
   SECTION("- no compression, col/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- no compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- gzip compression, row/row-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
 #endif
   }
 
   SECTION("- gzip compression, col/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
 #endif
   }
 
   SECTION("- gzip compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- blosc compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- bzip compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- lz4 compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- rle compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- zstd compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif
   }
 
   SECTION("- double-delta compression, row/col-major") {
-    // posix
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-
 #ifdef HAVE_S3
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+#else
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 #endif

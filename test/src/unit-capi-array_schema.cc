@@ -515,14 +515,6 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   std::string array_name;
 
-  // File
-  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  create_array(array_name);
-  load_and_check_array_schema(array_name);
-  delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-
 #ifdef HAVE_S3
   // S3
   array_name = S3_TEMP_DIR + ARRAY_NAME;
@@ -531,9 +523,7 @@ TEST_CASE_METHOD(
   load_and_check_array_schema(array_name);
   delete_array(array_name);
   remove_temp_dir(S3_TEMP_DIR);
-#endif
-
-#ifdef HAVE_HDFS
+#elif HAVE_HDFS
   // HDFS
   array_name = HDFS_TEMP_DIR + ARRAY_NAME;
   create_temp_dir(HDFS_TEMP_DIR);
@@ -541,6 +531,14 @@ TEST_CASE_METHOD(
   load_and_check_array_schema(array_name);
   delete_array(array_name);
   remove_temp_dir(HDFS_TEMP_DIR);
+#else
+  // File
+  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_array(array_name);
+  load_and_check_array_schema(array_name);
+  delete_array(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 #endif
 }
 
