@@ -509,7 +509,7 @@ bool StorageManager::is_group(const URI& uri) const {
 }
 
 bool StorageManager::is_kv(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::kv_filename));
+  return vfs_->is_file(uri.join_path(constants::kv_schema_filename));
 }
 
 Status StorageManager::load_array_schema(
@@ -518,20 +518,30 @@ Status StorageManager::load_array_schema(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  // Initialization
+  bool is_kv = false, is_array = false;
   URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
+  URI kv_schema_uri = array_uri.join_path(constants::kv_schema_filename);
+  if (is_file(array_schema_uri))
+    is_array = true;
+  else if (is_file(kv_schema_uri))
+    is_kv = true;
+  else
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Schema file not found"));
+
+  URI schema_uri = (is_array) ? array_schema_uri : kv_schema_uri;
 
   // Try to read from cache
   bool in_cache;
   auto buff = new Buffer();
   RETURN_NOT_OK_ELSE(
-      array_schema_cache_->read(array_schema_uri.to_string(), buff, &in_cache),
+      array_schema_cache_->read(schema_uri.to_string(), buff, &in_cache),
       delete buff);
 
   // Read from file if not in cache
   if (!in_cache) {
     delete buff;
-    auto tile_io = new TileIO(this, array_schema_uri);
+    auto tile_io = new TileIO(this, schema_uri);
     auto tile = (Tile*)nullptr;
     RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
     tile->disown_buff();
@@ -539,8 +549,6 @@ Status StorageManager::load_array_schema(
     delete tile;
     delete tile_io;
   }
-
-  bool is_kv = is_file(array_uri.join_path(constants::kv_filename));
 
   // Deserialize
   auto cbuff = new ConstBuffer(buff);
@@ -557,7 +565,7 @@ Status StorageManager::load_array_schema(
   if (st.ok() && !in_cache && buff->size() <= array_schema_cache_->max_size()) {
     buff->disown_data();
     st = array_schema_cache_->insert(
-        array_schema_uri.to_string(), buff->data(), buff->size());
+        schema_uri.to_string(), buff->data(), buff->size());
   }
 
   delete buff;
@@ -890,14 +898,16 @@ Status StorageManager::read(
 Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   auto& array_uri = array_schema->array_uri();
   URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
+  URI kv_schema_uri = array_uri.join_path(constants::kv_schema_filename);
+  URI schema_uri = (array_schema->is_kv()) ? kv_schema_uri : array_schema_uri;
 
   // Serialize
   auto buff = new Buffer();
   RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
 
   // Delete file if it exists already
-  if (is_file(array_schema_uri))
-    RETURN_NOT_OK_ELSE(remove_path(array_schema_uri), delete buff);
+  if (is_file(schema_uri))
+    RETURN_NOT_OK_ELSE(remove_path(schema_uri), delete buff);
 
   // Write to file
   buff->reset_offset();
@@ -909,24 +919,14 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
       0,
       buff,
       false);
-  auto tile_io = new TileIO(this, array_schema_uri);
+  auto tile_io = new TileIO(this, schema_uri);
   Status st = tile_io->write_generic(tile);
   if (st.ok())
-    st = close_file(array_schema_uri);
+    st = close_file(schema_uri);
 
   delete tile;
   delete tile_io;
   delete buff;
-
-  // If it is a key-value store, create a new key-value special file
-  if (st.ok() && array_schema->is_kv()) {
-    URI kv_uri = array_uri.join_path(constants::kv_filename);
-    st = vfs_->create_file(kv_uri);
-    if (!st.ok()) {
-      vfs_->remove_path(array_schema_uri);
-      vfs_->remove_path(kv_uri);
-    }
-  }
 
   return st;
 }
@@ -988,7 +988,8 @@ Status StorageManager::write_to_cache(
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
   if (filename == constants::fragment_metadata_filename ||
-      filename == constants::array_schema_filename) {
+      filename == constants::array_schema_filename ||
+      filename == constants::kv_schema_filename) {
     return Status::Ok();
   }
 
@@ -1112,7 +1113,7 @@ Status StorageManager::array_open(
     const ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
-  if (!is_array(array_uri)) {
+  if (!is_array(array_uri) && !is_kv(array_uri)) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
