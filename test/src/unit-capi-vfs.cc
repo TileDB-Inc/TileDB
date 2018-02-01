@@ -381,9 +381,13 @@ void VFSFx::check_write(const std::string& path) {
   tiledb_vfs_fh_t* fh;
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  int is_open = false;
+  rc = tiledb_vfs_fh_is_open(ctx_, fh, &is_open);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_sync(ctx_, vfs_, fh);
+  REQUIRE((bool)is_open);
+  rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_sync(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -400,7 +404,12 @@ void VFSFx::check_write(const std::string& path) {
   }
 
   // Close file
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_is_open(ctx_, fh, &is_open);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!(bool)is_open);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -414,18 +423,22 @@ void VFSFx::check_write(const std::string& path) {
   to_read.resize(to_write.size());
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_read(ctx_, vfs_, fh, 0, &to_read[0], file_size);
+  rc = tiledb_vfs_read(ctx_, fh, 0, &to_read[0], file_size);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(to_read, Catch::Equals(to_write));
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Open in WRITE mode again - previous file will be removed
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
@@ -435,7 +448,9 @@ void VFSFx::check_write(const std::string& path) {
   // file, but then does not create file as it has no contents
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -451,9 +466,11 @@ void VFSFx::check_append(const std::string& path) {
   std::string to_write = "This will be written to the file";
   int rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Second write - append
@@ -464,10 +481,12 @@ void VFSFx::check_append(const std::string& path) {
     REQUIRE(fh == nullptr);
   } else {
     REQUIRE(rc == TILEDB_OK);
-    rc =
-        tiledb_vfs_write(ctx_, vfs_, fh, to_write_2.c_str(), to_write_2.size());
+    rc = tiledb_vfs_write(ctx_, fh, to_write_2.c_str(), to_write_2.size());
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_close(ctx_, vfs_, fh);
+    rc = tiledb_vfs_close(ctx_, fh);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_fh_free(ctx_, fh);
+    REQUIRE(rc == TILEDB_OK);
     uint64_t file_size = 0;
     rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
     REQUIRE(rc == TILEDB_OK);
@@ -479,10 +498,12 @@ void VFSFx::check_append(const std::string& path) {
     to_read.resize(total_size);
     rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_read(ctx_, vfs_, fh, 0, &to_read[0], total_size);
+    rc = tiledb_vfs_read(ctx_, fh, 0, &to_read[0], total_size);
     REQUIRE(rc == TILEDB_OK);
     CHECK_THAT(to_read, Catch::Equals(to_write + to_write_2));
-    rc = tiledb_vfs_close(ctx_, vfs_, fh);
+    rc = tiledb_vfs_close(ctx_, fh);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_fh_free(ctx_, fh);
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -497,9 +518,11 @@ void VFSFx::check_read(const std::string& path) {
   tiledb_vfs_fh_t* fh;
   int rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_write(ctx_, vfs_, fh, to_write.c_str(), to_write.size());
+  rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Read only the "will be written" portion of the file
@@ -509,10 +532,12 @@ void VFSFx::check_read(const std::string& path) {
   uint64_t offset = 5;
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_read(ctx_, vfs_, fh, offset, &to_read[0], to_check.size());
+  rc = tiledb_vfs_read(ctx_, fh, offset, &to_read[0], to_check.size());
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(to_read, Catch::Equals(to_check));
-  rc = tiledb_vfs_close(ctx_, vfs_, fh);
+  rc = tiledb_vfs_close(ctx_, fh);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Remove file

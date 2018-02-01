@@ -137,6 +137,8 @@ struct tiledb_vfs_t {
 
 struct tiledb_vfs_fh_t {
   tiledb::URI uri_;
+  bool is_open_;
+  tiledb::VFS* vfs_;
 };
 
 /* ********************************* */
@@ -2771,36 +2773,54 @@ int tiledb_vfs_open(
     return TILEDB_ERR;
   }
 
+  (*fh)->is_open_ = true;
+  (*fh)->vfs_ = vfs->vfs_;
+
   return TILEDB_OK;
 }
 
-int tiledb_vfs_close(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
-      sanity_check(ctx, fh) == TILEDB_ERR)
+int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  if (!fh->is_open_) {
+    auto st = tiledb::Status::Error(
+        std::string("Cannot close file `") + fh->uri_.c_str() +
+        "'; File not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   int rc = TILEDB_OK;
-  if (save_error(ctx, vfs->vfs_->close_file(fh->uri_)))
+  if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
     rc = TILEDB_ERR;
 
-  delete fh;
+  fh->is_open_ = false;
+
   return rc;
 }
 
 int tiledb_vfs_read(
     tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
     tiledb_vfs_fh_t* fh,
     uint64_t offset,
     void* buffer,
     uint64_t nbytes) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
-      sanity_check(ctx, fh) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  if (!fh->is_open_) {
+    auto st = tiledb::Status::Error(
+        std::string("Cannot read from file '") + fh->uri_.c_str() +
+        "'; File is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   if (save_error(
-          ctx, vfs->vfs_->read(tiledb::URI(fh->uri_), offset, buffer, nbytes)))
+          ctx, fh->vfs_->read(tiledb::URI(fh->uri_), offset, buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2808,27 +2828,61 @@ int tiledb_vfs_read(
 
 int tiledb_vfs_write(
     tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
     tiledb_vfs_fh_t* fh,
     const void* buffer,
     uint64_t nbytes) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
-      sanity_check(ctx, fh) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->write(tiledb::URI(fh->uri_), buffer, nbytes)))
+  if (!fh->is_open_) {
+    auto st = tiledb::Status::Error(
+        std::string("Cannot write to file '") + fh->uri_.c_str() +
+        "'; File is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  if (save_error(ctx, fh->vfs_->write(tiledb::URI(fh->uri_), buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR ||
-      sanity_check(ctx, fh) == TILEDB_ERR)
+int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->sync(tiledb::URI(fh->uri_))))
+  if (!fh->is_open_) {
+    auto st = tiledb::Status::Error(
+        std::string("Cannot sync file '") + fh->uri_.c_str() +
+        "'; File is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
+  }
+
+  if (save_error(ctx, fh->vfs_->sync(tiledb::URI(fh->uri_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  delete fh;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_fh_is_open(
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_open) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_open = fh->is_open_;
 
   return TILEDB_OK;
 }
