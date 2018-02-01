@@ -47,7 +47,7 @@ int main() {
   std::vector<float> a3_data = {
       112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
 
-  auto a2_buff = tiledb::make_var_buffers(a2);
+  auto a2_buff = tiledb::ungroup_var_buffer(a2);
 
   tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
   query.set_buffer("a1", a1_data);

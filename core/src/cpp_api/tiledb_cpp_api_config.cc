@@ -104,7 +104,7 @@ void Config::create_config() {
   tiledb_config_create(&config, &err);
   impl::check_error(err);
 
-  config_ = std::shared_ptr<tiledb_config_t>(config, deleter_);
+  config_ = std::shared_ptr<tiledb_config_t>(config, tiledb_config_free);
 }
 
 }  // namespace tdb

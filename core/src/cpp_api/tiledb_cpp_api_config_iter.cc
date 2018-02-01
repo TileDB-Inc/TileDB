@@ -46,7 +46,7 @@ void ConfigIter::init(const Config &config) {
   tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
   check_error(err);
 
-  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, deleter_);
+  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, tiledb_config_iter_free);
   operator++();
 }
 

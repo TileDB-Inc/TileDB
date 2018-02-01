@@ -87,7 +87,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     std::vector<std::string> a2 = {"abc", "defg"};
     std::vector<std::array<double, 2>> a3 = {{1.0,2.0}, {3.0,4.0}};
 
-    auto a2buf = make_var_buffers(a2);
+    auto a2buf = ungroup_var_buffer(a2);
     auto a3buf = flatten(a3);
 
     {

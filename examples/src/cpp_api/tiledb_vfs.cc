@@ -58,7 +58,7 @@ int main() {
   std::cout << "File size: " << vfs.file_size("dirA/fileA") << "\n";
 
   std::cout << "Moving file dirA/fileA to dirA/fileB.\n";
-  vfs.move("dirA/fileA", "dirA/fileB");
+  vfs.move("dirA/fileA", "dirA/fileB", true);
 
   std::cout << "deleting fileB and dirA.\n";
   vfs.remove_file("dirA/fileB");

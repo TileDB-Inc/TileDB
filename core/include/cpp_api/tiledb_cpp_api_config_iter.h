@@ -49,16 +49,6 @@ namespace tdb {
 
   namespace impl {
 
-    /** Deleter for tiledb_config_iter_t objects **/
-    struct ConfigIterDeleter {
-      tiledb_error_t *err;
-      void operator()(tiledb_config_iter_t *p) {
-        tiledb_error_t *err;
-        tiledb_config_iter_free(p, &err);
-        check_error(err);
-      }
-    };
-
     class ConfigIter : public std::iterator<std::forward_iterator_tag, std::string> {
     public:
 
@@ -110,9 +100,6 @@ namespace tdb {
 
       /** Pointer to iter object. **/
       std::shared_ptr<tiledb_config_iter_t> iter_;
-
-      /** Deleter for destruction **/
-      ConfigIterDeleter deleter_;
 
       /** Current object. **/
       std::pair<std::string, std::string> here_;

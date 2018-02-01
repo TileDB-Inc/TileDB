@@ -44,7 +44,8 @@ Query::Query(
     const Context &ctx, const std::string &array_uri, tiledb_query_type_t type)
     : ctx_(ctx)
     , deleter_(ctx)
-    , schema_(ctx, array_uri) {
+    , schema_(ctx, array_uri)
+    , uri_(array_uri) {
   tiledb_query_t *q;
   ctx.handle_error(tiledb_query_create(ctx, &q, array_uri.c_str(), type));
   query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);

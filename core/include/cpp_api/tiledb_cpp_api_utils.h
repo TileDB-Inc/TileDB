@@ -156,8 +156,8 @@ std::vector<std::array<T, N>> group_by_cell(
  */
 
 template <typename T, typename R = typename T::value_type>
-std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
-    const std::vector<T> &data) {
+std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
+const std::vector<T> &data) {
   std::pair<std::vector<uint64_t>, std::vector<R>> ret;
   ret.first.push_back(0);
   for (const auto &v : data) {

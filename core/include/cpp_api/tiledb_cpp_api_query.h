@@ -50,6 +50,9 @@
 #include <set>
 #include <type_traits>
 #include <unordered_map>
+#include <algorithm>
+#include <string>
+#include <vector>
 
 namespace tdb {
 
@@ -129,7 +132,22 @@ class Query {
   template <typename T = uint64_t>
   typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
   set_subarray(const std::vector<T> &pairs) {
-    return set_subarray<typename impl::type_from_native<T>::type>(pairs);
+    auto &ctx = ctx_.get();
+    impl::type_check<typename impl::type_from_native<T>::type>(schema_.domain().type());
+    if (pairs.size() != schema_.domain().dim_num() * 2) {
+      throw SchemaMismatch(
+      "Subarray should have num_dims * 2 values: (low, high) for each "
+      "dimension.");
+    }
+    ctx.handle_error(
+    tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
+
+    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
+    for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
+      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
+    }
+
+    return *this;
   }
 
   /**
@@ -142,7 +160,14 @@ class Query {
   template <typename T = uint64_t>
   typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
   set_subarray(const std::vector<std::array<T, 2>> &pairs) {
-    return set_subarray<typename impl::type_from_native<T>::type>(pairs);
+    std::vector<T> buf;
+    buf.reserve(pairs.size() * 2);
+    std::for_each(pairs.begin(), pairs.end(),
+                  [&buf](const std::array<T,2> &p){
+                    buf.push_back(p[0]);
+                    buf.push_back(p[1]);
+                  });
+    return set_subarray(buf);
   }
 
   /** Sets a buffer for a fixed-sized attribute. */
@@ -188,7 +213,7 @@ class Query {
 
   /**
    * Make a pair of buffers for a variable-sized attribute, the first holds
-   * the starting cell offsets, and the second the actuall cell data.
+   * the starting cell offsets, and the second the actual cell data.
    *
    * @tparam DataT The native attribute type.
    * @param attr The attribute name.
@@ -276,52 +301,15 @@ class Query {
   /** Keeps track of vector value_type sizes to convert back at return. */
   std::vector<uint64_t> sub_tsize_;
 
+  /** URI of array being queried. **/
+  const std::string uri_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
   /** Collate buffers and attach them to the query. */
   void prepare_submission();
-
-  /**
-   * Sets a subarray. The subarray defined as pairs of [start, stop] per
-   * dimension. It also calculates the number of cells in the subarray.
-   */
-  template <typename T>
-  Query &set_subarray(const std::vector<typename T::type> &pairs) {
-    auto &ctx = ctx_.get();
-    impl::type_check<T>(schema_.domain().type());
-    if (pairs.size() != schema_.domain().dim_num() * 2) {
-      throw SchemaMismatch(
-          "Subarray should have num_dims * 2 values: (low, high) for each "
-          "dimension.");
-    }
-    ctx.handle_error(
-        tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
-    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
-    for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
-      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
-    }
-    return *this;
-  }
-
-  /**
-   * Sets a subarray. The subarray defined as pairs of [start, stop] per
-   * dimension. It also calculates the number of cells in the subarray.
-   */
-  template <typename T>
-  Query &set_subarray(
-      const std::vector<std::array<typename T::type, 2>> &pairs) {
-    auto &ctx = ctx_.get();
-    impl::type_check<T>(schema_.domain().type());
-    ctx.handle_error(
-        tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
-    subarray_cell_num_ = pairs[0][1] - pairs[0][0] + 1;
-    for (unsigned i = 1; i < pairs.size(); ++i) {
-      subarray_cell_num_ *= (pairs[i][1] - pairs[i][0] + 1);
-    }
-    return *this;
-  }
 
   /**
    * Sets a buffer for a fixed-sized attribute.

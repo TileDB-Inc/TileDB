@@ -46,16 +46,6 @@ namespace tdb {
 
 namespace impl {
 class ConfigProxy;
-
-struct ConfigDeleter {
-  tiledb_error_t *err;
-
-  void operator()(tiledb_config_t *p) {
-    tiledb_error_t *err;
-    tiledb_config_free(p, &err);
-    check_error(err);
-  }
-};
 }
 
 /** Carries configuration parameters that will be passed to a Context object. */
@@ -164,8 +154,6 @@ class Config {
 
   /** The URI path to the config file. */
   std::string filename_;
-
-  impl::ConfigDeleter deleter_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
