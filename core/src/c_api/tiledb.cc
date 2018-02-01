@@ -137,7 +137,7 @@ struct tiledb_vfs_t {
 
 struct tiledb_vfs_fh_t {
   tiledb::URI uri_;
-  bool is_open_;
+  bool is_closed_;
   tiledb::VFS* vfs_;
 };
 
@@ -2773,7 +2773,7 @@ int tiledb_vfs_open(
     return TILEDB_ERR;
   }
 
-  (*fh)->is_open_ = true;
+  (*fh)->is_closed_ = false;
   (*fh)->vfs_ = vfs->vfs_;
 
   return TILEDB_OK;
@@ -2783,22 +2783,19 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (!fh->is_open_) {
-    auto st = tiledb::Status::Error(
-        std::string("Cannot close file `") + fh->uri_.c_str() +
-        "'; File not open");
+  if (fh->is_closed_) {
+    std::stringstream msg;
+    msg << "Cannot close file '" << fh->uri_.to_string() << "'; File closed";
+    auto st = tiledb::Status::Error(msg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
 
-  int rc = TILEDB_OK;
   if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
-    rc = TILEDB_ERR;
-
-  fh->is_open_ = false;
-
-  return rc;
+    return TILEDB_ERR;
+  fh->is_closed_ = true;
+  return TILEDB_OK;
 }
 
 int tiledb_vfs_read(
@@ -2810,17 +2807,17 @@ int tiledb_vfs_read(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (!fh->is_open_) {
-    auto st = tiledb::Status::Error(
-        std::string("Cannot read from file '") + fh->uri_.c_str() +
-        "'; File is not open");
+  if (fh->is_closed_) {
+    std::stringstream msg;
+    msg << "Cannot read from file '" << fh->uri_.to_string()
+        << "'; File closed";
+    auto st = tiledb::Status::Error(msg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
 
-  if (save_error(
-          ctx, fh->vfs_->read(tiledb::URI(fh->uri_), offset, buffer, nbytes)))
+  if (save_error(ctx, fh->vfs_->read(fh->uri_, offset, buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2834,16 +2831,16 @@ int tiledb_vfs_write(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (!fh->is_open_) {
-    auto st = tiledb::Status::Error(
-        std::string("Cannot write to file '") + fh->uri_.c_str() +
-        "'; File is not open");
+  if (fh->is_closed_) {
+    std::stringstream msg;
+    msg << "Cannot write to file '" + fh->uri_.to_string() << "'; File closed";
+    auto st = tiledb::Status::Error(msg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
 
-  if (save_error(ctx, fh->vfs_->write(tiledb::URI(fh->uri_), buffer, nbytes)))
+  if (save_error(ctx, fh->vfs_->write(fh->uri_, buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2853,16 +2850,16 @@ int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (!fh->is_open_) {
-    auto st = tiledb::Status::Error(
-        std::string("Cannot sync file '") + fh->uri_.c_str() +
-        "'; File is not open");
+  if (fh->is_closed_) {
+    std::stringstream msg;
+    msg << "Cannot sync file '" << fh->uri_.to_string() << "'; File closed";
+    auto st = tiledb::Status::Error(msg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
 
-  if (save_error(ctx, fh->vfs_->sync(tiledb::URI(fh->uri_))))
+  if (save_error(ctx, fh->vfs_->sync(fh->uri_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2877,12 +2874,12 @@ int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   return TILEDB_OK;
 }
 
-int tiledb_vfs_fh_is_open(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_open) {
+int tiledb_vfs_fh_closed(
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_closed) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_open = fh->is_open_;
+  *is_closed = fh->is_closed_;
 
   return TILEDB_OK;
 }
