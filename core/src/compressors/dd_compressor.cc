@@ -176,10 +176,10 @@ Status DoubleDelta::compute_bitsize(
     *bitsize = 0;
     return Status::Ok();
   }
-  int64_t prev_delta = in[1] - in[0];
+  int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
   char delta_out_of_bounds = 0;
   for (uint64_t i = 2; i < num; ++i) {
-    int64_t cur_delta = in[i] - in[i - 1];
+    int64_t cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
     int64_t dd = cur_delta - prev_delta;
     delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
     delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
