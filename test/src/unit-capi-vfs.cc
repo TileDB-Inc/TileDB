@@ -381,10 +381,10 @@ void VFSFx::check_write(const std::string& path) {
   tiledb_vfs_fh_t* fh;
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
-  int is_open = false;
-  rc = tiledb_vfs_fh_is_open(ctx_, fh, &is_open);
+  int is_closed = 0;
+  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE((bool)is_open);
+  REQUIRE(is_closed == 0);
   rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_sync(ctx_, fh);
@@ -406,9 +406,9 @@ void VFSFx::check_write(const std::string& path) {
   // Close file
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_is_open(ctx_, fh, &is_open);
+  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!(bool)is_open);
+  REQUIRE(is_closed == 1);
   rc = tiledb_vfs_fh_free(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);

@@ -2083,15 +2083,15 @@ TILEDB_EXPORT int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 TILEDB_EXPORT int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 
 /**
- * Checks if a file handle is open.
+ * Checks if a file handle is closed.
  *
  * @param ctx The TileDB context.
  * @param fh The URI file handle.
- * @param is_open Set to `true` if the file handle in open.
+ * @param is_closed Set to `true` if the file handle is closed.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_vfs_fh_is_open(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_open);
+TILEDB_EXPORT int tiledb_vfs_fh_closed(
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_closed);
 
 /**
  * Checks if a given storage filesystem backend is supported.
