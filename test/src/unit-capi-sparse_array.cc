@@ -57,14 +57,10 @@ struct SparseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
-#ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -81,9 +77,14 @@ struct SparseArrayFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
   SparseArrayFx();
   ~SparseArrayFx();
+  void set_supported_fs();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
@@ -168,64 +169,81 @@ struct SparseArrayFx {
 };
 
 SparseArrayFx::SparseArrayFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
-// Connect to S3
-#ifdef HAVE_S3
-  // Create bucket if it does not exist
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+  // Connect to S3
+  if (supports_s3_) {
+    // Create bucket if it does not exist
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
     REQUIRE(rc == TILEDB_OK);
+    if (!is_bucket) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
-#endif
 
   std::srand(0);
 
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#ifdef HAVE_S3
-  create_temp_dir(S3_TEMP_DIR);
-#endif
-#ifdef HAVE_HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-#endif
+  if (supports_s3_)
+    create_temp_dir(S3_TEMP_DIR);
+  if (supports_hdfs_)
+    create_temp_dir(HDFS_TEMP_DIR);
 }
 
 SparseArrayFx::~SparseArrayFx() {
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#ifdef HAVE_S3
-  remove_temp_dir(S3_TEMP_DIR);
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+
+  if (supports_s3_) {
+    remove_temp_dir(S3_TEMP_DIR);
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+    CHECK(rc == TILEDB_OK);
+    if (is_bucket) {
+      CHECK(
+          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+    }
   }
-#endif
-#ifdef HAVE_HDFS
-  remove_temp_dir(HDFS_TEMP_DIR);
-#endif
+  if (supports_hdfs_)
+    remove_temp_dir(HDFS_TEMP_DIR);
 
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+}
+
+void SparseArrayFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+
+  int is_supported = 0;
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)is_supported;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
 }
 
 void SparseArrayFx::create_temp_dir(const std::string& path) {
@@ -506,230 +524,257 @@ TEST_CASE_METHOD(
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_ROW_MAJOR);
+    }
   }
 
   SECTION("- no compression, col/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_COL_MAJOR,
+          TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_COL_MAJOR,
+          TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_COL_MAJOR,
+          TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- no compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_NO_COMPRESSION,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- gzip compression, row/row-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    }
   }
 
   SECTION("- gzip compression, col/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    }
   }
 
   SECTION("- gzip compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- blosc compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- bzip compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- lz4 compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- rle compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- zstd compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 
   SECTION("- double-delta compression, row/col-major") {
-#ifdef HAVE_S3
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#elif HAVE_HDFS
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#else
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-#endif
+    if (supports_s3_) {
+      // S3
+      array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_hdfs_) {
+      // HDFS
+      array_name = HDFS_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else {
+      // File
+      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    }
   }
 }

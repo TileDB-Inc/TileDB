@@ -46,14 +46,10 @@ struct DenseVectorFx {
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT64;
   const char* DIM0_NAME = "dim0";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
-#ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -69,6 +65,10 @@ struct DenseVectorFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
   DenseVectorFx();
   ~DenseVectorFx();
@@ -78,52 +78,72 @@ struct DenseVectorFx {
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
+  void set_supported_fs();
 };
 
 DenseVectorFx::DenseVectorFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
-// Connect to S3
-#ifdef HAVE_S3
-  // Create bucket if it does not exist
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+  // Connect to S3
+  if (supports_s3_) {
+    // Create bucket if it does not exist
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
     REQUIRE(rc == TILEDB_OK);
+    if (!is_bucket) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
-#endif
 }
 
 DenseVectorFx::~DenseVectorFx() {
-#ifdef HAVE_S3
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  if (supports_s3_) {
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+    CHECK(rc == TILEDB_OK);
+    if (is_bucket) {
+      CHECK(
+          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+    }
   }
-#endif
 
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+}
+
+void DenseVectorFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+
+  int is_supported = 0;
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)is_supported;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
 }
 
 void DenseVectorFx::create_temp_dir(const std::string& path) {
@@ -286,32 +306,32 @@ TEST_CASE_METHOD(
     DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
   std::string vector_name;
 
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  vector_name = S3_TEMP_DIR + VECTOR;
-  create_dense_vector(vector_name);
-  check_read(vector_name, TILEDB_ROW_MAJOR);
-  check_read(vector_name, TILEDB_COL_MAJOR);
-  check_update(vector_name);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  vector_name = HDFS_TEMP_DIR + VECTOR;
-  create_dense_vector(vector_name);
-  check_read(vector_name, TILEDB_ROW_MAJOR);
-  check_read(vector_name, TILEDB_COL_MAJOR);
-  check_update(vector_name);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-  create_dense_vector(vector_name);
-  check_read(vector_name, TILEDB_ROW_MAJOR);
-  check_read(vector_name, TILEDB_COL_MAJOR);
-  check_update(vector_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    vector_name = S3_TEMP_DIR + VECTOR;
+    create_dense_vector(vector_name);
+    check_read(vector_name, TILEDB_ROW_MAJOR);
+    check_read(vector_name, TILEDB_COL_MAJOR);
+    check_update(vector_name);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    vector_name = HDFS_TEMP_DIR + VECTOR;
+    create_dense_vector(vector_name);
+    check_read(vector_name, TILEDB_ROW_MAJOR);
+    check_read(vector_name, TILEDB_COL_MAJOR);
+    check_update(vector_name);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
+    create_dense_vector(vector_name);
+    check_read(vector_name, TILEDB_ROW_MAJOR);
+    check_read(vector_name, TILEDB_COL_MAJOR);
+    check_update(vector_name);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }

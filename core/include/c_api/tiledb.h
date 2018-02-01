@@ -459,6 +459,18 @@ TILEDB_EXPORT int tiledb_ctx_get_config(
 TILEDB_EXPORT int tiledb_ctx_get_last_error(
     tiledb_ctx_t* ctx, tiledb_error_t** err);
 
+/**
+ * Checks if a given storage filesystem backend is supported.
+ *
+ * @param ctx The TileDB context.
+ * @param fs The filesystem to be checked.
+ * @param is_supported Sets it to `true` if the filesystem is supported, and
+ * `false` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ctx_is_supported_fs(
+    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int* is_supported);
+
 /* ********************************* */
 /*                GROUP              */
 /* ********************************* */
@@ -2090,24 +2102,8 @@ TILEDB_EXPORT int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
  * @param is_closed Set to `true` if the file handle is closed.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_vfs_fh_closed(
+TILEDB_EXPORT int tiledb_vfs_fh_is_closed(
     tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_closed);
-
-/**
- * Checks if a given storage filesystem backend is supported.
- *
- * @param ctx The TileDB context.
- * @param vfs The virtual filesystem object.
- * @param fs The filesystem to be checked.
- * @param supports Sets it to `true` if the filesystem is supported, and `false`
- *     otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_vfs_supports_fs(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    tiledb_filesystem_t fs,
-    int* supports);
 
 /**
  * Touches a file, i.e., creates a new empty file.

@@ -43,14 +43,10 @@
 #include <thread>
 
 struct VFSFx {
-#ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_TEMP_DIR =
       tiledb::win::current_dir() + "\\tiledb_test\\";
@@ -63,6 +59,10 @@ struct VFSFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
   VFSFx();
   ~VFSFx();
@@ -72,21 +72,25 @@ struct VFSFx {
   void check_read(const std::string& path);
   void check_append(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
+  void set_supported_fs();
 };
 
 VFSFx::VFSFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   int rc = tiledb_vfs_create(ctx_, &vfs_, config);
@@ -99,27 +103,42 @@ VFSFx::~VFSFx() {
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
 
-void VFSFx::check_vfs(const std::string& path) {
-#ifdef HAVE_S3
-  // Check S3 bucket functionality
-  if (path == S3_TEMP_DIR) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_bucket) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-    rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(!is_bucket);
+void VFSFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
 
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(is_bucket);
+  int is_supported = 0;
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)is_supported;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
+}
+
+void VFSFx::check_vfs(const std::string& path) {
+  if (supports_s3_) {
+    // Check S3 bucket functionality
+    if (path == S3_TEMP_DIR) {
+      int is_bucket = 0;
+      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+      REQUIRE(rc == TILEDB_OK);
+      if (is_bucket) {
+        rc = tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+        REQUIRE(rc == TILEDB_OK);
+      }
+      rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+      REQUIRE(rc == TILEDB_OK);
+      REQUIRE(!is_bucket);
+
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+      REQUIRE(is_bucket);
+    }
   }
-#endif
 
   // Create directory, is directory, remove directory
   int is_dir = 0;
@@ -204,39 +223,19 @@ void VFSFx::check_vfs(const std::string& path) {
   // Move
   check_move(path);
 
-  // Check if filesystem is supported
-  int supports = 0;
-  rc = tiledb_vfs_supports_fs(ctx_, vfs_, TILEDB_HDFS, &supports);
-  CHECK(rc == TILEDB_OK);
-#ifdef HAVE_HDFS
-  CHECK(supports);
-#else
-  CHECK(!supports);
-#endif
-  rc = tiledb_vfs_supports_fs(ctx_, vfs_, TILEDB_S3, &supports);
-  CHECK(rc == TILEDB_OK);
-#ifdef HAVE_S3
-  CHECK(supports);
-#else
-  CHECK(!supports);
-#endif
-
-#ifdef HAVE_S3
-  if (path == S3_TEMP_DIR) {
+  if (supports_s3_ && path == S3_TEMP_DIR) {
     int is_empty;
     rc = tiledb_vfs_is_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_empty);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(!(bool)is_empty);
   }
-#endif
 
-#ifndef HAVE_S3
-  rc = tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str());
-  REQUIRE(rc == TILEDB_OK);
-#endif
+  if (!supports_s3_) {
+    rc = tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
 
-#ifdef HAVE_S3
-  if (path == S3_TEMP_DIR) {
+  if (supports_s3_ && path == S3_TEMP_DIR) {
     rc = tiledb_vfs_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str());
     REQUIRE(rc == TILEDB_OK);
 
@@ -248,7 +247,6 @@ void VFSFx::check_vfs(const std::string& path) {
     rc = tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
-#endif
 }
 
 void VFSFx::check_move(const std::string& path) {
@@ -334,34 +332,34 @@ void VFSFx::check_move(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
 
-// Move from one bucket to another (only for S3)
-#ifdef HAVE_S3
-  if (path == S3_TEMP_DIR) {
-    std::string bucket2 = S3_PREFIX + random_bucket_name("tiledb") + "/";
-    std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
-    std::string file3 = subdir3 + "file2";
-    int is_bucket = 0;
+  // Move from one bucket to another (only for S3)
+  if (supports_s3_) {
+    if (path == S3_TEMP_DIR) {
+      std::string bucket2 = S3_PREFIX + random_bucket_name("tiledb") + "/";
+      std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
+      std::string file3 = subdir3 + "file2";
+      int is_bucket = 0;
 
-    rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_bucket) {
+      rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket);
+      REQUIRE(rc == TILEDB_OK);
+      if (is_bucket) {
+        rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str());
+        REQUIRE(rc == TILEDB_OK);
+      }
+
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str());
+      REQUIRE(rc == TILEDB_OK);
+
+      rc = tiledb_vfs_move(ctx_, vfs_, subdir2.c_str(), subdir3.c_str(), true);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
+      REQUIRE(rc == TILEDB_OK);
+      REQUIRE(is_file);
+
       rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str());
       REQUIRE(rc == TILEDB_OK);
     }
-
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str());
-    REQUIRE(rc == TILEDB_OK);
-
-    rc = tiledb_vfs_move(ctx_, vfs_, subdir2.c_str(), subdir3.c_str(), true);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(is_file);
-
-    rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str());
-    REQUIRE(rc == TILEDB_OK);
   }
-#endif
 }
 
 void VFSFx::check_write(const std::string& path) {
@@ -382,7 +380,7 @@ void VFSFx::check_write(const std::string& path) {
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
   int is_closed = 0;
-  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_closed == 0);
   rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
@@ -406,7 +404,7 @@ void VFSFx::check_write(const std::string& path) {
   // Close file
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_closed == 1);
   rc = tiledb_vfs_fh_free(ctx_, fh);
@@ -555,28 +553,24 @@ std::string VFSFx::random_bucket_name(const std::string& prefix) {
 TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
   check_vfs(FILE_TEMP_DIR);
 
-#ifdef HAVE_S3
-  // S3
-  check_vfs(S3_TEMP_DIR);
-#endif
+  if (supports_s3_)
+    check_vfs(S3_TEMP_DIR);
 
-#ifdef HAVE_HDFS
-  // HDFS
-  check_vfs(HDFS_TEMP_DIR);
-#endif
+  if (supports_hdfs_)
+    check_vfs(HDFS_TEMP_DIR);
 }
 
-#ifndef HAVE_S3
 TEST_CASE_METHOD(
     VFSFx,
     "C API: Test virtual filesystem when S3 is not supported",
     "[capi], [vfs]") {
-  tiledb_vfs_t* vfs;
-  int rc = tiledb_vfs_create(ctx_, &vfs, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_bucket(ctx_, vfs, "s3://foo");
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_vfs_free(ctx_, vfs);
-  CHECK(rc == TILEDB_OK);
+  if (!supports_s3_) {
+    tiledb_vfs_t* vfs;
+    int rc = tiledb_vfs_create(ctx_, &vfs, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_create_bucket(ctx_, vfs, "s3://foo");
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_vfs_free(ctx_, vfs);
+    CHECK(rc == TILEDB_OK);
+  }
 }
-#endif

@@ -672,6 +672,17 @@ int tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   return TILEDB_OK;
 }
 
+int tiledb_ctx_is_supported_fs(
+    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int* is_supported) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_supported = (int)ctx->storage_manager_->vfs()->supports_fs(
+      static_cast<tiledb::Filesystem>(fs));
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              GROUP             */
 /* ****************************** */
@@ -2874,25 +2885,12 @@ int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   return TILEDB_OK;
 }
 
-int tiledb_vfs_fh_closed(
+int tiledb_vfs_fh_is_closed(
     tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_closed) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *is_closed = fh->is_closed_;
-
-  return TILEDB_OK;
-}
-
-int tiledb_vfs_supports_fs(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    tiledb_filesystem_t fs,
-    int* supports) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *supports = (int)vfs->vfs_->supports_fs(static_cast<tiledb::Filesystem>(fs));
 
   return TILEDB_OK;
 }
