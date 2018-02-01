@@ -134,19 +134,16 @@ DenseVectorFx::~DenseVectorFx() {
 void DenseVectorFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
-  tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
 
-  int supports = 0;
-  int rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_S3, &supports);
+  int is_supported = 0;
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
   REQUIRE(rc == TILEDB_OK);
-  supports_s3_ = (bool)supports;
-  rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_HDFS, &supports);
+  supports_s3_ = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)supports;
+  supports_hdfs_ = (bool)is_supported;
 
   REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
-  REQUIRE(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
 }
 
 void DenseVectorFx::create_temp_dir(const std::string& path) {

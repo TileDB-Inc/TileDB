@@ -106,19 +106,16 @@ VFSFx::~VFSFx() {
 void VFSFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
-  tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
 
-  int supports = 0;
-  int rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_S3, &supports);
+  int is_supported = 0;
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
   REQUIRE(rc == TILEDB_OK);
-  supports_s3_ = (bool)supports;
-  rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_HDFS, &supports);
+  supports_s3_ = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)supports;
+  supports_hdfs_ = (bool)is_supported;
 
   REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
-  REQUIRE(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
 }
 
 void VFSFx::check_vfs(const std::string& path) {
@@ -225,21 +222,6 @@ void VFSFx::check_vfs(const std::string& path) {
 
   // Move
   check_move(path);
-
-  // Check if filesystem is supported
-  int supports = 0;
-  rc = tiledb_vfs_supports_fs(ctx_, vfs_, TILEDB_HDFS, &supports);
-  CHECK(rc == TILEDB_OK);
-  if (supports_hdfs_)
-    CHECK(supports);
-  else
-    CHECK(!supports);
-  rc = tiledb_vfs_supports_fs(ctx_, vfs_, TILEDB_S3, &supports);
-  CHECK(rc == TILEDB_OK);
-  if (supports_s3_)
-    CHECK(supports);
-  else
-    CHECK(!supports);
 
   if (supports_s3_ && path == S3_TEMP_DIR) {
     int is_empty;
@@ -398,7 +380,7 @@ void VFSFx::check_write(const std::string& path) {
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
   int is_closed = 0;
-  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_closed == 0);
   rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());
@@ -422,7 +404,7 @@ void VFSFx::check_write(const std::string& path) {
   // Close file
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_closed(ctx_, fh, &is_closed);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_closed == 1);
   rc = tiledb_vfs_fh_free(ctx_, fh);
