@@ -52,6 +52,9 @@ namespace constants {
 /** The array schema file name. */
 const char* array_schema_filename = "__array_schema.tdb";
 
+/** The key-value schema file name. */
+const char* kv_schema_filename = "__kv_schema.tdb";
+
 /** The fragment file name. */
 const char* fragment_filename = "__fragment.tdb";
 
@@ -307,9 +310,6 @@ const char* key_dim_1 = "__key_dim_1";
  * is represented as a 2-dimensional uint64_t value.
  */
 const char* key_dim_2 = "__key_dim_2";
-
-/** Name of special empty file that indicates a key-value store. */
-const char* kv_filename = "__kv.tdb";
 
 /**
  * Default size to be allocated for an internal key-value buffer when reading

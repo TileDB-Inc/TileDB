@@ -288,9 +288,8 @@ void ObjectMgmtFx::check_move(const std::string& path) {
  *    |       |     |_ __array_schema.tdb
  *    |       |_ array_B
  *    |       |     |_ __array_schema.tdb
- *    |       |     |_ __array_schema.tdb
  *    |       |_ kv
- *    |             |_ __kv.tdb
+ *    |             |_ __kv_schema.tdb
  *    |_ sparse_arrays
  *            |_ __tiledb_group.tdb
  *            |_ array_C
@@ -337,8 +336,8 @@ void ObjectMgmtFx::create_hierarchy(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays/kv").c_str());
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_vfs_touch(ctx_, vfs_, (path + "dense_arrays/kv/__kv.tdb").c_str());
+  rc = tiledb_vfs_touch(
+      ctx_, vfs_, (path + "dense_arrays/kv/__kv_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
 }
 

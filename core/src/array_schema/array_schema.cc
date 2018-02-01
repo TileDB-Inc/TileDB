@@ -398,9 +398,6 @@ Status ArraySchema::serialize(Buffer* buff) const {
   auto array_type = (char)array_type_;
   RETURN_NOT_OK(buff->write(&array_type, sizeof(char)));
 
-  // Write is_kv
-  RETURN_NOT_OK(buff->write(&is_kv_, sizeof(bool)));
-
   // Write tile and cell order
   auto tile_order = (char)tile_order_;
   RETURN_NOT_OK(buff->write(&tile_order, sizeof(char)));
@@ -501,7 +498,9 @@ Status ArraySchema::add_attribute(const Attribute* attr) {
 //   attribute #1
 //   attribute #2
 //   ...
-Status ArraySchema::deserialize(ConstBuffer* buff) {
+Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
+  is_kv_ = is_kv;
+
   // Load version
   RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
 
@@ -509,9 +508,6 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   char array_type;
   RETURN_NOT_OK(buff->read(&array_type, sizeof(char)));
   array_type_ = (ArrayType)array_type;
-
-  // Load is_kv
-  RETURN_NOT_OK(buff->read(&is_kv_, sizeof(bool)));
 
   // Load tile order
   char tile_order;

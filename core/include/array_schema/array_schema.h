@@ -227,9 +227,13 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
+   * @param is_kv `true` if the array schema to be deserialized is a key-value
+   *     store. Note that a key-value store is indicated by a special file
+   *     stored in the array directory. The storage manager can know this
+   *     and, as such, pass `is_kv` to `deserialize` during the call.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff);
+  Status deserialize(ConstBuffer* buff, bool is_kv);
 
   /** Returns the array domain. */
   const Domain* domain() const;

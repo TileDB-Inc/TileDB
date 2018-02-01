@@ -48,6 +48,9 @@ extern const char* filelock_name;
 /** The array schema file name. */
 extern const char* array_schema_filename;
 
+/** The key-value schema file name. */
+extern const char* kv_schema_filename;
+
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
@@ -298,9 +301,6 @@ extern const char* key_dim_1;
  * is represented as a 2-dimensional uint64_t value.
  */
 extern const char* key_dim_2;
-
-/** Name of special empty file that indicates a key-value store. */
-extern const char* kv_filename;
 
 /**
  * Default size to be allocated for a key-value internal buffer when reading
