@@ -44,15 +44,11 @@
 #include <thread>
 
 struct ObjectMgmtFx {
-#ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string HDFS_FULL_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -73,6 +69,10 @@ struct ObjectMgmtFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
   ObjectMgmtFx();
   ~ObjectMgmtFx();
@@ -87,52 +87,77 @@ struct ObjectMgmtFx {
   std::string get_golden_ls(const std::string& path);
   static int write_path(const char* path, tiledb_object_t type, void* data);
   static std::string random_bucket_name(const std::string& prefix);
+  void set_supported_fs();
 };
 
 ObjectMgmtFx::ObjectMgmtFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
+
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
+
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
-// Connect to S3
-#ifdef HAVE_S3
-  // Create bucket if it does not exist
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+  // Connect to S3
+  if (supports_s3_) {
+    // Create bucket if it does not exist
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
     REQUIRE(rc == TILEDB_OK);
+    if (!is_bucket) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
-#endif
 }
 
 ObjectMgmtFx::~ObjectMgmtFx() {
-#ifdef HAVE_S3
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  if (supports_s3_) {
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+    CHECK(rc == TILEDB_OK);
+    if (is_bucket) {
+      CHECK(
+          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+    }
   }
-#endif
 
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+}
+
+void ObjectMgmtFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+
+  int supports = 0;
+  int rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_S3, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)supports;
+  rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_HDFS, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)supports;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
 }
 
 void ObjectMgmtFx::create_temp_dir(const std::string& path) {
@@ -411,28 +436,28 @@ TEST_CASE_METHOD(
     ObjectMgmtFx,
     "C API: Test object management methods: object_type, delete, move",
     "[capi], [object], [delete], [move], [object_type]") {
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_object_type(S3_TEMP_DIR);
-  check_delete(S3_TEMP_DIR);
-  check_move(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_object_type(HDFS_TEMP_DIR);
-  check_delete(HDFS_TEMP_DIR);
-  check_move(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_object_type(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_delete(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_object_type(S3_TEMP_DIR);
+    check_delete(S3_TEMP_DIR);
+    check_move(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_object_type(HDFS_TEMP_DIR);
+    check_delete(HDFS_TEMP_DIR);
+    check_move(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_object_type(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_delete(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_move(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -443,71 +468,78 @@ TEST_CASE_METHOD(
   std::string walk_str, ls_str;
   int rc;
 
-#ifdef HAVE_S3
-  remove_temp_dir(S3_TEMP_DIR);
-  create_hierarchy(S3_TEMP_DIR);
-  golden_walk = get_golden_walk(S3_TEMP_DIR);
-  golden_ls = get_golden_ls(S3_TEMP_DIR);
-  walk_str.clear();
-  ls_str.clear();
-  rc = tiledb_object_walk(
-      ctx_, S3_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_object_walk(
-      ctx_, S3_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, S3_TEMP_DIR.c_str(), write_path, &ls_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  remove_temp_dir(HDFS_TEMP_DIR);
-  create_hierarchy(HDFS_TEMP_DIR);
-  golden_walk = get_golden_walk(HDFS_FULL_TEMP_DIR);
-  golden_ls = get_golden_ls(HDFS_FULL_TEMP_DIR);
-  walk_str.clear();
-  ls_str.clear();
-  rc = tiledb_object_walk(
-      ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_object_walk(
-      ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, HDFS_TEMP_DIR.c_str(), write_path, &ls_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  remove_temp_dir(FILE_FULL_TEMP_DIR);
-  create_hierarchy(FILE_FULL_TEMP_DIR);
+  if (supports_s3_) {
+    // S3
+    remove_temp_dir(S3_TEMP_DIR);
+    create_hierarchy(S3_TEMP_DIR);
+    golden_walk = get_golden_walk(S3_TEMP_DIR);
+    golden_ls = get_golden_ls(S3_TEMP_DIR);
+    walk_str.clear();
+    ls_str.clear();
+    rc = tiledb_object_walk(
+        ctx_, S3_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_object_walk(
+        ctx_, S3_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    rc = tiledb_ls(ctx_, S3_TEMP_DIR.c_str(), write_path, &ls_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    remove_temp_dir(HDFS_TEMP_DIR);
+    create_hierarchy(HDFS_TEMP_DIR);
+    golden_walk = get_golden_walk(HDFS_FULL_TEMP_DIR);
+    golden_ls = get_golden_ls(HDFS_FULL_TEMP_DIR);
+    walk_str.clear();
+    ls_str.clear();
+    rc = tiledb_object_walk(
+        ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_object_walk(
+        ctx_, HDFS_TEMP_DIR.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    rc = tiledb_ls(ctx_, HDFS_TEMP_DIR.c_str(), write_path, &ls_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    remove_temp_dir(FILE_FULL_TEMP_DIR);
+    create_hierarchy(FILE_FULL_TEMP_DIR);
 #ifdef _WIN32
-  // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
-  golden_walk = get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
-  golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+    // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
+    golden_walk =
+        get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+    golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
 #else
-  golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
-  golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);
+    golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
+    golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);
 #endif
 
-  walk_str.clear();
-  ls_str.clear();
-  rc = tiledb_object_walk(
-      ctx_, FILE_FULL_TEMP_DIR.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_object_walk(
-      ctx_,
-      FILE_FULL_TEMP_DIR.c_str(),
-      TILEDB_POSTORDER,
-      write_path,
-      &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
-  remove_temp_dir(FILE_FULL_TEMP_DIR);
-#endif
+    walk_str.clear();
+    ls_str.clear();
+    rc = tiledb_object_walk(
+        ctx_,
+        FILE_FULL_TEMP_DIR.c_str(),
+        TILEDB_PREORDER,
+        write_path,
+        &walk_str);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_object_walk(
+        ctx_,
+        FILE_FULL_TEMP_DIR.c_str(),
+        TILEDB_POSTORDER,
+        write_path,
+        &walk_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    rc = tiledb_ls(ctx_, FILE_FULL_TEMP_DIR.c_str(), write_path, &ls_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    remove_temp_dir(FILE_FULL_TEMP_DIR);
+  }
 }

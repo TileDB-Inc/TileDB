@@ -55,14 +55,10 @@ struct DenseArrayFx {
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
-#ifdef HAVE_HDFS
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -78,9 +74,14 @@ struct DenseArrayFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
   DenseArrayFx();
   ~DenseArrayFx();
+  void set_supported_fs();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   void check_sorted_reads(const std::string& path);
@@ -232,50 +233,72 @@ struct DenseArrayFx {
 };
 
 DenseArrayFx::DenseArrayFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
-// Connect to S3
-#ifdef HAVE_S3
-  // Create bucket if it does not exist
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+  // Connect to S3
+  if (supports_s3_) {
+    // Create bucket if it does not exist
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
     REQUIRE(rc == TILEDB_OK);
+    if (!is_bucket) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
-#endif
 
   std::srand(0);
 }
 
 DenseArrayFx::~DenseArrayFx() {
-#ifdef HAVE_S3
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+  if (supports_s3_) {
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+    CHECK(rc == TILEDB_OK);
+    if (is_bucket) {
+      CHECK(
+          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+    }
   }
-#endif
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+}
+
+void DenseArrayFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+
+  int supports = 0;
+  int rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_S3, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)supports;
+  rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_HDFS, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)supports;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
 }
 
 void DenseArrayFx::create_temp_dir(const std::string& path) {
@@ -959,82 +982,82 @@ std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted reads", "[capi], [dense]") {
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_sorted_reads(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_sorted_reads(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_sorted_reads(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_sorted_reads(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, invalid global writes",
     "[capi], [dense]") {
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_invalid_global_writes(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_invalid_global_writes(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_invalid_global_writes(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_invalid_global_writes(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted writes", "[capi], [dense]") {
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_sorted_writes(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_sorted_writes(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sorted_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_sorted_writes(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_sorted_writes(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_sorted_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sparse writes", "[capi], [dense]") {
-#ifdef HAVE_S3
-  // S3
-  create_temp_dir(S3_TEMP_DIR);
-  check_sparse_writes(S3_TEMP_DIR);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  create_temp_dir(HDFS_TEMP_DIR);
-  check_sparse_writes(HDFS_TEMP_DIR);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_sparse_writes(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_sparse_writes(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }

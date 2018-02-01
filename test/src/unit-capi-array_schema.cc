@@ -47,16 +47,12 @@
 #include "tiledb.h"
 #include "utils.h"
 
-struct ArrayMetadataFx {
-// Filesystem related
-#ifdef HAVE_HDFS
+struct ArraySchemaFx {
+  // Filesystem related
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-#endif
-#ifdef HAVE_S3
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#endif
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -66,6 +62,7 @@ struct ArrayMetadataFx {
   const std::string FILE_TEMP_DIR =
       tiledb::posix::current_dir() + "/tiledb_test/";
 #endif
+
   // Constant parameters
   const std::string ARRAY_NAME = "dense_test_100x100_10x10";
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
@@ -103,9 +100,13 @@ struct ArrayMetadataFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
+  // Supported filesystems
+  bool supports_s3_;
+  bool supports_hdfs_;
+
   // Functions
-  ArrayMetadataFx();
-  ~ArrayMetadataFx();
+  ArraySchemaFx();
+  ~ArraySchemaFx();
   void remove_temp_dir(const std::string& path);
   void create_array(const std::string& path);
   void create_temp_dir(const std::string& path);
@@ -113,82 +114,106 @@ struct ArrayMetadataFx {
   bool is_array(const std::string& path);
   void load_and_check_array_schema(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
+  void set_supported_fs();
 };
 
-ArrayMetadataFx::ArrayMetadataFx() {
+ArraySchemaFx::ArraySchemaFx() {
+  // Supported filesystems
+  set_supported_fs();
+
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-#ifdef HAVE_S3
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-#endif
-  ctx_ = nullptr;
 
+  if (supports_s3_) {
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
+
+  ctx_ = nullptr;
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
   REQUIRE(tiledb_config_free(config) == TILEDB_OK);
 
-// Connect to S3
-#ifdef HAVE_S3
-  // Create bucket if it does not exist
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+  // Connect to S3
+  if (supports_s3_) {
+    // Create bucket if it does not exist
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
     REQUIRE(rc == TILEDB_OK);
+    if (!is_bucket) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
-#endif
 }
 
-ArrayMetadataFx::~ArrayMetadataFx() {
-#ifdef HAVE_S3
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+ArraySchemaFx::~ArraySchemaFx() {
+  if (supports_s3_) {
+    int is_bucket = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+    CHECK(rc == TILEDB_OK);
+    if (is_bucket) {
+      CHECK(
+          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
+    }
   }
-#endif
 
   CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
   CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
 }
 
-void ArrayMetadataFx::create_temp_dir(const std::string& path) {
+void ArraySchemaFx::set_supported_fs() {
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+
+  int supports = 0;
+  int rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_S3, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_s3_ = (bool)supports;
+  rc = tiledb_vfs_supports_fs(ctx, vfs, TILEDB_HDFS, &supports);
+  REQUIRE(rc == TILEDB_OK);
+  supports_hdfs_ = (bool)supports;
+
+  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_free(ctx, vfs) == TILEDB_OK);
+}
+
+void ArraySchemaFx::create_temp_dir(const std::string& path) {
   remove_temp_dir(path);
   REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-void ArrayMetadataFx::remove_temp_dir(const std::string& path) {
+void ArraySchemaFx::remove_temp_dir(const std::string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-bool ArrayMetadataFx::is_array(const std::string& path) {
+bool ArraySchemaFx::is_array(const std::string& path) {
   tiledb_object_t type = TILEDB_INVALID;
   REQUIRE(tiledb_object_type(ctx_, path.c_str(), &type) == TILEDB_OK);
   return type == TILEDB_ARRAY;
 }
 
-void ArrayMetadataFx::delete_array(const std::string& path) {
+void ArraySchemaFx::delete_array(const std::string& path) {
   if (!is_array(path))
     return;
 
   CHECK(tiledb_object_remove(ctx_, path.c_str()) == TILEDB_OK);
 }
 
-void ArrayMetadataFx::create_array(const std::string& path) {
+void ArraySchemaFx::create_array(const std::string& path) {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_create(ctx_, &array_schema, ARRAY_TYPE);
@@ -293,7 +318,7 @@ void ArrayMetadataFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
-void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
+void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   // Load array schema from the disk
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_load(ctx_, &array_schema, path.c_str());
@@ -502,7 +527,7 @@ void ArrayMetadataFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 }
 
-std::string ArrayMetadataFx::random_bucket_name(const std::string& prefix) {
+std::string ArraySchemaFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << tiledb::utils::timestamp_ms();
@@ -510,40 +535,40 @@ std::string ArrayMetadataFx::random_bucket_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema creation and retrieval",
     "[capi], [array-schema]") {
   std::string array_name;
 
-#ifdef HAVE_S3
   // S3
-  array_name = S3_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(S3_TEMP_DIR);
-  create_array(array_name);
-  load_and_check_array_schema(array_name);
-  delete_array(array_name);
-  remove_temp_dir(S3_TEMP_DIR);
-#elif HAVE_HDFS
-  // HDFS
-  array_name = HDFS_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(HDFS_TEMP_DIR);
-  create_array(array_name);
-  load_and_check_array_schema(array_name);
-  delete_array(array_name);
-  remove_temp_dir(HDFS_TEMP_DIR);
-#else
-  // File
-  array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  create_array(array_name);
-  load_and_check_array_schema(array_name);
-  delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-#endif
+  if (supports_s3_) {
+    array_name = S3_TEMP_DIR + ARRAY_NAME;
+    create_temp_dir(S3_TEMP_DIR);
+    create_array(array_name);
+    load_and_check_array_schema(array_name);
+    delete_array(array_name);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    array_name = HDFS_TEMP_DIR + ARRAY_NAME;
+    create_temp_dir(HDFS_TEMP_DIR);
+    create_array(array_name);
+    load_and_check_array_schema(array_name);
+    delete_array(array_name);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    create_array(array_name);
+    load_and_check_array_schema(array_name);
+    delete_array(array_name);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema one anonymous dimension",
     "[capi], [array-schema]") {
   // Create dimensions
@@ -590,7 +615,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema multiple anonymous dimensions",
     "[capi], [array-schema]") {
   // Create dimensions
@@ -634,7 +659,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema one anonymous attribute",
     "[capi], [array-schema]") {
   // Create array schema
@@ -704,7 +729,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema multiple anonymous attributes",
     "[capi], [array-schema]") {
   // Create array schema
@@ -766,7 +791,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayMetadataFx,
+    ArraySchemaFx,
     "C API: Test array schema with invalid domain",
     "[capi], [array-schema]") {
   // Create array schema
