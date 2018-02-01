@@ -2023,18 +2023,15 @@ TILEDB_EXPORT int tiledb_vfs_open(
  * not take effect.
  *
  * @param ctx The TileDB context.
- * @param vfs The virtual filesystem object.
  * @param fh The file handle.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_vfs_close(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh);
+TILEDB_EXPORT int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 
 /**
  * Reads from a file.
  *
  * @param ctx The TileDB context.
- * @param vfs The virtual filesystem object.
  * @param fh The URI file handle.
  * @param offset The offset in the file where the read begins.
  * @param buffer The buffer to read into.
@@ -2043,7 +2040,6 @@ TILEDB_EXPORT int tiledb_vfs_close(
  */
 TILEDB_EXPORT int tiledb_vfs_read(
     tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
     tiledb_vfs_fh_t* fh,
     uint64_t offset,
     void* buffer,
@@ -2055,7 +2051,6 @@ TILEDB_EXPORT int tiledb_vfs_read(
  * file does not exist, it will be created.
  *
  * @param ctx The TileDB context.
- * @param vfs The virtual filesystem object.
  * @param fh The URI file handle.
  * @param buffer The buffer to write from.
  * @param nbytes Number of bytes to write.
@@ -2063,7 +2058,6 @@ TILEDB_EXPORT int tiledb_vfs_read(
  */
 TILEDB_EXPORT int tiledb_vfs_write(
     tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
     tiledb_vfs_fh_t* fh,
     const void* buffer,
     uint64_t nbytes);
@@ -2072,14 +2066,32 @@ TILEDB_EXPORT int tiledb_vfs_write(
  * Syncs (flushes) a file.
  *
  * @param ctx The TileDB context.
- * @param vfs The virtual filesystem object.
  * @param fh The URI file handle.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  *
  * @note This is a noop for S3.
  */
-TILEDB_EXPORT int tiledb_vfs_sync(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_vfs_fh_t* fh);
+TILEDB_EXPORT int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
+
+/**
+ * Frees a file handle.
+ *
+ * @param ctx The TileDB context.
+ * @param fh The URI file handle.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
+
+/**
+ * Checks if a file handle is open.
+ *
+ * @param ctx The TileDB context.
+ * @param fh The URI file handle.
+ * @param is_open Set to `true` if the file handle in open.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_fh_is_open(
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_open);
 
 /**
  * Checks if a given storage filesystem backend is supported.
