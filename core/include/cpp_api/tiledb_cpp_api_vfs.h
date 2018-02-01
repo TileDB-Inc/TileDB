@@ -42,25 +42,41 @@
 #include <memory>
 
 namespace tdb {
+  namespace impl {
+    class VFSFilebuf;
+  }
 
+/**
+ * Implements a virtual filesystem that enables performing directory/file
+ * operations with a unified API on different filesystems, such as local
+ * posix/windows, HDFS, AWS S3, etc.
+ */
 class VFS {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor.
+  using filebuf = impl::VFSFilebuf;
+
+  /**
+   * Constructor.
    *
    * @param ctx A TileDB context.
    */
   explicit VFS(const Context& ctx);
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param ctx TileDB context.
    * @param config TileDB config.
    */
   VFS(const Context& ctx, const Config& config);
+  VFS(const VFS&) = default;
+  VFS(VFS&&) = default;
+  VFS& operator=(const VFS&) = default;
+  VFS& operator=(VFS&&) = default;
 
   /* ********************************* */
   /*                API                */
@@ -74,6 +90,12 @@ class VFS {
 
   /** Checks if an object-store bucket with the input URI exists. */
   bool is_bucket(const std::string& uri) const;
+
+  /** Empty a bucket **/
+  void empty_bucket(const std::string &bucket);
+
+  /** Check if a bucket is empty **/
+  bool is_empty_bucket(const std::string &bucket);
 
   /** Creates a directory with the input URI. */
   void create_dir(const std::string& uri) const;
@@ -94,7 +116,7 @@ class VFS {
   uint64_t file_size(const std::string& uri) const;
 
   /** Renames a TileDB path from an old URI to a new URI. */
-  void move(const std::string& old_uri, const std::string& new_uri) const;
+  void move(const std::string& old_uri, const std::string& new_uri, bool force) const;
 
   /**
    * Reads from a file.
@@ -138,6 +160,15 @@ class VFS {
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const;
 
+  /** Get the underlying context **/
+  const Context& context() const;
+
+  /** Get the underlying tiledb object **/
+  std::shared_ptr<tiledb_vfs_t> ptr() const;
+
+  /** Get the config **/
+  std::shared_ptr<tiledb_config_t> config() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -145,6 +176,9 @@ class VFS {
 
   /** TileDB context. */
   std::reference_wrapper<const Context> ctx_;
+
+  /** Config **/
+  std::shared_ptr<tiledb_config_t> config_ = nullptr;
 
   /** A deleter wrapper. */
   impl::Deleter deleter_;

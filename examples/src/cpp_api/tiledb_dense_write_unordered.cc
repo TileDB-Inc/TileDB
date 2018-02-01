@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +42,8 @@
 #include <tuple>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_layout(TILEDB_UNORDERED);
   query.set_subarray<uint64_t>({{{3, 4}}, {{3, 4}}});
@@ -53,16 +52,16 @@ int main() {
 
   // Make buffers for var size attr
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
-  auto a2buff = tdb::make_var_buffers(a2);
+  auto a2buff = tiledb::ungroup_var_buffer(a2);
 
   std::vector<float> a3_data = {
       211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
   std::vector<uint64_t> coords = {4, 2, 3, 4, 3, 3, 3, 1};
 
-  query.set_buffer<tdb::type::INT32>("a1", a1_data);
-  query.set_buffer<tdb::type::CHAR>("a2", a2buff);
-  query.set_buffer<tdb::type::FLOAT32>("a3", a3_data);
-  query.set_buffer<tdb::type::UINT64>(TILEDB_COORDS, coords);
+  query.set_buffer("a1", a1_data);
+  query.set_buffer("a2", a2buff);
+  query.set_buffer("a3", a3_data);
+  query.set_buffer(TILEDB_COORDS, coords);
 
   query.submit();
   return 0;

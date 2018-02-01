@@ -98,13 +98,13 @@ std::string Object::to_str() const {
 
 Object Object::object(const Context &ctx, const std::string &uri) {
   tiledb_object_t type;
-  ctx.handle_error(tiledb_object_type(ctx.ptr(), uri.c_str(), &type));
+  ctx.handle_error(tiledb_object_type(ctx, uri.c_str(), &type));
   Object ret(type, uri);
   return ret;
 }
 
 void Object::remove(const Context &ctx, const std::string &uri) {
-  ctx.handle_error(tiledb_object_remove(ctx.ptr(), uri.c_str()));
+  ctx.handle_error(tiledb_object_remove(ctx, uri.c_str()));
 }
 
 void Object::move(
@@ -112,8 +112,8 @@ void Object::move(
     const std::string &old_uri,
     const std::string &new_uri,
     bool force) {
-  ctx.handle_error(tiledb_object_move(
-      ctx.ptr(), old_uri.c_str(), new_uri.c_str(), (int)force));
+  ctx.handle_error(
+      tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str(), (int)force));
 }
 
 /* ********************************* */

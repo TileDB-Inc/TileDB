@@ -36,8 +36,7 @@
  */
 
 #include <tiledb.h>
-#include <cstring>
-#include <iostream>
+#include <string.h>
 
 int main() {
   // Create TileDB context
@@ -67,7 +66,7 @@ int main() {
 
   // Open the key-value store
   tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", nullptr, 0);
+  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
 
   // Flush every 100 added items
   tiledb_kv_set_max_items(ctx, kv, 100);

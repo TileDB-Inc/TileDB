@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,12 +39,12 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
+  tiledb::Context ctx;
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
   std::vector<int> a1_buff = {0, 1, 2};
-  auto a2_buff = tdb::make_var_buffers<std::string>(
-      {"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
+  auto a2_buff = tiledb::ungroup_var_buffer<std::string>(
+    {"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
   std::vector<float> a3_buff = {0.1,
                                 0.2,
                                 1.1,

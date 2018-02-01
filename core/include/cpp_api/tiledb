@@ -36,9 +36,17 @@
 #define TILEDB_CPP_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_version.h"
+#include "tiledb_cpp_api_schema_base.h"
 #include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_map_schema.h"
+#include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_proxy.h"
+#include "tiledb_cpp_api_map.h"
+#include "tiledb_cpp_api_map_iter.h"
 #include "tiledb_cpp_api_group.h"
+#include "tiledb_cpp_api_config_iter.h"
 #include "tiledb_cpp_api_config.h"
 #include "tiledb_cpp_api_array.h"
 #include "tiledb_cpp_api_deleter.h"
@@ -52,5 +60,8 @@
 #include "tiledb_cpp_api_query.h"
 #include "tiledb_cpp_api_utils.h"
 #include "tiledb_cpp_api_vfs.h"
+#include "tiledb_cpp_api_vfs_filebuf.h"
+
+namespace tiledb = tdb;
 
 #endif // TILEDB_CPP_H

@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,14 +37,14 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  tdb::ArraySchema schema(ctx);
+  tiledb::Context ctx;
+  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
 
   std::cout << "\nFirst dump:\n";
   schema.dump(stdout);
 
   // sparse array with tile capacity 10
-  schema << TILEDB_SPARSE << 10;
+  schema.set_capacity(10);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
   schema.set_coord_compressor({TILEDB_ZSTD, 4});
@@ -54,17 +53,17 @@ int main() {
   std::cout << "Second dump:\n";
   schema.dump(stdout);
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-  d1.create<uint64_t>("d1", {{0, 1000}}, 10);
-  d2.create<uint64_t>("d2", {{100, 10000}}, 100);
+  tiledb::Domain domain(ctx);
+  tiledb::Dimension d1 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d1", {{0, 1000}}, 10);
+  tiledb::Dimension d2 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d2", {{100, 10000}}, 100);
   domain << d1 << d2;
   schema << domain;
 
-  tdb::Attribute a1(ctx), a2(ctx);
-  a1.create<int>("");
-  a2.create<float>("a2");
-  a1.set_num(3);
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "");
+  tiledb::Attribute a2 = tiledb::Attribute::create<float>(ctx, "a2");
+  a1.set_cell_val_num(3);
   a2.set_compressor({TILEDB_GZIP, -1});
   schema << a1 << a2;
 
@@ -72,7 +71,7 @@ int main() {
   schema.dump(stdout);
 
   std::cout << "\nFrom getters:"
-            << "\n- Array type: " << schema.type()
+            << "\n- Array type: " << schema.array_type()
             << "\n- Cell order: " << schema.cell_order()
             << "\n- Tile order: " << schema.tile_order()
             << "\n- Capacity: " << schema.capacity()

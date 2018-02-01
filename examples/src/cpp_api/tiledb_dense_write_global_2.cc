@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,21 +39,20 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Buffers
   std::vector<int> a1_data = {0, 1, 2, 3, 4, 5};
   std::string a2str = "abbcccddddeffggghhhh";
-  std::vector<char> a2_data(a2str.begin(), a2str.end());
   std::vector<uint64_t> a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   std::vector<float> a3_data = {};
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
 
   query.submit();
@@ -62,7 +60,6 @@ int main() {
   a1_data = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   a2str = "ijjkkkllllmnnooopppp";
-  a2_data = std::vector<char>(a2str.begin(), a2str.end());
   a3_data = {
       0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,   // Upper left tile
       4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,   // Upper right tile
@@ -72,7 +69,7 @@ int main() {
 
   query.reset_buffers();
   query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
   query.submit();
 

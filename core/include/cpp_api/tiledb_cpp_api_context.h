@@ -64,7 +64,7 @@ class Context {
   Context();
 
   /** Constructor with config paramters. */
-  Context(const Config &config);
+  explicit Context(const Config &config);
 
   /* ********************************* */
   /*                API                */
@@ -79,7 +79,10 @@ class Context {
   void handle_error(int rc) const;
 
   /** Returns the C TileDB context object. */
-  tiledb_ctx_t *ptr() const;
+  std::shared_ptr<tiledb_ctx_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_ctx_t *() const;
 
   /**
    * Sets the error handler callback. If none is set, the

@@ -2023,7 +2023,7 @@ TILEDB_EXPORT int tiledb_vfs_move(
     tiledb_vfs_t* vfs,
     const char* old_uri,
     const char* new_uri,
-    bool force);
+    int force);
 
 /**
  * Prepares a file for reading/writing.

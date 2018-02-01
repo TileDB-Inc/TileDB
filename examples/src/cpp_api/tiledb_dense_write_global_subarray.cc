@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,16 +40,16 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   std::vector<int> a1_data = {112, 113, 114, 115};
   std::vector<std::string> a2 = {"M", "NN", "OOO", "PPPP"};
   std::vector<float> a3_data = {
       112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
 
-  auto a2_buff = tdb::make_var_buffers(a2);
+  auto a2_buff = tiledb::ungroup_var_buffer(a2);
 
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_data);

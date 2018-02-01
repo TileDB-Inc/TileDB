@@ -31,6 +31,7 @@
  * This file defines the C API of TileDB.
  */
 
+#include "tiledb_cpp_api_core_interface.h"
 #include "tiledb.h"
 #include "array_schema.h"
 #include "config.h"
@@ -2749,7 +2750,7 @@ int tiledb_vfs_move(
     tiledb_vfs_t* vfs,
     const char* old_uri,
     const char* new_uri,
-    bool force) {
+    int force) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2930,4 +2931,21 @@ int tiledb_uri_to_path(
     path_out[path.length()] = '\0';
     return TILEDB_OK;
   }
+}
+
+/* ****************************** */
+/*            C++ API             */
+/* ****************************** */
+
+int tdb::impl::tiledb_query_submit_async(
+    tiledb_ctx_t *ctx, tiledb_query_t *query,
+    std::function<void(void*)> callback, void* callback_data) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, ctx->storage_manager_->query_submit_async(
+                 query->query_, callback, callback_data)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }

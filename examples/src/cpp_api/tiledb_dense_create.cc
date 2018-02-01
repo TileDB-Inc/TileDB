@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,30 +35,27 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
-  tdb::Domain domain(ctx);
-  tdb::Dimension d1(ctx), d2(ctx);
-
-  d1.create<uint64_t>("d1", {{1, 4}}, 2);
-  d2.create<uint64_t>("d2", {{1, 4}}, 2);
+  tiledb::Domain domain(ctx);
+  tiledb::Dimension d1 = tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  tiledb::Dimension d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
   domain << d1 << d2;  // Add dims to domain
 
-  tdb::Attribute a1(ctx), a2(ctx), a3(ctx);
-  a1.create<int>("a1");
-  a2.create<char>("a2");
-  a3.create<float>("a3");
+  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
+  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
+  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
 
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_num(2);
+  a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
+  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
+  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
-  tdb::ArraySchema schema(ctx);
+  tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
   schema << domain << a1 << a2 << a3;  // Add attributes to array
 
   // Check the schema, and make the array.
-  tdb::Array::create(ctx, "my_dense_array", schema);
+  tiledb::create_array("my_dense_array", schema);
 
   std::cout << schema << std::endl;
 

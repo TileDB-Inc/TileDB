@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,10 +38,8 @@
 
 #include <tiledb>
 
-void print_upon_completion(void* s);
-
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Buffers
   std::vector<int> a1_data = {
@@ -95,7 +92,7 @@ int main() {
   };
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
@@ -103,19 +100,14 @@ int main() {
   query.set_buffer("a3", a3_data);
 
   // Submit query with callback
-  static const std::string msg = "(Callback) Query completed.";
-  query.submit_async(print_upon_completion, (void*)msg.c_str());
+  query.submit_async([](){std::cout << "Callback: query completed.\n";});
 
   std::cout << "Query in progress\n";
-  tdb::Query::Status status;
+  tiledb::Query::Status status;
   do {
     // Wait till query is done
     status = query.query_status();
-  } while (status == tdb::Query::Status::INPROGRESS);
+  } while (status == tiledb::Query::Status::INPROGRESS);
 
   return 0;
-}
-
-void print_upon_completion(void* s) {
-  std::cout << std::string(static_cast<char*>(s)) << std::endl;
 }

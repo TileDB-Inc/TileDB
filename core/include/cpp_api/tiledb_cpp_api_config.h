@@ -35,6 +35,8 @@
 #ifndef TILEDB_CPP_API_CONFIG_H
 #define TILEDB_CPP_API_CONFIG_H
 
+#include "tiledb_cpp_api_config_iter.h"
+#include "tiledb_cpp_api_utils.h"
 #include "tiledb.h"
 
 #include <memory>
@@ -42,9 +44,14 @@
 
 namespace tdb {
 
+namespace impl {
+class ConfigProxy;
+}
+
 /** Carries configuration parameters that will be passed to a Context object. */
 class Config {
  public:
+  using iterator = impl::ConfigIter;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -54,7 +61,7 @@ class Config {
 
   /**
    * Constructor that takes as input a filename (URI) that stores the config
-   * paramters. The file must have the following (text) format:
+   * parameters. The file must have the following (text) format:
    *
    * parameter value
    *
@@ -66,14 +73,17 @@ class Config {
    * @param filename The name of the file where the parameters will be read
    *     from.
    */
-  Config(const std::string& filename);
+  explicit Config(const std::string& filename);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the pointer to the TileDB C config object. */
-  tiledb_config_t* ptr() const;
+  std::shared_ptr<tiledb_config_t> ptr() const;
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_config_t*() const;
 
   /**
    * Sets a config parameter-value pair.
@@ -106,8 +116,33 @@ class Config {
    */
   Config& set(const std::string& param, const std::string& value);
 
+  /**
+   * Get a parameter from the configuration by key.
+   * @param param Key
+   * @return Value
+   */
+  std::string get(const std::string& param) const;
+
+
+  impl::ConfigProxy operator[](const std::string &param);
+
   /** Unsets a config parameter. */
   Config& unset(const std::string& param);
+
+  /** Iterate over params starting with a prefix **/
+  iterator begin(const std::string &prefix) {
+    return iterator{*this, prefix, false};
+  }
+
+  /** Iterate over some params. **/
+  iterator begin() {
+    return iterator{*this, "", false};
+  }
+
+  /** End iterator **/
+  iterator end() {
+    return iterator{*this, "", true};
+  }
 
  private:
   /* ********************************* */
@@ -127,6 +162,40 @@ class Config {
   /** Creates the TileDB C config object. */
   void create_config();
 };
+
+namespace impl {
+
+/** Proxy to set params via operator[] **/
+struct ConfigProxy {
+  ConfigProxy(Config &conf, const std::string &param)
+  : conf(conf), param(param) {}
+
+  template<typename T>
+  void operator=(const T &val) {
+    conf.set(param, std::to_string(val));
+  }
+
+  void operator=(const char *val) {
+    conf.set(param, std::string(val));
+  }
+
+  void operator=(const std::string &val) {
+    conf.set(param, val);
+  }
+
+  ConfigProxy operator[](const std::string &append) {
+    return {conf, param + append};
+  }
+
+  operator std::string() {
+    return conf.get(param);
+  }
+
+  Config &conf;
+  const std::string param;
+};
+
+}
 
 }  // namespace tdb
 

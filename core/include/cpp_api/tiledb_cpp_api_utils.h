@@ -33,59 +33,62 @@
 #ifndef TILEDB_CPP_API_UTILS_H
 #define TILEDB_CPP_API_UTILS_H
 
+#include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
+
 #include <array>
 #include <functional>
 #include <iostream>
-#include "tiledb.h"
+#include <algorithm>
 
 namespace tdb {
 
 /**
- * Covert an offset, data vector pair into a single vector of vectors.
+ * Covert an (offset, data) vector pair into a single vector of vectors.
  *
  * @tparam T underlying datatype
  * @tparam E element type. usually std::vector<T> or std::string. Must be
- * constructable by a buff::iterator pair
+ *     constructable by a buff::iterator pair
  * @param offsets Offsets vector
- * @param buff data vector
- * @param num_offset num offset elements populated by query
- * @param num_buff num data elements populated by query.
+ * @param data Data vector
+ * @param num_offsets Number of offset elements populated by query
+ * @param num_data Number of data elements populated by query.
  * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
     const std::vector<uint64_t> &offsets,
-    const std::vector<T> &buff,
-    uint64_t num_offset,
-    uint64_t num_buff) {
+    const std::vector<T> &data,
+    uint64_t num_offsets,
+    uint64_t num_data) {
   std::vector<E> ret;
-  ret.reserve(num_offset);
-  for (unsigned i = 0; i < num_offset; ++i) {
+  ret.reserve(num_offsets);
+  for (unsigned i = 0; i < num_offsets; ++i) {
     ret.emplace_back(
-        buff.begin() + offsets[i],
-        (i == num_offset - 1) ? buff.begin() + num_buff :
-                                buff.begin() + offsets[i + 1]);
+        data.begin() + offsets[i],
+        (i == num_offsets - 1) ? data.begin() + num_data :
+                                 data.begin() + offsets[i + 1]);
   }
   return ret;
 }
 
 /**
- * Covert an offset, data vector pair into a single vector of vectors.
+ * Covert an (offset, data) vector pair into a single vector of vectors.
  *
  * @tparam T underlying datatype
  * @tparam E element type. usually std::vector<T> or std::string. Must be
- * constructable by a buff::iterator pair
+ *     constructable by a buff::iterator pair
  * @param buff pair<offset_vec, data_vec>
- * @param num_offset num offset elements populated by query
- * @param num_buff num data elements populated by query.
+ * @param num_offsets Number of offset elements populated by query
+ * @param num_data Number of data elements populated by query.
  * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
     const std::pair<std::vector<uint64_t>, std::vector<T>> &buff,
-    uint64_t num_offset,
-    uint64_t num_buff) {
-  return group_by_cell<T, E>(buff.first, buff.second, num_offset, num_buff);
+    uint64_t num_offsets,
+    uint64_t num_data) {
+  return group_by_cell<T, E>(buff.first, buff.second, num_offsets, num_data);
 }
 
 /**
@@ -97,7 +100,7 @@ std::vector<E> group_by_cell(
  * @param buff data buffer
  * @param el_per_cell Number of elements per cell to group together
  * @param num_buff Number of elements populated by query. To group whole buffer,
- * use buff.size()
+ *     use buff.size()
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
@@ -151,9 +154,10 @@ std::vector<std::array<T, N>> group_by_cell(
  * @param data data to unpack
  * @return pair where .first is the offset buffer, and .second is data buffer
  */
+
 template <typename T, typename R = typename T::value_type>
-std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
-    const std::vector<T> &data) {
+std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
+const std::vector<T> &data) {
   std::pair<std::vector<uint64_t>, std::vector<R>> ret;
   ret.first.push_back(0);
   for (const auto &v : data) {
@@ -162,7 +166,44 @@ std::pair<std::vector<uint64_t>, std::vector<R>> make_var_buffers(
   }
   ret.first.pop_back();
   return ret;
+}
+
+/**
+ * Take a vector-of-vectors and flatten it into a single vector.
+ * @tparam V Container type
+ * @tparam T Return element type
+ * @param vec
+ * @return std::vector<T>
+ */
+template<typename V, typename T = typename V::value_type::value_type>
+std::vector<T> flatten(const V &vec) {
+  std::vector<T> ret;
+
+  size_t size = 0;
+  std::for_each(std::begin(vec), std::end(vec),
+                [&size](const typename V::value_type &i){size += i.size();});
+  ret.reserve(size);
+
+  std::for_each(std::begin(vec), std::end(vec),
+                [&ret](const typename V::value_type &i){
+                  std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
+                });
+  return ret;
 };
+
+namespace impl {
+
+/** Check an error, free, and throw if there is one. **/
+inline void check_error(tiledb_error_t *err) {
+  if (err != nullptr) {
+    const char *msg;
+    tiledb_error_message(err, &msg);
+    tiledb_error_free(err);
+    throw TileDBError("Config Iterator Error: " + std::string(msg));
+  }
+}
+
+}
 
 }  // namespace tdb
 

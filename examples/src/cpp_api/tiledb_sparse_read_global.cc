@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,10 +41,10 @@
 
 int main() {
   using std::setw;
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   // Init the array & query for the array
-  tdb::Query query(ctx, "my_sparse_array", TILEDB_READ);
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
   query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -66,9 +65,9 @@ int main() {
   // first.
   const auto buff_sizes = query.returned_buff_sizes();
 
-  auto a2 = tdb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
-  auto a3 = tdb::group_by_cell<2>(a3_buff, buff_sizes[3]);
-  auto coords = tdb::group_by_cell<2>(coord_buff, buff_sizes[4]);
+  auto a2 = tiledb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
+  auto coords = tiledb::group_by_cell<2>(coord_buff, buff_sizes[4]);
 
   std::cout << "Result num: " << buff_sizes[0]
             << '\n';  // This assumes all attributes were fully read.

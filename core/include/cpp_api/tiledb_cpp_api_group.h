@@ -40,7 +40,6 @@
 
 namespace tdb {
 
-namespace Group {
 /**
  * Creates a new group.
  *
@@ -48,9 +47,7 @@ namespace Group {
  * @param group The group URI.
  * @return void
  */
-void create(const Context& ctx, const std::string& group);
-
-}  // namespace Group
+void create_group(const Context& ctx, const std::string& group);
 
 }  // namespace tdb
 

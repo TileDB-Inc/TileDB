@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +33,9 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
-  std::cout << tdb::Object::object(ctx, "my_group") << "\n";
-  std::cout << tdb::Object::object(ctx, "my_dense_array") << "\n";
-  std::cout << tdb::Object::object(ctx, "invalid_path") << "\n";
+  tiledb::Context ctx;
+  std::cout << tiledb::Object::object(ctx, "my_group") << "\n";
+  std::cout << tiledb::Object::object(ctx, "my_dense_array") << "\n";
+  std::cout << tiledb::Object::object(ctx, "invalid_path") << "\n";
   return 0;
 }

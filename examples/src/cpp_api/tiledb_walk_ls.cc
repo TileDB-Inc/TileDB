@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +33,10 @@
 #include <tiledb>
 
 int main() {
-  tdb::Context ctx;
+  tiledb::Context ctx;
 
   std::cout << "List children: \n";
-  tdb::ObjectIter obj_iter(ctx, "my_group");
+  tiledb::ObjectIter obj_iter(ctx, "my_group");
   for (const auto &object : obj_iter)
     std::cout << object << '\n';
 
