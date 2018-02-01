@@ -48,7 +48,7 @@ int main() {
 
   // List children
   printf("\nList children:\n");
-  tiledb_object_ls(ctx, "my_group", print_path, NULL);
+  tiledb_ls(ctx, "my_group", print_path, NULL);
 
   // Finalize context
   tiledb_ctx_free(ctx);

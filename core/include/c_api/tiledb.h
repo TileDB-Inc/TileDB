@@ -1463,7 +1463,7 @@ TILEDB_EXPORT int tiledb_object_walk(
  * @param data The data passed in the callback as the last argument.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_object_ls(
+TILEDB_EXPORT int tiledb_ls(
     tiledb_ctx_t* ctx,
     const char* path,
     int (*callback)(const char*, tiledb_object_t, void*),

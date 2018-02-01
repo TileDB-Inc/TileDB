@@ -52,9 +52,6 @@ int main() {
     std::cout << "dirA/fileA already exists.\n";
   }
 
-  std::cout << "Appending data to dirA/fileA.\n";
-  const char *data = "abcdef";
-  vfs.write("dirA/fileA", data, 6);
   std::cout << "File size: " << vfs.file_size("dirA/fileA") << "\n";
 
   std::cout << "Moving file dirA/fileA to dirA/fileB.\n";

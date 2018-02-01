@@ -128,35 +128,6 @@ void VFS::move(const std::string& old_uri, const std::string& new_uri, bool forc
       tiledb_vfs_move(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str(), (int)force));
 }
 
-void VFS::read(
-    const std::string& uri,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes) const {
-  auto& ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_vfs_read(ctx, vfs_.get(), uri.c_str(), offset, buffer, nbytes));
-}
-
-void VFS::write(
-    const std::string& uri, const void* buffer, uint64_t nbytes) const {
-  auto& ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_vfs_write(ctx, vfs_.get(), uri.c_str(), buffer, nbytes));
-}
-
-void VFS::sync(const std::string& uri) const {
-  auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_sync(ctx, vfs_.get(), uri.c_str()));
-}
-
-bool VFS::supports_fs(tiledb_filesystem_t fs) const {
-  auto& ctx = ctx_.get();
-  int ret;
-  ctx.handle_error(tiledb_vfs_supports_fs(ctx, vfs_.get(), fs, &ret));
-  return (bool)ret;
-}
-
 void VFS::touch(const std::string& uri) const {
   auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_vfs_touch(ctx, vfs_.get(), uri.c_str()));

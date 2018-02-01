@@ -118,45 +118,6 @@ class VFS {
   /** Renames a TileDB path from an old URI to a new URI. */
   void move(const std::string& old_uri, const std::string& new_uri, bool force) const;
 
-  /**
-   * Reads from a file.
-   *
-   * @param uri The URI of the file.
-   * @param offset The offset in the file where the read begins.
-   * @param buffer The buffer to read into.
-   * @param nbytes Number of bytes to read.
-   */
-  void read(
-      const std::string& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes) const;
-
-  /**
-   * Writes the contents of a buffer into a file. Note that this
-   * function only **appends** data at the end of the file. If the
-   * file does not exist, it will be created.
-   *
-   * @param uri The URI of the file.
-   * @param buffer The buffer to write from.
-   * @param nbytes Number of bytes to write.
-   */
-  void write(const std::string& uri, const void* buffer, uint64_t nbytes) const;
-
-  /**
-   * Syncs (flushes) a file with the input URI. This is important to call
-   * before starting to read from the file.
-   *
-   * @note Specifically for S3, this function **finalizes** the file, in the
-   *     sense that from this point and onwards it becomes immutable. Any
-   *     attempt to write to this file again will result in **overwriting**
-   *     the old data.
-   */
-  void sync(const std::string& uri) const;
-
-  /** Checks if a given storage filesystem backend is supported. */
-  bool supports_fs(tiledb_filesystem_t fs) const;
-
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const;
 

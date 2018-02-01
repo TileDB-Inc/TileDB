@@ -32,6 +32,7 @@
  * streambuf for the tiledb VFS.
  */
 
+#include <assert.h>
 #include "tiledb_cpp_api_vfs_filebuf.h"
 #include "tiledb_cpp_api_exception.h"
 
@@ -72,7 +73,7 @@ VFSFilebuf *VFSFilebuf::open(
 VFSFilebuf *VFSFilebuf::close() {
   if (is_open()) {
     try {
-      vfs_.get().sync(uri_);
+    //TODO  vfs_.get().sync(uri_);
     } catch (TileDBError &e) {
       return nullptr;
     }
@@ -151,7 +152,8 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   if (readlen == 0)
     return traits_type::eof();
   try {
-    vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
+     assert(s);
+    //TODO vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
   } catch (TileDBError &e) {
       return traits_type::eof();
     }
@@ -184,7 +186,8 @@ std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
   if (offset_ != file_size())
     return traits_type::eof();
   try {
-    vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
+    assert(s);
+    //TODO vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
   } catch (TileDBError &e) {
     return traits_type::eof();
   }

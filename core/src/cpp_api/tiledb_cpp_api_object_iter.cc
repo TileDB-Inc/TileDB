@@ -97,7 +97,7 @@ ObjectIter::iterator ObjectIter::begin() {
       ctx.handle_error(tiledb_object_walk(
           ctx, root_.c_str(), walk_order_, obj_getter, &data));
     else
-      ctx.handle_error(tiledb_object_ls(ctx, root_.c_str(), obj_getter, &data));
+      ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
     retrieve_objs_ = false;
   }
 

@@ -1876,7 +1876,7 @@ int tiledb_object_walk(
   return TILEDB_OK;
 }
 
-int tiledb_object_ls(
+int tiledb_ls(
     tiledb_ctx_t* ctx,
     const char* path,
     int (*callback)(const char*, tiledb_object_t, void*),
