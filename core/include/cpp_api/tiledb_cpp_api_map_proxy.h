@@ -51,19 +51,19 @@ namespace tdb {
      **/
     class MultiMapItemProxy {
       /** Used to compiler can resolve func without user typing .get<....>() **/
-      template<typename T> struct type_tag{};
+      template<typename Tp> struct type_tag{};
 
     public:
       MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
       : attrs(attrs), item(item) {}
 
       /** Get multiple attributes **/
-      template <typename T>
-      T get() const {
-        if (attrs.size() != std::tuple_size<T>::value) {
+      template <typename Tp>
+      Tp get() const {
+        if (attrs.size() != std::tuple_size<Tp>::value) {
           throw TileDBError("Attribute list size does not match tuple length.");
         }
-        return get(type_tag<T>{});
+        return get(type_tag<Tp>{});
       }
 
       /** Set the attributes **/
@@ -77,9 +77,9 @@ namespace tdb {
       }
 
       /** Implicit cast to a tuple. **/
-      template<typename T>
-      operator T() const {
-        return get<T>();
+      template<typename Tp>
+      operator Tp() const {
+        return get<Tp>();
       }
 
       /** Set the attributes with a tuple **/
@@ -92,37 +92,37 @@ namespace tdb {
 
       /** Iterate over a tuple. Set version (non const) **/
       /** Base case. Do nothing and terminate recursion. **/
-      template<std::size_t I = 0, typename... Tp>
-      inline typename std::enable_if<I == sizeof...(Tp), void>::type
-      iter_tuple(const std::tuple<Tp...>&){}
+      template<std::size_t I = 0, typename... T>
+      inline typename std::enable_if<I == sizeof...(T), void>::type
+      iter_tuple(const std::tuple<T...>&){}
 
-      template<std::size_t I = 0, typename... Tp>
-      inline typename std::enable_if<I < sizeof...(Tp), void>::type
-      iter_tuple(const std::tuple<Tp...> &t) {
+      template<std::size_t I = 0, typename... T>
+      inline typename std::enable_if<I < sizeof...(T), void>::type
+      iter_tuple(const std::tuple<T...> &t) {
         item.set(attrs[I], std::get<I>(t));
-        iter_tuple<I + 1, Tp...>(t);
+        iter_tuple<I + 1, T...>(t);
       }
 
       /** Iterate over a tuple. Get version (const) **/
       /** Base case. Do nothing and terminate recursion. **/
-      template<std::size_t I = 0, typename... Tp>
-      inline typename std::enable_if<I == sizeof...(Tp), void>::type
-      iter_tuple(std::tuple<Tp...>&) const {}
+      template<std::size_t I = 0, typename... T>
+      inline typename std::enable_if<I == sizeof...(T), void>::type
+      iter_tuple(std::tuple<T...>&) const {}
 
-      template<std::size_t I = 0, typename... Tp>
-      inline typename std::enable_if<I < sizeof...(Tp), void>::type
-      iter_tuple(std::tuple<Tp...> &t) const {
-        std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<Tp...>>::type>(attrs[I]);
-        iter_tuple<I + 1, Tp...>(t);
+      template<std::size_t I = 0, typename... T>
+      inline typename std::enable_if<I < sizeof...(T), void>::type
+      iter_tuple(std::tuple<T...> &t) const {
+        std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(attrs[I]);
+        iter_tuple<I + 1, T...>(t);
       }
 
       /** Get multiple values into tuple. **/
-      template <typename... Tp>
-      std::tuple<Tp...> get(type_tag<std::tuple<Tp...>>) const {
-        if (attrs.size() != sizeof...(Tp)) {
+      template <typename Tp>
+      Tp get(type_tag<Tp>) const {
+        Tp ret;
+        if (attrs.size() != std::tuple_size<Tp>::value) {
           throw TileDBError("Attribute list size does not match provided values.");
         }
-        std::tuple<Tp...> ret;
         iter_tuple(ret);
         return ret;
       }
