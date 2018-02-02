@@ -45,7 +45,7 @@
 namespace tdb {
 
 namespace impl {
-class ConfigProxy;
+struct ConfigProxy;
 }
 
 /** Carries configuration parameters that will be passed to a Context object. */
