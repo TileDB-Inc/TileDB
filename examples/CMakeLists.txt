@@ -26,6 +26,8 @@
 # THE SOFTWARE.
 #
 
+set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL src/c_api/${TARGET}.c)

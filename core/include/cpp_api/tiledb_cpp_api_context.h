@@ -91,6 +91,7 @@ class Context {
   Context &set_error_handler(
       const std::function<void(const std::string &)> &fn);
 
+  /** Get the configuration of the context. **/
   Config config() const {
     tiledb_config_t *c;
     handle_error(tiledb_ctx_get_config(ctx_.get(), &c));

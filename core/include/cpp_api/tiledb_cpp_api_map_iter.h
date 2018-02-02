@@ -111,6 +111,7 @@ namespace impl {
     /** Whether the iterator has reached the end **/
     int done_;
 
+    /** Settings determining filters for the iterator. **/
     bool limit_type_ = false;
     tiledb_datatype_t type_;
     bool only_single_;
