@@ -66,6 +66,7 @@ class Deleter {
   /*              DELETERS             */
   /* ********************************* */
 
+  void operator()(tiledb_vfs_fh_t *p) const;
   void operator()(tiledb_query_t *p) const;
   void operator()(tiledb_array_schema_t *p) const;
   void operator()(tiledb_kv_t *p) const;

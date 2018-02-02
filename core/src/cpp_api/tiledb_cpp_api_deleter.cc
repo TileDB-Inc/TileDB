@@ -38,6 +38,11 @@ namespace tdb {
 
 namespace impl {
 
+void Deleter::operator()(tiledb_vfs_fh_t *p) const {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_vfs_fh_free(ctx, p));
+}
+
 void Deleter::operator()(tiledb_query_t *p) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_query_free(ctx, p));

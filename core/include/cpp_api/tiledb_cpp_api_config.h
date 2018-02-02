@@ -75,6 +75,8 @@ class Config {
    */
   explicit Config(const std::string& filename);
 
+  explicit Config(tiledb_config_t **config);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -151,9 +153,6 @@ class Config {
 
   /** The TileDB C config object. */
   std::shared_ptr<tiledb_config_t> config_;
-
-  /** The URI path to the config file. */
-  std::string filename_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

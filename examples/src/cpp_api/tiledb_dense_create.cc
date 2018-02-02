@@ -55,7 +55,7 @@ int main() {
   schema << domain << a1 << a2 << a3;  // Add attributes to array
 
   // Check the schema, and make the array.
-  tiledb::create_array("my_dense_array", schema);
+  tiledb::Array::create("my_dense_array", schema);
 
   std::cout << schema << std::endl;
 

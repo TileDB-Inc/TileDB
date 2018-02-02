@@ -46,12 +46,18 @@ Config::Config() {
   create_config();
 }
 
-Config::Config(const std::string& filename)
-    : filename_(filename) {
+Config::Config(const std::string& filename) {
   create_config();
   tiledb_error_t *err;
-  tiledb_config_load_from_file(config_.get(), filename_.c_str(), &err);
+  tiledb_config_load_from_file(config_.get(), filename.c_str(), &err);
   impl::check_error(err);
+}
+
+Config::Config(tiledb_config_t **config) {
+  if (config) {
+    config_ = std::shared_ptr<tiledb_config_t>(*config, tiledb_config_free);
+    *config = nullptr;
+  }
 }
 
 /* ********************************* */

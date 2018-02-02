@@ -113,6 +113,13 @@ Domain::operator tiledb_domain_t *() const {
   return domain_.get();
 }
 
+unsigned Domain::rank() const {
+  auto &ctx = ctx_.get();
+  unsigned n;
+  ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &n));
+  return n;
+}
+
 const std::vector<tdb::Dimension> Domain::dimensions() const {
   auto &ctx = ctx_.get();
   unsigned int ndim;

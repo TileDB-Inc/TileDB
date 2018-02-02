@@ -89,6 +89,11 @@ class Attribute {
   /** Auxiliary operator for getting the underlying C TileDB object. */
   operator tiledb_attribute_t *() const;
 
+  /** Dump information about the attribute to a FILE. **/
+  void dump(FILE *out=stdout) {
+    ctx_.get().handle_error(tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

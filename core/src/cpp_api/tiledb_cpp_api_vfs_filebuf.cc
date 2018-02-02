@@ -32,7 +32,6 @@
  * streambuf for the tiledb VFS.
  */
 
-#include <assert.h>
 #include "tiledb_cpp_api_vfs_filebuf.h"
 #include "tiledb_cpp_api_exception.h"
 
@@ -47,24 +46,28 @@ VFSFilebuf *VFSFilebuf::open(
     const std::string &uri, std::ios::openmode openmode) {
   close();
 
-  // Check mode
-  if (openmode != std::ios::in && openmode != std::ios::out)
-    return nullptr;
+  tiledb_vfs_mode_t mode;
 
-  try {
-    bool is_file = vfs_.get().is_file(uri);
-    if (is_file) {
-      // In case of writes, delete the file (overwrite)
-      if ((openmode & std::ios::out))
-        vfs_.get().remove_file(uri);
+  if (openmode == std::ios::out) {
+    mode = TILEDB_VFS_WRITE;
+  }
+  else if (openmode & std::ios::app) {
+    mode = TILEDB_VFS_APPEND;
+  }
+  else if (openmode == std::ios::in) {
+    mode = TILEDB_VFS_READ;
+  }
+  else return nullptr;
 
-      uri_ = uri;
-      seekoff(0, std::ios::beg, openmode);
-    } else if (openmode & std::ios::in) {  // File does not exist
+    tiledb_vfs_fh_t *fh;
+    auto &ctx = vfs_.get().context();
+    if (tiledb_vfs_open(ctx, vfs_.get().ptr().get(), uri.c_str(), mode, &fh) != TILEDB_OK) {
       return nullptr;
     }
-  } catch (TileDBError &e) {
-    return nullptr;
+    fh_ = std::shared_ptr<tiledb_vfs_fh_t>(fh, deleter_);
+
+  if (mode == TILEDB_VFS_APPEND && vfs_.get().is_file(uri)) {
+    seekoff(0, std::ios::end, openmode);
   }
 
   return this;
@@ -72,15 +75,17 @@ VFSFilebuf *VFSFilebuf::open(
 
 VFSFilebuf *VFSFilebuf::close() {
   if (is_open()) {
-    try {
-    //TODO  vfs_.get().sync(uri_);
-    } catch (TileDBError &e) {
-      return nullptr;
-    }
+    sync();
     uri_ = "";
     return this;
   }
   return nullptr;
+}
+
+int VFSFilebuf::sync() {
+  auto &ctx = vfs_.get().context();
+  if (tiledb_vfs_sync(ctx, fh_.get()) != TILEDB_OK) return -1;
+  return 0;
 }
 
 /* ********************************* */
@@ -89,8 +94,14 @@ VFSFilebuf *VFSFilebuf::close() {
 
 std::streambuf::pos_type VFSFilebuf::seekoff(
     off_type offset, std::ios::seekdir seekdir, std::ios::openmode openmode) {
+
+  // No seek in write mode
+  if (openmode & std::ios::app || openmode & std::ios::out) {
+    return std::streampos(std::streamoff(-1));
+  }
+
   uint64_t fsize = file_size();
-  (void)openmode;  // unused arg error
+
   // Note logic is to get rid of signed/unsigned comparison errors
   switch (seekdir) {
     case std::ios::beg: {
@@ -125,14 +136,7 @@ std::streambuf::pos_type VFSFilebuf::seekoff(
 
 std::streambuf::pos_type VFSFilebuf::seekpos(
     pos_type pos, std::ios::openmode openmode) {
-  (void)openmode;
-  uint64_t fsize = file_size();
-  if (pos < 0 || static_cast<uint64_t>(pos) > fsize) {
-    return std::streampos(std::streamoff(-1));
-  }
-  offset_ = static_cast<uint64_t>(pos);
-  // This returns a static constant
-  return std::streampos(pos);
+  return seekoff((off_type)pos, std::ios::beg, openmode);
 }
 
 /* ********************************* */
@@ -151,12 +155,11 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   }
   if (readlen == 0)
     return traits_type::eof();
-  try {
-     assert(s);
-    //TODO vfs_.get().read(uri_, offset_, s, static_cast<uint64_t>(readlen));
-  } catch (TileDBError &e) {
+    auto &ctx = vfs_.get().context();
+    if (tiledb_vfs_read(ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) != TILEDB_OK) {
       return traits_type::eof();
     }
+
   offset_ += readlen;
   return readlen;
 }
@@ -185,12 +188,10 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
   if (offset_ != file_size())
     return traits_type::eof();
-  try {
-    assert(s);
-    //TODO vfs_.get().write(uri_, s, static_cast<uint64_t>(n));
-  } catch (TileDBError &e) {
-    return traits_type::eof();
-  }
+    auto &ctx = vfs_.get().context();
+    if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) != TILEDB_OK) {
+      return traits_type::eof();
+    }
   offset_ += n;
   return n;
 }

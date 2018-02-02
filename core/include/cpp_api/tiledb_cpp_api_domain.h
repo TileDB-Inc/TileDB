@@ -82,6 +82,9 @@ class Domain {
   /** Returns the domain type. */
   tiledb_datatype_t type() const;
 
+  /** Get the rank (number of dimensions) **/
+  unsigned rank() const;
+
   /** Returns the current set of dimensions in domain. */
   const std::vector<Dimension> dimensions() const;
 

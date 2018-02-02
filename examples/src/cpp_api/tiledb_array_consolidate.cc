@@ -36,6 +36,6 @@
 
 int main() {
   tiledb::Context ctx;
-  tiledb::consolidate_array(ctx, "my_dense_array");
+  tiledb::Array::consolidate(ctx, "my_dense_array");
   return 0;
 }

@@ -91,6 +91,22 @@ class Context {
   Context &set_error_handler(
       const std::function<void(const std::string &)> &fn);
 
+  Config config() const {
+    tiledb_config_t *c;
+    handle_error(tiledb_ctx_get_config(ctx_.get(), &c));
+    return Config(&c);
+  }
+
+  /**
+   * Checks if the filesystem backend is supported.
+   * @param fs
+   */
+  bool is_supported_fs(tiledb_filesystem_t fs) const {
+    int ret;
+    handle_error(tiledb_ctx_is_supported_fs(ctx_.get(), fs, &ret));
+    return ret != 0;
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

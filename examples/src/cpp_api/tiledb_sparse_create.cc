@@ -59,7 +59,7 @@ int main() {
          << a1 << a2 << a3;  // set attributes
 
   // Check the schema, and make the array.
-  tiledb::create_array("my_sparse_array", schema);
+  tiledb::Array::create("my_sparse_array", schema);
 
   std::cout << "Array created with schema: " << schema << std::endl;
 

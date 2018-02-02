@@ -45,11 +45,19 @@ int main() {
   using std::setw;
   tiledb::Context ctx;
 
+  const std::vector<uint64_t> subarray = {3, 4, 2, 4};
+
+  std::cout << "Upper bound on buffer sizes needed to read subarray:\n";
+  tiledb::ArraySchema schema(ctx, "my_dense_array");
+  auto sizes = tiledb::Array::upper_bound_buffer_sizes("my_dense_array", schema, subarray);
+  for (auto n : sizes) std::cout << n << ' ';
+
+
   // Init the array & query for the array
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
   // Set set_subarray. Templated on domain type.
-  query.set_subarray<uint64_t>({3, 4, 2, 4});
+  query.set_subarray(subarray);
   query.set_layout(TILEDB_ROW_MAJOR);
 
   // Make buffers
@@ -74,7 +82,7 @@ int main() {
       a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
   auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
 
-  std::cout << "Result num: " << buff_sizes[0]
+  std::cout << "\n\nResult num: " << buff_sizes[0]
             << '\n';  // This assumes all attributes were fully read.
   std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10)
             << "a3[1]\n";

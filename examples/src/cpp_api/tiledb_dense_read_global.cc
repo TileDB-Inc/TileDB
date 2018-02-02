@@ -44,6 +44,16 @@ int main() {
   using std::setw;
   tiledb::Context ctx;
 
+  // Find out the minimum bounding rectangle
+  tiledb::ArraySchema schema(ctx, "my_dense_array"); // Load schema
+
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> domain;
+  domain = tiledb::Array::non_empty_domain<uint64_t>("my_dense_array", schema);
+  std::cout << "Non empty domain:\n";
+  for (const auto &d : domain) {
+    std::cout << d.first << ": (" << d.second.first << ", " << d.second.second << ")\n";
+  }
+
   // Init the array & query for the array
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
 
@@ -59,7 +69,7 @@ int main() {
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
-  std::cout << "Query submitted: " << query.submit() << "\n";
+  std::cout << "\nQuery submitted: " << query.submit() << "\n";
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes

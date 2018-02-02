@@ -75,9 +75,7 @@ class VFSFilebuf : public std::streambuf {
    * @param vfs tiledb VFS
    */
   explicit VFSFilebuf(const VFS &vfs)
-      : vfs_(vfs)
-      , deleter_(vfs.context()) {
-  }
+    : vfs_(vfs), deleter_(vfs.context()) {}
   VFSFilebuf(const VFSFilebuf &buf) = default;
   VFSFilebuf(VFSFilebuf &&buf) = default;
   VFSFilebuf &operator=(const VFSFilebuf &) = default;
@@ -190,6 +188,8 @@ class VFSFilebuf : public std::streambuf {
    */
   int_type overflow(int_type c) override;
 
+  int sync() override;
+
  private:
   /* ********************************* */
   /*              PRIVATE              */
@@ -201,7 +201,10 @@ class VFSFilebuf : public std::streambuf {
   /** Underlying VFS **/
   std::reference_wrapper<const VFS> vfs_;
 
-  /** Deleter for vfs_ **/
+  /** File handle **/
+  std::shared_ptr<tiledb_vfs_fh_t> fh_;
+
+  /** Deleter for fh_ **/
   const impl::Deleter deleter_;
 
   /** File URI **/
