@@ -37,13 +37,15 @@
 
 #include "tiledb_cpp_api_map_item.h"
 
+#include <tuple>
+
 namespace tdb {
   namespace impl {
 
     /**
      * Proxy class for multi-attribute set and get.
-     * The class facillitates tuple unrolling, and is
-     * equivilant to setting one attribute at a time.
+     * The class facilitates tuple unrolling, and is
+     * equivalent to setting one attribute at a time.
      * After assignment, the item is added to the
      * underlying map.
      **/

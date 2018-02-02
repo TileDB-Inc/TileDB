@@ -57,7 +57,7 @@ struct CPPArrayFx {
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema << domain << a1 << a2 << a3;
 
-    create_array("cpp_unit_array", schema);
+    Array::create("cpp_unit_array", schema);
   }
 
   Context ctx;
