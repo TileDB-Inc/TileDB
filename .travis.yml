@@ -19,7 +19,7 @@ matrix:
 install:
     # Upgrade clang
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew upgrade llvm
+        brew upgrade llvm;
       fi
 
     # Install clangformat (v5.0)
