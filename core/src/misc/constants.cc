@@ -288,8 +288,14 @@ const char* default_dim_name = "__dim";
 /** The key attribute name. */
 const char* key_attr_name = "__key";
 
+/** The key attribute type. */
+Datatype key_attr_type = Datatype::CHAR;
+
 /** The key type attribute name. */
 const char* key_type_attr_name = "__key_type";
+
+/** The key type attribute type. */
+Datatype key_type_attr_type = Datatype::CHAR;
 
 /** The key attribute compressor. */
 Compressor key_attr_compressor = Compressor::BLOSC_ZSTD;

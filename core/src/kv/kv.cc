@@ -78,22 +78,27 @@ Status KV::init(
     auto attr_num = schema_->attribute_num();
     unsigned i = (include_keys) ? 0 : 2;
     for (; i < attr_num; ++i) {
-      auto attr_name = schema_->attribute_name(i);
-      attributes_.emplace_back(attr_name);
+      attributes_.emplace_back(schema_->attribute_name(i));
+      types_.emplace_back(schema_->type(i));
     }
   } else {  // Load input attributes
     write_good_ = false;
     if (include_keys) {
       attributes_.emplace_back(constants::key_attr_name);
+      types_.emplace_back(constants::key_attr_type);
       attributes_.emplace_back(constants::key_type_attr_name);
+      types_.emplace_back(constants::key_type_attr_type);
     }
     unsigned attr_id;
     for (unsigned i = 0; i < attribute_num; ++i) {
       auto attr_name = attributes[i];
       RETURN_NOT_OK(schema_->attribute_id(attr_name, &attr_id));
       attributes_.emplace_back(attr_name);
+      types_.emplace_back(schema_->type(attr_id));
     }
   }
+
+  assert(attributes_.size() == types_.size());
 
   RETURN_NOT_OK(prepare_query_attributes());
   RETURN_NOT_OK(schema_->buffer_num(
@@ -142,7 +147,7 @@ Status KV::add_item(const KVItem* kv_item) {
 
   mtx_.lock();
 
-  if (!kv_item->good(attributes_)) {
+  if (!kv_item->good(attributes_, types_)) {
     mtx_.unlock();
     return LOG_STATUS(Status::KVError("Cannot add item; Invalid item"));
   }

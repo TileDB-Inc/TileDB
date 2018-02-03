@@ -792,15 +792,16 @@ uint64_t ArraySchema::compute_cell_size(unsigned int i) const {
 
 Status ArraySchema::set_kv_attributes() {
   // Add key attribute
-  auto key_attr = new Attribute(constants::key_attr_name, Datatype::CHAR);
+  auto key_attr =
+      new Attribute(constants::key_attr_name, constants::key_attr_type);
   key_attr->set_cell_val_num(constants::var_num);
   key_attr->set_compressor(constants::key_attr_compressor);
   attributes_.emplace_back(key_attr);
   ++attribute_num_;
 
   // Add key type attribute
-  auto key_type_attr =
-      new Attribute(constants::key_type_attr_name, Datatype::CHAR);
+  auto key_type_attr = new Attribute(
+      constants::key_type_attr_name, constants::key_type_attr_type);
   key_type_attr->set_compressor(constants::key_type_attr_compressor);
   attributes_.emplace_back(key_type_attr);
   ++attribute_num_;

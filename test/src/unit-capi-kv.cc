@@ -374,6 +374,38 @@ void KVFx::check_write(const std::string& path) {
   rc = tiledb_kv_add_item(ctx_, kv, kv_item4);
   CHECK(rc == TILEDB_OK);
 
+  // Add key with invalid attributes
+  tiledb_kv_item_t* kv_item5;
+  rc = tiledb_kv_item_create(ctx_, &kv_item5);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_key(
+      ctx_, kv_item5, KEY4, TILEDB_CHAR, strlen(KEY4) + 1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item5, "foo", &KEY4_A1, TILEDB_INT32, sizeof(int));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_item(ctx_, kv, kv_item5);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add key with invalid type
+  tiledb_kv_item_t* kv_item6;
+  rc = tiledb_kv_item_create(ctx_, &kv_item6);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_key(
+      ctx_, kv_item6, KEY4, TILEDB_CHAR, strlen(KEY4) + 1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item6, ATTR_1, &KEY4_A1, TILEDB_UINT32, sizeof(unsigned));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item6, ATTR_2, KEY4_A2, TILEDB_CHAR, strlen(KEY4_A2) + 1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item6, ATTR_3, KEY4_A3, TILEDB_FLOAT32, 2 * sizeof(float));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_item(ctx_, kv, kv_item6);
+  CHECK(rc == TILEDB_ERR);
+
   // Close kv
   rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
@@ -390,6 +422,10 @@ void KVFx::check_write(const std::string& path) {
   rc = tiledb_kv_item_free(ctx_, kv_item3);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_kv_item_free(ctx_, kv_item4);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_free(ctx_, kv_item5);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_free(ctx_, kv_item6);
   REQUIRE(rc == TILEDB_OK);
 }
 

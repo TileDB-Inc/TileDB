@@ -183,6 +183,9 @@ class KV {
    */
   std::vector<Buffer*> read_buff_vec_;
 
+  /** The corresponding types of `attributes_`. */
+  std::vector<Datatype> types_;
+
   /**
    * Indicates whether an attribute is variable-sized or not.
    * There is a one-to-one correspondence with `write_attributes_`.

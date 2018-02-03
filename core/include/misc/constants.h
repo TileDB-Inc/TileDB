@@ -279,8 +279,14 @@ extern const char* default_dim_name;
 /** The key attribute name. */
 extern const char* key_attr_name;
 
+/** The key attribute type. */
+extern Datatype key_attr_type;
+
 /** The key type attribute name. */
 extern const char* key_type_attr_name;
+
+/** The key type attribute type. */
+extern Datatype key_type_attr_type;
 
 /** The key attribute compressor. */
 extern Compressor key_attr_compressor;
