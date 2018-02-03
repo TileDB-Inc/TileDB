@@ -39,17 +39,17 @@ int main() {
     // Create map items unassociated with any map
     auto item1 = tiledb::Map::create_item(ctx, 100);
     item1["a1"] = 1;
-    item1["a2"] = std::string("a");
+    item1["a2"] = "a";
     item1["a3"] = std::vector<float>{1.1, 1.2};
 
     auto item2 = tiledb::Map::create_item(ctx, 200.0);
     item2["a1"] = 2;
-    item2["a2"] = std::string("bb");
+    item2["a2"] = "bb";
     item2["a3"] = std::vector<float>{2.1, 2.2};
 
     auto item4 = tiledb::Map::create_item(ctx, std::string("key_4"));
     item4["a1"] = 4;
-    item4["a2"] = std::string("dddd");
+    item4["a2"] = "dddd";
     item4["a3"] = std::vector<float>{4.1, 4.2};
 
     // Create a map
@@ -87,7 +87,7 @@ int main() {
   } // Map goes out of scope, so it will be flushed.
 
   // Consolidate fragments (optional)
-  tiledb::consolidate_map(ctx, "my_map");
+  tiledb::Map::consolidate(ctx, "my_map");
 
   return 0;
 }

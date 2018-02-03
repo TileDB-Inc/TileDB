@@ -221,6 +221,10 @@ private:
                                  AttrT::tiledb_datatype, sizeof(typename V::value_type) * val.size()));
   }
 
+  void set_impl(const std::string &attr, const char *c) {
+    set_impl(attr, std::string(c));
+  }
+
   /**
  * Get a value as a compound type.
  *

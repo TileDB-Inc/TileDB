@@ -176,6 +176,21 @@ namespace tdb {
       return {*this, true};
     }
 
+    /* ********************************* */
+    /*               STATIC              */
+    /* ********************************* */
+
+      /**
+       * Create a new map.
+       *
+       * @param uri URI to make map at.
+       * @param schema schema defining the map structure.
+       */
+      static void create(const std::string &uri, const MapSchema &schema);
+
+      /** Consolidate map fragments. **/
+      static void consolidate(const Context& ctx, const std::string& map);
+
   private:
 
     /* ********************************* */
@@ -251,17 +266,6 @@ namespace tdb {
   /* ********************************* */
   /*        NON MEMBER MAP FUNC        */
   /* ********************************* */
-
-  /**
-   * Create a new map.
-   *
-   * @param uri URI to make map at.
-   * @param schema schema defining the map structure.
-   */
-  void create_map(const std::string &uri, const MapSchema &schema);
-
-  /** Consolidate map fragments. **/
-  void consolidate_map(const Context& ctx, const std::string& map);
 
   /** Add an item to the map. **/
   Map &operator<<(Map &map, const MapItem &item);

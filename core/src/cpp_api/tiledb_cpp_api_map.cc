@@ -36,13 +36,13 @@
 
 namespace tdb {
 
-  void create_map(const std::string &uri, const MapSchema &schema) {
+  void Map::create(const std::string &uri, const MapSchema &schema) {
     auto &ctx = schema.context();
     schema.check();
     ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
   }
 
-  void consolidate_map(const Context &ctx, const std::string &map) {
+  void Map::consolidate(const Context &ctx, const std::string &map) {
     ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
   }
 
