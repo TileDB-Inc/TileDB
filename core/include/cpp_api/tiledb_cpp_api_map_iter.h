@@ -78,11 +78,11 @@ namespace impl {
     }
 
     /** Iterators are only equal when both are end. **/
-    bool operator==(const MapIter &o) {
+    bool operator==(const MapIter &o) const {
       return done_ == o.done_;
     }
 
-    bool operator!=(const MapIter &o) {
+    bool operator!=(const MapIter &o) const {
       return done_ != o.done_;
     }
 

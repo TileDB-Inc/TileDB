@@ -44,7 +44,8 @@ int main() {
   tiledb::Context ctx;
   tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.set_subarray<uint64_t>({3, 4, 2, 4}).set_layout(TILEDB_ROW_MAJOR);
+  query.set_subarray<uint64_t>({3, 4, 2, 4});
+  query.set_layout(TILEDB_ROW_MAJOR);
 
   std::vector<int> a1_data = {9, 12, 13, 11, 14, 15};
   std::vector<uint64_t> a2_offsets = {0, 2, 3, 5, 9, 12};

@@ -111,8 +111,10 @@ class ObjectIter {
   void set_recursive(tiledb_walk_order_t walk_order = TILEDB_PREORDER);
 
   /** The actual iterator implementation in this class. */
-  class iterator : public std::iterator<std::forward_iterator_tag, Object> {
+  class iterator : public std::iterator<std::forward_iterator_tag, const Object> {
    public:
+    iterator() : cur_obj_(0) {}
+
     iterator(const std::vector<Object> &objs)
         : cur_obj_(0)
         , objs_(objs) {
@@ -123,11 +125,11 @@ class ObjectIter {
         , objs_(o.objs_) {
     }
 
-    bool operator==(const iterator &o) {
+    bool operator==(const iterator &o) const {
       return cur_obj_ == o.cur_obj_;
     }
 
-    bool operator!=(const iterator &o) {
+    bool operator!=(const iterator &o) const {
       return !operator==(o);
     }
 
@@ -155,14 +157,14 @@ class ObjectIter {
     size_t cur_obj_;
 
     /** A reference to the objects retrieved by the `ObjectIter` object. */
-    const std::vector<Object> &objs_;
+    const std::vector<Object> objs_;
   };
 
   /** Returns an object iterator at the beginning of its iteration. */
-  iterator begin();
+  iterator begin() const;
 
   /** Returns an object iterator at the end of its iteration. */
-  iterator end();
+  iterator end() const;
 
   /**
    * Callback function to be used when invoking the C TileDB functions
@@ -194,17 +196,11 @@ class ObjectIter {
   /** If `true`, key-values will be considered in the walk. */
   bool kv_;
 
-  /** The objects retrieved from the walk. */
-  std::vector<Object> objs_;
-
   /**
    * True if the iteration will recursively walk through the whole
    * directory tree.
    */
   bool recursive_;
-
-  /** `True` if the objects must be retrieved when beginning an iterator. */
-  bool retrieve_objs_;
 
   /** The root directory where the iteration will start from. */
   std::string root_;

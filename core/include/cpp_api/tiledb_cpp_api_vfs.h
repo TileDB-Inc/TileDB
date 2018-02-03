@@ -92,10 +92,10 @@ class VFS {
   bool is_bucket(const std::string& uri) const;
 
   /** Empty a bucket **/
-  void empty_bucket(const std::string &bucket);
+  void empty_bucket(const std::string &bucket) const;
 
   /** Check if a bucket is empty **/
-  bool is_empty_bucket(const std::string &bucket);
+  bool is_empty_bucket(const std::string &bucket) const;
 
   /** Creates a directory with the input URI. */
   void create_dir(const std::string& uri) const;

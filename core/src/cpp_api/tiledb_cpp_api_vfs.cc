@@ -74,12 +74,12 @@ bool VFS::is_bucket(const std::string& uri) const {
   return (bool)ret;
 }
 
-void VFS::empty_bucket(const std::string &bucket) {
+void VFS::empty_bucket(const std::string &bucket) const {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_vfs_empty_bucket(ctx, vfs_.get(), bucket.c_str()));
 }
 
-bool VFS::is_empty_bucket(const std::string &bucket) {
+bool VFS::is_empty_bucket(const std::string &bucket) const {
   auto &ctx = ctx_.get();
   int empty;
   ctx.handle_error(tiledb_vfs_is_empty_bucket(ctx, vfs_.get(), bucket.c_str(), &empty));

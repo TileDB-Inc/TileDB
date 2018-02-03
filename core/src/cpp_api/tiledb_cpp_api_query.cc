@@ -69,14 +69,14 @@ Query::Status Query::submit() {
   return query_status();
 }
 
-Query::Status Query::query_status() {
+Query::Status Query::query_status() const {
   tiledb_query_status_t status;
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_query_get_status(ctx, query_.get(), &status));
   return to_status(status);
 }
 
-Query::Status Query::attribute_status(const std::string &attr) {
+Query::Status Query::attribute_status(const std::string &attr) const {
   tiledb_query_status_t status;
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_query_get_attribute_status(
@@ -88,7 +88,7 @@ void Query::submit_async() {
   submit_async([](){});
 }
 
-std::vector<uint64_t> Query::returned_buff_sizes() {
+std::vector<uint64_t> Query::returned_buff_sizes() const {
   std::vector<uint64_t> buffsize(buff_sizes_.size());
   for (size_t i = 0; i < buff_sizes_.size(); ++i) {
     buffsize[i] = buff_sizes_[i] / sub_tsize_[i];

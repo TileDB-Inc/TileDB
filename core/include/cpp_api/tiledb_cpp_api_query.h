@@ -89,10 +89,10 @@ class Query {
   Query &set_layout(tiledb_layout_t layout);
 
   /** Returns the query status. */
-  Status query_status();
+  Status query_status() const;
 
   /** Returns the query status for a particular attribute. */
-  Status attribute_status(const std::string &attr);
+  Status attribute_status(const std::string &attr) const;
 
   /** Submits the query. Call will block until query is complete. */
   Status submit();
@@ -117,7 +117,7 @@ class Query {
   }
 
   /** Buffer sizes, in number of elements. */
-  std::vector<uint64_t> returned_buff_sizes();
+  std::vector<uint64_t> returned_buff_sizes() const;
 
   /** Clears all attribute buffers. */
   void reset_buffers();
@@ -130,7 +130,7 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<T>::value, void>::type
   set_subarray(const std::vector<T> &pairs) {
     auto &ctx = ctx_.get();
     impl::type_check<typename impl::type_from_native<T>::type>(schema_.domain().type());
@@ -146,8 +146,6 @@ class Query {
     for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
       subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
     }
-
-    return *this;
   }
 
   /**
@@ -158,7 +156,7 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  typename std::enable_if<std::is_fundamental<T>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<T>::value, void>::type
   set_subarray(const std::vector<std::array<T, 2>> &pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
@@ -167,34 +165,34 @@ class Query {
                     buf.push_back(p[0]);
                     buf.push_back(p[1]);
                   });
-    return set_subarray(buf);
+    set_subarray(buf);
   }
 
   /** Sets a buffer for a fixed-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
   set_buffer(const std::string &attr, T &buf) {
-    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf);
+    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf);
   }
 
   /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
   set_buffer(
       const std::string &attr,
       std::vector<uint64_t> &offsets,
       T &buf) {
-    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
+    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
         attr, offsets, buf);
   }
 
   /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, Query>::type &
+  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
   set_buffer(
       const std::string &attr,
       std::pair<std::vector<uint64_t>, T> &buf) {
-    return set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf.first, buf.second);
+    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf.first, buf.second);
   }
 
   /**
@@ -207,7 +205,7 @@ class Query {
    */
   template <typename T>
   typename std::enable_if<std::is_fundamental<T>::value, std::vector<T>>::type
-  make_buffer(const std::string &attr, uint64_t max_el = 0) {
+  make_buffer(const std::string &attr, uint64_t max_el = 0) const {
     return make_buffer<typename impl::type_from_native<T>::type>(attr, max_el);
   }
 
@@ -226,13 +224,82 @@ class Query {
   typename std::enable_if<
       std::is_fundamental<T>::value,
       std::pair<std::vector<uint64_t>, std::vector<T>>>::type
-  make_var_buffers(
-      const std::string &attr,
-      uint64_t expected = 1,
-      uint64_t max_offset = 0,
-      uint64_t max_el = 0) {
+  make_var_buffers(const std::string &attr, uint64_t expected = 1,
+                   uint64_t max_offset = 0, uint64_t max_el = 0) const {
     return make_var_buffers<typename impl::type_from_native<T>::type>(
         attr, expected, max_offset, max_el);
+  }
+
+  /**
+   * Resizes a buffer for a particular attribute. Attempts to find an ideal
+   * buffer size.
+   *
+   * @tparam DataT tdb::impl::*
+   * @param attr Attribute name.
+   * @param buff Buffer to resize.
+   * @param max_el Upper bound on buffer size, in number of elements
+   * @return (this) Query
+   */
+  template <typename DataT>
+  void resize_buffer(
+  const std::string &attr,
+  std::vector<typename DataT::type> &buff,
+  uint64_t max_el = 0) const {
+    uint64_t cell_val_num = 1;
+    if (array_attributes_.count(attr)) {
+      cell_val_num = array_attributes_.at(attr).cell_val_num();
+      if (cell_val_num == TILEDB_VAR_NUM)
+        throw std::runtime_error("Offsets required for var size attribute.");
+    } else if (attr == TILEDB_COORDS) {
+      cell_val_num = schema_.domain().dim_num();
+    } else {
+      throw SchemaMismatch("Invalid attribute: " + attr);
+    }
+
+    make_buffer_impl<DataT>(attr, buff, cell_val_num, max_el);
+  }
+
+  /**
+   * Resize a buffer for a particular variable-sized attribute.
+   * Attempts to find an ideal buffer size.
+   *
+   * @tparam DataT Attribute type (tdb::impl::*)
+   * @param attr Attribute name
+   * @param offsets Offsets buffer to resize
+   * @param data Data buffer to resize
+   * @param expected_cell_val_num Expected size number of values per attribute
+   *     cell
+   * @param max_offset Max size for the offset buffer. Limits the number of
+   *     cells read. If max_el is undefined, this will set max_el =
+   *     max_offset*expected_size
+   * @param max_el upper bound on buffer size, in number of elements.
+   * @return *this
+   */
+  template <typename DataT>
+  void resize_buffer(
+  const std::string &attr,
+  std::vector<uint64_t> &offsets,
+  std::vector<typename DataT::type> &data,
+  uint64_t expected_cell_val_num = 1,
+  uint64_t max_offset = 0,
+  uint64_t max_el = 0) const {
+    // Confirm that this is a variable-sized attribute
+    uint64_t cell_val_num;
+    if (array_attributes_.count(attr)) {
+      cell_val_num = array_attributes_.at(attr).cell_val_num();
+      if (cell_val_num != TILEDB_VAR_NUM)
+        throw AttributeError(
+        "Offsets provided for fixed size attribute.");
+    }
+
+    if (max_offset && !max_el)
+      max_el = max_offset * expected_cell_val_num;
+    uint64_t var_buffer_len =
+    make_buffer_impl<DataT>(attr, data, expected_cell_val_num, max_el);
+    uint64_t offsets_len = var_buffer_len / expected_cell_val_num;
+    if (max_offset != 0 && offsets_len > max_offset)
+      offsets_len = max_offset;
+    offsets.resize(offsets_len);
   }
 
   /* ********************************* */
@@ -371,7 +438,7 @@ class Query {
    * Gets the ideal buffer size using the underlying array dimensions and
    * number of values per cell for the attribute at hand.
    */
-  uint64_t get_buffer_size(unsigned cell_val_num) {
+  uint64_t get_buffer_size(unsigned cell_val_num) const {
     if (subarray_cell_num_ != 0)
       return cell_val_num * subarray_cell_num_;
 
@@ -389,7 +456,7 @@ class Query {
    */
   template <typename DataT>
   std::vector<typename DataT::type> make_buffer(
-      const std::string &attr, uint64_t max_el = 0) {
+      const std::string &attr, uint64_t max_el = 0) const {
     std::vector<typename DataT::type> ret;
     resize_buffer<DataT>(attr, ret, max_el);
     return ret;
@@ -412,7 +479,7 @@ class Query {
       const std::string &attr,
       uint64_t expected = 1,
       uint64_t max_offset = 0,
-      uint64_t max_el = 0) {
+      uint64_t max_el = 0) const {
     std::vector<typename DataT::type> data;
     std::vector<uint64_t> offsets;
     resize_buffer<DataT>(attr, offsets, data, expected, max_offset, max_el);
@@ -434,7 +501,7 @@ class Query {
       const std::string &attr,
       std::vector<typename DataT::type> &buff,
       uint64_t cell_val_num = 1,
-      uint64_t max_el = 0) {
+      uint64_t max_el = 0) const {
     uint64_t ret;
     tiledb_datatype_t type;
     if (attr == TILEDB_COORDS)
@@ -447,79 +514,6 @@ class Query {
     return ret;
   }
 
-  /**
-   * Resizes a buffer for a particular attribute. Attempts to find an ideal
-   * buffer size.
-   *
-   * @tparam DataT tdb::impl::*
-   * @param attr Attribute name.
-   * @param buff Buffer to resize.
-   * @param max_el Upper bound on buffer size, in number of elements
-   * @return (this) Query
-   */
-  template <typename DataT>
-  Query &resize_buffer(
-      const std::string &attr,
-      std::vector<typename DataT::type> &buff,
-      uint64_t max_el = 0) {
-    uint64_t cell_val_num = 1;
-    if (array_attributes_.count(attr)) {
-      cell_val_num = array_attributes_.at(attr).cell_val_num();
-      if (cell_val_num == TILEDB_VAR_NUM)
-        throw std::runtime_error("Offsets required for var size attribute.");
-    } else if (attr == TILEDB_COORDS) {
-      cell_val_num = schema_.domain().dim_num();
-    } else {
-      throw SchemaMismatch("Invalid attribute: " + attr);
-    }
-
-    make_buffer_impl<DataT>(attr, buff, cell_val_num, max_el);
-    return *this;
-  }
-
-  /**
-   * Resize a buffer for a particular variable-sized attribute.
-   * Attempts to find an ideal buffer size.
-   *
-   * @tparam DataT Attribute type (tdb::impl::*)
-   * @param attr Attribute name
-   * @param offsets Offsets buffer to resize
-   * @param data Data buffer to resize
-   * @param expected_cell_val_num Expected size number of values per attribute
-   *     cell
-   * @param max_offset Max size for the offset buffer. Limits the number of
-   *     cells read. If max_el is undefined, this will set max_el =
-   *     max_offset*expected_size
-   * @param max_el upper bound on buffer size, in number of elements.
-   * @return *this
-   */
-  template <typename DataT>
-  Query &resize_buffer(
-      const std::string &attr,
-      std::vector<uint64_t> &offsets,
-      std::vector<typename DataT::type> &data,
-      uint64_t expected_cell_val_num = 1,
-      uint64_t max_offset = 0,
-      uint64_t max_el = 0) {
-    // Confirm that this is a variable-sized attribute
-    uint64_t cell_val_num;
-    if (array_attributes_.count(attr)) {
-      cell_val_num = array_attributes_.at(attr).cell_val_num();
-      if (cell_val_num != TILEDB_VAR_NUM)
-        throw AttributeError(
-            "Offsets provided for fixed size attribute.");
-    }
-
-    if (max_offset && !max_el)
-      max_el = max_offset * expected_cell_val_num;
-    uint64_t var_buffer_len =
-        make_buffer_impl<DataT>(attr, data, expected_cell_val_num, max_el);
-    uint64_t offsets_len = var_buffer_len / expected_cell_val_num;
-    if (max_offset != 0 && offsets_len > max_offset)
-      offsets_len = max_offset;
-    offsets.resize(offsets_len);
-    return *this;
-  }
 };
 
 /* ********************************* */

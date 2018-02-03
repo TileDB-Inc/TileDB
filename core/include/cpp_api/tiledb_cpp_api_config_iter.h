@@ -49,7 +49,7 @@ namespace tdb {
 
   namespace impl {
 
-    class ConfigIter : public std::iterator<std::forward_iterator_tag, std::string> {
+    class ConfigIter : public std::iterator<std::forward_iterator_tag, const std::pair<std::string, std::string>> {
     public:
 
       /* ********************************* */
@@ -69,11 +69,11 @@ namespace tdb {
       ConfigIter &operator=(const ConfigIter&) = delete;
       ConfigIter &operator=(ConfigIter&&) = default;
 
-      bool operator==(const ConfigIter &o) {
+      bool operator==(const ConfigIter &o) const {
         return done_ == o.done_;
       }
 
-      bool operator!=(const ConfigIter &o) {
+      bool operator!=(const ConfigIter &o) const {
         return done_ != o.done_;
       }
 

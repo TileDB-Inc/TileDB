@@ -90,7 +90,7 @@ class Attribute {
   operator tiledb_attribute_t *() const;
 
   /** Dump information about the attribute to a FILE. **/
-  void dump(FILE *out=stdout) {
+  void dump(FILE *out=stdout) const {
     ctx_.get().handle_error(tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
   }
 

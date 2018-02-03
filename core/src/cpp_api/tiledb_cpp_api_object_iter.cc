@@ -48,7 +48,6 @@ ObjectIter::ObjectIter(Context &ctx, const std::string &root)
   group_ = true;
   array_ = true;
   kv_ = true;
-  retrieve_objs_ = true;
 }
 
 /* ********************************* */
@@ -56,18 +55,12 @@ ObjectIter::ObjectIter(Context &ctx, const std::string &root)
 /* ********************************* */
 
 void ObjectIter::set_iter_policy(bool group, bool array, bool kv) {
-  if (group_ != group || array_ != array || kv_ != kv)
-    retrieve_objs_ = true;
-
   group_ = group;
   array_ = array;
   kv_ = kv;
 }
 
 void ObjectIter::set_recursive(tiledb_walk_order_t walk_order) {
-  if (!recursive_ || walk_order_ != walk_order)
-    retrieve_objs_ = true;
-
   recursive_ = true;
   walk_order_ = walk_order;
 }
@@ -88,24 +81,22 @@ int ObjectIter::obj_getter(const char *path, tiledb_object_t type, void *data) {
   return 1;
 }
 
-ObjectIter::iterator ObjectIter::begin() {
-  if (retrieve_objs_) {
-    objs_.clear();
-    auto &ctx = ctx_.get();
-    ObjGetterData data(objs_, array_, group_, kv_);
-    if (recursive_)
-      ctx.handle_error(tiledb_object_walk(
-          ctx, root_.c_str(), walk_order_, obj_getter, &data));
-    else
-      ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
-    retrieve_objs_ = false;
-  }
+ObjectIter::iterator ObjectIter::begin() const {
+  std::vector<Object> objs;
+  objs.clear();
+  auto &ctx = ctx_.get();
+  ObjGetterData data(objs, array_, group_, kv_);
+  if (recursive_)
+    ctx.handle_error(tiledb_object_walk(
+        ctx, root_.c_str(), walk_order_, obj_getter, &data));
+  else
+    ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
 
-  return iterator(objs_);
+  return {objs};
 }
 
-ObjectIter::iterator ObjectIter::end() {
-  return iterator(objs_).end();
+ObjectIter::iterator ObjectIter::end() const {
+  return iterator().end();
 }
 
 }  // namespace tdb

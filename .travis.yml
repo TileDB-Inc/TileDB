@@ -17,11 +17,6 @@ matrix:
     - os: osx
 
 install:
-    # Upgrade clang
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew upgrade llvm;
-      fi
-
     # Install clangformat (v5.0)
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         sudo scripts/install-clangformat.sh;
