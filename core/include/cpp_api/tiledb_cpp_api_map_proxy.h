@@ -50,20 +50,26 @@ namespace tdb {
      * underlying map.
      **/
     class MultiMapItemProxy {
-      /** Used to compiler can resolve func without user typing .get<....>() **/
-      template<typename... T> struct type_tag{};
 
     public:
       MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
       : attrs(attrs), item(item) {}
 
-      /** Get multiple attributes **/
+      /** Get multiple attributes into an existing tuple **/
       template <typename... T>
-      std::tuple<T...> get() const {
+      void get(std::tuple<T...> &tp) const {
         if (attrs.size() != sizeof...(T)) {
           throw TileDBError("Attribute list size does not match tuple length.");
         }
-        return get(type_tag<T...>{});
+        get_tuple<0, T...>(tp);
+      }
+
+      /** Get multiple attributes **/
+      template <typename... T>
+      std::tuple<T...> get() const {
+        std::tuple<T...> ret;
+        get<T...>(ret);
+        return ret;
       }
 
       /** Set the attributes **/
@@ -72,7 +78,7 @@ namespace tdb {
         if (attrs.size() != sizeof...(T)) {
           throw TileDBError("Attribute list size does not match tuple length.");
         }
-        iter_tuple<0, T...>(vals);
+        set_tuple<0, T...>(vals);
         add_to_map();
       }
 
@@ -94,37 +100,26 @@ namespace tdb {
       /** Base case. Do nothing and terminate recursion. **/
       template<std::size_t I = 0, typename... T>
       inline typename std::enable_if<I == sizeof...(T), void>::type
-      iter_tuple(const std::tuple<T...>&){}
+      set_tuple(const std::tuple<T...>&){}
 
       template<std::size_t I = 0, typename... T>
       inline typename std::enable_if<I < sizeof...(T), void>::type
-      iter_tuple(const std::tuple<T...> &t) {
+      set_tuple(const std::tuple<T...> &t) {
         item.set(attrs[I], std::get<I>(t));
-        iter_tuple<I + 1, T...>(t);
+        set_tuple<I + 1, T...>(t);
       }
 
       /** Iterate over a tuple. Get version (const) **/
       /** Base case. Do nothing and terminate recursion. **/
       template<std::size_t I = 0, typename... T>
       inline typename std::enable_if<I == sizeof...(T), void>::type
-      iter_tuple(std::tuple<T...>&) const {}
+      get_tuple(std::tuple<T...>&) const {}
 
       template<std::size_t I = 0, typename... T>
       inline typename std::enable_if<I < sizeof...(T), void>::type
-      iter_tuple(std::tuple<T...> &t) const {
+      get_tuple(std::tuple<T...> &t) const {
         std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(attrs[I]);
-        iter_tuple<I + 1, T...>(t);
-      }
-
-      /** Get multiple values into tuple. **/
-      template <typename... T>
-      std::tuple<T...> get(type_tag<T...>) const {
-        std::tuple<T...> ret;
-        if (attrs.size() != sizeof...(T)) {
-          throw TileDBError("Attribute list size does not match provided values.");
-        }
-        iter_tuple<0, T...>(ret);
-        return ret;
+        get_tuple<I + 1, T...>(t);
       }
 
       /** Keyed attributes **/
