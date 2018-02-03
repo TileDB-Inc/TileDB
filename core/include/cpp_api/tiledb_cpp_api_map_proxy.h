@@ -51,41 +51,41 @@ namespace tdb {
      **/
     class MultiMapItemProxy {
       /** Used to compiler can resolve func without user typing .get<....>() **/
-      template<typename Tp> struct type_tag{};
+      template<typename... T> struct type_tag{};
 
     public:
       MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
       : attrs(attrs), item(item) {}
 
       /** Get multiple attributes **/
-      template <typename Tp>
-      Tp get() const {
-        if (attrs.size() != std::tuple_size<Tp>::value) {
+      template <typename... T>
+      std::tuple<T...> get() const {
+        if (attrs.size() != sizeof...(T)) {
           throw TileDBError("Attribute list size does not match tuple length.");
         }
-        return get(type_tag<Tp>{});
+        return get(type_tag<T...>{});
       }
 
       /** Set the attributes **/
-      template <typename T>
-      void set(const T &vals) {
-        if (attrs.size() != std::tuple_size<T>::value) {
+      template <typename... T>
+      void set(const std::tuple<T...> &vals) {
+        if (attrs.size() != sizeof...(T)) {
           throw TileDBError("Attribute list size does not match tuple length.");
         }
-        iter_tuple(vals);
+        iter_tuple<0, T...>(vals);
         add_to_map();
       }
 
       /** Implicit cast to a tuple. **/
-      template<typename Tp>
-      operator Tp() const {
-        return get<Tp>();
+      template<typename... T>
+      operator std::tuple<T...>() const {
+        return get<T...>();
       }
 
       /** Set the attributes with a tuple **/
-      template<typename T>
-      void operator=(const T &vals) {
-        return set<T>(vals);
+      template<typename... T>
+      void operator=(const std::tuple<T...> &vals) {
+        return set<T...>(vals);
       }
 
     private:
@@ -117,13 +117,13 @@ namespace tdb {
       }
 
       /** Get multiple values into tuple. **/
-      template <typename Tp>
-      Tp get(type_tag<Tp>) const {
-        Tp ret;
-        if (attrs.size() != std::tuple_size<Tp>::value) {
+      template <typename... T>
+      std::tuple<T...> get(type_tag<T...>) const {
+        std::tuple<T...> ret;
+        if (attrs.size() != sizeof...(T)) {
           throw TileDBError("Attribute list size does not match provided values.");
         }
-        iter_tuple(ret);
+        iter_tuple<0, T...>(ret);
         return ret;
       }
 
