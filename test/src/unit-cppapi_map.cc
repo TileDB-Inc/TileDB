@@ -65,7 +65,7 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   Map map(ctx, "cpp_unit_map");
 
   int simple_key = 10;
-  std::vector<float> compound_key = {2.43, 214};
+  std::vector<double> compound_key = {2.43, 214};
 
   // Via independent item
   auto i1 = Map::create_item(ctx, simple_key);

@@ -15,6 +15,7 @@ matrix:
       env: USE_S3="ON"
 
     - os: osx
+      osx_image: xcode9
 
 install:
     # Install clangformat (v5.0)
