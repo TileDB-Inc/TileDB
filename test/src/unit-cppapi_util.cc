@@ -77,5 +77,15 @@ TEST_CASE("CPP Utils", "[cppapi]") {
     auto f = flatten(v);
     CHECK(f.size() == 6);
     CHECK(std::string(f.begin(), f.end()) == "abbccc");
+
+    std::vector<std::vector<double>> d = {{1.2, 2.1}, {2.3, 3.2}, {3.4, 4.3}};
+    auto f2 = flatten(d);
+    CHECK(f2.size() == 6);
+    CHECK(f2[0] == 1.2);
+    CHECK(f2[1] == 2.1);
+    CHECK(f2[2] == 2.3);
+    CHECK(f2[3] == 3.2);
+    CHECK(f2[4] == 3.4);
+    CHECK(f2[5] == 4.3);
   }
 }
