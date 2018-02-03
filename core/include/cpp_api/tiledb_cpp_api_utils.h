@@ -74,6 +74,26 @@ std::vector<E> group_by_cell(
 
 /**
  * Covert an (offset, data) vector pair into a single vector of vectors.
+ * Uses whole vectors.
+ *
+ * @tparam T underlying datatype
+ * @tparam E element type. usually std::vector<T> or std::string. Must be
+ *     constructable by a buff::iterator pair
+ * @param offsets Offsets vector
+ * @param data Data vector
+ * @param num_offsets Number of offset elements populated by query
+ * @param num_data Number of data elements populated by query.
+ * @return std::vector<E>
+ */
+template <typename T, typename E = typename std::vector<T>>
+std::vector<E> group_by_cell(
+const std::vector<uint64_t> &offsets,
+const std::vector<T> &data) {
+ return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
+}
+
+/**
+ * Covert an (offset, data) vector pair into a single vector of vectors.
  *
  * @tparam T underlying datatype
  * @tparam E element type. usually std::vector<T> or std::string. Must be
@@ -118,6 +138,23 @@ std::vector<E> group_by_cell(
 }
 
 /**
+ * Group by cell at runtime. Uses whole data buffer.
+ *
+ * @tparam T Element type
+ * @tparam E element type. usually std::vector<T> or std::string. Must be
+ * constructable by a buff::iterator pair
+ * @param buff data buffer
+ * @param el_per_cell Number of elements per cell to group together
+ * @param num_buff Number of elements populated by query. To group whole buffer,
+ *     use buff.size()
+ */
+template <typename T, typename E = typename std::vector<T>>
+std::vector<E> group_by_cell(
+    const std::vector<T> &buff, uint64_t el_per_cell) {
+  return group_by_cell<T, E>(buff, el_per_cell, buff.size());
+}
+
+/**
  * Group a data vector into a a vector of arrays
  *
  * @tparam N Elements per cell
@@ -146,6 +183,21 @@ std::vector<std::array<T, N>> group_by_cell(
 }
 
 /**
+ * Group a data vector into a a vector of arrays.
+ * Uses whole data buffer.
+ *
+ * @tparam N Elements per cell
+ * @tparam T Array element type
+ * @param buff data buff to group
+ * @param num_buff Number of elements in buff that were populated by the query.
+ * @return std::vector<std::array<T,N>>
+ */
+template <uint64_t N, typename T>
+std::vector<std::array<T, N>> group_by_cell(const std::vector<T> &buff) {
+  return group_by_cell<N, T>(buff, buff.size());
+}
+
+/**
  * Unpack a vector of variable sized attributes into a data and offset buffer.
  *
  * @tparam T Vector type. T::value_type is considered the underlying data
@@ -156,8 +208,8 @@ std::vector<std::array<T, N>> group_by_cell(
  */
 
 template <typename T, typename R = typename T::value_type>
-std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
-const std::vector<T> &data) {
+std::pair<std::vector<uint64_t>, std::vector<R>>
+ungroup_var_buffer(const std::vector<T> &data) {
   std::pair<std::vector<uint64_t>, std::vector<R>> ret;
   ret.first.push_back(0);
   for (const auto &v : data) {

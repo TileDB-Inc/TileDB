@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-schema.cc
+ * @file   unit-cppapi-map.cc
  *
  * @section LICENSE
  *
@@ -98,6 +98,5 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
     CHECK(std::get<1>(ret) == "aaa");
     CHECK(std::get<2>(ret).size() == 2);
     CHECK(std::get<2>(ret)[0] == 4.2);
-  
-  }
+
 }
