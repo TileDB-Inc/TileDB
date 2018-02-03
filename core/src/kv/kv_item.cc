@@ -82,18 +82,25 @@ void KVItem::clear() {
   values_.clear();
 }
 
-bool KVItem::good(const std::vector<std::string>& attributes) const {
+bool KVItem::good(
+    const std::vector<std::string>& attributes,
+    const std::vector<Datatype>& types) const {
+  assert(attributes.size() == types.size());
+
   if (key_.key_ == nullptr)
     return false;
 
   if (values_.size() != attributes.size())
     return false;
 
-  for (const auto& attr : attributes) {
-    auto it = values_.find(attr);
+  auto attribute_num = attributes.size();
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    auto it = values_.find(attributes[i]);
     if (it == values_.end())
       return false;
     if (it->second->value_ == nullptr)
+      return false;
+    if (it->second->value_type_ != types[i])
       return false;
   }
 

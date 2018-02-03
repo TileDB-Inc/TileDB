@@ -93,12 +93,15 @@ class KVItem {
   void clear();
 
   /**
-   * Checks the goodness of the key-value item. Returns `false` when
-   * the key is `nullptr`, or a set value is `nullptr` or if the
-   * attributes for which values have been set do not comply with
-   * the input list of attributes (they must be equivalent).
+   * Checks the goodness of the key-value item. Specifically, it checks
+   * whether the set of attributes stored in the item is equivalent to
+   * `attributes`, and have the same types as `types` (there is a one-to-one
+   * correspondence. Returns `false` when the key is `nullptr`, or a set
+   * value is `nullptr`.
    */
-  bool good(const std::vector<std::string>& attributes) const;
+  bool good(
+      const std::vector<std::string>& attributes,
+      const std::vector<Datatype>& types) const;
 
   /** Returns the hash of the key-value item. */
   const Hash& hash() const;
