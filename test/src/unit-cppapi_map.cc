@@ -62,41 +62,42 @@ struct CPPMapFx {
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
 
-    // TODO add invalid item value-type check once implemented in C API
-    Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map");
 
-    int simple_key = 10;
-    std::vector<float> compound_key = {2.43, 214};
+  int simple_key = 10;
+  std::vector<float> compound_key = {2.43, 214};
 
-    // Via independent item
-    auto i1 = Map::create_item(ctx, simple_key);
-    i1.set("a1", 1);
-    i1["a2"] = "someval";
-    i1["a3"] = std::vector<double>{3, 2.4};
+  // Via independent item
+  auto i1 = Map::create_item(ctx, simple_key);
+  i1.set("a1", 1.234);
+  i1["a2"] = "someval";
+  i1["a3"] = std::vector<double>{3, 2.4};
 
-    map << i1;
-    map.flush();
+  CHECK_THROWS(map << i1);
+  i1["a1"] = 1;
+  map << i1;
+  map.flush();
 
-    // write via tuple
-    std::tuple<int, std::string, std::vector<double>> ret = map[simple_key][{"a1", "a2", "a3"}];
+  // write via tuple
+  std::tuple<int, std::string, std::vector<double>> ret = map[simple_key][{"a1", "a2", "a3"}];
 
-    CHECK(std::get<0>(ret) == 1);
-    CHECK(std::get<1>(ret) == "someval");
-    CHECK(std::get<2>(ret).size() == 2);
-    CHECK(std::get<2>(ret)[0] == 3);
+  CHECK(std::get<0>(ret) == 1);
+  CHECK(std::get<1>(ret) == "someval");
+  CHECK(std::get<2>(ret).size() == 2);
+  CHECK(std::get<2>(ret)[0] == 3);
 
-    map[compound_key][{"a1", "a2", "a3"}] = std::tuple<int, std::string, std::vector<double>>(2, "aaa", {4.2,1});
+  map[compound_key][{"a1", "a2", "a3"}] = std::tuple<int, std::string, std::vector<double>>(2, "aaa", {4.2,1});
 
-    map.flush();
+  map.flush();
 
-    CHECK((int) map[simple_key]["a1"] == 1);
-    CHECK(map.get_item(simple_key).get<std::string>("a2") == "someval");
-    CHECK(map[simple_key].get<std::vector<double>>("a3").size() == 2);
+  CHECK((int) map[simple_key]["a1"] == 1);
+  CHECK(map.get_item(simple_key).get<std::string>("a2") == "someval");
+  CHECK(map[simple_key].get<std::vector<double>>("a3").size() == 2);
 
-    ret = map[compound_key][{"a1", "a2", "a3"}];
-    CHECK(std::get<0>(ret) == 2);
-    CHECK(std::get<1>(ret) == "aaa");
-    CHECK(std::get<2>(ret).size() == 2);
-    CHECK(std::get<2>(ret)[0] == 4.2);
+  ret = map[compound_key][{"a1", "a2", "a3"}];
+  CHECK(std::get<0>(ret) == 2);
+  CHECK(std::get<1>(ret) == "aaa");
+  CHECK(std::get<2>(ret).size() == 2);
+  CHECK(std::get<2>(ret)[0] == 4.2);
 
 }
