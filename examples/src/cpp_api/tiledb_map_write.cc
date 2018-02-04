@@ -54,7 +54,7 @@ int main() {
 
     // Create a map
     tiledb::Map map(ctx, "my_map");
-    map.set_max_buffered_items(100); // Flush every 100 items
+    map.set_max_buffered_items(100);  // Flush every 100 items
 
     // Add items to map
     map << item1 << item2;
@@ -74,17 +74,19 @@ int main() {
     int t1 = 3;
     std::string t2{"CCC"};
     std::vector<float> t3{3.1, 3.2};
-    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] = std::make_tuple(t1, t2, t3);
+    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] =
+        std::make_tuple(t1, t2, t3);
 
     // Error; key doesn't exist yet so can't just assign
     // a single attribute since a2 and a3 are undefined.
     try {
       map[143523]["a1"] = 3;
     } catch (tiledb::TileDBError &e) {
-      std::cout << "Item expects all 3 attributes to be assigned, only a1 set.\n";
+      std::cout
+          << "Item expects all 3 attributes to be assigned, only a1 set.\n";
     }
 
-  } // Map goes out of scope, so it will be flushed.
+  }  // Map goes out of scope, so it will be flushed.
 
   // Consolidate fragments (optional)
   tiledb::Map::consolidate(ctx, "my_map");

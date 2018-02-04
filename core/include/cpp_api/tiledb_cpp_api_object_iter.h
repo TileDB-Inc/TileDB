@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -111,18 +111,22 @@ class ObjectIter {
   void set_recursive(tiledb_walk_order_t walk_order = TILEDB_PREORDER);
 
   /** The actual iterator implementation in this class. */
-  class iterator : public std::iterator<std::forward_iterator_tag, const Object> {
+  class iterator
+      : public std::iterator<std::forward_iterator_tag, const Object> {
    public:
-    iterator() : cur_obj_(0) {}
+    iterator()
+        : cur_obj_(0) {
+    }
 
     explicit iterator(std::vector<Object> objs)
         : cur_obj_(0)
-        , objs_(std::move(objs)) {}
+        , objs_(std::move(objs)) {
+    }
 
     iterator(const iterator &o) = default;
     iterator(iterator &&) = default;
-    iterator &operator=(const iterator&) = default;
-    iterator &operator=(iterator&&) = default;
+    iterator &operator=(const iterator &) = default;
+    iterator &operator=(iterator &&) = default;
 
     bool operator==(const iterator &o) const {
       return cur_obj_ == o.cur_obj_;

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -93,7 +93,8 @@ class Dimension {
 
   /** Returns the tile extent of the dimension. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type extent() const {
+  typename std::enable_if<std::is_fundamental<T>::value, T>::type extent()
+      const {
     return extent<typename impl::type_from_native<T>::type>();
   }
 

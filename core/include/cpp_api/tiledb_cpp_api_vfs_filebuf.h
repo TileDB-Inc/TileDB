@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_vfs_streambuf.h
+ * @file   tiledb_cpp_api_vfs_filebuf.h
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,8 +32,8 @@
  * stream buffer for the tiledb VFS.
  */
 
-#ifndef TILEDB_CPP_API_VFS_STREAMBUF_H
-#define TILEDB_CPP_API_VFS_STREAMBUF_H
+#ifndef TILEDB_CPP_API_VFS_FILEBUF_H
+#define TILEDB_CPP_API_VFS_FILEBUF_H
 
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_vfs.h"
@@ -75,7 +75,9 @@ class VFSFilebuf : public std::streambuf {
    * @param vfs tiledb VFS
    */
   explicit VFSFilebuf(const VFS &vfs)
-    : vfs_(vfs), deleter_(vfs.context()) {}
+      : vfs_(vfs)
+      , deleter_(vfs.context()) {
+  }
   VFSFilebuf(const VFSFilebuf &buf) = default;
   VFSFilebuf(VFSFilebuf &&buf) = default;
   VFSFilebuf &operator=(const VFSFilebuf &) = default;
@@ -131,7 +133,6 @@ class VFSFilebuf : public std::streambuf {
    * @param openmode in, and/or app (append)
    */
   pos_type seekpos(pos_type pos, std::ios::openmode openmode) override;
-
 
   /* ********************************* */
   /*           PROTECTED GET           */
@@ -217,4 +218,4 @@ class VFSFilebuf : public std::streambuf {
 }  // namespace impl
 }  // namespace tdb
 
-#endif  // TILEDB_CPP_API_VFS_STREAMBUF_H
+#endif  // TILEDB_CPP_API_VFS_FILEBUF_H

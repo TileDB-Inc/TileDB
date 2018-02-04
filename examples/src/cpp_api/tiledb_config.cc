@@ -51,7 +51,7 @@ int main() {
 
   // Only S3 settings
   std::cout << "\nVFS S3 settings:\n";
-  for (auto i = conf.begin("vfs.s3."); i != conf.end(); ++i ) {
+  for (auto i = conf.begin("vfs.s3."); i != conf.end(); ++i) {
     auto &p = *i;
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }

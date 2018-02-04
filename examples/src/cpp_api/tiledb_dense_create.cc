@@ -38,8 +38,10 @@ int main() {
   tiledb::Context ctx;
 
   tiledb::Domain domain(ctx);
-  tiledb::Dimension d1 = tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  tiledb::Dimension d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
+  tiledb::Dimension d1 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  tiledb::Dimension d2 =
+      tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
   domain << d1 << d2;  // Add dims to domain
 
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");

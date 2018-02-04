@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,22 +36,19 @@
 
 namespace tdb {
 
-  void Map::create(const std::string &uri, const MapSchema &schema) {
-    auto &ctx = schema.context();
-    schema.check();
-    ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
-  }
-
-  void Map::consolidate(const Context &ctx, const std::string &map) {
-    ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
-  }
-
-  Map &operator<<(Map &map, const MapItem &item) {
-    map.add_item(item);
-    return map;
-  }
-
-
-
+void Map::create(const std::string &uri, const MapSchema &schema) {
+  auto &ctx = schema.context();
+  schema.check();
+  ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
 }
 
+void Map::consolidate(const Context &ctx, const std::string &map) {
+  ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
+}
+
+Map &operator<<(Map &map, const MapItem &item) {
+  map.add_item(item);
+  return map;
+}
+
+}  // namespace tdb

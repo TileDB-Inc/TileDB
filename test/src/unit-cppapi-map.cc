@@ -35,13 +35,13 @@
 
 using namespace tdb;
 
-
 struct CPPMapFx {
-
-  CPPMapFx() : vfs(ctx) {
+  CPPMapFx()
+      : vfs(ctx) {
     using namespace tdb;
 
-    if (vfs.is_dir("cpp_unit_map")) vfs.remove_dir("cpp_unit_map");
+    if (vfs.is_dir("cpp_unit_map"))
+      vfs.remove_dir("cpp_unit_map");
 
     auto a1 = Attribute::create<int>(ctx, "a1");
     auto a2 = Attribute::create<char>(ctx, "a2");
@@ -51,9 +51,8 @@ struct CPPMapFx {
     a3.set_cell_val_num(2);
 
     MapSchema schema(ctx);
-    schema  << a1 << a2 << a3;
+    schema << a1 << a2 << a3;
     Map::create("cpp_unit_map", schema);
-
   }
 
   Context ctx;
@@ -61,7 +60,6 @@ struct CPPMapFx {
 };
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
-
   Map map(ctx, "cpp_unit_map");
 
   int simple_key = 10;
@@ -79,18 +77,20 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   map.flush();
 
   // write via tuple
-  std::tuple<int, std::string, std::vector<double>> ret = map[simple_key][{"a1", "a2", "a3"}];
+  std::tuple<int, std::string, std::vector<double>> ret =
+      map[simple_key][{"a1", "a2", "a3"}];
 
   CHECK(std::get<0>(ret) == 1);
   CHECK(std::get<1>(ret) == "someval");
   CHECK(std::get<2>(ret).size() == 2);
   CHECK(std::get<2>(ret)[0] == 3);
 
-  map[compound_key][{"a1", "a2", "a3"}] = std::tuple<int, std::string, std::vector<double>>(2, "aaa", {4.2,1});
+  map[compound_key][{"a1", "a2", "a3"}] =
+      std::tuple<int, std::string, std::vector<double>>(2, "aaa", {4.2, 1});
 
   map.flush();
 
-  CHECK((int) map[simple_key]["a1"] == 1);
+  CHECK((int)map[simple_key]["a1"] == 1);
   CHECK(map.get_item(simple_key).get<std::string>("a2") == "someval");
   CHECK(map[simple_key].get<std::vector<double>>("a3").size() == 2);
 
@@ -99,5 +99,4 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   CHECK(std::get<1>(ret) == "aaa");
   CHECK(std::get<2>(ret).size() == 2);
   CHECK(std::get<2>(ret)[0] == 4.2);
-
 }

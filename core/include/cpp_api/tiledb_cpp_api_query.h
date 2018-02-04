@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,22 +36,22 @@
 #define TILEDB_CPP_API_QUERY_H
 
 #include "tiledb.h"
-#include "tiledb_cpp_api_core_interface.h"
 #include "tiledb_cpp_api_array_schema.h"
 #include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_core_interface.h"
 #include "tiledb_cpp_api_deleter.h"
 #include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_type.h"
 #include "tiledb_cpp_api_utils.h"
 
+#include <algorithm>
 #include <functional>
 #include <iterator>
 #include <memory>
 #include <set>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
-#include <algorithm>
-#include <string>
 #include <vector>
 
 namespace tdb {
@@ -107,13 +107,13 @@ class Query {
    * @param data Data to pass to callback.
    * @return Status of submitted query.
    */
-  template<typename Fn>
+  template <typename Fn>
   void submit_async(const Fn &callback) {
-    std::function<void(void*)> wrapper = [&](void*){callback();};
+    std::function<void(void *)> wrapper = [&](void *) { callback(); };
     auto &ctx = ctx_.get();
     prepare_submission();
-    ctx.handle_error(
-        tdb::impl::tiledb_query_submit_async(ctx, query_.get(), wrapper, nullptr));
+    ctx.handle_error(tdb::impl::tiledb_query_submit_async(
+        ctx, query_.get(), wrapper, nullptr));
   }
 
   /** Buffer sizes, in number of elements. */
@@ -133,14 +133,15 @@ class Query {
   typename std::enable_if<std::is_fundamental<T>::value, void>::type
   set_subarray(const std::vector<T> &pairs) {
     auto &ctx = ctx_.get();
-    impl::type_check<typename impl::type_from_native<T>::type>(schema_.domain().type());
+    impl::type_check<typename impl::type_from_native<T>::type>(
+        schema_.domain().type());
     if (pairs.size() != schema_.domain().dim_num() * 2) {
       throw SchemaMismatch(
-      "Subarray should have num_dims * 2 values: (low, high) for each "
-      "dimension.");
+          "Subarray should have num_dims * 2 values: (low, high) for each "
+          "dimension.");
     }
     ctx.handle_error(
-    tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
+        tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
 
     subarray_cell_num_ = pairs[1] - pairs[0] + 1;
     for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
@@ -160,39 +161,41 @@ class Query {
   set_subarray(const std::vector<std::array<T, 2>> &pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
-    std::for_each(pairs.begin(), pairs.end(),
-                  [&buf](const std::array<T,2> &p){
-                    buf.push_back(p[0]);
-                    buf.push_back(p[1]);
-                  });
+    std::for_each(
+        pairs.begin(), pairs.end(), [&buf](const std::array<T, 2> &p) {
+          buf.push_back(p[0]);
+          buf.push_back(p[1]);
+        });
     set_subarray(buf);
   }
 
   /** Sets a buffer for a fixed-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
-  set_buffer(const std::string &attr, T &buf) {
-    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf);
+  typename std::
+      enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
+      set_buffer(const std::string &attr, T &buf) {
+    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
+        attr, buf);
   }
 
   /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
-  set_buffer(
-      const std::string &attr,
-      std::vector<uint64_t> &offsets,
-      T &buf) {
+  typename std::enable_if<
+      std::is_fundamental<typename T::value_type>::value,
+      void>::type
+  set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, T &buf) {
     set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
         attr, offsets, buf);
   }
 
   /** Sets a buffer for a variable-sized attribute. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
-  set_buffer(
-      const std::string &attr,
-      std::pair<std::vector<uint64_t>, T> &buf) {
-    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(attr, buf.first, buf.second);
+  typename std::
+      enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
+      set_buffer(
+          const std::string &attr, std::pair<std::vector<uint64_t>, T> &buf) {
+    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
+        attr, buf.first, buf.second);
   }
 
   /**
@@ -224,8 +227,11 @@ class Query {
   typename std::enable_if<
       std::is_fundamental<T>::value,
       std::pair<std::vector<uint64_t>, std::vector<T>>>::type
-  make_var_buffers(const std::string &attr, uint64_t expected = 1,
-                   uint64_t max_offset = 0, uint64_t max_el = 0) const {
+  make_var_buffers(
+      const std::string &attr,
+      uint64_t expected = 1,
+      uint64_t max_offset = 0,
+      uint64_t max_el = 0) const {
     return make_var_buffers<typename impl::type_from_native<T>::type>(
         attr, expected, max_offset, max_el);
   }
@@ -242,9 +248,9 @@ class Query {
    */
   template <typename DataT>
   void resize_buffer(
-  const std::string &attr,
-  std::vector<typename DataT::type> &buff,
-  uint64_t max_el = 0) const {
+      const std::string &attr,
+      std::vector<typename DataT::type> &buff,
+      uint64_t max_el = 0) const {
     uint64_t cell_val_num = 1;
     if (array_attributes_.count(attr)) {
       cell_val_num = array_attributes_.at(attr).cell_val_num();
@@ -277,25 +283,24 @@ class Query {
    */
   template <typename DataT>
   void resize_buffer(
-  const std::string &attr,
-  std::vector<uint64_t> &offsets,
-  std::vector<typename DataT::type> &data,
-  uint64_t expected_cell_val_num = 1,
-  uint64_t max_offset = 0,
-  uint64_t max_el = 0) const {
+      const std::string &attr,
+      std::vector<uint64_t> &offsets,
+      std::vector<typename DataT::type> &data,
+      uint64_t expected_cell_val_num = 1,
+      uint64_t max_offset = 0,
+      uint64_t max_el = 0) const {
     // Confirm that this is a variable-sized attribute
     uint64_t cell_val_num;
     if (array_attributes_.count(attr)) {
       cell_val_num = array_attributes_.at(attr).cell_val_num();
       if (cell_val_num != TILEDB_VAR_NUM)
-        throw AttributeError(
-        "Offsets provided for fixed size attribute.");
+        throw AttributeError("Offsets provided for fixed size attribute.");
     }
 
     if (max_offset && !max_el)
       max_el = max_offset * expected_cell_val_num;
     uint64_t var_buffer_len =
-    make_buffer_impl<DataT>(attr, data, expected_cell_val_num, max_el);
+        make_buffer_impl<DataT>(attr, data, expected_cell_val_num, max_el);
     uint64_t offsets_len = var_buffer_len / expected_cell_val_num;
     if (max_offset != 0 && offsets_len > max_offset)
       offsets_len = max_offset;
@@ -387,9 +392,10 @@ class Query {
    * @return *this
    */
   template <typename T, typename Vec>
-  typename std::enable_if<std::is_same<typename Vec::value_type, typename T::type>::value, Query>::type
-  &set_buffer(
-      const std::string &attr, Vec &buf) {
+  typename std::enable_if<
+      std::is_same<typename Vec::value_type, typename T::type>::value,
+      Query>::type &
+  set_buffer(const std::string &attr, Vec &buf) {
     if (array_attributes_.count(attr)) {
       const auto &a = array_attributes_.at(attr);
       impl::type_check_attr<T>(a, a.cell_val_num());
@@ -399,7 +405,8 @@ class Query {
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
         static_cast<uint64_t>(buf.size()),
         sizeof(typename T::type),
-        const_cast<void*>(reinterpret_cast<const void*>(buf.data()))); // To enable const char * storage
+        const_cast<void *>(reinterpret_cast<const void *>(
+            buf.data())));  // To enable const char * storage
     attrs_.insert(attr);
     return *this;
   }
@@ -414,11 +421,11 @@ class Query {
    * @return *this
    */
   template <typename T, typename Vec>
-  typename std::enable_if<std::is_same<typename Vec::value_type, typename T::type>::value, Query>::type
-  &set_buffer(
-      const std::string &attr,
-      std::vector<uint64_t> &offsets,
-      Vec &data) {
+  typename std::enable_if<
+      std::is_same<typename Vec::value_type, typename T::type>::value,
+      Query>::type &
+  set_buffer(
+      const std::string &attr, std::vector<uint64_t> &offsets, Vec &data) {
     if (array_attributes_.count(attr)) {
       impl::type_check_attr<T>(array_attributes_.at(attr), TILEDB_VAR_NUM);
     } else {
@@ -429,7 +436,8 @@ class Query {
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
         static_cast<uint64_t>(data.size()),
         sizeof(typename T::type),
-        const_cast<void*>(reinterpret_cast<const void*>(data.data()))); // To enable const char * storage
+        const_cast<void *>(reinterpret_cast<const void *>(
+            data.data())));  // To enable const char * storage
     attrs_.insert(attr);
     return *this;
   }
@@ -513,7 +521,6 @@ class Query {
     buff.resize((max_el != 0 && ret > max_el) ? max_el : ret);
     return ret;
   }
-
 };
 
 /* ********************************* */

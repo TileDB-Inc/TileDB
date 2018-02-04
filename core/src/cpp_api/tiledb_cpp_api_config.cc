@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@ Config::Config() {
   create_config();
 }
 
-Config::Config(const std::string& filename) {
+Config::Config(const std::string &filename) {
   create_config();
   tiledb_error_t *err;
   tiledb_config_load_from_file(config_.get(), filename.c_str(), &err);
@@ -66,11 +66,11 @@ std::shared_ptr<tiledb_config_t> Config::ptr() const {
   return config_;
 }
 
-Config::operator tiledb_config_t*() const {
+Config::operator tiledb_config_t *() const {
   return config_.get();
 }
 
-Config& Config::set(const std::string& param, const std::string& value) {
+Config &Config::set(const std::string &param, const std::string &value) {
   tiledb_error_t *err;
   tiledb_config_set(config_.get(), param.c_str(), value.c_str(), &err);
   impl::check_error(err);
@@ -90,7 +90,7 @@ impl::ConfigProxy Config::operator[](const std::string &param) {
   return {*this, param};
 }
 
-Config& Config::unset(const std::string& param) {
+Config &Config::unset(const std::string &param) {
   tiledb_error_t *err;
   tiledb_config_unset(config_.get(), param.c_str(), &err);
   impl::check_error(err);
@@ -103,7 +103,7 @@ Config& Config::unset(const std::string& param) {
 /* ********************************* */
 
 void Config::create_config() {
-  tiledb_config_t* config;
+  tiledb_config_t *config;
   tiledb_error_t *err;
   tiledb_config_create(&config, &err);
   impl::check_error(err);

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +39,9 @@
 #include "tiledb_cpp_api_compressor.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_type.h"
-#include "tiledb_cpp_api_exception.h"
 
 #include <functional>
 #include <memory>
@@ -90,8 +90,9 @@ class Attribute {
   operator tiledb_attribute_t *() const;
 
   /** Dump information about the attribute to a FILE. **/
-  void dump(FILE *out=stdout) const {
-    ctx_.get().handle_error(tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
+  void dump(FILE *out = stdout) const {
+    ctx_.get().handle_error(
+        tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
   }
 
   /* ********************************* */
@@ -167,10 +168,9 @@ void type_check_attr(const Attribute &a, unsigned len) {
   if (expected_num != TILEDB_VAR_NUM && len != expected_num) {
     throw AttributeError("Attribute size does not match expected number.");
   }
-
 }
 
-}
+}  // namespace impl
 
 }  // namespace tdb
 

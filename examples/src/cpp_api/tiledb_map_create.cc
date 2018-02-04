@@ -49,6 +49,6 @@ int main() {
   schema.dump(stdout);
 
   tiledb::Map::create("my_map", schema);
-  
+
   return 0;
 }

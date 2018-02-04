@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,149 +40,154 @@
 #include <tuple>
 
 namespace tdb {
-  namespace impl {
+namespace impl {
 
-    /**
-     * Proxy class for multi-attribute set and get.
-     * The class facilitates tuple unrolling, and is
-     * equivalent to setting one attribute at a time.
-     * After assignment, the item is added to the
-     * underlying map.
-     **/
-    class MultiMapItemProxy {
-
-    public:
-      MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
-      : attrs(attrs), item(item) {}
-
-      /** Get multiple attributes into an existing tuple **/
-      template <typename... T>
-      void get(std::tuple<T...> &tp) const {
-        if (attrs.size() != sizeof...(T)) {
-          throw TileDBError("Attribute list size does not match tuple length.");
-        }
-        get_tuple<0, T...>(tp);
-      }
-
-      /** Get multiple attributes **/
-      template <typename... T>
-      std::tuple<T...> get() const {
-        std::tuple<T...> ret;
-        get<T...>(ret);
-        return ret;
-      }
-
-      /** Set the attributes **/
-      template <typename... T>
-      void set(const std::tuple<T...> &vals) {
-        if (attrs.size() != sizeof...(T)) {
-          throw TileDBError("Attribute list size does not match tuple length.");
-        }
-        set_tuple<0, T...>(vals);
-        add_to_map();
-      }
-
-      /** Implicit cast to a tuple. **/
-      template<typename... T>
-      operator std::tuple<T...>() const {
-        return get<T...>();
-      }
-
-      /** Set the attributes with a tuple **/
-      template<typename... T>
-      MultiMapItemProxy &operator=(const std::tuple<T...> &vals) {
-        set<T...>(vals);
-        return *this;
-      }
-
-    private:
-
-      /** Iterate over a tuple. Set version (non const) **/
-      /** Base case. Do nothing and terminate recursion. **/
-      template<std::size_t I = 0, typename... T>
-      inline typename std::enable_if<I == sizeof...(T), void>::type
-      set_tuple(const std::tuple<T...>&){}
-
-      template<std::size_t I = 0, typename... T>
-      inline typename std::enable_if<I < sizeof...(T), void>::type
-      set_tuple(const std::tuple<T...> &t) {
-        item.set(attrs[I], std::get<I>(t));
-        set_tuple<I + 1, T...>(t);
-      }
-
-      /** Iterate over a tuple. Get version (const) **/
-      /** Base case. Do nothing and terminate recursion. **/
-      template<std::size_t I = 0, typename... T>
-      inline typename std::enable_if<I == sizeof...(T), void>::type
-      get_tuple(std::tuple<T...>&) const {}
-
-      template<std::size_t I = 0, typename... T>
-      inline typename std::enable_if<I < sizeof...(T), void>::type
-      get_tuple(std::tuple<T...> &t) const {
-        std::get<I>(t) = item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(attrs[I]);
-        get_tuple<I + 1, T...>(t);
-      }
-
-      /** Keyed attributes **/
-      const std::vector<std::string> &attrs;
-
-      /** Item that created proxy. **/
-      MapItem &item;
-
-      /** Add to underlying map, if associated with one. Otherwise pass. **/
-      bool add_to_map() const;
-    };
-
-    /**
-     * Proxy struct to set a single value with operator[].
-     * If bound to a map, the item will be added after assignment.
-     **/
-    class MapItemProxy {
-    public:
-      /** Create a proxy for the given attribute and underlying MapItem **/
-      MapItemProxy(std::string attr, MapItem &item) : attr(std::move(attr)), item(item) {}
-
-      /** Set the value **/
-      template<typename T>
-      void set(const T &val) {
-        item.set<T>(attr, val);
-        add_to_map();
-      }
-
-      /** Get the value, fundamental type. **/
-      template <typename T>
-      T get() const {
-        return item.get<T>(attr);
-      }
-
-      /** Set value with operator= **/
-      template <typename T>
-      MapItemProxy &operator=(const T &val) {
-        set(val);
-        add_to_map();
-        return *this;
-      }
-
-      /** Implicit cast **/
-      template <typename T>
-      operator T() {
-        return get<T>();
-      }
-
-      /** Bound attribute name **/
-      const std::string attr;
-
-      /** Underlying Item **/
-      MapItem &item;
-
-    private:
-
-      /** Add to underlying map, if associated with one. Otherwise pass. **/
-      bool add_to_map() const;
-
-    };
-
+/**
+ * Proxy class for multi-attribute set and get.
+ * The class facilitates tuple unrolling, and is
+ * equivalent to setting one attribute at a time.
+ * After assignment, the item is added to the
+ * underlying map.
+ **/
+class MultiMapItemProxy {
+ public:
+  MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
+      : attrs(attrs)
+      , item(item) {
   }
-}
 
-#endif //TILEDB_TILEDB_CPP_API_MAP_PROXY_H_H
+  /** Get multiple attributes into an existing tuple **/
+  template <typename... T>
+  void get(std::tuple<T...> &tp) const {
+    if (attrs.size() != sizeof...(T)) {
+      throw TileDBError("Attribute list size does not match tuple length.");
+    }
+    get_tuple<0, T...>(tp);
+  }
+
+  /** Get multiple attributes **/
+  template <typename... T>
+  std::tuple<T...> get() const {
+    std::tuple<T...> ret;
+    get<T...>(ret);
+    return ret;
+  }
+
+  /** Set the attributes **/
+  template <typename... T>
+  void set(const std::tuple<T...> &vals) {
+    if (attrs.size() != sizeof...(T)) {
+      throw TileDBError("Attribute list size does not match tuple length.");
+    }
+    set_tuple<0, T...>(vals);
+    add_to_map();
+  }
+
+  /** Implicit cast to a tuple. **/
+  template <typename... T>
+  operator std::tuple<T...>() const {
+    return get<T...>();
+  }
+
+  /** Set the attributes with a tuple **/
+  template <typename... T>
+  MultiMapItemProxy &operator=(const std::tuple<T...> &vals) {
+    set<T...>(vals);
+    return *this;
+  }
+
+ private:
+  /** Iterate over a tuple. Set version (non const) **/
+  /** Base case. Do nothing and terminate recursion. **/
+  template <std::size_t I = 0, typename... T>
+  inline typename std::enable_if<I == sizeof...(T), void>::type set_tuple(
+      const std::tuple<T...> &) {
+  }
+
+  template <std::size_t I = 0, typename... T>
+      inline typename std::enable_if <
+      I<sizeof...(T), void>::type set_tuple(const std::tuple<T...> &t) {
+    item.set(attrs[I], std::get<I>(t));
+    set_tuple<I + 1, T...>(t);
+  }
+
+  /** Iterate over a tuple. Get version (const) **/
+  /** Base case. Do nothing and terminate recursion. **/
+  template <std::size_t I = 0, typename... T>
+  inline typename std::enable_if<I == sizeof...(T), void>::type get_tuple(
+      std::tuple<T...> &) const {
+  }
+
+  template <std::size_t I = 0, typename... T>
+      inline typename std::enable_if <
+      I<sizeof...(T), void>::type get_tuple(std::tuple<T...> &t) const {
+    std::get<I>(t) =
+        item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(
+            attrs[I]);
+    get_tuple<I + 1, T...>(t);
+  }
+
+  /** Keyed attributes **/
+  const std::vector<std::string> &attrs;
+
+  /** Item that created proxy. **/
+  MapItem &item;
+
+  /** Add to underlying map, if associated with one. Otherwise pass. **/
+  bool add_to_map() const;
+};
+
+/**
+ * Proxy struct to set a single value with operator[].
+ * If bound to a map, the item will be added after assignment.
+ **/
+class MapItemProxy {
+ public:
+  /** Create a proxy for the given attribute and underlying MapItem **/
+  MapItemProxy(std::string attr, MapItem &item)
+      : attr(std::move(attr))
+      , item(item) {
+  }
+
+  /** Set the value **/
+  template <typename T>
+  void set(const T &val) {
+    item.set<T>(attr, val);
+    add_to_map();
+  }
+
+  /** Get the value, fundamental type. **/
+  template <typename T>
+  T get() const {
+    return item.get<T>(attr);
+  }
+
+  /** Set value with operator= **/
+  template <typename T>
+  MapItemProxy &operator=(const T &val) {
+    set(val);
+    add_to_map();
+    return *this;
+  }
+
+  /** Implicit cast **/
+  template <typename T>
+  operator T() {
+    return get<T>();
+  }
+
+  /** Bound attribute name **/
+  const std::string attr;
+
+  /** Underlying Item **/
+  MapItem &item;
+
+ private:
+  /** Add to underlying map, if associated with one. Otherwise pass. **/
+  bool add_to_map() const;
+};
+
+}  // namespace impl
+}  // namespace tdb
+
+#endif  // TILEDB_TILEDB_CPP_API_MAP_PROXY_H_H

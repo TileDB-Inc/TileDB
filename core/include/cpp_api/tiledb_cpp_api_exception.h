@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,13 +41,17 @@
 
 namespace tdb {
 
-  struct TileDBError : std::runtime_error {
-    TileDBError(const std::string &msg) : std::runtime_error(msg) {}
-  };
+struct TileDBError : std::runtime_error {
+  TileDBError(const std::string &msg)
+      : std::runtime_error(msg) {
+  }
+};
 
-  /** Exception indicating a mismatch between a static and runtime type **/
-  struct TypeError : public TileDBError {
-    TypeError(const std::string &msg) : TileDBError(msg) {}
+/** Exception indicating a mismatch between a static and runtime type **/
+struct TypeError : public TileDBError {
+  TypeError(const std::string &msg)
+      : TileDBError(msg) {
+  }
 
   /** Make a type error between static type DataT and expected_type **/
   template <typename DataT>
@@ -58,25 +62,29 @@ namespace tdb {
   }
 };
 
-  /** Exception indicating the requested operation does not match array schema **/
-  struct SchemaMismatch : public TileDBError {
-    SchemaMismatch(const std::string &msg) : TileDBError(msg) {}
-  };
+/** Exception indicating the requested operation does not match array schema **/
+struct SchemaMismatch : public TileDBError {
+  SchemaMismatch(const std::string &msg)
+      : TileDBError(msg) {
+  }
+};
 
-  /** Error related to attributes **/
-  struct AttributeError : public TileDBError {
-    AttributeError(const std::string &msg) : TileDBError(msg) {}
-  };
+/** Error related to attributes **/
+struct AttributeError : public TileDBError {
+  AttributeError(const std::string &msg)
+      : TileDBError(msg) {
+  }
+};
 
 namespace impl {
-  /** Checks if the input type complies with the template type. */
-  template <typename DataT>
-  void type_check(tiledb_datatype_t type) {
-    if (DataT::tiledb_datatype != type) {
-      throw TypeError::create<DataT>(type);
-    }
+/** Checks if the input type complies with the template type. */
+template <typename DataT>
+void type_check(tiledb_datatype_t type) {
+  if (DataT::tiledb_datatype != type) {
+    throw TypeError::create<DataT>(type);
   }
 }
+}  // namespace impl
 
 }  // namespace tdb
 

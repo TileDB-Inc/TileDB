@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,49 +32,56 @@
  * This file declares the C++ API for the TileDB Map Iter object.
  */
 
-#include "tiledb_cpp_api_map_item.h"
 #include "tiledb_cpp_api_map_iter.h"
 #include "tiledb_cpp_api_map.h"
+#include "tiledb_cpp_api_map_item.h"
 
 namespace tdb {
-  namespace impl {
+namespace impl {
 
-    MapIter::MapIter(Map &map, bool end) : map_(&map), deleter_(map.context()), done_((int) end) {}
-
-    MapIter::~MapIter() {
-      map_->flush();
-    }
-
-    MapIter &MapIter::operator++() {
-      auto &ctx = map_->context();
-      if (done_) return *this;
-      ctx.handle_error(tiledb_kv_iter_done(ctx, iter_.get(), &done_));
-      if (done_) return *this;
-      tiledb_kv_item_t *p;
-      ctx.handle_error(tiledb_kv_iter_here(ctx, iter_.get(), &p));
-      item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
-      ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
-      if (limit_type_) {
-        auto t = item_->key_type();
-        if (t.first != type_ || (only_single_ && t.second > type_size(type_))) operator++();
-      }
-      return *this;
-    }
-
-    void MapIter::init() {
-      auto &ctx = map_->context();
-      MapSchema schema(ctx, map_->uri());
-      std::vector<const char*> names;
-      auto attrs = schema.attributes();
-      for (const auto &a : attrs) {
-        names.push_back(a.first.c_str());
-      }
-      tiledb_kv_iter_t *p;
-      ctx.handle_error(tiledb_kv_iter_create(ctx, &p, map_->uri().c_str(),
-                                             names.data(), (unsigned) attrs.size()));
-      iter_ = std::shared_ptr<tiledb_kv_iter_t>(p, deleter_);
-      this->operator++();
-    }
-
-  }
+MapIter::MapIter(Map &map, bool end)
+    : map_(&map)
+    , deleter_(map.context())
+    , done_((int)end) {
 }
+
+MapIter::~MapIter() {
+  map_->flush();
+}
+
+MapIter &MapIter::operator++() {
+  auto &ctx = map_->context();
+  if (done_)
+    return *this;
+  ctx.handle_error(tiledb_kv_iter_done(ctx, iter_.get(), &done_));
+  if (done_)
+    return *this;
+  tiledb_kv_item_t *p;
+  ctx.handle_error(tiledb_kv_iter_here(ctx, iter_.get(), &p));
+  item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
+  ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
+  if (limit_type_) {
+    auto t = item_->key_type();
+    if (t.first != type_ || (only_single_ && t.second > type_size(type_)))
+      operator++();
+  }
+  return *this;
+}
+
+void MapIter::init() {
+  auto &ctx = map_->context();
+  MapSchema schema(ctx, map_->uri());
+  std::vector<const char *> names;
+  auto attrs = schema.attributes();
+  for (const auto &a : attrs) {
+    names.push_back(a.first.c_str());
+  }
+  tiledb_kv_iter_t *p;
+  ctx.handle_error(tiledb_kv_iter_create(
+      ctx, &p, map_->uri().c_str(), names.data(), (unsigned)attrs.size()));
+  iter_ = std::shared_ptr<tiledb_kv_iter_t>(p, deleter_);
+  this->operator++();
+}
+
+}  // namespace impl
+}  // namespace tdb

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,8 @@
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_type.h"
 
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace tdb {
 namespace Array {
@@ -63,7 +63,6 @@ void consolidate(const Context &ctx, const std::string &uri);
  */
 void create(const std::string &uri, const ArraySchema &schema);
 
-
 /**
  * Get the non-empty domain of an array. This returns the bounding dims
  * for each dimension.
@@ -74,28 +73,28 @@ void create(const std::string &uri, const ArraySchema &schema);
  * @return Map of dim names to a {lower, upper} pair. Inclusive.
  *         Empty map if the array has no data.
  */
-template<typename T, typename DataT = typename impl::type_from_native<T>::type>
-std::unordered_map<std::string, std::pair<T,T>>
-non_empty_domain(const std::string &uri,
-                 const ArraySchema &schema) {
+template <typename T, typename DataT = typename impl::type_from_native<T>::type>
+std::unordered_map<std::string, std::pair<T, T>> non_empty_domain(
+    const std::string &uri, const ArraySchema &schema) {
   impl::type_check<DataT>(schema.domain().type());
 
-  std::unordered_map<std::string, std::pair<T,T>> ret;
+  std::unordered_map<std::string, std::pair<T, T>> ret;
 
   auto dims = schema.domain().dimensions();
   std::vector<T> buf(dims.size() * 2);
   auto &ctx = schema.context();
   int empty;
-  ctx.handle_error(tiledb_array_get_non_empty_domain(ctx, uri.c_str(), buf.data(), &empty));
-  if (empty) return ret;
+  ctx.handle_error(
+      tiledb_array_get_non_empty_domain(ctx, uri.c_str(), buf.data(), &empty));
+  if (empty)
+    return ret;
 
   for (size_t i = 0; i < dims.size(); ++i) {
-    ret[dims[i].name()] = std::pair<T,T>(buf[i*2], buf[(i*2)+1]);
+    ret[dims[i].name()] = std::pair<T, T>(buf[i * 2], buf[(i * 2) + 1]);
   }
 
   return ret;
 }
-
 
 /**
  * Compute an upper bound on buffer sizes to read a subarray.
@@ -109,16 +108,16 @@ non_empty_domain(const std::string &uri,
  *         offsets, whereas the second is the size of the actual
  *         variable-sized cell values.
  */
-template<typename T, typename DataT = typename impl::type_from_native<T>::type>
-std::vector<uint64_t>
-upper_bound_buffer_sizes(const std::string &uri,
-                         const ArraySchema &schema,
-                         const std::vector<T> &subarray) {
+template <typename T, typename DataT = typename impl::type_from_native<T>::type>
+std::vector<uint64_t> upper_bound_buffer_sizes(
+    const std::string &uri,
+    const ArraySchema &schema,
+    const std::vector<T> &subarray) {
   impl::type_check<DataT>(schema.domain().type());
 
   std::vector<uint64_t> ret;
   auto attrs = schema.attributes();
-  std::vector<const char*> names;
+  std::vector<const char *> names;
 
   unsigned nbuffs = 0;
   for (const auto &a : attrs) {
@@ -128,16 +127,17 @@ upper_bound_buffer_sizes(const std::string &uri,
 
   ret.resize(nbuffs);
   auto &ctx = schema.context();
-  ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(ctx,
-                                                              uri.c_str(),
-                                                              subarray.data(),
-                                                              names.data(),
-                                                              (unsigned) attrs.size(),
-                                                              ret.data()));
+  ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
+      ctx,
+      uri.c_str(),
+      subarray.data(),
+      names.data(),
+      (unsigned)attrs.size(),
+      ret.data()));
   return ret;
 }
 
-}
+}  // namespace Array
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_ARRAY_H

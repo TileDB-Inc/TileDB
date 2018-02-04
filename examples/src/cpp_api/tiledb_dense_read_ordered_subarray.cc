@@ -49,9 +49,10 @@ int main() {
 
   std::cout << "Upper bound on buffer sizes needed to read subarray:\n";
   tiledb::ArraySchema schema(ctx, "my_dense_array");
-  auto sizes = tiledb::Array::upper_bound_buffer_sizes("my_dense_array", schema, subarray);
-  for (auto n : sizes) std::cout << n << ' ';
-
+  auto sizes = tiledb::Array::upper_bound_buffer_sizes(
+      "my_dense_array", schema, subarray);
+  for (auto n : sizes)
+    std::cout << n << ' ';
 
   // Init the array & query for the array
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);

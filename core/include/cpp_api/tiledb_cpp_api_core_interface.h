@@ -1,11 +1,11 @@
 /**
- * @file   tdbpp_cpp_api_core_interface.h
+ * @file   tiledb_cpp_api_core_interface.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@
  * implemented in tiledb.cc
  */
 
-#ifndef TILEDB_TILEDB_CPP_API_CORE_INTERFACE_H
-#define TILEDB_TILEDB_CPP_API_CORE_INTERFACE_H
+#ifndef TILEDB_CPP_API_CORE_INTERFACE_H
+#define TILEDB_CPP_API_CORE_INTERFACE_H
 
 #include "tiledb.h"
 
@@ -53,12 +53,13 @@ namespace impl {
  * @note This function essentially opens the array associated with the query.
  *     Some metadata structures are loaded in main memory for this array.
  */
-int tiledb_query_submit_async(tiledb_ctx_t* ctx,
-                              tiledb_query_t* query,
-                              std::function<void(void*)> callback,
-                              void* callback_data=nullptr);
+int tiledb_query_submit_async(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    std::function<void(void*)> callback,
+    void* callback_data = nullptr);
 
-}
-}
+}  // namespace impl
+}  // namespace tdb
 
-#endif //TILEDB_TILEDB_CPP_API_CORE_INTERFACE_H
+#endif  // TILEDB_CPP_API_CORE_INTERFACE_H

@@ -44,7 +44,7 @@ int main() {
 
   std::vector<int> a1_buff = {0, 1, 2};
   auto a2_buff = tiledb::ungroup_var_buffer<std::string>(
-    {"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
+      {"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
   std::vector<float> a3_buff = {0.1,
                                 0.2,
                                 1.1,

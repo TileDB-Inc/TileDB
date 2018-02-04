@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,9 +41,9 @@
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_schema_base.h"
 
+#include <array>
 #include <memory>
 #include <string>
-#include <array>
 #include <unordered_map>
 
 namespace tdb {

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,89 +35,89 @@
 #ifndef TILEDB_TILEDB_CPP_API_MAP_ITER_H
 #define TILEDB_TILEDB_CPP_API_MAP_ITER_H
 
-#include "tiledb_cpp_api_type.h"
-#include "tiledb_cpp_api_map_schema.h"
-#include "tiledb_cpp_api_map_item.h"
 #include "tiledb.h"
+#include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_schema.h"
+#include "tiledb_cpp_api_type.h"
 
-#include <iterator>
 #include <functional>
+#include <iterator>
 
 namespace tdb {
 namespace impl {
 
-  /** Iterate over items in a map. **/
-  class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
-  public:
-    explicit MapIter(Map &map, bool end=false);
-    MapIter(const MapIter&) = delete;
-    MapIter(MapIter&&) = default;
-    MapIter &operator=(const MapIter&) = delete;
-    MapIter &operator=(MapIter&&) = default;
+/** Iterate over items in a map. **/
+class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
+ public:
+  explicit MapIter(Map &map, bool end = false);
+  MapIter(const MapIter &) = delete;
+  MapIter(MapIter &&) = default;
+  MapIter &operator=(const MapIter &) = delete;
+  MapIter &operator=(MapIter &&) = default;
 
-    /** Init iter. This must manually be invoked. **/
-    void init();
+  /** Init iter. This must manually be invoked. **/
+  void init();
 
-    /** Flush on iterator destruction. **/
-    ~MapIter();
+  /** Flush on iterator destruction. **/
+  ~MapIter();
 
-    /** Only iterate over keys with some type **/
-    template<typename T>
-    typename std::enable_if<std::is_fundamental<T>::value, void>::type
-    limit_key_type() {
-      limit_type_ = true;
-      only_single_ = true;
-      type_ = impl::type_from_native<T>::type::tiledb_datatype;
-    }
+  /** Only iterate over keys with some type **/
+  template <typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, void>::type
+  limit_key_type() {
+    limit_type_ = true;
+    only_single_ = true;
+    type_ = impl::type_from_native<T>::type::tiledb_datatype;
+  }
 
-    template<typename T, typename = typename T::value_type>
-    void limit_key_type() {
-      limit_type_ = true;
-      only_single_ = false;
-      type_ = impl::type_from_native<typename T::value_type>::type::tiledb_datatype;
-    }
+  template <typename T, typename = typename T::value_type>
+  void limit_key_type() {
+    limit_type_ = true;
+    only_single_ = false;
+    type_ =
+        impl::type_from_native<typename T::value_type>::type::tiledb_datatype;
+  }
 
-    /** Iterators are only equal when both are end. **/
-    bool operator==(const MapIter &o) const {
-      return done_ == o.done_;
-    }
+  /** Iterators are only equal when both are end. **/
+  bool operator==(const MapIter &o) const {
+    return done_ == o.done_;
+  }
 
-    bool operator!=(const MapIter &o) const {
-      return done_ != o.done_;
-    }
+  bool operator!=(const MapIter &o) const {
+    return done_ != o.done_;
+  }
 
-    MapItem &operator*() const {
-      return *item_;
-    }
+  MapItem &operator*() const {
+    return *item_;
+  }
 
-    MapItem *operator->() const {
-      return item_.get();
-    }
+  MapItem *operator->() const {
+    return item_.get();
+  }
 
-    MapIter &operator++();
+  MapIter &operator++();
 
-  private:
+ private:
+  /** Base map. **/
+  Map *map_;
+  Deleter deleter_;
 
-    /** Base map. **/
-    Map *map_;
-    Deleter deleter_;
+  /** Current item **/
+  std::unique_ptr<MapItem> item_;
 
-    /** Current item **/
-    std::unique_ptr<MapItem> item_;
+  /** TileDB iterator object **/
+  std::shared_ptr<tiledb_kv_iter_t> iter_;
 
-    /** TileDB iterator object **/
-    std::shared_ptr<tiledb_kv_iter_t> iter_;
+  /** Whether the iterator has reached the end **/
+  int done_;
 
-    /** Whether the iterator has reached the end **/
-    int done_;
+  /** Settings determining filters for the iterator. **/
+  bool limit_type_ = false;
+  tiledb_datatype_t type_;
+  bool only_single_;
+};
 
-    /** Settings determining filters for the iterator. **/
-    bool limit_type_ = false;
-    tiledb_datatype_t type_;
-    bool only_single_;
-  };
+}  // namespace impl
+}  // namespace tdb
 
-}
-}
-
-#endif //TILEDB_TILEDB_CPP_API_MAP_ITER_H
+#endif  // TILEDB_TILEDB_CPP_API_MAP_ITER_H

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,78 +39,76 @@
 #include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_utils.h"
 
-#include <iterator>
 #include <functional>
+#include <iterator>
 #include <memory>
 
 namespace tdb {
 
-  class Config;
+class Config;
 
-  namespace impl {
+namespace impl {
 
-    class ConfigIter :
-      public std::iterator<std::forward_iterator_tag,
-                           const std::pair<std::string, std::string>> {
-    public:
+class ConfigIter : public std::iterator<
+                       std::forward_iterator_tag,
+                       const std::pair<std::string, std::string>> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-      /* ********************************* */
-      /*     CONSTRUCTORS & DESTRUCTORS    */
-      /* ********************************* */
-
-      /** Iterate over a config for params matching a given prefix. **/
-      ConfigIter(const Config &config,
-                 std::string prefix,
-                 bool done=false)
-      : prefix_(std::move(prefix)), done_(done) {
-        init(config);
-      }
-
-      ConfigIter(const ConfigIter&) = default;
-      ConfigIter(ConfigIter&&) = default;
-      ConfigIter &operator=(const ConfigIter&) = default;
-      ConfigIter &operator=(ConfigIter&&) = default;
-
-      bool operator==(const ConfigIter &o) const {
-        return done_ == o.done_;
-      }
-
-      bool operator!=(const ConfigIter &o) const {
-        return done_ != o.done_;
-      }
-
-      const std::pair<std::string, std::string> &operator*() const {
-        return here_;
-      }
-
-      const std::pair<std::string, std::string> *operator->() const {
-        return &here_;
-      }
-
-      ConfigIter &operator++();
-
-    private:
-      /* ********************************* */
-      /*          PRIVATE METHODS          */
-      /* ********************************* */
-
-      /** Init the iterator object **/
-      void init(const Config &config);
-
-      /** Prefix of parameters to match. **/
-      std::string prefix_;
-
-      /** Pointer to iter object. **/
-      std::shared_ptr<tiledb_config_iter_t> iter_;
-
-      /** Current object. **/
-      std::pair<std::string, std::string> here_;
-
-      /** If iter is done. **/
-      bool done_;
-    };
-
+  /** Iterate over a config for params matching a given prefix. **/
+  ConfigIter(const Config &config, std::string prefix, bool done = false)
+      : prefix_(std::move(prefix))
+      , done_(done) {
+    init(config);
   }
-}
 
-#endif //TILEDB_TILEDB_CPP_API_CONFIG_ITER_H
+  ConfigIter(const ConfigIter &) = default;
+  ConfigIter(ConfigIter &&) = default;
+  ConfigIter &operator=(const ConfigIter &) = default;
+  ConfigIter &operator=(ConfigIter &&) = default;
+
+  bool operator==(const ConfigIter &o) const {
+    return done_ == o.done_;
+  }
+
+  bool operator!=(const ConfigIter &o) const {
+    return done_ != o.done_;
+  }
+
+  const std::pair<std::string, std::string> &operator*() const {
+    return here_;
+  }
+
+  const std::pair<std::string, std::string> *operator->() const {
+    return &here_;
+  }
+
+  ConfigIter &operator++();
+
+ private:
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Init the iterator object **/
+  void init(const Config &config);
+
+  /** Prefix of parameters to match. **/
+  std::string prefix_;
+
+  /** Pointer to iter object. **/
+  std::shared_ptr<tiledb_config_iter_t> iter_;
+
+  /** Current object. **/
+  std::pair<std::string, std::string> here_;
+
+  /** If iter is done. **/
+  bool done_;
+};
+
+}  // namespace impl
+}  // namespace tdb
+
+#endif  // TILEDB_TILEDB_CPP_API_CONFIG_ITER_H

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,19 +36,19 @@
 #include "tiledb_cpp_api_map.h"
 
 namespace tdb {
-  bool impl::MapItemProxy::add_to_map() const {
-    if (item.map_ != nullptr) {
-      item.map_->add_item(item);
-      return true;
-    }
-    return false;
+bool impl::MapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
   }
-
-  bool impl::MultiMapItemProxy::add_to_map() const {
-    if (item.map_ != nullptr) {
-      item.map_->add_item(item);
-      return true;
-    }
-    return false;
-  }
+  return false;
 }
+
+bool impl::MultiMapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
+  }
+  return false;
+}
+}  // namespace tdb

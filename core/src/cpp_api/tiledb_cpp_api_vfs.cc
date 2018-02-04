@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -74,15 +74,16 @@ bool VFS::is_bucket(const std::string& uri) const {
   return (bool)ret;
 }
 
-void VFS::empty_bucket(const std::string &bucket) const {
-  auto &ctx = ctx_.get();
+void VFS::empty_bucket(const std::string& bucket) const {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_vfs_empty_bucket(ctx, vfs_.get(), bucket.c_str()));
 }
 
-bool VFS::is_empty_bucket(const std::string &bucket) const {
-  auto &ctx = ctx_.get();
+bool VFS::is_empty_bucket(const std::string& bucket) const {
+  auto& ctx = ctx_.get();
   int empty;
-  ctx.handle_error(tiledb_vfs_is_empty_bucket(ctx, vfs_.get(), bucket.c_str(), &empty));
+  ctx.handle_error(
+      tiledb_vfs_is_empty_bucket(ctx, vfs_.get(), bucket.c_str(), &empty));
   return empty == 0;
 }
 
@@ -122,10 +123,11 @@ uint64_t VFS::file_size(const std::string& uri) const {
   return ret;
 }
 
-void VFS::move(const std::string& old_uri, const std::string& new_uri, bool force) const {
+void VFS::move(
+    const std::string& old_uri, const std::string& new_uri, bool force) const {
   auto& ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_vfs_move(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str(), (int)force));
+  ctx.handle_error(tiledb_vfs_move(
+      ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str(), (int)force));
 }
 
 void VFS::touch(const std::string& uri) const {

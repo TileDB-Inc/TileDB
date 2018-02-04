@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,5 +47,5 @@ void create(const std::string &uri, const ArraySchema &schema) {
   ctx.handle_error(tiledb_array_create(ctx, uri.c_str(), schema));
 }
 
-}
+}  // namespace Array
 }  // namespace tdb

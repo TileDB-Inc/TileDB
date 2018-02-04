@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,9 +42,9 @@
 #include <memory>
 
 namespace tdb {
-  namespace impl {
-    class VFSFilebuf;
-  }
+namespace impl {
+class VFSFilebuf;
+}
 
 /**
  * Implements a virtual filesystem that enables performing directory/file
@@ -92,10 +92,10 @@ class VFS {
   bool is_bucket(const std::string& uri) const;
 
   /** Empty a bucket **/
-  void empty_bucket(const std::string &bucket) const;
+  void empty_bucket(const std::string& bucket) const;
 
   /** Check if a bucket is empty **/
-  bool is_empty_bucket(const std::string &bucket) const;
+  bool is_empty_bucket(const std::string& bucket) const;
 
   /** Creates a directory with the input URI. */
   void create_dir(const std::string& uri) const;
@@ -116,7 +116,8 @@ class VFS {
   uint64_t file_size(const std::string& uri) const;
 
   /** Renames a TileDB path from an old URI to a new URI. */
-  void move(const std::string& old_uri, const std::string& new_uri, bool force) const;
+  void move(
+      const std::string& old_uri, const std::string& new_uri, bool force) const;
 
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const;

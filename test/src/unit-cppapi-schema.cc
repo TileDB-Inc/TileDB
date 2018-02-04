@@ -98,9 +98,12 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute("a3").cell_val_num() == 2);
   }
 
-
   // Types
-  CHECK_THROWS(impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 2));
-  CHECK_THROWS(impl::type_check_attr<typename impl::type_from_native<unsigned>::type>(a1, 1));
-  CHECK_NOTHROW(impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 1));
+  CHECK_THROWS(
+      impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 2));
+  CHECK_THROWS(
+      impl::type_check_attr<typename impl::type_from_native<unsigned>::type>(
+          a1, 1));
+  CHECK_NOTHROW(
+      impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 1));
 }

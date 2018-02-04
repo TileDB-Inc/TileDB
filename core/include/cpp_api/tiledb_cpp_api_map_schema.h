@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,8 @@
 #define TILEDB_CPP_API_MAP_SCHEMA_H
 
 #include "tiledb.h"
-#include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_domain.h"
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_schema_base.h"
@@ -50,8 +50,8 @@
 namespace tdb {
 
 /** Implements the array schema functionality. */
-  class MapSchema : public Schema {
-public:
+class MapSchema : public Schema {
+ public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -91,7 +91,8 @@ public:
   void check() const override;
 
   /** Gets all attributes in the array. */
-  const std::unordered_map<std::string, Attribute> attributes() const override;;
+  const std::unordered_map<std::string, Attribute> attributes() const override;
+  ;
 
   /** Get an attribute by name. **/
   Attribute attribute(const std::string &name) const override;
@@ -102,7 +103,7 @@ public:
   /** Get an attribute by index **/
   Attribute attribute(unsigned int i) const override;
 
-private:
+ private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

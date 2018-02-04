@@ -41,8 +41,9 @@ int main() {
   for (auto &item : map) {
     item["a1"] = ++i << 2;
     // Or use a tuple
-    item[std::vector<std::string>({"a2", "a3"})] =
-      std::make_tuple(std::string((unsigned) i*2, 'x'), std::vector<float>{i/.15f, i/.05f});
+    item[std::vector<std::string>({"a2", "a3"})] = std::make_tuple(
+        std::string((unsigned)i * 2, 'x'),
+        std::vector<float>{i / .15f, i / .05f});
   }
 
   // After iteration, map is flushed.
@@ -50,26 +51,31 @@ int main() {
   std::cout << "\nIterating over all keys:\n";
   // Read using iterator
   for (auto &item : map) {
-    std::tuple<int, std::string, std::vector<float>> vals = item[{"a1", "a2", "a3"}];
-    std::cout << std::get<0>(vals) << ", " << std::get<1>(vals)
-              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
+    std::tuple<int, std::string, std::vector<float>> vals =
+        item[{"a1", "a2", "a3"}];
+    std::cout << std::get<0>(vals) << ", " << std::get<1>(vals) << ", ("
+              << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
   }
 
   std::cout << "\nOnly iterating over int keys:\n";
   // Read using iterator, only int keys
   for (auto item = map.begin<int>(); item != map.end(); ++item) {
     auto key = item->key<int>();
-    std::tuple<int, std::string, std::vector<float>> vals = (*item)[{"a1", "a2", "a3"}];
+    std::tuple<int, std::string, std::vector<float>> vals =
+        (*item)[{"a1", "a2", "a3"}];
     std::cout << key << ": " << std::get<0>(vals) << ", " << std::get<1>(vals)
-              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
+              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1]
+              << ")\n";
   }
 
   std::cout << "\nOnly iterating over str keys:\n";
   // Read using iterator, only int keys
   for (auto item = map.begin<std::string>(); item != map.end(); ++item) {
     auto key = item->key<std::string>();
-    std::tuple<int, std::string, std::vector<float>> vals = (*item)[{"a1", "a2", "a3"}];
+    std::tuple<int, std::string, std::vector<float>> vals =
+        (*item)[{"a1", "a2", "a3"}];
     std::cout << key << ": " << std::get<0>(vals) << ", " << std::get<1>(vals)
-              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
+              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1]
+              << ")\n";
   }
 }

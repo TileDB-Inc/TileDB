@@ -36,11 +36,12 @@
 using namespace tdb;
 
 struct CPPArrayFx {
-
-  CPPArrayFx() : vfs(ctx) {
+  CPPArrayFx()
+      : vfs(ctx) {
     using namespace tdb;
 
-    if (vfs.is_dir("cpp_unit_array")) vfs.remove_dir("cpp_unit_array");
+    if (vfs.is_dir("cpp_unit_array"))
+      vfs.remove_dir("cpp_unit_array");
 
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
@@ -64,28 +65,25 @@ struct CPPArrayFx {
   VFS vfs;
 };
 
-
 TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
-
   SECTION("Make Buffer") {
     Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
-    CHECK_THROWS(query.set_subarray<unsigned>({1,2})); // Wrong type
-    CHECK_THROWS(query.set_subarray<int>({1,2})); // Wrong num
+    CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
+    CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
     std::vector<int> subarray = {0, 5, 0, 5};
     query.set_subarray<int>(subarray);
 
-    CHECK_THROWS(query.make_var_buffers<int>("a1")); // Not var attr
-    CHECK_THROWS(query.make_buffer<char>("a1")); // Wrong type
+    CHECK_THROWS(query.make_var_buffers<int>("a1"));  // Not var attr
+    CHECK_THROWS(query.make_buffer<char>("a1"));      // Wrong type
 
     CHECK(query.make_buffer<int>("a1").size() == 36);
     CHECK(query.make_buffer<int>("a1", 5).size() == 5);
   }
 
   SECTION("Read/Write") {
-
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};
-    std::vector<std::array<double, 2>> a3 = { {{1.0,2.0}}, {{3.0,4.0}} };
+    std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
 
     auto a2buf = ungroup_var_buffer(a2);
     auto a3buf = flatten(a3);
@@ -138,7 +136,5 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(reada3[1][0] == 3.0);
       CHECK(reada3[1][1] == 4.0);
     }
-
   }
-
 }

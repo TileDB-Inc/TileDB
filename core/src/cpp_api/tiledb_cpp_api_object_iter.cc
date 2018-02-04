@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -87,10 +87,9 @@ ObjectIter::iterator ObjectIter::begin() const {
   auto &ctx = ctx_.get();
   ObjGetterData data(objs, array_, group_, kv_);
   if (recursive_) {
-    ctx.handle_error(tiledb_object_walk(
-    ctx, root_.c_str(), walk_order_, obj_getter, &data));
-  }
-  else {
+    ctx.handle_error(
+        tiledb_object_walk(ctx, root_.c_str(), walk_order_, obj_getter, &data));
+  } else {
     ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
   }
 

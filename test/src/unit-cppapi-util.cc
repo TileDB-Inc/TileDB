@@ -36,8 +36,7 @@
 using namespace tdb;
 
 TEST_CASE("C++ API: Utils", "[cppapi]") {
-  std::vector<char> buf = {'a', 'b', 'c', 'd', 'e',
-                           'f', 'g', 'h', 'i'};
+  std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
   std::vector<uint64_t> offsets = {0, 5};
 
   SECTION("Group by cell, offset") {

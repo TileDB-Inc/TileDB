@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -150,8 +150,8 @@ const std::unordered_map<std::string, Attribute> tdb::ArraySchema::attributes()
   ctx.handle_error(
       tiledb_array_schema_get_attribute_num(ctx, schema_.get(), &nattr));
   for (unsigned int i = 0; i < nattr; ++i) {
-    ctx.handle_error(
-        tiledb_array_schema_get_attribute_from_index(ctx, schema_.get(), i, &attrptr));
+    ctx.handle_error(tiledb_array_schema_get_attribute_from_index(
+        ctx, schema_.get(), i, &attrptr));
     auto attr = Attribute(ctx_, attrptr);
     attrs.emplace(
         std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
@@ -267,21 +267,24 @@ std::string ArraySchema::to_str(tiledb_layout_t layout) {
 Attribute ArraySchema::attribute(const std::string &name) const {
   auto &ctx = ctx_.get();
   tiledb_attribute_t *attr;
-  ctx.handle_error(tiledb_array_schema_get_attribute_from_name(ctx, schema_.get(), name.c_str(), &attr));
+  ctx.handle_error(tiledb_array_schema_get_attribute_from_name(
+      ctx, schema_.get(), name.c_str(), &attr));
   return Attribute(ctx, attr);
 }
 
 unsigned ArraySchema::num_attributes() const {
   auto &ctx = ctx_.get();
   unsigned num;
-  ctx.handle_error(tiledb_array_schema_get_attribute_num(ctx, schema_.get(), &num));
+  ctx.handle_error(
+      tiledb_array_schema_get_attribute_num(ctx, schema_.get(), &num));
   return num;
 }
 
 Attribute ArraySchema::attribute(unsigned int i) const {
   auto &ctx = ctx_.get();
   tiledb_attribute_t *attr;
-  ctx.handle_error(tiledb_array_schema_get_attribute_from_index(ctx, schema_.get(), i, &attr));
+  ctx.handle_error(tiledb_array_schema_get_attribute_from_index(
+      ctx, schema_.get(), i, &attr));
   return Attribute(ctx, attr);
 }
 

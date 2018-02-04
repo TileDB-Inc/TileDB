@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_vfs_streambuf.cc
+ * @file   tiledb_cpp_api_vfs_filebuf.cc
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * streambuf for the tiledb VFS.
+ * filebuf for the tiledb VFS.
  */
 
 #include "tiledb_cpp_api_vfs_filebuf.h"
@@ -50,21 +50,20 @@ VFSFilebuf *VFSFilebuf::open(
 
   if (openmode == std::ios::out) {
     mode = TILEDB_VFS_WRITE;
-  }
-  else if (openmode & std::ios::app) {
+  } else if (openmode & std::ios::app) {
     mode = TILEDB_VFS_APPEND;
-  }
-  else if (openmode == std::ios::in) {
+  } else if (openmode == std::ios::in) {
     mode = TILEDB_VFS_READ;
-  }
-  else return nullptr;
+  } else
+    return nullptr;
 
-    tiledb_vfs_fh_t *fh;
-    auto &ctx = vfs_.get().context();
-    if (tiledb_vfs_open(ctx, vfs_.get().ptr().get(), uri.c_str(), mode, &fh) != TILEDB_OK) {
-      return nullptr;
-    }
-    fh_ = std::shared_ptr<tiledb_vfs_fh_t>(fh, deleter_);
+  tiledb_vfs_fh_t *fh;
+  auto &ctx = vfs_.get().context();
+  if (tiledb_vfs_open(ctx, vfs_.get().ptr().get(), uri.c_str(), mode, &fh) !=
+      TILEDB_OK) {
+    return nullptr;
+  }
+  fh_ = std::shared_ptr<tiledb_vfs_fh_t>(fh, deleter_);
 
   if (mode == TILEDB_VFS_APPEND && vfs_.get().is_file(uri)) {
     seekoff(0, std::ios::end, openmode);
@@ -84,7 +83,8 @@ VFSFilebuf *VFSFilebuf::close() {
 
 int VFSFilebuf::sync() {
   auto &ctx = vfs_.get().context();
-  if (tiledb_vfs_sync(ctx, fh_.get()) != TILEDB_OK) return -1;
+  if (tiledb_vfs_sync(ctx, fh_.get()) != TILEDB_OK)
+    return -1;
   return 0;
 }
 
@@ -94,7 +94,6 @@ int VFSFilebuf::sync() {
 
 std::streambuf::pos_type VFSFilebuf::seekoff(
     off_type offset, std::ios::seekdir seekdir, std::ios::openmode openmode) {
-
   // No seek in write mode
   if (openmode & std::ios::app || openmode & std::ios::out) {
     return std::streampos(std::streamoff(-1));
@@ -153,9 +152,12 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   if (offset_ + n >= fsize) {
     readlen = fsize - offset_;
   }
-  if (readlen == 0) return traits_type::eof();
+  if (readlen == 0)
+    return traits_type::eof();
   auto &ctx = vfs_.get().context();
-  if (tiledb_vfs_read(ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) != TILEDB_OK) {
+  if (tiledb_vfs_read(
+          ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) !=
+      TILEDB_OK) {
     return traits_type::eof();
   }
 
@@ -185,9 +187,11 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 /* ********************************* */
 
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
-  if (offset_ != file_size()) return traits_type::eof();
+  if (offset_ != file_size())
+    return traits_type::eof();
   auto &ctx = vfs_.get().context();
-  if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) != TILEDB_OK) {
+  if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) !=
+      TILEDB_OK) {
     return traits_type::eof();
   }
   offset_ += n;

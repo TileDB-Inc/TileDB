@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,9 +35,9 @@
 #ifndef TILEDB_CPP_API_CONFIG_H
 #define TILEDB_CPP_API_CONFIG_H
 
+#include "tiledb.h"
 #include "tiledb_cpp_api_config_iter.h"
 #include "tiledb_cpp_api_utils.h"
-#include "tiledb.h"
 
 #include <memory>
 #include <string>
@@ -73,7 +73,7 @@ class Config {
    * @param filename The name of the file where the parameters will be read
    *     from.
    */
-  explicit Config(const std::string& filename);
+  explicit Config(const std::string &filename);
 
   explicit Config(tiledb_config_t **config);
 
@@ -85,7 +85,7 @@ class Config {
   std::shared_ptr<tiledb_config_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_config_t*() const;
+  operator tiledb_config_t *() const;
 
   /**
    * Sets a config parameter-value pair.
@@ -116,20 +116,19 @@ class Config {
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable.
    */
-  Config& set(const std::string& param, const std::string& value);
+  Config &set(const std::string &param, const std::string &value);
 
   /**
    * Get a parameter from the configuration by key.
    * @param param Key
    * @return Value
    */
-  std::string get(const std::string& param) const;
-
+  std::string get(const std::string &param) const;
 
   impl::ConfigProxy operator[](const std::string &param);
 
   /** Unsets a config parameter. */
-  Config& unset(const std::string& param);
+  Config &unset(const std::string &param);
 
   /** Iterate over params starting with a prefix **/
   iterator begin(const std::string &prefix) {
@@ -167,9 +166,11 @@ namespace impl {
 /** Proxy to set params via operator[] **/
 struct ConfigProxy {
   ConfigProxy(Config &conf, std::string param)
-  : conf(conf), param(std::move(param)) {}
+      : conf(conf)
+      , param(std::move(param)) {
+  }
 
-  template<typename T>
+  template <typename T>
   ConfigProxy &operator=(const T &val) {
     conf.set(param, std::to_string(val));
     return *this;
@@ -197,7 +198,7 @@ struct ConfigProxy {
   const std::string param;
 };
 
-}
+}  // namespace impl
 
 }  // namespace tdb
 

@@ -1,5 +1,5 @@
 /**
- * @file  tiledb_cpp_api_map.cc
+ * @file  tiledb_cpp_api_map_item.cc
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,12 +37,13 @@
 
 namespace tdb {
 
-  impl::MapItemProxy MapItem::operator[](const std::string &attr) {
-    return impl::MapItemProxy(attr, *this);
-  }
-
-  impl::MultiMapItemProxy MapItem::operator[](const std::vector<std::string> &attrs) {
-    return impl::MultiMapItemProxy(attrs, *this);
-  }
-
+impl::MapItemProxy MapItem::operator[](const std::string &attr) {
+  return impl::MapItemProxy(attr, *this);
 }
+
+impl::MultiMapItemProxy MapItem::operator[](
+    const std::vector<std::string> &attrs) {
+  return impl::MultiMapItemProxy(attrs, *this);
+}
+
+}  // namespace tdb

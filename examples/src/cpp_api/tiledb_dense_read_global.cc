@@ -45,13 +45,14 @@ int main() {
   tiledb::Context ctx;
 
   // Find out the minimum bounding rectangle
-  tiledb::ArraySchema schema(ctx, "my_dense_array"); // Load schema
+  tiledb::ArraySchema schema(ctx, "my_dense_array");  // Load schema
 
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> domain;
   domain = tiledb::Array::non_empty_domain<uint64_t>("my_dense_array", schema);
   std::cout << "Non empty domain:\n";
   for (const auto &d : domain) {
-    std::cout << d.first << ": (" << d.second.first << ", " << d.second.second << ")\n";
+    std::cout << d.first << ": (" << d.second.first << ", " << d.second.second
+              << ")\n";
   }
 
   // Init the array & query for the array

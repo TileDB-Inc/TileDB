@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,8 @@ void ConfigIter::init(const Config &config) {
 }
 
 ConfigIter &ConfigIter::operator++() {
-  if (done_) return *this;
+  if (done_)
+    return *this;
   int done;
   tiledb_error_t *err;
 
@@ -72,5 +73,5 @@ ConfigIter &ConfigIter::operator++() {
   return *this;
 }
 
-}
-}
+}  // namespace impl
+}  // namespace tdb

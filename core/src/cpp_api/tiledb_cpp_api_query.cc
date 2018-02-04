@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,7 +85,7 @@ Query::Status Query::attribute_status(const std::string &attr) const {
 }
 
 void Query::submit_async() {
-  submit_async([](){});
+  submit_async([]() {});
 }
 
 std::vector<uint64_t> Query::returned_buff_sizes() const {

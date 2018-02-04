@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,10 @@
 #include "tiledb.h"
 #include "tiledb_cpp_api_exception.h"
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <iostream>
-#include <algorithm>
 
 namespace tdb {
 
@@ -87,9 +87,8 @@ std::vector<E> group_by_cell(
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
-const std::vector<uint64_t> &offsets,
-const std::vector<T> &data) {
- return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
+    const std::vector<uint64_t> &offsets, const std::vector<T> &data) {
+  return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
 }
 
 /**
@@ -149,8 +148,7 @@ std::vector<E> group_by_cell(
  *     use buff.size()
  */
 template <typename T, typename E = typename std::vector<T>>
-std::vector<E> group_by_cell(
-    const std::vector<T> &buff, uint64_t el_per_cell) {
+std::vector<E> group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell) {
   return group_by_cell<T, E>(buff, el_per_cell, buff.size());
 }
 
@@ -208,8 +206,8 @@ std::vector<std::array<T, N>> group_by_cell(const std::vector<T> &buff) {
  */
 
 template <typename T, typename R = typename T::value_type>
-std::pair<std::vector<uint64_t>, std::vector<R>>
-ungroup_var_buffer(const std::vector<T> &data) {
+std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
+    const std::vector<T> &data) {
   std::pair<std::vector<uint64_t>, std::vector<R>> ret;
   ret.first.push_back(0);
   for (const auto &v : data) {
@@ -227,19 +225,21 @@ ungroup_var_buffer(const std::vector<T> &data) {
  * @param vec
  * @return std::vector<T>
  */
-template<typename V, typename T = typename V::value_type::value_type>
+template <typename V, typename T = typename V::value_type::value_type>
 std::vector<T> flatten(const V &vec) {
   std::vector<T> ret;
 
   size_t size = 0;
-  std::for_each(std::begin(vec), std::end(vec),
-                [&size](const typename V::value_type &i){size += i.size();});
+  std::for_each(
+      std::begin(vec), std::end(vec), [&size](const typename V::value_type &i) {
+        size += i.size();
+      });
   ret.reserve(size);
 
-  std::for_each(std::begin(vec), std::end(vec),
-                [&ret](const typename V::value_type &i){
-                  std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
-                });
+  std::for_each(
+      std::begin(vec), std::end(vec), [&ret](const typename V::value_type &i) {
+        std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
+      });
   return ret;
 };
 
@@ -255,7 +255,7 @@ inline void check_error(tiledb_error_t *err) {
   }
 }
 
-}
+}  // namespace impl
 
 }  // namespace tdb
 
