@@ -71,8 +71,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
     CHECK_THROWS(query.set_subarray<unsigned>({1,2})); // Wrong type
     CHECK_THROWS(query.set_subarray<int>({1,2})); // Wrong num
-
-    query.set_subarray<int>({{0,5}, {0,5}});
+    std::vector<int> subarray = {0, 5, 0, 5};
+    query.set_subarray<int>(subarray);
 
     CHECK_THROWS(query.make_var_buffers<int>("a1")); // Not var attr
     CHECK_THROWS(query.make_buffer<char>("a1")); // Wrong type
@@ -85,14 +85,16 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
 
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};
-    std::vector<std::array<double, 2>> a3 = {{1.0,2.0}, {3.0,4.0}};
+    std::vector<std::array<double, 2>> a3 = { {{1.0,2.0}}, {{3.0,4.0}} };
 
     auto a2buf = ungroup_var_buffer(a2);
     auto a3buf = flatten(a3);
 
+    const std::vector<int> subarray = {0, 1, 0, 0};
+
     {
       Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
-      query.set_subarray<int>({{0, 1}, {0, 0}});
+      query.set_subarray(subarray);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3buf);
@@ -112,7 +114,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3buf);
       query.set_layout(TILEDB_ROW_MAJOR);
-      query.set_subarray<int>({{0, 1}, {0, 0}});
+      query.set_subarray(subarray);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
       auto ret = query.returned_buff_sizes();
