@@ -109,7 +109,7 @@ class Query {
    */
   template<typename Fn>
   void submit_async(const Fn &callback) {
-    std::function<void(void*)> wrapper = [=](void*){callback();};
+    std::function<void(void*)> wrapper = [&](void*){callback();};
     auto &ctx = ctx_.get();
     prepare_submission();
     ctx.handle_error(
@@ -369,7 +369,7 @@ class Query {
   std::vector<uint64_t> sub_tsize_;
 
   /** URI of array being queried. **/
-  const std::string uri_;
+  std::string uri_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -438,7 +438,7 @@ class Query {
    * Gets the ideal buffer size using the underlying array dimensions and
    * number of values per cell for the attribute at hand.
    */
-  uint64_t get_buffer_size(unsigned cell_val_num) const {
+  uint64_t get_buffer_size(uint64_t cell_val_num) const {
     if (subarray_cell_num_ != 0)
       return cell_val_num * subarray_cell_num_;
 

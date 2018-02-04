@@ -90,8 +90,9 @@ namespace tdb {
 
       /** Set the attributes with a tuple **/
       template<typename... T>
-      void operator=(const std::tuple<T...> &vals) {
-        return set<T...>(vals);
+      MultiMapItemProxy &operator=(const std::tuple<T...> &vals) {
+        set<T...>(vals);
+        return *this;
       }
 
     private:
@@ -139,7 +140,7 @@ namespace tdb {
     class MapItemProxy {
     public:
       /** Create a proxy for the given attribute and underlying MapItem **/
-      MapItemProxy(const std::string &attr, MapItem &item) : attr(attr), item(item) {}
+      MapItemProxy(std::string attr, MapItem &item) : attr(std::move(attr)), item(item) {}
 
       /** Set the value **/
       template<typename T>
@@ -156,9 +157,10 @@ namespace tdb {
 
       /** Set value with operator= **/
       template <typename T>
-      void operator=(const T &val) {
+      MapItemProxy &operator=(const T &val) {
         set(val);
         add_to_map();
+        return *this;
       }
 
       /** Implicit cast **/

@@ -173,7 +173,7 @@ namespace tdb {
 
     /** Iterator to end of map. **/
     iterator end() {
-      return {*this, true};
+      return iterator{*this, true};
     }
 
     /* ********************************* */
@@ -259,7 +259,7 @@ namespace tdb {
     impl::Deleter deleter_;
 
     /** URI **/
-    const std::string uri_;
+    std::string uri_;
 
   };
 

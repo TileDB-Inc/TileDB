@@ -49,7 +49,9 @@ namespace tdb {
 
   namespace impl {
 
-    class ConfigIter : public std::iterator<std::forward_iterator_tag, const std::pair<std::string, std::string>> {
+    class ConfigIter :
+      public std::iterator<std::forward_iterator_tag,
+                           const std::pair<std::string, std::string>> {
     public:
 
       /* ********************************* */
@@ -58,15 +60,15 @@ namespace tdb {
 
       /** Iterate over a config for params matching a given prefix. **/
       ConfigIter(const Config &config,
-                 const std::string &prefix,
+                 std::string prefix,
                  bool done=false)
-      : prefix_(prefix), done_(done) {
+      : prefix_(std::move(prefix)), done_(done) {
         init(config);
       }
 
-      ConfigIter(const ConfigIter&) = delete;
+      ConfigIter(const ConfigIter&) = default;
       ConfigIter(ConfigIter&&) = default;
-      ConfigIter &operator=(const ConfigIter&) = delete;
+      ConfigIter &operator=(const ConfigIter&) = default;
       ConfigIter &operator=(ConfigIter&&) = default;
 
       bool operator==(const ConfigIter &o) const {
@@ -96,7 +98,7 @@ namespace tdb {
       void init(const Config &config);
 
       /** Prefix of parameters to match. **/
-      const std::string &prefix_;
+      std::string prefix_;
 
       /** Pointer to iter object. **/
       std::shared_ptr<tiledb_config_iter_t> iter_;

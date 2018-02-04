@@ -53,7 +53,7 @@ class Compressor {
   /* ********************************* */
 
   Compressor() = default;
-  Compressor(tiledb_compressor_t c)
+  explicit Compressor(tiledb_compressor_t c)
       : compressor_(c)
       , level_(-1) {
   }

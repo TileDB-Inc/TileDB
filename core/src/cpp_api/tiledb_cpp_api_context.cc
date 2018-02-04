@@ -35,7 +35,6 @@
 #include "tiledb_cpp_api_exception.h"
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_array_schema.h"
-#include "tiledb_cpp_api_utils.h"
 
 namespace tdb {
 

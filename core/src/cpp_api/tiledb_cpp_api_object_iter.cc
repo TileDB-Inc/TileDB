@@ -86,13 +86,15 @@ ObjectIter::iterator ObjectIter::begin() const {
   objs.clear();
   auto &ctx = ctx_.get();
   ObjGetterData data(objs, array_, group_, kv_);
-  if (recursive_)
+  if (recursive_) {
     ctx.handle_error(tiledb_object_walk(
-        ctx, root_.c_str(), walk_order_, obj_getter, &data));
-  else
+    ctx, root_.c_str(), walk_order_, obj_getter, &data));
+  }
+  else {
     ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
+  }
 
-  return {objs};
+  return iterator{objs};
 }
 
 ObjectIter::iterator ObjectIter::end() const {

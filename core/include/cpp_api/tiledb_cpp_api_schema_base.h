@@ -62,9 +62,9 @@ namespace tdb {
 
     explicit Schema(const Context &ctx) : ctx_(ctx), deleter_(ctx) {}
     Schema(const Schema &) = default;
-    Schema(Schema &&o) = default;
+    Schema(Schema &&) = default;
     Schema &operator=(const Schema &) = default;
-    Schema &operator=(Schema &&o) = default;
+    Schema &operator=(Schema &&) = default;
 
     /* ********************************* */
     /*          VIRTUAL INTERFACE        */

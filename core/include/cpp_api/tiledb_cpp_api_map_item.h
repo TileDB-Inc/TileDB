@@ -125,7 +125,7 @@ public:
 
     impl::type_check<typename impl::type_from_native<T>::type>(type);
 
-    unsigned num = static_cast<unsigned>(size/sizeof(T));
+    auto num = static_cast<unsigned>(size/sizeof(T));
     return std::pair<const T*, uint64_t>(data, num);
   }
 

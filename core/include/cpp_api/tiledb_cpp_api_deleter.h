@@ -57,7 +57,7 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Deleter(const Context &ctx)
+  explicit Deleter(const Context &ctx)
       : ctx_(ctx) {
   }
   Deleter(const Deleter &) = default;

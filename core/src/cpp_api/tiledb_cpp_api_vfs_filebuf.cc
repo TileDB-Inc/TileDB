@@ -153,12 +153,11 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   if (offset_ + n >= fsize) {
     readlen = fsize - offset_;
   }
-  if (readlen == 0)
+  if (readlen == 0) return traits_type::eof();
+  auto &ctx = vfs_.get().context();
+  if (tiledb_vfs_read(ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) != TILEDB_OK) {
     return traits_type::eof();
-    auto &ctx = vfs_.get().context();
-    if (tiledb_vfs_read(ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) != TILEDB_OK) {
-      return traits_type::eof();
-    }
+  }
 
   offset_ += readlen;
   return readlen;
@@ -186,12 +185,11 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 /* ********************************* */
 
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
-  if (offset_ != file_size())
+  if (offset_ != file_size()) return traits_type::eof();
+  auto &ctx = vfs_.get().context();
+  if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) != TILEDB_OK) {
     return traits_type::eof();
-    auto &ctx = vfs_.get().context();
-    if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) != TILEDB_OK) {
-      return traits_type::eof();
-    }
+  }
   offset_ += n;
   return n;
 }

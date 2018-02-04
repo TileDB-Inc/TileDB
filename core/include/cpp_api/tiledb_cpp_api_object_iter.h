@@ -115,15 +115,14 @@ class ObjectIter {
    public:
     iterator() : cur_obj_(0) {}
 
-    iterator(const std::vector<Object> &objs)
+    explicit iterator(std::vector<Object> objs)
         : cur_obj_(0)
-        , objs_(objs) {
-    }
+        , objs_(std::move(objs)) {}
 
-    iterator(const iterator &o)
-        : cur_obj_(o.cur_obj_)
-        , objs_(o.objs_) {
-    }
+    iterator(const iterator &o) = default;
+    iterator(iterator &&) = default;
+    iterator &operator=(const iterator&) = default;
+    iterator &operator=(iterator&&) = default;
 
     bool operator==(const iterator &o) const {
       return cur_obj_ == o.cur_obj_;
@@ -157,7 +156,7 @@ class ObjectIter {
     size_t cur_obj_;
 
     /** A reference to the objects retrieved by the `ObjectIter` object. */
-    const std::vector<Object> objs_;
+    std::vector<Object> objs_;
   };
 
   /** Returns an object iterator at the beginning of its iteration. */

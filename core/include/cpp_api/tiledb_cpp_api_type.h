@@ -218,7 +218,6 @@ struct type_from_native<double> {
 std::string to_str(const tiledb_datatype_t &type);
 
 }  // namespace impl
-
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_TYPE_H

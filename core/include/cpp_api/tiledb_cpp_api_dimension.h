@@ -84,7 +84,7 @@ class Dimension {
     if (T::tiledb_datatype != tdbtype) {
       throw TypeError::create<T>(tdbtype);
     }
-    typename T::type *d = static_cast<typename T::type *>(_domain());
+    auto d = static_cast<typename T::type *>(_domain());
     return std::pair<typename T::type, typename T::type>(d[0], d[1]);
   }
 

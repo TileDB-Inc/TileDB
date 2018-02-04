@@ -49,7 +49,7 @@ namespace impl {
   /** Iterate over items in a map. **/
   class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
   public:
-    MapIter(Map &map, bool end=false);
+    explicit MapIter(Map &map, bool end=false);
     MapIter(const MapIter&) = delete;
     MapIter(MapIter&&) = default;
     MapIter &operator=(const MapIter&) = delete;

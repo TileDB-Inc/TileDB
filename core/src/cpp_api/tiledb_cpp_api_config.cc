@@ -33,8 +33,6 @@
  */
 
 #include "tiledb_cpp_api_config.h"
-#include "tiledb_cpp_api_exception.h"
-#include "tiledb_cpp_api_utils.h"
 
 namespace tdb {
 
