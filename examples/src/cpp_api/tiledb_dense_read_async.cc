@@ -1,5 +1,5 @@
 /**
- * @file   tdbpp_dense_read_async.h
+ * @file   tiledb_dense_read_async.cc
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
