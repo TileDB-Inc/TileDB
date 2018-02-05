@@ -61,6 +61,11 @@ struct CPPArrayFx {
     Array::create("cpp_unit_array", schema);
   }
 
+  ~CPPArrayFx() {
+    if (vfs.is_dir("cpp_unit_array"))
+      vfs.remove_dir("cpp_unit_array");
+  }
+
   Context ctx;
   VFS vfs;
 };

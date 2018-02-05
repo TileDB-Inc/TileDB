@@ -55,17 +55,16 @@ namespace Array {
 void consolidate(const Context &ctx, const std::string &uri);
 
 /**
- * Creates an array on disk from a schema definition.
+ * Creates an array on persistent storage from a schema definition.
  *
- * @param ctx The TileDB context.
  * @param uri The URI of the array.
  * @param schema The array schema.
  */
 void create(const std::string &uri, const ArraySchema &schema);
 
 /**
- * Get the non-empty domain of an array. This returns the bounding dims
- * for each dimension.
+ * Get the non-empty domain of an array. This returns the bounding
+ * coordinates for each dimension.
  *
  * @tparam T Dimension type
  * @param uri array name
@@ -97,25 +96,31 @@ std::unordered_map<std::string, std::pair<T, T>> non_empty_domain(
 }
 
 /**
- * Compute an upper bound on buffer sizes to read a subarray.
- * @tparam T Dimension datatype
+ * Compute an upper bound on elements per attribute buffer that
+ * will be read for a given subarray.
+ *
+ * @tparam T The domain datatype
  * @param uri array name
- * @param schema array schema
+ * @param schema The array schema
  * @param subarray Subarray to compute sizes for
- * @return The buffer sizes. Note that one buffer size corresponds
- *         to a fixed-sized attributes, and two buffer sizes for a
- *         variable-sized attribute (the first is the size of the
- *         offsets, whereas the second is the size of the actual
- *         variable-sized cell values.
+ * @return The maximum number of buffer elements for each array attribute.
+ *     Note that two sizes are returned per attribute. For fixed-sized
+ *     attributes, the first is the maximum number of buffer elements required
+ *     to store the attribute values, and the second is always 0 (ignored).
+ *     For variable-sized attributes, the first is the maximum number of
+ *     elements in the offset buffer, and the second is the maximum number
+ *     of elements in the actual variable-sized value buffer.
  */
 template <typename T, typename DataT = typename impl::type_from_native<T>::type>
-std::vector<uint64_t> upper_bound_buffer_sizes(
+std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+max_buffer_elements(
     const std::string &uri,
     const ArraySchema &schema,
     const std::vector<T> &subarray) {
+  auto ctx = schema.context();
   impl::type_check<DataT>(schema.domain().type());
 
-  std::vector<uint64_t> ret;
+  std::vector<uint64_t> sizes;
   auto attrs = schema.attributes();
   std::vector<const char *> names;
 
@@ -125,16 +130,55 @@ std::vector<uint64_t> upper_bound_buffer_sizes(
     names.push_back(a.first.c_str());
   }
 
-  ret.resize(nbuffs);
-  auto &ctx = schema.context();
+  sizes.resize(nbuffs);
   ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
       ctx,
       uri.c_str(),
       subarray.data(),
       names.data(),
       (unsigned)attrs.size(),
-      ret.data()));
+      sizes.data()));
+
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
+  unsigned sid = 0;
+  for (const auto &a : attrs) {
+    auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
+    ret[a.first] = var ? std::pair<uint64_t, uint64_t>(
+                             sizes[sid] / TILEDB_OFFSET_SIZE,
+                             sizes[sid + 1] / a.second.type_size()) :
+                         std::pair<uint64_t, uint64_t>(
+                             sizes[sid] / a.second.type_size(), 0);
+    sid += var ? 2 : 1;
+  }
+
   return ret;
+}
+
+/**
+ * Compute an upper bound on elements per attribute buffer that
+ * will be read for a given subarray.
+ *
+ * @tparam T The domain datatype
+ * @param ctx The TileDB context
+ * @param uri array name
+ * @param subarray Subarray to compute sizes for
+ * @return The maximum number of buffer elements for each array attribute.
+ *     Note that two sizes are returned per attribute. For fixed-sized
+ *     attributes, the first is the maximum number of buffer elements required
+ *     to store the attribute values, and the second is always 0 (ignored).
+ *     For variable-sized attributes, the first is the maximum number of
+ *     elements in the offset buffer, and the second is the maximum number
+ *     of elements in the actual variable-sized value buffer.
+ */
+template <typename T, typename DataT = typename impl::type_from_native<T>::type>
+std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+max_buffer_elements(
+    const Context &ctx,
+    const std::string &uri,
+    const std::vector<T> &subarray) {
+  ArraySchema schema(ctx, uri);
+
+  return max_buffer_elements(uri, schema, subarray);
 }
 
 }  // namespace Array

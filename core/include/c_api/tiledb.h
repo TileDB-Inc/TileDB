@@ -191,6 +191,43 @@ typedef enum {
 } tiledb_vfs_mode_t;
 
 /* ****************************** */
+/*            CONSTANTS           */
+/* ****************************** */
+
+/**@{*/
+/** Return code. */
+#define TILEDB_OK 0      // Success
+#define TILEDB_ERR (-1)  // General error
+#define TILEDB_OOM (-2)  // Out of memory
+/**@}*/
+
+/** Returns a special name indicating the coordinates attribute. */
+TILEDB_EXPORT const char* tiledb_coords();
+
+/** Returns a special value indicating a variable number of elements. */
+TILEDB_EXPORT unsigned int tiledb_var_num();
+
+/** Returns the maximum path length on the current platform. */
+TILEDB_EXPORT unsigned int tiledb_max_path();
+
+/** Returns the input datatype size. */
+TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
+
+/**
+ * Returns the size (in bytes) of an offset (used in variable-sized
+ * attributes).
+ */
+TILEDB_EXPORT uint64_t tiledb_offset_size();
+
+/**@{*/
+/** Constants wrapping special functions. */
+#define TILEDB_COORDS tiledb_coords()
+#define TILEDB_VAR_NUM tiledb_var_num()
+#define TILEDB_MAX_PATH tiledb_max_path()
+#define TILEDB_OFFSET_SIZE tiledb_offset_size()
+/**@}*/
+
+/* ****************************** */
 /*            VERSION             */
 /* ****************************** */
 
@@ -636,6 +673,17 @@ TILEDB_EXPORT int tiledb_attribute_get_cell_val_num(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     unsigned int* cell_val_num);
+
+/**
+ * Retrieves the cell size for this attribute.
+ *
+ * @param ctx The TileDB context.
+ * @param attr The attribute.
+ * @param cell_size The cell size to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_get_cell_size(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size);
 
 /**
  * Dumps the contents of an attribute in ASCII form to some output (e.g.,

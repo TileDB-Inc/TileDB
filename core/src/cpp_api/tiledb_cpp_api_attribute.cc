@@ -64,11 +64,26 @@ tiledb_datatype_t Attribute::type() const {
   return type;
 }
 
+uint64_t Attribute::cell_size() const {
+  auto &ctx = ctx_.get();
+  uint64_t cell_size;
+  ctx.handle_error(
+      tiledb_attribute_get_cell_size(ctx, attr_.get(), &cell_size));
+  return cell_size;
+}
+
 unsigned Attribute::cell_val_num() const {
   auto &ctx = ctx_.get();
   unsigned num;
   ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr_.get(), &num));
   return num;
+}
+
+uint64_t Attribute::type_size() const {
+  auto &ctx = ctx_.get();
+  tiledb_datatype_t type;
+  ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
+  return tiledb_datatype_size(type);
 }
 
 Attribute &Attribute::set_cell_val_num(unsigned num) {

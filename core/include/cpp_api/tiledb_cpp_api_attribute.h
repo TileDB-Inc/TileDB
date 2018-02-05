@@ -71,6 +71,12 @@ class Attribute {
   /** Returns the attribute datatype. */
   tiledb_datatype_t type() const;
 
+  /** Returns the size of one cell on this attribute. */
+  uint64_t cell_size() const;
+
+  /** Returns the size (in bytes) of the attribute type. */
+  uint64_t type_size() const;
+
   /** Returns the number of values stored in each cell. */
   unsigned cell_val_num() const;
 

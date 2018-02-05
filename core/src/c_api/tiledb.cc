@@ -61,6 +61,14 @@ unsigned int tiledb_max_path() {
   return tiledb::constants::path_max_len;
 }
 
+uint64_t tiledb_offset_size() {
+  return tiledb::constants::cell_var_offset_size;
+}
+
+uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
+  return tiledb::datatype_size(static_cast<tiledb::Datatype>(type));
+}
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
@@ -812,6 +820,14 @@ int tiledb_attribute_get_cell_val_num(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   *cell_val_num = attr->attr_->cell_val_num();
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_get_cell_size(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *cell_size = attr->attr_->cell_size();
   return TILEDB_OK;
 }
 

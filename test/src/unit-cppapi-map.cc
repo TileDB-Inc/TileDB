@@ -55,6 +55,11 @@ struct CPPMapFx {
     Map::create("cpp_unit_map", schema);
   }
 
+  ~CPPMapFx() {
+    if (vfs.is_dir("cpp_unit_map"))
+      vfs.remove_dir("cpp_unit_map");
+  }
+
   Context ctx;
   VFS vfs;
 };

@@ -48,11 +48,11 @@ int main() {
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};
 
   std::cout << "Upper bound on buffer sizes needed to read subarray:\n";
-  tiledb::ArraySchema schema(ctx, "my_dense_array");
-  auto sizes = tiledb::Array::upper_bound_buffer_sizes(
-      "my_dense_array", schema, subarray);
+  auto sizes =
+      tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
   for (auto n : sizes)
-    std::cout << n << ' ';
+    std::cout << n.first << " " << n.second.first << " " << n.second.second
+              << '\n';
 
   // Init the array & query for the array
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
@@ -83,12 +83,12 @@ int main() {
       a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
   auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
 
-  std::cout << "\n\nResult num: " << buff_sizes[0]
-            << '\n';  // This assumes all attributes were fully read.
-  std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10)
-            << "a3[1]\n";
+  // This assumes all attributes were fully read.
+  std::cout << "\nResult num: " << buff_sizes[0] << "\n";
+  std::cout << setw(5) << "a1" << setw(10) << "a2" << setw(10) << "a3[0]"
+            << setw(10) << "a3[1]\n";
   for (unsigned i = 0; i < buff_sizes[0]; ++i) {
-    std::cout << a1_buff[i] << setw(10)
+    std::cout << setw(5) << a1_buff[i] << setw(10)
               << std::string(a2[i].data(), a2[i].size()) << setw(10) << a3[i][0]
               << setw(10) << a3[i][1] << '\n';
   }
