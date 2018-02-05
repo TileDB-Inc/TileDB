@@ -124,20 +124,21 @@ max_buffer_elements(
   auto attrs = schema.attributes();
   std::vector<const char *> names;
 
-  unsigned nbuffs = 0;
+  unsigned nbuffs = 0, attr_num = 0;
   for (const auto &a : attrs) {
     nbuffs += a.second.cell_val_num() == TILEDB_VAR_NUM ? 2 : 1;
+    ++attr_num;
     names.push_back(a.first.c_str());
+  }
+  if (schema.array_type() == TILEDB_SPARSE) {
+    ++nbuffs;
+    ++attr_num;
+    names.push_back(TILEDB_COORDS);
   }
 
   sizes.resize(nbuffs);
   ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
-      ctx,
-      uri.c_str(),
-      subarray.data(),
-      names.data(),
-      (unsigned)attrs.size(),
-      sizes.data()));
+      ctx, uri.c_str(), subarray.data(), names.data(), attr_num, sizes.data()));
 
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
   unsigned sid = 0;
@@ -150,6 +151,10 @@ max_buffer_elements(
                              sizes[sid] / a.second.type_size(), 0);
     sid += var ? 2 : 1;
   }
+
+  if (schema.array_type() == TILEDB_SPARSE)
+    ret[TILEDB_COORDS] = std::pair<uint64_t, uint64_t>(
+        sizes.back() / tiledb_datatype_size(schema.domain().type()), 0);
 
   return ret;
 }

@@ -45,11 +45,20 @@ int main() {
   using std::setw;
   tiledb::Context ctx;
 
+  const std::vector<uint64_t> subarray = {3, 4, 2, 4};
+
+  std::cout << "Upper bound on buffer elements needed to read subarray:\n";
+  auto sizes =
+      tiledb::Array::max_buffer_elements(ctx, "my_sparse_array", subarray);
+  for (auto n : sizes)
+    std::cout << n.first << ": " << n.second.first << ", " << n.second.second
+              << '\n';
+
   // Init the array & query for the array
   tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
 
   // Set the layout of output, desired attributes, and determine buff sizes
-  query.set_layout(TILEDB_GLOBAL_ORDER).set_subarray<uint64_t>({3, 4, 2, 4});
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
   auto a1_buff = query.make_buffer<int>("a1");
   auto a2_buff = query.make_var_buffers<char>(
       "a2", 3);  // variable sized attr makes a pair of buffs
@@ -60,13 +69,12 @@ int main() {
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coord_buff);
 
-  std::cout << "Query submitted: " << query.submit() << "\n";
+  std::cout << "\nQuery submitted: " << query.submit() << "\n";
 
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes
   // first.
   const auto buff_sizes = query.returned_buff_sizes();
-
   auto a2 = tiledb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
   auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
   auto coords = tiledb::group_by_cell<2>(coord_buff, buff_sizes[4]);

@@ -329,7 +329,7 @@ class Query {
   std::unordered_map<std::string, Attribute> array_attributes_;
 
   /** Attribute names for buffers set by the user for this query. */
-  std::set<std::string> attrs_;
+  std::vector<std::string> attrs_;
 
   /** The attribute names that will be passed to a TileDB C query. */
   std::vector<const char *> attr_names_;
@@ -399,6 +399,8 @@ class Query {
     if (array_attributes_.count(attr)) {
       const auto &a = array_attributes_.at(attr);
       impl::type_check_attr<T>(a, a.cell_val_num());
+    } else if (attr == TILEDB_COORDS) {
+      impl::type_check<T>(schema_.domain().type());
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
@@ -407,7 +409,7 @@ class Query {
         sizeof(typename T::type),
         const_cast<void *>(reinterpret_cast<const void *>(
             buf.data())));  // To enable const char * storage
-    attrs_.insert(attr);
+    attrs_.emplace_back(attr);
     return *this;
   }
 
@@ -438,7 +440,7 @@ class Query {
         sizeof(typename T::type),
         const_cast<void *>(reinterpret_cast<const void *>(
             data.data())));  // To enable const char * storage
-    attrs_.insert(attr);
+    attrs_.emplace_back(attr);
     return *this;
   }
 

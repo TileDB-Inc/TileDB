@@ -47,11 +47,11 @@ int main() {
 
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};
 
-  std::cout << "Upper bound on buffer sizes needed to read subarray:\n";
+  std::cout << "Upper bound on buffer elements needed to read subarray:\n";
   auto sizes =
       tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
   for (auto n : sizes)
-    std::cout << n.first << " " << n.second.first << " " << n.second.second
+    std::cout << n.first << ": " << n.second.first << ", " << n.second.second
               << '\n';
 
   // Init the array & query for the array
