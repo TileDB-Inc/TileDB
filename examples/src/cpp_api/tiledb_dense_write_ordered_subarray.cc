@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_read_ordered_subarray.cc
+ * @file   tiledb_dense_write_ordered_subarray.cc
  *
  * @section LICENSE
  *
@@ -27,36 +27,45 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a dense array, constraining the read
- * to a specific subarray. The cells are copied to the
- * input buffers sorted in row-major order within the selected subarray.
+ * It shows how to write to a dense subarray, providing the array cells ordered
+ * in row-major order within the specified subarray. TileDB will properly
+ * re-organize the cells into the global cell order, prior to writing them
+ * on the disk.
+ *
+ * Make sure that there is no directory named `my_dense_array` in your
+ * current working directory.
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_ordered_subarray
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_dense_write_ordered_subarray_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.set_subarray<uint64_t>({3, 4, 2, 4});
-  query.set_layout(TILEDB_ROW_MAJOR);
-
+  // Prepare cell buffers
   std::vector<int> a1_data = {9, 12, 13, 11, 14, 15};
   std::vector<uint64_t> a2_offsets = {0, 2, 3, 5, 9, 12};
   const std::string a2str = "jjmnnllllooopppp";
   std::vector<float> a3_data = {
       9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
 
+  // Create query
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  query.set_layout(TILEDB_ROW_MAJOR);
+  query.set_subarray<uint64_t>({3, 4, 2, 4});
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
 
+  // Submit query
   query.submit();
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
   return 0;
 }

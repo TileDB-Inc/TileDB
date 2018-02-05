@@ -67,19 +67,21 @@ int main() {
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes
   // first.
-  const auto& buff_sizes = query.returned_buff_sizes();
+  auto buff_sizes = query.result_buffer_elements();
 
   // chunk the continous buffer by cell
   auto a2 = tiledb::group_by_cell(
-      a2_buff, buff_sizes[1], buff_sizes[2]);  // For var size: use offset buff
+      a2_buff,
+      buff_sizes["a2"].first,
+      buff_sizes["a2"].second);  // For var size: use offset buff
   auto a3 = tiledb::group_by_cell<2>(
-      a3_buff, buff_sizes[3]);  // std::vector<std::array<T, 2>>
+      a3_buff, buff_sizes["a3"].first);  // std::vector<std::array<T, 2>>
 
-  std::cout << "Result num: " << buff_sizes[0]
+  std::cout << "Result num: " << buff_sizes["a1"].first
             << '\n';  // This assumes all attributes were fully read.
   std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10)
             << "a3[1]\n";
-  for (unsigned i = 0; i < buff_sizes[0]; ++i) {
+  for (unsigned i = 0; i < buff_sizes["a1"].first; ++i) {
     std::cout << a1_buff[i] << setw(10)
               << std::string(a2[i].data(), a2[i].size()) << setw(10) << a3[i][0]
               << setw(10) << a3[i][1] << '\n';

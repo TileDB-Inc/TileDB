@@ -32,7 +32,7 @@
  *        |_ dense_arrays
  *        |_ sparse_arrays
  *
- * Make sure that no folder with name "my_group" exists in the working
+ * Make sure that no folder with name `my_group` exists in the working
  * directory before running this example.
  */
 

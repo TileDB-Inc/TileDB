@@ -32,8 +32,8 @@
  * This file declares the C++ API for the TileDB Map Item proxies.
  */
 
-#ifndef TILEDB_TILEDB_CPP_API_MAP_PROXY_H_H
-#define TILEDB_TILEDB_CPP_API_MAP_PROXY_H_H
+#ifndef TILEDB_CPP_API_MAP_PROXY_H
+#define TILEDB_CPP_API_MAP_PROXY_H
 
 #include "tiledb_cpp_api_map_item.h"
 
@@ -190,4 +190,4 @@ class MapItemProxy {
 }  // namespace impl
 }  // namespace tdb
 
-#endif  // TILEDB_TILEDB_CPP_API_MAP_PROXY_H_H
+#endif  // TILEDB_CPP_API_MAP_PROXY_H

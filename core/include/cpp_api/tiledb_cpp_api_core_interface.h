@@ -48,10 +48,7 @@ namespace impl {
  * @param query The query to be submitted.
  * @param callback The function to be called when the query completes.
  * @param callback_data Data to pass callback
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- *
- * @note This function essentially opens the array associated with the query.
- *     Some metadata structures are loaded in main memory for this array.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,

@@ -64,7 +64,7 @@ TEST_CASE("C++ API: Utils", "[cppapi]") {
     CHECK(std::string(ret[2].begin(), ret[2].end()) == "ghi");
   }
 
-  SECTION("Ungroup var buffer") {
+  SECTION("Unpack var buffer") {
     auto grouped = group_by_cell(buf, 3);
     auto ungrouped = ungroup_var_buffer(grouped);
     CHECK(ungrouped.first.size() == 3);

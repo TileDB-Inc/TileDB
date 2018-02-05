@@ -31,64 +31,69 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_global
+ * $ ./tiledb_dense_create_cpp
+ * $ ./tiledb_dense_write_global_1_cpp
+ * $ ./tiledb_dense_read_global_cpp
  */
 
-#include <array>
 #include <iomanip>
 #include <tiledb>
 
 int main() {
-  using std::setw;
+  // Create TileDB context
   tiledb::Context ctx;
 
-  // Find out the minimum bounding rectangle
-  tiledb::ArraySchema schema(ctx, "my_dense_array");  // Load schema
-
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> domain;
-  domain = tiledb::Array::non_empty_domain<uint64_t>("my_dense_array", schema);
+  // Print non-empty domain
+  auto domain =
+      tiledb::Array::non_empty_domain<uint64_t>(ctx, "my_dense_array");
   std::cout << "Non empty domain:\n";
-  for (const auto &d : domain) {
+  for (const auto& d : domain) {
     std::cout << d.first << ": (" << d.second.first << ", " << d.second.second
               << ")\n";
   }
 
-  // Init the array & query for the array
+  // Print maximum buffer elements for the query results per attribute
+  const std::vector<uint64_t> subarray = {1, 4, 1, 4};
+  auto max_elements =
+      tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
+  std::cout << "\nMaximum buffer elements:\n";
+  for (const auto& e : max_elements) {
+    std::cout << e.first << ": (" << e.second.first << ", " << e.second.second
+              << ")\n";
+  }
+
+  // Prepare cell buffers
+  std::vector<int> a1_buff(max_elements["a1"].first);
+  std::vector<uint64_t> a2_offsets(max_elements["a2"].first);
+  std::vector<char> a2_data(max_elements["a2"].second);
+  std::vector<float> a3_buff(max_elements["a3"].first);
+
+  // Create query
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
-
-  // Set the layout of output, desired attributes, and determine buff sizes
   query.set_layout(TILEDB_GLOBAL_ORDER);
-
-  // Make buffers
-  auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>(
-      "a2", 3);  // variable sized attr gets a pair of buffs
-  auto a3_buff =
-      query.make_buffer<float>("a3", 1000);  // Limit size to 1000 elements
   query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_buff);
-  std::cout << "\nQuery submitted: " << query.submit() << "\n";
 
-  // Get the number of elements filled in by the query
-  // Order is by attribute. For variable size attrs, the offset_buff comes
-  // first.
-  const auto buff_sizes = query.returned_buff_sizes();
+  // Submit query
+  std::cout << "\nQuery submitted: " << query.submit() << "\n\n";
 
-  // chunk the continuous buffer by cell
-  auto a2 = tiledb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
-  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
+  // Print cell values (assumes all attributes are read)
+  auto result_el = query.result_buffer_elements();
+  auto a2_buff =
+      std::pair<std::vector<uint64_t>, std::vector<char>>(a2_offsets, a2_data);
+  auto a2 = tiledb::group_by_cell(
+      a2_buff, result_el["a2"].first, result_el["a2"].second);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, result_el["a3"].first);
 
-  std::cout << "Result num: " << buff_sizes[0]
-            << '\n';  // This assumes all attributes were fully read.
-  std::cout << "a1" << setw(10) << "a2" << setw(10) << "a3[0]" << setw(10)
-            << "a3[1]\n";
-  for (unsigned i = 0; i < buff_sizes[0]; ++i) {
-    std::cout << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(10) << a3[i][0]
-              << setw(10) << a3[i][1] << '\n';
+  std::cout << "Result num: " << result_el["a1"].first << "\n\n";
+  std::cout << std::setw(5) << "a1" << std::setw(10) << "a2" << std::setw(10)
+            << "a3[0]" << std::setw(11) << "a3[1]\n";
+  std::cout << "-------------------------------------\n";
+  for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+    std::cout << std::setw(5) << a1_buff[i] << std::setw(10)
+              << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
+              << a3[i][0] << std::setw(10) << a3[i][1] << '\n';
   }
 
   return 0;

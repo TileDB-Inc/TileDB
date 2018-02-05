@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Read a Map. Run map_write before this.
+ * Read a Map. Run `tiledb_map_write` before this.
  */
 
 #include <tiledb>

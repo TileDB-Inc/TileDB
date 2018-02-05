@@ -48,7 +48,7 @@ Config::Config(const std::string &filename) {
   create_config();
   tiledb_error_t *err;
   tiledb_config_load_from_file(config_.get(), filename.c_str(), &err);
-  impl::check_error(err);
+  impl::check_config_error(err);
 }
 
 Config::Config(tiledb_config_t **config) {
@@ -73,7 +73,7 @@ Config::operator tiledb_config_t *() const {
 Config &Config::set(const std::string &param, const std::string &value) {
   tiledb_error_t *err;
   tiledb_config_set(config_.get(), param.c_str(), value.c_str(), &err);
-  impl::check_error(err);
+  impl::check_config_error(err);
   return *this;
 }
 
@@ -81,7 +81,7 @@ std::string Config::get(const std::string &param) const {
   const char *val;
   tiledb_error_t *err;
   tiledb_config_get(config_.get(), param.c_str(), &val, &err);
-  impl::check_error(err);
+  impl::check_config_error(err);
 
   return val;
 }
@@ -93,7 +93,7 @@ impl::ConfigProxy Config::operator[](const std::string &param) {
 Config &Config::unset(const std::string &param) {
   tiledb_error_t *err;
   tiledb_config_unset(config_.get(), param.c_str(), &err);
-  impl::check_error(err);
+  impl::check_config_error(err);
 
   return *this;
 }
@@ -106,7 +106,7 @@ void Config::create_config() {
   tiledb_config_t *config;
   tiledb_error_t *err;
   tiledb_config_create(&config, &err);
-  impl::check_error(err);
+  impl::check_config_error(err);
 
   config_ = std::shared_ptr<tiledb_config_t>(config, tiledb_config_free);
 }

@@ -45,8 +45,7 @@ namespace tdb {
 Context::Context() {
   tiledb_ctx_t *ctx;
   if (tiledb_ctx_create(&ctx, nullptr) != TILEDB_OK)
-    throw std::runtime_error(
-        "[TileDB::C++API] Error: Failed to create context");
+    throw TileDBError("[TileDB::C++API] Error: Failed to create context");
   ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, tiledb_ctx_free);
   error_handler_ = default_error_handler;
 }
@@ -54,8 +53,7 @@ Context::Context() {
 Context::Context(const Config &config) {
   tiledb_ctx_t *ctx;
   if (tiledb_ctx_create(&ctx, config) != TILEDB_OK)
-    throw std::runtime_error(
-        "[TileDB::C++API] Error: Failed to create context");
+    throw TileDBError("[TileDB::C++API] Error: Failed to create context");
   ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, tiledb_ctx_free);
   error_handler_ = default_error_handler;
 }

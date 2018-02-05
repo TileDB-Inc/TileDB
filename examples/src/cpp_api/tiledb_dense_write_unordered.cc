@@ -29,40 +29,44 @@
  *
  * It shows how to write random (unordered) cells to a dense array.
  *
- * Make sure that there is no directory named "my_dense_array" in your
+ * Make sure that there is no directory named `my_dense_array` in your
  * current working directory.
  *
  * You need to run the following to make this work:
  *
- * ./tdbpp_dense_create
- * ./tdbpp_dense_write_unordered
+ * ./tdbpp_dense_create_cpp
+ * ./tdbpp_dense_write_unordered_cpp
  */
 
 #include <tiledb>
-#include <tuple>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
 
-  query.set_layout(TILEDB_UNORDERED);
-  query.set_subarray<uint64_t>({{{3, 4}}, {{3, 4}}});
-
+  // Prepare cell buffers
   std::vector<int> a1_data = {211, 213, 212, 208};
-
-  // Make buffers for var size attr
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
-  auto a2buff = tiledb::ungroup_var_buffer(a2);
-
   std::vector<float> a3_data = {
       211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
   std::vector<uint64_t> coords = {4, 2, 3, 4, 3, 3, 3, 1};
 
+  // Creates two buffers: first is the starting offsets, second is the values
+  auto a2_buff = tiledb::ungroup_var_buffer(a2);
+
+  // Create query
+  tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED);
+  query.set_subarray<uint64_t>({{{3, 4}}, {{3, 4}}});
   query.set_buffer("a1", a1_data);
-  query.set_buffer("a2", a2buff);
+  query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_data);
   query.set_buffer(TILEDB_COORDS, coords);
 
+  // Submit query
   query.submit();
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
   return 0;
 }

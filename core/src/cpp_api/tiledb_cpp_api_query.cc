@@ -88,12 +88,22 @@ void Query::submit_async() {
   submit_async([]() {});
 }
 
-std::vector<uint64_t> Query::returned_buff_sizes() const {
-  std::vector<uint64_t> buffsize(buff_sizes_.size());
-  for (size_t i = 0; i < buff_sizes_.size(); ++i) {
-    buffsize[i] = buff_sizes_[i] / sub_tsize_[i];
+std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+Query::result_buffer_elements() const {
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
+  unsigned bid = 0;
+  for (const auto &attr : attrs_) {
+    auto var =
+        (attr != TILEDB_COORDS &&
+         schema_.attribute(attr).cell_val_num() == TILEDB_VAR_NUM);
+    elements[attr] = (var) ? std::pair<uint64_t, uint64_t>(
+                                 buff_sizes_[bid] / sub_tsize_[bid],
+                                 buff_sizes_[bid + 1] / sub_tsize_[bid + 1]) :
+                             std::pair<uint64_t, uint64_t>(
+                                 buff_sizes_[bid] / sub_tsize_[bid], 0);
+    bid += (var) ? 2 : 1;
   }
-  return buffsize;
+  return elements;
 }
 
 void Query::reset_buffers() {

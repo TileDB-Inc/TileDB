@@ -28,10 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Prints the current TileDB version. Program output:
- *
- *     $ ./tiledb_version
- *     TileDB v<major>.<minor>.<rev>
+ * Prints the current TileDB version.
  */
 
 #include <tiledb.h>

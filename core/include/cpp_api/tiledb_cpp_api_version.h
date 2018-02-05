@@ -56,9 +56,9 @@ class Version {
     return minor_;
   }
 
-  /** Returns the revision number. */
-  inline int rev() const {
-    return rev_;
+  /** Returns the patch number. */
+  inline int patch() const {
+    return patch_;
   }
 
   /**
@@ -66,7 +66,7 @@ class Version {
    */
   static Version version() {
     Version ret;
-    tiledb_version(&ret.major_, &ret.minor_, &ret.rev_);
+    tiledb_version(&ret.major_, &ret.minor_, &ret.patch_);
     return ret;
   }
 
@@ -81,13 +81,13 @@ class Version {
   /** Minor number. */
   int minor_;
 
-  /** Revision number. */
-  int rev_;
+  /** Patch number. */
+  int patch_;
 };
 
 /** Prints to an output stream. */
 inline std::ostream &operator<<(std::ostream &os, const Version &v) {
-  os << "TileDB v" << v.major() << '.' << v.minor() << '.' << v.rev();
+  os << "TileDB v" << v.major() << '.' << v.minor() << '.' << v.patch();
   return os;
 }
 

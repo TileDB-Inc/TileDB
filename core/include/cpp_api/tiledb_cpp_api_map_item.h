@@ -1,5 +1,5 @@
 /**
- * @file  tiledb_cpp_api_map_item.cc
+ * @file  tiledb_cpp_api_map_item.h
  *
  * @author Ravi Gaddipati
  *
@@ -32,8 +32,8 @@
  * This file declares the C++ API for the TileDB Map Item object.
  */
 
-#ifndef TILEDB_TILEDB_CPP_API_MAP_ITEM_H
-#define TILEDB_TILEDB_CPP_API_MAP_ITEM_H
+#ifndef TILEDB_CPP_API_MAP_ITEM_H
+#define TILEDB_CPP_API_MAP_ITEM_H
 
 #include "tiledb.h"
 #include "tiledb_cpp_api_attribute.h"
@@ -49,6 +49,7 @@ namespace tdb {
 
 /** Forward declarations. **/
 class Map;
+
 namespace impl {
 class MultiMapItemProxy;
 class MapItemProxy;
@@ -293,4 +294,4 @@ class MapItem {
 
 }  // namespace tdb
 
-#endif  // TILEDB_TILEDB_CPP_API_MAP_ITEM_H
+#endif  // TILEDB_CPP_API_MAP_ITEM_H

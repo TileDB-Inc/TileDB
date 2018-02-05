@@ -44,20 +44,20 @@ void ConfigIter::init(const Config &config) {
   tiledb_error_t *err;
   const char *p = prefix_.size() ? prefix_.c_str() : nullptr;
   tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
-  check_error(err);
+  check_config_error(err);
 
   iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, tiledb_config_iter_free);
 
   // Get first param-value pair
   int done;
   tiledb_config_iter_done(iter_.get(), &done, &err);
-  check_error(err);
+  check_config_error(err);
   if (done == 1) {
     done_ = true;
   } else {
     const char *param, *value;
     tiledb_config_iter_here(iter_.get(), &param, &value, &err);
-    check_error(err);
+    check_config_error(err);
     here_ = std::pair<std::string, std::string>(param, value);
   }
 }
@@ -69,10 +69,10 @@ ConfigIter &ConfigIter::operator++() {
   tiledb_error_t *err;
 
   tiledb_config_iter_next(iter_.get(), &err);
-  check_error(err);
+  check_config_error(err);
 
   tiledb_config_iter_done(iter_.get(), &done, &err);
-  check_error(err);
+  check_config_error(err);
   if (done == 1) {
     done_ = true;
     return *this;
@@ -80,7 +80,7 @@ ConfigIter &ConfigIter::operator++() {
 
   const char *param, *value;
   tiledb_config_iter_here(iter_.get(), &param, &value, &err);
-  check_error(err);
+  check_config_error(err);
   here_ = std::pair<std::string, std::string>(param, value);
   return *this;
 }

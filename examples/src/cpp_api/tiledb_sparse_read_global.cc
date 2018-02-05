@@ -63,17 +63,19 @@ int main() {
   // Get the number of elements filled in by the query
   // Order is by attribute. For variable size attrs, the offset_buff comes
   // first.
-  const auto buff_sizes = query.returned_buff_sizes();
+  auto buff_sizes = query.result_buffer_elements();
 
-  auto a2 = tiledb::group_by_cell(a2_buff, buff_sizes[1], buff_sizes[2]);
-  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes[3]);
-  auto coords = tiledb::group_by_cell<2>(coord_buff, buff_sizes[4]);
+  auto a2 = tiledb::group_by_cell(
+      a2_buff, buff_sizes["a2"].first, buff_sizes["a2"].second);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes["a3"].first);
+  auto coords =
+      tiledb::group_by_cell<2>(coord_buff, buff_sizes[TILEDB_COORDS].first);
 
-  std::cout << "Result num: " << buff_sizes[0]
+  std::cout << "Result num: " << buff_sizes["a1"].first
             << '\n';  // This assumes all attributes were fully read.
   std::cout << "coords" << setw(10) << "a1" << setw(10) << "a2" << setw(10)
             << "a3[0]" << setw(8) << "a3[1]\n";
-  for (unsigned i = 0; i < buff_sizes[0]; ++i) {
+  for (unsigned i = 0; i < buff_sizes["a1"].first; ++i) {
     std::cout << '(' << coords[i][0] << ',' << coords[i][1] << ')' << setw(10)
               << a1_buff[i] << setw(10)
               << std::string(a2[i].data(), a2[i].size()) << setw(8) << '('

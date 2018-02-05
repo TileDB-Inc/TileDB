@@ -120,12 +120,12 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.set_subarray(subarray);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
-      auto ret = query.returned_buff_sizes();
-      REQUIRE(ret.size() == 4);
-      CHECK(ret[0] == 2);
-      CHECK(ret[1] == 2);
-      CHECK(ret[2] == 7);
-      CHECK(ret[3] == 4);
+      auto ret = query.result_buffer_elements();
+      REQUIRE(ret.size() == 3);
+      CHECK(ret["a1"].first == 2);
+      CHECK(ret["a2"].first == 2);
+      CHECK(ret["a2"].second == 7);
+      CHECK(ret["a3"].first == 4);
 
       CHECK(a1[0] == 1);
       CHECK(a1[1] == 2);

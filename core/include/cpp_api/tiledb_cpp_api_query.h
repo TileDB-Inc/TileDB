@@ -116,8 +116,18 @@ class Query {
         ctx, query_.get(), wrapper, nullptr));
   }
 
-  /** Buffer sizes, in number of elements. */
-  std::vector<uint64_t> returned_buff_sizes() const;
+  /**
+   * Returns the number of elements in the result buffers. This is a map
+   * from the attribute name to a pair of values. For a fixed-sized
+   * attribute, the first value in the pair is the number of result
+   * buffer elements, whereas the second is 0 (ignored). For variable-sized
+   * attributes, the first value in the pair is the number of elements
+   * in the offsets buffer, and the second value is the number of elements
+   * in the data buffer.
+   *
+   */
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+  result_buffer_elements() const;
 
   /** Clears all attribute buffers. */
   void reset_buffers();

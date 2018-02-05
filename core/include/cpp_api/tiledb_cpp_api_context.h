@@ -50,10 +50,7 @@ namespace tdb {
 
 class ArraySchema;
 
-/**
- * A TileDB context wraps a TileDB storage manager.
- * Throws `runtime_error` exceptions.
- */
+/** A TileDB context wraps a TileDB storage manager. */
 class Context {
  public:
   /* ********************************* */

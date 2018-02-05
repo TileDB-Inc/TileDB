@@ -69,15 +69,15 @@ void create(const std::string &uri, const ArraySchema &schema);
  * @tparam T Dimension type
  * @param uri array name
  * @param schema array schema
- * @return Map of dim names to a {lower, upper} pair. Inclusive.
- *         Empty map if the array has no data.
+ * @return Vector of dim names with a {lower, upper} pair. Inclusive.
+ *         Empty vector if the array has no data.
  */
 template <typename T, typename DataT = typename impl::type_from_native<T>::type>
-std::unordered_map<std::string, std::pair<T, T>> non_empty_domain(
+std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
     const std::string &uri, const ArraySchema &schema) {
   impl::type_check<DataT>(schema.domain().type());
 
-  std::unordered_map<std::string, std::pair<T, T>> ret;
+  std::vector<std::pair<std::string, std::pair<T, T>>> ret;
 
   auto dims = schema.domain().dimensions();
   std::vector<T> buf(dims.size() * 2);
@@ -89,10 +89,29 @@ std::unordered_map<std::string, std::pair<T, T>> non_empty_domain(
     return ret;
 
   for (size_t i = 0; i < dims.size(); ++i) {
-    ret[dims[i].name()] = std::pair<T, T>(buf[i * 2], buf[(i * 2) + 1]);
+    auto domain = std::pair<T, T>(buf[i * 2], buf[(i * 2) + 1]);
+    ret.push_back(
+        std::pair<std::string, std::pair<T, T>>(dims[i].name(), domain));
   }
 
   return ret;
+}
+
+/**
+ * Get the non-empty domain of an array. This returns the bounding
+ * coordinates for each dimension.
+ *
+ * @tparam T Dimension type
+ * @param ctx The TileDB context.
+ * @param uri Array name.
+ * @return Vector of dim names with a {lower, upper} pair. Inclusive.
+ *         Empty vector if the array has no data.
+ */
+template <typename T, typename DataT = typename impl::type_from_native<T>::type>
+std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
+    const Context &ctx, const std::string &uri) {
+  ArraySchema schema(ctx, uri.c_str());
+  return non_empty_domain<T>(uri, schema);
 }
 
 /**

@@ -93,13 +93,13 @@ class Dimension {
 
   /** Returns the tile extent of the dimension. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type extent()
+  typename std::enable_if<std::is_fundamental<T>::value, T>::type tile_extent()
       const {
-    return extent<typename impl::type_from_native<T>::type>();
+    return tile_extent<typename impl::type_from_native<T>::type>();
   }
 
   /** Returns a string representation of the extent. */
-  std::string extent_to_str() const;
+  std::string tile_extent_to_str() const;
 
   /** Returns a shared pointer to the C TileDB dimension object. */
   std::shared_ptr<tiledb_dimension_t> ptr() const;
@@ -151,19 +151,19 @@ class Dimension {
 
   /** Returns the tile extent of the dimension. */
   template <typename T>
-  typename T::type extent() const {
+  typename T::type tile_extent() const {
     auto tdbtype = type();
     if (T::tiledb_datatype != tdbtype) {
       throw TypeError::create<T>(tdbtype);
     }
-    return *static_cast<typename T::type *>(_extent());
+    return *static_cast<typename T::type *>(_tile_extent());
   };
 
   /** Returns the binary representation of the dimension domain. */
   void *_domain() const;
 
   /** Returns the binary representation of the dimension extent. */
-  void *_extent() const;
+  void *_tile_extent() const;
 
   /* ********************************* */
   /*     PRIVATE STATIC FUNCTIONS      */
@@ -173,26 +173,30 @@ class Dimension {
    * Create a new dimension with a domain datatype of DataT.
    *
    * @tparam DataT tdb::type::*
-   * @param name name of dimension
-   * @param domain bounds of dimension, inclusive coordinates
-   * @param extent Tile length in this dimension
+   * @param name Name of dimension
+   * @param domain Bounds of dimension, inclusive coordinates
+   * @param tile_extent Tile length in this dimension
    */
   template <typename DataT>
   static Dimension create(
       const Context &ctx,
       const std::string &name,
       const std::array<typename DataT::type, 2> &domain,
-      typename DataT::type extent) {
-    return create(ctx, name, DataT::tiledb_datatype, domain.data(), &extent);
+      typename DataT::type tile_extent) {
+    return create(
+        ctx, name, DataT::tiledb_datatype, domain.data(), &tile_extent);
   }
 
-  /** Creates a dimension with the input name, datatype, domain and extent. */
+  /**
+   * Creates a dimension with the input name, datatype, domain and tile
+   * extent.
+   */
   static Dimension create(
       const Context &ctx,
       const std::string &name,
       tiledb_datatype_t type,
       const void *domain,
-      const void *extent);
+      const void *tile_extent);
 };
 
 /* ********************************* */

@@ -29,7 +29,7 @@
  * @section DESCRIPTION
  *
  * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory.
+ * with the name `my_dense_array` in the current working directory.
  */
 
 #include <tiledb.h>
@@ -80,9 +80,9 @@ int main() {
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
   tiledb_array_schema_add_attribute(ctx, array_schema, a3);
 
-  // Check array metadata
+  // Check array schema
   if (tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK) {
-    printf("Invalid array metadata\n");
+    printf("Invalid array schema\n");
     return -1;
   }
 

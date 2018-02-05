@@ -246,7 +246,7 @@ std::vector<T> flatten(const V &vec) {
 namespace impl {
 
 /** Check an error, free, and throw if there is one. **/
-inline void check_error(tiledb_error_t *err) {
+inline void check_config_error(tiledb_error_t *err) {
   if (err != nullptr) {
     const char *msg;
     tiledb_error_message(err, &msg);

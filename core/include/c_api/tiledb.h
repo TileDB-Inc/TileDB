@@ -1301,10 +1301,7 @@ TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param query The query to be submitted.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
- * @note This function essentially opens the array associated with the query.
- *     Some metadata structures are loaded in main memory for this array.
- *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_query_free*.
+ * @note Always invoke `tiledb_query_free` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
@@ -1317,10 +1314,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param callback_data The data to be passed to the callback function.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
- * @note This function essentially opens the array associated with the query.
- *     Some metadata structures are loaded in main memory for this array.
- *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_query_free*.
+ * @note Always invoke `tiledb_query_free` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,

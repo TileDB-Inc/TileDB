@@ -144,8 +144,8 @@ std::string Dimension::domain_to_str() const {
   return ss.str();
 }
 
-std::string Dimension::extent_to_str() const {
-  auto extent = _extent();
+std::string Dimension::tile_extent_to_str() const {
+  auto tile_extent = _tile_extent();
   auto type = this->type();
   char *tc;
   int8_t *ti8;
@@ -163,47 +163,47 @@ std::string Dimension::extent_to_str() const {
 
   switch (type) {
     case TILEDB_CHAR:
-      tc = static_cast<char *>(extent);
+      tc = static_cast<char *>(tile_extent);
       ss << *tc;
       break;
     case TILEDB_INT8:
-      ti8 = static_cast<int8_t *>(extent);
+      ti8 = static_cast<int8_t *>(tile_extent);
       ss << *ti8;
       break;
     case TILEDB_UINT8:
-      tui8 = static_cast<uint8_t *>(extent);
+      tui8 = static_cast<uint8_t *>(tile_extent);
       ss << *tui8;
       break;
     case TILEDB_INT16:
-      ti16 = static_cast<int16_t *>(extent);
+      ti16 = static_cast<int16_t *>(tile_extent);
       ss << *ti16;
       break;
     case TILEDB_UINT16:
-      tui16 = static_cast<uint16_t *>(extent);
+      tui16 = static_cast<uint16_t *>(tile_extent);
       ss << *tui16;
       break;
     case TILEDB_INT32:
-      ti32 = static_cast<int32_t *>(extent);
+      ti32 = static_cast<int32_t *>(tile_extent);
       ss << *ti32;
       break;
     case TILEDB_UINT32:
-      tui32 = static_cast<uint32_t *>(extent);
+      tui32 = static_cast<uint32_t *>(tile_extent);
       ss << *tui32;
       break;
     case TILEDB_INT64:
-      ti64 = static_cast<int64_t *>(extent);
+      ti64 = static_cast<int64_t *>(tile_extent);
       ss << *ti64;
       break;
     case TILEDB_UINT64:
-      tui64 = static_cast<uint64_t *>(extent);
+      tui64 = static_cast<uint64_t *>(tile_extent);
       ss << *tui64;
       break;
     case TILEDB_FLOAT32:
-      tf32 = static_cast<float *>(extent);
+      tf32 = static_cast<float *>(tile_extent);
       ss << *tf32;
       break;
     case TILEDB_FLOAT64:
-      tf64 = static_cast<double *>(extent);
+      tf64 = static_cast<double *>(tile_extent);
       ss << *tf64;
       break;
   }
@@ -222,11 +222,12 @@ void *Dimension::_domain() const {
   return domain;
 }
 
-void *Dimension::_extent() const {
-  void *extent;
+void *Dimension::_tile_extent() const {
+  void *tile_extent;
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_dimension_get_tile_extent(ctx, dim_.get(), &extent));
-  return extent;
+  ctx.handle_error(
+      tiledb_dimension_get_tile_extent(ctx, dim_.get(), &tile_extent));
+  return tile_extent;
 }
 
 /* ********************************* */
@@ -238,10 +239,10 @@ Dimension Dimension::create(
     const std::string &name,
     tiledb_datatype_t type,
     const void *domain,
-    const void *extent) {
+    const void *tile_extent) {
   tiledb_dimension_t *d;
-  ctx.handle_error(
-      tiledb_dimension_create(ctx, &d, name.c_str(), type, domain, extent));
+  ctx.handle_error(tiledb_dimension_create(
+      ctx, &d, name.c_str(), type, domain, tile_extent));
   return Dimension(ctx, d);
 }
 
@@ -251,7 +252,7 @@ Dimension Dimension::create(
 
 std::ostream &operator<<(std::ostream &os, const tdb::Dimension &dim) {
   os << "Dim<" << dim.name() << "," << dim.domain_to_str() << ","
-     << dim.extent_to_str() << ">";
+     << dim.tile_extent_to_str() << ">";
   return os;
 }
 

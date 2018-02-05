@@ -29,34 +29,36 @@
  *
  * It shows how to write to a dense array invoking the write function
  * twice. This will have the same effect as program
- * tiledb_dense_write_entire_1.cc.
+ * `tiledb_dense_write_global_1.cc`.
  *
  * You need to run the following to make this work:
- * ./tdbpp_dense_create
- * ./tdbpp_dense_write_global_2
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_dense_write_global_2_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
 
-  // Buffers
+  // Prepare cell buffers - #1
   std::vector<int> a1_data = {0, 1, 2, 3, 4, 5};
   std::string a2str = "abbcccddddeffggghhhh";
   std::vector<uint64_t> a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   std::vector<float> a3_data = {};
 
-  // Init the array & query for the array
+  // Create query
   tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);
-
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
 
+  // Submit query - #1
   query.submit();
 
+  // Prepare cell buffers - #2
   a1_data = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   a2_offsets = {0, 1, 3, 6, 10, 11, 13, 16};
   a2str = "ijjkkkllllmnnooopppp";
@@ -67,11 +69,16 @@ int main() {
       12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,  // Lower right tile
   };
 
+  // Reset buffers
   query.reset_buffers();
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);
+
+  // Submit query - #2
   query.submit();
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

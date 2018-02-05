@@ -32,8 +32,8 @@
  * This file declares the C++ API for the TileDB Map Iter object.
  */
 
-#ifndef TILEDB_TILEDB_CPP_API_MAP_ITER_H
-#define TILEDB_TILEDB_CPP_API_MAP_ITER_H
+#ifndef TILEDB_CPP_API_MAP_ITER_H
+#define TILEDB_CPP_API_MAP_ITER_H
 
 #include "tiledb.h"
 #include "tiledb_cpp_api_map_item.h"
@@ -120,4 +120,4 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
 }  // namespace impl
 }  // namespace tdb
 
-#endif  // TILEDB_TILEDB_CPP_API_MAP_ITER_H
+#endif  // TILEDB_CPP_API_MAP_ITER_H

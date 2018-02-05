@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for the TileDB Config Iter object.
+ * This file declares the C++ API for the TileDB ConfigIter object.
  */
 
 #ifndef TILEDB_TILEDB_CPP_API_CONFIG_ITER_H

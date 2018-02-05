@@ -56,9 +56,9 @@ int main() {
   do {
     std::cout << "Reading cells...\n";
     query.submit();
-    const auto &buff_sizes = query.returned_buff_sizes();
+    auto buff_sizes = query.result_buffer_elements();
 
-    for (unsigned i = 0; i < buff_sizes[0]; ++i) {
+    for (unsigned i = 0; i < buff_sizes["a1"].first; ++i) {
       std::cout << a1_data[i] << "\n";
     }
   } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);

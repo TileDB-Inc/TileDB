@@ -27,13 +27,18 @@
  *
  * @section DESCRIPTION
  *
- * Print the tiledb version.
+ * Prints the current TileDB version.
  */
 
-#include "tiledb"
+#include <tiledb>
 
 int main() {
-  tiledb::Version version = tiledb::Version::version();
-  std::cout << version << '\n';
+  auto version = tiledb::Version::version();
+  std::cout << "TileDB v" << version.major() << "." << version.minor() << "."
+            << version.patch() << '\n';
+
+  // The following would print the same as above
+  // std::cout << version << '\n';
+
   return 0;
 }

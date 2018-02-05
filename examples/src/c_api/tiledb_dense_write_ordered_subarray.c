@@ -33,41 +33,30 @@
  * re-organize the cells into the global cell order, prior to writing them
  * on the disk.
  *
- * Make sure that there is no directory named "my_dense_array" in your
+ * Make sure that there is no directory named `my_dense_array` in your
  * current working directory.
  *
  * You need to run the following to make it work:
  *
- * ./tiledb_dense_create
- * ./tiledb_dense_write_ordered_subarray
+ * ./tiledb_dense_create_c
+ * ./tiledb_dense_write_ordered_subarray_c
  */
 
 #include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
-
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3"};
 
   // Prepare cell buffers
   int buffer_a1[] = {9, 12, 13, 11, 14, 15};
   uint64_t buffer_a2[] = {0, 2, 3, 5, 9, 12};
   char buffer_var_a2[] = "jjmnnllllooopppp";
-  float buffer_a3[] = {9.1f,
-                       9.2f,
-                       12.1f,
-                       12.2f,
-                       13.1f,
-                       13.2f,
-                       11.1f,
-                       11.2f,
-                       14.1f,
-                       14.2f,
-                       15.1f,
-                       15.2f};
+  float buffer_a3[] = {
+          9.1f, 9.2f, 12.1f, 12.2f, 13.1f, 13.2f,
+          11.1f, 11.2f, 14.1f, 14.2f, 15.1f, 15.2f
+  };
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
@@ -75,15 +64,14 @@ int main() {
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3)};
 
-  // Set subarray
-  uint64_t subarray[] = {3, 4, 2, 4};
-
   // Create query
   tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
 
   // Submit query
   tiledb_query_submit(ctx, query);

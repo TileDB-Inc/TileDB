@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * stream buffer for the tiledb VFS.
+ * File buffer for the TileDB VFS.
  */
 
 #ifndef TILEDB_CPP_API_VFS_FILEBUF_H
@@ -52,7 +52,7 @@ namespace impl {
  *
  * @details
  * This is unbuffered; each write is directly dispatched to TileDB. As such
- * it is recommended to fewer, larger, writes.
+ * it is recommended to issue fewer, larger, writes.
  *
  * @code{.cpp}
  *   tdb::Context ctx;
@@ -72,7 +72,7 @@ class VFSFilebuf : public std::streambuf {
   /**
    * Constructor.
    *
-   * @param vfs tiledb VFS
+   * @param vfs Tiledb VFS
    */
   explicit VFSFilebuf(const VFS &vfs)
       : vfs_(vfs)

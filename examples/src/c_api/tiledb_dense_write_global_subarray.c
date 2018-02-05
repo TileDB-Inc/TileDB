@@ -29,24 +29,21 @@
  * @section DESCRIPTION
  *
  * It shows how to write a dense subarray in the global cell order.
- * Make sure that there is not directory named "my_dense_array" in your current
+ * Make sure that there is not directory named `my_dense_array` in your current
  * working directory.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_dense_create
- * ./tiledb_dense_write_global_subarray
+ * ./tiledb_dense_create_c
+ * ./tiledb_dense_write_global_subarray_c
  */
 
 #include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
-
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3"};
 
   // Prepare cell buffers
   int buffer_a1[] = {112, 113, 114, 115};
@@ -61,15 +58,14 @@ int main() {
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3)};
 
-  // Set subarray
-  uint64_t subarray[] = {3, 4, 3, 4};
-
   // Create query
   tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t subarray[] = {3, 4, 3, 4};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
+  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
   // Submit query
   tiledb_query_submit(ctx, query);

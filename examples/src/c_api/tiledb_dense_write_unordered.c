@@ -30,24 +30,21 @@
  *
  * It shows how to write random (unordered) cells to a dense array.
  *
- * Make sure that there is no directory named "my_dense_array" in your
+ * Make sure that there is no directory named `my_dense_array` in your
  * current working directory.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_dense_create
- * ./tiledb_dense_write_unordered
+ * ./tiledb_dense_create_c
+ * ./tiledb_dense_write_unordered_c
  */
 
 #include <tiledb.h>
 
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
-
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
 
   // Prepare cell buffers
   int buffer_a1[] = {211, 213, 212, 208};
@@ -67,6 +64,7 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);

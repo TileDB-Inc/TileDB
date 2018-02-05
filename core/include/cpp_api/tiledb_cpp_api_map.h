@@ -1,5 +1,5 @@
 /**
- * @file  tiledb_cpp_api_map.cc
+ * @file  tiledb_cpp_api_map.h
  *
  * @author Ravi Gaddipati
  *
@@ -31,8 +31,8 @@
  *
  * This file declares the C++ API for the TileDB Map object.
  */
-#ifndef TILEDB_TILEDB_CPP_API_MAP_H
-#define TILEDB_TILEDB_CPP_API_MAP_H
+#ifndef TILEDB_CPP_API_MAP_H
+#define TILEDB_CPP_API_MAP_H
 
 #include "tiledb_cpp_api_context.h"
 #include "tiledb_cpp_api_deleter.h"
@@ -96,8 +96,10 @@ class Map {
     return create_item_impl(ctx, key);
   }
 
-  /** Get an item from the map given a key. Throws TileDBError on missing key.
-   * **/
+  /**
+   * Get an item from the map given a key. Throws `TileDBError` on missing
+   * key.
+   */
   template <typename T>
   MapItem get_item(const T &key) {
     tiledb_kv_item_t *item = get_impl<T>(key);
@@ -125,8 +127,10 @@ class Map {
     return MapItem(schema_.context(), &item, this);
   }
 
-  /** Add an item to the map. This populates the map with the key and attribute
-   * values. **/
+  /**
+   * Add an item to the map. This populates the map with the key and attribute
+   * values.
+   */
   void add_item(const MapItem &item) {
     auto &ctx = schema_.context();
     ctx.handle_error(tiledb_kv_add_item(ctx, kv_.get(), item.ptr().get()));
@@ -166,7 +170,7 @@ class Map {
     return i;
   }
 
-  /** Iterate over keys of type T **/
+  /** Iterate over keys of type T */
   template <typename T>
   iterator begin() {
     iterator i(*this);
@@ -289,4 +293,4 @@ Map &operator<<(Map &map, const MapItem &item);
 
 }  // namespace tdb
 
-#endif  // TILEDB_TILEDB_CPP_API_MAP_H
+#endif  // TILEDB_CPP_API_MAP_H

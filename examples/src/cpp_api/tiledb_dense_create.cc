@@ -28,38 +28,48 @@
  * @section DESCRIPTION
  *
  * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * with the name `my_dense_array` in the current working directory.
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
 
-  tiledb::Domain domain(ctx);
-  tiledb::Dimension d1 =
-      tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  tiledb::Dimension d2 =
-      tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
-  domain << d1 << d2;  // Add dims to domain
+  // Create dimensions
+  auto d1 = tiledb::Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  auto d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
 
+  // Create domain
+  tiledb::Domain domain(ctx);
+  domain << d1 << d2;
+
+  // Create attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
   tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
   tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
-
   a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
+  // Create array schema
   tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  schema << domain << a1 << a2 << a3;  // Add attributes to array
+  schema << domain << a1 << a2 << a3;
 
-  // Check the schema, and make the array.
+  // Check array schema
+  try {
+    schema.check();
+  } catch (tiledb::TileDBError &e) {
+    std::cout << e.what() << "\n";
+    return -1;
+  }
+
+  // Create array
   tiledb::Array::create("my_dense_array", schema);
 
-  std::cout << schema << std::endl;
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }
