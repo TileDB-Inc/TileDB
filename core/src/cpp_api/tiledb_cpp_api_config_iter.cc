@@ -47,7 +47,19 @@ void ConfigIter::init(const Config &config) {
   check_error(err);
 
   iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, tiledb_config_iter_free);
-  operator++();
+
+  // Get first param-value pair
+  int done;
+  tiledb_config_iter_done(iter_.get(), &done, &err);
+  check_error(err);
+  if (done == 1) {
+    done_ = true;
+  } else {
+    const char *param, *value;
+    tiledb_config_iter_here(iter_.get(), &param, &value, &err);
+    check_error(err);
+    here_ = std::pair<std::string, std::string>(param, value);
+  }
 }
 
 ConfigIter &ConfigIter::operator++() {

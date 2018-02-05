@@ -48,7 +48,7 @@ namespace impl {
 struct ConfigProxy;
 }
 
-/** Carries configuration parameters that will be passed to a Context object. */
+/** Carries configuration parameters. */
 class Config {
  public:
   using iterator = impl::ConfigIter;
@@ -63,7 +63,7 @@ class Config {
    * Constructor that takes as input a filename (URI) that stores the config
    * parameters. The file must have the following (text) format:
    *
-   * parameter value
+   * <parameter> <value>
    *
    * Anything following a `#` character is considered a comment and, thus, is
    * ignored.
@@ -75,6 +75,7 @@ class Config {
    */
   explicit Config(const std::string &filename);
 
+  /** Constructor from a C config object. */
   explicit Config(tiledb_config_t **config);
 
   /* ********************************* */
@@ -115,6 +116,12 @@ class Config {
    *    The connection timeout in ms. Any `long` value is acceptable.
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable.
+   * - `vfs.hdfs.name_node"` <br>
+   *    Name node for HDFS.
+   * - `vfs.hdfs.username` <br>
+   *    HDFS username.
+   * - `vfs.hdfs.kerb_ticket_cache_path` <br>
+   *    HDFS kerb ticket cache path.
    */
   Config &set(const std::string &param, const std::string &value);
 
@@ -125,6 +132,7 @@ class Config {
    */
   std::string get(const std::string &param) const;
 
+  /** Enables setting parameters with `[]`. */
   impl::ConfigProxy operator[](const std::string &param);
 
   /** Unsets a config parameter. */
@@ -135,7 +143,7 @@ class Config {
     return iterator{*this, prefix, false};
   }
 
-  /** Iterate over some params. **/
+  /** Iterate over all params. **/
   iterator begin() {
     return iterator{*this, "", false};
   }
@@ -163,7 +171,7 @@ class Config {
 
 namespace impl {
 
-/** Proxy to set params via operator[] **/
+/** Proxy to set params via operator `[]`. */
 struct ConfigProxy {
   ConfigProxy(Config &conf, std::string param)
       : conf(conf)

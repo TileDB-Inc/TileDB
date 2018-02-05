@@ -99,7 +99,7 @@ tdb::Attribute tdb::MapSchema::attribute(const std::string &name) const {
   return {ctx, attr};
 }
 
-unsigned tdb::MapSchema::num_attributes() const {
+unsigned tdb::MapSchema::attribute_num() const {
   auto &ctx = context();
   unsigned num;
   ctx.handle_error(

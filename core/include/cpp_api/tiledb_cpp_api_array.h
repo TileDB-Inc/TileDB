@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for the TileDB arrays.
+ * This file declares the C++ API for TileDB array operations.
  */
 
 #ifndef TILEDB_CPP_API_ARRAY_H

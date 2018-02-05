@@ -47,8 +47,8 @@ int main() {
   schema.set_capacity(10);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
-  schema.set_coord_compressor({TILEDB_ZSTD, 4});
-  schema.set_offset_compressor({TILEDB_BLOSC, 5});
+  schema.set_coords_compressor({TILEDB_ZSTD, 4});
+  schema.set_offsets_compressor({TILEDB_BLOSC, 5});
 
   std::cout << "Second dump:\n";
   schema.dump(stdout);
@@ -75,8 +75,8 @@ int main() {
             << "\n- Cell order: " << schema.cell_order()
             << "\n- Tile order: " << schema.tile_order()
             << "\n- Capacity: " << schema.capacity()
-            << "\n- Coordinate compressor: " << schema.coord_compressor()
-            << "\n- Offsets compressor: " << schema.offset_compressor();
+            << "\n- Coordinate compressor: " << schema.coords_compressor()
+            << "\n- Offsets compressor: " << schema.offsets_compressor();
 
   std::cout << "\nAttribute names:";
   for (const auto &a : schema.attributes())

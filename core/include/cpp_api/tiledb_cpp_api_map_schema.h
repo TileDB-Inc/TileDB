@@ -98,7 +98,7 @@ class MapSchema : public Schema {
   Attribute attribute(const std::string &name) const override;
 
   /** Number of attributes **/
-  unsigned num_attributes() const override;
+  unsigned attribute_num() const override;
 
   /** Get an attribute by index **/
   Attribute attribute(unsigned int i) const override;

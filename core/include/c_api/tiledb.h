@@ -361,6 +361,12 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
  *    The connection timeout in ms. Any `long` value is acceptable.
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable.
+ * - `vfs.hdfs.name_node"` <br>
+ *    Name node for HDFS.
+ * - `vfs.hdfs.username` <br>
+ *    HDFS username.
+ * - `vfs.hdfs.kerb_ticket_cache_path` <br>
+ *    HDFS kerb ticket cache path.
  *
  * @param config The config object.
  * @param param The parameter to be set.

@@ -89,11 +89,8 @@ class ConfigIter : public std::iterator<
 
  private:
   /* ********************************* */
-  /*          PRIVATE METHODS          */
+  /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** Init the iterator object **/
-  void init(const Config &config);
 
   /** Prefix of parameters to match. **/
   std::string prefix_;
@@ -106,6 +103,13 @@ class ConfigIter : public std::iterator<
 
   /** If iter is done. **/
   bool done_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Init the iterator object **/
+  void init(const Config &config);
 };
 
 }  // namespace impl

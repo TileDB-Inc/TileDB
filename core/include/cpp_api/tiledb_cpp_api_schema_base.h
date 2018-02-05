@@ -87,7 +87,7 @@ class Schema {
       const = 0;
 
   /** Number of attributes **/
-  virtual unsigned num_attributes() const = 0;
+  virtual unsigned attribute_num() const = 0;
 
   /** Get an attribute by name. **/
   virtual Attribute attribute(const std::string &name) const = 0;

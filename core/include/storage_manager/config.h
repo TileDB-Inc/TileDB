@@ -129,7 +129,39 @@ class Config {
   /** Returns the S3 parameters. */
   S3Params s3_params() const;
 
-  /** Sets a config parameter. */
+  /** Sets a config parameter.
+   *
+   * **Parameters**
+   *
+   * - `sm.tile_cache_size` <br>
+   *    The tile cache size in bytes. Any `uint64_t` value is acceptable.
+   * - `sm.array_schema_cache_size` <br>
+   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
+   * - `sm.fragment_metadata_cache_size` <br>
+   *    The fragment metadata cache size in bytes. Any `uint64_t` value is
+   *    acceptable.
+   * - `vfs.s3.region` <br>
+   *    The S3 region, if S3 is enabled.
+   * - `vfs.s3.scheme` <br>
+   *    The S3 scheme (`http` or `https`), if S3 is enabled.
+   * - `vfs.s3.endpoint_override` <br>
+   *    The S3 endpoint, if S3 is enabled.
+   * - `vfs.s3.use_virtual_addressing` <br>
+   *    The S3 use of virtual addressing (`true` or `false`), if S3 is enabled.
+   * - `vfs.s3.file_buffer_size` <br>
+   *    The file buffer size (in bytes) used in S3 writes, if S3 is enables. Any
+   *    `uint64_t` value is acceptable.
+   * - `vfs.s3.connect_timeout_ms` <br>
+   *    The connection timeout in ms. Any `long` value is acceptable.
+   * - `vfs.s3.request_timeout_ms` <br>
+   *    The request timeout in ms. Any `long` value is acceptable.
+   * - `vfs.hdfs.name_node"` <br>
+   *    Name node for HDFS.
+   * - `vfs.hdfs.username` <br>
+   *    HDFS username.
+   * - `vfs.hdfs.kerb_ticket_cache_path` <br>
+   *    HDFS kerb ticket cache path.
+   */
   Status set(const std::string& param, const std::string& value);
 
   /** Gets a config parameter value (`nullptr` if `param` does not exist). */

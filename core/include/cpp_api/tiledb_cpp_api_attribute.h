@@ -71,7 +71,7 @@ class Attribute {
   /** Returns the attribute datatype. */
   tiledb_datatype_t type() const;
 
-  /** Returns the size of one cell on this attribute. */
+  /** Returns the size (in bytes) of one cell on this attribute. */
   uint64_t cell_size() const;
 
   /** Returns the size (in bytes) of the attribute type. */
@@ -155,7 +155,7 @@ class Attribute {
 /*               MISC                */
 /* ********************************* */
 
-/** Get a string representation of an attribute for an output stream. */
+/** Gets a string representation of an attribute for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Attribute &a);
 
 namespace impl {

@@ -50,7 +50,7 @@ namespace tdb {
 
 /**
  * Schema describing an array. The schema describes all information
- * about an array including memory ordering, types, and compression
+ * about an array including cell/tile layout, data types, and compression
  * details.
  */
 class ArraySchema : public Schema {
@@ -76,12 +76,6 @@ class ArraySchema : public Schema {
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
   operator tiledb_array_schema_t *() const;
-
-  /** Returns the input array type in string format. */
-  static std::string to_str(tiledb_array_type_t type);
-
-  /** Returns the input layout in string format. */
-  static std::string to_str(tiledb_layout_t layout);
 
   /** Dumps the array schema in an ASCII representation to an output. */
   void dump(FILE *out = stdout) const override;
@@ -115,16 +109,16 @@ class ArraySchema : public Schema {
   ArraySchema &set_cell_order(tiledb_layout_t layout);
 
   /** Returns the compressor of the coordinates. */
-  Compressor coord_compressor() const;
+  Compressor coords_compressor() const;
 
   /** Sets the compressor for the coordinates. */
-  ArraySchema &set_coord_compressor(const Compressor &c);
+  ArraySchema &set_coords_compressor(const Compressor &c);
 
   /** Returns the compressor of the offsets. */
-  Compressor offset_compressor() const;
+  Compressor offsets_compressor() const;
 
   /** Sets the compressor for the offsets. */
-  ArraySchema &set_offset_compressor(const Compressor &c);
+  ArraySchema &set_offsets_compressor(const Compressor &c);
 
   /** Retruns the array domain of array. */
   Domain domain() const;
@@ -144,14 +138,24 @@ class ArraySchema : public Schema {
   /** Gets all attributes in the array. */
   const std::unordered_map<std::string, Attribute> attributes() const override;
 
-  /** Get an attribute by name. **/
+  /** Gets an attribute by name. **/
   Attribute attribute(const std::string &name) const override;
 
   /** Number of attributes. **/
-  unsigned num_attributes() const override;
+  unsigned attribute_num() const override;
 
   /** Get an attribute by index **/
   Attribute attribute(unsigned int i) const override;
+
+  /* ********************************* */
+  /*         STATIC FUNCTIONS          */
+  /* ********************************* */
+
+  /** Returns the input array type in string format. */
+  static std::string to_str(tiledb_array_type_t type);
+
+  /** Returns the input layout in string format. */
+  static std::string to_str(tiledb_layout_t layout);
 
  private:
   /* ********************************* */

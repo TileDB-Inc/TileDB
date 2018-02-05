@@ -55,14 +55,14 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     schema << a1 << a2 << a3;
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
-    schema.set_offset_compressor({TILEDB_DOUBLE_DELTA, -1});
-    schema.set_coord_compressor({TILEDB_ZSTD, -1});
+    schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
+    schema.set_coords_compressor({TILEDB_ZSTD, -1});
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);
     CHECK(attrs.count("a2") == 1);
     CHECK(attrs.count("a3") == 1);
-    REQUIRE(schema.num_attributes() == 3);
+    REQUIRE(schema.attribute_num() == 3);
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
@@ -89,7 +89,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(attrs.count("a1") == 1);
     CHECK(attrs.count("a2") == 1);
     CHECK(attrs.count("a3") == 1);
-    REQUIRE(schema.num_attributes() == 3);
+    REQUIRE(schema.attribute_num() == 3);
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");

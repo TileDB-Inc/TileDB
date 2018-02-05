@@ -74,7 +74,7 @@ tiledb_array_type_t ArraySchema::array_type() const {
   return type;
 }
 
-Compressor ArraySchema::coord_compressor() const {
+Compressor ArraySchema::coords_compressor() const {
   auto &ctx = ctx_.get();
   tiledb_compressor_t compressor;
   int level;
@@ -84,14 +84,14 @@ Compressor ArraySchema::coord_compressor() const {
   return cmp;
 }
 
-ArraySchema &ArraySchema::set_coord_compressor(const Compressor &c) {
+ArraySchema &ArraySchema::set_coords_compressor(const Compressor &c) {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_array_schema_set_coords_compressor(
       ctx, schema_.get(), c.compressor(), c.level()));
   return *this;
 }
 
-Compressor ArraySchema::offset_compressor() const {
+Compressor ArraySchema::offsets_compressor() const {
   auto &ctx = ctx_.get();
   tiledb_compressor_t compressor;
   int level;
@@ -101,7 +101,7 @@ Compressor ArraySchema::offset_compressor() const {
   return cmp;
 }
 
-ArraySchema &ArraySchema::set_offset_compressor(const Compressor &c) {
+ArraySchema &ArraySchema::set_offsets_compressor(const Compressor &c) {
   auto &ctx = ctx_.get();
   ctx.handle_error(tiledb_array_schema_set_offsets_compressor(
       ctx, schema_.get(), c.compressor(), c.level()));
@@ -272,7 +272,7 @@ Attribute ArraySchema::attribute(const std::string &name) const {
   return Attribute(ctx, attr);
 }
 
-unsigned ArraySchema::num_attributes() const {
+unsigned ArraySchema::attribute_num() const {
   auto &ctx = ctx_.get();
   unsigned num;
   ctx.handle_error(
