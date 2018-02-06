@@ -33,18 +33,21 @@
  * program shows how to handle incomplete queries that did not complete
  * because the input buffers were not big enough to hold the entire
  * result.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_1_c
+ * $ ./tiledb_dense_read_subset_incomplete_c
  */
 
-#include <tiledb.h>
 #include <stdio.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
-
-  // Attributes to subset on
-  const char* attributes[] = {"a1"};
 
   // Prepare cell buffers
   int buffer_a1[2];
@@ -52,15 +55,16 @@ int main() {
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
   // Create query
-  uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_t* query;
+  const char* attributes[] = {"a1"};
+  uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
+  tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
 
   // Loop until the query is completed
-  printf(" a1\n----\n");
+  printf("a1\n---\n");
   tiledb_query_status_t status;
   do {
     printf("Reading cells...\n");
@@ -69,7 +73,7 @@ int main() {
     // Print cell values
     uint64_t result_num = buffer_sizes[0] / sizeof(int);
     for (uint64_t i = 0; i < result_num; ++i)
-      printf("%3d\n", buffer_a1[i]);
+      printf("%d\n", buffer_a1[i]);
 
     // Get status
     tiledb_query_get_attribute_status(ctx, query, "a1", &status);

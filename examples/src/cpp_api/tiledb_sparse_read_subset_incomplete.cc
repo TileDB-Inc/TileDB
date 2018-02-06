@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_dense_read_subset_incomplete.cc
+ * @file   tiledb_sparse_read_subset_incomplete.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a dense array, constraining the read
+ * It shows how to read from a sparse array, constraining the read
  * to a specific subarray and a subset of attributes. Moreover, the
  * program shows how to handle incomplete queries that did not complete
  * because the input buffers were not big enough to hold the entire
@@ -35,12 +35,11 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create_cpp
- * $ ./tiledb_dense_write_global_1_cpp
- * $ ./tiledb_dense_read_subset_incomplete_cpp
+ * $ ./tiledb_sparse_create_cpp
+ * $ ./tiledb_sparse_write_global_1_cpp
+ * $ ./tiledb_sparse_read_subset_incomplete_cpp
  */
 
-#include <iomanip>
 #include <tiledb>
 
 int main() {
@@ -51,7 +50,7 @@ int main() {
   std::vector<int> a1_data(2);
 
   // Create query
-  tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
   query.set_layout(TILEDB_COL_MAJOR);
   query.set_subarray<uint64_t>({3, 4, 2, 4});
   query.set_buffer("a1", a1_data);

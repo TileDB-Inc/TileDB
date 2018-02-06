@@ -35,8 +35,8 @@
  * $ ./tiledb_kv_write
  */
 
-#include <tiledb.h>
 #include <string.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context

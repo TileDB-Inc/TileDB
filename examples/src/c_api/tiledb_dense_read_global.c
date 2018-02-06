@@ -56,17 +56,18 @@ int main() {
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
-  tiledb_array_compute_max_read_buffer_sizes(ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
+  tiledb_array_compute_max_read_buffer_sizes(
+      ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
   printf("Maximum buffer sizes:\n");
   printf("a1: %llu\n", buffer_sizes[0]);
   printf("a2: (%llu, %llu)\n", buffer_sizes[1], buffer_sizes[2]);
   printf("a3: %llu\n\n", buffer_sizes[3]);
 
   // Prepare cell buffers
-  int buffer_a1[buffer_sizes[0]/sizeof(int)];
-  uint64_t buffer_a2[buffer_sizes[1]/sizeof(uint64_t)];
-  char buffer_var_a2[buffer_sizes[2]/sizeof(char)];
-  float buffer_a3[buffer_sizes[3]/sizeof(float)];
+  int buffer_a1[buffer_sizes[0] / sizeof(int)];
+  uint64_t buffer_a2[buffer_sizes[1] / sizeof(uint64_t)];
+  char buffer_var_a2[buffer_sizes[2] / sizeof(char)];
+  float buffer_a3[buffer_sizes[3] / sizeof(float)];
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
 
   // Create query

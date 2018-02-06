@@ -34,9 +34,9 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_sparse_create
- * $ ./tiledb_sparse_write_global_1
- * $ ./tiledb_sparse_read_ordered_subarray
+ * $ ./tiledb_sparse_create_c
+ * $ ./tiledb_sparse_write_global_1_c
+ * $ ./tiledb_sparse_read_ordered_subarray_c
  */
 
 #include <tiledb.h>
@@ -46,51 +46,48 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Set attributes
+  // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t buffer_sizes[5];
+  uint64_t subarray[] = {3, 4, 2, 4};
+  tiledb_array_compute_max_read_buffer_sizes(
+      ctx, "my_sparse_array", subarray, attributes, 4, &buffer_sizes[0]);
 
   // Prepare cell buffers
-  int buffer_a1[10];
-  uint64_t buffer_a2[10];
-  char buffer_var_a2[30];
-  float buffer_a3[20];
-  uint64_t buffer_coords[20];
+  int buffer_a1[buffer_sizes[0] / sizeof(int)];
+  uint64_t buffer_a2[buffer_sizes[1] / sizeof(uint64_t)];
+  char buffer_var_a2[buffer_sizes[2] / sizeof(char)];
+  float buffer_a3[buffer_sizes[3] / sizeof(float)];
+  uint64_t buffer_coords[buffer_sizes[4] / sizeof(uint64_t)];
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2),
-                             sizeof(buffer_a3),
-                             sizeof(buffer_coords)};
-
-  // Set subarray
-  uint64_t subarray[] = {3, 4, 2, 4};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Print cell values
+  // Print cell values (assumes all attributes are read)
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", (unsigned long long)result_num);
-  printf("coords\t  a1\t   a2\t      (a3.first, a3.second)\n");
-  printf("---------------------------------------------------\n");
+  printf("Result num: %llu\n\n", (unsigned long long)result_num);
+  printf("%8s%9s%9s%11s%10s\n", TILEDB_COORDS, "a1", "a2", "a3[0]", "a3[1]");
+  printf("-------------------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {
     printf(
         "(%lld, %lld)",
         (long long int)buffer_coords[2 * i],
         (long long int)buffer_coords[2 * i + 1]);
-    printf("\t %3d", buffer_a1[i]);
-    size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
-                                              buffer_sizes[2] - buffer_a2[i];
-    printf("\t %4.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
+    printf("%10d", buffer_a1[i]);
+    uint64_t var_size = (i != result_num - 1) ?
+                            buffer_a2[i + 1] - buffer_a2[i] :
+                            buffer_sizes[2] - buffer_a2[i];
+    printf("%10.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
+    printf("%10.1f%10.1f\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
   // Clean up

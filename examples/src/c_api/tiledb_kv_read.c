@@ -36,9 +36,8 @@
  * $ ./tiledb_kv_read
  */
 
-#include <tiledb.h>
 #include <assert.h>
-
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
@@ -82,7 +81,7 @@ int main() {
   printf("-----------------------------\n");
   printf("%d", *((const int*)a1));
   printf(", %.*s", (int)a2_size, (const char*)a2);
-  printf( ", (%f, %f)\n", ((const float*)a3)[0], ((const float*)a3)[1]);
+  printf(", (%f, %f)\n", ((const float*)a3)[0], ((const float*)a3)[1]);
 
   // Clean up
   tiledb_kv_close(ctx, kv);

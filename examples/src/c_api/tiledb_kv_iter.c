@@ -132,8 +132,9 @@ void print(const void* v, tiledb_datatype_t type, uint64_t size) {
       printf("\b, char");
       break;
     default:
-      printf("Other types than int32, float32, float64 and char are not "
-                   "supported in this example. It should be trivial "
-                   "to extend to other types following this example\n");
+      printf(
+          "Other types than int32, float32, float64 and char are not "
+          "supported in this example. It should be trivial "
+          "to extend to other types following this example\n");
   }
 }

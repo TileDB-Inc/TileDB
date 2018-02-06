@@ -32,8 +32,8 @@
  * with the name `my_dense_array` in the current working directory.
  */
 
-#include <tiledb.h>
 #include <stdio.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context

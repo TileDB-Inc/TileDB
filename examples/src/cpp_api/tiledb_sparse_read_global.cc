@@ -40,47 +40,69 @@
 #include <tiledb>
 
 int main() {
-  using std::setw;
+  // Create TileDB context
   tiledb::Context ctx;
 
-  // Init the array & query for the array
-  tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
-
-  // Set the layout of output, desired attributes, and determine buff sizes
-  query.set_layout(TILEDB_GLOBAL_ORDER);
-  auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>(
-      "a2", 3);  // variable sized attr makes a pair of buffs
-  auto a3_buff = query.make_buffer<float>("a3");  // 2 floats per cell
-  auto coord_buff = query.make_buffer<uint64_t>(TILEDB_COORDS);
-  query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_buff);
-  query.set_buffer("a3", a3_buff);
-  query.set_buffer(TILEDB_COORDS, coord_buff);
-
-  std::cout << "Query submitted: " << query.submit() << "\n";
-
-  // Get the number of elements filled in by the query
-  // Order is by attribute. For variable size attrs, the offset_buff comes
-  // first.
-  auto buff_sizes = query.result_buffer_elements();
-
-  auto a2 = tiledb::group_by_cell(
-      a2_buff, buff_sizes["a2"].first, buff_sizes["a2"].second);
-  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes["a3"].first);
-  auto coords =
-      tiledb::group_by_cell<2>(coord_buff, buff_sizes[TILEDB_COORDS].first);
-
-  std::cout << "Result num: " << buff_sizes["a1"].first
-            << '\n';  // This assumes all attributes were fully read.
-  std::cout << "coords" << setw(10) << "a1" << setw(10) << "a2" << setw(10)
-            << "a3[0]" << setw(8) << "a3[1]\n";
-  for (unsigned i = 0; i < buff_sizes["a1"].first; ++i) {
-    std::cout << '(' << coords[i][0] << ',' << coords[i][1] << ')' << setw(10)
-              << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(8) << '('
-              << a3[i][0] << ',' << setw(5) << a3[i][1] << ')' << '\n';
+  // Print non-empty domain
+  auto domain =
+      tiledb::Array::non_empty_domain<uint64_t>(ctx, "my_sparse_array");
+  std::cout << "Non empty domain:\n";
+  for (const auto& d : domain) {
+    std::cout << d.first << ": (" << d.second.first << ", " << d.second.second
+              << ")\n";
   }
+
+  // Print maximum buffer elements for the query results per attribute
+  const std::vector<uint64_t> subarray = {1, 4, 1, 4};
+  auto max_elements =
+      tiledb::Array::max_buffer_elements(ctx, "my_sparse_array", subarray);
+  std::cout << "\nMaximum buffer elements:\n";
+  for (const auto& e : max_elements) {
+    std::cout << e.first << ": (" << e.second.first << ", " << e.second.second
+              << ")\n";
+  }
+
+  // Prepare cell buffers
+  std::vector<int> a1_buff(max_elements["a1"].first);
+  std::vector<uint64_t> a2_offsets(max_elements["a2"].first);
+  std::vector<char> a2_data(max_elements["a2"].second);
+  std::vector<float> a3_buff(max_elements["a3"].first);
+  std::vector<uint64_t> coords_buff(max_elements[TILEDB_COORDS].first);
+
+  // Create query
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_buffer("a1", a1_buff);
+  query.set_buffer("a2", a2_offsets, a2_data);
+  query.set_buffer("a3", a3_buff);
+  query.set_buffer(TILEDB_COORDS, coords_buff);
+
+  // Submit query
+  std::cout << "\nQuery submitted: " << query.submit() << "\n\n";
+
+  // Print cell values (assumes all attributes are read)
+  auto result_el = query.result_buffer_elements();
+  auto a2_buff =
+      std::pair<std::vector<uint64_t>, std::vector<char>>(a2_offsets, a2_data);
+  auto a2 = tiledb::group_by_cell(
+      a2_buff, result_el["a2"].first, result_el["a2"].second);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, result_el["a3"].first);
+  auto coords =
+      tiledb::group_by_cell<2>(coords_buff, result_el[TILEDB_COORDS].first);
+
+  std::cout << "Result num: " << result_el["a1"].first << "\n\n";
+  std::cout << std::setw(8) << TILEDB_COORDS << std::setw(9) << "a1"
+            << std::setw(9) << "a2" << std::setw(11) << "a3[0]" << std::setw(10)
+            << "a3[1]\n";
+  std::cout << "------------------------------------------------\n";
+  for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+    std::cout << "(" << coords[i][0] << ", " << coords[i][1] << ")"
+              << std::setw(10) << a1_buff[i] << std::setw(10)
+              << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
+              << a3[i][0] << std::setw(10) << a3[i][1] << '\n';
+  }
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

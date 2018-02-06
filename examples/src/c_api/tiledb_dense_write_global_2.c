@@ -37,8 +37,8 @@
  * ./tiledb_dense_write_global_2_c
  */
 
-#include <tiledb.h>
 #include <stdio.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context

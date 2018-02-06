@@ -34,58 +34,55 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_ordered_subarray
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_1_c
+ * $ ./tiledb_dense_read_ordered_subarray_c
  */
 
-#include <tiledb.h>
 #include <stdio.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Set attributes
+  // Compute maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t buffer_sizes[4];
+  uint64_t subarray[] = {3, 4, 2, 4};
+  tiledb_array_compute_max_read_buffer_sizes(
+      ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
 
   // Prepare cell buffers
-  int buffer_a1[16];
-  uint64_t buffer_a2[16];
-  char buffer_var_a2[40];
-  float buffer_a3[32];
+  int buffer_a1[buffer_sizes[0] / sizeof(int)];
+  uint64_t buffer_a2[buffer_sizes[1] / sizeof(uint64_t)];
+  char buffer_var_a2[buffer_sizes[2] / sizeof(char)];
+  float buffer_a3[buffer_sizes[3] / sizeof(float)];
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
-                             sizeof(buffer_a2),
-                             sizeof(buffer_var_a2),
-                             sizeof(buffer_a3)};
-
-  // Set subarray
-  uint64_t subarray[] = {3, 4, 2, 4};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
-  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Print cell values
+  // Print cell values (assumes all attributes are read)
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("result num: %llu\n\n", (unsigned long long)result_num);
-  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
-  printf("-----------------------------------------\n");
+  printf("Result num: %llu\n\n", (unsigned long long)result_num);
+  printf("%5s%10s%10s%10s\n", "a1", "a2", "a3[0]", "a3[1]");
+  printf("------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {
-    printf("%3d", buffer_a1[i]);
+    printf("%5d", buffer_a1[i]);
     uint64_t var_size = (i != result_num - 1) ?
                             buffer_a2[i + 1] - buffer_a2[i] :
                             buffer_sizes[2] - buffer_a2[i];
-    printf("\t %4.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
+    printf("%10.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
+    printf("%10.1f%10.1f\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
   // Clean up

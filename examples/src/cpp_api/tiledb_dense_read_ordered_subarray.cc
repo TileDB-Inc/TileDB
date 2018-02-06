@@ -33,67 +33,59 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_read_ordered_subarray
+ * $ ./tiledb_dense_create_cpp
+ * $ ./tiledb_dense_write_global_1_cpp
+ * $ ./tiledb_dense_read_ordered_subarray_cpp
  */
 
 #include <iomanip>
 #include <tiledb>
 
 int main() {
-  using std::setw;
+  // Create TileDB context
   tiledb::Context ctx;
 
+  // Compute maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};
-
-  std::cout << "Upper bound on buffer elements needed to read subarray:\n";
-  auto sizes =
+  auto max_elements =
       tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
-  for (auto n : sizes)
-    std::cout << n.first << ": " << n.second.first << ", " << n.second.second
-              << '\n';
 
-  // Init the array & query for the array
+  // Prepare cell buffers
+  std::vector<int> a1_buff(max_elements["a1"].first);
+  std::vector<uint64_t> a2_offsets(max_elements["a2"].first);
+  std::vector<char> a2_data(max_elements["a2"].second);
+  std::vector<float> a3_buff(max_elements["a3"].first);
+
+  // Create query
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
-
-  // Set set_subarray. Templated on domain type.
-  query.set_subarray(subarray);
   query.set_layout(TILEDB_ROW_MAJOR);
-
-  // Make buffers
-  auto a1_buff = query.make_buffer<int>("a1");
-  auto a2_buff = query.make_var_buffers<char>(
-      "a2", 3);  // variable sized attr gets a pair of buffs
-  auto a3_buff =
-      query.make_buffer<float>("a3", 1000);  // Limit size to 1000 elements
+  query.set_subarray(subarray);
   query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_buff);
+  query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_buff);
 
+  // Submit query
   query.submit();
 
-  // Get the number of elements filled in by the query
-  // Order is by attribute. For variable size attrs, the offset_buff comes
-  // first.
-  auto buff_sizes = query.result_buffer_elements();
-
-  // chunk the continuous buffer by cell
+  // Print cell values (assumes all attributes are read)
+  auto result_el = query.result_buffer_elements();
+  auto a2_buff =
+      std::pair<std::vector<uint64_t>, std::vector<char>>(a2_offsets, a2_data);
   auto a2 = tiledb::group_by_cell(
-      a2_buff,
-      buff_sizes["a2"].first,
-      buff_sizes["a2"].second);  // For var size: use offset buff
-  auto a3 = tiledb::group_by_cell<2>(a3_buff, buff_sizes["a3"].first);
+      a2_buff, result_el["a2"].first, result_el["a2"].second);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff, result_el["a3"].first);
 
-  // This assumes all attributes were fully read.
-  std::cout << "\nResult num: " << buff_sizes["a1"].first << "\n";
-  std::cout << setw(5) << "a1" << setw(10) << "a2" << setw(10) << "a3[0]"
-            << setw(10) << "a3[1]\n";
-  for (unsigned i = 0; i < buff_sizes["a1"].first; ++i) {
-    std::cout << setw(5) << a1_buff[i] << setw(10)
-              << std::string(a2[i].data(), a2[i].size()) << setw(10) << a3[i][0]
-              << setw(10) << a3[i][1] << '\n';
+  std::cout << "Result num: " << result_el["a1"].first << "\n\n";
+  std::cout << std::setw(5) << "a1" << std::setw(10) << "a2" << std::setw(10)
+            << "a3[0]" << std::setw(11) << "a3[1]\n";
+  std::cout << "------------------------------------\n";
+  for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+    std::cout << std::setw(5) << a1_buff[i] << std::setw(10)
+              << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
+              << a3[i][0] << std::setw(10) << a3[i][1] << '\n';
   }
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

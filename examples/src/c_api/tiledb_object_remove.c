@@ -31,8 +31,8 @@
  * It shows how to move/rename a TileDB resource.
  */
 
-#include <tiledb.h>
 #include <stdio.h>
+#include <tiledb.h>
 
 int main() {
   // Create context
