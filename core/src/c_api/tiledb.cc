@@ -139,6 +139,7 @@ struct tiledb_vfs_fh_t {
   tiledb::URI uri_;
   bool is_closed_;
   tiledb::VFS* vfs_;
+  tiledb::VFSMode mode_;
 };
 
 /* ********************************* */
@@ -2786,6 +2787,7 @@ int tiledb_vfs_open(
 
   (*fh)->is_closed_ = false;
   (*fh)->vfs_ = vfs->vfs_;
+  (*fh)->mode_ = static_cast<tiledb::VFSMode>(mode);
 
   return TILEDB_OK;
 }
@@ -2803,8 +2805,11 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
     return TILEDB_ERR;
   }
 
-  if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
-    return TILEDB_ERR;
+  if (fh->mode_ != tiledb::VFSMode::VFS_READ) {
+    if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
+      return TILEDB_ERR;
+  }
+
   fh->is_closed_ = true;
   return TILEDB_OK;
 }
