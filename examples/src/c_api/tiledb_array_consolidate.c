@@ -32,14 +32,14 @@
  *
  * One way to make this work is:
  *
- * $ ./tiledb_dense_create
- * $ ./tiledb_dense_write_global_1
- * $ ./tiledb_dense_write_global_subarray
- * $ ./tiledb_dense_write_unordered
- * $ ./tiledb_array_consolidate
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_1_c
+ * $ ./tiledb_dense_write_global_subarray_c
+ * $ ./tiledb_dense_write_unordered_c
+ * $ ./tiledb_array_consolidate_c
  *
- * The first three programs create three different fragments. The last program
- * consolidates the three fragments in a single one.
+ * The first four programs create a dense array with three different fragments.
+ * The last program consolidates the three fragments in a single one.
  */
 
 #include <tiledb.h>
@@ -49,7 +49,7 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Consolidate the input array
+  // Consolidate array
   tiledb_array_consolidate(ctx, "my_dense_array");
 
   // Clean up

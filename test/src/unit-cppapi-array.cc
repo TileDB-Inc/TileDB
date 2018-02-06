@@ -77,12 +77,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
     std::vector<int> subarray = {0, 5, 0, 5};
     query.set_subarray<int>(subarray);
-
-    CHECK_THROWS(query.make_var_buffers<int>("a1"));  // Not var attr
-    CHECK_THROWS(query.make_buffer<char>("a1"));      // Wrong type
-
-    CHECK(query.make_buffer<int>("a1").size() == 36);
-    CHECK(query.make_buffer<int>("a1", 5).size() == 5);
   }
 
   SECTION("Read/Write") {

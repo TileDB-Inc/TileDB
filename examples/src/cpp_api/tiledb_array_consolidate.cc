@@ -27,15 +27,28 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_dense_array" in the current working directory. Uses
- * C++ API.
+ * It shows how to consolidate arrays.
+ *
+ * One way to make this work is:
+ *
+ * $ ./tiledb_dense_create_cpp
+ * $ ./tiledb_dense_write_global_1_cpp
+ * $ ./tiledb_dense_write_global_subarray_cpp
+ * $ ./tiledb_dense_write_unordered_cpp
+ * $ ./tiledb_array_consolidate_cpp
+ *
+ * The first four programs create a dense array with three different fragments.
+ * The last program consolidates the three fragments in a single one.
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Consolidate array
   tiledb::Array::consolidate(ctx, "my_dense_array");
+
   return 0;
 }

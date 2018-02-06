@@ -31,7 +31,7 @@
  *
  * Simply run the following to make it work.
  *
- * $ ./tiledb_array_schema
+ * $ ./tiledb_array_schema_cpp
  */
 
 #include <tiledb>
