@@ -39,36 +39,44 @@
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
-  // clang-format off
+  // Prepare cell buffers - #1
   std::vector<int> a1_buff = {7, 5, 0};
   auto a2_buff = tiledb::ungroup_var_buffer<std::string>({"hhhh", "ff", "a"});
   std::vector<float> a3_buff = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
   std::vector<uint64_t> coords_buff = {3, 4, 4, 2, 1, 1};
 
+  // Create query
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.set_layout(TILEDB_UNORDERED);
 
+  // Submit query - #1
   query.submit();
 
+  // Prepare cell buffers - #2
   a1_buff = {6, 4, 3, 1, 2};
-  auto a2_2_buff = tiledb::ungroup_var_buffer<std::string>({"ggg", "e", "dddd", "bb", "ccc"});
+  std::vector<std::string> a2_str = {"ggg", "e", "dddd", "bb", "ccc"};
+  auto a2_buff_2 = tiledb::ungroup_var_buffer<std::string>(a2_str);
   a3_buff = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
   coords_buff = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
 
-  // Reset buffers. This is needed in case vectors reallocate during reassignment.
+  // Reset buffers
   query.reset_buffers();
   query.set_buffer("a1", a1_buff);
-  query.set_buffer("a2", a2_2_buff);
+  query.set_buffer("a2", a2_buff_2);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
 
+  // Submit query - #2
   query.submit();
 
-return 0;
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
+  return 0;
 }

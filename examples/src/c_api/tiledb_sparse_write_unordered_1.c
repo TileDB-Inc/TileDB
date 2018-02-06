@@ -32,8 +32,8 @@
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create
- * ./tiledb_sparse_write_unordered_1
+ * ./tiledb_sparse_create_c
+ * ./tiledb_sparse_write_unordered_1_c
  */
 
 #include <tiledb.h>
@@ -43,11 +43,7 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-
   // Prepare cell buffers
-  // clang-format off
   int buffer_a1[] = { 7, 5, 0, 6, 4, 3, 1, 2 };
   uint64_t buffer_a2[] = { 0, 4, 6, 7, 10, 11, 15, 17 };
   char buffer_var_a2[] = "hhhhffagggeddddbbccc";
@@ -67,13 +63,13 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)
   };
-  // clang-format on
 
   // Create query
   tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_WRITE);
-  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
 
   // Submit query
   tiledb_query_submit(ctx, query);

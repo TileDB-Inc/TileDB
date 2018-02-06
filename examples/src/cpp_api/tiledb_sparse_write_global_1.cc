@@ -27,36 +27,58 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array with a single write operations,
+ * It shows how to write to a sparse array with a single write operation,
  * assuming that the user provides the cells ordered in the array global
  * cell order.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create
- * ./tiledb_sparse_write_global_1
+ * ./tiledb_sparse_create_cpp
+ * ./tiledb_sparse_write_global_1_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Prepare cell buffers
+  std::vector<int> a1_buff = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> a2_str = {
+      "a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"};
+  auto a2_buff = tiledb::ungroup_var_buffer<std::string>(a2_str);
+  std::vector<float> a3_buff = {0.1f,
+                                0.2f,
+                                1.1f,
+                                1.2f,
+                                2.1f,
+                                2.2f,
+                                3.1f,
+                                3.2f,
+                                4.1f,
+                                4.2f,
+                                5.1f,
+                                5.2f,
+                                6.1f,
+                                6.2f,
+                                7.1f,
+                                7.2f};
+  std::vector<uint64_t> coords_buff = {
+      1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+
+  // Create query
   tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
-
-  // clang-format off
-  std::vector<int> a1_buff = {0,1,2,3,4,5,6,7};
-  auto a2_buff = tiledb::ungroup_var_buffer<std::string>({"a", "bb", "ccc", "dddd", "e", "ff", "ggg", "hhhh"});
-  std::vector<float> a3_buff = {0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-                                4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2};
-  std::vector<uint64_t> coords_buff = { 1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
-
+  query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
 
+  // Submit query
   query.submit();
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

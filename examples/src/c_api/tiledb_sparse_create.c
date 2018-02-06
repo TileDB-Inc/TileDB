@@ -28,8 +28,8 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name "my_sparse_array" in the current working directory.
+ * It shows how to create a spaese array. Make sure that no directory exists
+ * with the name `my_sparse_array` in the current working directory.
  */
 
 #include <tiledb.h>

@@ -96,5 +96,7 @@ int main() {
               << a3[i][0] << std::setw(10) << a3[i][1] << '\n';
   }
 
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
   return 0;
 }

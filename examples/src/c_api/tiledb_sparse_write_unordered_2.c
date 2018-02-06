@@ -33,8 +33,8 @@
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create
- * ./tiledb_sparse_write_unordered_2
+ * ./tiledb_sparse_create_c
+ * ./tiledb_sparse_write_unordered_2_c
  */
 
 #include <tiledb.h>
@@ -43,9 +43,6 @@ int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
-
-  // Set attributes
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
 
   // Prepare cell buffers - #1
   int buffer_a1[] = {7, 5, 0};
@@ -64,9 +61,10 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_WRITE);
-  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
 
   // Submit query - #1
   tiledb_query_submit(ctx, query);

@@ -31,45 +31,52 @@
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create
- * ./tiledb_sparse_write_unordered_1
+ * ./tiledb_sparse_create_cpp
+ * ./tiledb_sparse_write_unordered_1_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
 
+  // Prepare cell buffers
   std::vector<int> a1_buff = {7, 5, 0, 6, 4, 3, 1, 2};
-  auto a2_buff = tiledb::ungroup_var_buffer<std::string>(
-      {"hhhh", "ff", "a", "ggg", "e", "dddd", "bb", "ccc"});
-  std::vector<float> a3_buff = {7.1,
-                                7.2,
-                                5.1,
-                                5.2,
-                                0.1,
-                                0.2,
-                                6.1,
-                                6.2,
-                                4.1,
-                                4.2,
-                                3.1,
-                                3.2,
-                                1.1,
-                                1.2,
-                                2.1,
-                                2.2};
+  std::vector<std::string> a2_str = {
+      "hhhh", "ff", "a", "ggg", "e", "dddd", "bb", "ccc"};
+  auto a2_buff = tiledb::ungroup_var_buffer<std::string>(a2_str);
+  std::vector<float> a3_buff = {7.1f,
+                                7.2f,
+                                5.1f,
+                                5.2f,
+                                0.1f,
+                                0.2f,
+                                6.1f,
+                                6.2f,
+                                4.1f,
+                                4.2f,
+                                3.1f,
+                                3.2f,
+                                1.1f,
+                                1.2f,
+                                2.1f,
+                                2.2f};
   std::vector<uint64_t> coords_buff = {
       3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
 
+  // Create query
+  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);
   query.set_buffer(TILEDB_COORDS, coords_buff);
-  query.set_layout(TILEDB_UNORDERED);
 
+  // Submit query
   query.submit();
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }
