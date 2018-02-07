@@ -459,6 +459,25 @@ TILEDB_EXPORT int tiledb_config_iter_create(
     tiledb_error_t** error);
 
 /**
+ * Resets the iterator.
+ *
+ * @param config A config object the iterator will operate on.
+ * @param config_iter The config iterator to be reset.
+ * @param prefix If not `nullptr`, only the config parameters starting
+ *     with `prefix.*` will be iterated on. Moreover, the prefix will
+ *     be stripped from the parameters. Otherwise, all parameters will
+ *     be iterated on and their full name will be retrieved.
+ * @param error Error object returned upon error (`NULL` if there is
+ *     no error).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_reset(
+    tiledb_config_t* config,
+    tiledb_config_iter_t* config_iter,
+    const char* prefix,
+    tiledb_error_t** error);
+
+/**
  * Frees a config iterator.
  *
  * @param config_iter The config iterator to be freed.

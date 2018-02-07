@@ -29,32 +29,46 @@
  *
  * @section DESCRIPTION
  *
- * Manipulating a configuration.
+ * Shows how to manipulates config parameter objects.
+ *
+ * Simply run:
+ *
+ * ./tiledb_config_cc
+ *
  */
 
 #include <tiledb>
 
 int main() {
-  tiledb::Config conf;
+  // Create a TileDB config
+  tiledb::Config config;
 
-  // Default conf
+  // Print the default config parameters
   std::cout << "Default settings:\n";
-  for (auto &p : conf) {
+  for (auto &p : config) {
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }
 
-  // Change values
-  conf["vfs.s3.connect_timeout_ms"] = 5000;
+  // Set values
+  config["vfs.s3.connect_timeout_ms"] = 5000;
 
-  // Append key fragments with successive []
-  conf["vfs."]["s3."]["endpoint_override"] = "localhost:8888";
+  // Append parameter segments with successive []
+  config["vfs."]["s3."]["endpoint_override"] = "localhost:8888";
 
-  // Only S3 settings
+  // Get values
+  std::string tile_cache_size = config["sm.tile_cache_size"];
+  std::cout << "\nTile cache size: " << tile_cache_size << "\n";
+
+  // Print only the S3 settings
   std::cout << "\nVFS S3 settings:\n";
-  for (auto i = conf.begin("vfs.s3."); i != conf.end(); ++i) {
+  for (auto i = config.begin("vfs.s3."); i != config.end(); ++i) {
     auto &p = *i;
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }
+
+  // Assign a config object to a context and VFS
+  tiledb::Context ctx(config);
+  tiledb::VFS vfs(ctx, config);
 
   return 0;
 }

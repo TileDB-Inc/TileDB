@@ -526,6 +526,23 @@ int tiledb_config_iter_create(
   return TILEDB_OK;
 }
 
+int tiledb_config_iter_reset(
+    tiledb_config_t* config,
+    tiledb_config_iter_t* config_iter,
+    const char* prefix,
+    tiledb_error_t** error) {
+  if (sanity_check(config, error) == TILEDB_ERR ||
+      sanity_check(config_iter, error) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
+  config_iter->param_values_ = config->config_->param_values(prefix_str);
+  config_iter->it_ = config_iter->param_values_.begin();
+
+  *error = nullptr;
+  return TILEDB_OK;
+}
+
 int tiledb_config_iter_free(tiledb_config_iter_t* config_iter) {
   delete config_iter;
 
