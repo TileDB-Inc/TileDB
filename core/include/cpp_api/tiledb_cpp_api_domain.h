@@ -79,6 +79,9 @@ class Domain {
   template <class T>
   uint64_t cell_num() const;
 
+  /** Dumps the domain in an ASCII representation to an output. */
+  void dump(FILE *out = stdout) const;
+
   /** Returns the domain type. */
   tiledb_datatype_t type() const;
 
@@ -118,9 +121,6 @@ class Domain {
 /* ********************************* */
 /*               MISC                */
 /* ********************************* */
-
-/** Operator tha add a dimension to the domain. */
-Domain &operator<<(Domain &d, const Dimension &dim);
 
 /** Get a string representation of an attribute for an output stream. */
 std::ostream &operator<<(std::ostream &os, const Domain &d);

@@ -92,6 +92,14 @@ std::string Object::to_str() const {
   return ret;
 }
 
+Object::Type Object::type() const {
+  return type_;
+}
+
+std::string Object::uri() const {
+  return uri_;
+}
+
 /* ********************************* */
 /*          STATIC FUNCTIONS         */
 /* ********************************* */

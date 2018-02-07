@@ -34,8 +34,8 @@
  *
  * You need to run the following to make this work:
  *
- * ./tdbpp_dense_create_cpp
- * ./tdbpp_dense_write_unordered_cpp
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_dense_write_unordered_cpp
  */
 
 #include <tiledb>

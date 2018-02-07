@@ -65,6 +65,10 @@ void ObjectIter::set_recursive(tiledb_walk_order_t walk_order) {
   walk_order_ = walk_order;
 }
 
+void ObjectIter::set_non_recursive() {
+  recursive_ = false;
+}
+
 /* ********************************* */
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
@@ -76,16 +80,15 @@ int ObjectIter::obj_getter(const char *path, tiledb_object_t type, void *data) {
       (type == TILEDB_KEY_VALUE && data_struct->kv_)) {
     Object obj(type, path);
     auto &objs = data_struct->objs_.get();
-    objs.push_back(std::move(obj));
+    objs.emplace_back(obj);
   }
   return 1;
 }
 
-ObjectIter::iterator ObjectIter::begin() const {
-  std::vector<Object> objs;
-  objs.clear();
+ObjectIter::iterator ObjectIter::begin() {
+  objs_.clear();
   auto &ctx = ctx_.get();
-  ObjGetterData data(objs, array_, group_, kv_);
+  ObjGetterData data(objs_, array_, group_, kv_);
   if (recursive_) {
     ctx.handle_error(
         tiledb_object_walk(ctx, root_.c_str(), walk_order_, obj_getter, &data));
@@ -93,11 +96,11 @@ ObjectIter::iterator ObjectIter::begin() const {
     ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
   }
 
-  return iterator{objs};
+  return iterator(objs_);
 }
 
 ObjectIter::iterator ObjectIter::end() const {
-  return iterator().end();
+  return iterator(objs_).end();
 }
 
 }  // namespace tdb

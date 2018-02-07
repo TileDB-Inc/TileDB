@@ -37,54 +37,76 @@
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Create array schema
   tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
 
-  std::cout << "\nFirst dump:\n";
+  // Print array schema contents
+  std::cout << "First dump:\n";
   schema.dump(stdout);
 
-  // sparse array with tile capacity 10
+  // Set some values
   schema.set_capacity(10);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
   schema.set_coords_compressor({TILEDB_ZSTD, 4});
   schema.set_offsets_compressor({TILEDB_BLOSC, 5});
 
+  // Print array schema contents again
   std::cout << "Second dump:\n";
   schema.dump(stdout);
 
-  tiledb::Domain domain(ctx);
-  tiledb::Dimension d1 =
-      tiledb::Dimension::create<uint64_t>(ctx, "d1", {{0, 1000}}, 10);
-  tiledb::Dimension d2 =
-      tiledb::Dimension::create<uint64_t>(ctx, "d2", {{100, 10000}}, 100);
-  domain << d1 << d2;
-  schema << domain;
+  // Create dimensions
+  auto d1 = tiledb::Dimension::create<uint64_t>(ctx, "", {{1, 1000}}, 10);
+  auto d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {{101, 10000}}, 100);
 
+  // Create and set domain
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(d1).add_dimension(d2);
+  schema.set_domain(domain);
+
+  // Create and add attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "");
   tiledb::Attribute a2 = tiledb::Attribute::create<float>(ctx, "a2");
   a1.set_cell_val_num(3);
   a2.set_compressor({TILEDB_GZIP, -1});
-  schema << a1 << a2;
+  schema.add_attribute(a1).add_attribute(a2);
 
+  // Print array schema contents again
   std::cout << "Third dump:\n";
   schema.dump(stdout);
 
+  // Print from getters
   std::cout << "\nFrom getters:"
-            << "\n- Array type: " << schema.array_type()
-            << "\n- Cell order: " << schema.cell_order()
-            << "\n- Tile order: " << schema.tile_order()
+            << "\n- Array type: "
+            << ((schema.array_type() == TILEDB_DENSE) ? "dense" : "sparse")
+            << "\n- Cell order: "
+            << (schema.cell_order() == TILEDB_ROW_MAJOR ? "row-major" :
+                                                          "col-major")
+            << "\n- Tile order: "
+            << (schema.tile_order() == TILEDB_ROW_MAJOR ? "row-major" :
+                                                          "col-major")
             << "\n- Capacity: " << schema.capacity()
-            << "\n- Coordinate compressor: " << schema.coords_compressor()
+            << "\n- Coordinates compressor: " << schema.coords_compressor()
             << "\n- Offsets compressor: " << schema.offsets_compressor();
 
-  std::cout << "\nAttribute names:";
+  // Print the attribute names
+  std::cout << "\n\nArray schema attribute names: \n";
   for (const auto &a : schema.attributes())
-    std::cout << "\n* " << a.first;
+    std::cout << "* " << a.first << "\n";
+  std::cout << "\n";
 
-  std::cout << "\nDimension names:";
+  // Print domain
+  schema.domain().dump(stdout);
+
+  // Print the dimension names using iterators
+  std::cout << "\nArray schema dimension names: \n";
   for (const auto &d : schema.domain().dimensions())
-    std::cout << "\n* " << d.name();
+    std::cout << "* " << d.name() << "\n";
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

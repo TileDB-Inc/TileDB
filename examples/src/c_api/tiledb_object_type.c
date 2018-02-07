@@ -29,6 +29,13 @@
  * @section DESCRIPTION
  *
  * It shows how to get the type of a TileDB object (resource).
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_c
+ * ./tiledb_dense_create_c
+ * ./tiledb_kv_create_c
+ * ./tiledb_object_type_c
  */
 
 #include <tiledb.h>
@@ -47,6 +54,10 @@ int main() {
 
   // Get object type for array
   tiledb_object_type(ctx, "my_dense_array", &type);
+  print_object_type(type);
+
+  // Get object type for key-value
+  tiledb_object_type(ctx, "my_kv", &type);
   print_object_type(type);
 
   // Get invalid object type

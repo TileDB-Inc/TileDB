@@ -116,9 +116,3 @@ std::ostream & ::tdb::operator<<(
   os << '>';
   return os;
 }
-
-tdb::MapSchema & ::tdb::operator<<(
-    tdb::MapSchema &schema, const tdb::Attribute &attr) {
-  schema.add_attribute(attr);
-  return schema;
-}

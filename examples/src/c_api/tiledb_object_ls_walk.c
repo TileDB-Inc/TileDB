@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_walk_ls.c
+ * @file   tiledb_object_ls_walk.c
  *
  * @section LICENSE
  *
@@ -28,7 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to explore the contents of a TileDB directory.
+ * List/Walk a directory for TileDB Objects.
+ *
+ * Create some object hierarchy and then run:
+ *
+ * ./tiledb_object_ls_walk_c
  */
 
 #include <tiledb.h>
@@ -40,15 +44,15 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // List children
+  printf("List children:\n");
+  tiledb_ls(ctx, "my_group", print_path, NULL);
+
   // Walk in a path with a pre- and post-order traversal
-  printf("Preorder traversal:\n");
+  printf("\nPreorder traversal:\n");
   tiledb_object_walk(ctx, "my_group", TILEDB_PREORDER, print_path, NULL);
   printf("\nPostorder traversal:\n");
   tiledb_object_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, NULL);
-
-  // List children
-  printf("\nList children:\n");
-  tiledb_ls(ctx, "my_group", print_path, NULL);
 
   // Finalize context
   tiledb_ctx_free(ctx);

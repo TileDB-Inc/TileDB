@@ -40,7 +40,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   Domain domain(ctx);
   auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
   auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-  domain << d1 << d2;
+  domain.add_dimension(d1).add_dimension(d2);
 
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<char>(ctx, "a2");
@@ -51,8 +51,8 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
 
   SECTION("Array Schema") {
     ArraySchema schema(ctx, TILEDB_DENSE);
-    schema << domain;
-    schema << a1 << a2 << a3;
+    schema.set_domain(domain);
+    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
@@ -83,7 +83,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
 
   SECTION("Map Schema") {
     MapSchema schema(ctx);
-    schema << a1 << a2 << a3;
+    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);

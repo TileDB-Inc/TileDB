@@ -29,17 +29,27 @@
  *
  * @section DESCRIPTION
  *
- * Deleting objects.
+ * It shows how to remove a TileDB resource.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_cpp
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_dense_write_global_1_cpp
+ * ./tiledb_object_remove_cpp
  */
 
-#include <string>
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Delete a valid group and array
   tiledb::Object::remove(ctx, "my_group");
   tiledb::Object::remove(ctx, "my_dense_array");
 
+  // Delete an invalid path
   try {
     tiledb::Object::remove(ctx, "invalid_path");
   } catch (std::runtime_error &e) {

@@ -46,7 +46,7 @@ struct CPPArrayFx {
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
     auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-    domain << d1 << d2;
+    domain.add_dimension(d1).add_dimension(d2);
 
     auto a1 = Attribute::create<int>(ctx, "a1");
     auto a2 = Attribute::create<char>(ctx, "a2");
@@ -56,7 +56,8 @@ struct CPPArrayFx {
     a3.set_cell_val_num(2);
 
     ArraySchema schema(ctx, TILEDB_DENSE);
-    schema << domain << a1 << a2 << a3;
+    schema.set_domain(domain);
+    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
 
     Array::create("cpp_unit_array", schema);
   }

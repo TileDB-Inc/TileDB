@@ -28,7 +28,14 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * It shows how to remove a TileDB resource.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_c
+ * ./tiledb_dense_create_c
+ * ./tiledb_dense_write_global_1_c
+ * ./tiledb_object_remove_c
  */
 
 #include <stdio.h>
@@ -39,14 +46,14 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Deletes a valid group and array
+  // Delete a valid group and array
   tiledb_object_remove(ctx, "my_group");
   tiledb_object_remove(ctx, "my_dense_array");
 
-  // Deletes an invalid path
-  int rc = tiledb_object_remove(ctx, "some_invalid_path");
+  // Delete an invalid path
+  int rc = tiledb_object_remove(ctx, "invalid_path");
   if (rc == TILEDB_ERR)
-    printf("Failed deleting invalid path\n");
+    printf("Failed to delete invalid path\n");
 
   // Clean up
   tiledb_ctx_free(ctx);

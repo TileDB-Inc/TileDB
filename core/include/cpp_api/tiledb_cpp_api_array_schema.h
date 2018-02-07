@@ -173,22 +173,6 @@ class ArraySchema : public Schema {
 /** Converts the array schema into a string representation. */
 std::ostream &operator<<(std::ostream &os, const ArraySchema &schema);
 
-/** Adds a domain to the array schema. */
-ArraySchema &operator<<(ArraySchema &schema, const Domain &domain);
-
-/** Adds an attribute to the array schema. */
-ArraySchema &operator<<(ArraySchema &schema, const Attribute &attr);
-
-/**
- * Sets the tile and cell order of the array.
- * The input should be in the form: {Tile layout, Cell layout}.
- */
-ArraySchema &operator<<(
-    ArraySchema &schema, const std::array<tiledb_layout_t, 2> p);
-
-/** Sets the tile capacity of the array. */
-ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity);
-
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_ARRAY_SCHEMA_H

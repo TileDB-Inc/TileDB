@@ -28,21 +28,31 @@
  * @section DESCRIPTION
  *
  * It shows how to move/rename a TileDB object.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_cpp
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_object_move_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
 
+  // Rename a valid group and array
   tiledb::Object::move(ctx, "my_group", "my_group_2", true);
   tiledb::Object::move(
       ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", false);
 
+  // Rename an invalid path
   try {
     tiledb::Object::move(ctx, "invalid_path", "path", false);
   } catch (std::runtime_error &e) {
-    std::cout << "Failed to move invalid path.\n";
+    std::cout << "Failed to move invalid path\n";
   }
+
   return 0;
 }

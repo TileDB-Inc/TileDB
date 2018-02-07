@@ -43,7 +43,7 @@ int main() {
 
   // Create domain
   tiledb::Domain domain(ctx);
-  domain << d1 << d2;
+  domain.add_dimension(d1).add_dimension(d2);
 
   // Create attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
@@ -56,7 +56,8 @@ int main() {
   // Create array schema
   tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
-  schema << domain << a1 << a2 << a3;
+  schema.set_domain(domain);
+  schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
 
   // Check array schema
   try {

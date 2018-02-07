@@ -28,14 +28,45 @@
  * @section DESCRIPTION
  *
  * It shows how to get the type of a TileDB object (resource).
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_cpp
+ * ./tiledb_dense_create_cpp
+ * ./tiledb_kv_create_cpp
+ * ./tiledb_object_type_cpp
  */
 
 #include <tiledb>
 
+void print_object_type(tiledb::Object::Type type);
+
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  std::cout << tiledb::Object::object(ctx, "my_group") << "\n";
-  std::cout << tiledb::Object::object(ctx, "my_dense_array") << "\n";
-  std::cout << tiledb::Object::object(ctx, "invalid_path") << "\n";
+
+  // Print object types
+  print_object_type(tiledb::Object::object(ctx, "my_group").type());
+  print_object_type(tiledb::Object::object(ctx, "my_dense_array").type());
+  print_object_type(tiledb::Object::object(ctx, "my_kv").type());
+  print_object_type(tiledb::Object::object(ctx, "invalid_path").type());
+
   return 0;
+}
+
+void print_object_type(tiledb::Object::Type type) {
+  switch (type) {
+    case tiledb::Object::Type::Array:
+      std::cout << "ARRAY\n";
+      break;
+    case tiledb::Object::Type::Group:
+      std::cout << "GROUP\n";
+      break;
+    case tiledb::Object::Type::KeyValue:
+      std::cout << "KEY_VALUE\n";
+      break;
+    case tiledb::Object::Type::Invalid:
+      std::cout << "INVALID\n";
+      break;
+  }
 }

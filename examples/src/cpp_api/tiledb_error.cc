@@ -29,24 +29,30 @@
  *
  * @section DESCRIPTION
  *
- * Shows how to handle errors with tdbpp. Make sure my_group doesn't exist.
+ * This example shows how to catch errors.
+ *
+ * Simply run:
+ *
+ * $ ./tiledb_error_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
 
-  // default: throws runtime_error
+  // Catch an error
   try {
     tiledb::create_group(ctx, "my_group");
     tiledb::create_group(ctx, "my_group");
-  } catch (std::runtime_error &e) {
-    std::cout << "Runtime exception:\n\t" << e.what() << "\n";
+  } catch (tiledb::TileDBError &e) {
+    std::cout << "TileDB exception:\n" << e.what() << "\n";
   }
 
-  // Set a different handler
-  ctx.set_error_handler(
-      [](std::string msg) { std::cout << "Callback:\n\t" << msg << "\n"; });
+  // Set a different error handler
+  ctx.set_error_handler([](std::string msg) {
+    std::cout << "Callback:\n" << msg << "\n";
+  });
   tiledb::create_group(ctx, "my_group");
 }

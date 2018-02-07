@@ -51,7 +51,7 @@ struct CPPMapFx {
     a3.set_cell_val_num(2);
 
     MapSchema schema(ctx);
-    schema << a1 << a2 << a3;
+    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
     Map::create("cpp_unit_map", schema);
   }
 

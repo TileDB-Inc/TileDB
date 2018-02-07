@@ -44,7 +44,7 @@ int main() {
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
-  schema << a1 << a2 << a3;
+  schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
 
   schema.dump(stdout);
 

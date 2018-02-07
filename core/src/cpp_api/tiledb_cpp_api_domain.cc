@@ -105,6 +105,11 @@ uint64_t Domain::cell_num() const {
   return ret;
 }
 
+void Domain::dump(FILE *out) const {
+  auto &ctx = ctx_.get();
+  ctx.handle_error(tiledb_domain_dump(ctx, domain_.get(), out));
+}
+
 std::shared_ptr<tiledb_domain_t> Domain::ptr() const {
   return domain_;
 }
@@ -157,11 +162,6 @@ Domain &Domain::add_dimension(const Dimension &d) {
 /* ********************************* */
 /*               MISC                */
 /* ********************************* */
-
-Domain &operator<<(Domain &d, const Dimension &dim) {
-  d.add_dimension(dim);
-  return d;
-}
 
 std::ostream &operator<<(std::ostream &os, const Domain &d) {
   os << "Domain<(" << impl::to_str(d.type()) << ")";

@@ -59,27 +59,27 @@ int main() {
       ctx, array_schema, TILEDB_BLOSC, 5);
 
   // Print array schema contents again
-  printf("\nSecond dump:\n");
+  printf("Second dump:\n");
   tiledb_array_schema_dump(ctx, array_schema, stdout);
 
   // Create dimensions
-  int d1_domain[] = {0, 1000};
-  int d1_extent = 10;
+  uint64_t d1_domain[] = {1, 1000};
+  uint64_t d1_extent = 10;
   tiledb_dimension_t* d1;
   tiledb_dimension_create(ctx, &d1, "", TILEDB_UINT64, d1_domain, &d1_extent);
-  uint64_t d2_domain[] = {100, 10000};
+  uint64_t d2_domain[] = {101, 10000};
   uint64_t d2_extent = 100;
   tiledb_dimension_t* d2;
   tiledb_dimension_create(ctx, &d2, "d2", TILEDB_UINT64, d2_domain, &d2_extent);
 
-  // Set domain
+  // Create and set domain
   tiledb_domain_t* domain;
   tiledb_domain_create(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
 
-  // Add attributes
+  // Create and add attributes
   tiledb_attribute_t *a1, *a2;
   tiledb_attribute_create(ctx, &a1, "", TILEDB_INT32);
   tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
@@ -89,7 +89,7 @@ int main() {
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
 
   // Print array schema contents again
-  printf("\nThird dump:\n");
+  printf("Third dump:\n");
   tiledb_array_schema_dump(ctx, array_schema, stdout);
 
   // Get some values using getters
@@ -119,20 +119,18 @@ int main() {
       (tile_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
   printf("- Capacity: %llu\n", (unsigned long long)capacity);
   printf(
-      "- Coordinates compressor: %s\n",
-      (coords_compressor == TILEDB_ZSTD) ? "ZSTD" : "error");
-  printf("- Coordinates compression level: %d\n", coords_compression_level);
+      "- Coordinates compressor: %s",
+      (coords_compressor == TILEDB_ZSTD) ? "(ZSTD" : "error");
+  printf(", %d)\n", coords_compression_level);
   printf(
-      "- Offsets compressor: %s\n",
-      (offsets_compressor == TILEDB_BLOSC) ? "BLOSC" : "error");
-  printf("- Offsets compression level: %d\n", offsets_compression_level);
+      "- Offsets compressor: %s",
+      (offsets_compressor == TILEDB_BLOSC) ? "(BLOSC" : "error");
+  printf(", %d)\n", offsets_compression_level);
 
   // Print the attribute names
   printf("\nArray schema attribute names: \n");
-
   unsigned int nattr = 0;
   tiledb_array_schema_get_attribute_num(ctx, array_schema, &nattr);
-
   tiledb_attribute_t* attr = NULL;
   const char* attr_name = NULL;
   for (unsigned int i = 0; i < nattr; i++) {
@@ -148,11 +146,10 @@ int main() {
   tiledb_array_schema_get_domain(ctx, array_schema, &got_domain);
   tiledb_domain_dump(ctx, got_domain, stdout);
 
-  // Print the dimension names using iterators
+  // Print the dimension names
   printf("\nArray schema dimension names: \n");
   unsigned int rank = 0;
   tiledb_domain_get_rank(ctx, domain, &rank);
-
   tiledb_dimension_t* dim = NULL;
   const char* dim_name = NULL;
   for (unsigned int i = 0; i < rank; i++) {
@@ -161,7 +158,6 @@ int main() {
     printf("* %s\n", dim_name);
     tiledb_dimension_free(ctx, dim);
   }
-  printf("\n");
 
   // Clean up
   tiledb_attribute_free(ctx, a1);
@@ -172,5 +168,6 @@ int main() {
   tiledb_domain_free(ctx, got_domain);
   tiledb_array_schema_free(ctx, array_schema);
   tiledb_ctx_free(ctx);
+
   return 0;
 }

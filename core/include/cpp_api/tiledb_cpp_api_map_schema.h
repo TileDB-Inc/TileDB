@@ -118,10 +118,6 @@ class MapSchema : public Schema {
 
 /** Converts the array schema into a string representation. */
 std::ostream &operator<<(std::ostream &os, const MapSchema &schema);
-
-/** Adds an attribute to the array schema. */
-MapSchema &operator<<(MapSchema &schema, const Attribute &attr);
-
 }  // namespace tdb
 
 #endif  // TILEDB_CPP_API_MAP_SCHEMA_H

@@ -28,12 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * This example shows how to catch errors. Program output:
+ * This example shows how to catch errors.
  *
- * $ ./tiledb_error
- * Group created successfully!
- * [TileDB::OS] Error: Cannot create directory \
- * '<current_working_dir>/my_group'; Directory already exists
+ * Simply run:
+ *
+ * $ ./tiledb_error_c
  */
 
 #include <tiledb.h>

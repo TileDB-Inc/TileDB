@@ -29,6 +29,12 @@
  * @section DESCRIPTION
  *
  * It shows how to move/rename a TileDB resource.
+ *
+ * You need to run the following to make this work:
+ *
+ * ./tiledb_group_create_c
+ * ./tiledb_dense_create_c
+ * ./tiledb_object_move_c
  */
 
 #include <tiledb.h>
@@ -44,7 +50,7 @@ int main() {
       ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", 0);
 
   // Rename an invalid path
-  int rc = tiledb_object_move(ctx, "some_invalid_path", "path", 0);
+  int rc = tiledb_object_move(ctx, "invalid_path", "path", 0);
   if (rc == TILEDB_ERR)
     printf("Failed moving invalid path\n");
 

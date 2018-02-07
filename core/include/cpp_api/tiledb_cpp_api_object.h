@@ -78,6 +78,12 @@ class Object {
    */
   std::string to_str() const;
 
+  /** Returns the object type. */
+  Type type() const;
+
+  /** Returns the object URI. */
+  std::string uri() const;
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

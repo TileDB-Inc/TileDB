@@ -210,60 +210,6 @@ ArraySchema &ArraySchema::set_capacity(uint64_t capacity) {
   return *this;
 }
 
-/* ********************************* */
-/*               MISC                */
-/* ********************************* */
-
-std::ostream &operator<<(std::ostream &os, const ArraySchema &schema) {
-  os << "ArraySchema<";
-  os << tdb::ArraySchema::to_str(schema.array_type());
-  os << ' ' << schema.domain();
-  for (const auto &a : schema.attributes()) {
-    os << ' ' << a.second;
-  }
-  os << '>';
-  return os;
-}
-
-ArraySchema &operator<<(ArraySchema &schema, const Domain &d) {
-  schema.set_domain(d);
-  return schema;
-}
-
-ArraySchema &operator<<(ArraySchema &schema, const tdb::Attribute &a) {
-  schema.add_attribute(a);
-  return schema;
-}
-
-ArraySchema &operator<<(
-    ArraySchema &schema, const std::array<tiledb_layout_t, 2> p) {
-  schema.set_order(p);
-  return schema;
-}
-
-ArraySchema &operator<<(ArraySchema &schema, uint64_t capacity) {
-  schema.set_capacity(capacity);
-  return schema;
-}
-
-std::string ArraySchema::to_str(tiledb_array_type_t type) {
-  return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
-}
-
-std::string ArraySchema::to_str(tiledb_layout_t layout) {
-  switch (layout) {
-    case TILEDB_GLOBAL_ORDER:
-      return "GLOBAL";
-    case TILEDB_ROW_MAJOR:
-      return "ROW-MAJOR";
-    case TILEDB_COL_MAJOR:
-      return "COL-MAJOR";
-    case TILEDB_UNORDERED:
-      return "UNORDERED";
-  }
-  return "";
-}
-
 Attribute ArraySchema::attribute(const std::string &name) const {
   auto &ctx = ctx_.get();
   tiledb_attribute_t *attr;
@@ -286,6 +232,43 @@ Attribute ArraySchema::attribute(unsigned int i) const {
   ctx.handle_error(tiledb_array_schema_get_attribute_from_index(
       ctx, schema_.get(), i, &attr));
   return Attribute(ctx, attr);
+}
+
+/* ********************************* */
+/*         STATIC FUNCTIONS          */
+/* ********************************* */
+
+std::string ArraySchema::to_str(tiledb_layout_t layout) {
+  switch (layout) {
+    case TILEDB_GLOBAL_ORDER:
+      return "GLOBAL";
+    case TILEDB_ROW_MAJOR:
+      return "ROW-MAJOR";
+    case TILEDB_COL_MAJOR:
+      return "COL-MAJOR";
+    case TILEDB_UNORDERED:
+      return "UNORDERED";
+  }
+  return "";
+}
+
+std::string ArraySchema::to_str(tiledb_array_type_t type) {
+  return type == TILEDB_DENSE ? "DENSE" : "SPARSE";
+}
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+std::ostream &operator<<(std::ostream &os, const ArraySchema &schema) {
+  os << "ArraySchema<";
+  os << tdb::ArraySchema::to_str(schema.array_type());
+  os << ' ' << schema.domain();
+  for (const auto &a : schema.attributes()) {
+    os << ' ' << a.second;
+  }
+  os << '>';
+  return os;
 }
 
 }  // namespace tdb
