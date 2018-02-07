@@ -114,7 +114,7 @@ TILEDB_EXPORT unsigned int tiledb_max_path();
 typedef enum {
 /** Helper macro for defining object type enums. */
 #define TILEDB_OBJECT_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_OBJECT_TYPE_ENUM
 } tiledb_object_t;
 
@@ -122,7 +122,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining query type enums. */
 #define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
 } tiledb_query_type_t;
 
@@ -130,7 +130,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining query status enums. */
 #define TILEDB_QUERY_STATUS_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
 
@@ -138,7 +138,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining filesystem enums. */
 #define TILEDB_FILESYSTEM_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_FILESYSTEM_ENUM
 } tiledb_filesystem_t;
 
@@ -146,7 +146,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining datatype enums. */
 #define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_DATATYPE_ENUM
 } tiledb_datatype_t;
 
@@ -154,7 +154,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining array type enums. */
 #define TILEDB_ARRAY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_ARRAY_TYPE_ENUM
 } tiledb_array_type_t;
 
@@ -162,7 +162,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining layout type enums. */
 #define TILEDB_LAYOUT_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_LAYOUT_ENUM
 } tiledb_layout_t;
 
@@ -170,7 +170,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining compressor enums. */
 #define TILEDB_COMPRESSOR_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_COMPRESSOR_ENUM
 } tiledb_compressor_t;
 
@@ -178,7 +178,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining walk order enums. */
 #define TILEDB_WALK_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_WALK_ORDER_ENUM
 } tiledb_walk_order_t;
 
@@ -186,7 +186,7 @@ typedef enum {
 typedef enum {
 /** Helper macro for defining VFS mode enums. */
 #define TILEDB_VFS_MODE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_VFS_MODE_ENUM
 } tiledb_vfs_mode_t;
 

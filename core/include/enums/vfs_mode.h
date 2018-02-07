@@ -38,7 +38,7 @@ namespace tiledb {
 
 enum class VFSMode : char {
 #define TILEDB_VFS_MODE_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_VFS_MODE_ENUM
 };
 

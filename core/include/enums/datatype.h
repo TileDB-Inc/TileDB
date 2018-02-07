@@ -41,7 +41,7 @@ namespace tiledb {
 /** Defines a datatype. */
 enum class Datatype : char {
 #define TILEDB_DATATYPE_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_DATATYPE_ENUM
 };
 

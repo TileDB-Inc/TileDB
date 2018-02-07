@@ -41,7 +41,7 @@ namespace tiledb {
 /** Defines the compressor type. */
 enum class Compressor : char {
 #define TILEDB_COMPRESSOR_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_COMPRESSOR_ENUM
 };
 
