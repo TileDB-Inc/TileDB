@@ -28,6 +28,12 @@
 
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 
+# Create binary directory names
+set(EXAMPLE_C_BINS_DIR ${CMAKE_CURRENT_BINARY_DIR}/c_api)
+set(EXAMPLE_CPP_BINS_DIR ${CMAKE_CURRENT_BINARY_DIR}/cpp_api)
+file(MAKE_DIRECTORY ${EXAMPLE_C_BINS_DIR})
+file(MAKE_DIRECTORY ${EXAMPLE_CPP_BINS_DIR})
+
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL src/c_api/${TARGET}.c)
@@ -38,6 +44,11 @@ function(build_TileDB_example_capi TARGET)
     target_link_libraries(${TARGET}_c tiledb_static -lpthread
             ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
   endif()
+  add_custom_command(TARGET ${TARGET}_c
+          POST_BUILD
+          COMMAND ${CMAKE_COMMAND}
+          -E rename ${TARGET}_c ${EXAMPLE_C_BINS_DIR}/${TARGET}_c
+          )
 endfunction()
 
 function(build_TileDB_example_cppapi TARGET)
@@ -49,6 +60,11 @@ function(build_TileDB_example_cppapi TARGET)
     target_link_libraries(${TARGET}_cpp tiledb_static -lpthread
             ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
   endif()
+  add_custom_command(TARGET ${TARGET}_cpp
+          POST_BUILD
+          COMMAND ${CMAKE_COMMAND}
+          -E rename ${TARGET}_cpp ${EXAMPLE_CPP_BINS_DIR}/${TARGET}_cpp
+          )
 endfunction()
 
 # Get the example sources
@@ -87,10 +103,6 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
   # Build example executable
   build_TileDB_example_cppapi(${EXAMPLE_BIN})
 endforeach()
-
-# Set binary directory names
-set(EXAMPLE_C_BINS_DIR ${CMAKE_CURRENT_BINARY_DIR}/c_api)
-set(EXAMPLE_CPP_BINS_DIR ${CMAKE_CURRENT_BINARY_DIR}/cpp_api)
 
 # Add custom target 'examples'
 add_custom_target(examples_c DEPENDS tiledb_static)
