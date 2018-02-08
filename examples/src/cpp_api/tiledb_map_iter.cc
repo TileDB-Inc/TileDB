@@ -90,7 +90,7 @@ int main() {
   for (auto item = map.begin<std::vector<double>>(); item != map.end();
        ++item) {
     auto key = item->key<std::vector<double>>();
-    auto key_type = item->key_type();
+    auto key_type = item->key_info();
     std::tuple<int, std::string, std::vector<float>> vals =
         (*item)[{"a1", "a2", "a3"}];
     std::cout << "key: ";

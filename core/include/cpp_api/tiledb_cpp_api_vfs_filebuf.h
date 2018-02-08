@@ -101,7 +101,7 @@ class VFSFilebuf : public std::streambuf {
     return !uri_.empty();
   }
 
-  /** Close a file after syncing **/
+  /** Close a file. **/
   VFSFilebuf *close();
 
   /** Current opened URI. **/
@@ -188,8 +188,6 @@ class VFSFilebuf : public std::streambuf {
    * @return character that was put
    */
   int_type overflow(int_type c) override;
-
-  int sync() override;
 
  private:
   /* ********************************* */

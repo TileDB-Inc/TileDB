@@ -1,7 +1,5 @@
 /**
- * @file   tiledb_vfs_write.cc
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_vfs.c
  *
  * @section LICENSE
  *
@@ -29,48 +27,60 @@
  *
  * @section DESCRIPTION
  *
- * Write to a file with the VFS. Simply run:
+ * Exploring VFS tools. Simply run:
  *
- * $ ./tiledb_vfs_write_cpp
+ * $ ./tiledb_vfs_c
  *
  */
 
-#include <fstream>
-#include <tiledb>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
-  tiledb::Context ctx;
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx, NULL);
 
   // Create TileDB VFS
-  tiledb::VFS vfs(ctx);
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_create(ctx, &vfs, NULL);
 
-  // Create VFS file buffer
-  tiledb::VFS::filebuf fbuf(vfs);
-
-  // Write binary data
-  fbuf.open("tiledb_vfs.bin", std::ios::out);
-  std::ostream os(&fbuf);
-  if (!os.good()) {
-    std::cerr << "Error opening file.\n";
-    return 1;
+  // Create directory
+  int is_dir = 0;
+  tiledb_vfs_is_dir(ctx, vfs, "dir_A", &is_dir);
+  if (!is_dir) {
+    tiledb_vfs_create_dir(ctx, vfs, "dir_A");
+    printf("Created dir_A\n");
+  } else {
+    printf("dir_A already exists\n");
   }
-  float f1 = 153.234;
-  std::string s1 = "abcdefghijkl";
-  os.write((char*)&f1, sizeof(f1));
-  os.write(s1.data(), s1.size());
 
-  // Write formatted output
-  fbuf.open("tiledb_vfs.txt", std::ios::out);
-  if (!os.good()) {
-    std::cerr << "Error opening file.\n";
-    return 1;
+  // Creating an (empty) file
+  int is_file = 0;
+  tiledb_vfs_is_file(ctx, vfs, "dir_A/file_A", &is_file);
+  if (!is_file) {
+    tiledb_vfs_touch(ctx, vfs, "dir_A/file_A");
+    printf("Created empty file dir_A/file_A\n");
+  } else {
+    printf("dir_A/file_A already exists\n");
   }
-  os << "tiledb " << 543 << " " << 123.4 << '\n';
-  os.flush();
-  fbuf.close();
 
-  // Nothing to clean up - all C++ objects are deleted when exiting scope
+  // Getting the file size
+  uint64_t file_size;
+  tiledb_vfs_file_size(ctx, vfs, "dir_A/file_A", &file_size);
+  printf("File size: %llu\n", file_size);
+
+  // Moving files (moving directories is similar)
+  printf("Moving file dir_A/file_A to dir_A/file_B\n");
+  tiledb_vfs_move(ctx, vfs, "dir_A/file_A", "dir_A/file_B", 1);
+
+  // Deleting files and directories
+  printf("Deleting dir_A/file_B and dir_A\n");
+  tiledb_vfs_remove_file(ctx, vfs, "dir_A/file_B");
+  tiledb_vfs_remove_dir(ctx, vfs, "dir_A");
+
+  // Clean up
+  tiledb_vfs_free(ctx, vfs);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

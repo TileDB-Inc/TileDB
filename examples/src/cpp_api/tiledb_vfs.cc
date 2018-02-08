@@ -29,37 +29,50 @@
  *
  * @section DESCRIPTION
  *
- * VFS tools.
+ * Exploring VFS tools. Simply run:
+ *
+ * $ ./tiledb_vfs_cpp
+ *
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Create TileDB VFS
   tiledb::VFS vfs(ctx);
 
-  if (!vfs.is_dir("dirA")) {
-    vfs.create_dir("dirA");
-    std::cout << "Made dirA.\n";
+  // Create directory
+  if (!vfs.is_dir("dir_A")) {
+    vfs.create_dir("dir_A");
+    std::cout << "Created dir_A\n";
   } else {
-    std::cout << "dirA already exists.\n";
+    std::cout << "dir_A already exists\n";
   }
 
-  if (!vfs.is_file("dirA/fileA")) {
-    vfs.touch("dirA/fileA");
-    std::cout << "Made file dirA/fileA.\n";
+  // Creating an (empty) file
+  if (!vfs.is_file("dir_A/file_A")) {
+    vfs.touch("dir_A/file_A");
+    std::cout << "Created empty file dir_A/file_A\n";
   } else {
-    std::cout << "dirA/fileA already exists.\n";
+    std::cout << "dir_A/file_A already exists\n";
   }
 
-  std::cout << "File size: " << vfs.file_size("dirA/fileA") << "\n";
+  // Getting the file size
+  std::cout << "File size: " << vfs.file_size("dir_A/file_A") << "\n";
 
-  std::cout << "Moving file dirA/fileA to dirA/fileB.\n";
-  vfs.move("dirA/fileA", "dirA/fileB", true);
+  // Moving files (moving directories is similar)
+  std::cout << "Moving file dir_A/file_A to dir_A/file_B\n";
+  vfs.move("dir_A/file_A", "dir_A/file_B", true);
 
-  std::cout << "deleting fileB and dirA.\n";
-  vfs.remove_file("dirA/fileB");
-  vfs.remove_dir("dirA");
+  // Deleting files and directories
+  std::cout << "Deleting dir_A/file_B and dir_A\n";
+  vfs.remove_file("dir_A/file_B");
+  vfs.remove_dir("dir_A");
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

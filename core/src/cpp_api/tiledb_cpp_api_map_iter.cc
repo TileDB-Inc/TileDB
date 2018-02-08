@@ -61,7 +61,7 @@ MapIter &MapIter::operator++() {
   item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
   ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
   if (limit_type_) {
-    auto t = item_->key_type();
+    auto t = item_->key_info();
     if (t.first != type_ || (only_single_ && t.second > type_size(type_)))
       operator++();
   }

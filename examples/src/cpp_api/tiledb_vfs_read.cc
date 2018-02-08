@@ -75,5 +75,7 @@ int main() {
     std::cout << "\nBinary read:\n" << f1 << '\n' << s1 << '\n';
   }
 
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
   return 0;
 }

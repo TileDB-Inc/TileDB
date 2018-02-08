@@ -45,6 +45,7 @@ namespace impl {
 VFSFilebuf *VFSFilebuf::open(
     const std::string &uri, std::ios::openmode openmode) {
   close();
+  uri_ = uri;
 
   tiledb_vfs_mode_t mode;
 
@@ -74,18 +75,12 @@ VFSFilebuf *VFSFilebuf::open(
 
 VFSFilebuf *VFSFilebuf::close() {
   if (is_open()) {
-    sync();
+    auto &ctx = vfs_.get().context();
+    tiledb_vfs_close(ctx, fh_.get());
     uri_ = "";
     return this;
   }
   return nullptr;
-}
-
-int VFSFilebuf::sync() {
-  auto &ctx = vfs_.get().context();
-  if (tiledb_vfs_sync(ctx, fh_.get()) != TILEDB_OK)
-    return -1;
-  return 0;
 }
 
 /* ********************************* */
@@ -187,7 +182,7 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 /* ********************************* */
 
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
-  if (offset_ != file_size())
+  if (vfs_.get().is_file(uri_) && offset_ != file_size())
     return traits_type::eof();
   auto &ctx = vfs_.get().context();
   if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) !=

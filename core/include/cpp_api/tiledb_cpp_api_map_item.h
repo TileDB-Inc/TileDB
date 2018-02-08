@@ -81,7 +81,7 @@ class MapItem {
   /* ********************************* */
 
   /**
-   * Checks if the goodness of the key-value item. Useful when
+   * Checks the goodness of the key-value item. Useful when
    * checking if a retrieved key-value item exists in a map.
    */
   bool good() const {
@@ -104,8 +104,8 @@ class MapItem {
     return key_impl<T>();
   }
 
-  /** Get tiledb datatype and size **/
-  std::pair<tiledb_datatype_t, uint64_t> key_type() const {
+  /** Get the key datatype and size **/
+  std::pair<tiledb_datatype_t, uint64_t> key_info() const {
     auto &ctx = ctx_.get();
     const void *key;
     tiledb_datatype_t type;
