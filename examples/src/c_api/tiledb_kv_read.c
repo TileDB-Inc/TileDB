@@ -31,9 +31,9 @@
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_kv_create
- * $ ./tiledb_kv_write
- * $ ./tiledb_kv_read
+ * $ ./tiledb_kv_create_c
+ * $ ./tiledb_kv_write_c
+ * $ ./tiledb_kv_read_c
  */
 
 #include <assert.h>
@@ -44,24 +44,16 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Prepare key
-  int key = 100;
-  tiledb_datatype_t key_type = TILEDB_INT32;
-  uint64_t key_size = sizeof(int);
-
-  // Create key-values
+  // Open a key-value store
   tiledb_kv_t* kv;
   tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
 
   // Get key-value item
+  int key = 100;
+  tiledb_datatype_t key_type = TILEDB_INT32;
+  uint64_t key_size = sizeof(int);
   tiledb_kv_item_t* kv_item = NULL;
   tiledb_kv_get_item(ctx, kv, &kv_item, &key, key_type, key_size);
-
-  // Check if item exists
-  if (kv_item == NULL) {
-    printf("Item does not exist.\n");
-    return 0;
-  }
 
   // Get values
   const void *a1, *a2, *a3;
@@ -77,11 +69,18 @@ int main() {
       a3_type == TILEDB_FLOAT32);
 
   // Print result
-  printf("a1, a2, (a3.first, a3.second)\n");
+  printf("a1\ta2\t(a3[0], a3[1])\n");
   printf("-----------------------------\n");
-  printf("%d", *((const int*)a1));
-  printf(", %.*s", (int)a2_size, (const char*)a2);
-  printf(", (%f, %f)\n", ((const float*)a3)[0], ((const float*)a3)[1]);
+  printf("%d\t", *((const int*)a1));
+  printf("%.*s\t", (int)a2_size, (const char*)a2);
+  printf("(%.1f, %.1f)\n", ((const float*)a3)[0], ((const float*)a3)[1]);
+
+  // Try to get item that does not exist
+  tiledb_kv_item_t* kv_item_2 = NULL;
+  int key2 = 12345;
+  tiledb_kv_get_item(ctx, kv, &kv_item_2, &key2, key_type, key_size);
+  if (kv_item_2 == NULL)
+    printf("\nItem with key '%d' does not exist\n", key2);
 
   // Clean up
   tiledb_kv_close(ctx, kv);

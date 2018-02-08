@@ -27,13 +27,13 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read all items from a key-value store using an terator.
+ * It shows how to read all items from a key-value store using an iterator.
  *
  * You need to run the following to make it work:
  *
- * $ ./tiledb_kv_create
- * $ ./tiledb_kv_write
- * $ ./tiledb_kv_iter
+ * $ ./tiledb_kv_create_c
+ * $ ./tiledb_kv_write_c
+ * $ ./tiledb_kv_iter_c
  */
 
 #include <tiledb.h>
@@ -75,7 +75,7 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
   tiledb_datatype_t key_type;
   uint64_t key_size;
   tiledb_kv_item_get_key(ctx, kv_item, &key, &key_type, &key_size);
-  printf("-- Key: ");
+  printf("key: ");
   print(key, key_type, key_size);
   printf("\n");
 
@@ -89,7 +89,7 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
   print(value, value_type, value_size);
   printf("\n");
 
-  // G et and print value for attribute "a2"
+  // Get and print value for attribute "a2"
   printf("a2: ");
   tiledb_kv_item_get_value(
       ctx, kv_item, "a2", &value, &value_type, &value_size);
@@ -101,7 +101,7 @@ void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item) {
   tiledb_kv_item_get_value(
       ctx, kv_item, "a3", &value, &value_type, &value_size);
   print(value, value_type, value_size);
-  printf("\n");
+  printf("\n-------\n");
 }
 
 void print(const void* v, tiledb_datatype_t type, uint64_t size) {
@@ -116,20 +116,20 @@ void print(const void* v, tiledb_datatype_t type, uint64_t size) {
     case TILEDB_FLOAT32:
       nitems = (int)(size / sizeof(float));
       for (int i = 0; i < nitems; ++i)
-        printf("%f ", ((float*)v)[i]);
+        printf("%.1f ", ((float*)v)[i]);
       printf("\b, float32");
       break;
     case TILEDB_FLOAT64:
       nitems = (int)(size / sizeof(double));
       for (int i = 0; i < nitems; ++i)
-        printf("%f ", ((double*)v)[i]);
+        printf("%.1lf ", ((double*)v)[i]);
       printf("\b, float64");
       break;
     case TILEDB_CHAR:
       nitems = (int)(size / sizeof(char));
       for (int i = 0; i < nitems; ++i)
         printf("%c", ((char*)v)[i]);
-      printf("\b, char");
+      printf(", char");
       break;
     default:
       printf(

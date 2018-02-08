@@ -27,55 +27,83 @@
  *
  * @section DESCRIPTION
  *
- * Read a Map. Run map_write before this.
+ * It shows how to read all items from a TileDB map using an iterator.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_map_create_cpp
+ * $ ./tiledb_map_write_cpp
+ * $ ./tiledb_map_iter_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Create TileDB map
   tiledb::Map map(ctx, "my_map");
 
-  std::cout << "\nWriting by iterating over all keys.\n";
-  int i = 0;
-  for (auto &item : map) {
-    item["a1"] = ++i << 2;
-    // Or use a tuple
-    item[std::vector<std::string>({"a2", "a3"})] = std::make_tuple(
-        std::string((unsigned)i * 2, 'x'),
-        std::vector<float>{i / .15f, i / .05f});
-  }
-
-  // After iteration, map is flushed.
-
-  std::cout << "\nIterating over all keys:\n";
   // Read using iterator
+  std::cout << "Iterating over all keys:\n";
   for (auto &item : map) {
     std::tuple<int, std::string, std::vector<float>> vals =
         item[{"a1", "a2", "a3"}];
-    std::cout << std::get<0>(vals) << ", " << std::get<1>(vals) << ", ("
-              << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n";
+    std::cout << "a1: " << std::get<0>(vals) << "\n"
+              << "a2: " << std::get<1>(vals) << "\n"
+              << "a3: " << std::get<2>(vals)[0] << " " << std::get<2>(vals)[1]
+              << "\n";
+    std::cout << "-----\n";
   }
 
-  std::cout << "\nOnly iterating over int keys:\n";
   // Read using iterator, only int keys
+  std::cout << "\nOnly iterating over int keys:\n";
   for (auto item = map.begin<int>(); item != map.end(); ++item) {
     auto key = item->key<int>();
     std::tuple<int, std::string, std::vector<float>> vals =
         (*item)[{"a1", "a2", "a3"}];
-    std::cout << key << ": " << std::get<0>(vals) << ", " << std::get<1>(vals)
-              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1]
-              << ")\n";
+    std::cout << "key: " << key << "\n"
+              << "a1: " << std::get<0>(vals) << "\n"
+              << "a2: " << std::get<1>(vals) << "\n"
+              << "a3: " << std::get<2>(vals)[0] << " " << std::get<2>(vals)[1]
+              << "\n";
+    std::cout << "-----\n";
   }
 
-  std::cout << "\nOnly iterating over str keys:\n";
-  // Read using iterator, only int keys
+  // Read using iterator, only string keys
+  std::cout << "\nOnly iterating over string keys:\n";
   for (auto item = map.begin<std::string>(); item != map.end(); ++item) {
     auto key = item->key<std::string>();
     std::tuple<int, std::string, std::vector<float>> vals =
         (*item)[{"a1", "a2", "a3"}];
-    std::cout << key << ": " << std::get<0>(vals) << ", " << std::get<1>(vals)
-              << ", (" << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1]
-              << ")\n";
+    std::cout << "key: " << key << "\n"
+              << "a1: " << std::get<0>(vals) << "\n"
+              << "a2: " << std::get<1>(vals) << "\n"
+              << "a3: " << std::get<2>(vals)[0] << " " << std::get<2>(vals)[1]
+              << "\n";
+    std::cout << "-----\n";
   }
+
+  // Read using iterator, only double vector keys
+  std::cout << "\nOnly iterating over double vector keys:\n";
+  for (auto item = map.begin<std::vector<double>>(); item != map.end();
+       ++item) {
+    auto key = item->key<std::vector<double>>();
+    auto key_type = item->key_type();
+    std::tuple<int, std::string, std::vector<float>> vals =
+        (*item)[{"a1", "a2", "a3"}];
+    std::cout << "key: ";
+    for (uint64_t i = 0; i < key_type.second / sizeof(double); ++i)
+      std::cout << key[i] << " ";
+    std::cout << "\na1: " << std::get<0>(vals) << "\n"
+              << "a2: " << std::get<1>(vals) << "\n"
+              << "a3: " << std::get<2>(vals)[0] << " " << std::get<2>(vals)[1]
+              << "\n";
+    std::cout << "-----\n";
+  }
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
+
+  return 0;
 }

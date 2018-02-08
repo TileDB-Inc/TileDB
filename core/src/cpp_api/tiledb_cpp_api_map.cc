@@ -46,9 +46,4 @@ void Map::consolidate(const Context &ctx, const std::string &map) {
   ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
 }
 
-Map &operator<<(Map &map, const MapItem &item) {
-  map.add_item(item);
-  return map;
-}
-
 }  // namespace tdb

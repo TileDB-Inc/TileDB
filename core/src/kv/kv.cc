@@ -324,10 +324,10 @@ void KV::clear_items() {
   items_.clear();
 }
 
-Status KV::set_max_items(uint64_t max_items) {
+Status KV::set_max_buffered_items(uint64_t max_items) {
   if (max_items == 0)
-    return LOG_STATUS(
-        Status::KVError("Cannot set maximum items; Maximum items cannot be 0"));
+    return LOG_STATUS(Status::KVError(
+        "Cannot set maximum buffered items; Maximum items cannot be 0"));
 
   mtx_.lock();
   max_items_ = max_items;

@@ -31,8 +31,8 @@
  *
  * Run the following:
  *
- * $ ./tiledb_kv_create
- * $ ./tiledb_kv_write
+ * $ ./tiledb_kv_create_c
+ * $ ./tiledb_kv_write_c
  */
 
 #include <string.h>
@@ -43,35 +43,11 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Key-values with three attributes
+  // Create first key-value item object
   int key1 = 100;
   int key1_a1 = 1;
   const char* key1_a2 = "a";
   float key1_a3[] = {1.1f, 1.2f};
-
-  float key2 = 200.0;
-  int key2_a1 = 2;
-  const char* key2_a2 = "bb";
-  float key2_a3[] = {2.1f, 2.2f};
-
-  double key3[] = {300.0, 300.1};
-  int key3_a1 = 3;
-  const char* key3_a2 = "ccc";
-  float key3_a3[] = {3.1f, 3.2f};
-
-  char key4[] = "key_4";
-  int key4_a1 = 4;
-  const char* key4_a2 = "dddd";
-  float key4_a3[] = {4.1f, 4.2f};
-
-  // Open the key-value store
-  tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
-
-  // Flush every 100 added items
-  tiledb_kv_set_max_items(ctx, kv, 100);
-
-  // Create first key-value item object
   tiledb_kv_item_t* kv_item1;
   tiledb_kv_item_create(ctx, &kv_item1);
   tiledb_kv_item_set_key(ctx, kv_item1, &key1, TILEDB_INT32, sizeof(key1));
@@ -83,6 +59,10 @@ int main() {
       ctx, kv_item1, "a3", &key1_a3, TILEDB_FLOAT32, sizeof(key1_a3));
 
   // Create second key-value item object
+  float key2 = 200.0;
+  int key2_a1 = 2;
+  const char* key2_a2 = "bb";
+  float key2_a3[] = {2.1f, 2.2f};
   tiledb_kv_item_t* kv_item2;
   tiledb_kv_item_create(ctx, &kv_item2);
   tiledb_kv_item_set_key(ctx, kv_item2, &key2, TILEDB_FLOAT32, sizeof(key2));
@@ -94,6 +74,10 @@ int main() {
       ctx, kv_item2, "a3", &key2_a3, TILEDB_FLOAT32, sizeof(key2_a3));
 
   // Create third key-value item object
+  double key3[] = {300.0, 300.1};
+  int key3_a1 = 3;
+  const char* key3_a2 = "ccc";
+  float key3_a3[] = {3.1f, 3.2f};
   tiledb_kv_item_t* kv_item3;
   tiledb_kv_item_create(ctx, &kv_item3);
   tiledb_kv_item_set_key(ctx, kv_item3, &key3, TILEDB_FLOAT64, sizeof(key3));
@@ -105,6 +89,10 @@ int main() {
       ctx, kv_item3, "a3", &key3_a3, TILEDB_FLOAT32, sizeof(key3_a3));
 
   // Create fourth key-value item object
+  char key4[] = "key_4";
+  int key4_a1 = 4;
+  const char* key4_a2 = "dddd";
+  float key4_a3[] = {4.1f, 4.2f};
   tiledb_kv_item_t* kv_item4;
   tiledb_kv_item_create(ctx, &kv_item4);
   tiledb_kv_item_set_key(ctx, kv_item4, &key4, TILEDB_CHAR, strlen(key4));
@@ -115,6 +103,13 @@ int main() {
   tiledb_kv_item_set_value(
       ctx, kv_item4, "a3", &key4_a3, TILEDB_FLOAT32, sizeof(key4_a3));
 
+  // Open the key-value store
+  tiledb_kv_t* kv;
+  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
+
+  // Flush every 100 added items
+  tiledb_kv_set_max_buffered_items(ctx, kv, 100);
+
   // Add key-value items to key-value store
   tiledb_kv_add_item(ctx, kv, kv_item1);
   tiledb_kv_add_item(ctx, kv, kv_item2);
@@ -122,10 +117,11 @@ int main() {
   // Force-write the buffered items to the persistent storage
   tiledb_kv_flush(ctx, kv);
 
+  // Write more items - these will be flushed upon closing kv
   tiledb_kv_add_item(ctx, kv, kv_item3);
   tiledb_kv_add_item(ctx, kv, kv_item4);
 
-  // The following will flush the buffered key-value items to the disk
+  // The following will flush the buffered key-value items to storage
   tiledb_kv_close(ctx, kv);
 
   // Consolidate key-value store (optional)

@@ -27,9 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a key-value store. Simply run:
+ * It shows how to create a key-value store.
  *
- * $ ./tiledb_kv_create
+ * Simply run:
+ *
+ * $ ./tiledb_kv_create_c
  */
 
 #include <tiledb.h>

@@ -80,6 +80,14 @@ class MapItem {
   /*                API                */
   /* ********************************* */
 
+  /**
+   * Checks if the goodness of the key-value item. Useful when
+   * checking if a retrieved key-value item exists in a map.
+   */
+  bool good() const {
+    return item_.get() != nullptr;
+  }
+
   /** Set an attribute to the given value **/
   template <typename T>
   void set(const std::string &attr, const T &val) {
@@ -280,6 +288,7 @@ class MapItem {
     return *data;
   }
 
+  /** A TileDB context reference wrapper. */
   std::reference_wrapper<const Context> ctx_;
 
   /** Ptr to TileDB object. **/

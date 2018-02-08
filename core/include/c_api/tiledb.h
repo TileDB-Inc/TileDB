@@ -1782,7 +1782,7 @@ TILEDB_EXPORT int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
  * @param max_items The number of maximum items to be set.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_kv_set_max_items(
+TILEDB_EXPORT int tiledb_kv_set_max_buffered_items(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items);
 
 /**

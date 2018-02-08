@@ -27,58 +27,62 @@
  *
  * @section DESCRIPTION
  *
- * Read a Map. Run `tiledb_map_write` before this.
+ * It shows how to read from a TileDB map.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_map_create_cpp
+ * $ ./tiledb_map_write_cpp
+ * $ ./tiledb_map_read_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Create TileDB map
   tiledb::Map map(ctx, "my_map");
 
   // Get item with key 100
   auto item1 = map.get_item(100);
 
-  std::cout << "a1, a2, (a3.first, a3.second)\n"
-            << "-----------------------------\n"
-            // Get a attr known to be a primitive
-            << item1.get<int>("a1")
-            << ", "
-            // Get a >1 element attr with a std::string container.
-            // Default container is std::vector<T>.
-            << item1.get<std::string>("a2") << ", ";
-
-  // Get value by implicit cast
+  // Get value by implicit cast - you need to be sure that the item exists
   int a1 = map[100]["a1"];
   std::string a2 = map[100]["a2"];
   std::vector<float> a3 = map[100]["a3"];
 
-  std::cout << "(" << a3[0] << ", " << a3[1] << ")\n"
-            << "-----------------------------\n";
+  // Get item with explicit type
+  a1 = item1.get<int>("a1");
+  a2 = item1.get<std::string>("a2");
+  a3 = item1.get<std::vector<float>>("a3");
 
   // Get values into a tuple
   std::tuple<int, std::string, std::vector<float>> vals =
-      map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}];
+      map[100][{"a1", "a2", "a3"}];
 
-  std::cout << "\nGet with tuple:\n"
+  // Get pointer to data with no C++ API copies
+  auto a2_data = item1.get_ptr<char>("a2");
+
+  // Print item
+  std::cout << "a1\ta2\t(a3[0], a3[1])\n"
             << "-----------------------------\n"
-            << std::get<0>(vals) << ", " << std::get<1>(vals) << ", ("
-            << std::get<2>(vals)[0] << ", " << std::get<2>(vals)[1] << ")\n"
-            << "-----------------------------\n";
+            << a1 << "\t" << std::string(a2_data.first, a2_data.second) << "\t";
+  std::cout << "(" << std::get<2>(vals)[0] << ", " << a3[1] << ")\n";
 
-  // Error, can't read when key already set
+  // Try to get item that does not exist
+  auto item2 = map.get_item(12345);
+  if (!item2.good())
+    std::cout << "\nItem with key '" << 12345 << "' does not exist\n";
   try {
-    int err = map[12341]["a1"];
+    int err = map[12345]["a1"];
     (void)err;
   } catch (tiledb::TileDBError &e) {
-    std::cout << "Error: key doesn't exist.\n";
+    std::cout << e.what() << "\n";
   }
 
-  // Get pointer to data with no C++ API copies.
-  auto data = item1.get_ptr<char>("a2");
-  std::cout << "\nNo copy get of attribute 2: "
-            << std::string(data.first, data.second) << '\n'
-            << "Implicit casts: " << a1 << ", " << a2;
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

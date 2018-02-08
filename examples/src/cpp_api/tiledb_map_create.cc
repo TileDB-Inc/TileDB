@@ -27,28 +27,46 @@
  *
  * @section DESCRIPTION
  *
- * Create a Map.
+ * It shows how to create a TileDB map (key-value store).
+ *
+ * Simply run:
+ *
+ * $ ./tiledb_map_create_cpp
  */
 
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
-  tiledb::MapSchema schema(ctx);
 
+  // Create attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
   tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
   tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
-
   a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
   a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
 
+  // Create map schema
+  tiledb::MapSchema schema(ctx);
   schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
 
+  // Check array schema
+  try {
+    schema.check();
+  } catch (tiledb::TileDBError &e) {
+    std::cout << e.what() << "\n";
+    return -1;
+  }
+
+  // Print the map schema
   schema.dump(stdout);
 
+  // Create the map on storage
   tiledb::Map::create("my_map", schema);
+
+  // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
 }

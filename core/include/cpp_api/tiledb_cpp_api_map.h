@@ -103,9 +103,6 @@ class Map {
   template <typename T>
   MapItem get_item(const T &key) {
     tiledb_kv_item_t *item = get_impl<T>(key);
-    if (item == nullptr) {
-      throw TileDBError("Key does not exist.");
-    }
     return MapItem(schema_.context(), &item, this);
   }
 
@@ -131,15 +128,16 @@ class Map {
    * Add an item to the map. This populates the map with the key and attribute
    * values.
    */
-  void add_item(const MapItem &item) {
+  Map &add_item(const MapItem &item) {
     auto &ctx = schema_.context();
     ctx.handle_error(tiledb_kv_add_item(ctx, kv_.get(), item.ptr().get()));
+    return *this;
   }
 
   /** Max number of items to buffer in memory before flushing to storage. **/
   void set_max_buffered_items(uint64_t num) {
     auto &ctx = context();
-    ctx.handle_error(tiledb_kv_set_max_items(ctx, kv_.get(), num));
+    ctx.handle_error(tiledb_kv_set_max_buffered_items(ctx, kv_.get(), num));
   }
 
   /** Flush to storage. **/
@@ -283,13 +281,6 @@ class Map {
   /** URI **/
   std::string uri_;
 };
-
-/* ********************************* */
-/*        NON MEMBER MAP FUNC        */
-/* ********************************* */
-
-/** Add an item to the map. **/
-Map &operator<<(Map &map, const MapItem &item);
 
 }  // namespace tdb
 

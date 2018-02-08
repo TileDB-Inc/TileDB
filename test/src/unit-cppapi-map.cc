@@ -76,9 +76,9 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   i1["a2"] = "someval";
   i1["a3"] = std::vector<double>{3, 2.4};
 
-  CHECK_THROWS(map << i1);
+  CHECK_THROWS(map.add_item(i1));
   i1["a1"] = 1;
-  map << i1;
+  map.add_item(i1);
   map.flush();
 
   // write via tuple

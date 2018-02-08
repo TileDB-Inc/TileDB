@@ -2405,12 +2405,12 @@ int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_set_max_items(
+int tiledb_kv_set_max_buffered_items(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, kv->kv_->set_max_items(max_items)))
+  if (save_error(ctx, kv->kv_->set_max_buffered_items(max_items)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
