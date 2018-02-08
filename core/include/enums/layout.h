@@ -41,7 +41,7 @@ namespace tiledb {
 /** Defines a layout for the cell or tile order. */
 enum class Layout : char {
 #define TILEDB_LAYOUT_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_LAYOUT_ENUM
 };
 

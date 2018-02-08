@@ -57,6 +57,8 @@ extern "C" {
 #endif
 /**@}*/
 
+/**@{*/
+/** Deprecated symbol. */
 #if (defined __GNUC__) || defined __INTEL_COMPILER
 #define TILEDB_DEPRECATED __attribute__((deprecated, visibility("default")))
 #elif defined _MSC_VER
@@ -65,16 +67,22 @@ extern "C" {
 #define DEPRECATED
 #pragma message("TILEDB_DEPRECATED is not defined for this compiler")
 #endif
+/**@}*/
 
 /* ****************************** */
 /*            CONSTANTS           */
 /* ****************************** */
 
+/**
+ * @name Return codes
+ */
 /**@{*/
-/** Return code. */
-#define TILEDB_OK 0      // Success
-#define TILEDB_ERR (-1)  // General error
-#define TILEDB_OOM (-2)  // Out of memory
+/** Success */
+#define TILEDB_OK 0
+/** General error */
+#define TILEDB_ERR (-1)
+/** Out of memory */
+#define TILEDB_OOM (-2)
 /**@}*/
 
 /** Returns a special name indicating the coordinates attribute. */
@@ -86,10 +94,15 @@ TILEDB_EXPORT unsigned int tiledb_var_num();
 /** Returns the maximum path length on the current platform. */
 TILEDB_EXPORT unsigned int tiledb_max_path();
 
+/**
+ * @name Constants wrapping special functions
+ */
 /**@{*/
-/** Constants wrapping special functions. */
+/** A special name indicating the coordinates attribute. */
 #define TILEDB_COORDS tiledb_coords()
+/** A special value indicating a variable number of elements. */
 #define TILEDB_VAR_NUM tiledb_var_num()
+/** The maximum path length on the current platform. */
 #define TILEDB_MAX_PATH tiledb_max_path()
 /**@}*/
 
@@ -99,71 +112,81 @@ TILEDB_EXPORT unsigned int tiledb_max_path();
 
 /** TileDB object type. */
 typedef enum {
+/** Helper macro for defining object type enums. */
 #define TILEDB_OBJECT_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_OBJECT_TYPE_ENUM
 } tiledb_object_t;
 
-/** Query mode. */
+/** TileDB query type. */
 typedef enum {
+/** Helper macro for defining query type enums. */
 #define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
 } tiledb_query_type_t;
 
 /** Query status. */
 typedef enum {
+/** Helper macro for defining query status enums. */
 #define TILEDB_QUERY_STATUS_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
 
-/** Filesystem. */
+/** Filesystem type. */
 typedef enum {
+/** Helper macro for defining filesystem enums. */
 #define TILEDB_FILESYSTEM_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_FILESYSTEM_ENUM
 } tiledb_filesystem_t;
 
-/** Data type. */
+/** TileDB datatype. */
 typedef enum {
+/** Helper macro for defining datatype enums. */
 #define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_DATATYPE_ENUM
 } tiledb_datatype_t;
 
 /** Array type. */
 typedef enum {
+/** Helper macro for defining array type enums. */
 #define TILEDB_ARRAY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_ARRAY_TYPE_ENUM
 } tiledb_array_type_t;
 
 /** Tile or cell layout. */
 typedef enum {
+/** Helper macro for defining layout type enums. */
 #define TILEDB_LAYOUT_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_LAYOUT_ENUM
 } tiledb_layout_t;
 
 /** Compression type. */
 typedef enum {
+/** Helper macro for defining compressor enums. */
 #define TILEDB_COMPRESSOR_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_COMPRESSOR_ENUM
 } tiledb_compressor_t;
 
 /** Walk traversal order. */
 typedef enum {
+/** Helper macro for defining walk order enums. */
 #define TILEDB_WALK_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_WALK_ORDER_ENUM
 } tiledb_walk_order_t;
 
 /** VFS mode. */
 typedef enum {
+/** Helper macro for defining VFS mode enums. */
 #define TILEDB_VFS_MODE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_VFS_MODE_ENUM
 } tiledb_vfs_mode_t;
 
@@ -172,7 +195,7 @@ typedef enum {
 /* ****************************** */
 
 /**
- *  Retrieves the version of the TileDB library being currently used.
+ *  Retrieves the version of the TileDB library currently being used.
  *
  *  @param major Will store the major version number.
  *  @param minor Will store the minor version number.
@@ -244,7 +267,7 @@ TILEDB_EXPORT int tiledb_error_message(
     tiledb_error_t* err, const char** errmsg);
 
 /**
- * Free's the resources associated with a TileDB error object.
+ * Frees the resources associated with a TileDB error object.
  *
  * @param err The TileDB error object.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
@@ -259,7 +282,7 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
  * Creates a TileDB config.
  *
  * @param config The config to be created.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
@@ -280,7 +303,7 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
  * @param config The config object.
  * @param param The parameter to be set.
  * @param value The value of the parameter to be set.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -296,8 +319,8 @@ TILEDB_EXPORT int tiledb_config_set(
  * @param config The config object.
  * @param param The parameter to be set.
  * @param value A pointer to the value of the parameter to be retrieved
- *    (`nullptr` if it does not exist).
- * @param error Error object returned upon error (`nullptr` if there is
+ *    (`NULL` if it does not exist).
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -312,7 +335,7 @@ TILEDB_EXPORT int tiledb_config_get(
  *
  * @param config The config object.
  * @param filename The name of the file.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -325,7 +348,7 @@ TILEDB_EXPORT int tiledb_config_load_from_file(
  *
  * @param config The config object.
  * @param param The parameter to be unset.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -337,7 +360,7 @@ TILEDB_EXPORT int tiledb_config_unset(
  *
  * @param config The config object.
  * @param filename The name of the file.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -353,11 +376,11 @@ TILEDB_EXPORT int tiledb_config_save_to_file(
  *
  * @param config A config object the iterator will operate on.
  * @param config_iter The config iterator to be created.
- * @param prefix If not `nullptr`, only the config parameters starting
+ * @param prefix If not `NULL`, only the config parameters starting
  *     with `prefix.*` will be iterated on. Moreover, the prefix will
  *     be stripped from the parameters. Otherwise, all parameters will
  *     be iterated on and their full name will be retrieved.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
@@ -379,11 +402,11 @@ TILEDB_EXPORT int tiledb_config_iter_free(tiledb_config_iter_t* config_iter);
  * Retrieves the config param and value currently pointed by the iterator.
  *
  * @param config_iter The config iterator.
- * @param param The config parameter to be retrieved (`nullptr` if the iterator
+ * @param param The config parameter to be retrieved (`NULL` if the iterator
  *     is at the end).
- * @param value The config value to be retrieved (`nullptr` if the iterator
+ * @param value The config value to be retrieved (`NULL` if the iterator
  *     is at the end).
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -397,7 +420,7 @@ TILEDB_EXPORT int tiledb_config_iter_here(
  * Moves the iterator to the next param.
  *
  * @param config_iter The config iterator.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -409,7 +432,7 @@ TILEDB_EXPORT int tiledb_config_iter_next(
  *
  * @param config_iter The config iterator.
  * @param done Sets this to `true` if the iterator is done.
- * @param error Error object returned upon error (`nullptr` if there is
+ * @param error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -425,14 +448,14 @@ TILEDB_EXPORT int tiledb_config_iter_done(
  * that manages everything in the TileDB library.
  *
  * @param ctx The TileDB context to be created.
- * @param config The configuration parameters (`nullptr` means default).
+ * @param config The configuration parameters (`NULL` means default).
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_create(
     tiledb_ctx_t** ctx, tiledb_config_t* config);
 
 /**
- * Destroys the TileDB context, properly freeing-up all memory.
+ * Destroys the TileDB context, freeing all associated memory and resources.
  *
  * @param ctx The TileDB context to be freed.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
@@ -453,7 +476,7 @@ TILEDB_EXPORT int tiledb_ctx_get_config(
  * Retrieves the last TileDB error associated with a TileDB context.
  *
  * @param ctx The TileDB context.
- * @param err The last error, or NULL if no error has been raised.
+ * @param err The last error, or `NULL` if no error has been raised.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_get_last_error(
@@ -479,7 +502,7 @@ TILEDB_EXPORT int tiledb_ctx_is_supported_fs(
  * Creates a new TileDB group.
  *
  * @param ctx The TileDB context.
- * @param group_uri The group uri.
+ * @param group_uri The group URI.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
@@ -504,7 +527,7 @@ TILEDB_EXPORT int tiledb_attribute_create(
     tiledb_datatype_t type);
 
 /**
- * Destroys a TileDB attribute, freeing-up memory.
+ * Destroys a TileDB attribute, freeing associated memory.
  *
  * @param ctx The TileDB context.
  * @param attr The attribute to be destroyed.
@@ -514,7 +537,7 @@ TILEDB_EXPORT int tiledb_attribute_free(
     tiledb_ctx_t* ctx, tiledb_attribute_t* attr);
 
 /**
- * Sets a compressor to an attribute.
+ * Sets a compressor for an attribute.
  *
  * @param ctx The TileDB context.
  * @param attr The target attribute.
@@ -577,7 +600,7 @@ TILEDB_EXPORT int tiledb_attribute_get_compressor(
     int* compression_level);
 
 /**
- * Retrieves the number of values per cell for this attribute.
+ * Retrieves the number of values per cell for the attribute.
  *
  * @param ctx The TileDB context.
  * @param attr The attribute.
@@ -616,7 +639,7 @@ TILEDB_EXPORT int tiledb_domain_create(
     tiledb_ctx_t* ctx, tiledb_domain_t** domain);
 
 /**
- * Destroys a TileDB domain, freeing-up memory.
+ * Destroys a TileDB domain, freeing associated memory.
  *
  * @param ctx The TileDB context.
  * @param domain The domain to be destroyed.
@@ -659,7 +682,7 @@ TILEDB_EXPORT int tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim);
 
 /**
- * Retrieves a dimension object from a domain by index
+ * Retrieves a dimension object from a domain by index.
  *
  * @param ctx The TileDB context
  * @param domain The domain to add the dimension to.
@@ -674,11 +697,11 @@ TILEDB_EXPORT int tiledb_domain_get_dimension_from_index(
     tiledb_dimension_t** dim);
 
 /**
- * Retrieves a dimension object from a domain by name (key)
+ * Retrieves a dimension object from a domain by name (key).
  *
  * @param ctx The TileDB context
  * @param domain The domain to add the dimension to.
- * @param index The name (key) of the requested dimension
+ * @param name The name (key) of the requested dimension
  * @param dim The retrieved dimension object.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -724,7 +747,7 @@ TILEDB_EXPORT int tiledb_dimension_create(
     const void* tile_extent);
 
 /**
- * Destroys a TileDB dimension, freeing-up memory.
+ * Destroys a TileDB dimension, freeing associated memory.
  *
  * @param ctx The TileDB context.
  * @param dim The dimension to be destroyed.
@@ -807,7 +830,7 @@ TILEDB_EXPORT int tiledb_array_schema_create(
     tiledb_array_type_t array_type);
 
 /**
- * Destroys an array schema, freeing-up memory.
+ * Destroys an array schema, freeing associated memory.
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema to be destroyed.
@@ -830,7 +853,7 @@ TILEDB_EXPORT int tiledb_array_schema_add_attribute(
     tiledb_attribute_t* attr);
 
 /**
- * Sets a domain to array schema.
+ * Sets a domain for the array schema.
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
@@ -880,7 +903,7 @@ TILEDB_EXPORT int tiledb_array_schema_set_tile_order(
     tiledb_layout_t tile_order);
 
 /**
- * Sets the coordinates compressor.
+ * Sets the compressor to use for the coordinates.
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
@@ -895,7 +918,8 @@ TILEDB_EXPORT int tiledb_array_schema_set_coords_compressor(
     int compression_level);
 
 /**
- * Sets the variable-sized attribute value offsets compressor.
+ * Sets the compressor to use for the offsets of variable-sized attribute
+ * values.
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
@@ -1034,7 +1058,7 @@ TILEDB_EXPORT int tiledb_array_schema_get_tile_order(
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
- * @param attribute_ The number of attributes to be retrieved.
+ * @param attribute_num The number of attributes to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_get_attribute_num(
@@ -1043,7 +1067,7 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_num(
     unsigned int* attribute_num);
 
 /**
- * Retrieves a given attribute given it's index
+ * Retrieves an attribute given its index.
  *
  * Attributes are ordered the same way they were defined
  * when constructing the array schema.
@@ -1061,7 +1085,7 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_from_index(
     tiledb_attribute_t** attr);
 
 /**
- * Retrieves a given attribute given it's name (key)
+ * Retrieves an attribute given its name (key).
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
@@ -1130,22 +1154,6 @@ TILEDB_EXPORT int tiledb_query_set_subarray(
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param layout For a write query, this specifies the order of the cells
- *     provided by the user in the buffers. For a read query, this specifies
- *     the order of the cells that will be retrieved as results and stored
- *     in the user buffers. The layout can be one of the following:
- *    - TILEDB_COL_MAJOR <br>
- *      This means column-major order with respect to the subarray.
- *    - TILEDB_ROW_MAJOR <br>
- *      This means row-major order with respect to the subarray.
- *    - TILEDB_GLOBAL_ORDER <br>
- *      This means that cells are stored or retrieved in the array global
- *      cell order.
- *    - TILEDB_UNORDERED <br>
- *      This is applicable only to writes for sparse arrays, or for sparse
- *      writes to dense arrays. It specifies that the cells are unordered and,
- *      hence, TileDB must sort the cells in the global cell order prior to
- *      writing.
  * @param attributes A set of the array attributes the read/write will be
  *     constrained on. Note that the coordinates have special attribute name
  *     TILEDB_COORDS. If it is set to `NULL`, then this means **all**
@@ -1181,14 +1189,14 @@ TILEDB_EXPORT int tiledb_query_set_buffers(
  *     provided by the user in the buffers. For a read query, this specifies
  *     the order of the cells that will be retrieved as results and stored
  *     in the user buffers. The layout can be one of the following:
- *    - TILEDB_COL_MAJOR <br>
+ *    - TILEDB_COL_MAJOR:
  *      This means column-major order with respect to the subarray.
- *    - TILEDB_ROW_MAJOR <br>
+ *    - TILEDB_ROW_MAJOR:
  *      This means row-major order with respect to the subarray.
- *    - TILEDB_GLOBAL_ORDER <br>
+ *    - TILEDB_GLOBAL_ORDER:
  *      This means that cells are stored or retrieved in the array global
  *      cell order.
- *    - TILEDB_UNORDERED <br>
+ *    - TILEDB_UNORDERED:
  *      This is applicable only to writes for sparse arrays, or for sparse
  *      writes to dense arrays. It specifies that the cells are unordered and,
  *      hence, TileDB must sort the cells in the global cell order prior to
@@ -1199,7 +1207,7 @@ TILEDB_EXPORT int tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
- * Deletes a TileDB query object.
+ * Frees a TileDB query object.
  *
  * @param ctx The TileDB context.
  * @param query The query object to be deleted.
@@ -1451,7 +1459,7 @@ TILEDB_EXPORT int tiledb_kv_schema_create(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema);
 
 /**
- * Destroys a key-value schema, freeing-up memory.
+ * Destroys a key-value schema, freeing associated memory.
  *
  * @param ctx The TileDB context.
  * @param kv_schema The key-value schema to be destroyed.
@@ -1508,7 +1516,7 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_num(
     unsigned int* attribute_num);
 
 /**
- * Retrieves a given attribute given it's index
+ * Retrieves an attribute given its index.
  *
  * Attributes are ordered the same way they were defined
  * when constructing the key-value schema.
@@ -1526,7 +1534,7 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_from_index(
     tiledb_attribute_t** attr);
 
 /**
- * Retrieves a given attribute given its name (key)
+ * Retrieves an attribute given its name (key).
  *
  * @param ctx The TileDB context.
  * @param kv_schema The key-value schema.
@@ -1594,7 +1602,7 @@ TILEDB_EXPORT int tiledb_kv_item_set_key(
 
 /**
  * Sets a value for a particular attribute to the key-value item.
- * Note that this function works for both fixed- and variable-sized
+ * This function works for both fixed- and variable-sized
  * attributes.
  *
  * @param ctx The TileDB context.
@@ -1691,8 +1699,7 @@ TILEDB_EXPORT int tiledb_kv_set_max_items(
  * @param ctx The TileDB context.
  * @param kv The key-value store.
  * @param kv_uri The URI of the key-value store.
- * @param kv_schema The key-value store schema.
- * @param attributes The attributes to focus on. `nullptr` indicates all
+ * @param attributes The attributes to focus on. `NULL` indicates all
  *     attributes. If the key-value object is used for writing key-value
  *     items, **all** attributes must be specified.
  * @param attribute_num The number of `attributes`.
@@ -1739,7 +1746,7 @@ TILEDB_EXPORT int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
 /**
  * Retrieves a key-value item based on the input key. If the item with
- * the input key does not exist, `kv_item` is set to `nullptr`.
+ * the input key does not exist, `kv_item` is set to `NULL`.
  *
  * @param ctx The TileDB context.
  * @param kv The key-value store.
@@ -1768,8 +1775,7 @@ TILEDB_EXPORT int tiledb_kv_get_item(
  * @param ctx The TileDB context.
  * @param kv_iter The key-value store iterator to be created.
  * @param kv_uri The URI of the key-value store.
- * @param kv_schema The key-value store schema.
- * @param attributes The attributes to focus on. `nullptr` indicates all
+ * @param attributes The attributes to focus on. `NULL` indicates all
  *     attributes. If the key-value object is used for writing key-value
  *     items, **all** attributes must be specified.
  * @param attribute_num The number of `attributes`.
@@ -2001,13 +2007,13 @@ TILEDB_EXPORT int tiledb_vfs_move(
  * @param vfs The virtual filesystem object.
  * @param uri The URI of the file.
  * @param mode The mode in which the file is opened:
- *     - TILEDB_VFS_READ <br>
+ *     - TILEDB_VFS_READ:
  *       The file is opened for reading. An error is returned if the file
  *       does not exist.
- *     - TILEDB_VFS_WRITE <br>
+ *     - TILEDB_VFS_WRITE:
  *       The file is opened for writing. If the file exists, it will be
  *       overwritten.
- *     - TILEDB_VFS_APPEND <b>
+ *     - TILEDB_VFS_APPEND:
  *       The file is opened for writing. If the file exists, the write
  *       will start from the end of the file. Note that S3 does not
  *       support this operation and, thus, an error will be thrown in
@@ -2081,7 +2087,7 @@ TILEDB_EXPORT int tiledb_vfs_write(
  * @param fh The URI file handle.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  *
- * @note This is a noop for S3.
+ * @note This has no effect for S3.
  */
 TILEDB_EXPORT int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 

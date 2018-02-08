@@ -41,7 +41,7 @@ namespace tiledb {
 /** Defines the array type. */
 enum class ArrayType : char {
 #define TILEDB_ARRAY_TYPE_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_ARRAY_TYPE_ENUM
 };
 

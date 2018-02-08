@@ -39,7 +39,7 @@ namespace tiledb {
 /** Defines a filesystem. */
 enum class Filesystem : char {
 #define TILEDB_FILESYSTEM_ENUM(id) id
-#include "tiledb_enum.inc"
+#include "tiledb_enum.h"
 #undef TILEDB_FILESYSTEM_ENUM
 };
 
