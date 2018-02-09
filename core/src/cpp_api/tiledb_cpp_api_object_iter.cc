@@ -86,9 +86,9 @@ int ObjectIter::obj_getter(const char *path, tiledb_object_t type, void *data) {
 }
 
 ObjectIter::iterator ObjectIter::begin() {
-  objs_.clear();
+  std::vector<Object> objs;
   auto &ctx = ctx_.get();
-  ObjGetterData data(objs_, array_, group_, kv_);
+  ObjGetterData data(objs, array_, group_, kv_);
   if (recursive_) {
     ctx.handle_error(
         tiledb_object_walk(ctx, root_.c_str(), walk_order_, obj_getter, &data));
@@ -96,11 +96,11 @@ ObjectIter::iterator ObjectIter::begin() {
     ctx.handle_error(tiledb_ls(ctx, root_.c_str(), obj_getter, &data));
   }
 
-  return iterator(objs_);
+  return iterator(objs);
 }
 
 ObjectIter::iterator ObjectIter::end() const {
-  return iterator(objs_).end();
+  return iterator().end();
 }
 
 }  // namespace tdb

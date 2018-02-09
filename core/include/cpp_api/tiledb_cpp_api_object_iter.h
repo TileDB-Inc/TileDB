@@ -117,9 +117,12 @@ class ObjectIter {
   class iterator
       : public std::iterator<std::forward_iterator_tag, const Object> {
    public:
-    explicit iterator(const std::vector<Object> &objs)
+    iterator()
+        : cur_obj_(0) {
+    }
+    explicit iterator(std::vector<Object> objs)
         : cur_obj_(0)
-        , objs_(objs) {
+        , objs_(std::move(objs)) {
     }
 
     iterator(const iterator &o) = default;
@@ -128,7 +131,8 @@ class ObjectIter {
     iterator &operator=(iterator &&) = default;
 
     bool operator==(const iterator &o) const {
-      return cur_obj_ == o.cur_obj_ && objs_.size() == o.objs_.size();
+      return (cur_obj_ >= objs_.size() && o.cur_obj_ >= o.objs_.size()) ||
+             (cur_obj_ == o.cur_obj_ && objs_.size() == o.objs_.size());
     }
 
     bool operator!=(const iterator &o) const {
@@ -159,7 +163,7 @@ class ObjectIter {
     size_t cur_obj_;
 
     /** A reference to the objects retrieved by the `ObjectIter` object. */
-    const std::vector<Object> &objs_;
+    std::vector<Object> objs_;
   };
 
   /** Returns an object iterator at the beginning of its iteration. */
@@ -206,9 +210,6 @@ class ObjectIter {
 
   /** The root directory where the iteration will start from. */
   std::string root_;
-
-  /** The objects retrieved for an iteration. */
-  std::vector<Object> objs_;
 
   /** The walk order for the iteration. */
   tiledb_walk_order_t walk_order_;
