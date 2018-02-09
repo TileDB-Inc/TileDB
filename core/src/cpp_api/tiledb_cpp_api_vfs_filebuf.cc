@@ -51,7 +51,7 @@ VFSFilebuf *VFSFilebuf::open(
 
   if (openmode == std::ios::out) {
     mode = TILEDB_VFS_WRITE;
-  } else if (openmode & std::ios::app) {
+  } else if (openmode == std::ios::app) {
     mode = TILEDB_VFS_APPEND;
   } else if (openmode == std::ios::in) {
     mode = TILEDB_VFS_READ;

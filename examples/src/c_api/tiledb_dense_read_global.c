@@ -49,8 +49,14 @@ int main() {
   uint64_t domain[4];
   tiledb_array_get_non_empty_domain(ctx, "my_dense_array", domain, &is_empty);
   printf("Non-empty domain:\n");
-  printf("d1: (%llu, %llu)\n", domain[0], domain[1]);
-  printf("d2: (%llu, %llu)\n\n", domain[2], domain[3]);
+  printf(
+      "d1: (%llu, %llu)\n",
+      (unsigned long long)domain[0],
+      (unsigned long long)domain[1]);
+  printf(
+      "d2: (%llu, %llu)\n\n",
+      (unsigned long long)domain[2],
+      (unsigned long long)domain[3]);
 
   // Print maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -59,9 +65,12 @@ int main() {
   tiledb_array_compute_max_read_buffer_sizes(
       ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
   printf("Maximum buffer sizes:\n");
-  printf("a1: %llu\n", buffer_sizes[0]);
-  printf("a2: (%llu, %llu)\n", buffer_sizes[1], buffer_sizes[2]);
-  printf("a3: %llu\n\n", buffer_sizes[3]);
+  printf("a1: %llu\n", (unsigned long long)buffer_sizes[0]);
+  printf(
+      "a2: (%llu, %llu)\n",
+      (unsigned long long)buffer_sizes[1],
+      (unsigned long long)buffer_sizes[2]);
+  printf("a3: %llu\n\n", (unsigned long long)buffer_sizes[3]);
 
   // Prepare cell buffers
   int buffer_a1[buffer_sizes[0] / sizeof(int)];

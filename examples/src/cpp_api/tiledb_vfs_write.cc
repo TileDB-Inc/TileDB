@@ -55,15 +55,35 @@ int main() {
     std::cerr << "Error opening file.\n";
     return 1;
   }
-  float f1 = 153.1;
-  std::string s1 = "abcdefghijkl";
+  float f1 = 153.0;
+  std::string s1 = "abcd";
   os.write((char*)&f1, sizeof(f1));
+  os.write(s1.data(), s1.size());
+
+  // Write binary data again - this will overwrite the previous file
+  fbuf.open("tiledb_vfs.bin", std::ios::out);
+  if (!os.good()) {
+    std::cerr << "Error opening file tiledb_vfs.bin for write.\n";
+    return 1;
+  }
+  f1 = 153.1;
+  s1 = "abcdef";
+  os.write((char*)&f1, sizeof(f1));
+  os.write(s1.data(), s1.size());
+
+  // Append binary data to existing file
+  fbuf.open("tiledb_vfs.bin", std::ios::app);
+  if (!os.good()) {
+    std::cerr << "Error opening file tiledb_vfs.bin for append.\n";
+    return 1;
+  }
+  s1 = "ghijkl";
   os.write(s1.data(), s1.size());
 
   // Write formatted output
   fbuf.open("tiledb_vfs.txt", std::ios::out);
   if (!os.good()) {
-    std::cerr << "Error opening file.\n";
+    std::cerr << "Error opening file tiledb_vfs.txt for write.\n";
     return 1;
   }
   os << "tiledb " << 543 << '\n' << 123.4 << '\n';
