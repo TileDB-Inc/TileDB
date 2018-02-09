@@ -255,9 +255,9 @@ class S3 {
   Status remove_file(const URI& uri) const;
 
   /**
-   * Removes a path with a given URI (recursively)
+   * Removes a "directory" with a given URI (and all its contents)
    *
-   * @param uri The URI of the path to be removed.
+   * @param uri The URI of the directory to be removed.
    * @return Status
    */
   Status remove_path(const URI& uri) const;
@@ -394,9 +394,6 @@ class S3 {
    */
   bool replace(
       std::string& str, const std::string& from, const std::string& to) const;
-
-  /** Waits for the input bucket to be emptied. */
-  Status wait_for_bucket_to_empty(const Aws::String& bucketName) const;
 
   /** Waits for the input object to be propagated. */
   bool wait_for_object_to_propagate(

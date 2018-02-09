@@ -41,6 +41,7 @@
 #include "tiledb.h"
 #include "utils.h"
 
+#include <iostream>
 #include <thread>
 
 struct ObjectMgmtFx {
@@ -402,7 +403,10 @@ int ObjectMgmtFx::write_path(
   auto* str = static_cast<std::string*>(data);
 
   // Simply print the path and type
-  (*str) += (std::string(path) + " ");
+  std::string path_str = path;
+  if (path_str.back() == '/')
+    path_str.pop_back();
+  (*str) += path_str + " ";
   switch (type) {
     case TILEDB_ARRAY:
       (*str) += "ARRAY";

@@ -326,9 +326,6 @@ uint64_t kv_buffer_size = 1000;
 /** Maximum number of items to be buffered before a flush. */
 uint64_t kv_max_items = 1000;
 
-/** A directory file suffix (in S3, directories are also files). */
-const char* s3_dir_suffix = ".dir";
-
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 1000;
 

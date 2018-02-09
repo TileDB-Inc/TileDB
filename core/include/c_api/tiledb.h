@@ -70,43 +70,6 @@ extern "C" {
 /**@}*/
 
 /* ****************************** */
-/*            CONSTANTS           */
-/* ****************************** */
-
-/**
- * @name Return codes
- */
-/**@{*/
-/** Success */
-#define TILEDB_OK 0
-/** General error */
-#define TILEDB_ERR (-1)
-/** Out of memory */
-#define TILEDB_OOM (-2)
-/**@}*/
-
-/** Returns a special name indicating the coordinates attribute. */
-TILEDB_EXPORT const char* tiledb_coords();
-
-/** Returns a special value indicating a variable number of elements. */
-TILEDB_EXPORT unsigned int tiledb_var_num();
-
-/** Returns the maximum path length on the current platform. */
-TILEDB_EXPORT unsigned int tiledb_max_path();
-
-/**
- * @name Constants wrapping special functions
- */
-/**@{*/
-/** A special name indicating the coordinates attribute. */
-#define TILEDB_COORDS tiledb_coords()
-/** A special value indicating a variable number of elements. */
-#define TILEDB_VAR_NUM tiledb_var_num()
-/** The maximum path length on the current platform. */
-#define TILEDB_MAX_PATH tiledb_max_path()
-/**@}*/
-
-/* ****************************** */
 /*          TILEDB ENUMS          */
 /* ****************************** */
 
@@ -194,11 +157,16 @@ typedef enum {
 /*            CONSTANTS           */
 /* ****************************** */
 
+/**
+ * @name Return codes
+ */
 /**@{*/
-/** Return code. */
-#define TILEDB_OK 0      // Success
-#define TILEDB_ERR (-1)  // General error
-#define TILEDB_OOM (-2)  // Out of memory
+/** Success */
+#define TILEDB_OK 0
+/** General error */
+#define TILEDB_ERR (-1)
+/** Out of memory */
+#define TILEDB_OOM (-2)
 /**@}*/
 
 /** Returns a special name indicating the coordinates attribute. */
@@ -219,11 +187,17 @@ TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
  */
 TILEDB_EXPORT uint64_t tiledb_offset_size();
 
+/**
+ * @name Constants wrapping special functions
+ */
 /**@{*/
-/** Constants wrapping special functions. */
+/** A special name indicating the coordinates attribute. */
 #define TILEDB_COORDS tiledb_coords()
+/** A special value indicating a variable number of elements. */
 #define TILEDB_VAR_NUM tiledb_var_num()
+/** The maximum path length on the current platform. */
 #define TILEDB_MAX_PATH tiledb_max_path()
+/** The size (in bytes) of an offset (used in variable-sized attributes). */
 #define TILEDB_OFFSET_SIZE tiledb_offset_size()
 /**@}*/
 
