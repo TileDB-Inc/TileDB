@@ -67,8 +67,6 @@ int main() {
     return 1;
   }
   os << "tiledb " << 543 << " " << 123.4 << '\n';
-  os.flush();
-  fbuf.close();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

@@ -82,6 +82,9 @@ class VFSFilebuf : public std::streambuf {
   VFSFilebuf(VFSFilebuf &&buf) = default;
   VFSFilebuf &operator=(const VFSFilebuf &) = default;
   VFSFilebuf &operator=(VFSFilebuf &&o) = default;
+  ~VFSFilebuf() override {
+    close();
+  }
 
   /* ********************************* */
   /*            PUBLIC API             */
@@ -98,7 +101,7 @@ class VFSFilebuf : public std::streambuf {
 
   /** Check if a file is open **/
   bool is_open() const {
-    return uri_.empty();
+    return uri_ != "";
   }
 
   /** Close a file. **/
@@ -208,7 +211,7 @@ class VFSFilebuf : public std::streambuf {
   impl::Deleter deleter_;
 
   /** File URI **/
-  std::string uri_;
+  std::string uri_ = "";
 
   /** Current offset from the file beginning **/
   uint64_t offset_ = 0;
