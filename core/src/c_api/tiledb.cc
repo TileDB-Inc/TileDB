@@ -1429,17 +1429,19 @@ int tiledb_array_schema_get_attribute_from_index(
     *attr = nullptr;
     return TILEDB_OK;
   }
-  if (index > attribute_num) {
+  if (index >= attribute_num) {
     std::ostringstream errmsg;
-    errmsg << "Attribute index: " << index << " exceeds number of attributes("
-           << attribute_num << ") for array "
+    errmsg << "Attribute index: " << index << " out of bounds given "
+           << attribute_num << " attributes in array "
            << array_schema->array_schema_->array_uri().to_string();
     auto st = tiledb::Status::ArraySchemaError(errmsg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
+
   auto found_attr = array_schema->array_schema_->attribute(index);
+  assert(found_attr != nullptr);
 
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {

@@ -355,9 +355,14 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   CHECK(coords_compression_level == -1);
 
   // Check attribute
+  tiledb_attribute_t* attr;
+
+  // check that getting an attribute fails when index is out of bounds
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, array_schema, 1, &attr);
+  REQUIRE(rc == TILEDB_ERR);
 
   // get first attribute by index
-  tiledb_attribute_t* attr;
   rc = tiledb_array_schema_get_attribute_from_index(
       ctx_, array_schema, 0, &attr);
   REQUIRE(rc == TILEDB_OK);
