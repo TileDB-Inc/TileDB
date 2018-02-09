@@ -80,6 +80,8 @@ VFSFilebuf *VFSFilebuf::close() {
     uri_ = "";
     return this;
   }
+  fh_ = nullptr;
+  offset_ = 0;
   return nullptr;
 }
 
@@ -182,7 +184,7 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 /* ********************************* */
 
 std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
-  if (vfs_.get().is_file(uri_) && offset_ != file_size())
+  if (offset_ != 0 && offset_ != file_size())
     return traits_type::eof();
   auto &ctx = vfs_.get().context();
   if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) !=
@@ -207,6 +209,8 @@ std::streambuf::int_type VFSFilebuf::overflow(int_type c) {
 /* ********************************* */
 
 uint64_t VFSFilebuf::file_size() const {
+  if (!vfs_.get().is_file(uri_))
+    return 0;
   try {
     return vfs_.get().file_size(uri_);
   } catch (TileDBError &e) {

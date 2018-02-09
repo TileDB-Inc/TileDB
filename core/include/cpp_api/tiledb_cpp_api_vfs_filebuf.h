@@ -98,7 +98,7 @@ class VFSFilebuf : public std::streambuf {
 
   /** Check if a file is open **/
   bool is_open() const {
-    return !uri_.empty();
+    return uri_.empty();
   }
 
   /** Close a file. **/
@@ -194,7 +194,8 @@ class VFSFilebuf : public std::streambuf {
   /*              PRIVATE              */
   /* ********************************* */
 
-  /** Get the file size of the file in bytes **/
+  /** Get the file size of the file in bytes.
+   * Return 0 if file does not exist. **/
   uint64_t file_size() const;
 
   /** Underlying VFS **/
@@ -204,7 +205,7 @@ class VFSFilebuf : public std::streambuf {
   std::shared_ptr<tiledb_vfs_fh_t> fh_;
 
   /** Deleter for fh_ **/
-  const impl::Deleter deleter_;
+  impl::Deleter deleter_;
 
   /** File URI **/
   std::string uri_;
