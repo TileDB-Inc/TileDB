@@ -24,33 +24,35 @@ install:
         scripts/install-clangformat.sh;
       fi
 
+    # Set up arguments for install-deps.sh and bootstrap.
+    - deps_args="";
+      bootstrap_args="--enable=coverage,verbose";
+      if [[ "$USE_HDFS" == "ON" ]]; then
+        deps_args="${deps_args} --enable-hdfs";
+        bootstrap_args="${bootstrap_args} --enable-hdfs";
+      fi;
+      if [[ "$USE_S3" == "ON" ]]; then
+        deps_args="${deps_args} --enable-s3";
+        bootstrap_args="${bootstrap_args} --enable-s3";
+      fi
+
     # Install library dependencies
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        sudo scripts/install-deps.sh;
-      else
-        scripts/install-deps.sh;
-      fi
+    - scripts/install-deps.sh $deps_args
 
-    # Install hadoop if HDFS is enabled
+    # Start HDFS server if enabled
     - if [[ "$USE_HDFS" == "ON" ]]; then
-        source scripts/install-hadoop.sh;
+        source scripts/run-hadoop.sh;
       fi
 
-    # Install minio if S3 is enabled
+    # Start minio server if S3 is enabled
     - if [[ "$USE_S3" == "ON" ]]; then
-        source scripts/install-s3.sh && source scripts/install-minio.sh;
+        source scripts/run-minio.sh;
       fi
 
     - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build
 
-      # Build TileDB
-    - if [[ "$USE_HDFS" == "ON" ]]; then
-        ../bootstrap --enable-coverage --enable-verbose --enable-hdfs;
-      elif [[ "$USE_S3" == "ON" ]]; then
-        ../bootstrap --enable-coverage --enable-verbose --enable-s3;
-      else
-        ../bootstrap --enable-coverage --enable-verbose;
-      fi
+    # Configure and build TileDB
+    - ../bootstrap $bootstrap_args
 
     - make -j4
     - make examples -j4
