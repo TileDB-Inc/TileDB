@@ -74,21 +74,14 @@ VFSFilebuf *VFSFilebuf::open(
 }
 
 VFSFilebuf *VFSFilebuf::close() {
-
-    std::cout << uri_ << "\n";
-
   if (is_open()) {
-
-      std::cout << "closing\n";
-
     auto &ctx = vfs_.get().context();
-    tiledb_vfs_close(ctx, fh_.get());
-    uri_ = "";
-    return this;
+    ctx.handle_error(tiledb_vfs_close(ctx, fh_.get()));
   }
+  uri_ = "";
   fh_ = nullptr;
   offset_ = 0;
-  return nullptr;
+  return this;
 }
 
 /* ********************************* */

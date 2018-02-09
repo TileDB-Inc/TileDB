@@ -1,7 +1,5 @@
 /**
- * @file   tiledb_vfs_write.cc
- *
- * @author Ravi Gaddipati
+ * @file   tiledb_vfs_write.c
  *
  * @section LICENSE
  *
@@ -31,44 +29,34 @@
  *
  * Write to a file with VFS. Simply run:
  *
- * $ ./tiledb_vfs_write_cpp
+ * $ ./tiledb_vfs_write_c
  *
  */
 
-#include <fstream>
-#include <tiledb>
+#include <string.h>
+#include <tiledb.h>
 
 int main() {
   // Create TileDB context
-  tiledb::Context ctx;
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx, NULL);
 
   // Create TileDB VFS
-  tiledb::VFS vfs(ctx);
-
-  // Create VFS file buffer
-  tiledb::VFS::filebuf fbuf(vfs);
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_create(ctx, &vfs, NULL);
 
   // Write binary data
-  fbuf.open("tiledb_vfs.bin", std::ios::out);
-  std::ostream os(&fbuf);
-  if (!os.good()) {
-    std::cerr << "Error opening file.\n";
-    return 1;
-  }
+  tiledb_vfs_fh_t* fh;
+  tiledb_vfs_open(ctx, vfs, "tiledb_vfs.bin", TILEDB_VFS_WRITE, &fh);
   float f1 = 153.1;
-  std::string s1 = "abcdefghijkl";
-  os.write((char*)&f1, sizeof(f1));
-  os.write(s1.data(), s1.size());
+  const char* s1 = "abcdefghijkl";
+  tiledb_vfs_write(ctx, fh, &f1, sizeof(float));
+  tiledb_vfs_write(ctx, fh, s1, strlen(s1));
 
-  // Write formatted output
-  fbuf.open("tiledb_vfs.txt", std::ios::out);
-  if (!os.good()) {
-    std::cerr << "Error opening file.\n";
-    return 1;
-  }
-  os << "tiledb " << 543 << '\n' << 123.4 << '\n';
-
-  // Nothing to clean up - all C++ objects are deleted when exiting scope
+  // Clean up
+  tiledb_vfs_fh_free(ctx, fh);
+  tiledb_vfs_free(ctx, vfs);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

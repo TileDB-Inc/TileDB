@@ -29,34 +29,26 @@
  *
  * @section DESCRIPTION
  *
- * Read a file with the VFS. Run tiledb_vfs_write.cc before this.
+ * Read from a file with VFS.
+ *
+ * You need to run the following to make it work:
+ *
+ * $ ./tiledb_vfs_write_cpp
+ * $ ./tiledb_vfs_read_cpp
  */
 
 #include <fstream>
 #include <tiledb>
 
 int main() {
+  // Create TileDB context
   tiledb::Context ctx;
+
+  // Create TileDB VFS
   tiledb::VFS vfs(ctx);
 
+  // Read binary data
   {
-    // Read string data
-    tiledb::VFS::filebuf sbuf(vfs);
-    sbuf.open("tiledb_vfs.txt", std::ios::in);
-    std::istream is(&sbuf);
-    if (!is.good()) {
-      std::cerr << "Error opening file.\n";
-      return 1;
-    }
-
-    std::string field;
-    while (std::getline(is, field, ' ')) {
-      std::cout << field << '\n';
-    }
-  }
-
-  {
-    // Read binary data
     tiledb::VFS::filebuf sbuf(vfs);
     sbuf.open("tiledb_vfs.bin", std::ios::in);
     std::istream is(&sbuf);
@@ -71,8 +63,24 @@ int main() {
 
     is.read((char *)&f1, sizeof(f1));
     is.read((char *)s1.data(), 12);
+    std::cout << "Binary read:\n" << f1 << '\n' << s1 << '\n';
+  }
 
-    std::cout << "\nBinary read:\n" << f1 << '\n' << s1 << '\n';
+  // Read string data
+  {
+    tiledb::VFS::filebuf sbuf(vfs);
+    sbuf.open("tiledb_vfs.txt", std::ios::in);
+    std::istream is(&sbuf);
+    if (!is.good()) {
+      std::cerr << "Error opening file.\n";
+      return 1;
+    }
+
+    std::cout << "\nString read:\n";
+    std::string line;
+    while (std::getline(is, line)) {
+      std::cout << line << '\n';
+    }
   }
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
