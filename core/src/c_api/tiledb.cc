@@ -39,6 +39,7 @@
 #include "kv_iter.h"
 #include "logger.h"
 #include "query.h"
+#include "tiledb_cpp_api_core_interface.h"
 #include "utils.h"
 
 #include <map>
@@ -58,6 +59,14 @@ unsigned int tiledb_var_num() {
 
 unsigned int tiledb_max_path() {
   return tiledb::constants::path_max_len;
+}
+
+uint64_t tiledb_offset_size() {
+  return tiledb::constants::cell_var_offset_size;
+}
+
+uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
+  return tiledb::datatype_size(static_cast<tiledb::Datatype>(type));
 }
 
 /* ****************************** */
@@ -517,6 +526,23 @@ int tiledb_config_iter_create(
   return TILEDB_OK;
 }
 
+int tiledb_config_iter_reset(
+    tiledb_config_t* config,
+    tiledb_config_iter_t* config_iter,
+    const char* prefix,
+    tiledb_error_t** error) {
+  if (sanity_check(config, error) == TILEDB_ERR ||
+      sanity_check(config_iter, error) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
+  config_iter->param_values_ = config->config_->param_values(prefix_str);
+  config_iter->it_ = config_iter->param_values_.begin();
+
+  *error = nullptr;
+  return TILEDB_OK;
+}
+
 int tiledb_config_iter_free(tiledb_config_iter_t* config_iter) {
   delete config_iter;
 
@@ -811,6 +837,14 @@ int tiledb_attribute_get_cell_val_num(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   *cell_val_num = attr->attr_->cell_val_num();
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_get_cell_size(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *cell_size = attr->attr_->cell_size();
   return TILEDB_OK;
 }
 
@@ -1815,7 +1849,7 @@ int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
 }
 
 int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force) {
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   auto old_uri = tiledb::URI(old_path);
@@ -2373,12 +2407,12 @@ int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_set_max_items(
+int tiledb_kv_set_max_buffered_items(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, kv->kv_->set_max_items(max_items)))
+  if (save_error(ctx, kv->kv_->set_max_buffered_items(max_items)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2751,7 +2785,7 @@ int tiledb_vfs_move(
     tiledb_vfs_t* vfs,
     const char* old_uri,
     const char* new_uri,
-    bool force) {
+    int force) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2932,4 +2966,25 @@ int tiledb_uri_to_path(
     path_out[path.length()] = '\0';
     return TILEDB_OK;
   }
+}
+
+/* ****************************** */
+/*            C++ API             */
+/* ****************************** */
+
+int tdb::impl::tiledb_query_submit_async(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    std::function<void(void*)> callback,
+    void* callback_data) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->query_submit_async(
+              query->query_, callback, callback_data)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }

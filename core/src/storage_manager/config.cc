@@ -200,40 +200,81 @@ std::map<std::string, std::string> Config::param_values(
 };
 
 Status Config::unset(const std::string& param) {
-  param_values_.erase(param);
+  std::stringstream value;
 
   // Set back to default
   if (param == "sm.tile_cache_size") {
     sm_params_.tile_cache_size_ = constants::tile_cache_size;
+    value << sm_params_.tile_cache_size_;
+    param_values_["sm.tile_cache_size"] = value.str();
+    value.str(std::string());
   } else if (param == "sm.array_schema_cache_size") {
     sm_params_.array_schema_cache_size_ = constants::array_schema_cache_size;
+    value << sm_params_.array_schema_cache_size_;
+    param_values_["sm.array_schema_cache_size"] = value.str();
+    value.str(std::string());
   } else if (param == "sm.fragment_metadata_cache_size") {
     sm_params_.fragment_metadata_cache_size_ =
         constants::fragment_metadata_cache_size;
+    value << sm_params_.fragment_metadata_cache_size_;
+    param_values_["sm.fragment_metadata_cache_size"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.region") {
     vfs_params_.s3_params_.region_ = constants::s3_region;
+    value << vfs_params_.s3_params_.region_;
+    param_values_["vfs.s3.region"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.scheme") {
     vfs_params_.s3_params_.scheme_ = constants::s3_scheme;
+    value << vfs_params_.s3_params_.scheme_;
+    param_values_["vfs.s3.scheme"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.endpoint_override") {
     vfs_params_.s3_params_.endpoint_override_ = constants::s3_endpoint_override;
+    value << vfs_params_.s3_params_.endpoint_override_;
+    param_values_["vfs.s3.endpoint_override"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.use_virtual_addressing") {
     vfs_params_.s3_params_.use_virtual_addressing_ =
         constants::s3_use_virtual_addressing;
+    value
+        << ((vfs_params_.s3_params_.use_virtual_addressing_) ? "true" :
+                                                               "false");
+    param_values_["vfs.s3.use_virtual_addressing"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.file_buffer_size") {
     vfs_params_.s3_params_.file_buffer_size_ = constants::s3_file_buffer_size;
+    value << vfs_params_.s3_params_.file_buffer_size_;
+    param_values_["vfs.s3.file_buffer_size"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.connect_timeout_ms") {
     vfs_params_.s3_params_.connect_timeout_ms_ =
         constants::s3_connect_timeout_ms;
+    value << vfs_params_.s3_params_.connect_timeout_ms_;
+    param_values_["vfs.s3.connect_timeout_ms"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.request_timeout_ms") {
     vfs_params_.s3_params_.request_timeout_ms_ =
         constants::s3_request_timeout_ms;
+    value << vfs_params_.s3_params_.request_timeout_ms_;
+    param_values_["vfs.s3.request_timeout_ms"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.hdfs.name_node") {
     vfs_params_.hdfs_params_.name_node_uri_ = constants::hdfs_name_node_uri;
+    value << vfs_params_.hdfs_params_.name_node_uri_;
+    param_values_["vfs.hdfs.name_node_uri"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.hdfs.username") {
     vfs_params_.hdfs_params_.username_ = constants::hdfs_username;
+    value << vfs_params_.hdfs_params_.username_;
+    param_values_["vfs.hdfs.username"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.hdfs.kerb_ticket_cache_path") {
     vfs_params_.hdfs_params_.kerb_ticket_cache_path_ =
         constants::hdfs_kerb_ticket_cache_path;
+    value << vfs_params_.hdfs_params_.kerb_ticket_cache_path_;
+    param_values_["vfs.hdfs.kerb_ticket_cache_path"] = value.str();
+    value.str(std::string());
   }
 
   return Status::Ok();

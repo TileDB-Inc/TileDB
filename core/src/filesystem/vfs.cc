@@ -31,11 +31,13 @@
  */
 
 #include "vfs.h"
-#include <config.h>
+#include "config.h"
 #include "hdfs_filesystem.h"
 #include "logger.h"
 #include "posix_filesystem.h"
 #include "win_filesystem.h"
+
+#include <iostream>
 
 namespace tiledb {
 
