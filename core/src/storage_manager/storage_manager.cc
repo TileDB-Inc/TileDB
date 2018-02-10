@@ -437,7 +437,7 @@ Status StorageManager::remove_path(const URI& uri) const {
 }
 
 Status StorageManager::move(
-    const URI& old_uri, const URI& new_uri, bool force) const {
+    const URI& old_uri, const URI& new_uri, int force) const {
   if (object_type(old_uri) == ObjectType::INVALID) {
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));

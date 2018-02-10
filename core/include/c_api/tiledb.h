@@ -191,6 +191,43 @@ typedef enum {
 } tiledb_vfs_mode_t;
 
 /* ****************************** */
+/*            CONSTANTS           */
+/* ****************************** */
+
+/**@{*/
+/** Return code. */
+#define TILEDB_OK 0      // Success
+#define TILEDB_ERR (-1)  // General error
+#define TILEDB_OOM (-2)  // Out of memory
+/**@}*/
+
+/** Returns a special name indicating the coordinates attribute. */
+TILEDB_EXPORT const char* tiledb_coords();
+
+/** Returns a special value indicating a variable number of elements. */
+TILEDB_EXPORT unsigned int tiledb_var_num();
+
+/** Returns the maximum path length on the current platform. */
+TILEDB_EXPORT unsigned int tiledb_max_path();
+
+/** Returns the input datatype size. */
+TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
+
+/**
+ * Returns the size (in bytes) of an offset (used in variable-sized
+ * attributes).
+ */
+TILEDB_EXPORT uint64_t tiledb_offset_size();
+
+/**@{*/
+/** Constants wrapping special functions. */
+#define TILEDB_COORDS tiledb_coords()
+#define TILEDB_VAR_NUM tiledb_var_num()
+#define TILEDB_MAX_PATH tiledb_max_path()
+#define TILEDB_OFFSET_SIZE tiledb_offset_size()
+/**@}*/
+
+/* ****************************** */
 /*            VERSION             */
 /* ****************************** */
 
@@ -300,6 +337,37 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
 /**
  * Sets a config parameter.
  *
+ * **Parameters**
+ *
+ * - `sm.tile_cache_size` <br>
+ *    The tile cache size in bytes. Any `uint64_t` value is acceptable.
+ * - `sm.array_schema_cache_size` <br>
+ *    The array schema cache size in bytes. Any `uint64_t` value is acceptable.
+ * - `sm.fragment_metadata_cache_size` <br>
+ *    The fragment metadata cache size in bytes. Any `uint64_t` value is
+ *    acceptable.
+ * - `vfs.s3.region` <br>
+ *    The S3 region, if S3 is enabled.
+ * - `vfs.s3.scheme` <br>
+ *    The S3 scheme (`http` or `https`), if S3 is enabled.
+ * - `vfs.s3.endpoint_override` <br>
+ *    The S3 endpoint, if S3 is enabled.
+ * - `vfs.s3.use_virtual_addressing` <br>
+ *    The S3 use of virtual addressing (`true` or `false`), if S3 is enabled.
+ * - `vfs.s3.file_buffer_size` <br>
+ *    The file buffer size (in bytes) used in S3 writes, if S3 is enables. Any
+ *    `uint64_t` value is acceptable.
+ * - `vfs.s3.connect_timeout_ms` <br>
+ *    The connection timeout in ms. Any `long` value is acceptable.
+ * - `vfs.s3.request_timeout_ms` <br>
+ *    The request timeout in ms. Any `long` value is acceptable.
+ * - `vfs.hdfs.name_node"` <br>
+ *    Name node for HDFS.
+ * - `vfs.hdfs.username` <br>
+ *    HDFS username.
+ * - `vfs.hdfs.kerb_ticket_cache_path` <br>
+ *    HDFS kerb ticket cache path.
+ *
  * @param config The config object.
  * @param param The parameter to be set.
  * @param value The value of the parameter to be set.
@@ -387,6 +455,25 @@ TILEDB_EXPORT int tiledb_config_save_to_file(
 TILEDB_EXPORT int tiledb_config_iter_create(
     tiledb_config_t* config,
     tiledb_config_iter_t** config_iter,
+    const char* prefix,
+    tiledb_error_t** error);
+
+/**
+ * Resets the iterator.
+ *
+ * @param config A config object the iterator will operate on.
+ * @param config_iter The config iterator to be reset.
+ * @param prefix If not `nullptr`, only the config parameters starting
+ *     with `prefix.*` will be iterated on. Moreover, the prefix will
+ *     be stripped from the parameters. Otherwise, all parameters will
+ *     be iterated on and their full name will be retrieved.
+ * @param error Error object returned upon error (`NULL` if there is
+ *     no error).
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_iter_reset(
+    tiledb_config_t* config,
+    tiledb_config_iter_t* config_iter,
     const char* prefix,
     tiledb_error_t** error);
 
@@ -611,6 +698,17 @@ TILEDB_EXPORT int tiledb_attribute_get_cell_val_num(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     unsigned int* cell_val_num);
+
+/**
+ * Retrieves the cell size for this attribute.
+ *
+ * @param ctx The TileDB context.
+ * @param attr The attribute.
+ * @param cell_size The cell size to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_get_cell_size(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size);
 
 /**
  * Dumps the contents of an attribute in ASCII form to some output (e.g.,
@@ -1222,10 +1320,7 @@ TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param query The query to be submitted.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
- * @note This function essentially opens the array associated with the query.
- *     Some metadata structures are loaded in main memory for this array.
- *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_query_free*.
+ * @note Always invoke `tiledb_query_free` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
@@ -1238,10 +1333,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param callback_data The data to be passed to the callback function.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  *
- * @note This function essentially opens the array associated with the query.
- *     Some metadata structures are loaded in main memory for this array.
- *     In order to flush these data structures and free up memory, invoke
- *     *tiledb_query_free*.
+ * @note Always invoke `tiledb_query_free` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
@@ -1393,7 +1485,7 @@ TILEDB_EXPORT int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, bool force);
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force);
 
 /**
  * Walks (iterates) over the TileDB objects contained in *path*. The traversal
@@ -1690,7 +1782,7 @@ TILEDB_EXPORT int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
  * @param max_items The number of maximum items to be set.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_kv_set_max_items(
+TILEDB_EXPORT int tiledb_kv_set_max_buffered_items(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items);
 
 /**
@@ -1998,7 +2090,7 @@ TILEDB_EXPORT int tiledb_vfs_move(
     tiledb_vfs_t* vfs,
     const char* old_uri,
     const char* new_uri,
-    bool force);
+    int force);
 
 /**
  * Prepares a file for reading/writing.

@@ -132,7 +132,7 @@ class KV {
   Status finalize();
 
   /** Sets the number of maximum written items buffered before being flushed. */
-  Status set_max_items(uint64_t max_items);
+  Status set_max_buffered_items(uint64_t max_items);
 
  private:
   /* ********************************* */

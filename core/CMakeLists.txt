@@ -56,9 +56,13 @@ target_include_directories(
     "${CMAKE_SOURCE_DIR}/external/include"
 )
 
+# C++ library, allow the VISIBLITY_PRESET for each c++ target to work
+cmake_policy(SET CMP0063 NEW) 
+
 # Create static library
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledb")
+
 
 # Create dynamic library
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
@@ -79,9 +83,9 @@ endif()
 
 # Install libraries
 install(
-    TARGETS tiledb_static tiledb_shared 
+    TARGETS tiledb_static tiledb_shared
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
-file(GLOB TILEDB_HEADERS "include/c_api/*")
+file(GLOB TILEDB_HEADERS "include/c_api/*" "include/cpp_api/*")
 install(FILES ${TILEDB_HEADERS} DESTINATION include)
