@@ -317,9 +317,6 @@ extern uint64_t kv_buffer_size;
 /** Maximum number of items to be buffered before a flush. */
 extern uint64_t kv_max_items;
 
-/** A directory file suffix (in S3, directories are also files). */
-extern const char* s3_dir_suffix;
-
 /** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;
 

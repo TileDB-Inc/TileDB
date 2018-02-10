@@ -1211,6 +1211,7 @@ Status StorageManager::get_fragment_uris(
   for (auto& uri : uris) {
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
+
     if (is_fragment(uri))
       fragment_uris->push_back(uri);
   }
@@ -1292,7 +1293,10 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
   // Get the timestamp for each fragment
   for (auto& uri : *fragment_uris) {
     // Get fragment name
-    std::string fragment_name = uri.last_path_part();
+    std::string uri_str = uri.c_str();
+    if (uri_str.back() == '/')
+      uri_str.pop_back();
+    std::string fragment_name = URI(uri_str).last_path_part();
     assert(utils::starts_with(fragment_name, "__"));
 
     // Get timestamp in the end of the name after '_'
