@@ -120,6 +120,7 @@ class Consolidator {
    * @return Status
    */
   Status create_queries(
+      ArraySchema* array_schema,
       Query* query_r,
       Query* query_w,
       const char* array_name,

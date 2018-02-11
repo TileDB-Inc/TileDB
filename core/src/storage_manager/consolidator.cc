@@ -79,7 +79,13 @@ Status Consolidator::consolidate(const char* array_name) {
   auto query_r = new Query();
   auto query_w = new Query();
   Status st = create_queries(
-      query_r, query_w, array_name, buffers, buffer_sizes, &fragment_num);
+      array_schema,
+      query_r,
+      query_w,
+      array_name,
+      buffers,
+      buffer_sizes,
+      &fragment_num);
   if (!st.ok())
     goto clean_up;
 
@@ -188,23 +194,47 @@ Status Consolidator::create_buffers(
 }
 
 Status Consolidator::create_queries(
+    ArraySchema* array_schema,
     Query* query_r,
     Query* query_w,
     const char* array_name,
     void** buffers,
     uint64_t* buffer_sizes,
     unsigned int* fragment_num) {
+  void* subarray = nullptr;
+  bool dense = array_schema->dense();
+
+  // Create subarray only for the dense case
+  if (dense) {
+    subarray = std::malloc(2 * array_schema->coords_size());
+    if (subarray == nullptr)
+      return LOG_STATUS(Status::ConsolidationError(
+          "Cannot create queries; Failed to allocate memory for subarray"));
+    bool is_empty;
+    RETURN_NOT_OK_ELSE(
+        storage_manager_->array_get_non_empty_domain(
+            array_name, subarray, &is_empty),
+        std::free(subarray));
+    assert(!is_empty);
+    array_schema->domain()->expand_domain(subarray);
+  }
+
   // Create read query
-  RETURN_NOT_OK(storage_manager_->query_init(
+  auto st = storage_manager_->query_init(
       query_r,
       array_name,
       QueryType::READ,
       Layout::GLOBAL_ORDER,
-      nullptr,
+      subarray,
       nullptr,
       0,
       buffers,
-      buffer_sizes));
+      buffer_sizes);
+  if (!st.ok()) {
+    if (subarray != nullptr)
+      std::free(subarray);
+    return st;
+  }
 
   // Get fragment num and terminate with success if it is <=1
   *fragment_num = query_r->fragment_num();
@@ -213,22 +243,31 @@ Status Consolidator::create_queries(
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   URI new_fragment_uri = query_r->last_fragment_uri();
-  RETURN_NOT_OK(rename_new_fragment_uri(&new_fragment_uri));
+  st = rename_new_fragment_uri(&new_fragment_uri);
+  if (!st.ok()) {
+    if (subarray != nullptr)
+      std::free(subarray);
+    return st;
+  }
 
   // Create write query
-  RETURN_NOT_OK(storage_manager_->query_init(
+  st = storage_manager_->query_init(
       query_w,
       array_name,
       QueryType::WRITE,
       Layout::GLOBAL_ORDER,
-      nullptr,
+      subarray,
       nullptr,
       0,
       buffers,
       buffer_sizes,
-      new_fragment_uri));
+      new_fragment_uri);
 
-  return Status::Ok();
+  // Clean up
+  if (subarray != nullptr)
+    std::free(subarray);
+
+  return st;
 }
 
 Status Consolidator::delete_old_fragments(const std::vector<URI>& uris) {
