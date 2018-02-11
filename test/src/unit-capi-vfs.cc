@@ -443,7 +443,7 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(file_size == to_write.size());  // Not 2*to_write.size()
 
   // Opening and closing the file without writing, first deletes previous
-  // file, but then does not create file as it has no contents
+  // file, and then creates an empty file
   rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
@@ -452,7 +452,10 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_file);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(file_size == 0);  // Not 2*to_write.size()
 }
 
 void VFSFx::check_append(const std::string& path) {

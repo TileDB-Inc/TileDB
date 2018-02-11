@@ -2841,9 +2841,15 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
     return TILEDB_ERR;
   }
 
+  // Close file in write or append mode
   if (fh->mode_ != tiledb::VFSMode::VFS_READ) {
     if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
       return TILEDB_ERR;
+
+    // Create an empty file if the file does not exist
+    if (!fh->vfs_->is_file(fh->uri_))
+      if (save_error(ctx, fh->vfs_->create_file(fh->uri_)))
+        return TILEDB_ERR;
   }
 
   fh->is_closed_ = true;
