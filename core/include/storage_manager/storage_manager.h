@@ -568,6 +568,7 @@ class StorageManager {
    * query, for a given subarray and set of attributes.
    *
    * @tparam T The domain type.
+   * @param array_schema The array schema.
    * @param metadata The array fragment metadata.
    * @param subarray The subarray to focus on.
    * @param attributes The attributes to focus on.
@@ -583,6 +584,7 @@ class StorageManager {
    */
   template <class T>
   Status array_compute_max_read_buffer_sizes(
+      const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& metadata,
       const T* subarray,
       const char** attributes,
