@@ -411,10 +411,6 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
-Status StorageManager::create_fragment_file(const URI& uri) {
-  return create_file(uri.join_path(constants::fragment_filename));
-}
-
 Status StorageManager::create_file(const URI& uri) {
   return vfs_->create_file(uri);
 }
@@ -501,7 +497,7 @@ bool StorageManager::is_file(const URI& uri) const {
 }
 
 bool StorageManager::is_fragment(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::fragment_filename));
+  return vfs_->is_file(uri.join_path(constants::fragment_metadata_filename));
 }
 
 bool StorageManager::is_group(const URI& uri) const {

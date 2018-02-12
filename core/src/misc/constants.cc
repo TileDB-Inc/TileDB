@@ -55,9 +55,6 @@ const char* array_schema_filename = "__array_schema.tdb";
 /** The key-value schema file name. */
 const char* kv_schema_filename = "__kv_schema.tdb";
 
-/** The fragment file name. */
-const char* fragment_filename = "__fragment.tdb";
-
 /** The fragment metadata file name. */
 const char* fragment_metadata_filename = "__fragment_metadata.tdb";
 
