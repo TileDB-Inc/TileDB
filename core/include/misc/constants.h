@@ -117,9 +117,6 @@ extern const uint64_t empty_uint64;
 /** The file suffix used in TileDB. */
 extern const char* file_suffix;
 
-/** The fragment file name. */
-extern const char* fragment_filename;
-
 /** The fragment metadata file name. */
 extern const char* fragment_metadata_filename;
 
