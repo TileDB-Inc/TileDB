@@ -33,13 +33,13 @@
 #include "catch.hpp"
 
 #ifdef _WIN32
-#include "win_filesystem.h"
+#include "tiledb/sm/filesystem/win_filesystem.h"
 #else
-#include "posix_filesystem.h"
+#include "tiledb/sm/filesystem/posix_filesystem.h"
 #endif
 
-#include "tiledb.h"
-#include "utils.h"
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <thread>
@@ -53,14 +53,14 @@ struct ObjectMgmtFx {
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
-      tiledb::win::current_dir() + "\\tiledb_test\\";
+      tiledb::sm::win::current_dir() + "\\tiledb_test\\";
   const std::string FILE_FULL_TEMP_DIR = FILE_TEMP_DIR;
   const std::string GROUP = "group\\";
   const std::string ARRAY = "array\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
-      tiledb::posix::current_dir() + "/tiledb_test/";
+      tiledb::sm::posix::current_dir() + "/tiledb_test/";
   const std::string FILE_FULL_TEMP_DIR = std::string("file://") + FILE_TEMP_DIR;
   const std::string GROUP = "group/";
   const std::string ARRAY = "array/";
@@ -429,7 +429,7 @@ int ObjectMgmtFx::write_path(
 std::string ObjectMgmtFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::utils::timestamp_ms();
+     << tiledb::sm::utils::timestamp_ms();
   return ss.str();
 }
 
@@ -514,8 +514,9 @@ TEST_CASE_METHOD(
 #ifdef _WIN32
     // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
     golden_walk =
-        get_golden_walk(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
-    golden_ls = get_golden_ls(tiledb::win::uri_from_path(FILE_FULL_TEMP_DIR));
+        get_golden_walk(tiledb::sm::win::uri_from_path(FILE_FULL_TEMP_DIR));
+    golden_ls =
+        get_golden_ls(tiledb::sm::win::uri_from_path(FILE_FULL_TEMP_DIR));
 #else
     golden_walk = get_golden_walk(FILE_FULL_TEMP_DIR);
     golden_ls = get_golden_ls(FILE_FULL_TEMP_DIR);

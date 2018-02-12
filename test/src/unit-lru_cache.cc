@@ -31,9 +31,9 @@
  */
 
 #include "catch.hpp"
-#include "lru_cache.h"
+#include "tiledb/sm/cache/lru_cache.h"
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 #define CACHE_SIZE 10 * sizeof(int)
 

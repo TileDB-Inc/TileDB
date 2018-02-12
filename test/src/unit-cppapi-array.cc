@@ -31,14 +31,14 @@
  */
 
 #include "catch.hpp"
-#include "tiledb"
+#include "tiledb/sm/cpp_api/tiledb"
 
-using namespace tdb;
+using namespace tiledb;
 
 struct CPPArrayFx {
   CPPArrayFx()
       : vfs(ctx) {
-    using namespace tdb;
+    using namespace tiledb;
 
     if (vfs.is_dir("cpp_unit_array"))
       vfs.remove_dir("cpp_unit_array");

@@ -27,7 +27,10 @@
 #
 
 # Include TileDB core header directories
-file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
+# Include the C API directory so that the C++ 'tiledb' file can directly
+# include "tiledb.h".
+list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api")
 
 # catch unit-test library
 add_library(
@@ -76,7 +79,7 @@ endif()
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
-  ${TILEDB_CORE_INCLUDE_DIRS}
+  ${TILEDB_CORE_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/external/include/catch
 )
 

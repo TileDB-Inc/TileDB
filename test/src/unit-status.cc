@@ -30,10 +30,10 @@
  * Tests the `Status` class.
  */
 
-#include <status.h>
 #include <catch.hpp>
+#include "tiledb/sm/misc/status.h"
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 TEST_CASE("Status: Test ok", "[status]") {
   Status st = Status::Ok();

@@ -31,9 +31,9 @@
  */
 
 #include "catch.hpp"
-#include "tiledb_cpp_api_utils.h"
+#include "tiledb/sm/cpp_api/tiledb_cpp_api_utils.h"
 
-using namespace tdb;
+using namespace tiledb;
 
 TEST_CASE("C++ API: Utils", "[cppapi]") {
   std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};

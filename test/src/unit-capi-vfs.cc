@@ -31,12 +31,12 @@
  */
 
 #include "catch.hpp"
-#include "tiledb.h"
-#include "utils.h"
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
-#include "win_filesystem.h"
+#include "tiledb/sm/filesystem/win_filesystem.h"
 #else
-#include "posix_filesystem.h"
+#include "tiledb/sm/filesystem/posix_filesystem.h"
 #endif
 
 #include <iostream>
@@ -49,10 +49,11 @@ struct VFSFx {
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_TEMP_DIR =
-      tiledb::win::current_dir() + "\\tiledb_test\\";
+      tiledb::sm::win::current_dir() + "\\tiledb_test\\";
 #else
-  const std::string FILE_TEMP_DIR =
-      std::string("file://") + tiledb::posix::current_dir() + "/tiledb_test/";
+  const std::string FILE_TEMP_DIR = std::string("file://") +
+                                    tiledb::sm::posix::current_dir() +
+                                    "/tiledb_test/";
 #endif
 
   // TileDB context and vfs
@@ -549,7 +550,7 @@ void VFSFx::check_read(const std::string& path) {
 std::string VFSFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::utils::timestamp_ms();
+     << tiledb::sm::utils::timestamp_ms();
   return ss.str();
 }
 

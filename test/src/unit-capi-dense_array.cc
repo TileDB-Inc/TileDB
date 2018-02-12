@@ -33,12 +33,12 @@
 
 #include "catch.hpp"
 #ifdef _WIN32
-#include "win_filesystem.h"
+#include "tiledb/sm/filesystem/win_filesystem.h"
 #else
-#include "posix_filesystem.h"
+#include "tiledb/sm/filesystem/posix_filesystem.h"
 #endif
-#include "tiledb.h"
-#include "utils.h"
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <cstring>
@@ -62,11 +62,11 @@ struct DenseArrayFx {
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
-      tiledb::win::current_dir() + "\\tiledb_test\\";
+      tiledb::sm::win::current_dir() + "\\tiledb_test\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
-      tiledb::posix::current_dir() + "/tiledb_test/";
+      tiledb::sm::posix::current_dir() + "/tiledb_test/";
 #endif
   const int ITER_NUM = 10;
 
@@ -973,7 +973,7 @@ void DenseArrayFx::check_sparse_writes(const std::string& path) {
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::utils::timestamp_ms();
+     << tiledb::sm::utils::timestamp_ms();
   return ss.str();
 }
 
