@@ -175,9 +175,9 @@ uint64_t Domain::cell_num(const void* domain) const {
     case Datatype::UINT64:
       return cell_num<uint64_t>(static_cast<const uint64_t*>(domain));
     case Datatype::FLOAT32:
-      return 0;
+      return cell_num<float>(static_cast<const float*>(domain));
     case Datatype::FLOAT64:
-      return 0;
+      return cell_num<double>(static_cast<const double*>(domain));
     default:
       assert(0);
       return 0;
@@ -186,6 +186,9 @@ uint64_t Domain::cell_num(const void* domain) const {
 
 template <class T>
 uint64_t Domain::cell_num(const T* domain) const {
+  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
+    return 0;
+
   uint64_t cell_num = 1;
   for (unsigned i = 0; i < dim_num_; ++i)
     cell_num *= (domain[2 * i + 1] - domain[2 * i] + 1);
@@ -1674,5 +1677,4 @@ template uint64_t Domain::tile_id<uint32_t>(
     const uint32_t* cell_coords, uint32_t* tile_coords) const;
 template uint64_t Domain::tile_id<uint64_t>(
     const uint64_t* cell_coords, uint64_t* tile_coords) const;
-
 }  // namespace tiledb

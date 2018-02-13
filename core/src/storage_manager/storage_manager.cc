@@ -38,6 +38,12 @@
 #include "storage_manager.h"
 #include "utils.h"
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 namespace tiledb {
 
 /* ****************************** */
@@ -100,6 +106,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   switch (array_schema->coords_type()) {
     case Datatype::INT32:
       array_compute_max_read_buffer_sizes<int>(
+          array_schema,
           metadata,
           static_cast<const int*>(subarray),
           attributes,
@@ -109,6 +116,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::INT64:
       array_compute_max_read_buffer_sizes<int64_t>(
+          array_schema,
           metadata,
           static_cast<const int64_t*>(subarray),
           attributes,
@@ -118,6 +126,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::FLOAT32:
       array_compute_max_read_buffer_sizes<float>(
+          array_schema,
           metadata,
           static_cast<const float*>(subarray),
           attributes,
@@ -127,6 +136,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::FLOAT64:
       array_compute_max_read_buffer_sizes<double>(
+          array_schema,
           metadata,
           static_cast<const double*>(subarray),
           attributes,
@@ -136,6 +146,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::INT8:
       array_compute_max_read_buffer_sizes<int8_t>(
+          array_schema,
           metadata,
           static_cast<const int8_t*>(subarray),
           attributes,
@@ -145,6 +156,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::UINT8:
       array_compute_max_read_buffer_sizes<uint8_t>(
+          array_schema,
           metadata,
           static_cast<const uint8_t*>(subarray),
           attributes,
@@ -154,6 +166,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::INT16:
       array_compute_max_read_buffer_sizes<int16_t>(
+          array_schema,
           metadata,
           static_cast<const int16_t*>(subarray),
           attributes,
@@ -163,6 +176,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::UINT16:
       array_compute_max_read_buffer_sizes<uint16_t>(
+          array_schema,
           metadata,
           static_cast<const uint16_t*>(subarray),
           attributes,
@@ -172,6 +186,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::UINT32:
       array_compute_max_read_buffer_sizes<unsigned>(
+          array_schema,
           metadata,
           static_cast<const unsigned*>(subarray),
           attributes,
@@ -181,6 +196,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       break;
     case Datatype::UINT64:
       array_compute_max_read_buffer_sizes<uint64_t>(
+          array_schema,
           metadata,
           static_cast<const uint64_t*>(subarray),
           attributes,
@@ -1056,12 +1072,19 @@ Status StorageManager::array_close(URI array_uri) {
 
 template <class T>
 Status StorageManager::array_compute_max_read_buffer_sizes(
+    const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
     const T* subarray,
     const char** attributes,
     unsigned attribute_num,
     unsigned buffer_num,
     uint64_t* buffer_sizes) {
+  // Sanity check
+  assert(!metadata.empty());
+
+  // First we calculate a rough upper bound. Especially for dense
+  // arrays, this will not be accurate, as it accounts only for the
+  // non-empty regions of the subarray.
   auto meta_buffer_sizes = new uint64_t[buffer_num];
   for (auto& meta : metadata) {
     RETURN_NOT_OK_ELSE(
@@ -1072,6 +1095,22 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       buffer_sizes[i] += meta_buffer_sizes[i];
   }
   delete[] meta_buffer_sizes;
+
+  // Rectify bound for dense arrays
+  if (array_schema->dense()) {
+    unsigned bid = 0, aid;
+    auto cell_num = array_schema->domain()->cell_num(subarray);
+    for (unsigned i = 0; i < attribute_num; ++i) {
+      RETURN_NOT_OK(array_schema->attribute_id(attributes[i], &aid));
+      if (array_schema->var_size(aid)) {
+        buffer_sizes[bid++] = cell_num * constants::cell_var_offset_size;
+        buffer_sizes[bid] += cell_num * datatype_size(array_schema->type(aid));
+        bid++;
+      } else {
+        buffer_sizes[bid++] = cell_num * array_schema->cell_size(aid);
+      }
+    }
+  }
 
   return Status::Ok();
 }
