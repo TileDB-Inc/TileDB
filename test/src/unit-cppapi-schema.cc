@@ -31,10 +31,10 @@
  */
 
 #include "catch.hpp"
-#include "tiledb"
+#include "tiledb/sm/cpp_api/tiledb"
 
 TEST_CASE("C++ API: Schema", "[cppapi]") {
-  using namespace tdb;
+  using namespace tiledb;
   Context ctx;
 
   Domain domain(ctx);

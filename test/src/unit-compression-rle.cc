@@ -35,18 +35,18 @@
 #include <iostream>
 
 #include "catch.hpp"
-#include "rle_compressor.h"
+#include "tiledb/sm/compressors/rle_compressor.h"
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 TEST_CASE("Compression-RLE: Test invalid format", "[compression], [rle]") {
   // Initializations
   auto input = new ConstBuffer(nullptr, 0);
   auto compressed = new Buffer();
-  tiledb::Status st;
+  tiledb::sm::Status st;
 
   // Test empty buffer
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(!st.ok());
   delete input;
 
@@ -62,7 +62,7 @@ TEST_CASE("Compression-RLE: Test invalid format", "[compression], [rle]") {
   st = compressed->realloc(1000000);
   REQUIRE(st.ok());
   input = new ConstBuffer(buff->data(), buff->size());
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(!st.ok());
 
   delete input;
@@ -78,14 +78,14 @@ TEST_CASE("Compression-RLE: Test all values unique", "[compression], [rle]") {
 
   // Allocate space for the compressed buffer
   uint64_t compressed_size =
-      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+      tiledb::sm::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
   auto compressed = new Buffer();
   Status st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
 
   // Create an input buffer and compress
   auto input = new ConstBuffer(data, sizeof(data));
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   delete input;
 
@@ -94,7 +94,7 @@ TEST_CASE("Compression-RLE: Test all values unique", "[compression], [rle]") {
   auto decompressed = new Buffer();
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
-  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -108,12 +108,12 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
   uint64_t run_size = 6;
   auto compressed = new Buffer();
   auto decompressed = new Buffer();
-  tiledb::Status st;
+  tiledb::sm::Status st;
 
   int data[100];
   REQUIRE(st.ok());
   uint64_t compressed_size =
-      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+      tiledb::sm::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
 
@@ -123,7 +123,7 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
 
   // Compress data
   auto input = new ConstBuffer(data, sizeof(data));
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == run_size);
   delete input;
@@ -132,7 +132,7 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -146,7 +146,7 @@ TEST_CASE(
     "[compression], [rle]") {
   // Initializations
   uint64_t run_size = 6;
-  tiledb::Status st;
+  tiledb::sm::Status st;
 
   // Prepare data
   int data[110];
@@ -159,12 +159,12 @@ TEST_CASE(
 
   // Compress
   uint64_t compressed_size =
-      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+      tiledb::sm::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
   auto compressed = new Buffer();
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
   auto input = new ConstBuffer(data, sizeof(data));
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 21 * run_size);
   delete input;
@@ -174,7 +174,7 @@ TEST_CASE(
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(int)));
 
@@ -189,7 +189,7 @@ TEST_CASE(
   // Initializations
   uint64_t run_size = 6;
   auto decompressed = new Buffer();
-  tiledb::Status st;
+  tiledb::sm::Status st;
 
   // Prepare data
   int data[70030];
@@ -202,12 +202,12 @@ TEST_CASE(
 
   // Compress data
   uint64_t compressed_size =
-      tiledb::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
+      tiledb::sm::RLE::overhead(sizeof(data), sizeof(int)) + sizeof(data);
   auto compressed = new Buffer();
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
   auto input = new ConstBuffer(data, sizeof(data));
-  st = tiledb::RLE::compress(sizeof(int), input, compressed);
+  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 32 * run_size);
   delete input;
@@ -216,7 +216,7 @@ TEST_CASE(
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -229,7 +229,7 @@ TEST_CASE(
     "Compression-RLE: Test compression/decompression with type double:2",
     "[compression], [rle]") {
   // Initializations
-  tiledb::Status st;
+  tiledb::sm::Status st;
   uint64_t value_size = 2 * sizeof(double);
   uint64_t run_size = value_size + 2;
 
@@ -257,12 +257,12 @@ TEST_CASE(
 
   // Compress data
   uint64_t compressed_size =
-      tiledb::RLE::overhead(sizeof(data), value_size) + sizeof(data);
+      tiledb::sm::RLE::overhead(sizeof(data), value_size) + sizeof(data);
   auto compressed = new Buffer();
   st = compressed->realloc(compressed_size);
   REQUIRE(st.ok());
   auto input = new ConstBuffer(data, sizeof(data));
-  st = tiledb::RLE::compress(value_size, input, compressed);
+  st = tiledb::sm::RLE::compress(value_size, input, compressed);
   CHECK(st.ok());
   CHECK(compressed->size() == 21 * run_size);
   delete input;
@@ -272,7 +272,7 @@ TEST_CASE(
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::RLE::decompress(value_size, input, decompressed);
+  st = tiledb::sm::RLE::decompress(value_size, input, decompressed);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 

@@ -32,7 +32,7 @@
  */
 
 #include "catch.hpp"
-#include "dd_compressor.h"
+#include "tiledb/sm/compressors/dd_compressor.h"
 
 #include <iostream>
 
@@ -41,18 +41,18 @@ TEST_CASE(
     "[compression], [double-delta]") {
   // Compress
   int data[] = {1};
-  auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
-  auto comp_out_buff = new tiledb::Buffer();
-  auto st = tiledb::DoubleDelta::compress(
-      tiledb::Datatype::INT32, comp_in_buff, comp_out_buff);
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, sizeof(data));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT32, comp_in_buff, comp_out_buff);
   REQUIRE(st.ok());
 
   // Decompress
   auto decomp_in_buff =
-      new tiledb::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
-  auto decomp_out_buff = new tiledb::Buffer();
-  st = tiledb::DoubleDelta::decompress(
-      tiledb::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      new tiledb::sm::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
   REQUIRE(st.ok());
 
   // Check data
@@ -71,18 +71,18 @@ TEST_CASE(
     "[compression], [double-delta]") {
   // Compress
   int data[] = {1, 2};
-  auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
-  auto comp_out_buff = new tiledb::Buffer();
-  auto st = tiledb::DoubleDelta::compress(
-      tiledb::Datatype::INT32, comp_in_buff, comp_out_buff);
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, sizeof(data));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT32, comp_in_buff, comp_out_buff);
   REQUIRE(st.ok());
 
   // Decompress
   auto decomp_in_buff =
-      new tiledb::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
-  auto decomp_out_buff = new tiledb::Buffer();
-  st = tiledb::DoubleDelta::decompress(
-      tiledb::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      new tiledb::sm::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
   REQUIRE(st.ok());
 
   // Check data
@@ -102,20 +102,20 @@ TEST_CASE(
     "[compression], [double-delta]") {
   // Compress
   int data[] = {100, 300, 200};
-  auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
-  auto comp_out_buff = new tiledb::Buffer();
-  auto st = tiledb::DoubleDelta::compress(
-      tiledb::Datatype::INT32, comp_in_buff, comp_out_buff);
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, sizeof(data));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT32, comp_in_buff, comp_out_buff);
   REQUIRE(st.ok());
 
   // Decompress
   auto decomp_in_buff =
-      new tiledb::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
-  auto decomp_out_buff = new tiledb::Buffer();
+      new tiledb::sm::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(data));
   REQUIRE(st.ok());
-  st = tiledb::DoubleDelta::decompress(
-      tiledb::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
   REQUIRE(st.ok());
 
   // Check data
@@ -136,20 +136,20 @@ TEST_CASE(
     "[compression], [double-delta]") {
   // Compress
   int data[] = {100, 300, 200, 600};
-  auto comp_in_buff = new tiledb::ConstBuffer(data, sizeof(data));
-  auto comp_out_buff = new tiledb::Buffer();
-  auto st = tiledb::DoubleDelta::compress(
-      tiledb::Datatype::INT32, comp_in_buff, comp_out_buff);
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, sizeof(data));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT32, comp_in_buff, comp_out_buff);
   REQUIRE(st.ok());
 
   // Decompress
-  auto decomp_in_buff =
-      new tiledb::ConstBuffer(comp_out_buff->data(), comp_out_buff->offset());
-  auto decomp_out_buff = new tiledb::Buffer();
+  auto decomp_in_buff = new tiledb::sm::ConstBuffer(
+      comp_out_buff->data(), comp_out_buff->offset());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(data));
   REQUIRE(st.ok());
-  st = tiledb::DoubleDelta::decompress(
-      tiledb::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
   REQUIRE(st.ok());
 
   // Check data
@@ -178,20 +178,20 @@ TEST_CASE(
     data[i] = std::rand() % max_value;
 
   // Compress
-  auto comp_in_buff = new tiledb::ConstBuffer(data, n * sizeof(int));
-  auto comp_out_buff = new tiledb::Buffer();
-  auto st = tiledb::DoubleDelta::compress(
-      tiledb::Datatype::INT32, comp_in_buff, comp_out_buff);
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, n * sizeof(int));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT32, comp_in_buff, comp_out_buff);
   REQUIRE(st.ok());
 
   // Decompress
-  auto decomp_in_buff =
-      new tiledb::ConstBuffer(comp_out_buff->data(), comp_out_buff->offset());
-  auto decomp_out_buff = new tiledb::Buffer();
+  auto decomp_in_buff = new tiledb::sm::ConstBuffer(
+      comp_out_buff->data(), comp_out_buff->offset());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(int) * n);
   REQUIRE(st.ok());
-  st = tiledb::DoubleDelta::decompress(
-      tiledb::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
   REQUIRE(st.ok());
 
   // Check data

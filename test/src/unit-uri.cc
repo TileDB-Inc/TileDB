@@ -30,16 +30,16 @@
  * Tests the `URI` class.
  */
 
-#include <uri.h>
 #include <catch.hpp>
+#include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
-#include <win_filesystem.h>
+#include "tiledb/sm/filesystem/win_filesystem.h"
 #else
-#include <posix_filesystem.h>
+#include "tiledb/sm/filesystem/posix_filesystem.h"
 #endif
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 #ifdef _WIN32
 static const char PATH_SEPARATOR = '\\';

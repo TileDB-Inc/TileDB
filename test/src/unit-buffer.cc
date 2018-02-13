@@ -31,10 +31,10 @@
  * Tests the `Buffer` class.
  */
 
-#include <buffer.h>
 #include <catch.hpp>
+#include "tiledb/sm/buffer/buffer.h"
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   // Write a char array

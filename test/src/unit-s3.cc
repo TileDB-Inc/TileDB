@@ -33,20 +33,20 @@
 #ifdef HAVE_S3
 
 #include "catch.hpp"
-#include "s3.h"
-#include "utils.h"
+#include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <fstream>
 #include <thread>
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 struct S3Fx {
   const std::string S3_PREFIX = "s3://";
-  const tiledb::URI S3_BUCKET =
-      tiledb::URI(S3_PREFIX + random_bucket_name("tiledb") + "/");
+  const tiledb::sm::URI S3_BUCKET =
+      tiledb::sm::URI(S3_PREFIX + random_bucket_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
-  tiledb::S3 s3_;
+  tiledb::sm::S3 s3_;
 
   S3Fx();
   ~S3Fx();
@@ -90,7 +90,7 @@ S3Fx::~S3Fx() {
 std::string S3Fx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::utils::timestamp_ms();
+     << tiledb::sm::utils::timestamp_ms();
   return ss.str();
 }
 

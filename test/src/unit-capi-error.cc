@@ -32,7 +32,7 @@
  */
 
 #include "catch.hpp"
-#include "tiledb.h"
+#include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 

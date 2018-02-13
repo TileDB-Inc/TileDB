@@ -34,11 +34,11 @@
 
 #include "catch.hpp"
 
-#include <status.h>
-#include <win_filesystem.h>
 #include <cassert>
+#include "tiledb/sm/filesystem/win_filesystem.h"
+#include "tiledb/sm/misc/status.h"
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 static bool starts_with(const std::string& value, const std::string& prefix) {
   if (prefix.size() > value.size())

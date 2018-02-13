@@ -33,13 +33,13 @@
 #ifdef HAVE_HDFS
 
 #include "catch.hpp"
-#include "config.h"
-#include "hdfs_filesystem.h"
+#include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "tiledb/sm/storage_manager/config.h"
 
 #include <fstream>
 #include <iostream>
 
-using namespace tiledb;
+using namespace tiledb::sm;
 
 TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   hdfsFS fs;

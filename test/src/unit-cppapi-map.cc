@@ -31,14 +31,14 @@
  */
 
 #include "catch.hpp"
-#include "tiledb"
+#include "tiledb/sm/cpp_api/tiledb"
 
-using namespace tdb;
+using namespace tiledb;
 
 struct CPPMapFx {
   CPPMapFx()
       : vfs(ctx) {
-    using namespace tdb;
+    using namespace tiledb;
 
     if (vfs.is_dir("cpp_unit_map"))
       vfs.remove_dir("cpp_unit_map");
