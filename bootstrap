@@ -43,6 +43,7 @@ Configuration:
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
     --enable-s3                     enables the s3 storage backend
+    --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
     
 Dependencies:
@@ -68,6 +69,7 @@ build_type="Release"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
+enable_multiple=""
 while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
@@ -81,10 +83,25 @@ while test $# != 0; do
     --enable-verbose) tiledb_verbose="ON";;
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
+    --enable=*) s=`arg "$1"`
+                enable_multiple="$s";;
     --help) usage ;;
     *) die "Unknown option: $1" ;;
     esac
     shift
+done
+
+# Parse the comma-separated list of enables.
+IFS=',' read -ra enables <<< "$enable_multiple"
+for en in "${enables[@]}"; do
+  case "$en" in
+    debug) build_type="Debug";;
+    coverage) build_type="Coverage";;
+    verbose) tiledb_verbose="ON";;
+    s3) tiledb_s3="ON";;
+    hdfs) tiledb_hdfs="ON";;
+    *) die "Unknown option: --enable-$en" ;;
+  esac
 done
 
 if [ ${source_dir} = ${binary_dir} ]; then

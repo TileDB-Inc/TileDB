@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installs and configures HDFS.
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
@@ -38,7 +40,7 @@ function install_hadoop {
 function create_hadoop_user {
   sudo useradd -m hduser &&
     sudo adduser hduser sudo &&
-    sudo chsh -s /bin/bash hduse
+    sudo chsh -s /bin/bash hduser
   echo -e "hduser123\nhduser123\n" | sudo passwd hduser
 
   sudo useradd -m hadoop &&
@@ -168,13 +170,6 @@ function passwordless_ssh {
   sudo service ssh restart || die "error restarting ssh service"
 }
 
-function restart_hadoop {
-  export HADOOP_HOME=/usr/local/hadoop/home
-  $HADOOP_HOME/sbin/stop-dfs.sh || die "error stopping datanode"
-  $HADOOP_HOME/bin/hdfs namenode -format || die "error formatting hadoop namenode"
-  $HADOOP_HOME/sbin/start-dfs.sh || die "error starting datanode"
-}
-
 function run {
   update_apt_repo || die "error updating apt-repo"
   install_java || die "error installing java"
@@ -182,14 +177,6 @@ function run {
   install_hadoop || die "error installing hadoop"
   setup_environment || die "error setting up environment"
   passwordless_ssh || die "error setting up passwordless ssh"
-  restart_hadoop || die "error restarting hadoop"
- }
+}
 
 run
-
-export JAVA_HOME=$(readlink -n \/etc\/alternatives\/java | sed "s:\/bin\/java::")
-export HADOOP_HOME=/usr/local/hadoop/home
-export HADOOP_LIB="$HADOOP_HOME/lib/native/"
-export LD_LIBRARY_PATH="$HADOOP_LIB:$JAVA_HOME/lib/amd64/server/"
-export CLASSPATH=`$HADOOP_HOME/bin/hadoop classpath --glob`
-export PATH="${HADOOP_HOME}/bin/":$PATH
