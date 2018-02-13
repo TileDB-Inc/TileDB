@@ -1360,7 +1360,18 @@ uint64_t Domain::tile_slab_row_cell_num(const T* subarray) const {
   // Return
   return cell_num;
 }
+
 // Explicit template instantiations
+template uint64_t Domain::cell_num<int8_t>(const int8_t* domain) const;
+template uint64_t Domain::cell_num<uint8_t>(const uint8_t* domain) const;
+template uint64_t Domain::cell_num<int16_t>(const int16_t* domain) const;
+template uint64_t Domain::cell_num<uint16_t>(const uint16_t* domain) const;
+template uint64_t Domain::cell_num<int>(const int* domain) const;
+template uint64_t Domain::cell_num<unsigned>(const unsigned* domain) const;
+template uint64_t Domain::cell_num<int64_t>(const int64_t* domain) const;
+template uint64_t Domain::cell_num<uint64_t>(const uint64_t* domain) const;
+template uint64_t Domain::cell_num<float>(const float* domain) const;
+template uint64_t Domain::cell_num<double>(const double* domain) const;
 
 template int Domain::cell_order_cmp<int>(
     const int* coords_a, const int* coords_b) const;

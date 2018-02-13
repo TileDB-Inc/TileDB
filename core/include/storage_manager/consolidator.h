@@ -149,9 +149,12 @@ class Consolidator {
       unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes);
 
   /**
-   * Renames the new fragment URI. If the working thread id is different
-   * from the one that created the input URI, the function does nothing.
-   * Otherwise, it appends an extra `_` after the thread id.
+   * Renames the new fragment URI. The new name has the format
+   * `__<thread_id>_<timestamp>_<last_fragment_timestamp>`, where
+   * `<thread_id>` is the id of the thread that performs the consolidation,
+   * `<timestamp>` is the current timestamp in milliseconds, and
+   * `<last_fragment_timestamp>` is the timestamp of the last of the
+   * consolidated fragments.
    */
   Status rename_new_fragment_uri(URI* uri) const;
 };
