@@ -194,6 +194,7 @@ if (${CLANG_FORMAT_FOUND})
     `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
           ${CMAKE_CURRENT_SOURCE_DIR}/test/src
           ${CMAKE_CURRENT_SOURCE_DIR}/examples
+          ${CMAKE_CURRENT_SOURCE_DIR}/ingestors
           -name \\*.cc -or -name \\*.c -or -name \\*.h`)
 
   # runs clang format and exits with a non-zero exit code if any files need to be reformatted
@@ -201,6 +202,7 @@ if (${CLANG_FORMAT_FOUND})
     `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
           ${CMAKE_CURRENT_SOURCE_DIR}/test/src
           ${CMAKE_CURRENT_SOURCE_DIR}/examples
+          ${CMAKE_CURRENT_SOURCE_DIR}/ingestors
           -name \\*.cc -or -name \\*.c -or -name \\*.h`)
 endif()
 
