@@ -35,10 +35,10 @@
 #ifndef TILEDB_CPP_API_ARRAY_H
 #define TILEDB_CPP_API_ARRAY_H
 
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_array_schema.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_context.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_type.h"
+#include "tiledb.h"
+#include "tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_type.h"
 
 #include <unordered_map>
 #include <vector>

@@ -32,7 +32,7 @@
  * This file declares the C++ API for the TileDB Map object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map.h"
+#include "tiledb_cpp_api_map.h"
 
 namespace tiledb {
 

@@ -35,8 +35,8 @@
 #ifndef TILEDB_CPP_API_VFS_FILEBUF_H
 #define TILEDB_CPP_API_VFS_FILEBUF_H
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_deleter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_vfs.h"
+#include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_vfs.h"
 
 #include <functional>
 #include <locale>

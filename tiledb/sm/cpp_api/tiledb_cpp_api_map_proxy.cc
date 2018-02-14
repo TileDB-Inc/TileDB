@@ -32,8 +32,8 @@
  * This file declares the C++ API for the TileDB Map Item proxies.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_proxy.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map.h"
+#include "tiledb_cpp_api_map_proxy.h"
+#include "tiledb_cpp_api_map.h"
 
 namespace tiledb {
 bool impl::MapItemProxy::add_to_map() const {

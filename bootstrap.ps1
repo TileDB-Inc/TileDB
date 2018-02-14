@@ -77,7 +77,7 @@ $BinaryDirectory = (Get-Item -Path ".\" -Verbose).FullName
 $DefaultPrefix = Join-Path $SourceDirectory "dist"
 
 # Choose the default dependency install prefix.
-$DefaultDependency = Join-Path $SourceDirectory "deps-install"
+$DefaultDependency = $DefaultPrefix
 
 # Set TileDB build type
 $BuildType = "Release"

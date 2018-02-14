@@ -26,9 +26,15 @@
 # THE SOFTWARE.
 #
 
-# Include core header directory.
+# Include main header directory.
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
 include_directories(BEFORE ${TILEDB_CORE_INCLUDE_DIR})
+# Also include C/C++ API header directories so that those files
+# can be directly included (required for installed headers to locate
+# dependent headers).
+include_directories(BEFORE
+  "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
+  "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api")
 
 # Gather the core source files
 file(GLOB_RECURSE TILEDB_CORE_HEADERS "sm/*.h")
@@ -61,8 +67,13 @@ cmake_policy(SET CMP0063 NEW)
 
 # Create static library
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledb")
-
+if (WIN32)
+  # On Windows we must name the static library something else to avoid
+  # name clash with the DLL's "import library" .lib file.
+  set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledbstatic")
+else()
+  set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledb")
+endif()
 
 # Create dynamic library
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
@@ -81,9 +92,11 @@ if (WIN32)
   endforeach()
 endif()
 
-# Install libraries
+# Install libraries.
+# Note on Windows, the DLL counts as "runtime" and should go into bin.
 install(
     TARGETS tiledb_static tiledb_shared
+    RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )

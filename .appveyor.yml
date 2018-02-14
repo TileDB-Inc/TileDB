@@ -20,4 +20,18 @@ build_script:
       ..\bootstrap.ps1 -EnableVerbose
     }
 test_script:
-- ps: cmake --build . --target check --config Release
+- ps: >-
+    cmake --build . --target check --config Release
+
+    cmake --build . --target install
+
+    mkdir dist
+
+    mv ..\dist dist\tiledb-windows-x64
+
+    cd dist
+
+    7z a tiledb-windows-x64.zip tiledb-windows-x64
+artifacts:
+- path: build\dist\tiledb-windows-x64.zip
+  name: tiledb-windows-x64.zip

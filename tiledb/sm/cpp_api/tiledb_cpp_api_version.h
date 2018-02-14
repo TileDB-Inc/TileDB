@@ -33,7 +33,7 @@
 #ifndef TILEDB_CPP_API_VERSION_H
 #define TILEDB_CPP_API_VERSION_H
 
-#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb.h"
 
 #include <iostream>
 

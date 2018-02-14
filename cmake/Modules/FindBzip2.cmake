@@ -29,6 +29,13 @@
 #   - BZIP2_LIBRARIES, the Bzip2 library path
 #   - BZIP2_FOUND, whether Bzip2 has been found
 
+# Set the name of the bzip2 shared object
+if (WIN32)
+  set(BZ2_LIB_NAME libbz2)
+else()
+  set(BZ2_LIB_NAME bz2)
+endif()
+
 # Find header files  
 if(BZIP2_SEARCH_HEADER_PATHS)
   find_path( 
@@ -43,12 +50,12 @@ endif()
 # Find library
 if(BZIP2_SEARCH_LIB_PATH)
   find_library(
-      BZIP2_LIBRARIES NAMES bz2
+      BZIP2_LIBRARIES NAMES ${BZ2_LIB_NAME}
       PATHS ${BZIP2_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(BZIP2_LIBRARIES NAMES bz2)
+  find_library(BZIP2_LIBRARIES NAMES ${BZ2_LIB_NAME})
 endif()
 
 if(BZIP2_INCLUDE_DIR AND BZIP2_LIBRARIES)

@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB groups.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_group.h"
+#include "tiledb_cpp_api_group.h"
 
 namespace tiledb {
 

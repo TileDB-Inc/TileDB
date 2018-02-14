@@ -32,7 +32,7 @@
  * This file declares the C++ API for the TileDB MapSchema object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_schema.h"
+#include "tiledb_cpp_api_map_schema.h"
 
 tiledb::MapSchema::MapSchema(const tiledb::Context &ctx)
     : Schema(ctx) {

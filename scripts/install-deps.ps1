@@ -20,7 +20,7 @@ function Get-ScriptsDirectory {
 }
 
 $TileDBRootDirectory = Split-Path -Parent (Get-ScriptsDirectory)
-$InstallPrefix = Join-Path $TileDBRootDirectory "deps-install"
+$InstallPrefix = Join-Path $TileDBRootDirectory "dist"
 $StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
 $DownloadZlibDest = Join-Path $StagingDirectory "zlib.zip"
 $DownloadLz4Dest = Join-Path $StagingDirectory "lz4.zip"
@@ -57,7 +57,7 @@ function Install-Zlib {
 	New-Item -ItemType Directory -Path build
     }
     Set-Location build
-    cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
+    cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" -DSKIP_INSTALL_FILES=ON ..
     cmake --build . --config Release --target INSTALL
     Pop-Location
 }
@@ -90,7 +90,11 @@ function Install-Blosc {
     Set-Location build
     cmake -A X64 -DCMAKE_INSTALL_PREFIX="$InstallPrefix" ..
     cmake --build . --config Release --target INSTALL
-    Move-Item (Join-Path (Join-Path "$InstallPrefix" "lib") "blosc.dll") (Join-Path (Join-Path "$InstallPrefix" "bin") "blosc.dll")
+    $BloscDllDest = (Join-Path (Join-Path "$InstallPrefix" "bin") "blosc.dll")
+    if (Test-Path $BloscDllDest) {
+	Remove-Item $BloscDllDest
+    }
+    Move-Item (Join-Path (Join-Path "$InstallPrefix" "lib") "blosc.dll") $BloscDllDest
     Pop-Location
 }
 

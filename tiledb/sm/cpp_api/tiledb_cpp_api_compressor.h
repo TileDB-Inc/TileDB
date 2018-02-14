@@ -35,7 +35,7 @@
 #ifndef TILEDB_CPP_API_COMPRESSOR_H
 #define TILEDB_CPP_API_COMPRESSOR_H
 
-#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb.h"
 
 #include <iostream>
 #include <string>

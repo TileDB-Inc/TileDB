@@ -32,9 +32,9 @@
  * This file declares the C++ API for the TileDB Map Iter object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_iter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_iter.h"
+#include "tiledb_cpp_api_map.h"
+#include "tiledb_cpp_api_map_item.h"
 
 namespace tiledb {
 namespace impl {

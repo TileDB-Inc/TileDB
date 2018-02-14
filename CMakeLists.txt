@@ -65,8 +65,10 @@ include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
 # On Windows, set a variable for the dependency install location.
+# Defaults to install in the same TileDB installation location.
 if (WIN32)
-  set(TILEDB_DEPENDENCY_INSTALL_DIR "${CMAKE_SOURCE_DIR}/deps-install")
+  set(TILEDB_DEPENDENCY_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}")
+  add_definitions(/DTILEDB_MSVC_EXPORTS)
 endif()
 
 # Find optional library dependencies
