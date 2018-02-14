@@ -32,9 +32,9 @@
  * This file declares the C++ API for the TileDB Config Iter object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_config_iter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_config.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_utils.h"
+#include "tiledb_cpp_api_config_iter.h"
+#include "tiledb_cpp_api_config.h"
+#include "tiledb_cpp_api_utils.h"
 
 namespace tiledb {
 namespace impl {

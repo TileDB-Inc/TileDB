@@ -35,9 +35,9 @@
 #ifndef TILEDB_CPP_API_MAP_ITEM_H
 #define TILEDB_CPP_API_MAP_ITEM_H
 
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_attribute.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_exception.h"
+#include "tiledb.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_exception.h"
 
 #include <functional>
 #include <memory>

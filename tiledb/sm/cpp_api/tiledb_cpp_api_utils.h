@@ -33,8 +33,8 @@
 #ifndef TILEDB_CPP_API_UTILS_H
 #define TILEDB_CPP_API_UTILS_H
 
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_exception.h"
+#include "tiledb.h"
+#include "tiledb_cpp_api_exception.h"
 
 #include <algorithm>
 #include <array>

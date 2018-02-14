@@ -32,8 +32,8 @@
  * This file defines the C++ API for the TileDB Object object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_object.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_context.h"
 
 namespace tiledb {
 

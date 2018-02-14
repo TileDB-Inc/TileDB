@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB Deleter object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_deleter.h"
 
 namespace tiledb {
 

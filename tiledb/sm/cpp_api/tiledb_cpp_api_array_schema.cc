@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB ArraySchema object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_array_schema.h"
+#include "tiledb_cpp_api_array_schema.h"
 
 #include <array>
 #include <sstream>

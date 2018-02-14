@@ -56,7 +56,34 @@ install:
 
     - make -j4
     - make examples -j4
+    - make install
     
 script:
     - make check-format
     - make check
+    - |
+      testfile=$(mktemp)
+      mv $testfile $testfile.cc
+      testfile=$testfile.cc
+      cat <<EOF > $testfile
+      #include <assert.h>
+      #include <tiledb/tiledb.h>
+      #include <tiledb/tiledb>
+      int main(int argc, char **argv) {
+        int major = 0;
+        int minor = 0;
+        int patch = 0;
+        tiledb_version(&major,&minor,&patch);
+        auto version = tiledb::Version::version();
+        assert(version.major() == major);
+        return 0;
+      }
+      EOF
+      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+      else
+        export DYLD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
+      fi
+      ${CXX} -std=c++11 -g -O0 -Wall -Werror -I$TRAVIS_BUILD_DIR/dist/include -L$TRAVIS_BUILD_DIR/dist/lib $testfile -o $testfile.exe -ltiledb && \
+      $testfile.exe && \
+      rm -f $testfile $testfile.exe

@@ -35,7 +35,7 @@
 #ifndef TILEDB_CPP_API_OBJECT_H
 #define TILEDB_CPP_API_OBJECT_H
 
-#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb.h"
 
 #include <functional>
 #include <iostream>

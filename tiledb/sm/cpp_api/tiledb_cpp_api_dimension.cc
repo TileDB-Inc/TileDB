@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB Dimension object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_dimension.h"
+#include "tiledb_cpp_api_dimension.h"
 
 #include <sstream>
 

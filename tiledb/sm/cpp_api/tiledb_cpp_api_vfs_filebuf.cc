@@ -32,8 +32,8 @@
  * filebuf for the tiledb VFS.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_vfs_filebuf.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_exception.h"
+#include "tiledb_cpp_api_vfs_filebuf.h"
+#include "tiledb_cpp_api_exception.h"
 
 namespace tiledb {
 namespace impl {

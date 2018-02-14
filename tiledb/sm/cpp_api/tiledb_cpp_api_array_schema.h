@@ -35,11 +35,11 @@
 #ifndef TILEDB_CPP_API_ARRAY_SCHEMA_H
 #define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_attribute.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_domain.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_object.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_schema_base.h"
+#include "tiledb.h"
+#include "tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_domain.h"
+#include "tiledb_cpp_api_object.h"
+#include "tiledb_cpp_api_schema_base.h"
 
 #include <array>
 #include <memory>

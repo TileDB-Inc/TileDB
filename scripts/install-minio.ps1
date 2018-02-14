@@ -19,7 +19,7 @@ function Get-ScriptsDirectory {
 }
 
 $TileDBRootDirectory = Split-Path -Parent (Get-ScriptsDirectory)
-$InstallPrefix = Join-Path $TileDBRootDirectory "deps-install"
+$InstallPrefix = Join-Path $TileDBRootDirectory "dist"
 $StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
 
 function DownloadFile([string] $URL, [string] $Dest) {

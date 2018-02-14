@@ -33,7 +33,7 @@
  * This defines TileDB datatypes for the C++ API.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_type.h"
+#include "tiledb_cpp_api_type.h"
 
 namespace tiledb {
 

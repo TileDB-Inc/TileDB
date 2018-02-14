@@ -34,12 +34,12 @@
 #ifndef TILEDB_CPP_API_MAP_H
 #define TILEDB_CPP_API_MAP_H
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_context.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_deleter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_item.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_iter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_schema.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_utils.h"
+#include "tiledb_cpp_api_context.h"
+#include "tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_iter.h"
+#include "tiledb_cpp_api_map_schema.h"
+#include "tiledb_cpp_api_utils.h"
 
 #include <memory>
 #include <string>

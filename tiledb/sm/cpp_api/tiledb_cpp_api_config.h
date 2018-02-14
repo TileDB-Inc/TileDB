@@ -35,9 +35,9 @@
 #ifndef TILEDB_CPP_API_CONFIG_H
 #define TILEDB_CPP_API_CONFIG_H
 
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_config_iter.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_utils.h"
+#include "tiledb.h"
+#include "tiledb_cpp_api_config_iter.h"
+#include "tiledb_cpp_api_utils.h"
 
 #include <memory>
 #include <string>

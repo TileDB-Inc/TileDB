@@ -32,7 +32,7 @@
  * This file define the C++ API for the TileDB Domain object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_domain.h"
+#include "tiledb_cpp_api_domain.h"
 
 namespace tiledb {
 

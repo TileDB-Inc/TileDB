@@ -35,7 +35,7 @@
 #ifndef TILEDB_CPP_API_MAP_PROXY_H
 #define TILEDB_CPP_API_MAP_PROXY_H
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_map_item.h"
+#include "tiledb_cpp_api_map_item.h"
 
 #include <tuple>
 

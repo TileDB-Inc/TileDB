@@ -35,7 +35,7 @@
 #ifndef TILEDB_CPP_API_SCHEMA_BASE_H
 #define TILEDB_CPP_API_SCHEMA_BASE_H
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_deleter.h"
+#include "tiledb_cpp_api_deleter.h"
 
 #include <unordered_map>
 

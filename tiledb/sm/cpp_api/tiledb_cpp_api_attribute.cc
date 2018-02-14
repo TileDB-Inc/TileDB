@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB Attribute object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_attribute.h"
+#include "tiledb_cpp_api_attribute.h"
 
 namespace tiledb {
 

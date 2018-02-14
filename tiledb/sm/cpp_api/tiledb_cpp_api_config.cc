@@ -32,7 +32,7 @@
  * This file defines the C++ API for the TileDB Config object.
  */
 
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_config.h"
+#include "tiledb_cpp_api_config.h"
 
 namespace tiledb {
 
