@@ -53,7 +53,7 @@ int main() {
   tiledb_vfs_write(ctx, fh, &f1, sizeof(float));
   tiledb_vfs_write(ctx, fh, s1, strlen(s1));
   tiledb_vfs_close(ctx, fh);
-  tiledb_vfs_fh_free(ctx, fh);
+  tiledb_vfs_fh_free(ctx, &fh);
 
   // Write binary data again - this will overwrite the previous file
   tiledb_vfs_open(ctx, vfs, "tiledb_vfs.bin", TILEDB_VFS_WRITE, &fh);
@@ -62,18 +62,18 @@ int main() {
   tiledb_vfs_write(ctx, fh, &f1, sizeof(float));
   tiledb_vfs_write(ctx, fh, s2, strlen(s2));
   tiledb_vfs_close(ctx, fh);
-  tiledb_vfs_fh_free(ctx, fh);
+  tiledb_vfs_fh_free(ctx, &fh);
 
   // Append binary data to existing file
   tiledb_vfs_open(ctx, vfs, "tiledb_vfs.bin", TILEDB_VFS_APPEND, &fh);
   const char* s3 = "ghijkl";
   tiledb_vfs_write(ctx, fh, s3, strlen(s3));
   tiledb_vfs_close(ctx, fh);
-  tiledb_vfs_fh_free(ctx, fh);
+  tiledb_vfs_fh_free(ctx, &fh);
 
   // Clean up
-  tiledb_vfs_free(ctx, vfs);
-  tiledb_ctx_free(ctx);
+  tiledb_vfs_free(ctx, &vfs);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

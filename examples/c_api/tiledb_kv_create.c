@@ -76,11 +76,11 @@ int main() {
   tiledb_kv_create(ctx, kv_uri, kv_schema);
 
   // Clean up
-  tiledb_attribute_free(ctx, a1);
-  tiledb_attribute_free(ctx, a2);
-  tiledb_attribute_free(ctx, a3);
-  tiledb_kv_schema_free(ctx, kv_schema);
-  tiledb_ctx_free(ctx);
+  tiledb_attribute_free(ctx, &a1);
+  tiledb_attribute_free(ctx, &a2);
+  tiledb_attribute_free(ctx, &a3);
+  tiledb_kv_schema_free(ctx, &kv_schema);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

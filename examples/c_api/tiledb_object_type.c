@@ -65,7 +65,7 @@ int main() {
   print_object_type(type);
 
   // Clean up
-  tiledb_ctx_free(ctx);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

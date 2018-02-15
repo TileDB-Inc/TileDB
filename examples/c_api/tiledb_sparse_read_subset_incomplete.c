@@ -79,8 +79,8 @@ int main() {
   } while (status == TILEDB_INCOMPLETE);
 
   // Clean up
-  tiledb_query_free(ctx, query);
-  tiledb_ctx_free(ctx);
+  tiledb_query_free(ctx, &query);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

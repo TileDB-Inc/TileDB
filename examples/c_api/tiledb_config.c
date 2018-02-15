@@ -87,12 +87,12 @@ int main() {
   tiledb_vfs_create(ctx, &vfs, config);
 
   // Clean up
-  tiledb_config_free(config);
-  tiledb_config_iter_free(config_iter);
+  tiledb_config_free(&config);
+  tiledb_config_iter_free(&config_iter);
   if (error != NULL)
-    tiledb_error_free(error);
-  tiledb_vfs_free(ctx, vfs);
-  tiledb_ctx_free(ctx);
+    tiledb_error_free(&error);
+  tiledb_vfs_free(ctx, &vfs);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

@@ -55,7 +55,7 @@ int main() {
   tiledb_object_walk(ctx, "my_group", TILEDB_POSTORDER, print_path, NULL);
 
   // Finalize context
-  tiledb_ctx_free(ctx);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

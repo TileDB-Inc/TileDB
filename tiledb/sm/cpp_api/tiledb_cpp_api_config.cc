@@ -53,7 +53,7 @@ Config::Config(const std::string &filename) {
 
 Config::Config(tiledb_config_t **config) {
   if (config) {
-    config_ = std::shared_ptr<tiledb_config_t>(*config, tiledb_config_free);
+    config_ = std::shared_ptr<tiledb_config_t>(*config, Config::free);
     *config = nullptr;
   }
 }
@@ -99,6 +99,14 @@ Config &Config::unset(const std::string &param) {
 }
 
 /* ********************************* */
+/*         STATIC FUNCTIONS          */
+/* ********************************* */
+
+void Config::free(tiledb_config_t *config) {
+  tiledb_config_free(&config);
+}
+
+/* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
@@ -108,7 +116,7 @@ void Config::create_config() {
   tiledb_config_create(&config, &err);
   impl::check_config_error(err);
 
-  config_ = std::shared_ptr<tiledb_config_t>(config, tiledb_config_free);
+  config_ = std::shared_ptr<tiledb_config_t>(config, Config::free);
 }
 
 }  // namespace tiledb
