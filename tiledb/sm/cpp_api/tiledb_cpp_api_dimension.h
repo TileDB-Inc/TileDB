@@ -70,32 +70,38 @@ class Dimension {
   /** Returns the dimension datatype. */
   tiledb_datatype_t type() const;
 
-  /** Returns the dimension domain. */
+  /** Returns the domain of the dimension. **/
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, std::pair<T, T>>::type
-  domain() const {
-    return domain<typename impl::type_from_native<T>::type>();
-  }
+  std::pair<T, T> domain() const {
+    static_assert(
+        std::is_fundamental<T>::value,
+        "Template type must be a fundamental type.");
+    using DataT = typename impl::type_from_native<T>::type;
 
-  /** Returns the dimension domain. */
-  template <typename T>
-  std::pair<typename T::type, typename T::type> domain() const {
     auto tdbtype = type();
-    if (T::tiledb_datatype != tdbtype) {
-      throw TypeError::create<T>(tdbtype);
+    if (DataT::tiledb_datatype != tdbtype) {
+      throw TypeError::create<DataT>(tdbtype);
     }
-    auto d = static_cast<typename T::type *>(_domain());
-    return std::pair<typename T::type, typename T::type>(d[0], d[1]);
-  }
+    auto d = static_cast<T *>(_domain());
+    return std::pair<T, T>(d[0], d[1]);
+  };
 
   /** Returns a string representation of the domain. */
   std::string domain_to_str() const;
 
   /** Returns the tile extent of the dimension. */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type tile_extent()
-      const {
-    return tile_extent<typename impl::type_from_native<T>::type>();
+  T tile_extent() const {
+    static_assert(
+        std::is_fundamental<T>::value,
+        "Template type must be a fundamental type.");
+    using DataT = typename impl::type_from_native<T>::type;
+
+    auto tdbtype = type();
+    if (DataT::tiledb_datatype != tdbtype) {
+      throw TypeError::create<DataT>(tdbtype);
+    }
+    return *static_cast<T *>(_tile_extent());
   }
 
   /** Returns a string representation of the extent. */
@@ -121,14 +127,20 @@ class Dimension {
    * @return A new `Attribute` object.
    */
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, Dimension>::
-      type static create(
-          const Context &ctx,
-          const std::string &name,
-          const std::array<T, 2> &domain,
-          T extent) {
-    return create<typename impl::type_from_native<T>::type>(
-        ctx, name, domain, extent);
+  static Dimension create(
+      const Context &ctx,
+      const std::string &name,
+      const std::array<T, 2> &domain,
+      T extent) {
+    static_assert(
+        std::is_fundamental<T>::value,
+        "Template type must be a fundamental type.");
+    return create_impl(
+        ctx,
+        name,
+        impl::type_from_native<T>::type::tiledb_datatype,
+        &domain,
+        &extent);
   }
 
  private:
@@ -149,16 +161,6 @@ class Dimension {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Returns the tile extent of the dimension. */
-  template <typename T>
-  typename T::type tile_extent() const {
-    auto tdbtype = type();
-    if (T::tiledb_datatype != tdbtype) {
-      throw TypeError::create<T>(tdbtype);
-    }
-    return *static_cast<typename T::type *>(_tile_extent());
-  };
-
   /** Returns the binary representation of the dimension domain. */
   void *_domain() const;
 
@@ -170,28 +172,10 @@ class Dimension {
   /* ********************************* */
 
   /**
-   * Create a new dimension with a domain datatype of DataT.
-   *
-   * @tparam DataT tiledb::type::*
-   * @param name Name of dimension
-   * @param domain Bounds of dimension, inclusive coordinates
-   * @param tile_extent Tile length in this dimension
-   */
-  template <typename DataT>
-  static Dimension create(
-      const Context &ctx,
-      const std::string &name,
-      const std::array<typename DataT::type, 2> &domain,
-      typename DataT::type tile_extent) {
-    return create(
-        ctx, name, DataT::tiledb_datatype, domain.data(), &tile_extent);
-  }
-
-  /**
    * Creates a dimension with the input name, datatype, domain and tile
    * extent.
    */
-  static Dimension create(
+  static Dimension create_impl(
       const Context &ctx,
       const std::string &name,
       tiledb_datatype_t type,

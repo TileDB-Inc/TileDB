@@ -234,7 +234,7 @@ void *Dimension::_tile_extent() const {
 /*     PRIVATE STATIC FUNCTIONS      */
 /* ********************************* */
 
-Dimension Dimension::create(
+Dimension Dimension::create_impl(
     const Context &ctx,
     const std::string &name,
     tiledb_datatype_t type,

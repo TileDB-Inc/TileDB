@@ -114,9 +114,11 @@ class Attribute {
    * @return A new `Attribute` object.
    */
   template <typename T>
-  static typename std::enable_if<std::is_fundamental<T>::value, Attribute>::type
-  create(const Context &ctx, const std::string &name) {
-    return create<typename impl::type_from_native<T>::type>(ctx, name);
+  static Attribute create(const Context &ctx, const std::string &name) {
+    static_assert(
+        std::is_fundamental<T>::value,
+        "Template type must be a fundamental type.");
+    return create(ctx, name, impl::type_from_native<T>::type::tiledb_datatype);
   }
 
  private:
@@ -136,15 +138,6 @@ class Attribute {
   /* ********************************* */
   /*     PRIVATE STATIC FUNCTIONS      */
   /* ********************************* */
-
-  /**
-   * Auxiliary function that converts a basic datatype to a TileDB C
-   * datatype.
-   */
-  template <typename DataT, typename = typename DataT::type>
-  static Attribute create(const Context &ctx, const std::string &name) {
-    return create(ctx, name, DataT::tiledb_datatype);
-  }
 
   /** Creates an attribute with the input name and datatype. */
   static Attribute create(

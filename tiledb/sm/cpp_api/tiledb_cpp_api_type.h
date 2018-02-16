@@ -99,6 +99,9 @@ using FLOAT64 = Type<double, TILEDB_FLOAT64>;
 
 size_t type_size(tiledb_datatype_t type);
 
+template <typename T>
+struct always_false : std::false_type {};
+
 template <tiledb_datatype_t T>
 struct type_from_tiledb;
 
@@ -158,7 +161,11 @@ struct type_from_tiledb<TILEDB_FLOAT64> {
 };
 
 template <typename T>
-struct type_from_native;
+struct type_from_native {
+  // always_false<T> means failure is only triggered if
+  // invalid specilization is instantiated.
+  static_assert(always_false<T>::value, "Invalid TileDB native type.");
+};
 
 template <>
 struct type_from_native<char> {
