@@ -48,6 +48,37 @@ namespace impl {
  * equivalent to setting one attribute at a time.
  * After assignment, the item is added to the
  * underlying map.
+ *
+ * @details
+ * This class should never be constructed explicitly.
+ * Instead, it should be used to retrieve the value
+ * with the correct type.
+ *
+ * @code{.cpp}
+ *   using my_cell_t = std::tuple<int, std::string, std::vector<float>>;
+ *
+ *   // Implicit conversion
+ *   my_cell_t vals_implicit = map[100][{"a1", "a2", "a3"}];
+ *
+ *   // Explicit conversion
+ *   auto vals_explicit = map[100][{"a1", "a2", "a3"}].get<my_cell_t>();
+ *
+ *   // Defer conversion
+ *   auto vals_deferred = map[100][{"a1", "a2", "a3"}];
+ *
+ *   // vals_deferred is of type MultMapItemProxy, no values
+ *   // are fetched yet.
+ *
+ *   // Writing & flushing map[100] here would change
+ *   // the result of below.
+ *
+ *   auto my_fn = [](my_cell_t cell){ std::cout << std::get<0>(cell); };
+ *   my_fn(vals_deferred); // Retrieve values
+ *
+ *   // Set new values, but does not explicity flush to storage
+ *   vals_deferred = std::make_tuple(10, "str", {1.2, 3.2});
+ *
+ * @endcode
  **/
 class MultiMapItemProxy {
  public:
@@ -140,6 +171,33 @@ class MultiMapItemProxy {
 /**
  * Proxy struct to set a single value with operator[].
  * If bound to a map, the item will be added after assignment.
+ *
+ * @details
+ * This class should never be constructed explicitly.
+ * Instead, it should be used to retrieve the value
+ * with the correct type.
+ *
+ * @code{.cpp}
+ *   // Implicit conversion
+ *   my_cell_t a2_implicit = map[100]["a2"];
+ *
+ *   // Explicit conversion
+ *   auto a2_explicit = map[100]["a2"].get<std::string>();
+ *
+ *   // Defer conversion
+ *   auto a2_deferred = map[100]["a2"];
+ *   // a2_deferred is of type MapItemProxy and is symbolic.
+ *
+ *   // Writing & flushing map[100]["a2"] here would change
+ *   // the result of below.
+ *
+ *   auto my_fn = [](std::string a2){ std::cout << a2; };
+ *   my_fn(a2_deferred); // Retrieve value
+ *
+ *   // Assigning adds to the map, but does not flush
+ *   a2_deferred = "new_value";
+ *
+ * @endcode
  **/
 class MapItemProxy {
  public:

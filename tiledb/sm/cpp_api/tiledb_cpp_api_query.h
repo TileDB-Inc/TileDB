@@ -136,12 +136,14 @@ class Query {
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
    *
-   * @tparam T A native data type.
+   * @tparam T Array domain datatype
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  typename std::enable_if<std::is_fundamental<T>::value, void>::type
-  set_subarray(const std::vector<T> &pairs) {
+  void set_subarray(const std::vector<T> &pairs) {
+    static_assert(
+        std::is_fundamental<T>::value,
+        "Template type must be a fundamental type.");
     auto &ctx = ctx_.get();
     impl::type_check<typename impl::type_from_native<T>::type>(
         schema_.domain().type());
@@ -163,12 +165,11 @@ class Query {
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
    *
-   * @tparam T A native data type.
+   * @tparam T Array domain datatype
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  typename std::enable_if<std::is_fundamental<T>::value, void>::type
-  set_subarray(const std::vector<std::array<T, 2>> &pairs) {
+  void set_subarray(const std::vector<std::array<T, 2>> &pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
     std::for_each(
@@ -180,32 +181,64 @@ class Query {
   }
 
   /** Sets a buffer for a fixed-sized attribute. */
-  template <typename T>
-  typename std::
-      enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
-      set_buffer(const std::string &attr, T &buf) {
-    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
-        attr, buf);
+  template <typename Vec>
+  void set_buffer(const std::string &attr, Vec &buf) {
+    static_assert(
+        std::is_fundamental<typename Vec::value_type>::value,
+        "Template type must be a vector of a fundamental type.");
+    using DataT =
+        typename impl::type_from_native<typename Vec::value_type>::type;
+
+    if (array_attributes_.count(attr)) {
+      const auto &a = array_attributes_.at(attr);
+      impl::type_check_attr<DataT>(a, a.cell_val_num());
+    } else if (attr == TILEDB_COORDS) {
+      impl::type_check<DataT>(schema_.domain().type());
+    } else {
+      throw AttributeError("Attribute does not exist: " + attr);
+    }
+    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+        static_cast<uint64_t>(buf.size()),
+        sizeof(typename DataT::type),
+        const_cast<void *>(reinterpret_cast<const void *>(
+            buf.data())));  // To enable const char * storage
+    attrs_.emplace_back(attr);
   }
 
   /** Sets a buffer for a variable-sized attribute. */
-  template <typename T>
-  typename std::enable_if<
-      std::is_fundamental<typename T::value_type>::value,
-      void>::type
-  set_buffer(const std::string &attr, std::vector<uint64_t> &offsets, T &buf) {
-    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
-        attr, offsets, buf);
+  template <typename Vec>
+  void set_buffer(
+      const std::string &attr, std::vector<uint64_t> &offsets, Vec &data) {
+    static_assert(
+        std::is_fundamental<typename Vec::value_type>::value,
+        "Template type must be a vector of a fundamental type.");
+    using DataT =
+        typename impl::type_from_native<typename Vec::value_type>::type;
+
+    if (array_attributes_.count(attr)) {
+      impl::type_check_attr<DataT>(array_attributes_.at(attr), TILEDB_VAR_NUM);
+    } else {
+      throw AttributeError("Attribute does not exist: " + attr);
+    }
+    var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+        offsets.size(), sizeof(uint64_t), offsets.data());
+    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+        static_cast<uint64_t>(data.size()),
+        sizeof(typename DataT::type),
+        const_cast<void *>(reinterpret_cast<const void *>(
+            data.data())));  // To enable const char * storage
+
+    attrs_.emplace_back(attr);
   }
 
-  /** Sets a buffer for a variable-sized attribute. */
-  template <typename T>
-  typename std::
-      enable_if<std::is_fundamental<typename T::value_type>::value, void>::type
-      set_buffer(
-          const std::string &attr, std::pair<std::vector<uint64_t>, T> &buf) {
-    set_buffer<typename impl::type_from_native<typename T::value_type>::type>(
-        attr, buf.first, buf.second);
+  /**
+   * Sets a buffer for a variable-sized attribute,
+   * using an offset, data pair.
+   **/
+  template <typename Vec>
+  void set_buffer(
+      const std::string &attr, std::pair<std::vector<uint64_t>, Vec> &buf) {
+    set_buffer(attr, buf.first, buf.second);
   }
 
   /* ********************************* */
@@ -283,67 +316,6 @@ class Query {
 
   /** Collate buffers and attach them to the query. */
   void prepare_submission();
-
-  /**
-   * Sets a buffer for a fixed-sized attribute.
-   *
-   * @tparam T Attribute/buffer type, tiledb::impl::*
-   * @param attr Attribute name
-   * @param buf Data buffer
-   * @return *this
-   */
-  template <typename T, typename Vec>
-  typename std::enable_if<
-      std::is_same<typename Vec::value_type, typename T::type>::value,
-      Query>::type &
-  set_buffer(const std::string &attr, Vec &buf) {
-    if (array_attributes_.count(attr)) {
-      const auto &a = array_attributes_.at(attr);
-      impl::type_check_attr<T>(a, a.cell_val_num());
-    } else if (attr == TILEDB_COORDS) {
-      impl::type_check<T>(schema_.domain().type());
-    } else {
-      throw AttributeError("Attribute does not exist: " + attr);
-    }
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
-        static_cast<uint64_t>(buf.size()),
-        sizeof(typename T::type),
-        const_cast<void *>(reinterpret_cast<const void *>(
-            buf.data())));  // To enable const char * storage
-    attrs_.emplace_back(attr);
-    return *this;
-  }
-
-  /**
-   * Set a buffer for a variable-sized attribute.
-   *
-   * @tparam T buffer type, tiledb::impl::*
-   * @param attr Attribute name
-   * @param offsets list of offsets for the data buffer
-   * @param data Data buffer
-   * @return *this
-   */
-  template <typename T, typename Vec>
-  typename std::enable_if<
-      std::is_same<typename Vec::value_type, typename T::type>::value,
-      Query>::type &
-  set_buffer(
-      const std::string &attr, std::vector<uint64_t> &offsets, Vec &data) {
-    if (array_attributes_.count(attr)) {
-      impl::type_check_attr<T>(array_attributes_.at(attr), TILEDB_VAR_NUM);
-    } else {
-      throw AttributeError("Attribute does not exist: " + attr);
-    }
-    var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
-        offsets.size(), sizeof(uint64_t), offsets.data());
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
-        static_cast<uint64_t>(data.size()),
-        sizeof(typename T::type),
-        const_cast<void *>(reinterpret_cast<const void *>(
-            data.data())));  // To enable const char * storage
-    attrs_.emplace_back(attr);
-    return *this;
-  }
 };
 
 /* ********************************* */

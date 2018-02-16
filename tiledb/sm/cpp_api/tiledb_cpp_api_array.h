@@ -76,11 +76,10 @@ class Array {
    * @return Vector of dim names with a {lower, upper} pair. Inclusive.
    *         Empty vector if the array has no data.
    */
-  template <
-      typename T,
-      typename DataT = typename impl::type_from_native<T>::type>
+  template <typename T>
   static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
       const std::string &uri, const ArraySchema &schema) {
+    using DataT = typename impl::type_from_native<T>::type;
     impl::type_check<DataT>(schema.domain().type());
 
     std::vector<std::pair<std::string, std::pair<T, T>>> ret;
@@ -113,12 +112,10 @@ class Array {
    * @return Vector of dim names with a {lower, upper} pair. Inclusive.
    *         Empty vector if the array has no data.
    */
-  template <
-      typename T,
-      typename DataT = typename impl::type_from_native<T>::type>
+  template <typename T>
   static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
       const Context &ctx, const std::string &uri) {
-    ArraySchema schema(ctx, uri.c_str());
+    ArraySchema schema(ctx, uri);
     return non_empty_domain<T>(uri, schema);
   }
 
@@ -138,14 +135,13 @@ class Array {
    *     elements in the offset buffer, and the second is the maximum number
    *     of elements in the actual variable-sized value buffer.
    */
-  template <
-      typename T,
-      typename DataT = typename impl::type_from_native<T>::type>
+  template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(
       const std::string &uri,
       const ArraySchema &schema,
       const std::vector<T> &subarray) {
+    using DataT = typename impl::type_from_native<T>::type;
     auto ctx = schema.context();
     impl::type_check<DataT>(schema.domain().type());
 
@@ -209,17 +205,14 @@ class Array {
    *     elements in the offset buffer, and the second is the maximum number
    *     of elements in the actual variable-sized value buffer.
    */
-  template <
-      typename T,
-      typename DataT = typename impl::type_from_native<T>::type>
+  template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(
       const Context &ctx,
       const std::string &uri,
       const std::vector<T> &subarray) {
     ArraySchema schema(ctx, uri);
-
-    return max_buffer_elements(uri, schema, subarray);
+    return max_buffer_elements<T>(uri, schema, subarray);
   }
 };
 

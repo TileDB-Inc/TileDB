@@ -63,19 +63,8 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
 
   /** Only iterate over keys with some type **/
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, void>::type
-  limit_key_type() {
-    limit_type_ = true;
-    only_single_ = true;
-    type_ = impl::type_from_native<T>::type::tiledb_datatype;
-  }
-
-  template <typename T, typename = typename T::value_type>
   void limit_key_type() {
-    limit_type_ = true;
-    only_single_ = false;
-    type_ =
-        impl::type_from_native<typename T::value_type>::type::tiledb_datatype;
+    limit_key_type_impl<T>();
   }
 
   /** Iterators are only equal when both are end. **/
@@ -115,6 +104,26 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
   bool limit_type_ = false;
   tiledb_datatype_t type_;
   bool only_single_;
+
+  /* ********************************* */
+  /*        TYPE SPECIALIZATIONS       */
+  /* ********************************* */
+
+  template <typename T>
+  typename std::enable_if<std::is_fundamental<T>::value, void>::type
+  limit_key_type_impl() {
+    limit_type_ = true;
+    only_single_ = true;
+    type_ = impl::type_from_native<T>::type::tiledb_datatype;
+  }
+
+  template <typename T, typename = typename T::value_type>
+  void limit_key_type_impl() {
+    limit_type_ = true;
+    only_single_ = false;
+    type_ =
+        impl::type_from_native<typename T::value_type>::type::tiledb_datatype;
+  }
 };
 
 }  // namespace impl
