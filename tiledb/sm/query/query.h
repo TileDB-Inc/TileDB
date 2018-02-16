@@ -271,7 +271,8 @@ class Query {
    * Sets the callback function and its data input that will be called
    * upon the completion of an asynchronous query.
    */
-  void set_callback(std::function<void(void*)> callback, void* callback_data);
+  void set_callback(
+      const std::function<void(void*)>& callback, void* callback_data);
 
   /** Sets and initializes the fragment metadata. */
   Status set_fragment_metadata(

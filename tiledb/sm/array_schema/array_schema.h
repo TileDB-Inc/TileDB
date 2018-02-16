@@ -274,7 +274,12 @@ class ArraySchema {
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
-  /** Sets the cell order. */
+  /**
+   * Sets the cell order.
+   *
+   * @note For 1D arrays (vectors), the cell order will always be **row-major**,
+   *     (col-major is equivalent).
+   */
   void set_cell_order(Layout cell_order);
 
   /**
@@ -283,7 +288,12 @@ class ArraySchema {
    */
   Status set_domain(Domain* domain);
 
-  /** Sets the tile order. */
+  /**
+   * Sets the tile order.
+   *
+   * @note For 1D arrays (vectors), the cell order will always be **row-major**,
+   *     (col-major is equivalent).
+   */
   void set_tile_order(Layout tile_order);
 
  private:
