@@ -57,14 +57,14 @@ int main() {
     tiledb_kv_item_t* kv_item;
     tiledb_kv_iter_here(ctx, kv_iter, &kv_item);
     print_kv_item(ctx, kv_item);
-    tiledb_kv_item_free(ctx, kv_item);
+    tiledb_kv_item_free(ctx, &kv_item);
     tiledb_kv_iter_next(ctx, kv_iter);
     tiledb_kv_iter_done(ctx, kv_iter, &done);
   }
 
   // Clean up
-  tiledb_kv_iter_free(ctx, kv_iter);
-  tiledb_ctx_free(ctx);
+  tiledb_kv_iter_free(ctx, &kv_iter);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

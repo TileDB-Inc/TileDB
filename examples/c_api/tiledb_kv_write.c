@@ -122,17 +122,17 @@ int main() {
   tiledb_kv_add_item(ctx, kv, kv_item4);
 
   // The following will flush the buffered key-value items to storage
-  tiledb_kv_close(ctx, kv);
+  tiledb_kv_close(ctx, &kv);
 
   // Consolidate key-value store (optional)
   tiledb_kv_consolidate(ctx, "my_kv");
 
   // Clean up
-  tiledb_kv_item_free(ctx, kv_item1);
-  tiledb_kv_item_free(ctx, kv_item2);
-  tiledb_kv_item_free(ctx, kv_item3);
-  tiledb_kv_item_free(ctx, kv_item4);
-  tiledb_ctx_free(ctx);
+  tiledb_kv_item_free(ctx, &kv_item1);
+  tiledb_kv_item_free(ctx, &kv_item2);
+  tiledb_kv_item_free(ctx, &kv_item3);
+  tiledb_kv_item_free(ctx, &kv_item4);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

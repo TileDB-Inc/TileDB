@@ -153,6 +153,13 @@ class Config {
     return iterator{*this, "", true};
   }
 
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /** Wrapper function for freeing a config C object. */
+  static void free(tiledb_config_t *config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

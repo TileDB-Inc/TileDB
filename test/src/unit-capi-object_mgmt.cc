@@ -113,7 +113,7 @@ ObjectMgmtFx::ObjectMgmtFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(config) == TILEDB_OK);
+  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
 
   // Connect to S3
   if (supports_s3_) {
@@ -139,8 +139,8 @@ ObjectMgmtFx::~ObjectMgmtFx() {
     }
   }
 
-  CHECK(tiledb_vfs_free(ctx_, vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(ctx_) == TILEDB_OK);
+  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
+  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
 }
 
 void ObjectMgmtFx::set_supported_fs() {
@@ -155,7 +155,7 @@ void ObjectMgmtFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(ctx) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
 }
 
 void ObjectMgmtFx::create_temp_dir(const std::string& path) {
@@ -199,7 +199,7 @@ void ObjectMgmtFx::create_array(const std::string& path) {
 
   // Create array
   REQUIRE(tiledb_array_create(ctx_, path.c_str(), array_schema) == TILEDB_OK);
-  tiledb_dimension_free(ctx_, d1);
+  tiledb_dimension_free(ctx_, &d1);
 }
 
 void ObjectMgmtFx::check_object_type(const std::string& path) {

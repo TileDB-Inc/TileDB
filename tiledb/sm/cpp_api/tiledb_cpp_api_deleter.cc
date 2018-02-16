@@ -40,54 +40,54 @@ namespace impl {
 
 void Deleter::operator()(tiledb_vfs_fh_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_fh_free(ctx, p));
+  ctx.handle_error(tiledb_vfs_fh_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_query_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_query_free(ctx, p));
+  ctx.handle_error(tiledb_query_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_kv_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_kv_close(ctx, p));
+  ctx.handle_error(tiledb_kv_close(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_array_schema_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_array_schema_free(ctx, p));
+  ctx.handle_error(tiledb_array_schema_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_kv_schema_t *p) const {
-  ctx_.get().handle_error(tiledb_kv_schema_free(ctx_.get(), p));
+  ctx_.get().handle_error(tiledb_kv_schema_free(ctx_.get(), &p));
 }
 
 void Deleter::operator()(tiledb_kv_item_t *p) const {
-  ctx_.get().handle_error(tiledb_kv_item_free(ctx_.get(), p));
+  ctx_.get().handle_error(tiledb_kv_item_free(ctx_.get(), &p));
 }
 
 void Deleter::operator()(tiledb_kv_iter_t *p) const {
-  ctx_.get().handle_error(tiledb_kv_iter_free(ctx_.get(), p));
+  ctx_.get().handle_error(tiledb_kv_iter_free(ctx_.get(), &p));
 }
 
 void Deleter::operator()(tiledb_attribute_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_attribute_free(ctx, p));
+  ctx.handle_error(tiledb_attribute_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_dimension_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_dimension_free(ctx, p));
+  ctx.handle_error(tiledb_dimension_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_domain_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_domain_free(ctx, p));
+  ctx.handle_error(tiledb_domain_free(ctx, &p));
 }
 
 void Deleter::operator()(tiledb_vfs_t *p) const {
   auto &ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_free(ctx, p));
+  ctx.handle_error(tiledb_vfs_free(ctx, &p));
 }
 
 }  // namespace impl

@@ -116,6 +116,9 @@ class Context {
    */
   static void default_error_handler(const std::string &msg);
 
+  /** Wrapper function for freeing a context C object. */
+  static void free(tiledb_ctx_t *ctx);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

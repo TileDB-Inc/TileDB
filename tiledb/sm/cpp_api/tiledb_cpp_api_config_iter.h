@@ -87,6 +87,13 @@ class ConfigIter : public std::iterator<
 
   ConfigIter &operator++();
 
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /** Wrapper function for freeing a config iter C object. */
+  static void free(tiledb_config_iter_t *config_iter);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

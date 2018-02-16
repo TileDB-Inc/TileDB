@@ -37,6 +37,7 @@
 #include "tiledb_cpp_api_utils.h"
 
 namespace tiledb {
+
 namespace impl {
 
 void ConfigIter::init(const Config &config) {
@@ -46,7 +47,7 @@ void ConfigIter::init(const Config &config) {
   tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
   check_config_error(err);
 
-  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, tiledb_config_iter_free);
+  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, ConfigIter::free);
 
   // Get first param-value pair
   int done;
@@ -85,5 +86,14 @@ ConfigIter &ConfigIter::operator++() {
   return *this;
 }
 
+/* ********************************* */
+/*         STATIC FUNCTIONS          */
+/* ********************************* */
+
+void ConfigIter::free(tiledb_config_iter_t *config_iter) {
+  tiledb_config_iter_free(&config_iter);
+}
+
 }  // namespace impl
+
 }  // namespace tiledb

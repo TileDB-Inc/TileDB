@@ -52,7 +52,7 @@ int main() {
   tiledb_group_create(ctx, "my_group/sparse_arrays");
 
   // Clean up
-  tiledb_ctx_free(ctx);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

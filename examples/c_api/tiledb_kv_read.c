@@ -83,9 +83,9 @@ int main() {
     printf("\nItem with key '%d' does not exist\n", key2);
 
   // Clean up
-  tiledb_kv_close(ctx, kv);
-  tiledb_kv_item_free(ctx, kv_item);
-  tiledb_ctx_free(ctx);
+  tiledb_kv_close(ctx, &kv);
+  tiledb_kv_item_free(ctx, &kv_item);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

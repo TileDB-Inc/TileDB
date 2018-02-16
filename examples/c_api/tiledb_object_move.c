@@ -55,7 +55,7 @@ int main() {
     printf("Failed moving invalid path\n");
 
   // Clean up
-  tiledb_ctx_free(ctx);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

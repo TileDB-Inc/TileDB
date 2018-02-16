@@ -53,7 +53,7 @@ int main() {
   tiledb_array_consolidate(ctx, "my_dense_array");
 
   // Clean up
-  tiledb_ctx_free(ctx);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }

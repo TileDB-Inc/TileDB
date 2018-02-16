@@ -57,9 +57,9 @@ int main() {
   printf("Binary read:\n%.1f\n%s\n", f1, s1);
 
   // Clean up
-  tiledb_vfs_fh_free(ctx, fh);
-  tiledb_vfs_free(ctx, vfs);
-  tiledb_ctx_free(ctx);
+  tiledb_vfs_fh_free(ctx, &fh);
+  tiledb_vfs_free(ctx, &vfs);
+  tiledb_ctx_free(&ctx);
 
   return 0;
 }
