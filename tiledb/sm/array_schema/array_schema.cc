@@ -638,7 +638,10 @@ void ArraySchema::set_cell_var_offsets_compression_level(
 }
 
 void ArraySchema::set_cell_order(Layout cell_order) {
-  cell_order_ = cell_order;
+  if (domain_ != nullptr && domain_->dim_num() == 1)
+    cell_order_ = Layout::ROW_MAJOR;
+  else
+    cell_order_ = cell_order;
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
@@ -671,11 +674,20 @@ Status ArraySchema::set_domain(Domain* domain) {
       coords_compression_ == Compressor::DOUBLE_DELTA)
     coords_compression_ = constants::real_coords_compression;
 
+  // For 1D vectors, the cell/tile layout should always be row-major
+  if (domain_->dim_num() == 1) {
+    cell_order_ = Layout::ROW_MAJOR;
+    tile_order_ = Layout::ROW_MAJOR;
+  }
+
   return Status::Ok();
 }
 
 void ArraySchema::set_tile_order(Layout tile_order) {
-  tile_order_ = tile_order;
+  if (domain_ != nullptr && domain_->dim_num() == 1)
+    tile_order_ = Layout::ROW_MAJOR;
+  else
+    tile_order_ = tile_order;
 }
 
 /* ****************************** */

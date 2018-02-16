@@ -60,6 +60,7 @@ Query::Query() {
   fragments_borrowed_ = false;
   consolidation_fragment_uri_ = URI();
   status_ = QueryStatus::INPROGRESS;
+  layout_ = Layout::ROW_MAJOR;
 }
 
 Query::Query(Query* common_query) {
@@ -461,7 +462,7 @@ void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
 }
 
 void Query::set_callback(
-    std::function<void(void*)> callback, void* callback_data) {
+    const std::function<void(void*)>& callback, void* callback_data) {
   callback_ = callback;
   callback_data_ = callback_data;
 }
@@ -485,7 +486,11 @@ Status Query::set_layout(Layout layout) {
         "Cannot set layout; Ordered layouts can be used when writing to sparse "
         "arrays - use UNORDERED instead"));
 
-  layout_ = layout;
+  // Layout for 1D vectors is row-major (unless it is set to global order)
+  if (array_schema_->dim_num() == 1 && layout != Layout::GLOBAL_ORDER)
+    layout_ = Layout::ROW_MAJOR;
+  else
+    layout_ = layout;
 
   return Status::Ok();
 }
