@@ -639,10 +639,9 @@ Status Query::check_attributes() {
 }
 
 Status Query::check_buffer_sizes_ordered() const {
-  if (type_ == QueryType::READ ||
+  if (!array_schema_->dense() || type_ == QueryType::READ ||
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
-  assert(array_schema_->dense());
   auto cell_num = array_schema_->domain()->cell_num(subarray_);
   unsigned bid = 0;
   uint64_t expected_cell_num = 0;
