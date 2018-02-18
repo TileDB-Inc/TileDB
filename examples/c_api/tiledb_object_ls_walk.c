@@ -46,7 +46,7 @@ int main() {
 
   // List children
   printf("List children:\n");
-  tiledb_ls(ctx, "my_group", print_path, NULL);
+  tiledb_object_ls(ctx, "my_group", print_path, NULL);
 
   // Walk in a path with a pre- and post-order traversal
   printf("\nPreorder traversal:\n");
