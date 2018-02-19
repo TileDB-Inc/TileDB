@@ -38,11 +38,12 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <tiledb.h>
 
 int main() {
   // Create TileDB context
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t *ctx;
   tiledb_ctx_create(&ctx, NULL);
 
   // Print non-empty domain
@@ -60,7 +61,7 @@ int main() {
       (unsigned long long)domain[3]);
 
   // Print maximum buffer sizes for each attribute
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char *attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
   tiledb_array_compute_max_read_buffer_sizes(
@@ -75,16 +76,16 @@ int main() {
   printf("%s: %llu\n\n", TILEDB_COORDS, (unsigned long long)buffer_sizes[4]);
 
   // Prepare cell buffers
-  int buffer_a1[buffer_sizes[0] / sizeof(int)];
-  uint64_t buffer_a2[buffer_sizes[1] / sizeof(uint64_t)];
-  char buffer_var_a2[buffer_sizes[2] / sizeof(char)];
-  float buffer_a3[buffer_sizes[3] / sizeof(float)];
-  uint64_t buffer_coords[buffer_sizes[4] / sizeof(uint64_t)];
-  void* buffers[] = {
+  int *buffer_a1 = malloc(buffer_sizes[0]);
+  uint64_t *buffer_a2 = malloc(buffer_sizes[1]);
+  char *buffer_var_a2 = malloc(buffer_sizes[2]);
+  float *buffer_a3 = malloc(buffer_sizes[3]);
+  uint64_t *buffer_coords = malloc(buffer_sizes[4]);
+  void *buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
 
   // Create query
-  tiledb_query_t* query;
+  tiledb_query_t *query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
@@ -113,6 +114,11 @@ int main() {
   // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
 
   return 0;
 }

@@ -47,7 +47,7 @@ int main() {
   std::vector<std::string> a2_str = {"yyy", "u", "w", "vvvv"};
   auto a2_buff = tiledb::ungroup_var_buffer<std::string>(a2_str);
   std::vector<float> a3_buff = {
-      107.1, 107.2, 104.1, 104.2, 106.1, 106.2, 105.1, 105.2};
+      107.1f, 107.2f, 104.1f, 104.2f, 106.1f, 106.2f, 105.1f, 105.2f};
   std::vector<uint64_t> coords_buff = {3, 4, 3, 2, 3, 3, 4, 1};
 
   // Create query

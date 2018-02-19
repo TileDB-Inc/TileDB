@@ -48,11 +48,13 @@ int main() {
   tiledb::Context ctx;
 
   // Prepare cell buffers
+  // clang-format off
   std::vector<int> a1_data = {9, 12, 13, 11, 14, 15};
   std::vector<uint64_t> a2_offsets = {0, 2, 3, 5, 9, 12};
   const std::string a2str = "jjmnnllllooopppp";
   std::vector<float> a3_data = {
-      9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2};
+      9.1f, 9.2f, 12.1f, 12.2f, 13.1f, 13.2f, 11.1f, 11.2f, 14.1f, 14.2f, 15.1f, 15.2f};
+  // clang-format on
 
   // Create query
   tiledb::Query query(ctx, "my_dense_array", TILEDB_WRITE);

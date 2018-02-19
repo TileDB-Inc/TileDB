@@ -47,7 +47,7 @@ int main() {
   std::vector<int> a1_data = {112, 113, 114, 115};
   std::vector<std::string> a2 = {"M", "NN", "OOO", "PPPP"};
   std::vector<float> a3_data = {
-      112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2};
+      112.1f, 112.2f, 113.1f, 113.2f, 114.1f, 114.2f, 115.1f, 115.2f};
 
   // Creates two buffers: first is the starting offsets, second is the values
   auto a2_buff = tiledb::ungroup_var_buffer(a2);

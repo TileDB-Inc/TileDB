@@ -48,7 +48,7 @@ int main() {
   std::vector<int> a1_data = {211, 213, 212, 208};
   std::vector<std::string> a2 = {"wwww", "yy", "x", "u"};
   std::vector<float> a3_data = {
-      211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2};
+      211.1f, 211.2f, 213.1f, 213.2f, 212.1f, 212.2f, 208.1f, 208.2f};
   std::vector<uint64_t> coords = {4, 2, 3, 4, 3, 3, 3, 1};
 
   // Creates two buffers: first is the starting offsets, second is the values

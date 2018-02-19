@@ -36,8 +36,13 @@
 #include <iostream>
 
 #include "boost/bufferstream.h"
-#include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/misc/logger.h"
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
+#include "tiledb/sm/filesystem/s3.h"
 
 namespace tiledb {
 namespace sm {

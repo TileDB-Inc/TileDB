@@ -29,10 +29,7 @@ Enable build with code coverage support.
 .PARAMETER EnableVerbose
 Enable verbose status messages.
 
-.PARAMETER Hdfs
-Enables building with the HDFS storage backend.
-
-.PARAMETER S3
+.PARAMETER EnableS3
 Enables building with the S3 storage backend.
 
 .PARAMETER BuildProcesses
@@ -57,8 +54,7 @@ Param(
     [switch]$EnableDebug,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
-    [switch]$Hdfs,
-    [switch]$S3,
+    [switch]$EnableS3,
     [Alias('J')]
     [int]
     $BuildProcesses = $env:NUMBER_OF_PROCESSORS
@@ -94,15 +90,9 @@ if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
 }
 
-# Set TileDB HDFS flag
-$UseHdfs = "OFF"
-if ($Hdfs.IsPresent) {
-    $UseHdfs = "ON"
-}
-
 # Set TileDB S3 flag
 $UseS3 = "OFF"
-if ($S3.IsPresent) {
+if ($EnableS3.IsPresent) {
     $UseS3 = "ON"
 }
 
@@ -139,7 +129,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DUSE_HDFS=$UseHdfs -DUSE_S3=$UseS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A x64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DUSE_S3=$UseS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
