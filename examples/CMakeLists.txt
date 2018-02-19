@@ -28,6 +28,13 @@
 
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 
+if (WIN32)
+  # Disable MSVC warnings not present with gcc.
+  add_compile_options("/wd4204") # C4204: non-constant aggregate initializer
+  add_compile_options("/wd4221") # C4221: aggregate initializer with local variable
+  add_compile_options("/wd4305") # C4305: implicit truncation of double to float
+endif()
+
 add_subdirectory(c_api)
 add_subdirectory(cpp_api)
 

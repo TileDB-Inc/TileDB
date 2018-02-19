@@ -23,6 +23,8 @@ test_script:
 - ps: >-
     cmake --build . --target check --config Release
 
+    cmake --build . --target examples
+
     cmake --build . --target install
 
     mkdir dist

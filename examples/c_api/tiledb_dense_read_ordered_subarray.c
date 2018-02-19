@@ -40,6 +40,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <tiledb.h>
 
 int main() {
@@ -55,10 +56,10 @@ int main() {
       ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
 
   // Prepare cell buffers
-  int buffer_a1[buffer_sizes[0] / sizeof(int)];
-  uint64_t buffer_a2[buffer_sizes[1] / sizeof(uint64_t)];
-  char buffer_var_a2[buffer_sizes[2] / sizeof(char)];
-  float buffer_a3[buffer_sizes[3] / sizeof(float)];
+  int* buffer_a1 = malloc(buffer_sizes[0]);
+  uint64_t* buffer_a2 = malloc(buffer_sizes[1]);
+  char* buffer_var_a2 = malloc(buffer_sizes[2]);
+  float* buffer_a3 = malloc(buffer_sizes[3]);
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
 
   // Create query
@@ -88,6 +89,10 @@ int main() {
   // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
 
   return 0;
 }

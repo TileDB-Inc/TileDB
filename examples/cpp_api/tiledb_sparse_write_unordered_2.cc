@@ -45,7 +45,7 @@ int main() {
   // Prepare cell buffers - #1
   std::vector<int> a1_buff = {7, 5, 0};
   auto a2_buff = tiledb::ungroup_var_buffer<std::string>({"hhhh", "ff", "a"});
-  std::vector<float> a3_buff = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
+  std::vector<float> a3_buff = {7.1f, 7.2f, 5.1f, 5.2f, 0.1f, 0.2f};
   std::vector<uint64_t> coords_buff = {3, 4, 4, 2, 1, 1};
 
   // Create query
@@ -63,7 +63,7 @@ int main() {
   a1_buff = {6, 4, 3, 1, 2};
   std::vector<std::string> a2_str = {"ggg", "e", "dddd", "bb", "ccc"};
   auto a2_buff_2 = tiledb::ungroup_var_buffer<std::string>(a2_str);
-  a3_buff = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
+  a3_buff = {6.1f, 6.2f, 4.1f, 4.2f, 3.1f, 3.2f, 1.1f, 1.2f, 2.1f, 2.2f};
   coords_buff = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
 
   // Reset buffers
