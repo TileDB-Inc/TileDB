@@ -60,25 +60,25 @@ class ArraySchema : public Schema {
   /* ********************************* */
 
   /** Creates a new array schema. */
-  explicit ArraySchema(const Context &ctx, tiledb_array_type_t type);
+  explicit ArraySchema(const Context& ctx, tiledb_array_type_t type);
 
   /** Loads the schema of an existing array with the input URI. */
-  ArraySchema(const Context &ctx, const std::string &uri);
+  ArraySchema(const Context& ctx, const std::string& uri);
 
-  ArraySchema(const ArraySchema &) = default;
-  ArraySchema(ArraySchema &&o) = default;
-  ArraySchema &operator=(const ArraySchema &) = default;
-  ArraySchema &operator=(ArraySchema &&o) = default;
+  ArraySchema(const ArraySchema&) = default;
+  ArraySchema(ArraySchema&& o) = default;
+  ArraySchema& operator=(const ArraySchema&) = default;
+  ArraySchema& operator=(ArraySchema&& o) = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_array_schema_t *() const;
+  operator tiledb_array_schema_t*() const;
 
   /** Dumps the array schema in an ASCII representation to an output. */
-  void dump(FILE *out = stdout) const override;
+  void dump(FILE* out = stdout) const override;
 
   /** Returns the array type. */
   tiledb_array_type_t array_type() const;
@@ -87,47 +87,47 @@ class ArraySchema : public Schema {
   uint64_t capacity() const;
 
   /** Sets the tile capacity. */
-  ArraySchema &set_capacity(uint64_t capacity);
+  ArraySchema& set_capacity(uint64_t capacity);
 
   /** Returns the tile order. */
   tiledb_layout_t tile_order() const;
 
   /** Sets the tile order. */
-  ArraySchema &set_tile_order(tiledb_layout_t layout);
+  ArraySchema& set_tile_order(tiledb_layout_t layout);
 
   /**
    * Sets both the tile and cell layouts
    *
    * @param layout {Tile layout, Cell layout}
    */
-  ArraySchema &set_order(const std::array<tiledb_layout_t, 2> &layout);
+  ArraySchema& set_order(const std::array<tiledb_layout_t, 2>& layout);
 
   /** Returns the cell order. */
   tiledb_layout_t cell_order() const;
 
   /** Sets the cell order. */
-  ArraySchema &set_cell_order(tiledb_layout_t layout);
+  ArraySchema& set_cell_order(tiledb_layout_t layout);
 
   /** Returns the compressor of the coordinates. */
   Compressor coords_compressor() const;
 
   /** Sets the compressor for the coordinates. */
-  ArraySchema &set_coords_compressor(const Compressor &c);
+  ArraySchema& set_coords_compressor(const Compressor& c);
 
   /** Returns the compressor of the offsets. */
   Compressor offsets_compressor() const;
 
   /** Sets the compressor for the offsets. */
-  ArraySchema &set_offsets_compressor(const Compressor &c);
+  ArraySchema& set_offsets_compressor(const Compressor& c);
 
   /** Retruns the array domain of array. */
   Domain domain() const;
 
   /** Sets the array domain. */
-  ArraySchema &set_domain(const Domain &domain);
+  ArraySchema& set_domain(const Domain& domain);
 
   /** Adds an attribute to the array. */
-  ArraySchema &add_attribute(const Attribute &attr) override;
+  ArraySchema& add_attribute(const Attribute& attr) override;
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_array_schema_t> ptr() const;
@@ -139,7 +139,7 @@ class ArraySchema : public Schema {
   const std::unordered_map<std::string, Attribute> attributes() const override;
 
   /** Gets an attribute by name. **/
-  Attribute attribute(const std::string &name) const override;
+  Attribute attribute(const std::string& name) const override;
 
   /** Number of attributes. **/
   unsigned attribute_num() const override;
@@ -171,7 +171,7 @@ class ArraySchema : public Schema {
 /* ********************************* */
 
 /** Converts the array schema into a string representation. */
-std::ostream &operator<<(std::ostream &os, const ArraySchema &schema);
+std::ostream& operator<<(std::ostream& os, const ArraySchema& schema);
 
 }  // namespace tiledb
 

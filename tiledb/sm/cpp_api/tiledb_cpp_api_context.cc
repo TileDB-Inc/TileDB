@@ -43,15 +43,15 @@ namespace tiledb {
 /* ********************************* */
 
 Context::Context() {
-  tiledb_ctx_t *ctx;
+  tiledb_ctx_t* ctx;
   if (tiledb_ctx_create(&ctx, nullptr) != TILEDB_OK)
     throw TileDBError("[TileDB::C++API] Error: Failed to create context");
   ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
   error_handler_ = default_error_handler;
 }
 
-Context::Context(const Config &config) {
-  tiledb_ctx_t *ctx;
+Context::Context(const Config& config) {
+  tiledb_ctx_t* ctx;
   if (tiledb_ctx_create(&ctx, config) != TILEDB_OK)
     throw TileDBError("[TileDB::C++API] Error: Failed to create context");
   ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
@@ -68,9 +68,9 @@ void Context::handle_error(int rc) const {
     return;
 
   // Get error
-  const auto &ctx = ctx_.get();
-  tiledb_error_t *err = nullptr;
-  const char *msg = nullptr;
+  const auto& ctx = ctx_.get();
+  tiledb_error_t* err = nullptr;
+  const char* msg = nullptr;
   rc = tiledb_ctx_get_last_error(ctx, &err);
   if (rc != TILEDB_OK) {
     tiledb_error_free(&err);
@@ -96,12 +96,12 @@ std::shared_ptr<tiledb_ctx_t> Context::ptr() const {
   return ctx_;
 }
 
-Context::operator tiledb_ctx_t *() const {
+Context::operator tiledb_ctx_t*() const {
   return ctx_.get();
 }
 
-Context &Context::set_error_handler(
-    const std::function<void(const std::string &)> &fn) {
+Context& Context::set_error_handler(
+    const std::function<void(const std::string&)>& fn) {
   error_handler_ = fn;
   return *this;
 }
@@ -110,11 +110,11 @@ Context &Context::set_error_handler(
 /*          STATIC FUNCTIONS         */
 /* ********************************* */
 
-void Context::default_error_handler(const std::string &msg) {
+void Context::default_error_handler(const std::string& msg) {
   throw TileDBError(msg);
 }
 
-void Context::free(tiledb_ctx_t *ctx) {
+void Context::free(tiledb_ctx_t* ctx) {
   tiledb_ctx_free(&ctx);
 }
 

@@ -94,7 +94,7 @@ int main() {
 
   // Print the attribute names
   std::cout << "\n\nArray schema attribute names: \n";
-  for (const auto &a : schema.attributes())
+  for (const auto& a : schema.attributes())
     std::cout << "* " << a.first << "\n";
   std::cout << "\n";
 
@@ -103,7 +103,7 @@ int main() {
 
   // Print the dimension names using iterators
   std::cout << "\nArray schema dimension names: \n";
-  for (const auto &d : schema.domain().dimensions())
+  for (const auto& d : schema.domain().dimensions())
     std::cout << "* " << d.name() << "\n";
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope

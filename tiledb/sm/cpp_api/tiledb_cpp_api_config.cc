@@ -44,14 +44,14 @@ Config::Config() {
   create_config();
 }
 
-Config::Config(const std::string &filename) {
+Config::Config(const std::string& filename) {
   create_config();
-  tiledb_error_t *err;
+  tiledb_error_t* err;
   tiledb_config_load_from_file(config_.get(), filename.c_str(), &err);
   impl::check_config_error(err);
 }
 
-Config::Config(tiledb_config_t **config) {
+Config::Config(tiledb_config_t** config) {
   if (config) {
     config_ = std::shared_ptr<tiledb_config_t>(*config, Config::free);
     *config = nullptr;
@@ -66,32 +66,32 @@ std::shared_ptr<tiledb_config_t> Config::ptr() const {
   return config_;
 }
 
-Config::operator tiledb_config_t *() const {
+Config::operator tiledb_config_t*() const {
   return config_.get();
 }
 
-Config &Config::set(const std::string &param, const std::string &value) {
-  tiledb_error_t *err;
+Config& Config::set(const std::string& param, const std::string& value) {
+  tiledb_error_t* err;
   tiledb_config_set(config_.get(), param.c_str(), value.c_str(), &err);
   impl::check_config_error(err);
   return *this;
 }
 
-std::string Config::get(const std::string &param) const {
-  const char *val;
-  tiledb_error_t *err;
+std::string Config::get(const std::string& param) const {
+  const char* val;
+  tiledb_error_t* err;
   tiledb_config_get(config_.get(), param.c_str(), &val, &err);
   impl::check_config_error(err);
 
   return val;
 }
 
-impl::ConfigProxy Config::operator[](const std::string &param) {
+impl::ConfigProxy Config::operator[](const std::string& param) {
   return {*this, param};
 }
 
-Config &Config::unset(const std::string &param) {
-  tiledb_error_t *err;
+Config& Config::unset(const std::string& param) {
+  tiledb_error_t* err;
   tiledb_config_unset(config_.get(), param.c_str(), &err);
   impl::check_config_error(err);
 
@@ -102,7 +102,7 @@ Config &Config::unset(const std::string &param) {
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
 
-void Config::free(tiledb_config_t *config) {
+void Config::free(tiledb_config_t* config) {
   tiledb_config_free(&config);
 }
 
@@ -111,8 +111,8 @@ void Config::free(tiledb_config_t *config) {
 /* ********************************* */
 
 void Config::create_config() {
-  tiledb_config_t *config;
-  tiledb_error_t *err;
+  tiledb_config_t* config;
+  tiledb_error_t* err;
   tiledb_config_create(&config, &err);
   impl::check_config_error(err);
 

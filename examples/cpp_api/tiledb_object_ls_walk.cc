@@ -36,7 +36,7 @@
 
 #include <tiledb>
 
-void print_path(const std::string &path, tiledb::Object::Type type);
+void print_path(const std::string& path, tiledb::Object::Type type);
 
 int main() {
   // Create TileDB context
@@ -45,35 +45,35 @@ int main() {
   // List children
   std::cout << "List children: \n";
   tiledb::ObjectIter obj_iter(ctx, "my_group");
-  for (const auto &object : obj_iter)
+  for (const auto& object : obj_iter)
     print_path(object.uri(), object.type());
 
   // Walk in a path with a pre- and post-order traversal
   std::cout << "\nPreorder traversal: \n";
   obj_iter.set_recursive();  // Default order is preorder
-  for (const auto &object : obj_iter)
+  for (const auto& object : obj_iter)
     print_path(object.uri(), object.type());
   std::cout << "\nPostorder traversal: \n";
   obj_iter.set_recursive(TILEDB_POSTORDER);
-  for (const auto &object : obj_iter)
+  for (const auto& object : obj_iter)
     print_path(object.uri(), object.type());
 
   // Walk in a path, but list only groups
   std::cout << "\nOnly groups: \n";
   obj_iter.set_iter_policy(true, false, false);
-  for (const auto &object : obj_iter)
+  for (const auto& object : obj_iter)
     print_path(object.uri(), object.type());
 
   // Walk in a path, but list only groups and arrays
   std::cout << "\nOnly groups and arrays: \n";
   obj_iter.set_iter_policy(true, true, false);
-  for (const auto &object : obj_iter)
+  for (const auto& object : obj_iter)
     print_path(object.uri(), object.type());
 
   return 0;
 }
 
-void print_path(const std::string &path, tiledb::Object::Type type) {
+void print_path(const std::string& path, tiledb::Object::Type type) {
   // Simply print the path and type
   std::cout << path << " ";
   switch (type) {

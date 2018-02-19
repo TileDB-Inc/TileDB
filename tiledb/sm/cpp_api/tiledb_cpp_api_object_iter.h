@@ -60,7 +60,7 @@ class ObjectIter {
 
   /** Carries data to be passed to `obj_getter`. */
   struct ObjGetterData {
-    ObjGetterData(std::vector<Object> &objs, bool array, bool group, bool kv)
+    ObjGetterData(std::vector<Object>& objs, bool array, bool group, bool kv)
         : objs_(objs)
         , array_(array)
         , group_(group)
@@ -85,7 +85,7 @@ class ObjectIter {
    * @param ctx The TileDB context.
    * @param root The root directory where the iteration will begin.
    */
-  explicit ObjectIter(Context &ctx, const std::string &root = ".");
+  explicit ObjectIter(Context& ctx, const std::string& root = ".");
 
   /* ********************************* */
   /*                API                */
@@ -125,29 +125,29 @@ class ObjectIter {
         , objs_(std::move(objs)) {
     }
 
-    iterator(const iterator &o) = default;
-    iterator(iterator &&) = default;
-    iterator &operator=(const iterator &) = default;
-    iterator &operator=(iterator &&) = default;
+    iterator(const iterator& o) = default;
+    iterator(iterator&&) = default;
+    iterator& operator=(const iterator&) = default;
+    iterator& operator=(iterator&&) = default;
 
-    bool operator==(const iterator &o) const {
+    bool operator==(const iterator& o) const {
       return (cur_obj_ >= objs_.size() && o.cur_obj_ >= o.objs_.size()) ||
              (cur_obj_ == o.cur_obj_ && objs_.size() == o.objs_.size());
     }
 
-    bool operator!=(const iterator &o) const {
+    bool operator!=(const iterator& o) const {
       return !operator==(o);
     }
 
-    const Object &operator*() const {
+    const Object& operator*() const {
       return objs_[cur_obj_];
     }
 
-    const Object &operator->() const {
+    const Object& operator->() const {
       return objs_[cur_obj_];
     }
 
-    iterator &operator++() {
+    iterator& operator++() {
       if (cur_obj_ < objs_.size())
         ++cur_obj_;
       return *this;
@@ -183,7 +183,7 @@ class ObjectIter {
    * @param obj_vec The vector where the visited object will be stored.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int obj_getter(const char *path, tiledb_object_t type, void *data);
+  static int obj_getter(const char* path, tiledb_object_t type, void* data);
 
  private:
   /* ********************************* */

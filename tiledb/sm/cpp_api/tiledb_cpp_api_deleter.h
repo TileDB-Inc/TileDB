@@ -57,26 +57,26 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Deleter(const Context &ctx)
+  explicit Deleter(const Context& ctx)
       : ctx_(ctx) {
   }
-  Deleter(const Deleter &) = default;
+  Deleter(const Deleter&) = default;
 
   /* ********************************* */
   /*              DELETERS             */
   /* ********************************* */
 
-  void operator()(tiledb_vfs_fh_t *p) const;
-  void operator()(tiledb_query_t *p) const;
-  void operator()(tiledb_array_schema_t *p) const;
-  void operator()(tiledb_kv_t *p) const;
-  void operator()(tiledb_kv_schema_t *p) const;
-  void operator()(tiledb_kv_item_t *p) const;
-  void operator()(tiledb_kv_iter_t *p) const;
-  void operator()(tiledb_attribute_t *p) const;
-  void operator()(tiledb_dimension_t *p) const;
-  void operator()(tiledb_domain_t *p) const;
-  void operator()(tiledb_vfs_t *p) const;
+  void operator()(tiledb_vfs_fh_t* p) const;
+  void operator()(tiledb_query_t* p) const;
+  void operator()(tiledb_array_schema_t* p) const;
+  void operator()(tiledb_kv_t* p) const;
+  void operator()(tiledb_kv_schema_t* p) const;
+  void operator()(tiledb_kv_item_t* p) const;
+  void operator()(tiledb_kv_iter_t* p) const;
+  void operator()(tiledb_attribute_t* p) const;
+  void operator()(tiledb_dimension_t* p) const;
+  void operator()(tiledb_domain_t* p) const;
+  void operator()(tiledb_vfs_t* p) const;
 
  private:
   /* ********************************* */

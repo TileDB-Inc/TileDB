@@ -40,7 +40,7 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-ObjectIter::ObjectIter(Context &ctx, const std::string &root)
+ObjectIter::ObjectIter(Context& ctx, const std::string& root)
     : ctx_(ctx)
     , root_(root) {
   recursive_ = false;
@@ -73,13 +73,13 @@ void ObjectIter::set_non_recursive() {
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
 
-int ObjectIter::obj_getter(const char *path, tiledb_object_t type, void *data) {
-  auto data_struct = static_cast<ObjGetterData *>(data);
+int ObjectIter::obj_getter(const char* path, tiledb_object_t type, void* data) {
+  auto data_struct = static_cast<ObjGetterData*>(data);
   if ((type == TILEDB_ARRAY && data_struct->array_) ||
       (type == TILEDB_GROUP && data_struct->group_) ||
       (type == TILEDB_KEY_VALUE && data_struct->kv_)) {
     Object obj(type, path);
-    auto &objs = data_struct->objs_.get();
+    auto& objs = data_struct->objs_.get();
     objs.emplace_back(obj);
   }
   return 1;
@@ -87,7 +87,7 @@ int ObjectIter::obj_getter(const char *path, tiledb_object_t type, void *data) {
 
 ObjectIter::iterator ObjectIter::begin() {
   std::vector<Object> objs;
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ObjGetterData data(objs, array_, group_, kv_);
   if (recursive_) {
     ctx.handle_error(

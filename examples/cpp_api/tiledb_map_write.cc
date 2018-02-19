@@ -86,7 +86,7 @@ int main() {
     // a single attribute since a2 and a3 are undefined.
     try {
       map[143523]["a1"] = 3;
-    } catch (tiledb::TileDBError &e) {
+    } catch (tiledb::TileDBError& e) {
       std::cout << e.what() << "\n";
     }
 

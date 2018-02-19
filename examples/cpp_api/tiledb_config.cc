@@ -45,7 +45,7 @@ int main() {
 
   // Print the default config parameters
   std::cout << "Default settings:\n";
-  for (auto &p : config) {
+  for (auto& p : config) {
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }
 
@@ -62,7 +62,7 @@ int main() {
   // Print only the S3 settings
   std::cout << "\nVFS S3 settings:\n";
   for (auto i = config.begin("vfs.s3."); i != config.end(); ++i) {
-    auto &p = *i;
+    auto& p = *i;
     std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
   }
 

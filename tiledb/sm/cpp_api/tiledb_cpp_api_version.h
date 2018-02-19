@@ -86,7 +86,7 @@ class Version {
 };
 
 /** Prints to an output stream. */
-inline std::ostream &operator<<(std::ostream &os, const Version &v) {
+inline std::ostream& operator<<(std::ostream& os, const Version& v) {
   os << "TileDB v" << v.major() << '.' << v.minor() << '.' << v.patch();
   return os;
 }

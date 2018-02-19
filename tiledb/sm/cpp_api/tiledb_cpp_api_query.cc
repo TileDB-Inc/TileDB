@@ -41,12 +41,12 @@ namespace tiledb {
 /* ********************************* */
 
 Query::Query(
-    const Context &ctx, const std::string &array_uri, tiledb_query_type_t type)
+    const Context& ctx, const std::string& array_uri, tiledb_query_type_t type)
     : ctx_(ctx)
     , deleter_(ctx)
     , schema_(ctx, array_uri)
     , uri_(array_uri) {
-  tiledb_query_t *q;
+  tiledb_query_t* q;
   ctx.handle_error(tiledb_query_create(ctx, &q, array_uri.c_str(), type));
   query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   array_attributes_ = schema_.attributes();
@@ -56,14 +56,14 @@ Query::Query(
 /*                API                */
 /* ********************************* */
 
-Query &Query::set_layout(tiledb_layout_t layout) {
-  auto &ctx = ctx_.get();
+Query& Query::set_layout(tiledb_layout_t layout) {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_query_set_layout(ctx, query_.get(), layout));
   return *this;
 }
 
 Query::Status Query::submit() {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   prepare_submission();
   ctx.handle_error(tiledb_query_submit(ctx, query_.get()));
   return query_status();
@@ -71,14 +71,14 @@ Query::Status Query::submit() {
 
 Query::Status Query::query_status() const {
   tiledb_query_status_t status;
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_query_get_status(ctx, query_.get(), &status));
   return to_status(status);
 }
 
-Query::Status Query::attribute_status(const std::string &attr) const {
+Query::Status Query::attribute_status(const std::string& attr) const {
   tiledb_query_status_t status;
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_query_get_attribute_status(
       ctx, query_.get(), attr.c_str(), &status));
   return to_status(status);
@@ -92,7 +92,7 @@ std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
 Query::result_buffer_elements() const {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
   unsigned bid = 0;
-  for (const auto &attr : attrs_) {
+  for (const auto& attr : attrs_) {
     auto var =
         (attr != TILEDB_COORDS &&
          schema_.attribute(attr).cell_val_num() == TILEDB_VAR_NUM);
@@ -119,7 +119,7 @@ void Query::reset_buffers() {
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
 
-Query::Status Query::to_status(const tiledb_query_status_t &status) {
+Query::Status Query::to_status(const tiledb_query_status_t& status) {
   switch (status) {
     case TILEDB_INCOMPLETE:
       return Status::INCOMPLETE;
@@ -155,9 +155,9 @@ void Query::prepare_submission() {
 
   uint64_t bufsize;
   size_t tsize;
-  void *ptr;
+  void* ptr;
 
-  for (const auto &a : attrs_) {
+  for (const auto& a : attrs_) {
     if (attr_buffs_.count(a) == 0) {
       throw AttributeError("No buffer for attribute " + a);
     }
@@ -174,7 +174,7 @@ void Query::prepare_submission() {
     sub_tsize_.push_back(tsize);
   }
 
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_query_set_buffers(
       ctx,
       query_.get(),
@@ -188,7 +188,7 @@ void Query::prepare_submission() {
 /*               MISC                */
 /* ********************************* */
 
-std::ostream &operator<<(std::ostream &os, const tiledb::Query::Status &stat) {
+std::ostream& operator<<(std::ostream& os, const tiledb::Query::Status& stat) {
   switch (stat) {
     case tiledb::Query::Status::INCOMPLETE:
       os << "INCOMPLETE";

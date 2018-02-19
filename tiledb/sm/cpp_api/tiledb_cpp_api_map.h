@@ -65,19 +65,19 @@ class Map {
    * @param ctx Context
    * @param uri URI of map.
    */
-  Map(const Context &ctx, const std::string &uri)
+  Map(const Context& ctx, const std::string& uri)
       : schema_(ctx, uri)
       , deleter_(ctx)
       , uri_(uri) {
-    tiledb_kv_t *kv;
+    tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
   }
 
-  Map(const Map &) = default;
-  Map(Map &&o) = default;
-  Map &operator=(const Map &) = default;
-  Map &operator=(Map &&o) = default;
+  Map(const Map&) = default;
+  Map(Map&& o) = default;
+  Map& operator=(const Map&) = default;
+  Map& operator=(Map&& o) = default;
 
   /* ********************************* */
   /*                API                */
@@ -92,7 +92,7 @@ class Map {
    * @return MapItem
    */
   template <typename T>
-  static MapItem create_item(const Context &ctx, const T &key) {
+  static MapItem create_item(const Context& ctx, const T& key) {
     return create_item_impl(ctx, key);
   }
 
@@ -101,8 +101,8 @@ class Map {
    * key.
    */
   template <typename T>
-  MapItem get_item(const T &key) {
-    tiledb_kv_item_t *item = get_impl<T>(key);
+  MapItem get_item(const T& key) {
+    tiledb_kv_item_t* item = get_impl<T>(key);
     return MapItem(schema_.context(), &item, this);
   }
 
@@ -114,8 +114,8 @@ class Map {
    * @return MapItem
    */
   template <typename T>
-  MapItem operator[](const T &key) {
-    tiledb_kv_item_t *item = get_impl<T>(key);
+  MapItem operator[](const T& key) {
+    tiledb_kv_item_t* item = get_impl<T>(key);
     if (item == nullptr) {
       MapItem mapitem = create_item(schema_.context(), key);
       mapitem.map_ = this;
@@ -128,36 +128,36 @@ class Map {
    * Add an item to the map. This populates the map with the key and attribute
    * values.
    */
-  Map &add_item(const MapItem &item) {
-    auto &ctx = schema_.context();
+  Map& add_item(const MapItem& item) {
+    auto& ctx = schema_.context();
     ctx.handle_error(tiledb_kv_add_item(ctx, kv_.get(), item.ptr().get()));
     return *this;
   }
 
   /** Max number of items to buffer in memory before flushing to storage. **/
   void set_max_buffered_items(uint64_t num) {
-    auto &ctx = context();
+    auto& ctx = context();
     ctx.handle_error(tiledb_kv_set_max_buffered_items(ctx, kv_.get(), num));
   }
 
   /** Flush to storage. **/
   void flush() {
-    auto &ctx = context();
+    auto& ctx = context();
     ctx.handle_error(tiledb_kv_flush(ctx, kv_.get()));
   }
 
   /** Get the schema of the map. **/
-  const MapSchema &schema() const {
+  const MapSchema& schema() const {
     return schema_;
   }
 
   /** Get the underlying context. **/
-  const Context &context() const {
+  const Context& context() const {
     return schema_.context();
   }
 
   /** URI **/
-  const std::string &uri() const {
+  const std::string& uri() const {
     return uri_;
   }
 
@@ -192,10 +192,10 @@ class Map {
    * @param uri URI to make map at.
    * @param schema schema defining the map structure.
    */
-  static void create(const std::string &uri, const MapSchema &schema);
+  static void create(const std::string& uri, const MapSchema& schema);
 
   /** Consolidate map fragments. **/
-  static void consolidate(const Context &ctx, const std::string &map);
+  static void consolidate(const Context& ctx, const std::string& map);
 
  private:
   /* ********************************* */
@@ -206,15 +206,15 @@ class Map {
   template <typename T>
   typename std::enable_if<
       std::is_fundamental<typename T::value_type>::value,
-      tiledb_kv_item_t>::type *
-  get_impl(const T &key) {
-    auto &ctx = context();
-    tiledb_kv_item_t *item;
+      tiledb_kv_item_t>::type*
+  get_impl(const T& key) {
+    auto& ctx = context();
+    tiledb_kv_item_t* item;
     ctx.handle_error(tiledb_kv_get_item(
         ctx,
         kv_.get(),
         &item,
-        const_cast<void *>(reinterpret_cast<const void *>(key.data())),
+        const_cast<void*>(reinterpret_cast<const void*>(key.data())),
         impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
         sizeof(typename T::value_type) * key.size()));
     return item;
@@ -222,16 +222,16 @@ class Map {
 
   /** Get for native types. **/
   template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, tiledb_kv_item_t>::type
-      *
-      get_impl(const T &key) {
-    auto &ctx = context();
-    tiledb_kv_item_t *item;
+  typename std::enable_if<std::is_fundamental<T>::value, tiledb_kv_item_t>::
+      type*
+      get_impl(const T& key) {
+    auto& ctx = context();
+    tiledb_kv_item_t* item;
     ctx.handle_error(tiledb_kv_get_item(
         ctx,
         kv_.get(),
         &item,
-        const_cast<void *>(reinterpret_cast<const void *>(&key)),
+        const_cast<void*>(reinterpret_cast<const void*>(&key)),
         impl::type_from_native<T>::type::tiledb_datatype,
         sizeof(T)));
     return item;
@@ -240,10 +240,10 @@ class Map {
   /** Create for native types. **/
   template <typename T>
   static typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
-  create_item_impl(const Context &ctx, const T &key) {
+  create_item_impl(const Context& ctx, const T& key) {
     return MapItem(
         ctx,
-        const_cast<void *>(reinterpret_cast<const void *>(&key)),
+        const_cast<void*>(reinterpret_cast<const void*>(&key)),
         impl::type_from_native<T>::type::tiledb_datatype,
         sizeof(T),
         nullptr);
@@ -254,10 +254,10 @@ class Map {
   static typename std::enable_if<
       std::is_fundamental<typename T::value_type>::value,
       MapItem>::type
-  create_item_impl(const Context &ctx, const T &key) {
+  create_item_impl(const Context& ctx, const T& key) {
     return MapItem(
         ctx,
-        const_cast<void *>(reinterpret_cast<const void *>(key.data())),
+        const_cast<void*>(reinterpret_cast<const void*>(key.data())),
         impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
         sizeof(typename T::value_type) * key.size(),
         nullptr);

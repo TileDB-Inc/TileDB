@@ -73,26 +73,26 @@ class Query {
   /* ********************************* */
 
   Query(
-      const Context &ctx,
-      const std::string &array_uri,
+      const Context& ctx,
+      const std::string& array_uri,
       tiledb_query_type_t type);
-  Query(const Query &) = default;
-  Query(Query &&o) = default;
-  Query &operator=(const Query &) = default;
-  Query &operator=(Query &&o) = default;
+  Query(const Query&) = default;
+  Query(Query&& o) = default;
+  Query& operator=(const Query&) = default;
+  Query& operator=(Query&& o) = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Sets the data layout of the buffers.  */
-  Query &set_layout(tiledb_layout_t layout);
+  Query& set_layout(tiledb_layout_t layout);
 
   /** Returns the query status. */
   Status query_status() const;
 
   /** Returns the query status for a particular attribute. */
-  Status attribute_status(const std::string &attr) const;
+  Status attribute_status(const std::string& attr) const;
 
   /** Submits the query. Call will block until query is complete. */
   Status submit();
@@ -108,9 +108,9 @@ class Query {
    * @return Status of submitted query.
    */
   template <typename Fn>
-  void submit_async(const Fn &callback) {
-    std::function<void(void *)> wrapper = [&](void *) { callback(); };
-    auto &ctx = ctx_.get();
+  void submit_async(const Fn& callback) {
+    std::function<void(void*)> wrapper = [&](void*) { callback(); };
+    auto& ctx = ctx_.get();
     prepare_submission();
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async(
         ctx, query_.get(), wrapper, nullptr));
@@ -140,11 +140,11 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  void set_subarray(const std::vector<T> &pairs) {
+  void set_subarray(const std::vector<T>& pairs) {
     static_assert(
         std::is_fundamental<T>::value,
         "Template type must be a fundamental type.");
-    auto &ctx = ctx_.get();
+    auto& ctx = ctx_.get();
     impl::type_check<typename impl::type_from_native<T>::type>(
         schema_.domain().type());
     if (pairs.size() != schema_.domain().dim_num() * 2) {
@@ -169,11 +169,11 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  void set_subarray(const std::vector<std::array<T, 2>> &pairs) {
+  void set_subarray(const std::vector<std::array<T, 2>>& pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
     std::for_each(
-        pairs.begin(), pairs.end(), [&buf](const std::array<T, 2> &p) {
+        pairs.begin(), pairs.end(), [&buf](const std::array<T, 2>& p) {
           buf.push_back(p[0]);
           buf.push_back(p[1]);
         });
@@ -182,7 +182,7 @@ class Query {
 
   /** Sets a buffer for a fixed-sized attribute. */
   template <typename Vec>
-  void set_buffer(const std::string &attr, Vec &buf) {
+  void set_buffer(const std::string& attr, Vec& buf) {
     static_assert(
         std::is_fundamental<typename Vec::value_type>::value,
         "Template type must be a vector of a fundamental type.");
@@ -190,17 +190,17 @@ class Query {
         typename impl::type_from_native<typename Vec::value_type>::type;
 
     if (array_attributes_.count(attr)) {
-      const auto &a = array_attributes_.at(attr);
+      const auto& a = array_attributes_.at(attr);
       impl::type_check_attr<DataT>(a, a.cell_val_num());
     } else if (attr == TILEDB_COORDS) {
       impl::type_check<DataT>(schema_.domain().type());
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
         static_cast<uint64_t>(buf.size()),
         sizeof(typename DataT::type),
-        const_cast<void *>(reinterpret_cast<const void *>(
+        const_cast<void*>(reinterpret_cast<const void*>(
             buf.data())));  // To enable const char * storage
     attrs_.emplace_back(attr);
   }
@@ -208,7 +208,7 @@ class Query {
   /** Sets a buffer for a variable-sized attribute. */
   template <typename Vec>
   void set_buffer(
-      const std::string &attr, std::vector<uint64_t> &offsets, Vec &data) {
+      const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
     static_assert(
         std::is_fundamental<typename Vec::value_type>::value,
         "Template type must be a vector of a fundamental type.");
@@ -220,12 +220,12 @@ class Query {
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
-    var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+    var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
         offsets.size(), sizeof(uint64_t), offsets.data());
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void *>(
+    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
         static_cast<uint64_t>(data.size()),
         sizeof(typename DataT::type),
-        const_cast<void *>(reinterpret_cast<const void *>(
+        const_cast<void*>(reinterpret_cast<const void*>(
             data.data())));  // To enable const char * storage
 
     attrs_.emplace_back(attr);
@@ -237,7 +237,7 @@ class Query {
    **/
   template <typename Vec>
   void set_buffer(
-      const std::string &attr, std::pair<std::vector<uint64_t>, Vec> &buf) {
+      const std::string& attr, std::pair<std::vector<uint64_t>, Vec>& buf) {
     set_buffer(attr, buf.first, buf.second);
   }
 
@@ -246,7 +246,7 @@ class Query {
   /* ********************************* */
 
   /** Converts the TileDB C query status to a C++ query status. */
-  static Status to_status(const tiledb_query_status_t &status);
+  static Status to_status(const tiledb_query_status_t& status);
 
   /** Converts the TileDB C query type to a string representation. */
   static std::string to_str(tiledb_query_type_t type);
@@ -257,7 +257,7 @@ class Query {
   /* ********************************* */
 
   /** The buffers that will be passed to a TileDB C query. */
-  std::vector<void *> all_buff_;
+  std::vector<void*> all_buff_;
 
   /** On init get the attributes of the underlying array schema. */
   std::unordered_map<std::string, Attribute> array_attributes_;
@@ -266,7 +266,7 @@ class Query {
   std::vector<std::string> attrs_;
 
   /** The attribute names that will be passed to a TileDB C query. */
-  std::vector<const char *> attr_names_;
+  std::vector<const char*> attr_names_;
 
   /** The buffer sizes that will be passed to a TileDB C query. */
   std::vector<uint64_t> buff_sizes_;
@@ -292,7 +292,7 @@ class Query {
    * Format:
    * Size of the vector, size of vector::value_type, vector.data()
    */
-  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void *>>
+  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>>
       var_offsets_;
 
   /**
@@ -301,7 +301,7 @@ class Query {
    * Format:
    * Size of the vector, size of vector::value_type, vector.data()
    */
-  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void *>>
+  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>>
       attr_buffs_;
 
   /** Keeps track of vector value_type sizes to convert back at return. */
@@ -323,7 +323,7 @@ class Query {
 /* ********************************* */
 
 /** Get a string representation of a query status for an output stream. */
-std::ostream &operator<<(std::ostream &os, const Query::Status &stat);
+std::ostream& operator<<(std::ostream& os, const Query::Status& stat);
 
 }  // namespace tiledb
 

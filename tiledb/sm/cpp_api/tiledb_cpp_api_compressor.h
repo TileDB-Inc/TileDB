@@ -126,7 +126,7 @@ class Compressor {
 };
 
 /** Writes the object contents to an output stream. */
-inline std::ostream &operator<<(std::ostream &os, const Compressor &c) {
+inline std::ostream& operator<<(std::ostream& os, const Compressor& c) {
   os << '(' << Compressor::to_str(c.compressor()) << ", " << c.level() << ')';
   return os;
 }

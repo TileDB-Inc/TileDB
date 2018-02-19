@@ -61,8 +61,8 @@ int main() {
     std::string s1;
     s1.resize(12);
 
-    is.read((char *)&f1, sizeof(f1));
-    is.read((char *)s1.data(), 12);
+    is.read((char*)&f1, sizeof(f1));
+    is.read((char*)s1.data(), 12);
     std::cout << "Binary read:\n" << f1 << '\n' << s1 << '\n';
   }
 

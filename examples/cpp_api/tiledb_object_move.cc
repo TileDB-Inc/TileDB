@@ -50,7 +50,7 @@ int main() {
   // Rename an invalid path
   try {
     tiledb::Object::move(ctx, "invalid_path", "path", false);
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cout << "Failed to move invalid path\n";
   }
 

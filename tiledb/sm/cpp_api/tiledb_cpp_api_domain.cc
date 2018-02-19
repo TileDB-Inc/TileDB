@@ -40,15 +40,15 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain(const Context &ctx)
+Domain::Domain(const Context& ctx)
     : ctx_(ctx)
     , deleter_(ctx) {
-  tiledb_domain_t *domain;
+  tiledb_domain_t* domain;
   ctx.handle_error(tiledb_domain_create(ctx, &domain));
   domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
 }
 
-Domain::Domain(const Context &ctx, tiledb_domain_t *domain)
+Domain::Domain(const Context& ctx, tiledb_domain_t* domain)
     : ctx_(ctx)
     , deleter_(ctx) {
   domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
@@ -97,16 +97,16 @@ template <class T>
 uint64_t Domain::cell_num() const {
   uint64_t ret = 1;
   auto dimensions = this->dimensions();
-  for (const auto &dim : dimensions) {
-    const auto &d = dim.domain<T>();
+  for (const auto& dim : dimensions) {
+    const auto& d = dim.domain<T>();
     ret *= (d.second - d.first + 1);
   }
 
   return ret;
 }
 
-void Domain::dump(FILE *out) const {
-  auto &ctx = ctx_.get();
+void Domain::dump(FILE* out) const {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_domain_dump(ctx, domain_.get(), out));
 }
 
@@ -114,21 +114,21 @@ std::shared_ptr<tiledb_domain_t> Domain::ptr() const {
   return domain_;
 }
 
-Domain::operator tiledb_domain_t *() const {
+Domain::operator tiledb_domain_t*() const {
   return domain_.get();
 }
 
 unsigned Domain::rank() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   unsigned n;
   ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &n));
   return n;
 }
 
 const std::vector<tiledb::Dimension> Domain::dimensions() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   unsigned int ndim;
-  tiledb_dimension_t *dimptr;
+  tiledb_dimension_t* dimptr;
   std::vector<Dimension> dims;
   ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
@@ -140,7 +140,7 @@ const std::vector<tiledb::Dimension> Domain::dimensions() const {
 }
 
 tiledb_datatype_t Domain::type() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   tiledb_datatype_t type;
   ctx.handle_error(tiledb_domain_get_type(ctx, domain_.get(), &type));
   return type;
@@ -148,13 +148,13 @@ tiledb_datatype_t Domain::type() const {
 
 unsigned Domain::dim_num() const {
   unsigned rank;
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &rank));
   return rank;
 }
 
-Domain &Domain::add_dimension(const Dimension &d) {
-  auto &ctx = ctx_.get();
+Domain& Domain::add_dimension(const Dimension& d) {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_domain_add_dimension(ctx, domain_.get(), d));
   return *this;
 }
@@ -163,9 +163,9 @@ Domain &Domain::add_dimension(const Dimension &d) {
 /*               MISC                */
 /* ********************************* */
 
-std::ostream &operator<<(std::ostream &os, const Domain &d) {
+std::ostream& operator<<(std::ostream& os, const Domain& d) {
   os << "Domain<(" << impl::to_str(d.type()) << ")";
-  for (const auto &dimension : d.dimensions()) {
+  for (const auto& dimension : d.dimensions()) {
     os << " " << dimension;
   }
   os << '>';

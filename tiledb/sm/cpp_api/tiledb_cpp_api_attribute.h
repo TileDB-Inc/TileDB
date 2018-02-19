@@ -55,11 +55,11 @@ class Attribute {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Attribute(const Context &ctx, tiledb_attribute_t *attr);
-  Attribute(const Attribute &attr) = default;
-  Attribute(Attribute &&o) = default;
-  Attribute &operator=(const Attribute &) = default;
-  Attribute &operator=(Attribute &&o) = default;
+  Attribute(const Context& ctx, tiledb_attribute_t* attr);
+  Attribute(const Attribute& attr) = default;
+  Attribute(Attribute&& o) = default;
+  Attribute& operator=(const Attribute&) = default;
+  Attribute& operator=(Attribute&& o) = default;
 
   /* ********************************* */
   /*                API                */
@@ -81,22 +81,22 @@ class Attribute {
   unsigned cell_val_num() const;
 
   /** Sets the number of attribute values per cell. */
-  Attribute &set_cell_val_num(unsigned num);
+  Attribute& set_cell_val_num(unsigned num);
 
   /** Returns the attribute compressor. */
   Compressor compressor() const;
 
   /** Sets the attribute compressor. */
-  Attribute &set_compressor(Compressor c);
+  Attribute& set_compressor(Compressor c);
 
   /** Returns the C TileDB attribute object pointer. */
   std::shared_ptr<tiledb_attribute_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_attribute_t *() const;
+  operator tiledb_attribute_t*() const;
 
   /** Dump information about the attribute to a FILE. **/
-  void dump(FILE *out = stdout) const {
+  void dump(FILE* out = stdout) const {
     ctx_.get().handle_error(
         tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
   }
@@ -114,7 +114,7 @@ class Attribute {
    * @return A new `Attribute` object.
    */
   template <typename T>
-  static Attribute create(const Context &ctx, const std::string &name) {
+  static Attribute create(const Context& ctx, const std::string& name) {
     static_assert(
         std::is_fundamental<T>::value,
         "Template type must be a fundamental type.");
@@ -141,7 +141,7 @@ class Attribute {
 
   /** Creates an attribute with the input name and datatype. */
   static Attribute create(
-      const Context &ctx, const std::string &name, tiledb_datatype_t type);
+      const Context& ctx, const std::string& name, tiledb_datatype_t type);
 };
 
 /* ********************************* */
@@ -149,7 +149,7 @@ class Attribute {
 /* ********************************* */
 
 /** Gets a string representation of an attribute for an output stream. */
-std::ostream &operator<<(std::ostream &os, const Attribute &a);
+std::ostream& operator<<(std::ostream& os, const Attribute& a);
 
 namespace impl {
 
@@ -161,7 +161,7 @@ namespace impl {
  * @param len Length of attribute value to check
  */
 template <typename DataT>
-void type_check_attr(const Attribute &a, unsigned len) {
+void type_check_attr(const Attribute& a, unsigned len) {
   auto expected_num = a.cell_val_num();
   impl::type_check<DataT>(a.type());
   if (expected_num != TILEDB_VAR_NUM && len != expected_num) {

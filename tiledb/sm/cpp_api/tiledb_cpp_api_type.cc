@@ -39,7 +39,7 @@ namespace tiledb {
 
 namespace impl {
 
-std::string to_str(const tiledb_datatype_t &type) {
+std::string to_str(const tiledb_datatype_t& type) {
   switch (type) {
     case TILEDB_CHAR:
       return "char";

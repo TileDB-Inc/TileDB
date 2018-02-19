@@ -73,10 +73,10 @@ class Config {
    * @param filename The name of the file where the parameters will be read
    *     from.
    */
-  explicit Config(const std::string &filename);
+  explicit Config(const std::string& filename);
 
   /** Constructor from a C config object. */
-  explicit Config(tiledb_config_t **config);
+  explicit Config(tiledb_config_t** config);
 
   /* ********************************* */
   /*                API                */
@@ -86,7 +86,7 @@ class Config {
   std::shared_ptr<tiledb_config_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_config_t *() const;
+  operator tiledb_config_t*() const;
 
   /**
    * Sets a config parameter-value pair.
@@ -123,23 +123,23 @@ class Config {
    * - `vfs.hdfs.kerb_ticket_cache_path` <br>
    *    HDFS kerb ticket cache path.
    */
-  Config &set(const std::string &param, const std::string &value);
+  Config& set(const std::string& param, const std::string& value);
 
   /**
    * Get a parameter from the configuration by key.
    * @param param Key
    * @return Value
    */
-  std::string get(const std::string &param) const;
+  std::string get(const std::string& param) const;
 
   /** Enables setting parameters with `[]`. */
-  impl::ConfigProxy operator[](const std::string &param);
+  impl::ConfigProxy operator[](const std::string& param);
 
   /** Unsets a config parameter. */
-  Config &unset(const std::string &param);
+  Config& unset(const std::string& param);
 
   /** Iterate over params starting with a prefix **/
-  iterator begin(const std::string &prefix) {
+  iterator begin(const std::string& prefix) {
     return iterator{*this, prefix, false};
   }
 
@@ -158,7 +158,7 @@ class Config {
   /* ********************************* */
 
   /** Wrapper function for freeing a config C object. */
-  static void free(tiledb_config_t *config);
+  static void free(tiledb_config_t* config);
 
  private:
   /* ********************************* */
@@ -180,28 +180,28 @@ namespace impl {
 
 /** Proxy to set params via operator `[]`. */
 struct ConfigProxy {
-  ConfigProxy(Config &conf, std::string param)
+  ConfigProxy(Config& conf, std::string param)
       : conf(conf)
       , param(std::move(param)) {
   }
 
   template <typename T>
-  ConfigProxy &operator=(const T &val) {
+  ConfigProxy& operator=(const T& val) {
     conf.set(param, std::to_string(val));
     return *this;
   }
 
-  ConfigProxy &operator=(const char *val) {
+  ConfigProxy& operator=(const char* val) {
     conf.set(param, std::string(val));
     return *this;
   }
 
-  ConfigProxy &operator=(const std::string &val) {
+  ConfigProxy& operator=(const std::string& val) {
     conf.set(param, val);
     return *this;
   }
 
-  ConfigProxy operator[](const std::string &append) {
+  ConfigProxy operator[](const std::string& append) {
     return {conf, param + append};
   }
 
@@ -209,7 +209,7 @@ struct ConfigProxy {
     return conf.get(param);
   }
 
-  Config &conf;
+  Config& conf;
   const std::string param;
 };
 

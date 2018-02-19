@@ -40,10 +40,10 @@ namespace tiledb {
 
 namespace impl {
 
-void ConfigIter::init(const Config &config) {
-  tiledb_config_iter_t *iter;
-  tiledb_error_t *err;
-  const char *p = prefix_.size() ? prefix_.c_str() : nullptr;
+void ConfigIter::init(const Config& config) {
+  tiledb_config_iter_t* iter;
+  tiledb_error_t* err;
+  const char* p = prefix_.size() ? prefix_.c_str() : nullptr;
   tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
   check_config_error(err);
 
@@ -63,11 +63,11 @@ void ConfigIter::init(const Config &config) {
   }
 }
 
-ConfigIter &ConfigIter::operator++() {
+ConfigIter& ConfigIter::operator++() {
   if (done_)
     return *this;
   int done;
-  tiledb_error_t *err;
+  tiledb_error_t* err;
 
   tiledb_config_iter_next(iter_.get(), &err);
   check_config_error(err);
@@ -90,7 +90,7 @@ ConfigIter &ConfigIter::operator++() {
 /*         STATIC FUNCTIONS          */
 /* ********************************* */
 
-void ConfigIter::free(tiledb_config_iter_t *config_iter) {
+void ConfigIter::free(tiledb_config_iter_t* config_iter) {
   tiledb_config_iter_free(&config_iter);
 }
 

@@ -54,11 +54,11 @@ class Dimension {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Dimension(const Context &ctx, tiledb_dimension_t *dim);
-  Dimension(const Dimension &) = default;
-  Dimension(Dimension &&o) = default;
-  Dimension &operator=(const Dimension &) = default;
-  Dimension &operator=(Dimension &&o) = default;
+  Dimension(const Context& ctx, tiledb_dimension_t* dim);
+  Dimension(const Dimension&) = default;
+  Dimension(Dimension&& o) = default;
+  Dimension& operator=(const Dimension&) = default;
+  Dimension& operator=(Dimension&& o) = default;
 
   /* ********************************* */
   /*                API                */
@@ -82,7 +82,7 @@ class Dimension {
     if (DataT::tiledb_datatype != tdbtype) {
       throw TypeError::create<DataT>(tdbtype);
     }
-    auto d = static_cast<T *>(_domain());
+    auto d = static_cast<T*>(_domain());
     return std::pair<T, T>(d[0], d[1]);
   };
 
@@ -101,7 +101,7 @@ class Dimension {
     if (DataT::tiledb_datatype != tdbtype) {
       throw TypeError::create<DataT>(tdbtype);
     }
-    return *static_cast<T *>(_tile_extent());
+    return *static_cast<T*>(_tile_extent());
   }
 
   /** Returns a string representation of the extent. */
@@ -111,7 +111,7 @@ class Dimension {
   std::shared_ptr<tiledb_dimension_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_dimension_t *() const;
+  operator tiledb_dimension_t*() const;
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -128,9 +128,9 @@ class Dimension {
    */
   template <typename T>
   static Dimension create(
-      const Context &ctx,
-      const std::string &name,
-      const std::array<T, 2> &domain,
+      const Context& ctx,
+      const std::string& name,
+      const std::array<T, 2>& domain,
       T extent) {
     static_assert(
         std::is_fundamental<T>::value,
@@ -162,10 +162,10 @@ class Dimension {
   /* ********************************* */
 
   /** Returns the binary representation of the dimension domain. */
-  void *_domain() const;
+  void* _domain() const;
 
   /** Returns the binary representation of the dimension extent. */
-  void *_tile_extent() const;
+  void* _tile_extent() const;
 
   /* ********************************* */
   /*     PRIVATE STATIC FUNCTIONS      */
@@ -176,11 +176,11 @@ class Dimension {
    * extent.
    */
   static Dimension create_impl(
-      const Context &ctx,
-      const std::string &name,
+      const Context& ctx,
+      const std::string& name,
       tiledb_datatype_t type,
-      const void *domain,
-      const void *tile_extent);
+      const void* domain,
+      const void* tile_extent);
 };
 
 /* ********************************* */
@@ -188,7 +188,7 @@ class Dimension {
 /* ********************************* */
 
 /** Get a string representation of a dimension for an output stream. */
-std::ostream &operator<<(std::ostream &os, const Dimension &dim);
+std::ostream& operator<<(std::ostream& os, const Dimension& dim);
 
 }  // namespace tiledb
 

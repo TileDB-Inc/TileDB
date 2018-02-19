@@ -51,7 +51,7 @@ class Compressor;
  */
 class Schema {
  public:
-  const Context &context() const {
+  const Context& context() const {
     return ctx_.get();
   }
 
@@ -60,24 +60,24 @@ class Schema {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Schema(const Context &ctx)
+  explicit Schema(const Context& ctx)
       : ctx_(ctx)
       , deleter_(ctx) {
   }
-  Schema(const Schema &) = default;
-  Schema(Schema &&) = default;
-  Schema &operator=(const Schema &) = default;
-  Schema &operator=(Schema &&) = default;
+  Schema(const Schema&) = default;
+  Schema(Schema&&) = default;
+  Schema& operator=(const Schema&) = default;
+  Schema& operator=(Schema&&) = default;
 
   /* ********************************* */
   /*          VIRTUAL INTERFACE        */
   /* ********************************* */
 
   /** Dumps the array schema in an ASCII representation to an output. */
-  virtual void dump(FILE *out) const = 0;
+  virtual void dump(FILE* out) const = 0;
 
   /** Adds an attribute to the array. */
-  virtual Schema &add_attribute(const Attribute &attr) = 0;
+  virtual Schema& add_attribute(const Attribute& attr) = 0;
 
   /** Validates the schema. */
   virtual void check() const = 0;
@@ -90,7 +90,7 @@ class Schema {
   virtual unsigned attribute_num() const = 0;
 
   /** Get an attribute by name. **/
-  virtual Attribute attribute(const std::string &name) const = 0;
+  virtual Attribute attribute(const std::string& name) const = 0;
 
   /** Get an attribute by index **/
   virtual Attribute attribute(unsigned int i) const = 0;

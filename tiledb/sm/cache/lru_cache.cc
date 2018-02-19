@@ -46,8 +46,8 @@ namespace sm {
 
 LRUCache::LRUCache(
     uint64_t max_size,
-    void *(*evict_callback)(LRUCacheItem *, void *),
-    void *evict_callback_data) {
+    void* (*evict_callback)(LRUCacheItem*, void*),
+    void* evict_callback_data) {
   evict_callback_ = evict_callback;
   evict_callback_data_ = evict_callback_data;
   max_size_ = max_size;
@@ -63,7 +63,7 @@ LRUCache::~LRUCache() {
 /* ****************************** */
 
 void LRUCache::clear() {
-  for (auto &item : item_ll_) {
+  for (auto& item : item_ll_) {
     if (evict_callback_ == nullptr)
       std::free(item.object_);
     else
@@ -73,7 +73,7 @@ void LRUCache::clear() {
 }
 
 Status LRUCache::insert(
-    const std::string &key, void *object, uint64_t size, bool overwrite) {
+    const std::string& key, void* object, uint64_t size, bool overwrite) {
   // Do nothing if the object size is bigger than the cache maximum size
   if (size > max_size_)
     return Status::Ok();
@@ -101,8 +101,8 @@ Status LRUCache::insert(
   // Key exists
   if (exists) {
     // Replace cache item
-    auto &node = item_it->second;
-    auto &item = *node;
+    auto& node = item_it->second;
+    auto& item = *node;
     if (evict_callback_ == nullptr)
       std::free(item.object_);
     else
@@ -140,7 +140,7 @@ uint64_t LRUCache::max_size() const {
   return max_size_;
 }
 
-Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
+Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   // Lock mutex
   mtx_.lock();
 
@@ -153,7 +153,7 @@ Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
   }
 
   // Write item object to buffer
-  auto &item = item_it->second;
+  auto& item = item_it->second;
   buffer->write(item->object_, item->size_);
 
   // Move cache item node to the end of the list
@@ -169,11 +169,11 @@ Status LRUCache::read(const std::string &key, Buffer *buffer, bool *success) {
 }
 
 Status LRUCache::read(
-    const std::string &key,
-    void *buffer,
+    const std::string& key,
+    void* buffer,
     uint64_t offset,
     uint64_t nbytes,
-    bool *success) {
+    bool* success) {
   // Lock mutex
   mtx_.lock();
 
@@ -186,13 +186,13 @@ Status LRUCache::read(
   }
 
   // Copy from item object
-  auto &item = item_it->second;
+  auto& item = item_it->second;
   if (item->size_ < offset + nbytes) {
     mtx_.unlock();
     return LOG_STATUS(
         Status::LRUCacheError("Failed to read item; Byte range out of bounds"));
   }
-  std::memcpy(buffer, (char *)item->object_ + offset, nbytes);
+  std::memcpy(buffer, (char*)item->object_ + offset, nbytes);
 
   // Move cache item node to the end of the list
   if (std::next(item) != item_ll_.end()) {

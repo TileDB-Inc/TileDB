@@ -58,41 +58,41 @@ class ConfigIter : public std::iterator<
   /* ********************************* */
 
   /** Iterate over a config for params matching a given prefix. **/
-  ConfigIter(const Config &config, std::string prefix, bool done = false)
+  ConfigIter(const Config& config, std::string prefix, bool done = false)
       : prefix_(std::move(prefix))
       , done_(done) {
     init(config);
   }
 
-  ConfigIter(const ConfigIter &) = default;
-  ConfigIter(ConfigIter &&) = default;
-  ConfigIter &operator=(const ConfigIter &) = default;
-  ConfigIter &operator=(ConfigIter &&) = default;
+  ConfigIter(const ConfigIter&) = default;
+  ConfigIter(ConfigIter&&) = default;
+  ConfigIter& operator=(const ConfigIter&) = default;
+  ConfigIter& operator=(ConfigIter&&) = default;
 
-  bool operator==(const ConfigIter &o) const {
+  bool operator==(const ConfigIter& o) const {
     return done_ == o.done_;
   }
 
-  bool operator!=(const ConfigIter &o) const {
+  bool operator!=(const ConfigIter& o) const {
     return done_ != o.done_;
   }
 
-  const std::pair<std::string, std::string> &operator*() const {
+  const std::pair<std::string, std::string>& operator*() const {
     return here_;
   }
 
-  const std::pair<std::string, std::string> *operator->() const {
+  const std::pair<std::string, std::string>* operator->() const {
     return &here_;
   }
 
-  ConfigIter &operator++();
+  ConfigIter& operator++();
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
 
   /** Wrapper function for freeing a config iter C object. */
-  static void free(tiledb_config_iter_t *config_iter);
+  static void free(tiledb_config_iter_t* config_iter);
 
  private:
   /* ********************************* */
@@ -116,7 +116,7 @@ class ConfigIter : public std::iterator<
   /* ********************************* */
 
   /** Init the iterator object **/
-  void init(const Config &config);
+  void init(const Config& config);
 };
 
 }  // namespace impl

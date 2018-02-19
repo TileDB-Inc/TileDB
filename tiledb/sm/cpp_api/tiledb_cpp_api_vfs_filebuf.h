@@ -74,14 +74,14 @@ class VFSFilebuf : public std::streambuf {
    *
    * @param vfs Tiledb VFS
    */
-  explicit VFSFilebuf(const VFS &vfs)
+  explicit VFSFilebuf(const VFS& vfs)
       : vfs_(vfs)
       , deleter_(vfs.context()) {
   }
-  VFSFilebuf(const VFSFilebuf &buf) = default;
-  VFSFilebuf(VFSFilebuf &&buf) = default;
-  VFSFilebuf &operator=(const VFSFilebuf &) = default;
-  VFSFilebuf &operator=(VFSFilebuf &&o) = default;
+  VFSFilebuf(const VFSFilebuf& buf) = default;
+  VFSFilebuf(VFSFilebuf&& buf) = default;
+  VFSFilebuf& operator=(const VFSFilebuf&) = default;
+  VFSFilebuf& operator=(VFSFilebuf&& o) = default;
   ~VFSFilebuf() override {
     close();
   }
@@ -96,8 +96,8 @@ class VFSFilebuf : public std::streambuf {
    * @param uri
    * @param openmode Must be either std::ios::in or std::ios::out
    */
-  VFSFilebuf *open(
-      const std::string &uri, std::ios::openmode openmode = std::ios::in);
+  VFSFilebuf* open(
+      const std::string& uri, std::ios::openmode openmode = std::ios::in);
 
   /** Check if a file is open **/
   bool is_open() const {
@@ -105,10 +105,10 @@ class VFSFilebuf : public std::streambuf {
   }
 
   /** Close a file. **/
-  VFSFilebuf *close();
+  VFSFilebuf* close();
 
   /** Current opened URI. **/
-  const std::string &get_uri() const {
+  const std::string& get_uri() const {
     return uri_;
   }
 
@@ -153,7 +153,7 @@ class VFSFilebuf : public std::streambuf {
    * @param n Number of bytes to get
    * @return Number of bytes read
    */
-  std::streamsize xsgetn(char_type *s, std::streamsize n) override;
+  std::streamsize xsgetn(char_type* s, std::streamsize n) override;
 
   /**
    * Get a character in the file. Note this function should rarely be used
@@ -181,7 +181,7 @@ class VFSFilebuf : public std::streambuf {
    * @param n Number of bytes to write
    * @return Number of bytes written
    */
-  std::streamsize xsputn(const char_type *s, std::streamsize n) override;
+  std::streamsize xsputn(const char_type* s, std::streamsize n) override;
 
   /**
    * Put a character in the file. Note this function should rarely be used

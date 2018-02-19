@@ -47,7 +47,7 @@ int main() {
 
   // Read using iterator
   std::cout << "Iterating over all keys:\n";
-  for (auto &item : map) {
+  for (auto& item : map) {
     std::tuple<int, std::string, std::vector<float>> vals =
         item[{"a1", "a2", "a3"}];
     std::cout << "a1: " << std::get<0>(vals) << "\n"

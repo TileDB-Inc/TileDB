@@ -57,8 +57,8 @@ namespace tiledb {
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
-    const std::vector<uint64_t> &offsets,
-    const std::vector<T> &data,
+    const std::vector<uint64_t>& offsets,
+    const std::vector<T>& data,
     uint64_t num_offsets,
     uint64_t num_data) {
   std::vector<E> ret;
@@ -87,7 +87,7 @@ std::vector<E> group_by_cell(
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
-    const std::vector<uint64_t> &offsets, const std::vector<T> &data) {
+    const std::vector<uint64_t>& offsets, const std::vector<T>& data) {
   return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
 }
 
@@ -104,7 +104,7 @@ std::vector<E> group_by_cell(
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
-    const std::pair<std::vector<uint64_t>, std::vector<T>> &buff,
+    const std::pair<std::vector<uint64_t>, std::vector<T>>& buff,
     uint64_t num_offsets,
     uint64_t num_data) {
   return group_by_cell<T, E>(buff.first, buff.second, num_offsets, num_data);
@@ -123,7 +123,7 @@ std::vector<E> group_by_cell(
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
-    const std::vector<T> &buff, uint64_t el_per_cell, uint64_t num_buff) {
+    const std::vector<T>& buff, uint64_t el_per_cell, uint64_t num_buff) {
   std::vector<E> ret;
   if (buff.size() % el_per_cell != 0) {
     throw std::invalid_argument(
@@ -148,7 +148,7 @@ std::vector<E> group_by_cell(
  *     use buff.size()
  */
 template <typename T, typename E = typename std::vector<T>>
-std::vector<E> group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell) {
+std::vector<E> group_by_cell(const std::vector<T>& buff, uint64_t el_per_cell) {
   return group_by_cell<T, E>(buff, el_per_cell, buff.size());
 }
 
@@ -163,7 +163,7 @@ std::vector<E> group_by_cell(const std::vector<T> &buff, uint64_t el_per_cell) {
  */
 template <uint64_t N, typename T>
 std::vector<std::array<T, N>> group_by_cell(
-    const std::vector<T> &buff, uint64_t num_buff) {
+    const std::vector<T>& buff, uint64_t num_buff) {
   std::vector<std::array<T, N>> ret;
   if (buff.size() % N != 0) {
     throw std::invalid_argument(
@@ -191,7 +191,7 @@ std::vector<std::array<T, N>> group_by_cell(
  * @return std::vector<std::array<T,N>>
  */
 template <uint64_t N, typename T>
-std::vector<std::array<T, N>> group_by_cell(const std::vector<T> &buff) {
+std::vector<std::array<T, N>> group_by_cell(const std::vector<T>& buff) {
   return group_by_cell<N, T>(buff, buff.size());
 }
 
@@ -207,10 +207,10 @@ std::vector<std::array<T, N>> group_by_cell(const std::vector<T> &buff) {
 
 template <typename T, typename R = typename T::value_type>
 std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
-    const std::vector<T> &data) {
+    const std::vector<T>& data) {
   std::pair<std::vector<uint64_t>, std::vector<R>> ret;
   ret.first.push_back(0);
-  for (const auto &v : data) {
+  for (const auto& v : data) {
     ret.second.insert(std::end(ret.second), std::begin(v), std::end(v));
     ret.first.push_back(ret.first.back() + v.size());
   }
@@ -226,18 +226,18 @@ std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
  * @return std::vector<T>
  */
 template <typename V, typename T = typename V::value_type::value_type>
-std::vector<T> flatten(const V &vec) {
+std::vector<T> flatten(const V& vec) {
   std::vector<T> ret;
 
   size_t size = 0;
   std::for_each(
-      std::begin(vec), std::end(vec), [&size](const typename V::value_type &i) {
+      std::begin(vec), std::end(vec), [&size](const typename V::value_type& i) {
         size += i.size();
       });
   ret.reserve(size);
 
   std::for_each(
-      std::begin(vec), std::end(vec), [&ret](const typename V::value_type &i) {
+      std::begin(vec), std::end(vec), [&ret](const typename V::value_type& i) {
         std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
       });
   return ret;
@@ -246,9 +246,9 @@ std::vector<T> flatten(const V &vec) {
 namespace impl {
 
 /** Check an error, free, and throw if there is one. **/
-inline void check_config_error(tiledb_error_t *err) {
+inline void check_config_error(tiledb_error_t* err) {
   if (err != nullptr) {
-    const char *msg;
+    const char* msg;
     tiledb_error_message(err, &msg);
     tiledb_error_free(&err);
     throw TileDBError("Config Iterator Error: " + std::string(msg));
