@@ -56,7 +56,7 @@ struct Type {
   Type() = delete;
   using type = T;
   static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
-  static constexpr const char *name =
+  static constexpr const char* name =
       std::is_same<T, char>::value ?
           "char" :
           (std::is_same<T, int8_t>::value ?
@@ -222,7 +222,7 @@ struct type_from_native<double> {
   using type = FLOAT64;
 };
 
-std::string to_str(const tiledb_datatype_t &type);
+std::string to_str(const tiledb_datatype_t& type);
 
 }  // namespace impl
 }  // namespace tiledb

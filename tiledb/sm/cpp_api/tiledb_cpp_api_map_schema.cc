@@ -34,42 +34,42 @@
 
 #include "tiledb_cpp_api_map_schema.h"
 
-tiledb::MapSchema::MapSchema(const tiledb::Context &ctx)
+tiledb::MapSchema::MapSchema(const tiledb::Context& ctx)
     : Schema(ctx) {
-  tiledb_kv_schema_t *schema;
+  tiledb_kv_schema_t* schema;
   ctx.handle_error(tiledb_kv_schema_create(ctx, &schema));
   schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
 }
 
-tiledb::MapSchema::MapSchema(const tiledb::Context &ctx, const std::string &uri)
+tiledb::MapSchema::MapSchema(const tiledb::Context& ctx, const std::string& uri)
     : Schema(ctx) {
-  tiledb_kv_schema_t *schema;
+  tiledb_kv_schema_t* schema;
   ctx.handle_error(tiledb_kv_schema_load(ctx, &schema, uri.c_str()));
   schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
 }
 
-void tiledb::MapSchema::dump(FILE *out) const {
-  auto &ctx = ctx_.get();
+void tiledb::MapSchema::dump(FILE* out) const {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_kv_schema_dump(ctx, schema_.get(), out));
 }
 
-tiledb::MapSchema &tiledb::MapSchema::add_attribute(
-    const tiledb::Attribute &attr) {
-  auto &ctx = ctx_.get();
+tiledb::MapSchema& tiledb::MapSchema::add_attribute(
+    const tiledb::Attribute& attr) {
+  auto& ctx = ctx_.get();
   ctx.handle_error(
       tiledb_kv_schema_add_attribute(ctx, schema_.get(), attr.ptr().get()));
   return *this;
 }
 
 void tiledb::MapSchema::check() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_kv_schema_check(ctx, schema_.get()));
 }
 
 const std::unordered_map<std::string, tiledb::Attribute>
 tiledb::MapSchema::attributes() const {
-  auto &ctx = ctx_.get();
-  tiledb_attribute_t *attrptr;
+  auto& ctx = ctx_.get();
+  tiledb_attribute_t* attrptr;
   unsigned int nattr;
   std::unordered_map<std::string, Attribute> attrs;
   ctx.handle_error(
@@ -85,33 +85,33 @@ tiledb::MapSchema::attributes() const {
 }
 
 tiledb::Attribute tiledb::MapSchema::attribute(unsigned int i) const {
-  auto &ctx = ctx_.get();
-  tiledb_attribute_t *attr;
+  auto& ctx = ctx_.get();
+  tiledb_attribute_t* attr;
   ctx.handle_error(
       tiledb_kv_schema_get_attribute_from_index(ctx, schema_.get(), i, &attr));
   return {ctx, attr};
 }
 
-tiledb::Attribute tiledb::MapSchema::attribute(const std::string &name) const {
-  auto &ctx = ctx_.get();
-  tiledb_attribute_t *attr;
+tiledb::Attribute tiledb::MapSchema::attribute(const std::string& name) const {
+  auto& ctx = ctx_.get();
+  tiledb_attribute_t* attr;
   ctx.handle_error(tiledb_kv_schema_get_attribute_from_name(
       ctx, schema_.get(), name.c_str(), &attr));
   return {ctx, attr};
 }
 
 unsigned tiledb::MapSchema::attribute_num() const {
-  auto &ctx = context();
+  auto& ctx = context();
   unsigned num;
   ctx.handle_error(
       tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &num));
   return num;
 }
 
-std::ostream & ::tiledb::operator<<(
-    std::ostream &os, const tiledb::MapSchema &schema) {
+std::ostream& ::tiledb::operator<<(
+    std::ostream& os, const tiledb::MapSchema& schema) {
   os << "MapSchema<Attributes:";
-  for (const auto &a : schema.attributes()) {
+  for (const auto& a : schema.attributes()) {
     os << ' ' << a.second;
   }
   os << '>';

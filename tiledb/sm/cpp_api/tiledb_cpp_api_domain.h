@@ -54,12 +54,12 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Domain(const Context &ctx);
-  Domain(const Context &ctx, tiledb_domain_t *domain);
-  Domain(const Domain &domain) = default;
-  Domain(Domain &&domain) = default;
-  Domain &operator=(const Domain &domain) = default;
-  Domain &operator=(Domain &&domain) = default;
+  explicit Domain(const Context& ctx);
+  Domain(const Context& ctx, tiledb_domain_t* domain);
+  Domain(const Domain& domain) = default;
+  Domain(Domain&& domain) = default;
+  Domain& operator=(const Domain& domain) = default;
+  Domain& operator=(Domain&& domain) = default;
 
   /* ********************************* */
   /*                API                */
@@ -80,7 +80,7 @@ class Domain {
   uint64_t cell_num() const;
 
   /** Dumps the domain in an ASCII representation to an output. */
-  void dump(FILE *out = stdout) const;
+  void dump(FILE* out = stdout) const;
 
   /** Returns the domain type. */
   tiledb_datatype_t type() const;
@@ -92,7 +92,7 @@ class Domain {
   const std::vector<Dimension> dimensions() const;
 
   /** Adds a new dimension to the domain. */
-  Domain &add_dimension(const Dimension &d);
+  Domain& add_dimension(const Dimension& d);
 
   /** Returns the number of dimensions in the domain. */
   unsigned dim_num() const;
@@ -101,7 +101,7 @@ class Domain {
   std::shared_ptr<tiledb_domain_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_domain_t *() const;
+  operator tiledb_domain_t*() const;
 
  private:
   /* ********************************* */
@@ -123,7 +123,7 @@ class Domain {
 /* ********************************* */
 
 /** Get a string representation of an attribute for an output stream. */
-std::ostream &operator<<(std::ostream &os, const Domain &d);
+std::ostream& operator<<(std::ostream& os, const Domain& d);
 
 }  // namespace tiledb
 

@@ -82,14 +82,14 @@ namespace impl {
  **/
 class MultiMapItemProxy {
  public:
-  MultiMapItemProxy(const std::vector<std::string> &attrs, MapItem &item)
+  MultiMapItemProxy(const std::vector<std::string>& attrs, MapItem& item)
       : attrs(attrs)
       , item(item) {
   }
 
   /** Get multiple attributes into an existing tuple **/
   template <typename... T>
-  void get(std::tuple<T...> &tp) const {
+  void get(std::tuple<T...>& tp) const {
     if (attrs.size() != sizeof...(T)) {
       throw TileDBError("Attribute list size does not match tuple length.");
     }
@@ -106,7 +106,7 @@ class MultiMapItemProxy {
 
   /** Set the attributes **/
   template <typename... T>
-  void set(const std::tuple<T...> &vals) {
+  void set(const std::tuple<T...>& vals) {
     if (attrs.size() != sizeof...(T)) {
       throw TileDBError("Attribute list size does not match tuple length.");
     }
@@ -122,7 +122,7 @@ class MultiMapItemProxy {
 
   /** Set the attributes with a tuple **/
   template <typename... T>
-  MultiMapItemProxy &operator=(const std::tuple<T...> &vals) {
+  MultiMapItemProxy& operator=(const std::tuple<T...>& vals) {
     set<T...>(vals);
     return *this;
   }
@@ -132,12 +132,12 @@ class MultiMapItemProxy {
   /** Base case. Do nothing and terminate recursion. **/
   template <std::size_t I = 0, typename... T>
   inline typename std::enable_if<I == sizeof...(T), void>::type set_tuple(
-      const std::tuple<T...> &) {
+      const std::tuple<T...>&) {
   }
 
   template <std::size_t I = 0, typename... T>
       inline typename std::enable_if <
-      I<sizeof...(T), void>::type set_tuple(const std::tuple<T...> &t) {
+      I<sizeof...(T), void>::type set_tuple(const std::tuple<T...>& t) {
     item.set(attrs[I], std::get<I>(t));
     set_tuple<I + 1, T...>(t);
   }
@@ -146,12 +146,12 @@ class MultiMapItemProxy {
   /** Base case. Do nothing and terminate recursion. **/
   template <std::size_t I = 0, typename... T>
   inline typename std::enable_if<I == sizeof...(T), void>::type get_tuple(
-      std::tuple<T...> &) const {
+      std::tuple<T...>&) const {
   }
 
   template <std::size_t I = 0, typename... T>
       inline typename std::enable_if <
-      I<sizeof...(T), void>::type get_tuple(std::tuple<T...> &t) const {
+      I<sizeof...(T), void>::type get_tuple(std::tuple<T...>& t) const {
     std::get<I>(t) =
         item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(
             attrs[I]);
@@ -159,10 +159,10 @@ class MultiMapItemProxy {
   }
 
   /** Keyed attributes **/
-  const std::vector<std::string> &attrs;
+  const std::vector<std::string>& attrs;
 
   /** Item that created proxy. **/
-  MapItem &item;
+  MapItem& item;
 
   /** Add to underlying map, if associated with one. Otherwise pass. **/
   bool add_to_map() const;
@@ -202,14 +202,14 @@ class MultiMapItemProxy {
 class MapItemProxy {
  public:
   /** Create a proxy for the given attribute and underlying MapItem **/
-  MapItemProxy(std::string attr, MapItem &item)
+  MapItemProxy(std::string attr, MapItem& item)
       : attr(std::move(attr))
       , item(item) {
   }
 
   /** Set the value **/
   template <typename T>
-  void set(const T &val) {
+  void set(const T& val) {
     item.set<T>(attr, val);
     add_to_map();
   }
@@ -222,7 +222,7 @@ class MapItemProxy {
 
   /** Set value with operator= **/
   template <typename T>
-  MapItemProxy &operator=(const T &val) {
+  MapItemProxy& operator=(const T& val) {
     set(val);
     add_to_map();
     return *this;
@@ -238,7 +238,7 @@ class MapItemProxy {
   const std::string attr;
 
   /** Underlying Item **/
-  MapItem &item;
+  MapItem& item;
 
  private:
   /** Add to underlying map, if associated with one. Otherwise pass. **/

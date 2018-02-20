@@ -57,30 +57,30 @@ class MapSchema : public Schema {
   /* ********************************* */
 
   /** Creates a new array schema. */
-  explicit MapSchema(const Context &ctx);
+  explicit MapSchema(const Context& ctx);
 
   /** Loads the schema of an existing array with the input URI. */
-  MapSchema(const Context &ctx, const std::string &uri);
+  MapSchema(const Context& ctx, const std::string& uri);
 
-  MapSchema(const MapSchema &) = default;
-  MapSchema(MapSchema &&o) = default;
-  MapSchema &operator=(const MapSchema &) = default;
-  MapSchema &operator=(MapSchema &&o) = default;
+  MapSchema(const MapSchema&) = default;
+  MapSchema(MapSchema&& o) = default;
+  MapSchema& operator=(const MapSchema&) = default;
+  MapSchema& operator=(MapSchema&& o) = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_kv_schema_t *() const {
+  operator tiledb_kv_schema_t*() const {
     return schema_.get();
   }
 
   /** Dumps the array schema in an ASCII representation to an output. */
-  void dump(FILE *out = stdout) const override;
+  void dump(FILE* out = stdout) const override;
 
   /** Adds an attribute to the array. */
-  MapSchema &add_attribute(const Attribute &attr) override;
+  MapSchema& add_attribute(const Attribute& attr) override;
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_kv_schema_t> ptr() const {
@@ -95,7 +95,7 @@ class MapSchema : public Schema {
   ;
 
   /** Get an attribute by name. **/
-  Attribute attribute(const std::string &name) const override;
+  Attribute attribute(const std::string& name) const override;
 
   /** Number of attributes **/
   unsigned attribute_num() const override;
@@ -117,7 +117,7 @@ class MapSchema : public Schema {
 /* ********************************* */
 
 /** Converts the array schema into a string representation. */
-std::ostream &operator<<(std::ostream &os, const MapSchema &schema);
+std::ostream& operator<<(std::ostream& os, const MapSchema& schema);
 }  // namespace tiledb
 
 #endif  // TILEDB_CPP_API_MAP_SCHEMA_H

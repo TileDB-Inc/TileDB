@@ -49,11 +49,11 @@ namespace impl {
 /** Iterate over items in a map. **/
 class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  public:
-  explicit MapIter(Map &map, bool end = false);
-  MapIter(const MapIter &) = delete;
-  MapIter(MapIter &&) = default;
-  MapIter &operator=(const MapIter &) = delete;
-  MapIter &operator=(MapIter &&) = default;
+  explicit MapIter(Map& map, bool end = false);
+  MapIter(const MapIter&) = delete;
+  MapIter(MapIter&&) = default;
+  MapIter& operator=(const MapIter&) = delete;
+  MapIter& operator=(MapIter&&) = default;
 
   /** Init iter. This must manually be invoked. **/
   void init();
@@ -68,27 +68,27 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
   }
 
   /** Iterators are only equal when both are end. **/
-  bool operator==(const MapIter &o) const {
+  bool operator==(const MapIter& o) const {
     return done_ == o.done_;
   }
 
-  bool operator!=(const MapIter &o) const {
+  bool operator!=(const MapIter& o) const {
     return done_ != o.done_;
   }
 
-  MapItem &operator*() const {
+  MapItem& operator*() const {
     return *item_;
   }
 
-  MapItem *operator->() const {
+  MapItem* operator->() const {
     return item_.get();
   }
 
-  MapIter &operator++();
+  MapIter& operator++();
 
  private:
   /** Base map. **/
-  Map *map_;
+  Map* map_;
   Deleter deleter_;
 
   /** Current item **/

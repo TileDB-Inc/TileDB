@@ -46,7 +46,7 @@ int main() {
   try {
     tiledb::create_group(ctx, "my_group");
     tiledb::create_group(ctx, "my_group");
-  } catch (tiledb::TileDBError &e) {
+  } catch (tiledb::TileDBError& e) {
     std::cout << "TileDB exception:\n" << e.what() << "\n";
   }
 

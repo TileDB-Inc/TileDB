@@ -37,12 +37,12 @@
 
 namespace tiledb {
 
-impl::MapItemProxy MapItem::operator[](const std::string &attr) {
+impl::MapItemProxy MapItem::operator[](const std::string& attr) {
   return impl::MapItemProxy(attr, *this);
 }
 
 impl::MultiMapItemProxy MapItem::operator[](
-    const std::vector<std::string> &attrs) {
+    const std::vector<std::string>& attrs) {
   return impl::MultiMapItemProxy(attrs, *this);
 }
 

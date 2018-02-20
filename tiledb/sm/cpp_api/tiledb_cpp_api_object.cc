@@ -41,12 +41,12 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Object::Object(const Type &type, const std::string &uri)
+Object::Object(const Type& type, const std::string& uri)
     : type_(type)
     , uri_(uri) {
 }
 
-Object::Object(tiledb_object_t type, const std::string &uri)
+Object::Object(tiledb_object_t type, const std::string& uri)
     : uri_(uri) {
   switch (type) {
     case TILEDB_ARRAY:
@@ -104,21 +104,21 @@ std::string Object::uri() const {
 /*          STATIC FUNCTIONS         */
 /* ********************************* */
 
-Object Object::object(const Context &ctx, const std::string &uri) {
+Object Object::object(const Context& ctx, const std::string& uri) {
   tiledb_object_t type;
   ctx.handle_error(tiledb_object_type(ctx, uri.c_str(), &type));
   Object ret(type, uri);
   return ret;
 }
 
-void Object::remove(const Context &ctx, const std::string &uri) {
+void Object::remove(const Context& ctx, const std::string& uri) {
   ctx.handle_error(tiledb_object_remove(ctx, uri.c_str()));
 }
 
 void Object::move(
-    const Context &ctx,
-    const std::string &old_uri,
-    const std::string &new_uri,
+    const Context& ctx,
+    const std::string& old_uri,
+    const std::string& new_uri,
     bool force) {
   ctx.handle_error(
       tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str(), (int)force));
@@ -128,7 +128,7 @@ void Object::move(
 /*               MISC                */
 /* ********************************* */
 
-std::ostream &operator<<(std::ostream &os, const Object &obj) {
+std::ostream& operator<<(std::ostream& os, const Object& obj) {
   os << obj.to_str();
   return os;
 }

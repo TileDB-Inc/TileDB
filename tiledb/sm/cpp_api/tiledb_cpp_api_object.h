@@ -60,13 +60,13 @@ class Object {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Object(const Type &type, const std::string &uri = "");
-  explicit Object(tiledb_object_t type, const std::string &uri = "");
+  explicit Object(const Type& type, const std::string& uri = "");
+  explicit Object(tiledb_object_t type, const std::string& uri = "");
   Object();
-  Object(const Object &o) = default;
-  Object(Object &&o) = default;
-  Object &operator=(const Object &o) = default;
-  Object &operator=(Object &&o) = default;
+  Object(const Object& o) = default;
+  Object(Object&& o) = default;
+  Object& operator=(const Object& o) = default;
+  Object& operator=(Object&& o) = default;
 
   /* ********************************* */
   /*                API                */
@@ -95,7 +95,7 @@ class Object {
    * @param uri The path to the object.
    * @return An object that contains the type along with the URI.
    */
-  static Object object(const Context &ctx, const std::string &uri);
+  static Object object(const Context& ctx, const std::string& uri);
 
   /**
    * Deletes a tiledb object.
@@ -103,7 +103,7 @@ class Object {
    * @param ctx The TileDB context
    * @param uri The path to the object to be deleted.
    */
-  static void remove(const Context &ctx, const std::string &uri);
+  static void remove(const Context& ctx, const std::string& uri);
 
   /**
    * Moves/renames a tiledb object.
@@ -115,9 +115,9 @@ class Object {
    *     an error.
    */
   static void move(
-      const Context &ctx,
-      const std::string &old_uri,
-      const std::string &new_uri,
+      const Context& ctx,
+      const std::string& old_uri,
+      const std::string& new_uri,
       bool force);
 
  private:
@@ -137,7 +137,7 @@ class Object {
 /* ********************************* */
 
 /** Writes object in string format to an output stream. */
-std::ostream &operator<<(std::ostream &os, const Object &obj);
+std::ostream& operator<<(std::ostream& os, const Object& obj);
 
 }  // namespace tiledb
 

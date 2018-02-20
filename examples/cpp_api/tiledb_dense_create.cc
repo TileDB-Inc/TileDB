@@ -62,7 +62,7 @@ int main() {
   // Check array schema
   try {
     schema.check();
-  } catch (tiledb::TileDBError &e) {
+  } catch (tiledb::TileDBError& e) {
     std::cout << e.what() << "\n";
     return -1;
   }

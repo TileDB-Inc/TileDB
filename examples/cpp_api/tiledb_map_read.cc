@@ -78,7 +78,7 @@ int main() {
   try {
     int err = map[12345]["a1"];
     (void)err;
-  } catch (tiledb::TileDBError &e) {
+  } catch (tiledb::TileDBError& e) {
     std::cout << e.what() << "\n";
   }
 

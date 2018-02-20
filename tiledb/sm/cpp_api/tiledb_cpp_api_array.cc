@@ -36,12 +36,12 @@
 
 namespace tiledb {
 
-void Array::consolidate(const Context &ctx, const std::string &uri) {
+void Array::consolidate(const Context& ctx, const std::string& uri) {
   ctx.handle_error(tiledb_array_consolidate(ctx, uri.c_str()));
 }
 
-void Array::create(const std::string &uri, const ArraySchema &schema) {
-  auto &ctx = schema.context();
+void Array::create(const std::string& uri, const ArraySchema& schema) {
+  auto& ctx = schema.context();
   ctx.handle_error(tiledb_array_schema_check(ctx, schema));
   ctx.handle_error(tiledb_array_create(ctx, uri.c_str(), schema));
 }

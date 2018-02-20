@@ -52,7 +52,7 @@ int main() {
   // Delete an invalid path
   try {
     tiledb::Object::remove(ctx, "invalid_path");
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cout << "Failed to delete invalid path\n";
   }
 

@@ -61,7 +61,7 @@ class Context {
   Context();
 
   /** Constructor with config paramters. */
-  explicit Context(const Config &config);
+  explicit Context(const Config& config);
 
   /* ********************************* */
   /*                API                */
@@ -79,18 +79,17 @@ class Context {
   std::shared_ptr<tiledb_ctx_t> ptr() const;
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_ctx_t *() const;
+  operator tiledb_ctx_t*() const;
 
   /**
    * Sets the error handler callback. If none is set, the
    * `default_error_handler` is used.
    */
-  Context &set_error_handler(
-      const std::function<void(const std::string &)> &fn);
+  Context& set_error_handler(const std::function<void(const std::string&)>& fn);
 
   /** Get the configuration of the context. **/
   Config config() const {
-    tiledb_config_t *c;
+    tiledb_config_t* c;
     handle_error(tiledb_ctx_get_config(ctx_.get(), &c));
     return Config(&c);
   }
@@ -114,10 +113,10 @@ class Context {
    *
    * @param msg An error message.
    */
-  static void default_error_handler(const std::string &msg);
+  static void default_error_handler(const std::string& msg);
 
   /** Wrapper function for freeing a context C object. */
-  static void free(tiledb_ctx_t *ctx);
+  static void free(tiledb_ctx_t* ctx);
 
  private:
   /* ********************************* */
@@ -128,7 +127,7 @@ class Context {
   std::shared_ptr<tiledb_ctx_t> ctx_;
 
   /** An error handler callback. */
-  std::function<void(const std::string &)> error_handler_;
+  std::function<void(const std::string&)> error_handler_;
 };
 
 }  // namespace tiledb

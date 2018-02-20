@@ -42,14 +42,14 @@
 namespace tiledb {
 
 struct TileDBError : std::runtime_error {
-  TileDBError(const std::string &msg)
+  TileDBError(const std::string& msg)
       : std::runtime_error(msg) {
   }
 };
 
 /** Exception indicating a mismatch between a static and runtime type **/
 struct TypeError : public TileDBError {
-  TypeError(const std::string &msg)
+  TypeError(const std::string& msg)
       : TileDBError(msg) {
   }
 
@@ -64,14 +64,14 @@ struct TypeError : public TileDBError {
 
 /** Exception indicating the requested operation does not match array schema **/
 struct SchemaMismatch : public TileDBError {
-  SchemaMismatch(const std::string &msg)
+  SchemaMismatch(const std::string& msg)
       : TileDBError(msg) {
   }
 };
 
 /** Error related to attributes **/
 struct AttributeError : public TileDBError {
-  AttributeError(const std::string &msg)
+  AttributeError(const std::string& msg)
       : TileDBError(msg) {
   }
 };

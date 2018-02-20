@@ -39,7 +39,7 @@
 namespace tiledb {
 namespace impl {
 
-MapIter::MapIter(Map &map, bool end)
+MapIter::MapIter(Map& map, bool end)
     : map_(&map)
     , deleter_(map.context())
     , done_((int)end) {
@@ -49,14 +49,14 @@ MapIter::~MapIter() {
   map_->flush();
 }
 
-MapIter &MapIter::operator++() {
-  auto &ctx = map_->context();
+MapIter& MapIter::operator++() {
+  auto& ctx = map_->context();
   if (done_)
     return *this;
   ctx.handle_error(tiledb_kv_iter_done(ctx, iter_.get(), &done_));
   if (done_)
     return *this;
-  tiledb_kv_item_t *p;
+  tiledb_kv_item_t* p;
   ctx.handle_error(tiledb_kv_iter_here(ctx, iter_.get(), &p));
   item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
   ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
@@ -69,14 +69,14 @@ MapIter &MapIter::operator++() {
 }
 
 void MapIter::init() {
-  auto &ctx = map_->context();
+  auto& ctx = map_->context();
   MapSchema schema(ctx, map_->uri());
-  std::vector<const char *> names;
+  std::vector<const char*> names;
   auto attrs = schema.attributes();
-  for (const auto &a : attrs) {
+  for (const auto& a : attrs) {
     names.push_back(a.first.c_str());
   }
-  tiledb_kv_iter_t *p;
+  tiledb_kv_iter_t* p;
   ctx.handle_error(tiledb_kv_iter_create(
       ctx, &p, map_->uri().c_str(), names.data(), (unsigned)attrs.size()));
   iter_ = std::shared_ptr<tiledb_kv_iter_t>(p, deleter_);

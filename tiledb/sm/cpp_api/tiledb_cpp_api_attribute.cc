@@ -40,7 +40,7 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Attribute::Attribute(const Context &ctx, tiledb_attribute_t *attr)
+Attribute::Attribute(const Context& ctx, tiledb_attribute_t* attr)
     : ctx_(ctx)
     , deleter_(ctx) {
   attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
@@ -51,21 +51,21 @@ Attribute::Attribute(const Context &ctx, tiledb_attribute_t *attr)
 /* ********************************* */
 
 std::string Attribute::name() const {
-  auto &ctx = ctx_.get();
-  const char *name;
+  auto& ctx = ctx_.get();
+  const char* name;
   ctx.handle_error(tiledb_attribute_get_name(ctx, attr_.get(), &name));
   return name;
 }
 
 tiledb_datatype_t Attribute::type() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   tiledb_datatype_t type;
   ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
   return type;
 }
 
 uint64_t Attribute::cell_size() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   uint64_t cell_size;
   ctx.handle_error(
       tiledb_attribute_get_cell_size(ctx, attr_.get(), &cell_size));
@@ -73,27 +73,27 @@ uint64_t Attribute::cell_size() const {
 }
 
 unsigned Attribute::cell_val_num() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   unsigned num;
   ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr_.get(), &num));
   return num;
 }
 
 uint64_t Attribute::type_size() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   tiledb_datatype_t type;
   ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
   return tiledb_datatype_size(type);
 }
 
-Attribute &Attribute::set_cell_val_num(unsigned num) {
-  auto &ctx = ctx_.get();
+Attribute& Attribute::set_cell_val_num(unsigned num) {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, attr_.get(), num));
   return *this;
 }
 
 Compressor Attribute::compressor() const {
-  auto &ctx = ctx_.get();
+  auto& ctx = ctx_.get();
   tiledb_compressor_t compressor;
   int level;
   ctx.handle_error(
@@ -102,8 +102,8 @@ Compressor Attribute::compressor() const {
   return cmp;
 }
 
-Attribute &Attribute::set_compressor(Compressor c) {
-  auto &ctx = ctx_.get();
+Attribute& Attribute::set_compressor(Compressor c) {
+  auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_attribute_set_compressor(
       ctx, attr_.get(), c.compressor(), c.level()));
   return *this;
@@ -113,7 +113,7 @@ std::shared_ptr<tiledb_attribute_t> Attribute::ptr() const {
   return attr_;
 }
 
-Attribute::operator tiledb_attribute_t *() const {
+Attribute::operator tiledb_attribute_t*() const {
   return attr_.get();
 }
 
@@ -122,8 +122,8 @@ Attribute::operator tiledb_attribute_t *() const {
 /* ********************************* */
 
 Attribute Attribute::create(
-    const Context &ctx, const std::string &name, tiledb_datatype_t type) {
-  tiledb_attribute_t *attr;
+    const Context& ctx, const std::string& name, tiledb_datatype_t type) {
+  tiledb_attribute_t* attr;
   ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
   return Attribute(ctx, attr);
 }
@@ -132,7 +132,7 @@ Attribute Attribute::create(
 /*               MISC                */
 /* ********************************* */
 
-std::ostream &operator<<(std::ostream &os, const Attribute &a) {
+std::ostream& operator<<(std::ostream& os, const Attribute& a) {
   os << "Attr<" << a.name() << ',' << tiledb::impl::to_str(a.type()) << ','
      << (a.cell_val_num() == TILEDB_VAR_NUM ? "VAR" :
                                               std::to_string(a.cell_val_num()))

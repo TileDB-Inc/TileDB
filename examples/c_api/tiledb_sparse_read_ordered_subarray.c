@@ -44,27 +44,27 @@
 
 int main() {
   // Create TileDB context
-  tiledb_ctx_t *ctx;
+  tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
   // Calculate maximum buffer sizes for each attribute
-  const char *attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t buffer_sizes[5];
   uint64_t subarray[] = {3, 4, 2, 4};
   tiledb_array_compute_max_read_buffer_sizes(
       ctx, "my_sparse_array", subarray, attributes, 4, &buffer_sizes[0]);
 
   // Prepare cell buffers
-  int *buffer_a1 = malloc(buffer_sizes[0]);
-  uint64_t *buffer_a2 = malloc(buffer_sizes[1]);
-  char *buffer_var_a2 = malloc(buffer_sizes[2]);
-  float *buffer_a3 = malloc(buffer_sizes[3]);
-  uint64_t *buffer_coords = malloc(buffer_sizes[4]);
-  void *buffers[] = {
+  int* buffer_a1 = malloc(buffer_sizes[0]);
+  uint64_t* buffer_a2 = malloc(buffer_sizes[1]);
+  char* buffer_var_a2 = malloc(buffer_sizes[2]);
+  float* buffer_a3 = malloc(buffer_sizes[3]);
+  uint64_t* buffer_coords = malloc(buffer_sizes[4]);
+  void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
 
   // Create query
-  tiledb_query_t *query;
+  tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);

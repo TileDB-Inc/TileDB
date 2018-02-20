@@ -56,7 +56,7 @@ class Array {
    * @param ctx The TileDB context.
    * @param uri The URI of the array.
    */
-  static void consolidate(const Context &ctx, const std::string &uri);
+  static void consolidate(const Context& ctx, const std::string& uri);
 
   /**
    * Creates an array on persistent storage from a schema definition.
@@ -64,7 +64,7 @@ class Array {
    * @param uri The URI of the array.
    * @param schema The array schema.
    */
-  static void create(const std::string &uri, const ArraySchema &schema);
+  static void create(const std::string& uri, const ArraySchema& schema);
 
   /**
    * Get the non-empty domain of an array. This returns the bounding
@@ -78,7 +78,7 @@ class Array {
    */
   template <typename T>
   static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
-      const std::string &uri, const ArraySchema &schema) {
+      const std::string& uri, const ArraySchema& schema) {
     using DataT = typename impl::type_from_native<T>::type;
     impl::type_check<DataT>(schema.domain().type());
 
@@ -86,7 +86,7 @@ class Array {
 
     auto dims = schema.domain().dimensions();
     std::vector<T> buf(dims.size() * 2);
-    auto &ctx = schema.context();
+    auto& ctx = schema.context();
     int empty;
     ctx.handle_error(tiledb_array_get_non_empty_domain(
         ctx, uri.c_str(), buf.data(), &empty));
@@ -114,7 +114,7 @@ class Array {
    */
   template <typename T>
   static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
-      const Context &ctx, const std::string &uri) {
+      const Context& ctx, const std::string& uri) {
     ArraySchema schema(ctx, uri);
     return non_empty_domain<T>(uri, schema);
   }
@@ -138,19 +138,19 @@ class Array {
   template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(
-      const std::string &uri,
-      const ArraySchema &schema,
-      const std::vector<T> &subarray) {
+      const std::string& uri,
+      const ArraySchema& schema,
+      const std::vector<T>& subarray) {
     using DataT = typename impl::type_from_native<T>::type;
     auto ctx = schema.context();
     impl::type_check<DataT>(schema.domain().type());
 
     std::vector<uint64_t> sizes;
     auto attrs = schema.attributes();
-    std::vector<const char *> names;
+    std::vector<const char*> names;
 
     unsigned nbuffs = 0, attr_num = 0;
-    for (const auto &a : attrs) {
+    for (const auto& a : attrs) {
       nbuffs += a.second.cell_val_num() == TILEDB_VAR_NUM ? 2 : 1;
       ++attr_num;
       names.push_back(a.first.c_str());
@@ -172,7 +172,7 @@ class Array {
 
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
     unsigned sid = 0;
-    for (const auto &a : attrs) {
+    for (const auto& a : attrs) {
       auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
       ret[a.first] = var ? std::pair<uint64_t, uint64_t>(
                                sizes[sid] / TILEDB_OFFSET_SIZE,
@@ -208,9 +208,9 @@ class Array {
   template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(
-      const Context &ctx,
-      const std::string &uri,
-      const std::vector<T> &subarray) {
+      const Context& ctx,
+      const std::string& uri,
+      const std::vector<T>& subarray) {
     ArraySchema schema(ctx, uri);
     return max_buffer_elements<T>(uri, schema, subarray);
   }

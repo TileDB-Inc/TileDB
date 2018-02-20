@@ -42,8 +42,8 @@ namespace impl {
 /*            PUBLIC API             */
 /* ********************************* */
 
-VFSFilebuf *VFSFilebuf::open(
-    const std::string &uri, std::ios::openmode openmode) {
+VFSFilebuf* VFSFilebuf::open(
+    const std::string& uri, std::ios::openmode openmode) {
   close();
   uri_ = uri;
 
@@ -58,8 +58,8 @@ VFSFilebuf *VFSFilebuf::open(
   } else
     return nullptr;
 
-  tiledb_vfs_fh_t *fh;
-  auto &ctx = vfs_.get().context();
+  tiledb_vfs_fh_t* fh;
+  auto& ctx = vfs_.get().context();
   if (tiledb_vfs_open(ctx, vfs_.get().ptr().get(), uri.c_str(), mode, &fh) !=
       TILEDB_OK) {
     return nullptr;
@@ -73,9 +73,9 @@ VFSFilebuf *VFSFilebuf::open(
   return this;
 }
 
-VFSFilebuf *VFSFilebuf::close() {
+VFSFilebuf* VFSFilebuf::close() {
   if (is_open()) {
-    auto &ctx = vfs_.get().context();
+    auto& ctx = vfs_.get().context();
     ctx.handle_error(tiledb_vfs_close(ctx, fh_.get()));
   }
   uri_ = "";
@@ -142,7 +142,7 @@ std::streamsize VFSFilebuf::showmanyc() {
   return std::streamsize(file_size() - offset_);
 }
 
-std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
+std::streamsize VFSFilebuf::xsgetn(char_type* s, std::streamsize n) {
   uint64_t fsize = file_size();
   std::streamsize readlen = n;
   if (offset_ + n >= fsize) {
@@ -150,7 +150,7 @@ std::streamsize VFSFilebuf::xsgetn(char_type *s, std::streamsize n) {
   }
   if (readlen == 0)
     return traits_type::eof();
-  auto &ctx = vfs_.get().context();
+  auto& ctx = vfs_.get().context();
   if (tiledb_vfs_read(
           ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) !=
       TILEDB_OK) {
@@ -182,10 +182,10 @@ std::streambuf::int_type VFSFilebuf::uflow() {
 /*           PROTECTED PUT           */
 /* ********************************* */
 
-std::streamsize VFSFilebuf::xsputn(const char_type *s, std::streamsize n) {
+std::streamsize VFSFilebuf::xsputn(const char_type* s, std::streamsize n) {
   if (offset_ != 0 && offset_ != file_size())
     return traits_type::eof();
-  auto &ctx = vfs_.get().context();
+  auto& ctx = vfs_.get().context();
   if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) !=
       TILEDB_OK) {
     return traits_type::eof();
@@ -212,7 +212,7 @@ uint64_t VFSFilebuf::file_size() const {
     return 0;
   try {
     return vfs_.get().file_size(uri_);
-  } catch (TileDBError &e) {
+  } catch (TileDBError& e) {
     return 0;
   }
 }
