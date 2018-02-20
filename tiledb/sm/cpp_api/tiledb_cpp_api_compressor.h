@@ -91,8 +91,8 @@ class Compressor {
         return "ZSTD";
       case TILEDB_LZ4:
         return "LZ4";
-      case TILEDB_BLOSC:
-        return "BLOSC";
+      case TILEDB_BLOSC_LZ:
+        return "BLOSC_LZ";
       case TILEDB_BLOSC_LZ4:
         return "BLOSC_LZ4";
       case TILEDB_BLOSC_LZ4HC:

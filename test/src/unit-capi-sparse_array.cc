@@ -669,17 +669,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 

@@ -45,7 +45,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<char>(ctx, "a2");
   auto a3 = Attribute::create<double>(ctx, "a3");
-  a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
+  a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
   a2.set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_cell_val_num(2);
 
@@ -66,7 +66,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
-    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC);
+    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 2);
 
@@ -93,7 +93,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
-    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC);
+    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 2);
   }

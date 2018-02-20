@@ -52,7 +52,7 @@ int main() {
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
   schema.set_coords_compressor({TILEDB_ZSTD, 4});
-  schema.set_offsets_compressor({TILEDB_BLOSC, 5});
+  schema.set_offsets_compressor({TILEDB_BLOSC_LZ, 5});
 
   // Print array schema contents again
   std::cout << "Second dump:\n";

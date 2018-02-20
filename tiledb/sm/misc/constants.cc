@@ -191,7 +191,7 @@ const char* zstd_str = "ZSTD";
 const char* lz4_str = "LZ4";
 
 /** String describing BLOSC. */
-const char* blosc_str = "BLOSC_LZ";
+const char* blosc_lz_str = "BLOSC_LZ";
 
 /** String describing BLOSC_LZ4. */
 const char* blosc_lz4_str = "BLOSC_LZ4";

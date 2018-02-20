@@ -59,7 +59,7 @@ int main() {
   // Create attributes
   tiledb_attribute_t* a1;
   tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC, -1);
+  tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC_LZ, -1);
   tiledb_attribute_set_cell_val_num(ctx, a1, 1);
   tiledb_attribute_t* a2;
   tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);

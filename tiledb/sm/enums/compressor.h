@@ -57,8 +57,8 @@ inline const char* compressor_str(Compressor type) {
       return constants::zstd_str;
     case Compressor::LZ4:
       return constants::lz4_str;
-    case Compressor::BLOSC:
-      return constants::blosc_str;
+    case Compressor::BLOSC_LZ:
+      return constants::blosc_lz_str;
     case Compressor::BLOSC_LZ4:
       return constants::blosc_lz4_str;
     case Compressor::BLOSC_LZ4HC:

@@ -192,7 +192,7 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_attribute_t* a1;
   int rc = tiledb_attribute_create(ctx_, &a1, ATTR_1, TILEDB_INT32);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC, -1);
+  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
