@@ -182,7 +182,7 @@ extern const char* zstd_str;
 extern const char* lz4_str;
 
 /** String describing BLOSC. */
-extern const char* blosc_str;
+extern const char* blosc_lz_str;
 
 /** String describing BLOSC_LZ4. */
 extern const char* blosc_lz4_str;

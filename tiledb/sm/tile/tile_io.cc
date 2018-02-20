@@ -317,7 +317,7 @@ Status TileIO::compress_one_tile(Tile* tile) {
       case Compressor::LZ4:
         st = LZ4::compress(level, input_buffer, buffer_);
         break;
-      case Compressor::BLOSC:
+      case Compressor::BLOSC_LZ:
         st =
             Blosc::compress("blosclz", type_size, level, input_buffer, buffer_);
         break;
@@ -462,7 +462,7 @@ Status TileIO::decompress_one_tile(Tile* tile) {
       case Compressor::LZ4:
         st = LZ4::decompress(input_buffer, tile->buffer());
         break;
-      case Compressor::BLOSC:
+      case Compressor::BLOSC_LZ:
 #undef BLOSC_LZ4
       case Compressor::BLOSC_LZ4:
 #undef BLOSC_LZ4HC
@@ -503,7 +503,7 @@ uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {
       return ZStd::overhead(nbytes);
     case Compressor::LZ4:
       return LZ4::overhead(nbytes);
-    case Compressor::BLOSC:
+    case Compressor::BLOSC_LZ:
 #undef BLOSC_LZ4
     case Compressor::BLOSC_LZ4:
 #undef BLOSC_LZ4HC

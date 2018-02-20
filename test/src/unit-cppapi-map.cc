@@ -46,7 +46,7 @@ struct CPPMapFx {
     auto a1 = Attribute::create<int>(ctx, "a1");
     auto a2 = Attribute::create<char>(ctx, "a2");
     auto a3 = Attribute::create<double>(ctx, "a3");
-    a1.set_compressor({TILEDB_BLOSC, -1}).set_cell_val_num(1);
+    a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
     a2.set_cell_val_num(TILEDB_VAR_NUM);
     a3.set_cell_val_num(2);
 

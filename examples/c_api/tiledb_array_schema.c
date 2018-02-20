@@ -56,7 +56,7 @@ int main() {
   tiledb_array_schema_set_capacity(ctx, array_schema, 10);
   tiledb_array_schema_set_coords_compressor(ctx, array_schema, TILEDB_ZSTD, 4);
   tiledb_array_schema_set_offsets_compressor(
-      ctx, array_schema, TILEDB_BLOSC, 5);
+      ctx, array_schema, TILEDB_BLOSC_LZ, 5);
 
   // Print array schema contents again
   printf("Second dump:\n");
@@ -124,7 +124,7 @@ int main() {
   printf(", %d)\n", coords_compression_level);
   printf(
       "- Offsets compressor: %s",
-      (offsets_compressor == TILEDB_BLOSC) ? "(BLOSC" : "error");
+      (offsets_compressor == TILEDB_BLOSC_LZ) ? "(BLOSC_LZ" : "error");
   printf(", %d)\n", offsets_compression_level);
 
   // Print the attribute names

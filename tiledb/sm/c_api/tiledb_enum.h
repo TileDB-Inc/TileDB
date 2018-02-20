@@ -109,7 +109,7 @@
     /** LZ4 compressor */
     TILEDB_COMPRESSOR_ENUM(LZ4),
     /** Blosc compressor using LZ */
-    TILEDB_COMPRESSOR_ENUM(BLOSC),
+    TILEDB_COMPRESSOR_ENUM(BLOSC_LZ),
     /** Blosc compressor using LZ4 */
     TILEDB_COMPRESSOR_ENUM(BLOSC_LZ4),
     /** Blosc compressor using LZ4HC */
