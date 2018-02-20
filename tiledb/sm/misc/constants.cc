@@ -349,7 +349,7 @@ const uint64_t s3_file_buffer_size = 5 * 1024 * 1024;
 const char* s3_region = "";
 
 /** S3 endpoint override. */
-const char* s3_endpoint_override = "localhost:9000";
+const char* s3_endpoint_override = "localhost:9999";
 
 /** HDFS default kerb ticket cache path. */
 const char* hdfs_kerb_ticket_cache_path = "";

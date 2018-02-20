@@ -184,7 +184,7 @@ void check_save_to_file() {
   ss << "sm.fragment_metadata_cache_size 10000000\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
-  ss << "vfs.s3.endpoint_override localhost:9000\n";
+  ss << "vfs.s3.endpoint_override localhost:9999\n";
   ss << "vfs.s3.file_buffer_size 5242880\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.scheme http\n";
@@ -348,7 +348,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "";
-  all_param_values["vfs.s3.endpoint_override"] = "localhost:9000";
+  all_param_values["vfs.s3.endpoint_override"] = "localhost:9999";
   all_param_values["vfs.s3.use_virtual_addressing"] = "false";
   all_param_values["vfs.s3.file_buffer_size"] = "5242880";
   all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
@@ -360,7 +360,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "";
-  vfs_param_values["s3.endpoint_override"] = "localhost:9000";
+  vfs_param_values["s3.endpoint_override"] = "localhost:9999";
   vfs_param_values["s3.use_virtual_addressing"] = "false";
   vfs_param_values["s3.file_buffer_size"] = "5242880";
   vfs_param_values["s3.connect_timeout_ms"] = "3000";
@@ -372,7 +372,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
   s3_param_values["region"] = "";
-  s3_param_values["endpoint_override"] = "localhost:9000";
+  s3_param_values["endpoint_override"] = "localhost:9999";
   s3_param_values["use_virtual_addressing"] = "false";
   s3_param_values["file_buffer_size"] = "5242880";
   s3_param_values["connect_timeout_ms"] = "3000";

@@ -393,26 +393,27 @@ Status S3::ls(const URI& uri, std::vector<std::string>* paths) const {
         Status::S3Error("Error while listing directory " + uri.to_string()));
 
   for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
+    // Get key
     std::string file(object.GetKey().c_str());
-    if (file.front() == '/') {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
-    } else {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + "/" + file);
-    }
+    if (file.front() != '/')
+      file = std::string("/") + file;
+
+    // Skip the directory itself
+    if (file == std::string(aws_uri.GetPath().c_str()))
+      continue;
+
+    // Push key in path list
+    paths->push_back(
+        "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
   }
 
   for (const auto& object :
        listObjectsOutcome.GetResult().GetCommonPrefixes()) {
     std::string file(object.GetPrefix().c_str());
-    if (file.front() == '/') {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
-    } else {
-      paths->push_back(
-          "s3://" + std::string(aws_uri.GetAuthority().c_str()) + "/" + file);
-    }
+    if (file.front() != '/')
+      file = std::string("/") + file;
+    paths->push_back(
+        "s3://" + std::string(aws_uri.GetAuthority().c_str()) + file);
   }
 
   return Status::Ok();
@@ -631,11 +632,21 @@ Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
         "Error while listing s3 directory " + old_uri.to_string()));
 
   for (const auto& object : listObjectsOutcome.GetResult().GetContents()) {
+    // Get key
     std::string key = object.GetKey().c_str();
+    if (key.front() != '/')
+      key = std::string("/") + key;
+
+    // Skip the directory itself
+    if (key == std::string(src_uri.GetPath().c_str()))
+      continue;
+
+    // Make full source file path
     auto src_file =
         std::string("s3://") +
         join_authority_and_path(src_uri.GetAuthority().c_str(), key).c_str();
 
+    // Create new destination file name
     std::string new_key =
         ((key.front() != '/') ? std::string("/") : std::string("")) + key;
     replace(
@@ -643,6 +654,7 @@ Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
         std::string(src_uri.GetPath().c_str()),
         std::string(dst_uri.GetPath().c_str()));
 
+    // Create new file path
     auto dst_file =
         std::string("s3://") +
         join_authority_and_path(dst_uri.GetAuthority().c_str(), new_key)
@@ -688,12 +700,12 @@ Status S3::copy_file(const URI& old_uri, const URI& new_uri) {
   Aws::Http::URI src_uri = old_uri.c_str();
   Aws::Http::URI dst_uri = new_uri.c_str();
   Aws::S3::Model::CopyObjectRequest copyObjectRequest;
-  copyObjectRequest.WithCopySource(
+  copyObjectRequest.SetCopySource(
       join_authority_and_path(
           src_uri.GetAuthority().c_str(), src_uri.GetPath().c_str())
           .c_str());
-  copyObjectRequest.WithBucket(dst_uri.GetAuthority());
-  copyObjectRequest.WithKey(dst_uri.GetPath());
+  copyObjectRequest.SetBucket(dst_uri.GetAuthority());
+  copyObjectRequest.SetKey(dst_uri.GetPath());
 
   auto copyObjectOutcome = client_->CopyObject(copyObjectRequest);
   if (!copyObjectOutcome.IsSuccess()) {
