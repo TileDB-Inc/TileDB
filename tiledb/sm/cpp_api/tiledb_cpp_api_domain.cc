@@ -146,13 +146,6 @@ tiledb_datatype_t Domain::type() const {
   return type;
 }
 
-unsigned Domain::dim_num() const {
-  unsigned rank;
-  auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &rank));
-  return rank;
-}
-
 Domain& Domain::add_dimension(const Dimension& d) {
   auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_domain_add_dimension(ctx, domain_.get(), d));

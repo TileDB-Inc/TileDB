@@ -43,12 +43,42 @@
 #include "tiledb_cpp_api_object.h"
 #include "tiledb_cpp_api_type.h"
 
+#include <array>
 #include <functional>
 #include <memory>
+#include <type_traits>
 
 namespace tiledb {
 
-/** Implements the attribute functionality. */
+/**
+ * Describes an attribute of an Array cell.
+ *
+ * @details
+ * An attribute specifies a datatype for a particular parameter in each
+ * array cell. There are 3 supported attribute types:
+ *
+ * - Fundamental types, such as char, int, double, uint64_t, etc..
+ * - Fixed sized arrays: std::array<T, N> where T is fundamental
+ * - Variable length data: std::string, std::vector<T> where T is fundamental
+ *
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+ * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+ * auto a3 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a3");
+ *
+ * // Change compression scheme
+ * a1.set_compressor({TILEDB_BLOSC, -1});
+ * a1.cell_val_num(); // 1
+ * a2.cell_val_num(); // Variable sized, TILEDB_VAR_NUM
+ * a3.cell_val_num(); // 2
+ * a3.cell_size(); // 3
+ * a3.type_size(); // sizeof(float)
+ *
+ * tiledb::ArraySchema schema(ctx);
+ * schema.add_attribute(a1);
+ * @endcode
+ */
 class Attribute {
  public:
   /* ********************************* */
@@ -80,9 +110,6 @@ class Attribute {
   /** Returns the number of values stored in each cell. */
   unsigned cell_val_num() const;
 
-  /** Sets the number of attribute values per cell. */
-  Attribute& set_cell_val_num(unsigned num);
-
   /** Returns the attribute compressor. */
   Compressor compressor() const;
 
@@ -108,17 +135,21 @@ class Attribute {
   /**
    * Factory function for creating a new attribute with datatype T.
    *
-   * @tparam T int, char, etc...
+   * @tparam T Datatype of the attribute. Can either be fundamental,
+   *         std::array<T,N>, std::string, or std::vector<T>. Trivially
+   *         copyable classes, defined by std::is_trivially_copyable,
+   *         are allowed. In this case the underlying attribute type is
+   *         char, and the size is sizeof(T)
    * @param ctx The TileDB context.
    * @param name The attribute name.
-   * @return A new `Attribute` object.
+   * @return A new Attribute object.
    */
   template <typename T>
   static Attribute create(const Context& ctx, const std::string& name) {
-    static_assert(
-        std::is_fundamental<T>::value,
-        "Template type must be a fundamental type.");
-    return create(ctx, name, impl::type_from_native<T>::type::tiledb_datatype);
+    using DataT = typename impl::TypeHandler<T>;
+    auto a = create(ctx, name, DataT::tiledb_type);
+    a.set_cell_val_num(DataT::tiledb_num);
+    return a;
   }
 
  private:
@@ -136,8 +167,11 @@ class Attribute {
   std::shared_ptr<tiledb_attribute_t> attr_;
 
   /* ********************************* */
-  /*     PRIVATE STATIC FUNCTIONS      */
+  /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
+
+  /** Sets the number of attribute values per cell. */
+  Attribute& set_cell_val_num(unsigned num);
 
   /** Creates an attribute with the input name and datatype. */
   static Attribute create(
@@ -150,26 +184,6 @@ class Attribute {
 
 /** Gets a string representation of an attribute for an output stream. */
 std::ostream& operator<<(std::ostream& os, const Attribute& a);
-
-namespace impl {
-
-/**
- * Checks if type matches the attribute and expected number of cell values.
- *
- * @tparam DataT Type `attr` should be (tiledb::impl::*)
- * @param attr Attribute name
- * @param len Length of attribute value to check
- */
-template <typename DataT>
-void type_check_attr(const Attribute& a, unsigned len) {
-  auto expected_num = a.cell_val_num();
-  impl::type_check<DataT>(a.type());
-  if (expected_num != TILEDB_VAR_NUM && len != expected_num) {
-    throw AttributeError("Attribute size does not match expected number.");
-  }
-}
-
-}  // namespace impl
 
 }  // namespace tiledb
 

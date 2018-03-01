@@ -36,6 +36,15 @@
 #include "tiledb_cpp_api_map.h"
 
 namespace tiledb {
+impl::MapItemProxy MapItem::operator[](const std::string& attr) {
+  return impl::MapItemProxy(attr, *this);
+}
+
+impl::MultiMapItemProxy MapItem::operator[](
+    const std::vector<std::string>& attrs) {
+  return impl::MultiMapItemProxy(attrs, *this);
+}
+
 bool impl::MapItemProxy::add_to_map() const {
   if (item.map_ != nullptr) {
     item.map_->add_item(item);

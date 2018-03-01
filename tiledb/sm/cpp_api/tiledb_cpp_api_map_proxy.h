@@ -209,7 +209,7 @@ class MapItemProxy {
 
   /** Set the value **/
   template <typename T>
-  void set(const T& val) {
+  void set(T val) {
     item.set<T>(attr, val);
     add_to_map();
   }

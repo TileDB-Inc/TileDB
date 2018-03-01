@@ -62,7 +62,8 @@ MapIter& MapIter::operator++() {
   ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
   if (limit_type_) {
     auto t = item_->key_info();
-    if (t.first != type_ || (only_single_ && t.second > type_size(type_)))
+    if (t.first != type_ ||
+        (num_ != TILEDB_VAR_NUM && t.second / type_size(t.first) != num_))
       operator++();
   }
   return *this;

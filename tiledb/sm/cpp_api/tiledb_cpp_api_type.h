@@ -38,191 +38,246 @@
 #include "tiledb.h"
 
 #include <cstdint>
+#include <cstring>
+#include <iterator>
+#include <limits>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+// Workaround for GCC < 5.0
+#if __GNUG__ && __GNUC__ < 5
+#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
+#else
+#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
+#endif
 
 namespace tiledb {
 
 namespace impl {
 
+template <typename T>
+struct defer : std::false_type {};
+
+template <typename T>
+using enable_trivial = typename std::enable_if<
+    IS_TRIVIALLY_COPYABLE(T) && !std::is_pointer<T>::value &&
+    !std::is_array<T>::value>::type;
+
+// Default for all copyable types is CHAR
+template <typename T>
+struct type_to_tiledb {
+  static_assert(IS_TRIVIALLY_COPYABLE(T), "Type must be trivially copyable.");
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_CHAR;
+};
+
+template <>
+struct type_to_tiledb<int8_t> {
+  using type = int8_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT8;
+};
+
+template <>
+struct type_to_tiledb<uint8_t> {
+  using type = uint8_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT8;
+};
+
+template <>
+struct type_to_tiledb<int16_t> {
+  using type = int16_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT16;
+};
+
+template <>
+struct type_to_tiledb<uint16_t> {
+  using type = uint16_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT16;
+};
+
+template <>
+struct type_to_tiledb<int32_t> {
+  using type = int32_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT32;
+};
+
+template <>
+struct type_to_tiledb<uint32_t> {
+  using type = uint32_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT32;
+};
+
+template <>
+struct type_to_tiledb<int64_t> {
+  using type = int64_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT64;
+};
+
+template <>
+struct type_to_tiledb<uint64_t> {
+  using type = uint64_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT64;
+};
+
+template <>
+struct type_to_tiledb<float> {
+  using type = float;
+  static const tiledb_datatype_t tiledb_type = TILEDB_FLOAT32;
+};
+
+template <>
+struct type_to_tiledb<double> {
+  using type = double;
+  static const tiledb_datatype_t tiledb_type = TILEDB_FLOAT64;
+};
+
 /**
- * Repr of a datatype / tiledb datatype.
+ * A type handler provides a mapping from a C++ type to a TileDB
+ * representation.
  *
- * @tparam T underlying type
- * @tparam TDB_TYPE tiledb_data_type repr
+ * @details
+ * Expected members:
+ *
+ * - value_type : The type, e.x. int for T=int, or char for T=std::string
+ * - tiledb_type : TileDB datatype used to store T
+ * - tiledb_num : The number of tiledb_type needed to store T.
+ *      std::numeric_limits<unsigned>::max() for variable number.
+ * - size : The number of elements in the type.
+ * - data : Pointer to a contigous region of data.
+ * - set : Given a T destination object and a data pointer, set T.
+ *
+ * @tparam T C++ type to handle
+ * @tparam Enable Parameter to use for SFINAE switching
  */
-template <typename T, tiledb_datatype_t TDB_TYPE>
-struct Type {
-  Type() = delete;
-  using type = T;
-  static constexpr tiledb_datatype_t tiledb_datatype = TDB_TYPE;
-  static constexpr const char* name =
-      std::is_same<T, char>::value ?
-          "char" :
-          (std::is_same<T, int8_t>::value ?
-               "int8_t" :
-               (std::is_same<T, uint8_t>::value ?
-                    "uint8_t" :
-                    (std::is_same<T, int16_t>::value ?
-                         "int16_t" :
-                         (std::is_same<T, uint16_t>::value ?
-                              "uint16_t" :
-                              (std::is_same<T, int32_t>::value ?
-                                   "int32_t" :
-                                   (std::is_same<T, uint32_t>::value ?
-                                        "uint32_t" :
-                                        (std::is_same<T, int64_t>::value ?
-                                             "int64_t" :
-                                             (std::is_same<T, uint64_t>::value ?
-                                                  "uint64_t" :
-                                                  (std::is_same<T, float>::
-                                                           value ?
-                                                       "float" :
-                                                       (std::is_same<
-                                                            T,
-                                                            double>::value ?
-                                                            "double" :
-                                                            "INVALID"))))))))));
-};
-
-using CHAR = Type<char, TILEDB_CHAR>;
-using INT8 = Type<int8_t, TILEDB_INT8>;
-using UINT8 = Type<uint8_t, TILEDB_UINT8>;
-using INT16 = Type<int16_t, TILEDB_INT16>;
-using UINT16 = Type<uint16_t, TILEDB_UINT16>;
-using INT32 = Type<int32_t, TILEDB_INT32>;
-using UINT32 = Type<uint32_t, TILEDB_UINT32>;
-using INT64 = Type<int64_t, TILEDB_INT64>;
-using UINT64 = Type<uint64_t, TILEDB_UINT64>;
-using FLOAT32 = Type<float, TILEDB_FLOAT32>;
-using FLOAT64 = Type<double, TILEDB_FLOAT64>;
-
-size_t type_size(tiledb_datatype_t type);
-
-template <typename T>
-struct always_false : std::false_type {};
-
-template <tiledb_datatype_t T>
-struct type_from_tiledb;
-
-template <>
-struct type_from_tiledb<TILEDB_CHAR> {
-  using type = CHAR;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_INT8> {
-  using type = INT8;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_UINT8> {
-  using type = UINT8;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_INT16> {
-  using type = INT16;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_UINT16> {
-  using type = UINT16;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_INT32> {
-  using type = INT32;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_UINT32> {
-  using type = UINT32;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_INT64> {
-  using type = INT64;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_UINT64> {
-  using type = UINT64;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_FLOAT32> {
-  using type = FLOAT32;
-};
-
-template <>
-struct type_from_tiledb<TILEDB_FLOAT64> {
-  using type = FLOAT64;
+template <typename T, typename Enable = void>
+struct TypeHandler {
+  static_assert(defer<T>::value, "No TypeHandler exists for type.");
 };
 
 template <typename T>
-struct type_from_native {
-  // always_false<T> means failure is only triggered if
-  // invalid specilization is instantiated.
-  static_assert(always_false<T>::value, "Invalid TileDB native type.");
+struct TypeHandler<T, enable_trivial<T>> {
+  using value_type = T;
+  static constexpr tiledb_datatype_t tiledb_type =
+      type_to_tiledb<T>::tiledb_type;
+  static constexpr unsigned tiledb_num =
+      sizeof(T) / sizeof(typename type_to_tiledb<T>::type);
+
+  static size_t size(const T&) {
+    return 1;
+  }
+
+  static value_type* data(T& v) {
+    return &v;
+  }
+
+  static value_type const* data(T const& v) {
+    return &v;
+  }
+
+  static void set(T& dest, const void* d, size_t size) {
+    if (size != sizeof(value_type))
+      throw std::runtime_error("Attempting to set type with incorrect size.");
+    memcpy(data(dest), d, size);
+  }
+};
+
+template <typename T>
+struct TypeHandler<std::basic_string<T>, enable_trivial<T>> {
+  using element_th = TypeHandler<T>;
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
+  static constexpr unsigned tiledb_num =
+      std::numeric_limits<unsigned>::max();  // TODO constexpr VAR_NUM
+
+  static size_t size(const std::basic_string<T>& v) {
+    return v.size();
+  }
+
+  static value_type* data(std::basic_string<T>& v) {
+    return const_cast<char*>(v.data());
+  }
+
+  static value_type const* data(std::basic_string<T> const& v) {
+    return v.data();
+  }
+
+  static void set(std::basic_string<T>& dest, const void* d, size_t size) {
+    auto num = size / sizeof(value_type);
+    dest.resize(num);
+    memcpy(data(dest), d, size);
+  }
 };
 
 template <>
-struct type_from_native<char> {
-  using type = CHAR;
+struct TypeHandler<const char*> {
+  using element_th = TypeHandler<char>;
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
+  static constexpr unsigned tiledb_num =
+      std::numeric_limits<unsigned>::max();  // TODO constexpr VAR_NUM
+
+  static size_t size(const char* v) {
+    return strlen(v);
+  }
+
+  static value_type const* data(const char* v) {
+    return v;
+  }
 };
 
-template <>
-struct type_from_native<int8_t> {
-  using type = INT8;
+template <typename T>
+struct TypeHandler<std::vector<T>, enable_trivial<T>> {
+  using element_th = TypeHandler<T>;
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
+  static constexpr unsigned tiledb_num =
+      std::numeric_limits<unsigned>::max();  // TODO constexpr VAR_NUM
+
+  static size_t size(const std::vector<T>& v) {
+    return v.size();
+  }
+
+  static value_type* data(std::vector<T>& v) {
+    return v.data();
+  }
+
+  static value_type const* data(std::vector<T> const& v) {
+    return v.data();
+  }
+
+  static void set(std::vector<T>& dest, const void* d, size_t size) {
+    auto num = size / sizeof(value_type);
+    dest.resize(num);
+    memcpy(data(dest), d, size);
+  }
 };
 
-template <>
-struct type_from_native<uint8_t> {
-  using type = UINT8;
-};
+template <typename T, unsigned N>
+struct TypeHandler<T[N], enable_trivial<T>> {
+  using element_th = TypeHandler<T>;
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
+  static constexpr unsigned tiledb_num = N * element_th::tiledb_num;
 
-template <>
-struct type_from_native<int16_t> {
-  using type = INT16;
-};
+  static size_t size(const T&) {
+    return N;
+  }
 
-template <>
-struct type_from_native<uint16_t> {
-  using type = UINT16;
-};
+  static value_type* data(T v[N]) {
+    return v;
+  }
 
-template <>
-struct type_from_native<int32_t> {
-  using type = INT32;
-};
+  static value_type const* data(T const v[N]) {
+    return v;
+  }
 
-template <>
-struct type_from_native<uint32_t> {
-  using type = UINT32;
+  static void set(T& dest, const void* d, size_t size) {
+    if (size != sizeof(value_type) * N)
+      throw std::runtime_error("Attempting to set type with incorrect size.");
+    memcpy(data(dest), d, size);
+  }
 };
-
-template <>
-struct type_from_native<int64_t> {
-  using type = INT64;
-};
-
-template <>
-struct type_from_native<uint64_t> {
-  using type = UINT64;
-};
-
-template <>
-struct type_from_native<float> {
-  using type = FLOAT32;
-};
-
-template <>
-struct type_from_native<double> {
-  using type = FLOAT64;
-};
-
-std::string to_str(const tiledb_datatype_t& type);
 
 }  // namespace impl
 }  // namespace tiledb

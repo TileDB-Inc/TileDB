@@ -42,11 +42,12 @@ int main() {
 
   // Create attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
-  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
-  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
-  a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
+  tiledb::Attribute a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+  tiledb::Attribute a3 =
+      tiledb::Attribute::create<std::array<float, 2>>(ctx, "a3");
+  a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+  a2.set_compressor({TILEDB_GZIP, -1});
+  a3.set_compressor({TILEDB_ZSTD, -1});
 
   // Create map schema
   tiledb::MapSchema schema(ctx);

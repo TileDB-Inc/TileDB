@@ -43,16 +43,18 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   domain.add_dimension(d1).add_dimension(d2);
 
   auto a1 = Attribute::create<int>(ctx, "a1");
-  auto a2 = Attribute::create<char>(ctx, "a2");
-  auto a3 = Attribute::create<double>(ctx, "a3");
-  a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
-  a2.set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_cell_val_num(2);
+  auto a2 = Attribute::create<std::string>(ctx, "a2");
+  auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
+  auto a4 = Attribute::create<std::vector<uint32_t>>(ctx, "a4");
+  a1.set_compressor({TILEDB_BLOSC_LZ, -1});
 
   SECTION("Array Schema") {
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema.set_domain(domain);
-    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+    schema.add_attribute(a1);
+    schema.add_attribute(a2);
+    schema.add_attribute(a3);
+    schema.add_attribute(a4);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
@@ -62,13 +64,15 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(attrs.count("a1") == 1);
     CHECK(attrs.count("a2") == 1);
     CHECK(attrs.count("a3") == 1);
-    REQUIRE(schema.attribute_num() == 3);
+    REQUIRE(schema.attribute_num() == 4);
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
     CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a3").cell_val_num() == 2);
+    CHECK(schema.attribute("a3").cell_val_num() == 16);
+    CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
+    CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);
@@ -83,27 +87,23 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
 
   SECTION("Map Schema") {
     MapSchema schema(ctx);
-    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+    schema.add_attribute(a1);
+    schema.add_attribute(a2);
+    schema.add_attribute(a3);
+    schema.add_attribute(a4);
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);
     CHECK(attrs.count("a2") == 1);
     CHECK(attrs.count("a3") == 1);
-    REQUIRE(schema.attribute_num() == 3);
+    REQUIRE(schema.attribute_num() == 4);
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
     CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a3").cell_val_num() == 2);
+    CHECK(schema.attribute("a3").cell_val_num() == 16);
+    CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
+    CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
   }
-
-  // Types
-  CHECK_THROWS(
-      impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 2));
-  CHECK_THROWS(
-      impl::type_check_attr<typename impl::type_from_native<unsigned>::type>(
-          a1, 1));
-  CHECK_NOTHROW(
-      impl::type_check_attr<typename impl::type_from_native<int>::type>(a1, 1));
 }

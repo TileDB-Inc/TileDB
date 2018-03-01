@@ -45,11 +45,12 @@ int main() {
   // Create TileDB map
   tiledb::Map map(ctx, "my_map");
 
+  using my_cell_t = std::tuple<int, std::string, std::array<float, 2>>;
+
   // Read using iterator
   std::cout << "Iterating over all keys:\n";
   for (auto& item : map) {
-    std::tuple<int, std::string, std::vector<float>> vals =
-        item[{"a1", "a2", "a3"}];
+    my_cell_t vals = item[{"a1", "a2", "a3"}];
     std::cout << "a1: " << std::get<0>(vals) << "\n"
               << "a2: " << std::get<1>(vals) << "\n"
               << "a3: " << std::get<2>(vals)[0] << " " << std::get<2>(vals)[1]
@@ -61,8 +62,7 @@ int main() {
   std::cout << "\nOnly iterating over int keys:\n";
   for (auto item = map.begin<int>(); item != map.end(); ++item) {
     auto key = item->key<int>();
-    std::tuple<int, std::string, std::vector<float>> vals =
-        (*item)[{"a1", "a2", "a3"}];
+    my_cell_t vals = (*item)[{"a1", "a2", "a3"}];
     std::cout << "key: " << key << "\n"
               << "a1: " << std::get<0>(vals) << "\n"
               << "a2: " << std::get<1>(vals) << "\n"
@@ -75,8 +75,7 @@ int main() {
   std::cout << "\nOnly iterating over string keys:\n";
   for (auto item = map.begin<std::string>(); item != map.end(); ++item) {
     auto key = item->key<std::string>();
-    std::tuple<int, std::string, std::vector<float>> vals =
-        (*item)[{"a1", "a2", "a3"}];
+    my_cell_t vals = (*item)[{"a1", "a2", "a3"}];
     std::cout << "key: " << key << "\n"
               << "a1: " << std::get<0>(vals) << "\n"
               << "a2: " << std::get<1>(vals) << "\n"
@@ -91,8 +90,7 @@ int main() {
        ++item) {
     auto key = item->key<std::vector<double>>();
     auto key_type = item->key_info();
-    std::tuple<int, std::string, std::vector<float>> vals =
-        (*item)[{"a1", "a2", "a3"}];
+    my_cell_t vals = (*item)[{"a1", "a2", "a3"}];
     std::cout << "key: ";
     for (uint64_t i = 0; i < key_type.second / sizeof(double); ++i)
       std::cout << key[i] << " ";

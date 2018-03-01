@@ -73,15 +73,7 @@ class Dimension {
   /** Returns the domain of the dimension. **/
   template <typename T>
   std::pair<T, T> domain() const {
-    static_assert(
-        std::is_fundamental<T>::value,
-        "Template type must be a fundamental type.");
-    using DataT = typename impl::type_from_native<T>::type;
-
-    auto tdbtype = type();
-    if (DataT::tiledb_datatype != tdbtype) {
-      throw TypeError::create<DataT>(tdbtype);
-    }
+    impl::type_check<T>(type(), 1);
     auto d = static_cast<T*>(_domain());
     return std::pair<T, T>(d[0], d[1]);
   };
@@ -92,15 +84,7 @@ class Dimension {
   /** Returns the tile extent of the dimension. */
   template <typename T>
   T tile_extent() const {
-    static_assert(
-        std::is_fundamental<T>::value,
-        "Template type must be a fundamental type.");
-    using DataT = typename impl::type_from_native<T>::type;
-
-    auto tdbtype = type();
-    if (DataT::tiledb_datatype != tdbtype) {
-      throw TypeError::create<DataT>(tdbtype);
-    }
+    impl::type_check<T>(type(), 1);
     return *static_cast<T*>(_tile_extent());
   }
 
@@ -132,15 +116,11 @@ class Dimension {
       const std::string& name,
       const std::array<T, 2>& domain,
       T extent) {
+    using DataT = impl::TypeHandler<T>;
     static_assert(
-        std::is_fundamental<T>::value,
-        "Template type must be a fundamental type.");
-    return create_impl(
-        ctx,
-        name,
-        impl::type_from_native<T>::type::tiledb_datatype,
-        &domain,
-        &extent);
+        DataT::tiledb_num == 1,
+        "Dimension types cannot be compound, use arithmetic type.");
+    return create_impl(ctx, name, DataT::tiledb_type, &domain, &extent);
   }
 
  private:

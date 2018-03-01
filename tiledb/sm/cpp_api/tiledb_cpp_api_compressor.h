@@ -57,6 +57,11 @@ class Compressor {
       : compressor_(c)
       , level_(-1) {
   }
+
+  /**
+   * Create a compressor with a given method and level.
+   * -1 for default.
+   */
   Compressor(tiledb_compressor_t compressor, int level)
       : compressor_(compressor)
       , level_(level) {
