@@ -35,6 +35,11 @@
 
 using namespace tiledb;
 
+struct Point {
+  int coords[3];
+  double value;
+};
+
 struct CPPArrayFx {
   CPPArrayFx()
       : vfs(ctx) {
@@ -46,18 +51,19 @@ struct CPPArrayFx {
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
     auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-    domain.add_dimension(d1).add_dimension(d2);
+    domain.add_dimensions(d1, d2);
 
-    auto a1 = Attribute::create<int>(ctx, "a1");
-    auto a2 = Attribute::create<char>(ctx, "a2");
-    auto a3 = Attribute::create<double>(ctx, "a3");
-    a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
-    a2.set_cell_val_num(TILEDB_VAR_NUM);
-    a3.set_cell_val_num(2);
+    auto a1 = Attribute::create<int>(ctx, "a1");          // (int, 1)
+    auto a2 = Attribute::create<std::string>(ctx, "a2");  // (char, VAR_NUM)
+    auto a3 = Attribute::create<std::array<double, 2>>(
+        ctx, "a3");  // (char, sizeof(std::array<double,2>)
+    auto a4 =
+        Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
+    a1.set_compressor({TILEDB_BLOSC_LZ, -1});
 
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema.set_domain(domain);
-    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+    schema.add_attributes(a1, a2, a3, a4);
 
     Array::create("cpp_unit_array", schema);
   }
@@ -84,43 +90,70 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};
     std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
+    std::vector<std::vector<Point>> a4 = {
+        {{{{1, 2, 3}, 4.1}, {{2, 3, 4}, 5.2}}}, {{{{5, 6, 7}, 8.3}}}};
 
     auto a2buf = ungroup_var_buffer(a2);
-    auto a3buf = flatten(a3);
+    auto a4buf = ungroup_var_buffer(a4);
 
-    const std::vector<int> subarray = {0, 1, 0, 0};
+    std::vector<int> subarray = {0, 1, 0, 0};
 
-    {
+    try {
       Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
       query.set_subarray(subarray);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
-      query.set_buffer("a3", a3buf);
+      query.set_buffer("a3", a3);
+      query.set_buffer("a4", a4buf);
       query.set_layout(TILEDB_ROW_MAJOR);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
+    } catch (std::exception& e) {
+      std::cout << e.what() << std::endl;
     }
 
     {
       std::fill(std::begin(a1), std::end(a1), 0);
       std::fill(std::begin(a2buf.first), std::end(a2buf.first), 0);
       std::fill(std::begin(a2buf.second), std::end(a2buf.second), 0);
-      std::fill(std::begin(a3buf), std::end(a3buf), 0);
+      std::fill(std::begin(a3), std::end(a3), std::array<double, 2>({{0, 0}}));
+      std::fill(std::begin(a4buf.first), std::end(a4buf.first), 0);
+      std::fill(
+          std::begin(a4buf.second),
+          std::end(a4buf.second),
+          Point{{0, 0, 0}, 0});
+
+      auto buffsizes = Array::max_buffer_sizes(ctx, "cpp_unit_array", subarray);
+      CHECK(buffsizes.count("a1"));
+      CHECK(buffsizes.count("a2"));
+      CHECK(buffsizes.count("a3"));
+      CHECK(buffsizes.count("a4"));
+      CHECK(buffsizes["a1"].first == 0);
+      CHECK(buffsizes["a1"].second >= 2 * sizeof(int));
+      CHECK(buffsizes["a2"].first == 2);
+      CHECK(buffsizes["a2"].second >= 7);
+      CHECK(buffsizes["a3"].first == 0);
+      CHECK(buffsizes["a3"].second >= 4 * sizeof(double));
+      CHECK(buffsizes["a4"].first == 2);
+      CHECK(buffsizes["a4"].second >= 3 * sizeof(Point));
 
       Query query(ctx, "cpp_unit_array", TILEDB_READ);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
-      query.set_buffer("a3", a3buf);
+      query.set_buffer("a3", a3);
+      query.set_buffer("a4", a4buf);
       query.set_layout(TILEDB_ROW_MAJOR);
       query.set_subarray(subarray);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
       auto ret = query.result_buffer_elements();
-      REQUIRE(ret.size() == 3);
+      REQUIRE(ret.size() == 4);
       CHECK(ret["a1"].first == 2);
       CHECK(ret["a2"].first == 2);
       CHECK(ret["a2"].second == 7);
-      CHECK(ret["a3"].first == 4);
+      CHECK(ret["a3"].first == 2);
+      CHECK(ret["a4"].first == 2);
+      CHECK(ret["a4"].second == 3);
 
       CHECK(a1[0] == 1);
       CHECK(a1[1] == 2);
@@ -129,12 +162,28 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(reada2[0] == "abc");
       CHECK(reada2[1] == "defg");
 
-      auto reada3 = group_by_cell<2>(a3buf, 4);
-      REQUIRE(reada3.size() == 2);
-      CHECK(reada3[0][0] == 1.0);
-      CHECK(reada3[0][1] == 2.0);
-      CHECK(reada3[1][0] == 3.0);
-      CHECK(reada3[1][1] == 4.0);
+      REQUIRE(a3.size() == 2);
+      CHECK(a3[0][0] == 1.0);
+      CHECK(a3[0][1] == 2.0);
+      CHECK(a3[1][0] == 3.0);
+      CHECK(a3[1][1] == 4.0);
+
+      auto reada4 = group_by_cell<Point>(a4buf, 2, 3);
+      REQUIRE(reada4.size() == 2);
+      REQUIRE(reada4[0].size() == 2);
+      REQUIRE(reada4[1].size() == 1);
+      CHECK(reada4[0][0].coords[0] == 1);
+      CHECK(reada4[0][0].coords[1] == 2);
+      CHECK(reada4[0][0].coords[2] == 3);
+      CHECK(reada4[0][0].value == 4.1);
+      CHECK(reada4[0][1].coords[0] == 2);
+      CHECK(reada4[0][1].coords[1] == 3);
+      CHECK(reada4[0][1].coords[2] == 4);
+      CHECK(reada4[0][1].value == 5.2);
+      CHECK(reada4[1][0].coords[0] == 5);
+      CHECK(reada4[1][0].coords[1] == 6);
+      CHECK(reada4[1][0].coords[2] == 7);
+      CHECK(reada4[1][0].value == 8.3);
     }
   }
 }

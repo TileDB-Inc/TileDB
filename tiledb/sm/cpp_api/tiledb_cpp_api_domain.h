@@ -47,7 +47,38 @@
 
 namespace tiledb {
 
-/** Implements the domain functionality. */
+/**
+ * Represents the domain of an array.
+ *
+ * @details
+ * A Domain defines the set of Dimension objects for a given array. The
+ * properties of a Domain derive from the underlying dimensions. A
+ * Domain is a component of an ArraySchema.
+ *
+ * @code{.cpp}
+ *
+ * tiledb::Context ctx;
+ * tiledb::Domain domain;
+ *
+ * // Note the dimension bounds are inclusive.
+ * auto d1 = tiledb::Dimension::create<int>(ctx, "d1", {-10, 10});
+ * auto d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {1, 10});
+ * auto d3 = tiledb::Dimension::create<int>(ctx, "d3", {-100, 100});
+ *
+ * domain.add_dimension(d1);
+ * domain.add_dimension(d2);
+ * domain.add_dimension(d3); // Invalid, all dims must be same type
+ *
+ * domain.cell_num(); // (10 - -10 + 1) * (10 - 1 + 1) = 210 max cells
+ * domain.type(); // TILEDB_UINT64, determined from the dimensions
+ * domain.rank(); // 2, d1 and d2
+ *
+ * tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+ * schema.set_domain(domain); // Set the array's domain
+ *
+ * @endcode
+ *
+ **/
 class Domain {
  public:
   /* ********************************* */
@@ -71,14 +102,6 @@ class Domain {
    */
   uint64_t cell_num() const;
 
-  /**
-   * Returns the total number of cells in the domain.
-   *
-   * @tparam T The domain type.
-   */
-  template <class T>
-  uint64_t cell_num() const;
-
   /** Dumps the domain in an ASCII representation to an output. */
   void dump(FILE* out = stdout) const;
 
@@ -94,8 +117,13 @@ class Domain {
   /** Adds a new dimension to the domain. */
   Domain& add_dimension(const Dimension& d);
 
-  /** Returns the number of dimensions in the domain. */
-  unsigned dim_num() const;
+  template <typename... Args>
+  Domain& add_dimensions(Args... dims) {
+    for (const auto& attr : {dims...}) {
+      add_dimension(attr);
+    }
+    return *this;
+  }
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_domain_t> ptr() const;
@@ -104,6 +132,14 @@ class Domain {
   operator tiledb_domain_t*() const;
 
  private:
+  /**
+   * Returns the total number of cells in the domain.
+   *
+   * @tparam T The domain datatype.
+   */
+  template <class T>
+  uint64_t cell_num() const;
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

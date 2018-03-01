@@ -32,18 +32,14 @@
  * This file declares the C++ API for the TileDB Map Item object.
  */
 
+#include "tiledb_cpp_api_map_item.h"
 #include "tiledb_cpp_api_map.h"
-#include "tiledb_cpp_api_map_proxy.h"
 
 namespace tiledb {
 
-impl::MapItemProxy MapItem::operator[](const std::string& attr) {
-  return impl::MapItemProxy(attr, *this);
-}
-
-impl::MultiMapItemProxy MapItem::operator[](
-    const std::vector<std::string>& attrs) {
-  return impl::MultiMapItemProxy(attrs, *this);
+void MapItem::add_to_map() {
+  if (map_)
+    map_->add_item(*this);
 }
 
 }  // namespace tiledb

@@ -56,14 +56,13 @@ class Config {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Basic constructor. */
   Config();
 
   /**
    * Constructor that takes as input a filename (URI) that stores the config
    * parameters. The file must have the following (text) format:
    *
-   * <parameter> <value>
+   * {parameter} {value}
    *
    * Anything following a `#` character is considered a comment and, thus, is
    * ignored.

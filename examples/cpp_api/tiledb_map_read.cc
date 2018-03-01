@@ -45,22 +45,23 @@ int main() {
   // Create TileDB map
   tiledb::Map map(ctx, "my_map");
 
+  using my_cell_t = std::tuple<int, std::string, std::array<float, 2>>;
+
   // Get item with key 100
   auto item1 = map.get_item(100);
 
   // Get value by implicit cast - you need to be sure that the item exists
   int a1 = map[100]["a1"];
   std::string a2 = map[100]["a2"];
-  std::vector<float> a3 = map[100]["a3"];
+  std::array<float, 2> a3 = map[100]["a3"];
 
   // Get item with explicit type
   a1 = item1.get<int>("a1");
   a2 = item1.get<std::string>("a2");
-  a3 = item1.get<std::vector<float>>("a3");
+  a3 = item1.get<std::array<float, 2>>("a3");
 
   // Get values into a tuple
-  std::tuple<int, std::string, std::vector<float>> vals =
-      map[100][{"a1", "a2", "a3"}];
+  my_cell_t vals = map[100][{"a1", "a2", "a3"}];
 
   // Get pointer to data with no C++ API copies
   auto a2_data = item1.get_ptr<char>("a2");

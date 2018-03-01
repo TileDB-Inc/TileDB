@@ -141,13 +141,10 @@ class Query {
    */
   template <typename T = uint64_t>
   void set_subarray(const std::vector<T>& pairs) {
-    static_assert(
-        std::is_fundamental<T>::value,
-        "Template type must be a fundamental type.");
+    impl::type_check<T>(schema_.domain().type());
+
     auto& ctx = ctx_.get();
-    impl::type_check<typename impl::type_from_native<T>::type>(
-        schema_.domain().type());
-    if (pairs.size() != schema_.domain().dim_num() * 2) {
+    if (pairs.size() != schema_.domain().rank() * 2) {
       throw SchemaMismatch(
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
@@ -164,6 +161,8 @@ class Query {
   /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
+   *
+   * set_subarray(std::vector) is preferred and avoids an extra copy.
    *
    * @tparam T Array domain datatype
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
@@ -183,25 +182,19 @@ class Query {
   /** Sets a buffer for a fixed-sized attribute. */
   template <typename Vec>
   void set_buffer(const std::string& attr, Vec& buf) {
-    static_assert(
-        std::is_fundamental<typename Vec::value_type>::value,
-        "Template type must be a vector of a fundamental type.");
-    using DataT =
-        typename impl::type_from_native<typename Vec::value_type>::type;
-
+    using attribute_t = typename Vec::value_type;
     if (array_attributes_.count(attr)) {
       const auto& a = array_attributes_.at(attr);
-      impl::type_check_attr<DataT>(a, a.cell_val_num());
+      impl::type_check<attribute_t>(a.type(), 0);
     } else if (attr == TILEDB_COORDS) {
-      impl::type_check<DataT>(schema_.domain().type());
+      impl::type_check<attribute_t>(schema_.domain().type());
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        static_cast<uint64_t>(buf.size()),
-        sizeof(typename DataT::type),
-        const_cast<void*>(reinterpret_cast<const void*>(
-            buf.data())));  // To enable const char * storage
+        static_cast<uint64_t>(buf.size()),  // Want num elements
+        sizeof(attribute_t),
+        const_cast<void*>(reinterpret_cast<const void*>(buf.data())));
     attrs_.emplace_back(attr);
   }
 
@@ -209,26 +202,13 @@ class Query {
   template <typename Vec>
   void set_buffer(
       const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
-    static_assert(
-        std::is_fundamental<typename Vec::value_type>::value,
-        "Template type must be a vector of a fundamental type.");
-    using DataT =
-        typename impl::type_from_native<typename Vec::value_type>::type;
-
-    if (array_attributes_.count(attr)) {
-      impl::type_check_attr<DataT>(array_attributes_.at(attr), TILEDB_VAR_NUM);
-    } else {
-      throw AttributeError("Attribute does not exist: " + attr);
+    if (attr == TILEDB_COORDS) {
+      throw TileDBError("Cannot set coordinate buffer as variable sized.");
     }
-    var_offsets_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        offsets.size(), sizeof(uint64_t), offsets.data());
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        static_cast<uint64_t>(data.size()),
-        sizeof(typename DataT::type),
-        const_cast<void*>(reinterpret_cast<const void*>(
-            data.data())));  // To enable const char * storage
+    set_buffer(attr, data);
 
-    attrs_.emplace_back(attr);
+    var_offsets_[attr] = std::tuple<uint64_t, uint64_t, void*>(
+        offsets.size(), sizeof(uint64_t), offsets.data());
   }
 
   /**
@@ -239,6 +219,12 @@ class Query {
   void set_buffer(
       const std::string& attr, std::pair<std::vector<uint64_t>, Vec>& buf) {
     set_buffer(attr, buf.first, buf.second);
+  }
+
+  /** Set the coordinate buffer for sparse arrays **/
+  template <typename Vec>
+  void set_coordinates(Vec& buf) {
+    set_buffer(TILEDB_COORDS, buf);
   }
 
   /* ********************************* */

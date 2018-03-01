@@ -35,6 +35,7 @@
 #define TILEDB_TILEDB_CPP_API_EXCEPTION_H
 
 #include "tiledb.h"
+#include "tiledb_cpp_api_core_interface.h"
 #include "tiledb_cpp_api_type.h"
 
 #include <stdexcept>
@@ -51,14 +52,6 @@ struct TileDBError : std::runtime_error {
 struct TypeError : public TileDBError {
   TypeError(const std::string& msg)
       : TileDBError(msg) {
-  }
-
-  /** Make a type error between static type DataT and expected_type **/
-  template <typename DataT>
-  static TypeError create(tiledb_datatype_t expected_type) {
-    return TypeError(
-        "Attempting to use static type " + std::string(DataT::name) +
-        " for expected type " + impl::to_str(expected_type));
   }
 };
 
@@ -77,13 +70,17 @@ struct AttributeError : public TileDBError {
 };
 
 namespace impl {
+
 /** Checks if the input type complies with the template type. */
-template <typename DataT>
-void type_check(tiledb_datatype_t type) {
-  if (DataT::tiledb_datatype != type) {
-    throw TypeError::create<DataT>(type);
+template <typename T, typename Handler = TypeHandler<T>>
+inline void type_check(tiledb_datatype_t type, unsigned num = 0) {
+  if (Handler::tiledb_type != type ||
+      (num != 0 && num != TILEDB_VAR_NUM &&
+       Handler::tiledb_num != TILEDB_VAR_NUM && Handler::tiledb_num != num)) {
+    throw TypeError("Static type does not match expected type.");
   }
 }
+
 }  // namespace impl
 
 }  // namespace tiledb

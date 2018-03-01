@@ -47,17 +47,19 @@ int main() {
 
   // Create attributes
   tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "a1");
-  tiledb::Attribute a2 = tiledb::Attribute::create<char>(ctx, "a2");
-  tiledb::Attribute a3 = tiledb::Attribute::create<float>(ctx, "a3");
-  a1.set_compressor({TILEDB_BLOSC_LZ, -1}).set_cell_val_num(1);
-  a2.set_compressor({TILEDB_GZIP, -1}).set_cell_val_num(TILEDB_VAR_NUM);
-  a3.set_compressor({TILEDB_ZSTD, -1}).set_cell_val_num(2);
+  // Vector<T> and basic_string<T> types are represented as a variable number of
+  // T elements.
+  tiledb::Attribute a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+  tiledb::Attribute a3 = tiledb::Attribute::create<float[2]>(ctx, "a3");
+  a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+  a2.set_compressor({TILEDB_GZIP, -1});
+  a3.set_compressor({TILEDB_ZSTD, -1});
 
   // Create array schema
   tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_tile_order(TILEDB_ROW_MAJOR).set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_domain(domain);
-  schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+  schema.add_attributes(a1, a2, a3);
 
   // Check array schema
   try {

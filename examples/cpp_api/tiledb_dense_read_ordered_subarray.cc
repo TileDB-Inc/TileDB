@@ -47,14 +47,14 @@ int main() {
 
   // Compute maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};
-  auto max_elements =
-      tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
+  auto max_sizes =
+      tiledb::Array::max_buffer_sizes(ctx, "my_dense_array", subarray);
 
   // Prepare cell buffers
-  std::vector<int> a1_buff(max_elements["a1"].first);
-  std::vector<uint64_t> a2_offsets(max_elements["a2"].first);
-  std::vector<char> a2_data(max_elements["a2"].second);
-  std::vector<float> a3_buff(max_elements["a3"].first);
+  std::vector<int> a1_buff(max_sizes["a1"].second / sizeof(int));
+  std::vector<uint64_t> a2_offsets(max_sizes["a2"].first);
+  std::vector<char> a2_data(max_sizes["a2"].second / sizeof(char));
+  std::vector<float> a3_buff(max_sizes["a3"].second / sizeof(float));
 
   // Create query
   tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
@@ -73,7 +73,7 @@ int main() {
       std::pair<std::vector<uint64_t>, std::vector<char>>(a2_offsets, a2_data);
   auto a2 = tiledb::group_by_cell(
       a2_buff, result_el["a2"].first, result_el["a2"].second);
-  auto a3 = tiledb::group_by_cell<2>(a3_buff, result_el["a3"].first);
+  auto a3 = tiledb::group_by_cell<2>(a3_buff);
 
   std::cout << "Result num: " << result_el["a1"].first << "\n\n";
   std::cout << std::setw(5) << "a1" << std::setw(10) << "a2" << std::setw(10)

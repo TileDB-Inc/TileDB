@@ -45,6 +45,8 @@
 #include <type_traits>
 #include <utility>
 
+#define TILEDB_SINGLE_ATTRIBUTE_MAP "value"
+
 namespace tiledb {
 
 /** Forward declarations. **/
@@ -85,23 +87,41 @@ class MapItem {
    * checking if a retrieved key-value item exists in a map.
    */
   bool good() const {
-    return item_.get() != nullptr;
+    return item_ != nullptr;
   }
 
   /** Set an attribute to the given value **/
   template <typename T>
   void set(const std::string& attr, const T& val) {
-    set_impl(attr, val);
+    using DataT = typename impl::TypeHandler<T>;
+
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_kv_item_set_value(
+        ctx,
+        item_.get(),
+        attr.c_str(),
+        DataT::data(val),
+        DataT::tiledb_type,
+        DataT::size(val) * sizeof(typename DataT::value_type)));
   }
 
-  /**
-   * Get the key for the item.
-   *
-   * @tparam T
-   */
+  /** Get the key for the item. */
   template <typename T>
   T key() const {
-    return key_impl<T>();
+    using DataT = typename impl::TypeHandler<T>;
+    auto& ctx = ctx_.get();
+
+    typename DataT::value_type* buf;
+    tiledb_datatype_t type;
+    uint64_t size;
+
+    ctx.handle_error(tiledb_kv_item_get_key(
+        ctx, item_.get(), (const void**)&buf, &type, &size));
+
+    impl::type_check<T>(type, unsigned(size / sizeof(T)));
+    T key;
+    DataT::set(key, buf, size);
+    return key;
   }
 
   /** Get the key datatype and size **/
@@ -118,39 +138,59 @@ class MapItem {
   /**
    * Get the value for a given attribute.
    *
-   * @tparam T Datatype of attr.
-   * @param attr Attribute name
-   * @param expected_num Expected number of elements, if not variable.
-   * @return Pair of <T*, number of elements>
-   */
+   * @note
+   * This does not check for the number of elements, but rather returns
+   * the size (in elements) retrieved.
+   * */
   template <typename T>
   std::pair<const T*, uint64_t> get_ptr(const std::string& attr) const {
+    using DataT = typename impl::TypeHandler<T>;
     const Context& ctx = ctx_.get();
 
-    const T* data;
+    typename DataT::value_type* data;
     tiledb_datatype_t type;
     uint64_t size;
 
     ctx.handle_error(tiledb_kv_item_get_value(
         ctx, item_.get(), attr.c_str(), (const void**)&data, &type, &size));
 
-    impl::type_check<typename impl::type_from_native<T>::type>(type);
-
-    auto num = static_cast<unsigned>(size / sizeof(T));
+    auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
+    impl::type_check<T>(type);  // Just check type
     return std::pair<const T*, uint64_t>(data, num);
   }
 
   /** Get a attribute with a given return type. **/
   template <typename T>
   T get(const std::string& attr) const {
-    return get_impl<T>(attr);
+    using DataT = typename impl::TypeHandler<T>;
+
+    const typename DataT::value_type* data;
+    unsigned num;
+    std::tie(data, num) = get_ptr<typename DataT::value_type>(attr);
+
+    T ret;
+    DataT::set(ret, data, num * sizeof(typename DataT::value_type));
+    return ret;
+  }
+
+  /** Get a single anon attribute. **/
+  template <typename T>
+  T get() const {
+    return get<T>(TILEDB_SINGLE_ATTRIBUTE_MAP);
   }
 
   /** Get a proxy to set/get with operator[] **/
   impl::MapItemProxy operator[](const std::string& attr);
 
   impl::MultiMapItemProxy operator[](const std::vector<std::string>& attrs);
-  ;
+
+  /** Set a key for single anonymous attribute maps **/
+  template <typename T>
+  MapItem& operator=(const T& value) {
+    set<T>(TILEDB_SINGLE_ATTRIBUTE_MAP, value);
+    add_to_map();
+    return *this;
+  }
 
   /** Ptr to underlying object. **/
   std::shared_ptr<tiledb_kv_item_t> ptr() const {
@@ -162,6 +202,8 @@ class MapItem {
   friend class impl::MapItemProxy;
   friend class impl::MultiMapItemProxy;
 
+  void add_to_map();
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -169,7 +211,7 @@ class MapItem {
   /** Make an item with the given key. **/
   MapItem(
       const Context& ctx,
-      void* key,
+      const void* key,
       tiledb_datatype_t type,
       size_t size,
       Map* map = nullptr)
@@ -180,112 +222,6 @@ class MapItem {
     ctx.handle_error(tiledb_kv_item_create(ctx, &p));
     ctx.handle_error(tiledb_kv_item_set_key(ctx, p, key, type, size));
     item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
-  }
-
-  /* ********************************* */
-  /*        TYPE SPECIALIZATIONS       */
-  /* ********************************* */
-
-  template <typename T, typename = typename T::value_type>
-  T key_impl() const {
-    auto& ctx = ctx_.get();
-    T ret;
-    const typename T::value_type* key;
-    tiledb_datatype_t type;
-    uint64_t size;
-    ctx.handle_error(tiledb_kv_item_get_key(
-        ctx, item_.get(), (const void**)&key, &type, &size));
-    impl::type_check<
-        typename impl::type_from_native<typename T::value_type>::type>(type);
-    unsigned num = (unsigned)size / sizeof(typename T::value_type);
-    ret.resize(num);
-    std::copy(key, key + num, std::begin(ret));
-    return ret;
-  };
-
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type key_impl()
-      const {
-    auto& ctx = ctx_.get();
-    const T* key;
-    tiledb_datatype_t type;
-    uint64_t size;
-    ctx.handle_error(tiledb_kv_item_get_key(
-        ctx, item_.get(), (const void**)&key, &type, &size));
-    impl::type_check<typename impl::type_from_native<T>::type>(type);
-    unsigned num = (unsigned)size / sizeof(T);
-    if (num != 1)
-      throw TileDBError("Expected key size of 1, got " + std::to_string(num));
-    return *key;
-  };
-
-  /** Set an attribute to the given value, fundamental type. **/
-  template <typename V>
-  typename std::enable_if<std::is_fundamental<V>::value, void>::type set_impl(
-      const std::string& attr, const V& val) {
-    auto& ctx = ctx_.get();
-    using AttrT = typename impl::type_from_native<V>::type;
-    ctx.handle_error(tiledb_kv_item_set_value(
-        ctx,
-        item_.get(),
-        attr.c_str(),
-        &val,
-        AttrT::tiledb_datatype,
-        sizeof(V)));
-  }
-
-  /** Set an attribute to the given value, compound type. **/
-  template <typename V>
-  typename std::
-      enable_if<std::is_fundamental<typename V::value_type>::value, void>::type
-      set_impl(const std::string& attr, const V& val) {
-    auto& ctx = ctx_.get();
-    using AttrT = typename impl::type_from_native<typename V::value_type>::type;
-    ctx.handle_error(tiledb_kv_item_set_value(
-        ctx,
-        item_.get(),
-        attr.c_str(),
-        const_cast<void*>(reinterpret_cast<const void*>(val.data())),
-        AttrT::tiledb_datatype,
-        sizeof(typename V::value_type) * val.size()));
-  }
-
-  void set_impl(const std::string& attr, const char* c) {
-    set_impl(attr, std::string(c));
-  }
-
-  /**
-   * Get a value as a compound type.
-   *
-   * @tparam T Data type.
-   * @tparam V Container type, default vector.
-   * @param attr Attribute name
-   * @return value
-   */
-  template <typename T, typename = typename T::value_type>
-  T get_impl(const std::string& attr) const {
-    const typename T::value_type* data;
-    unsigned num;
-    std::tie(data, num) = get_ptr<typename T::value_type>(attr);
-
-    T ret;
-    ret.resize(num);
-    std::copy(
-        data, data + num, const_cast<typename T::value_type*>(ret.data()));
-    return ret;
-  }
-
-  /** Get an attribute value as a fundamental type **/
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, T>::type get_impl(
-      const std::string& attr) const {
-    const T* data;
-    unsigned num;
-    std::tie(data, num) = get_ptr<T>(attr);
-    if (num != 1) {
-      throw AttributeError("Expected one element, got " + std::to_string(num));
-    }
-    return *data;
   }
 
   /** A TileDB context reference wrapper. */

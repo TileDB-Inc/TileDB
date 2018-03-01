@@ -55,6 +55,15 @@ class Schema {
     return ctx_.get();
   }
 
+  /** Add multiple attributes. **/
+  template <typename... Args>
+  Schema& add_attributes(Args... attrs) {
+    for (const auto& attr : {attrs...}) {
+      add_attribute(attr);
+    }
+    return *this;
+  }
+
  protected:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

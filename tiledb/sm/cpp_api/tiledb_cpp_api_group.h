@@ -41,7 +41,8 @@
 namespace tiledb {
 
 /**
- * Creates a new group.
+ * Creates a new group. A Group is a logical grouping of Objects on the
+ * storage system (a directory).
  *
  * @param ctx The TileDB context.
  * @param group The group URI.

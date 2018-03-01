@@ -41,6 +41,7 @@
 #include "tiledb_cpp_api_map_schema.h"
 #include "tiledb_cpp_api_utils.h"
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -86,14 +87,16 @@ class Map {
   /**
    * Create a map item with the given key. Once populated with attributes,
    * it can be added to a Map with map.add_item()
-   *
-   * @tparam T Key type
-   * @param key Key value
-   * @return MapItem
    */
   template <typename T>
   static MapItem create_item(const Context& ctx, const T& key) {
-    return create_item_impl(ctx, key);
+    using DataT = typename impl::TypeHandler<T>;
+    return MapItem(
+        ctx,
+        DataT::data(key),
+        DataT::tiledb_type,
+        DataT::size(key) * sizeof(typename DataT::value_type),
+        nullptr);
   }
 
   /**
@@ -102,25 +105,44 @@ class Map {
    */
   template <typename T>
   MapItem get_item(const T& key) {
-    tiledb_kv_item_t* item = get_impl<T>(key);
+    using DataT = typename impl::TypeHandler<T>;
+
+    auto& ctx = context();
+    tiledb_kv_item_t* item;
+
+    ctx.handle_error(tiledb_kv_get_item(
+        ctx,
+        kv_.get(),
+        &item,
+        DataT::data(key),
+        DataT::tiledb_type,
+        DataT::size(key) * sizeof(typename DataT::value_type)));
+
     return MapItem(schema_.context(), &item, this);
   }
 
-  /**
-   * Get an item with a given key. If the item doesn't exist; create it.
-   *
-   * @tparam T
-   * @param key
-   * @return MapItem
-   */
+  /** Get an item with a given key. If the item doesn't exist; create it. */
   template <typename T>
   MapItem operator[](const T& key) {
-    tiledb_kv_item_t* item = get_impl<T>(key);
+    using DataT = typename impl::TypeHandler<T>;
+
+    auto& ctx = context();
+    tiledb_kv_item_t* item;
+
+    ctx.handle_error(tiledb_kv_get_item(
+        ctx,
+        kv_.get(),
+        &item,
+        DataT::data(key),
+        DataT::tiledb_type,
+        DataT::size(key) * sizeof(typename DataT::value_type)));
+
     if (item == nullptr) {
       MapItem mapitem = create_item(schema_.context(), key);
       mapitem.map_ = this;
       return mapitem;
     }
+
     return MapItem(schema_.context(), &item, this);
   }
 
@@ -186,83 +208,29 @@ class Map {
   /*               STATIC              */
   /* ********************************* */
 
-  /**
-   * Create a new map.
-   *
-   * @param uri URI to make map at.
-   * @param schema schema defining the map structure.
-   */
+  /** Create a new map. */
   static void create(const std::string& uri, const MapSchema& schema);
+
+  /** Create a TileDB map from a std::map **/
+  template <typename Key, typename Value>
+  static void create(
+      const Context& ctx,
+      const std::string& uri,
+      const std::map<Key, Value>& map) {
+    MapSchema schema(ctx);
+    auto a = Attribute::create<Value>(ctx, TILEDB_SINGLE_ATTRIBUTE_MAP);
+    schema.add_attribute(a);
+    create(uri, schema);
+    Map m(ctx, uri);
+    for (const auto& p : map) {
+      m[p.first] = p.second;
+    }
+  }
 
   /** Consolidate map fragments. **/
   static void consolidate(const Context& ctx, const std::string& map);
 
  private:
-  /* ********************************* */
-  /*        TYPE SPECIALIZATIONS       */
-  /* ********************************* */
-
-  /** Get for compound types. **/
-  template <typename T>
-  typename std::enable_if<
-      std::is_fundamental<typename T::value_type>::value,
-      tiledb_kv_item_t>::type*
-  get_impl(const T& key) {
-    auto& ctx = context();
-    tiledb_kv_item_t* item;
-    ctx.handle_error(tiledb_kv_get_item(
-        ctx,
-        kv_.get(),
-        &item,
-        const_cast<void*>(reinterpret_cast<const void*>(key.data())),
-        impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
-        sizeof(typename T::value_type) * key.size()));
-    return item;
-  };
-
-  /** Get for native types. **/
-  template <typename T>
-  typename std::enable_if<std::is_fundamental<T>::value, tiledb_kv_item_t>::
-      type*
-      get_impl(const T& key) {
-    auto& ctx = context();
-    tiledb_kv_item_t* item;
-    ctx.handle_error(tiledb_kv_get_item(
-        ctx,
-        kv_.get(),
-        &item,
-        const_cast<void*>(reinterpret_cast<const void*>(&key)),
-        impl::type_from_native<T>::type::tiledb_datatype,
-        sizeof(T)));
-    return item;
-  };
-
-  /** Create for native types. **/
-  template <typename T>
-  static typename std::enable_if<std::is_fundamental<T>::value, MapItem>::type
-  create_item_impl(const Context& ctx, const T& key) {
-    return MapItem(
-        ctx,
-        const_cast<void*>(reinterpret_cast<const void*>(&key)),
-        impl::type_from_native<T>::type::tiledb_datatype,
-        sizeof(T),
-        nullptr);
-  }
-
-  /** Create for compound types. **/
-  template <typename T>
-  static typename std::enable_if<
-      std::is_fundamental<typename T::value_type>::value,
-      MapItem>::type
-  create_item_impl(const Context& ctx, const T& key) {
-    return MapItem(
-        ctx,
-        const_cast<void*>(reinterpret_cast<const void*>(key.data())),
-        impl::type_from_native<typename T::value_type>::type::tiledb_datatype,
-        sizeof(typename T::value_type) * key.size(),
-        nullptr);
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

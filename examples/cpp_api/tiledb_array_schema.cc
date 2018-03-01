@@ -68,9 +68,8 @@ int main() {
   schema.set_domain(domain);
 
   // Create and add attributes
-  tiledb::Attribute a1 = tiledb::Attribute::create<int>(ctx, "");
+  tiledb::Attribute a1 = tiledb::Attribute::create<std::array<int, 3>>(ctx, "");
   tiledb::Attribute a2 = tiledb::Attribute::create<float>(ctx, "a2");
-  a1.set_cell_val_num(3);
   a2.set_compressor({TILEDB_GZIP, -1});
   schema.add_attribute(a1).add_attribute(a2);
 
