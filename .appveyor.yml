@@ -1,5 +1,7 @@
 version: '{build}'
-image: Visual Studio 2017
+image:
+- Visual Studio 2017
+- Visual Studio 2015
 environment:
   USE_S3: false
 build_script:
