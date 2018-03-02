@@ -61,6 +61,8 @@ namespace tiledb {
  * - Memory layout definitions: tile and cell
  * - Compression details for Array level factors like offsets and coordinates
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * tiledb::Context ctx;
  * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE); // Or TILEDB_DENSE

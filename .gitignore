@@ -21,3 +21,7 @@ scripts/deps-staging/*
 .idea
 *temp*
 *.DS_Store
+doc/venv
+doc/source/__pycache__
+doc/source/_build
+doc/source/_sidebar.rst.inc

@@ -62,6 +62,8 @@ namespace tiledb {
  * @details
  * See examples for more usage details.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * Query query(ctx, "my_dense_array", TILEDB_WRITE);
  * query.set_layout(TILEDB_GLOBAL_ORDER);

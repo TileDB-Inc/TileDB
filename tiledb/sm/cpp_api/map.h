@@ -52,6 +52,8 @@ namespace tiledb {
  * supports multiple key types and the value is defined by the
  * set of attributes in a MapSchema.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * // Make the map
  * tiledb::MapSchema schema(ctx);

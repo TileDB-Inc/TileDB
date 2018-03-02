@@ -54,6 +54,8 @@ namespace impl {
  * Instead, it should be used to retrieve the value
  * with the correct type.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  *   using my_cell_t = std::tuple<int, std::string, std::vector<float>>;
  *
@@ -176,6 +178,8 @@ class TILEDB_EXPORT MultiMapItemProxy {
  * This class should never be constructed explicitly.
  * Instead, it should be used to retrieve the value
  * with the correct type.
+ *
+ * **Example:**
  *
  * @code{.cpp}
  *   // Implicit conversion

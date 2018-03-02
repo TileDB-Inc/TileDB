@@ -47,6 +47,8 @@ namespace tiledb {
  * compression level. A compression level of -1 indicates the default
  * level.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
  * a1.set_compressor({TILEDB_BLOSC_LZ, -1});

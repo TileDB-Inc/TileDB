@@ -45,6 +45,8 @@ namespace impl {
 /**
  * Deleter for various TileDB C types. Useful for `shared_ptr`.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * Context ctx;
  * Deleter deleter(ctx);
