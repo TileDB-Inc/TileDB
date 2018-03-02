@@ -31,7 +31,7 @@
  */
 
 #include "catch.hpp"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_utils.h"
+#include "tiledb/sm/cpp_api/utils.h"
 
 using namespace tiledb;
 

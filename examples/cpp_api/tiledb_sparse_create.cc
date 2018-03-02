@@ -58,7 +58,7 @@ int main() {
   schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.set_capacity(2);
   schema.set_domain(domain);
-  schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+  schema.add_attributes(a1, a2, a3);
 
   // Check array schema
   try {

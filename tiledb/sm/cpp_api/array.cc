@@ -1,5 +1,5 @@
 /**
- * @file   tiledb
+ * @file   tiledb_cpp_api_array.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,37 +29,21 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines the C++ API for the TileDB arrays.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#include "tiledb.h"
 #include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "compressor.h"
-#include "config.h"
-#include "config_iter.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "exception.h"
-#include "group.h"
-#include "map.h"
-#include "map_item.h"
-#include "map_iter.h"
-#include "map_proxy.h"
-#include "map_schema.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "schema_base.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-#include "filebuf.h"
 
-#endif  // TILEDB_CPP_H
+namespace tiledb {
+
+void Array::consolidate(const Context& ctx, const std::string& uri) {
+  ctx.handle_error(tiledb_array_consolidate(ctx, uri.c_str()));
+}
+
+void Array::create(const std::string& uri, const ArraySchema& schema) {
+  auto& ctx = schema.context();
+  ctx.handle_error(tiledb_array_schema_check(ctx, schema));
+  ctx.handle_error(tiledb_array_create(ctx, uri.c_str(), schema));
+}
+
+}  // namespace tiledb

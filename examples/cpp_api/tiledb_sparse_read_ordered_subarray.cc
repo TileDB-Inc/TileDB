@@ -63,7 +63,7 @@ int main() {
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_offsets, a2_data);
   query.set_buffer("a3", a3_buff);
-  query.set_buffer(TILEDB_COORDS, coords_buff);
+  query.set_coordinates(coords_buff);
 
   // Submit query
   query.submit();
