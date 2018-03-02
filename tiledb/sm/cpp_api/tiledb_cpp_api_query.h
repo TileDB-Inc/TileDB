@@ -57,7 +57,20 @@
 namespace tiledb {
 
 /**
- * Construct and execute read/write queries on a tiledb::Array
+ * Construct and execute read/write queries on a tiledb::Array.
+ *
+ * @details
+ * See examples for more usage details.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * Query query(ctx, "my_dense_array", TILEDB_WRITE);
+ * query.set_layout(TILEDB_GLOBAL_ORDER);
+ * std::vector a1_data = {1, 2, 3};
+ * query.set_buffer("a1", a1_data);
+ * query.submit();
+ * @endcode
  */
 class TILEDB_EXPORT Query {
  public:

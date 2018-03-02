@@ -56,12 +56,14 @@ class ArraySchema;
  * error handling is also defined by the Context; by default
  * a TileDBError will be thrown.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * Context ctx;
  *
  * ctx.set_error_handler([](const std::string &msg) {
- *         std::cerr << msg << std::endl;
- *     })
+ *     std::cerr << msg << std::endl;
+ * });
  * @endcode
  *
  */

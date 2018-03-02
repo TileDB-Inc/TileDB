@@ -47,9 +47,32 @@
 namespace tiledb {
 
 /**
- * A Key value store backed by a TileDB Sparse array. The Map is composed
- * of MapItems. After an Item is created and populated with values, defined
- * by the MapScema, the item can be added to the map.
+ * A Key value store backed by a TileDB Sparse array. A Map
+ * supports multiple key types and the value is defined by the
+ * set of attributes in a MapSchema.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * // Make the map
+ * tiledb::MapSchema schema(ctx);
+ * schema.add_attributes(...);
+ * Map::create("my_map", schema);
+ *
+ * // Write to the map
+ * std::vector<double> key = {2345.1, 345.2};
+ *
+ * // Attribute values
+ * int t1 = 3;
+ * std::string t2{"ccc"};
+ * std::array<float, 2> t3({{3.1f, 3.2f}});
+ *
+ * map[key][{"a1", "a2", "a3"}] = std::make_tuple(t1, t2, t3);
+ * map.flush(); // Flush to disk
+ *
+ * // Read value from map
+ * std::tuple<int, std::string, std::array<float, 2>> vals = map[key];
+ * @endcode
  */
 class TILEDB_EXPORT Map {
  public:

@@ -49,9 +49,43 @@
 namespace tiledb {
 
 /**
- * Schema describing an array. The schema describes all information
- * about an array including cell/tile layout, data types, and compression
- * details.
+ * Schema describing an array.
+ *
+ * @details
+ * The schema is an independent description of an array. A schema can be
+ * used to create multiple array's, and stores information about its
+ * domain, cell types, and compression details. An array schema is composed of:
+ *
+ * - A Domain
+ * - A set of Attributes
+ * - Memory layout definitions: tile and cell
+ * - Compression details for Array level factors like offsets and coordinates
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE); // Or TILEDB_DENSE
+ *
+ * // Create a Domain
+ * tiledb::Domain domain(...);
+ *
+ * // Create Attributes
+ * auto a1 = tiledb::Attribute::create(...);
+ *
+ * schema.set_domain(domain);
+ * schema.add_attribute(a1);
+ *
+ * // Specify tile memory layout
+ * schema.set_tile_order(TILEDB_GLOBAL_ORDER);
+ * // Specify cell memory layout within each tile
+ * schema.set_cell_order(TILEDB_GLOBAL_ORDER);
+ * schema.set_capacity(10); // For sparse, set capacity of each tile
+ *
+ * tiledb::Array::create(schema, "my_array"); // Make array with schema
+ * auto s = tiledb::ArraySchema(ctx, "my_array"); // Load schema from array
+ *
+ * @endcode
  */
 class TILEDB_EXPORT ArraySchema : public Schema {
  public:

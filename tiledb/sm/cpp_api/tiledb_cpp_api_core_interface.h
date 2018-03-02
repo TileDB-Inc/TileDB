@@ -41,12 +41,11 @@
 namespace tiledb {
 namespace impl {
 
-/** @cond
+/**
+ * @cond
  * Doxygen is disabled for this function, as it conflicts with the C
  * API function of the same name.
- */
-
-/**
+ *
  * Submits a TileDB query in asynchronous mode.
  *
  * @param ctx The TileDB context.
@@ -60,6 +59,7 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_query_t* query,
     std::function<void(void*)> callback,
     void* callback_data = nullptr);
+/** @endcond */
 
 /** @endcond */
 

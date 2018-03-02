@@ -44,7 +44,15 @@ namespace tiledb {
 
 /**
  * Represents a compression scheme. Composed of a compression algo + a
- * compression level.
+ * compression level. A compression level of -1 indicates the default
+ * level.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+ * a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+ * @endcode
  */
 class TILEDB_EXPORT Compressor {
  public:
