@@ -30,6 +30,7 @@ $DownloadBzip2Dest = Join-Path $StagingDirectory "bzip2.zip"
 
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $URL -OutFile $Dest
 }
 
