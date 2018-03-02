@@ -7,7 +7,7 @@
 
 ## Breaking changes 
 
-### C++ API
+### C API
 ### C++ API 
 
 # TileDB v1.2.0 Release Notes
