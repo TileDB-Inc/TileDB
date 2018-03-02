@@ -33,7 +33,7 @@
 
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/cpp_api/tiledb_cpp_api_core_interface.h"
+#include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/kv/kv.h"
 #include "tiledb/sm/kv/kv_item.h"
 #include "tiledb/sm/kv/kv_iter.h"

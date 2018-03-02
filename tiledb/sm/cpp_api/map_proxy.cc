@@ -1,5 +1,5 @@
 /**
- * @file   tiledb
+ * @file  tiledb_cpp_api_map_proxy.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,37 +29,35 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB Map Item proxies.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#include "tiledb.h"
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "compressor.h"
-#include "config.h"
-#include "config_iter.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "exception.h"
-#include "group.h"
-#include "map.h"
-#include "map_item.h"
-#include "map_iter.h"
 #include "map_proxy.h"
-#include "map_schema.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "schema_base.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-#include "filebuf.h"
+#include "map.h"
 
-#endif  // TILEDB_CPP_H
+namespace tiledb {
+impl::MapItemProxy MapItem::operator[](const std::string& attr) {
+  return impl::MapItemProxy(attr, *this);
+}
+
+impl::MultiMapItemProxy MapItem::operator[](
+    const std::vector<std::string>& attrs) {
+  return impl::MultiMapItemProxy(attrs, *this);
+}
+
+bool impl::MapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
+  }
+  return false;
+}
+
+bool impl::MultiMapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
+  }
+  return false;
+}
+}  // namespace tiledb

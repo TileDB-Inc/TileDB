@@ -51,7 +51,7 @@ int main() {
 
   // Create map schema
   tiledb::MapSchema schema(ctx);
-  schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+  schema.add_attributes(a1, a2, a3);
 
   // Check array schema
   try {

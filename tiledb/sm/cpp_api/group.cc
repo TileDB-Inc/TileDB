@@ -1,5 +1,5 @@
 /**
- * @file   tiledb
+ * @file   tiledb_cpp_api_group.cc
  *
  * @author Ravi Gaddipati
  *
@@ -29,37 +29,15 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines the C++ API for the TileDB groups.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
-
-#include "tiledb.h"
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "compressor.h"
-#include "config.h"
-#include "config_iter.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "exception.h"
 #include "group.h"
-#include "map.h"
-#include "map_item.h"
-#include "map_iter.h"
-#include "map_proxy.h"
-#include "map_schema.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "schema_base.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-#include "filebuf.h"
 
-#endif  // TILEDB_CPP_H
+namespace tiledb {
+
+void create_group(const Context& ctx, const std::string& group) {
+  ctx.handle_error(tiledb_group_create(ctx, group.c_str()));
+}
+
+}  // namespace tiledb

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb
+ * @file   tiledb_cpp_api_group.h
  *
  * @author Ravi Gaddipati
  *
@@ -29,37 +29,27 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file declares the C++ API for the TileDB groups.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#ifndef TILEDB_CPP_API_GROUP_H
+#define TILEDB_CPP_API_GROUP_H
 
-#include "tiledb.h"
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "compressor.h"
-#include "config.h"
-#include "config_iter.h"
 #include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "exception.h"
-#include "group.h"
-#include "map.h"
-#include "map_item.h"
-#include "map_iter.h"
-#include "map_proxy.h"
-#include "map_schema.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "schema_base.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
-#include "filebuf.h"
+#include "tiledb.h"
 
-#endif  // TILEDB_CPP_H
+namespace tiledb {
+
+/**
+ * Creates a new group. A Group is a logical grouping of Objects on the
+ * storage system (a directory).
+ *
+ * @param ctx The TileDB context.
+ * @param group The group URI.
+ * @return void
+ */
+void create_group(const Context& ctx, const std::string& group);
+
+}  // namespace tiledb
+
+#endif  // TILEDB_CPP_API_GROUP_H
