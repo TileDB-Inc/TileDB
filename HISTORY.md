@@ -1,3 +1,15 @@
+# TileDB v1.3.0-Dev
+
+## API additions 
+
+### C API
+### C++ API
+
+## Breaking changes 
+
+### C++ API
+### C++ API 
+
 # TileDB v1.2.0 Release Notes
 The 1.2.0 release of TileDB includes many new features, improvements in stability and performance, and two new language interfaces (Python and C++). There are also several breaking changes in the C API and on-disk format, documented below.
 
@@ -10,7 +22,6 @@ The 1.2.0 release of TileDB includes many new features, improvements in stabilit
 * S3 object store support. You can now easily store, query, and manipulate your TileDB arrays on S3 API compatibile object stores, including Amazon's AWS S3 service.
 * Virtual filesystem interface. The TileDB API now exposes a virtual filesystem (or VFS) interface, allowing you to perform tasks such as file creation, deletion, reads, and appends without worrying about whether your files are stored on S3, HDFS, a POSIX or Windows filesystem, etc.
 * Key-value store. TileDB now provides a key-value (meta) data storage abstraction.  Its implementation is built upon TileDB's sparse arrays and inherits all the properties of TileDB sparse arrays.
-
 
 ## Improvements
 * Homebrew formula added for easier installation on macOS.  Homebrew is now the perferred method for installing TileDB and its dependencies on macOS.
