@@ -274,9 +274,21 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /**
  * Returns the error message associated with a TileDB error object.
  *
+ * **Example:**
+ *
+ * This following shows how to get the last error from a TileDB context.
+ *
+ * @code{.c}
+ * tiledb_error_t* err = NULL;
+ * tiledb_ctx_get_last_error(ctx, &err);
+ * const char* msg;
+ * tiledb_error_message(err, &msg);
+ * printf("%s\n", msg);
+ * @endcode
+ *
  * @param err A TileDB error object.
  * @param errmsg A constant pointer to the error message.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_error_message(
     tiledb_error_t* err, const char** errmsg);
@@ -284,8 +296,19 @@ TILEDB_EXPORT int tiledb_error_message(
 /**
  * Frees the resources associated with a TileDB error object.
  *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * tiledb_error_t* err = NULL;
+ * tiledb_ctx_get_last_error(ctx, &err);
+ * const char* msg;
+ * tiledb_error_message(err, &msg);
+ * printf("%s\n", msg);
+ * tiledb_error_free(&err);
+ * @endcode
+ *
  * @param err The TileDB error object.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_error_free(tiledb_error_t** err);
 
@@ -296,10 +319,18 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_error_t** err);
 /**
  * Creates a TileDB config.
  *
+ * **Example**
+ *
+ * @code{.cpp}
+ * tiledb_config_t* config;
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_create(&config, &error);
+ * @endcode
+ *
  * @param config The config to be created.
  * @param error Error object returned upon error (`NULL` if there is
  *     no error).
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_config_create(
     tiledb_config_t** config, tiledb_error_t** error);
@@ -307,8 +338,17 @@ TILEDB_EXPORT int tiledb_config_create(
 /**
  * Frees a TileDB config.
  *
+ * **Example**
+ *
+ * @code{.cpp}
+ * tiledb_config_t* config;
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_create(&config, &error);
+ * tiledb_config_free(&config);
+ * @endcode
+ *
  * @param config The config to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
 
@@ -345,6 +385,12 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  *    HDFS username.
  * - `vfs.hdfs.kerb_ticket_cache_path` <br>
  *    HDFS kerb ticket cache path.
+ *
+ * **Example**
+ *
+ * @code{.cpp}
+ * tiledb_config_set(config, "sm.tile_cache_size");
+ * @endcode
  *
  * @param config The config object.
  * @param param The parameter to be set.
