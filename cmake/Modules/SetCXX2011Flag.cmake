@@ -4,6 +4,7 @@
 #
 # The MIT License
 #
+# Copyright (c) 2017-2018 TileDB, Inc.
 # Copyright (c) 2017 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
