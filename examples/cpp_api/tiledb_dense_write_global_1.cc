@@ -35,7 +35,7 @@
  * ./tiledb_dense_write_global_1_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

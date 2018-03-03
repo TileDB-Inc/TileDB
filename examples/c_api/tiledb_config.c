@@ -36,7 +36,7 @@
  */
 
 #include <stdio.h>
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create a TileDB config

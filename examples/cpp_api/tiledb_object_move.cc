@@ -36,7 +36,7 @@
  * ./tiledb_object_move_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

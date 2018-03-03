@@ -38,7 +38,7 @@
  * ./tiledb_dense_write_global_subarray_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create TileDB context

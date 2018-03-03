@@ -31,7 +31,7 @@
  * Prints the current TileDB version.
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Get version

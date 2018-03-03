@@ -37,7 +37,7 @@
  * directory before running this example.
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create context

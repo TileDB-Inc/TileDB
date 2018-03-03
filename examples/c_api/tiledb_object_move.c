@@ -37,7 +37,7 @@
  * ./tiledb_object_move_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create context

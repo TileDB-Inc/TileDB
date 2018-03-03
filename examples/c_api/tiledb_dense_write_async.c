@@ -38,7 +38,7 @@
  */
 
 #include <stdio.h>
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 // Simply prints the input string to stdout
 void print_upon_completion(void* s) {
