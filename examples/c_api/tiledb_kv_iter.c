@@ -36,7 +36,7 @@
  * $ ./tiledb_kv_iter_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 void print_kv_item(tiledb_ctx_t* ctx, tiledb_kv_item_t* kv_item);
 void print(const void* v, tiledb_datatype_t type, uint64_t size);

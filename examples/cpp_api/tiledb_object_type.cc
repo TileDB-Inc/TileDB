@@ -37,7 +37,7 @@
  * ./tiledb_object_type_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 void print_object_type(tiledb::Object::Type type);
 

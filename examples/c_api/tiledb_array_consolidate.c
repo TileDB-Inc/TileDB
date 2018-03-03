@@ -42,7 +42,7 @@
  * The last program consolidates the three fragments in a single one.
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create TileDB context

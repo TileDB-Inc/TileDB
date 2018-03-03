@@ -39,4 +39,30 @@ add_subdirectory(c_api)
 add_subdirectory(cpp_api)
 
 # Add custom target 'examples'
-add_custom_target(examples DEPENDS examples_c examples_cpp)
+add_custom_target(examples DEPENDS tiledb-header-dir examples_c examples_cpp)
+
+# Create directory for the TileDB headers
+add_custom_target(
+        tiledb-header-dir
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${CMAKE_CURRENT_BINARY_DIR}/tiledb")
+
+# Copy C API TileDB headers
+file(GLOB TILEDB_C_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/*.h")
+foreach(HEADER ${TILEDB_C_HEADERS})
+  STRING(REGEX REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/" ""
+         HEADER_STRIPPED ${HEADER}
+  )
+  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+
+# Copy C++ API TileDB headers
+file(GLOB TILEDB_CPP_HEADERS
+        "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
+        "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb")
+foreach(HEADER ${TILEDB_CPP_HEADERS})
+  STRING(REGEX REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
+         HEADER_STRIPPED ${HEADER}
+  )
+  configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()

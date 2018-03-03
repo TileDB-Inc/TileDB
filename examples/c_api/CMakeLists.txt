@@ -46,6 +46,7 @@ file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "*.c")
 include_directories(BEFORE 
     "${CMAKE_SOURCE_DIR}"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/"
+    "${CMAKE_BINARY_DIR}/examples/"
 )
 
 # Initialize name for example binaries

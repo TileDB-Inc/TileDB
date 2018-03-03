@@ -36,7 +36,7 @@
  */
 
 #include <string.h>
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create TileDB context

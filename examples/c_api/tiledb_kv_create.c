@@ -34,7 +34,7 @@
  * $ ./tiledb_kv_create_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create TileDB context

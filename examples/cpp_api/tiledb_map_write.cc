@@ -35,7 +35,7 @@
  * $ ./tiledb_map_write_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

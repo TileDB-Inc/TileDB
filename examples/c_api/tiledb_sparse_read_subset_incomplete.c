@@ -41,7 +41,7 @@
  * $ ./tiledb_sparse_read_subset_incomplete_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int main() {
   // Create TileDB context

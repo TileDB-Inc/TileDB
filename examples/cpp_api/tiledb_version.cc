@@ -30,7 +30,7 @@
  * Prints the current TileDB version.
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   auto version = tiledb::Version::version();
