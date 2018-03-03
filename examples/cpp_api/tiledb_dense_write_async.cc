@@ -36,7 +36,7 @@
  * # ./tiledb_dense_write_async_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

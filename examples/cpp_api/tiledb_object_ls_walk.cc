@@ -34,7 +34,7 @@
  * ./tiledb_object_ls_walk_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 void print_path(const std::string& path, tiledb::Object::Type type);
 

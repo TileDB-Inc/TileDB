@@ -38,7 +38,7 @@
  * ./tiledb_dense_write_unordered_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

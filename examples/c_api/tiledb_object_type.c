@@ -38,7 +38,7 @@
  * ./tiledb_object_type_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 void print_object_type(tiledb_object_t type);
 

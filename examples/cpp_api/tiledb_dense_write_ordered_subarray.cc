@@ -41,7 +41,7 @@
  * ./tiledb_dense_write_ordered_subarray_cpp
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

@@ -36,7 +36,7 @@
  * directory before running this example.
  */
 
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   tiledb::Context ctx;

@@ -35,7 +35,7 @@
  * $ ./tiledb_error_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 void print_error(tiledb_ctx_t* ctx);
 

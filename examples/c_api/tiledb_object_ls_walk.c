@@ -35,7 +35,7 @@
  * ./tiledb_object_ls_walk_c
  */
 
-#include <tiledb.h>
+#include <tiledb/tiledb.h>
 
 int print_path(const char* path, tiledb_object_t type, void* data);
 

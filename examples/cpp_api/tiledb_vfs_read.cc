@@ -38,7 +38,7 @@
  */
 
 #include <fstream>
-#include <tiledb>
+#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context
