@@ -668,8 +668,10 @@ int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
 
   // Create storage manager
   (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
-  if ((*config)->config_ == nullptr)
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
     return TILEDB_OOM;
+  }
 
   *((*config)->config_) = ctx->storage_manager_->config();
 
