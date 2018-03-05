@@ -28,18 +28,23 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a dense subarray, providing the array cells ordered
- * in row-major order within the specified subarray. TileDB will properly
- * re-organize the cells into the global cell order, prior to writing them
- * on the disk.
+ * This example shows how to write to a dense subarray, providing the array
+ * cells ordered in row-major order within the specified subarray. TileDB will
+ * properly re-organize the cells into the global cell order, prior to writing
+ * them on the disk.
  *
  * Make sure that there is no directory named `my_dense_array` in your
  * current working directory.
  *
  * You need to run the following to make it work:
  *
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_ordered_subarray_c
+ * ```
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_ordered_subarray_c
+ * ```
+ *
+ * The above will create a fragment that looks as in figure
+ * `<TileDB-repo>/examples/figures/dense_write_ordered_subarray.png`.
  */
 
 #include <tiledb/tiledb.h>
@@ -72,7 +77,10 @@ int main() {
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3)};
 
-  // Create query
+  // Submit the query as shown previously, specifying the subarray to be
+  // `[3,4], [2,4]` and the layout `TILEDB_ROW_MAJOR`. This means that the
+  // cells in the user buffers are ordered in row-major order within
+  // `[3,4], [2,4]`.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t subarray[] = {3, 4, 2, 4};

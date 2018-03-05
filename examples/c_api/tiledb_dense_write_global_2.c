@@ -28,13 +28,22 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a dense array invoking the write function
- * twice. This will have the same effect as program
- * `tiledb_dense_write_global_1.c`.
+ * This example shows how to populate an entire array using two write queries,
+ * confirming that the write query maintains some state. It is again assumed
+ * that the user knows the global cell order and provides the values to
+ * TileDB in that order.
  *
  * You need to run the following to make this work:
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_global_2_c
+ *
+ * ```
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_2_c
+ * ```
+ *
+ * The resulting array is identical to that in example
+ * `tiledb_dense_write_global_1.c`. Moreover, note that there is a
+ * **single fragment** produced; the second write essentially **appends**
+ * to the existing fragment.
  */
 
 #include <stdio.h>
@@ -46,6 +55,8 @@ int main() {
   tiledb_ctx_create(&ctx, NULL);
 
   // Prepare cell buffers - #1
+  // This time, we populate the buffers with only some portion of the
+  // entire array.
   int buffer_a1[] = {0, 1, 2, 3, 4, 5};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
@@ -66,9 +77,12 @@ int main() {
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
 
   // Submit query - #1
+  // This writes to the array only partially, keeping the **same fragment**
+  // open and maintaining appropriate state.
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
+  // Populate new buffers with the remaining cells of the array.
   int buffer_a1_2[] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   uint64_t buffer_a2_2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2_2[] = "ijjkkkllllmnnooopppp";
@@ -86,7 +100,9 @@ int main() {
       32 * sizeof(float)  // 16 cells on a3 (2 values each)
   };
 
-  // Reset buffers
+  // Reset buffers. Alternatively, instead of resetting the buffers, we could
+  // repopulate the original buffers with the new cells. The result would
+  // have been the same.
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
 
   // Submit query - #2

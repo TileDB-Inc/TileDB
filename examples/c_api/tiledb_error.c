@@ -30,9 +30,19 @@
  *
  * This example shows how to catch errors.
  *
+ * Each C API function returns an error code. The first step towards catching
+ * errors is to check whether the return code indicates correct execution
+ * (`TILEDB_OK`) or a generic error (`TILEDB_ERR`) or an out-of-memory error
+ * (`TILEDB_OOM`).
+ *
  * Simply run:
  *
+ * ```
  * $ ./tiledb_error_c
+ * Group created successfully!
+ * [TileDB::VFS] Error: Cannot create directory 'file://<cwd>/my_group';
+ * Directory already exists
+ * ```
  */
 
 #include <tiledb/tiledb.h>
@@ -44,14 +54,17 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Create a group
+  // Create a group. The code below creates a group `my_group` and prints a
+  // message because (normally) it will succeed.
   int rc = tiledb_group_create(ctx, "my_group");
   if (rc == TILEDB_OK)
     printf("Group created successfully!\n");
   else if (rc == TILEDB_ERR)
     print_error(ctx);
 
-  // Create the same group again - ERROR
+  // Create the same group again. f we attempt to create the same group
+  // `my_group` as shown below, TileDB will return an error and the example
+  // will call function `print_error`.
   rc = tiledb_group_create(ctx, "my_group");
   if (rc == TILEDB_OK)
     printf("Group created successfully!\n");
@@ -65,10 +78,15 @@ int main() {
 }
 
 void print_error(tiledb_ctx_t* ctx) {
+  // Retrieve the last error that occurred
   tiledb_error_t* err = NULL;
   tiledb_ctx_get_last_error(ctx, &err);
+
+  // Retrieve the error message by invoking `tiledb_error_message`.
   const char* msg;
   tiledb_error_message(err, &msg);
   printf("%s\n", msg);
+
+  // Clean up
   tiledb_error_free(&err);
 }

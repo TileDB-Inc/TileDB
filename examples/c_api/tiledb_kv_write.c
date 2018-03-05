@@ -43,6 +43,11 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // We first create some key-value items. Note that at this point these
+  // are independent of the key-value store they will be inserted into.
+  // Each item can have a key of any type, and values on any attribute
+  // of any type.
+
   // Create first key-value item object
   int key1 = 100;
   int key1_a1 = 1;
@@ -107,6 +112,12 @@ int main() {
   tiledb_kv_t* kv;
   tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
 
+  // We add items to a key-value store in the code snippets below. Note that
+  // when an item is added to the key-value store, it is only buffered in
+  // main-memory. To persist the buffered items in storage, the key-value store
+  // must be "flushed". The user can set the number of maximum buffered items
+  // in the key-value store via a function API as shown below.
+
   // Flush every 100 added items
   tiledb_kv_set_max_buffered_items(ctx, kv, 100);
 
@@ -121,10 +132,14 @@ int main() {
   tiledb_kv_add_item(ctx, kv, kv_item3);
   tiledb_kv_add_item(ctx, kv, kv_item4);
 
-  // The following will flush the buffered key-value items to storage
+  // It is important to always close the key-value store, since
+  // this operation flushes all buffered items to the persistent storage.
   tiledb_kv_close(ctx, &kv);
 
-  // Consolidate key-value store (optional)
+  // Each flush operation generates a new fragment in the key-value store.
+  // In case this happens multiple times, it is a good idea to consolidate
+  // the key-value store (similar to consolidating arrays). Note though
+  // that this is optional
   tiledb_kv_consolidate(ctx, "my_kv");
 
   // Clean up

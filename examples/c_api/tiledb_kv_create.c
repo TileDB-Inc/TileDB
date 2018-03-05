@@ -27,11 +27,71 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a key-value store.
+ * This example shows how to create a key-value store. he creation of a
+ * key-value schema is similar to the case of arrays, since TileDB implements
+ * a key-value store as a sparse array. The main difference in the API usage
+ * is that the underlying array type and array domain are preset by TileDB for
+ * key-value stores and, therefore, the user does not explicitly set them.
  *
  * Simply run:
  *
+ * ```
  * $ ./tiledb_kv_create_c
+ * - Array type: sparse
+ * - Cell order: row-major
+ * - Tile order: row-major
+ * - Capacity: 10000
+ * - Coordinates compressor: BLOSC_ZSTD
+ * - Coordinates compression level: -1
+ *
+ * === Domain ===
+ * - Dimensions type: UINT64
+ *
+ * ### Dimension ###
+ * - Name: __key_dim_1
+ * - Domain: [0,18446744073709551615]
+ * - Tile extent: null
+ *
+ * ### Dimension ###
+ * - Name: __key_dim_2
+ * - Domain: [0,18446744073709551615]
+ * - Tile extent: null
+ *
+ * ### Attribute ###
+ * - Name: __key
+ * - Type: CHAR
+ * - Compressor: BLOSC_ZSTD
+ * - Compression level: -1
+ * - Cell val num: var
+ *
+ * ### Attribute ###
+ * - Name: __key_type
+ * - Type: CHAR
+ * - Compressor: BLOSC_ZSTD
+ * - Compression level: -1
+ * - Cell val num: 1
+ *
+ * ### Attribute ###
+ * - Name: a1
+ * - Type: INT32
+ * - Compressor: BLOSC_LZ
+ * - Compression level: -1
+ * - Cell val num: 1
+ *
+ * ### Attribute ###
+ * - Name: a2
+ * - Type: CHAR
+ * - Compressor: GZIP
+ * - Compression level: -1
+ * - Cell val num: var
+ *
+ * ### Attribute ###
+ * - Name: a3
+ * - Type: FLOAT32
+ * - Compressor: ZSTD
+ * - Compression level: -1
+ * - Cell val num: 2
+ * ```
  */
 
 #include <tiledb/tiledb.h>

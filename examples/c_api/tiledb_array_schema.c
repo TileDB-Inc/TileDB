@@ -32,7 +32,88 @@
  *
  * Simply run the following to make it work.
  *
+ * ```
  * $ ./tiledb_array_schema_c
+ * First dump:
+ * - Array type: sparse
+ * - Cell order: row-major
+ * - Tile order: row-major
+ * - Capacity: 10000
+ * - Coordinates compressor: BLOSC_ZSTD
+ * - Coordinates compression level: -1
+ *
+ * Second dump:
+ * - Array type: sparse
+ * - Cell order: col-major
+ * - Tile order: row-major
+ * - Capacity: 10
+ * - Coordinates compressor: ZSTD
+ * - Coordinates compression level: 4
+ *
+ * Third dump:
+ * - Array type: sparse
+ * - Cell order: col-major
+ * - Tile order: row-major
+ * - Capacity: 10
+ * - Coordinates compressor: ZSTD
+ * - Coordinates compression level: 4
+ *
+ * === Domain ===
+ * - Dimensions type: UINT64
+ *
+ * ### Dimension ###
+ * - Name: <anonymous>
+ * - Domain: [1,1000]
+ * - Tile extent: 10
+ *
+ * ### Dimension ###
+ * - Name: d2
+ * - Domain: [101,10000]
+ * - Tile extent: 100
+ *
+ * ### Attribute ###
+ * - Name: <anonymous>
+ * - Type: INT32
+ * - Compressor: NO_COMPRESSION
+ * - Compression level: -1
+ * - Cell val num: 3
+ *
+ * ### Attribute ###
+ * - Name: a2
+ * - Type: FLOAT32
+ * - Compressor: GZIP
+ * - Compression level: -1
+ * - Cell val num: 1
+ *
+ * From getters:
+ * - Array type: sparse
+ * - Cell order: col-major
+ * - Tile order: row-major
+ * - Capacity: 10
+ * - Coordinates compressor: (ZSTD, 4)
+ * - Offsets compressor: (BLOSC_LZ, 5)
+ *
+ * Array schema attribute names:
+ * * __attr
+ * * a2
+ *
+ * === Domain ===
+ * - Dimensions type: UINT64
+ *
+ * ### Dimension ###
+ * - Name: <anonymous>
+ * - Domain: [1,1000]
+ * - Tile extent: 10
+ *
+ * ### Dimension ###
+ * - Name: d2
+ * - Domain: [101,10000]
+ * - Tile extent: 100
+ *
+ * Array schema dimension names:
+ * * __dim_0
+ * * d2
+ * ```
  */
 
 #include <tiledb/tiledb.h>
@@ -62,7 +143,9 @@ int main() {
   printf("Second dump:\n");
   tiledb_array_schema_dump(ctx, array_schema, stdout);
 
-  // Create dimensions
+  // We create two dimension with names `d1` and `d2` and domains `[1,1000]`
+  // and `[101,10000]`, respectively, of type `uint64`. We also define the
+  // tile extent of `d1` to be `10` and that of `d2` to be `100`.
   uint64_t d1_domain[] = {1, 1000};
   uint64_t d1_extent = 10;
   tiledb_dimension_t* d1;
@@ -79,7 +162,11 @@ int main() {
   tiledb_domain_add_dimension(ctx, domain, d2);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
 
-  // Create and add attributes
+  // We add two attributes `a1` and `a2` of type `int32` and `float32:3`,
+  // respectively, to the schema. Observe that `a2` stores 3 `float32` values
+  // per cell. We also set the compressor of `a2` to `gzip` with default
+  // compression level (`-1`). We make another printout to see how the
+  // array schema contents got updated.
   tiledb_attribute_t *a1, *a2;
   tiledb_attribute_create(ctx, &a1, "", TILEDB_INT32);
   tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);

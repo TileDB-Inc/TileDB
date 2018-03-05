@@ -28,14 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write a dense subarray in the global cell order.
- * Make sure that there is not directory named `my_dense_array` in your current
- * working directory.
+ * This example shows how to write a dense subarray in the global cell order.
+ * It is assumed again that the user provides the cells in the global cell
+ * order. Make sure that there is not directory named `my_dense_array` in your
+ * current working directory.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_global_subarray_c
+ * ```
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_subarray_c
+ * ```
+ *
+ * The above will create a fragment that looks as in figure
+ * `<TileDB-repo>/examples/figures/dense_write_subarray.png`.
  */
 
 #include <tiledb/tiledb.h>

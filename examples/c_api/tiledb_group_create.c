@@ -35,6 +35,20 @@
  *
  * Make sure that no folder with name `my_group` exists in the working
  * directory before running this example.
+ *
+ * Program output:
+ *
+ * ```
+ * $ ./tiledb_group_create_c
+ * $ ls -1 my_group
+ * __tiledb_group.tdb
+ * dense_arrays
+ * sparse_arrays
+ * $ ls -1 my_group/dense_arrays
+ * __tiledb_group.tdb
+ * $ ls -1 my_group/sparse_arrays
+ * __tiledb_group.tdb
+ * ```
  */
 
 #include <tiledb/tiledb.h>

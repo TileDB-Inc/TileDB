@@ -33,8 +33,16 @@
  *
  * You need to run the following to make this work:
  *
+ * ```
  * $ ./tiledb_dense_create_c
  * # ./tiledb_dense_write_async_c
+ * Query in progress
+ * Callback: Query completed
+ * ```
+ *
+ * Observe that `Query in progress` is printed out first and then the main
+ * function waits for TileDB to process the query. When the query is completed,
+ * the callback function is called, which prints `Query completed`.
  */
 
 #include <stdio.h>
@@ -90,11 +98,19 @@ int main() {
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
 
-  // Submit query with callback
+  // We submit a query asynchronously via the appropriate API call. This
+  // function will return almost immediately after its invocation, with TileDB
+  // performing the query silently in the background in parallel. Observe that
+  // we can pass a function telling TileDB to call it (with any input
+  // arguments) upon the completion of the query. In this example, we are
+  // simply telling the callback to print `Callback: Query completed` in the
+  // `stdout` upon completion.
   char s[100] = "Callback: Query completed";
   tiledb_query_submit_async(ctx, query, print_upon_completion, s);
 
-  // Wait for query to complete
+  // Wait for query to complete. We can check the status of the query with
+  // API calls. The status is "in progress" for as long as the query is
+  // executing, which becomes "completed" as soon as the query completes.
   printf("Query in progress\n");
   tiledb_query_status_t status;
   do {

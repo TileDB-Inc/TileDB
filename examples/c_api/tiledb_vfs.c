@@ -27,10 +27,18 @@
  *
  * @section DESCRIPTION
  *
- * Exploring VFS tools. Simply run:
+ * This example explores basic VFS tools.
  *
+ * Simply run:
+ *
+ * ```
  * $ ./tiledb_vfs_c
- *
+ * Created dir_A
+ * Created empty file dir_A/file_A
+ * File size: 0
+ * Moving file dir_A/file_A to dir_A/file_B
+ * Deleting dir_A/file_B and dir_A
+ * ```
  */
 
 #include <tiledb/tiledb.h>
@@ -73,7 +81,9 @@ int main() {
   printf("Moving file dir_A/file_A to dir_A/file_B\n");
   tiledb_vfs_move(ctx, vfs, "dir_A/file_A", "dir_A/file_B", 1);
 
-  // Deleting files and directories
+  // Deleting files and directories. Note that, in the case of directories,
+  // the function will delete all the contents of the directory (i.e., it
+  // works even for non-empty directories).
   printf("Deleting dir_A/file_B and dir_A\n");
   tiledb_vfs_remove_file(ctx, vfs, "dir_A/file_B");
   tiledb_vfs_remove_dir(ctx, vfs, "dir_A");

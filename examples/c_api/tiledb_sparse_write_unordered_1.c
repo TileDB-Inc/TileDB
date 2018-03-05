@@ -28,12 +28,18 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unordered cells to a sparse array in a single write.
+ * This example shows how to write unordered cells to a sparse array in a
+ * single write. Now there is no assumption that the user know the global cell
+ * order, so the cells are given in a random order.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create_c
- * ./tiledb_sparse_write_unordered_1_c
+ * ```
+ * $ ./tiledb_sparse_create_c
+ * $ ./tiledb_sparse_write_unordered_1_c
+ * ```
+ *
+ * The resulting array is identical to that in `tiledb_spare_write_global_1.c`.
  */
 
 #include <tiledb/tiledb.h>
@@ -73,7 +79,8 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
-  // Create query
+  // Create query. The important difference here is that we set the
+  // layout to `TILEDB_UNORDERED`.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_WRITE);
