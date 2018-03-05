@@ -28,13 +28,39 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read a complete sparse array in the global cell order.
+ * This example shows how to read the entire array we created in the global
+ * cell order. It assumes that we have already created the 2D sparse
+ * array from the previous examples.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_sparse_create_c
  * $ ./tiledb_sparse_write_global_1_c
  * $ ./tiledb_sparse_read_global_c
+ * Non-empty domain:
+ * d1: (1, 4)
+ * d2: (1, 4)
+ *
+ * Maximum buffer sizes:
+ * a1: 32
+ * a2: (64, 20)
+ * a3: 64
+ * __coords: 128
+ *
+ * Result num: 8
+ *
+ * __coords       a1       a2      a3[0]     a3[1]
+ * -------------------------------------------------
+ * (1, 1)         0         a       0.1       0.2
+ * (1, 2)         1        bb       1.1       1.2
+ * (1, 4)         2       ccc       2.1       2.2
+ * (2, 3)         3      dddd       3.1       3.2
+ * (3, 1)         4         e       4.1       4.2
+ * (4, 2)         5        ff       5.1       5.2
+ * (3, 3)         6       ggg       6.1       6.2
+ * (3, 4)         7      hhhh       7.1       7.2
+ * ```
  */
 
 #include <stdio.h>
@@ -84,7 +110,9 @@ int main() {
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
 
-  // Create query
+  // We create a read query, specifying the layout of the results as
+  // `TILEDB_GLOBAL_ORDER`. Notice also that we have not set the `subarray`
+  // for the query, which means that we wish to get all the array cells.
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);

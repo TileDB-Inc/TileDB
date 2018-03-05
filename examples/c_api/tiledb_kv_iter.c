@@ -27,13 +27,36 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read all items from a key-value store using an iterator.
+ * This example shows how to read all items from a key-value store using an
+ * iterator.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_kv_create_c
  * $ ./tiledb_kv_write_c
  * $ ./tiledb_kv_iter_c
+ * key: 200.0, float32
+ * a1: 2, int
+ * a2: bb, char
+ * a3: 2.1 2.2, float32
+ * -------
+ * key: 300.0 300.1, float64
+ * a1: 3, int
+ * a2: ccc, char
+ * a3: 3.1 3.2, float32
+ * -------
+ * key: key_4, char
+ * a1: 4, int
+ * a2: dddd, char
+ * a3: 4.1 4.2, float32
+ * -------
+ * key: 100, int
+ * a1: 1, int
+ * a2: a, char
+ * a3: 1.1 1.2, float32
+ * -------
+ * ```
  */
 
 #include <tiledb/tiledb.h>

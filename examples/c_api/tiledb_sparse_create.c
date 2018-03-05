@@ -28,8 +28,12 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a spaese array. Make sure that no directory exists
+ * It shows how to create a sparse array. Make sure that no directory exists
  * with the name `my_sparse_array` in the current working directory.
+ *
+ * The created array looks as in figure
+ * `<TileDB-repo>/examples/figures/sparse_schema.png`.
+ *
  */
 
 #include <tiledb/tiledb.h>
@@ -39,7 +43,8 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Create dimensions
+  // Create two dimensions with names `d1` and `d2`. They both have type
+  // `uint64`, domain `[1,4]` and tile extent `2`.
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
@@ -55,7 +60,12 @@ int main() {
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
 
-  // Create attributes
+  // Create three attributes `a1`, `a2`, and `a3`. The first is of type `int32`
+  // and is compressed with `blosc-lz`, the second is of type `var char` and is
+  // compressed with `gzip`, and the third is of type `float32:2` (that admits
+  // two `float32` values per cell) and is compressed with `zstd`. Note that all
+  // compression levels are set to `-1`, which implies the default level for
+  // each compressor.
   tiledb_attribute_t* a1;
   tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
   tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC_LZ, -1);
@@ -69,7 +79,9 @@ int main() {
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
-  // Create array schema
+  // We create the array schema by setting the array type to `TILEDB_SPARSE`,
+  // and the cell and tile order to `row-major`. We set the data tile capacity
+  // to `2`. We also assign the array domain and attributes we created above.
   tiledb_array_schema_t* array_schema;
   tiledb_array_schema_create(ctx, &array_schema, TILEDB_SPARSE);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);

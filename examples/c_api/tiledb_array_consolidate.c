@@ -28,18 +28,36 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to consolidate arrays.
+ * This program shows how to consolidate arrays.
  *
- * One way to make this work is:
+ * One way to make this work is by first creating a dense array and making three
+ * different writes:
  *
+ * ```
  * $ ./tiledb_dense_create_c
  * $ ./tiledb_dense_write_global_1_c
  * $ ./tiledb_dense_write_global_subarray_c
  * $ ./tiledb_dense_write_unordered_c
- * $ ./tiledb_array_consolidate_c
+ * $ ls -1 my_dense_array
+ * __0x7ffff10e73c0_1517941950491
+ * __0x7ffff10e73c0_1517941954698
+ * __0x7ffff10e73c0_1517941959273
+ * __array_schema.tdb
+ * __lock.tdb
+ * ```
  *
- * The first four programs create a dense array with three different fragments.
- * The last program consolidates the three fragments in a single one.
+ * The above will create three fragments (appearing as separate subdirectories).
+ *
+ * Running this program will consolidate the 3 fragments/directories into a
+ * single one.
+ *
+ * ```
+ * $ ./tiledb_array_consolidate_c
+ * $ ls -1 my_dense_array
+ * __0x7ffff10e73c0_1517941970634_1517941959273
+ * __lock.tdb
+ * __array_schema.tdb
+ * ```
  */
 
 #include <tiledb/tiledb.h>

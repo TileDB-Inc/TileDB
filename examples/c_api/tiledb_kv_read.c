@@ -27,13 +27,20 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a key-value store.
+ * This example shows how to read from a key-value store.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_kv_create_c
  * $ ./tiledb_kv_write_c
  * $ ./tiledb_kv_read_c
+ * a1	a2	(a3[0], a3[1])
+ * -----------------------------
+ * 1	a	(1.1, 1.2)
+ *
+ * Item with key '12345' does not exist
+ * ```
  */
 
 #include <assert.h>

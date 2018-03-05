@@ -28,14 +28,45 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read asynchronoulsy from a dense array. The case of sparse
- * arrays is similar.
+ * This example shows how to read asynchronoulsy from a dense array. The case
+ * of sparse arrays is similar.
  *
- * You need to run the following to make this work:
+ * Run the following:
  *
+ * ```
  * $ ./tiledb_dense_create_c
  * $ ./tiledb_dense_write_async_c
  * $ ./tiledb_dense_read_async_c
+ * Query in progress
+ * Result num: 16
+ *
+ * Callback: Query completed
+ *    a1        a2     a3[0]     a3[1]
+ * -----------------------------------------
+ *    0         a       0.1       0.2
+ *    1        bb       1.1       1.2
+ *    2       ccc       2.1       2.2
+ *    3      dddd       3.1       3.2
+ *    4         e       4.1       4.2
+ *    5        ff       5.1       5.2
+ *    6       ggg       6.1       6.2
+ *    7      hhhh       7.1       7.2
+ *    8         i       8.1       8.2
+ *    9        jj       9.1       9.2
+ *   10       kkk      10.1      10.2
+ *   11      llll      11.1      11.2
+ *   12         m      12.1      12.2
+ *   13        nn      13.1      13.2
+ *   14       ooo      14.1      14.2
+ *   15      pppp      15.1      15.2
+ * ```
+ *
+ * Observe that `Query in progress` is printed out first and then the
+ * main function waits for TileDB to process the query. When the query is
+ * completed, the callback function is called, which prints
+ * `Callback: Query completed` along with the results (the fact that
+ * `Callback: Query completed` may be interleaved with the result printing
+ * is because two threads are printing at the same time).
  */
 
 #include <stdio.h>
@@ -76,7 +107,9 @@ int main() {
   char s[100] = "Callback: Query completed";
   tiledb_query_submit_async(ctx, query, print_upon_completion, s);
 
-  // Wait for query to complete
+  // Wait for the query to complete. We can check the status of the query with
+  // API calls. The status is "in progress" for as long as the query is
+  // executing, which becomes "completed" as soon as the query completes.
   printf("Query in progress\n");
   tiledb_query_status_t status;
   do {

@@ -28,15 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write random (unordered) cells to a dense array.
+ * This example shows how to write random (unordered) cells to a dense array.
  *
  * Make sure that there is no directory named `my_dense_array` in your
  * current working directory.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_unordered_c
+ * ```
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_unordered_c
+ * ```
+ *
+ * The above will create a fragment that looks as in figure
+ * `<TileDB-repo>/examples/figures/dense_write_unordered.png`.
  */
 
 #include <tiledb/tiledb.h>
@@ -46,7 +51,10 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Prepare cell buffers
+  // We prepare buffers to write 4 cells on all three attributes. Observe
+  // that now we need to prepare an extra buffer to specify the coordinates
+  // of these cells, as TileDB otherwise would not know which (scattered)
+  // cells we wish to write.
   int buffer_a1[] = {211, 213, 212, 208};
   uint64_t buffer_a2[] = {0, 4, 6, 7};
   char buffer_var_a2[] = "wwwwyyxu";
@@ -62,7 +70,9 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
-  // Create query
+  // Create query. We do not need to specify any `subarray` argument. We need
+  // to set the layout though to `TILEDB_UNORDERED`, so that TileDB knows that
+  // we are writing random cells.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);

@@ -31,8 +31,13 @@
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_vfs_write_c
  * $ ./tiledb_vfs_read_c
+ * Binary read:
+ * 153.1
+ * abcdefghijkl
+ * ```
  */
 
 #include <tiledb/tiledb.h>

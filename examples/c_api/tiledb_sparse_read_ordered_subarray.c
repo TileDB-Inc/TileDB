@@ -28,15 +28,34 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a sparse array, constraining the read
+ * This example shows how to read from a sparse array, constraining the read
  * to a specific subarray. This time the cells are returned in row-major order
  * within the specified subarray.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_sparse_create_c
  * $ ./tiledb_sparse_write_global_1_c
  * $ ./tiledb_sparse_read_ordered_subarray_c
+ * Result num: 3
+ *
+ * __coords       a1       a2      a3[0]     a3[1]
+ * -------------------------------------------------
+ * (3, 3)         6       ggg       6.1       6.2
+ * (3, 4)         7      hhhh       7.1       7.2
+ * (4, 2)         5        ff       5.1       5.2
+ * ```
+ *
+ *
+ * The query returns the subarray depicted in blue in figure
+ * `<TileDB-repo>/examples/figures/sparse_subarray.png`.
+ *
+ * Notice that the `TILEDB_ROW_MAJOR` layout we specified upon query creation
+ * refers to the layout of the cells that are returned in the user buffers
+ * after the execution of the query; the printed values follow a row-major
+ * order **within** the subarray, which is different than the global cell
+ * order.
  */
 
 #include <stdlib.h>
@@ -63,7 +82,10 @@ int main() {
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
 
-  // Create query
+  // Create a read query for subarray `[3,4], [2,4]`, setting the layout
+  // of the retrieved results to `TILEDB_ROW_MAJOR`. Notice that the type
+  // of `subarray` is `uint64`, i.e., the same as the dimension domains
+  // specified upon creation of the array.
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);

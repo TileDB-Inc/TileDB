@@ -28,8 +28,15 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to create a dense array. Make sure that no directory exists
- * with the name `my_dense_array` in the current working directory.
+ * This example shows how to create a dense array. Make sure that no directory
+ * exists with the name `my_dense_array` in the current working directory.
+ *
+ * ```
+ * $ ./tiledb_dense_create_c
+ * ```
+ *
+ * Figure `<TileDB-repo>/examples/figures/dense_schema.png` illustrates how the
+ * dense array we created looks like.
  */
 
 #include <stdio.h>

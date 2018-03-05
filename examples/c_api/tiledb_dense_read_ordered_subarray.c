@@ -28,15 +28,35 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a dense array, constraining the read
+ * This example shows how to read from a dense array, constraining the read
  * to a specific subarray. The cells are copied to the
  * input buffers sorted in row-major order within the selected subarray.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_dense_create_c
  * $ ./tiledb_dense_write_global_1_c
  * $ ./tiledb_dense_read_ordered_subarray_c
+ * Result num: 6
+ *
+ *   a1        a2     a3[0]     a3[1]
+ * ------------------------------------
+ *    9        jj       9.1       9.2
+ *   12         m      12.1      12.2
+ *   13        nn      13.1      13.2
+ *   11      llll      11.1      11.2
+ *   14       ooo      14.1      14.2
+ *   15      pppp      15.1      15.2
+ * ```
+ *
+ * Essentially, the query returns the subarray depicted in blue in figure
+ * `<TileDB-repo>/examples/figures/dense_subarray.png`.
+ * Notice that the `TILEDB_ROW_MAJOR` layout we specify upon query creation
+ * refers to the layout of the cells that are returned in the user buffers
+ * after the execution of the query; the printed values follow a row-major
+ * order **within** the subarray, which is different than the
+ * global cell order.
  */
 
 #include <stdio.h>

@@ -28,13 +28,45 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read a complete dense array in the global cell order.
+ * This example shows how to read a complete dense array in the global cell
+ * order.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_dense_create
  * $ ./tiledb_dense_write_global_1
  * $ ./tiledb_dense_read_global
+ * Non-empty domain:
+ * d1: (1, 4)
+ * d2: (1, 4)
+ *
+ * Maximum buffer sizes:
+ * a1: 64
+ * a2: (128, 40)
+ * a3: 128
+ *
+ * Result num: 16
+ *
+ *   a1        a2     a3[0]     a3[1]
+ * -----------------------------------------
+ *    0         a       0.1       0.2
+ *    1        bb       1.1       1.2
+ *    2       ccc       2.1       2.2
+ *    3      dddd       3.1       3.2
+ *    4         e       4.1       4.2
+ *    5        ff       5.1       5.2
+ *    6       ggg       6.1       6.2
+ *    7      hhhh       7.1       7.2
+ *    8         i       8.1       8.2
+ *    9        jj       9.1       9.2
+ *   10       kkk      10.1      10.2
+ *   11      llll      11.1      11.2
+ *   12         m      12.1      12.2
+ *   13        nn      13.1      13.2
+ *   14       ooo      14.1      14.2
+ *   15      pppp      15.1      15.2
+ * ```
  */
 
 #include <stdlib.h>
@@ -73,7 +105,8 @@ int main() {
       (unsigned long long)buffer_sizes[2]);
   printf("a3: %llu\n\n", (unsigned long long)buffer_sizes[3]);
 
-  // Prepare cell buffers
+  // Prepare cell buffers. Observe that we allocate space based on the
+  // maximum buffer size/elements computed above (this is optional).
   int* buffer_a1 = malloc(buffer_sizes[0]);
   uint64_t* buffer_a2 = malloc(buffer_sizes[1]);
   char* buffer_var_a2 = malloc(buffer_sizes[2]);
@@ -81,6 +114,9 @@ int main() {
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
 
   // Create query
+  // We create a read query, specifying the layout of the results as
+  // `TILEDB_GLOBAL_ORDER`. Notice also that we have not set the `subarray`
+  // for the query, which means that we wish to get all the array cells.
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
@@ -89,7 +125,11 @@ int main() {
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Print cell values (assumes all attributes are read)
+  // Print cell values (assumes all attributes are read). Notice the way
+  // `result_num` is calculated. After `tiledb_query_submit` is executed,
+  // `buffer_sizes[0]` is updated to the size (in bytes) of the result
+  // data copied in buffer `buffer_a1` (which allows us to infer the
+  // number of results).
   uint64_t result_num = buffer_sizes[0] / sizeof(int);
   printf("Result num: %llu\n\n", (unsigned long long)result_num);
   printf("%5s%10s%10s%10s\n", "a1", "a2", "a3[0]", "a3[1]");

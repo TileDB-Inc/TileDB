@@ -27,12 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * Shows how to manipulates config parameter objects.
+ * This example shows how to use the TileDB config objects.
  *
  * Simply run:
  *
- * ./tiledb_config_c
+ * ```
+ * $ ./tiledb_config_c
+ * Default settings:
+ * "sm.array_schema_cache_size" : "10000000"
+ * "sm.fragment_metadata_cache_size" : "10000000"
+ * "sm.tile_cache_size" : "10000000"
+ * "vfs.hdfs.kerb_ticket_cache_path" : ""
+ * "vfs.hdfs.name_node_uri" : ""
+ * "vfs.hdfs.username" : ""
+ * "vfs.s3.connect_timeout_ms" : "3000"
+ * "vfs.s3.endpoint_override" : "localhost:9000"
+ * "vfs.s3.file_buffer_size" : "5242880"
+ * "vfs.s3.region" : ""
+ * "vfs.s3.request_timeout_ms" : "3000"
+ * "vfs.s3.scheme" : "http"
+ * "vfs.s3.use_virtual_addressing" : "false"
  *
+ * Tile cache size: 10000000
+ *
+ * VFS S3 settings:
+ * "connect_timeout_ms" : "5000"
+ * "endpoint_override" : "localhost:8888"
+ * "file_buffer_size" : "5242880"
+ * "region" : ""
+ * "request_timeout_ms" : "3000"
+ * "scheme" : "http"
+ * "use_virtual_addressing" : "false"
+ * ```
  */
 
 #include <stdio.h>
@@ -48,7 +74,9 @@ int main() {
   tiledb_config_iter_t* config_iter;
   tiledb_config_iter_create(config, &config_iter, NULL, &error);
 
-  // Print the default config parameters
+  // Upon creating a TileDB config (and before setting any values to the
+  // config parameters), the config contains the default settings. We can
+  // iterate over the parameter-value pairs as follows
   printf("Default settings:\n");
   int done = 0;
   const char *param, *value;
@@ -69,7 +97,9 @@ int main() {
   tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
   printf("\nTile cache size: %s\n", value);
 
-  // Print only the S3 settings
+  // We can also iterate over parameters with a specific prefix. Here
+  // we print only the S3 settings. Note that the resulting parameter names
+  // have this prefix stripped.
   printf("\nVFS S3 settings:\n");
   tiledb_config_iter_reset(config, config_iter, "vfs.s3.", &error);
   tiledb_config_iter_done(config_iter, &done, &error);

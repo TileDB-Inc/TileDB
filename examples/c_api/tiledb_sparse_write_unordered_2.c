@@ -28,13 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write unordered cells to a sparse array with two write
- * queries.
+ * This example shows how to write unordered cells to a sparse array with two
+ * write queries. There is no assumption that the user knows the global cell
+ * order, and thus the cells are provided in a random order.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create_c
- * ./tiledb_sparse_write_unordered_2_c
+ * ```
+ * $ ./tiledb_sparse_create_c
+ * $ ./tiledb_sparse_write_unordered_2_c
+ * ```
+ *
+ * The resulting array is identical to that in `tiledb_sparse_write_global_1.c`.
+ * Note that the important difference here is that this example created
+ * **two fragments**, one per each write query submission.
  */
 
 #include <tiledb/tiledb.h>

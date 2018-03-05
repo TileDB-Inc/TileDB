@@ -28,13 +28,44 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to move/rename a TileDB resource.
+ * In this example we move a valid TileDB group and array, as well as an invalid
+ * path to see what happens. Notice that the last input of the move API function
+ * specifies whether the object to be moved should overwrite the new (target)
+ * path if it exists.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_group_create_c
- * ./tiledb_dense_create_c
- * ./tiledb_object_move_c
+ * ```
+ * $ ./tiledb_group_create_c
+ * $ ./tiledb_dense_create_c
+ * $ mkdir my_group_2
+ * $ mkdir invalid_path
+ * $ ls -1
+ * my_dense_array
+ * my_group
+ * my_group_2
+ * invalid_path
+ * $ ./tiledb_object_move_c
+ * Failed moving invalid path
+ * $ ls -1
+ * my_group_2
+ * invalid_path
+ * $ ls -1 my_group_2
+ * __tiledb_group.tdb
+ * dense_arrays
+ * sparse_arrays
+ * $ ls -1 my_group_2/dense_arrays
+ * __tiledb_group.tdb
+ * my_dense_array
+ * ```
+ *
+ * We first create TileDB group `my_group` and array `my_dense_array`. We also
+ * manually create a directory called `my_group_2` and `invalid_path`. After
+ * executing move, we first see that `my_group` is renamed to `my_group_2`,
+ * **overwriting** the existing directory with the same name. Also
+ * `my_dense_array` is moved inside `my_group_2/dense_arrays`. Notice finally
+ * that TileDB did not move `invalid_path`, since this was not a valid
+ * TileDB resource.
  */
 
 #include <tiledb/tiledb.h>

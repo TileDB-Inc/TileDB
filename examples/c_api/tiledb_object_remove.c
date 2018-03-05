@@ -28,14 +28,30 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to remove a TileDB resource.
+ * This example shows how to delete TileDB arrays and groups. Note that this
+ * program will not delete invalid paths (i.e., non-TileDB resources).
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_group_create_c
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_global_1_c
- * ./tiledb_object_remove_c
+ * ```
+ * $ ./tiledb_group_create_c
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_1_c
+ * $ mkdir invalid_path
+ * $ ls -1
+ * my_dense_array
+ * my_group
+ * invalid_path
+ * $ ./tiledb_object_remove_c
+ * Failed deleting invalid path
+ * $ ls -1
+ * invalid_path
+ * ```
+ *
+ * We first create TileDB group `my_group` and array `my_dense_array`. We also
+ * manually create directory `invalid_path` that is not related to TileDB.
+ * Invoking the program successfully deletes `my_group` and `my_dense_array`,
+ * but fails to delete `invalid_path`.
  */
 
 #include <stdio.h>
