@@ -50,7 +50,7 @@
 namespace tiledb {
 
 /** Implements the array schema functionality. */
-class MapSchema : public Schema {
+class TILEDB_EXPORT MapSchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

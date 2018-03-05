@@ -48,8 +48,36 @@
 
 namespace tiledb {
 
-/** Implements the attribute functionality. */
-class Attribute {
+/**
+ * Describes an attribute of an Array cell.
+ *
+ * @details
+ * An attribute specifies a datatype for a particular parameter in each
+ * array cell. There are 3 supported attribute types:
+ *
+ * - Fundamental types, such as char, int, double, uint64_t, etc..
+ * - Fixed sized arrays: std::array<T, N> where T is fundamental
+ * - Variable length data: std::string, std::vector<T> where T is fundamental
+ *
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+ * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+ * auto a3 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a3");
+ *
+ * // Change compression scheme
+ * a1.set_compressor({TILEDB_BLOSC, -1});
+ * a1.cell_val_num(); // 1
+ * a2.cell_val_num(); // Variable sized, TILEDB_VAR_NUM
+ * a3.cell_val_num(); // sizeof(std::array<float, 3>), Objects stored as char
+ * array a3.cell_size(); // same as cell_val_num since type is char
+ * a3.type_size(); // sizeof(char)
+ *
+ * tiledb::ArraySchema schema(ctx);
+ * schema.add_attributes(a1, a2, a3);
+ * @endcode
+ */
+class TILEDB_EXPORT Attribute {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

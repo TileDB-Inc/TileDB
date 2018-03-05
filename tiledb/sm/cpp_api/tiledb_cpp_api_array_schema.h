@@ -53,7 +53,7 @@ namespace tiledb {
  * about an array including cell/tile layout, data types, and compression
  * details.
  */
-class ArraySchema : public Schema {
+class TILEDB_EXPORT ArraySchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

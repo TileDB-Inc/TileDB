@@ -47,8 +47,12 @@
 
 namespace tiledb {
 
-/** Implements the dimension functionality. */
-class Dimension {
+/**
+ * Describes one dimension of an Array. The dimension consists
+ * of a type, lower and upper bound, and tile-extent describing
+ * the memory ordering. Dimensions are added to a Domain.
+ **/
+class TILEDB_EXPORT Dimension {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

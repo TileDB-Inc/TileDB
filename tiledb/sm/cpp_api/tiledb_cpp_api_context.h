@@ -50,8 +50,22 @@ namespace tiledb {
 
 class ArraySchema;
 
-/** A TileDB context wraps a TileDB storage manager. */
-class Context {
+/**
+ * A TileDB context wraps a TileDB storage manager.
+ * Most objects and functions will require a Context. Internal
+ * error handling is also defined by the Context; by default
+ * a TileDBError will be thrown.
+ *
+ * @code{.cpp}
+ * Context ctx;
+ *
+ * ctx.set_error_handler([](const std::string &msg) {
+ *         std::cerr << msg << std::endl;
+ *     })
+ * @endcode
+ *
+ */
+class TILEDB_EXPORT Context {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

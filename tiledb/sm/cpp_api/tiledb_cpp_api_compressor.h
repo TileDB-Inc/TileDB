@@ -46,7 +46,7 @@ namespace tiledb {
  * Represents a compression scheme. Composed of a compression algo + a
  * compression level.
  */
-class Compressor {
+class TILEDB_EXPORT Compressor {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

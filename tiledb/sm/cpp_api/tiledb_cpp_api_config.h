@@ -48,8 +48,18 @@ namespace impl {
 struct ConfigProxy;
 }
 
-/** Carries configuration parameters. */
-class Config {
+/**
+ * Carries configuration parameters for a context.
+ *
+ * @code{.cpp}
+ * Config conf();
+ * conf["vfs.s3.region"] = "us-east-1a";
+ * conf["vfs.s3.use_virtual_addressing"] = "true";
+ * Context ctx(conf);
+ * // array/kv operations with ctx
+ * @endcode
+ * */
+class TILEDB_EXPORT Config {
  public:
   using iterator = impl::ConfigIter;
   /* ********************************* */
@@ -179,7 +189,7 @@ class Config {
 namespace impl {
 
 /** Proxy to set params via operator `[]`. */
-struct ConfigProxy {
+struct TILEDB_EXPORT ConfigProxy {
   ConfigProxy(Config& conf, std::string param)
       : conf(conf)
       , param(std::move(param)) {

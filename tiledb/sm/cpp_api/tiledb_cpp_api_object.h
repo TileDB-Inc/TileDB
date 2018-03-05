@@ -47,7 +47,7 @@ namespace tiledb {
 class Context;
 
 /** Represents a TileDB object: array, group, key-value, or none (invalid). */
-class Object {
+class TILEDB_EXPORT Object {
  public:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */

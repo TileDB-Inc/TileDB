@@ -51,7 +51,7 @@ namespace impl {
  * auto p = std::shared_ptr<tiledb_type_t>(ptr, deleter);
  * @endcode
  */
-class Deleter {
+class TILEDB_EXPORT Deleter {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

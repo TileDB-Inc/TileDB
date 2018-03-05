@@ -80,7 +80,7 @@ namespace impl {
  *
  * @endcode
  **/
-class MultiMapItemProxy {
+class TILEDB_EXPORT MultiMapItemProxy {
  public:
   MultiMapItemProxy(const std::vector<std::string>& attrs, MapItem& item)
       : attrs(attrs)
@@ -199,7 +199,7 @@ class MultiMapItemProxy {
  *
  * @endcode
  **/
-class MapItemProxy {
+class TILEDB_EXPORT MapItemProxy {
  public:
   /** Create a proxy for the given attribute and underlying MapItem **/
   MapItemProxy(std::string attr, MapItem& item)

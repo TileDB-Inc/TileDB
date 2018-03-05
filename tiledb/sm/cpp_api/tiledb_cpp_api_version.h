@@ -40,7 +40,7 @@
 namespace tiledb {
 
 /** TileDB version. Format: `major_minor_rev`. */
-class Version {
+class TILEDB_EXPORT Version {
  public:
   /* ********************************* */
   /*                API                */
@@ -86,7 +86,8 @@ class Version {
 };
 
 /** Prints to an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const Version& v) {
+TILEDB_EXPORT inline std::ostream& operator<<(
+    std::ostream& os, const Version& v) {
   os << "TileDB v" << v.major() << '.' << v.minor() << '.' << v.patch();
   return os;
 }

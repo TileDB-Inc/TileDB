@@ -47,8 +47,41 @@
 
 namespace tiledb {
 
-/** Implements the domain functionality. */
-class Domain {
+/**
+ * Represents the domain of an array.
+ *
+ * @details
+ * A Domain defines the set of Dimension objects for a given array. The
+ * properties of a Domain derive from the underlying dimensions. A
+ * Domain is a component of an ArraySchema.
+ *
+ * @note The dimension can only be signed or unsigned integral types.
+ *
+ * @code{.cpp}
+ *
+ * tiledb::Context ctx;
+ * tiledb::Domain domain;
+ *
+ * // Note the dimension bounds are inclusive.
+ * auto d1 = tiledb::Dimension::create<int>(ctx, "d1", {-10, 10});
+ * auto d2 = tiledb::Dimension::create<uint64_t>(ctx, "d2", {1, 10});
+ * auto d3 = tiledb::Dimension::create<int>(ctx, "d3", {-100, 100});
+ *
+ * domain.add_dimension(d1);
+ * domain.add_dimension(d2);
+ * domain.add_dimension(d3); // Invalid, all dims must be same type
+ *
+ * domain.cell_num(); // (10 - -10 + 1) * (10 - 1 + 1) = 210 max cells
+ * domain.type(); // TILEDB_UINT64, determined from the dimensions
+ * domain.rank(); // 2, d1 and d2
+ *
+ * tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+ * schema.set_domain(domain); // Set the array's domain
+ *
+ * @endcode
+ *
+ **/
+class TILEDB_EXPORT Domain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -123,7 +156,7 @@ class Domain {
 /* ********************************* */
 
 /** Get a string representation of an attribute for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Domain& d);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Domain& d);
 
 }  // namespace tiledb
 

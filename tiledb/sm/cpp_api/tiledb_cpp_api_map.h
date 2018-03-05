@@ -51,7 +51,7 @@ namespace tiledb {
  * of MapItems. After an Item is created and populated with values, defined
  * by the MapScema, the item can be added to the map.
  */
-class Map {
+class TILEDB_EXPORT Map {
  public:
   using iterator = impl::MapIter;
 
