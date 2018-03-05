@@ -65,7 +65,7 @@ class ArraySchema;
  * @endcode
  *
  */
-class Context {
+class TILEDB_EXPORT Context {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

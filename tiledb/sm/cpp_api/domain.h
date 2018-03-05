@@ -81,7 +81,7 @@ namespace tiledb {
  * @endcode
  *
  **/
-class Domain {
+class TILEDB_EXPORT Domain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -162,7 +162,7 @@ class Domain {
 /* ********************************* */
 
 /** Get a string representation of an attribute for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Domain& d);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Domain& d);
 
 }  // namespace tiledb
 

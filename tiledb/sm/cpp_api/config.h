@@ -59,7 +59,7 @@ struct ConfigProxy;
  * // array/kv operations with ctx
  * @endcode
  * */
-class Config {
+class TILEDB_EXPORT Config {
  public:
   using iterator = impl::ConfigIter;
   /* ********************************* */
@@ -188,7 +188,7 @@ class Config {
 namespace impl {
 
 /** Proxy to set params via operator `[]`. */
-struct ConfigProxy {
+struct TILEDB_EXPORT ConfigProxy {
   ConfigProxy(Config& conf, std::string param)
       : conf(conf)
       , param(std::move(param)) {

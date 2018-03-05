@@ -31,11 +31,9 @@ set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
   if (WIN32)
-    target_link_libraries(${TARGET}_c tiledb_static
-            ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
+    target_link_libraries(${TARGET}_c tiledb_shared)
   else()
-    target_link_libraries(${TARGET}_c tiledb_static -lpthread
-            ${TILEDB_LIB_DEPENDENCIES} ${S3_LIB_DEPENDENCIES})
+    target_link_libraries(${TARGET}_c tiledb_shared -lpthread)
   endif()
 endfunction()
 
@@ -66,5 +64,5 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
 endforeach()
 
 # Add custom target 'examples'
-add_custom_target(examples_c DEPENDS tiledb_static)
-add_dependencies(examples_c ${EXAMPLE_C_BINS} tiledb_static)
+add_custom_target(examples_c DEPENDS tiledb_shared)
+add_dependencies(examples_c ${EXAMPLE_C_BINS} tiledb_shared)

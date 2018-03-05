@@ -51,7 +51,7 @@ class VFSFilebuf;
  * operations with a unified API on different filesystems, such as local
  * posix/windows, HDFS, AWS S3, etc.
  */
-class VFS {
+class TILEDB_EXPORT VFS {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

@@ -85,7 +85,7 @@ namespace tiledb {
  *
  * @endcode
  */
-class ArraySchema : public Schema {
+class TILEDB_EXPORT ArraySchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

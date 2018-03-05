@@ -48,7 +48,7 @@ namespace tiledb {
 /**
  * TileDB array class.
  */
-class Array {
+class TILEDB_EXPORT Array {
  public:
   /** Consolidates the fragments of an array. **/
   static void consolidate(const Context& ctx, const std::string& uri);

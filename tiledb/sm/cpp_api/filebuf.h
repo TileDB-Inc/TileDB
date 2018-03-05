@@ -63,7 +63,7 @@ namespace impl {
  *   os << "abcdefghijklmnopqrstuvwxyz";
  * @endcode
  */
-class VFSFilebuf : public std::streambuf {
+class TILEDB_EXPORT VFSFilebuf : public std::streambuf {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

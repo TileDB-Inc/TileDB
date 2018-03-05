@@ -70,6 +70,7 @@ script:
       #include <tiledb/tiledb.h>
       #include <tiledb/tiledb>
       int main(int argc, char **argv) {
+        tiledb::Context ctx;
         int major = 0;
         int minor = 0;
         int patch = 0;

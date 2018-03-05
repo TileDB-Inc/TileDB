@@ -52,7 +52,7 @@ namespace tiledb {
  * Enables listing TileDB objects in a directory or walking recursively an
  * entire directory tree.
  */
-class ObjectIter {
+class TILEDB_EXPORT ObjectIter {
  public:
   /* ********************************* */
   /*         TYPE DEFINITIONS          */

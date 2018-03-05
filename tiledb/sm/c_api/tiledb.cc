@@ -3037,7 +3037,7 @@ int tiledb_uri_to_path(
 /*            C++ API             */
 /* ****************************** */
 
-int tiledb::impl::tiledb_query_submit_async(
+TILEDB_EXPORT int tiledb::impl::tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     std::function<void(void*)> callback,
