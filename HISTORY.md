@@ -1,6 +1,6 @@
-# TileDB v1.3.0-Dev
+# In Progress
 
-## API additions 
+## API additions
 
 ### C API
 ### C++ API
@@ -8,10 +8,13 @@
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
   objects such as a simple data struct.
 
-## Breaking changes 
+## Improvements
+* Fix issue when linking to the C++ API via the shared library. (#408).
+
+## Breaking changes
 
 ### C API
-### C++ API 
+### C++ API
 * `max_buffer_elements` was renamed to `max_buffer_sizes` and now reports sizes in bytes instead of number of elements. This was done to support
   arbitrary POD types.
 * Buffer size reporting for variable-sized attributes was normalized: offsets will always come first. This impacts `Array::max_buffer_sizes` and `Query::result_buffer_elements`.

@@ -75,28 +75,28 @@ endif()
 if(USE_HDFS)
   find_package(LIBJVM REQUIRED)
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBJVM_LIBRARIES})
-  
+
   find_package(LIBHDFS REQUIRED)
   include_directories(${LIBHDFS_INCLUDE_DIR})
   # This variable is defined in FindJNI module included in the FindHDFS.cmake file
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBHDFS_LIBRARY})
 endif()
 
-if(USE_S3)  
+if(USE_S3)
   cmake_minimum_required(VERSION 3.2)
   find_package(AWSSDK)
 
   message(STATUS "AWSSDK_LIB_DIR: ${AWSSDK_LIB_DIR}")
   message(STATUS "AWSSDK_INC_DIR: ${AWSSDK_INCLUDE_DIR}")
   message(STATUS "AWSSDK_BIN_DIR: ${AWSSDK_BIN_DIR}")
- 
+
   set(AWS_SERVICE s3)
   AWSSDK_LIB_DEPS(AWS_SERVICE AWS_DEPS)
- 
+
   message(STATUS "AWS service ${AWS_SERVICE} depends on libs: ${AWS_DEPS}")
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICE AWS_LINKED_LIBS)
   message(STATUS "AWS linked libs: ${AWS_LINKED_LIBS}")
-  
+
   set(AWS_LIBRARIES)
   foreach(LIB ${AWS_LINKED_LIBS})
     find_library("AWS_FOUND_${LIB}" NAMES ${LIB} PATHS ${AWSSDK_LIB_DIR} NO_DEFAULT_PATH)
@@ -129,11 +129,12 @@ if (WIN32)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4244: conversion warning of floating point to integer type.
+  #   C4251: C++ export warning
   #   C4456: local variable hiding previous local variable
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4996: deprecation warning about e.g. sscanf.
-  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4456 /wd4457 /wd4702 /wd4996")
+  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4996")
   # Note: MSVC has the behavior of -fvisibility=hidden by default (you must
   # explicitly export all symbols you want exported).
   set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 /WX ${MSVC_DISABLE_WARNINGS}")
@@ -234,13 +235,13 @@ if(DOXYGEN_FOUND)
   add_custom_command(
      OUTPUT ${CMAKE_BINARY_DIR}/doxyfile.in
       COMMAND mkdir -p doxygen
-      COMMAND echo INPUT = ${CMAKE_SOURCE_DIR}/doc/mainpage.dox 
+      COMMAND echo INPUT = ${CMAKE_SOURCE_DIR}/doc/mainpage.dox
               ${TILEDB_CORE_HEADERS} > ${CMAKE_BINARY_DIR}/doxyfile.in
       COMMAND echo FILE_PATTERNS = *.h >> ${CMAKE_BINARY_DIR}/doxyfile.in
       COMMENT "Preparing for Doxygen documentation" VERBATIM
   )
   add_custom_target(
-      doc ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/Doxyfile.mk > 
+      doc ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/Doxyfile.mk >
           ${CMAKE_BINARY_DIR}/Doxyfile.log 2>&1
       COMMENT "Generating API documentation with Doxygen" VERBATIM
       DEPENDS ${CMAKE_BINARY_DIR}/doxyfile.in
@@ -250,9 +251,9 @@ endif(DOXYGEN_FOUND)
 ###########################################################
 # Uninstall
 ###########################################################
-set(CMD "xargs printf '-- Uninstalling: %s\\\\n' <install_manifest.txt") 
+set(CMD "xargs printf '-- Uninstalling: %s\\\\n' <install_manifest.txt")
 add_custom_target(
-   uninstall 
+   uninstall
    COMMAND echo "Uninstalling TileDB..."
    COMMAND eval "${CMD}"
    COMMAND xargs rm -f < install_manifest.txt
