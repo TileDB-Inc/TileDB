@@ -12,6 +12,11 @@ build_script:
 
     ..\scripts\install-deps.ps1
 
+    if ($LastExitCode -ne 0) {
+       Write-Host "Deps install failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
     if ($env:USE_S3 -eq "true") {
       ..\scripts\install-s3.ps1
       ..\scripts\install-minio.ps1
@@ -19,13 +24,69 @@ build_script:
     } else {
       ..\bootstrap.ps1 -EnableVerbose
     }
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Bootstrap failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    cmake --build . --config Release
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Build failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
 test_script:
 - ps: >-
     cmake --build . --target check --config Release
 
-    cmake --build . --target examples
+    if ($LastExitCode -ne 0) {
+       Write-Host "Tests failed."
+       $host.SetShouldExit($LastExitCode)
+    }
 
-    cmake --build . --target install
+    cmake --build . --target examples --config Release
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Examples failed to build."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    cmake --build . --target install --config Release
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Installation failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    $env:Path += ";$env:APPVEYOR_BUILD_FOLDER\dist\bin"
+
+    try {
+      .\examples\c_api\Release\tiledb_dense_create_c.exe
+    } catch {
+       Write-Host "C API example failed."
+       $host.SetShouldExit(1)
+    }
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "C API example failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    rm -Recurse -Force my_dense_array
+
+    try {
+      .\examples\cpp_api\Release\tiledb_dense_create_cpp.exe
+    } catch {
+       Write-Host "C++ API example failed."
+       $host.SetShouldExit(1)
+    }
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "C++ API example failed."
+       $host.SetShouldExit($LastExitCode)
+    }
 
     mkdir dist
 

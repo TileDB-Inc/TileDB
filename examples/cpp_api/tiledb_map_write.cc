@@ -74,8 +74,8 @@ int main() {
     // Create an item, assign values, and add to the map in a single op
     int t1 = 3;
     std::string t2{"ccc"};
-    std::vector<float> t3{3.1f, 3.2f};
-    map[std::vector<double>{300, 300.1}][{"a1", "a2", "a3"}] =
+    std::array<float, 2> t3{{3.1f, 3.2f}};
+    map[std::vector<double>({{300, 300.1}})][{"a1", "a2", "a3"}] =
         std::make_tuple(t1, t2, t3);
 
     // Update an existing key. Old values for a2, a3 will be carried over.
