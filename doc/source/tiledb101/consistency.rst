@@ -10,7 +10,7 @@ updates are made to an array, eventually all accesses to the array will
 incorporates all the updates).
 
 The concept of eventual consistency in TileDB is illustrated in :ref:`Figure
-24 <figure-24>`. Suppose that initially the array is empty, and then two writes are
+25 <figure-25>`. Suppose that initially the array is empty, and then two writes are
 performed, first ``A`` and then ``B``. We assume that the writes may be
 initiated simultaneously, and may also overlap, since it may take time
 for each write to complete. Suppose that ``A``\ ’s fragment is first in
@@ -31,12 +31,12 @@ first and its fragment became “visible”, but not ``A``, and (iv) both
 ``A`` came first (i.e., its fragment name comes first in the fragment
 order), ``B`` “overwrote” the blue portion of ``A``\ ’s write.
 
-.. _figure-24:
+.. _figure-25:
 
-.. figure:: Figure_24.png
+.. figure:: Figure_25.png
     :align: center
 
-    Figure 24: Eventual consistency in TileDB
+    Figure 25: Eventual consistency in TileDB
 
 Eventual consistency allows high availability and
 parallelism. This model is followed by the AWS S3 object store and,
