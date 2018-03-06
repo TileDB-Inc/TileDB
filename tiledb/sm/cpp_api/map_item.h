@@ -58,7 +58,7 @@ class MapItemProxy;
 }  // namespace impl
 
 /** Object representing a Map key and its values. **/
-class MapItem {
+class TILEDB_EXPORT MapItem {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

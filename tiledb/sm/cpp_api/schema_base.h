@@ -49,7 +49,7 @@ class Compressor;
  * Base class for TileDB schemas. This is intended
  * for all array-backed stores.
  */
-class Schema {
+class TILEDB_EXPORT Schema {
  public:
   const Context& context() const {
     return ctx_.get();

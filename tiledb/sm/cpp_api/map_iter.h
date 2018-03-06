@@ -47,7 +47,8 @@ namespace tiledb {
 namespace impl {
 
 /** Iterate over items in a map. **/
-class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
+class TILEDB_EXPORT MapIter
+    : public std::iterator<std::forward_iterator_tag, MapItem> {
  public:
   explicit MapIter(Map& map, bool end = false);
   MapIter(const MapIter&) = delete;

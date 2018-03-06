@@ -49,9 +49,10 @@ class Config;
 
 namespace impl {
 
-class ConfigIter : public std::iterator<
-                       std::forward_iterator_tag,
-                       const std::pair<std::string, std::string>> {
+class TILEDB_EXPORT ConfigIter
+    : public std::iterator<
+          std::forward_iterator_tag,
+          const std::pair<std::string, std::string>> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

@@ -79,7 +79,7 @@ namespace tiledb {
  * schema.add_attributes(a1, a2, a3);
  * @endcode
  */
-class Attribute {
+class TILEDB_EXPORT Attribute {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

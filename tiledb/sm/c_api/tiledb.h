@@ -3270,7 +3270,6 @@ TILEDB_EXPORT int tiledb_vfs_touch(
 TILEDB_EXPORT int tiledb_uri_to_path(
     tiledb_ctx_t* ctx, const char* uri, char* path_out, unsigned* path_length);
 
-#undef TILEDB_EXPORT
 #ifdef __cplusplus
 }
 #endif

@@ -52,7 +52,7 @@ namespace tiledb {
  * of a type, lower and upper bound, and tile-extent describing
  * the memory ordering. Dimensions are added to a Domain.
  **/
-class Dimension {
+class TILEDB_EXPORT Dimension {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

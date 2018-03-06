@@ -73,7 +73,7 @@ namespace tiledb {
  * std::tuple<int, std::string, std::array<float, 2>> vals = map[key];
  * @endcode
  */
-class Map {
+class TILEDB_EXPORT Map {
  public:
   using iterator = impl::MapIter;
 

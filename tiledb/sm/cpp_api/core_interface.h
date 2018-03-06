@@ -56,7 +56,7 @@ namespace impl {
  * @param callback_data Data to pass callback
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-int tiledb_query_submit_async(
+TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     std::function<void(void*)> callback,

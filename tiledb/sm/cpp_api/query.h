@@ -70,7 +70,7 @@ namespace tiledb {
  * query.submit();
  * @endcode
  */
-class Query {
+class TILEDB_EXPORT Query {
  public:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
@@ -336,7 +336,8 @@ class Query {
 /* ********************************* */
 
 /** Get a string representation of a query status for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Query::Status& stat);
+TILEDB_EXPORT std::ostream& operator<<(
+    std::ostream& os, const Query::Status& stat);
 
 }  // namespace tiledb
 
