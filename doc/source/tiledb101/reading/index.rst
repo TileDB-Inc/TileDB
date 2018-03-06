@@ -41,4 +41,7 @@ always sees the final array logical view as shown in the examples in the
 .. toctree::
     :maxdepth: 2
 
+    reading-dense-arrays
+    reading-sparse-arrays
     handling-incomplete-queries
+    utility-functions
