@@ -28,12 +28,19 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write an entire dense array in a single write.
+ * This example shows how to write an entire dense array in a single write. It
+ * is assumed that the user knows the global cell order and provides the values
+ * to TileDB in that order.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_dense_create_c
- * ./tiledb_dense_write_global_1_c
+ * ```
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_dense_write_global_1_c
+ * ```
+ *
+ * The created array looks as shown in figure
+ * `<TileDB-repo>/examples/figures/dense_contents.png`
  */
 
 #include <tiledb/tiledb.h>
@@ -43,7 +50,10 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Prepare cell buffers
+  // Prepare cell buffers. Recall that the user is responsible for populating
+  // and providing her own buffers to TileDB. We need one buffer per
+  // fixed-sized attribute `a1` and `a3` and two buffers for a variable-sized
+  // attribute `a2`. The array is `4x4`, thus we have 16 cells.
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   uint64_t buffer_a2[] = {
       0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
@@ -63,7 +73,11 @@ int main() {
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3)};
 
-  // Create query
+  // We create a query object for array `my_dense_array`. We set the query type
+  // to `TILEDB_WRITE` and the layout to `TILEDB_GLOBAL_ORDER`, since we
+  // provide the cells in the array global cell order. Not explicitly setting
+  // a `subarray` for the query tells TileDB that we are writing in the entire
+  // domain.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
@@ -73,7 +87,9 @@ int main() {
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Clean up
+  // Clean up. It is extremely important to **always free the query**.
+  // In addition to cleaning up any internal state for the query, this
+  // function finalizes the write by **flushing** any cached data to the files.
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);
 

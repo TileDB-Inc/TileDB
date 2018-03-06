@@ -34,8 +34,13 @@
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create_c
- * ./tiledb_sparse_write_global_1_c
+ * ```
+ * $ ./tiledb_sparse_create_c
+ * $ ./tiledb_sparse_write_global_1_c
+ * ```
+ *
+ * The created array looks as in figure
+ * `<TileDB-repo>/examples/figures/sparse_contents.png`.
  */
 
 #include <tiledb/tiledb.h>
@@ -45,7 +50,12 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Prepare cell buffers
+  // Prepare cell buffers. Recall that the user is responsible for populating
+  // and providing her own buffers to TileDB. We need one buffer per
+  // fixed-size attribute `a1` and `a3` and two buffers for a variable-sized
+  // attribute `a2`. In contrast to the dense case, here we also need an extra
+  // buffer for the coordinates. In this example, we are writing 8 cells to
+  // the array.
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
@@ -75,7 +85,10 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
-  // Create query
+  // We create a query object for array `my_sparse_array`. We set the query type
+  // to `TILEDB_WRITE` and the layout to `TILEDB_GLOBAL_ORDER`, since we provide
+  // the cells in the array global cell order. Not setting `subarray` in the
+  // query tells TileDB that we are writing in the entire domain.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_WRITE);
@@ -85,7 +98,9 @@ int main() {
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Clean up
+  // Clean up. It is extremely important to **always free the query**.
+  // In addition to cleaning up any internal state for the query, this function
+  // finalizes the write by **flushing** any cached data to the files.
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);
 

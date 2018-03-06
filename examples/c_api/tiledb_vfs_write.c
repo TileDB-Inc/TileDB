@@ -27,9 +27,13 @@
  *
  * @section DESCRIPTION
  *
- * Write to a file with VFS. Simply run:
+ * Write to a file with VFS.
  *
+ * Simply run:
+ *
+ * ```
  * $ ./tiledb_vfs_write_c
+ * ```
  *
  */
 

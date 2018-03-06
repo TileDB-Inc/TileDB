@@ -28,13 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to write to a sparse array with two write queries, assuming
- * that the user provides the cells ordered in the array global cell order.
+ * This example shows how to write to a sparse array with two write queries,
+ * assuming that the user provides the cells ordered in the array global cell
+ * order.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_sparse_create_c
- * ./tiledb_sparse_write_global_2_c
+ * ```
+ * $ ./tiledb_sparse_create_c
+ * $ ./tiledb_sparse_write_global_2_c
+ * ```
+ *
+ * The resulting array is identical to that `tiledb_sparse_write_global_1.c`.
+ * Moreover, note that there is a **single fragment** produced; the second
+ * write essentially **appends** to the existing fragment.
  */
 
 #include <tiledb/tiledb.h>

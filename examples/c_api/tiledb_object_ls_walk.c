@@ -28,11 +28,88 @@
  *
  * @section DESCRIPTION
  *
- * List/Walk a directory for TileDB Objects.
+ * List/Walk a directory for TileDB objects.
  *
- * Create some object hierarchy and then run:
+ * First create some object hierarchy such as:
  *
- * ./tiledb_object_ls_walk_c
+ * my_group/
+ * ├── dense_arrays
+ * │   ├── __tiledb_group.tdb
+ * │   ├── array_A
+ * │   │   └── __array_schema.tdb
+ * │   ├── array_B
+ * │   │   └── __array_schema.tdb
+ * │   └── kv
+ * │       └── __kv_schema.tdb
+ * └── sparse_arrays
+ *     ├── __tiledb_group.tdb
+ *     ├── array_C
+ *     │   └── __array_schema.tdb
+ *     └── array_D
+ *         └── __array_schema.tdb
+ *
+ * ```
+ * $ mkdir my_group
+ * $ mkdir my_group/dense_arrays
+ * $ mkdir my_group/sparse_arrays
+ * $ mkdir my_group/dense_arrays/array_A
+ * $ mkdir my_group/dense_arrays/array_B
+ * $ mkdir my_group/dense_arrays/kv
+ * $ mkdir my_group/sparse_arrays/array_C
+ * $ mkdir my_group/sparse_arrays/array_D
+ * $ touch my_group/dense_arrays/__tiledb_group.tdb
+ * $ touch my_group/sparse_arrays/__tiledb_group.tdb
+ * $ touch my_group/dense_arrays/array_A/__array_schema.tdb
+ * $ touch my_group/dense_arrays/array_B/__array_schema.tdb
+ * $ touch my_group/dense_arrays/kv/__kv_schema.tdb
+ * $ touch my_group/sparse_arrays/array_C/__array_schema.tdb
+ * $ touch my_group/sparse_arrays/array_D/__array_schema.tdb
+ * ```
+ *
+ * This means that `dense_arrays` and sparse_arrays` are TileDB groups,
+ * whereas `array_A/B/C/D` are TileDB arrays and `kv` is a key-value store.
+ *
+ * Then run:
+ *
+ * ```
+ * $ ./tiledb_object_ls_walk_c
+ * List children:
+ * file://<cwd>/my_group/dense_arrays GROUP
+ * file://<cwd>/my_group/sparse_arrays GROUP
+ *
+ * Preorder traversal:
+ * file://<cwd>/my_group/dense_arrays GROUP
+ * file://<cwd>/my_group/dense_arrays/array_A ARRAY
+ * file://<cwd>/my_group/dense_arrays/array_B ARRAY
+ * file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+ * file://<cwd>/my_group/sparse_arrays GROUP
+ * file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+ * file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+ *
+ * Postorder traversal:
+ * file://<cwd>/my_group/dense_arrays/array_A ARRAY
+ * file://<cwd>/my_group/dense_arrays/array_B ARRAY
+ * file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+ * file://<cwd>/my_group/dense_arrays GROUP
+ * file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+ * file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+ * file://<cwd>/my_group/sparse_arrays GROUP
+ * ```
+ *
+ * We essentially wish to first list the TileDB objects in `my_group` (in
+ * our current working directory), and then recursively traverse the TileDB
+ * objects in folder `my_group` once in a preorder and once in a postorder
+ * manner. We apply the `print_path` callback for each TileDB object found.
+ * Any non-TileDB objects will be ignored.
+ *
+ * This callback simply prints the full path of each visited object along with
+ * its type (array, group, key-value or invalid) on the screen. Notice that
+ * this function always returns `1`. This means that the traversal will always
+ * continue to the next TileDB object. Had it been set to `0`, the traversal
+ * would finish after printing the first encountered TileDB object. Also we do
+ * not utilize argument `data` at all. You can be very creative by choosing
+ * different functions with different `data` inputs and different return values
+ * to implement some pretty sophisticated functionality.
  */
 
 #include <tiledb/tiledb.h>

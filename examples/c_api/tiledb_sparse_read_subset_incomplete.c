@@ -28,17 +28,35 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to read from a sparse array, constraining the read
+ * This example shows how to read from a sparse array, constraining the read
  * to a specific subarray and a subset of attributes. Moreover, the
- * program shows how to handle incomplete queries that did not complete
+ * program shows how to handle queries that did not complete
  * because the input buffers were not big enough to hold the entire
  * result.
  *
  * You need to run the following to make it work:
  *
+ * ```
  * $ ./tiledb_sparse_create_c
  * $ ./tiledb_sparse_write_global_1_c
  * $ ./tiledb_sparse_read_subset_incomplete_c
+ * a1
+ * ---
+ * Reading cells...
+ * 5
+ * 6
+ * Reading cells...
+ * 7
+ * ```
+ *
+ * The query returns the subarray depicted in blue in figure
+ * `<TileDB-repo>/examples/figures/sparse_subarray.png`.
+ *
+ *
+ * The program prints the cell values of `a1` in the subarray in column-major
+ * order. Observe that the loop is executed twice, retrieving two cells in the
+ * first iteration (since our buffer had space only for 2 cells) and the third
+ * in the second iteration.
  */
 
 #include <tiledb/tiledb.h>
@@ -48,12 +66,16 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
-  // Prepare cell buffers
+  // Prepare cell buffers. Notice that this time we prepare a buffer only for
+  // `a1` (as we will not be querying the rest of the attributes) and we assign
+  // space that **will not** be able to hold the entire result.
   int buffer_a1[2];
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
-  // Create query
+  // Create the query, which focuses on subarray `[3,4], [2,4]` and attribute
+  // `a1`. Also notice that we set the layout to `TILEDB_COL_MAJOR`, which will
+  // retrieve the cells in column-major order within the selected subarray.
   tiledb_query_t* query;
   const char* attributes[] = {"a1"};
   uint64_t subarray[] = {3, 4, 2, 4};
@@ -62,7 +84,15 @@ int main() {
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
 
-  // Loop until the query is completed
+  // Loop until the query is completed.
+  // The buffer we created the query with cannot hold the entire result.
+  // Instead of crashing, query submission will try to fill as many result
+  // cells in the buffer as it can and then gracefully terminate. TileDB
+  // allows the user to check the query status for `a1` via API functions.
+  // While the status is "incomplete", the code continues the loop to retrieve
+  // the next results. Notice that we are submitting the **same** query; the
+  // query is **stateful** and will resume from where it stopped. Eventually
+  // the status becomes "completed" and the loop exits.
   printf("a1\n---\n");
   tiledb_query_status_t status;
   do {

@@ -28,14 +28,27 @@
  *
  * @section DESCRIPTION
  *
- * It shows how to get the type of a TileDB object (resource).
+ * This example retrieves the object type of four paths, `my_group`,
+ * `my_dense_array`, `my_kv` and `some_invalid_path`. Before running this
+ * program, we make sure that `my_group` is a valid TileDB group,
+ * `my_dense_array` is a valid TileDB array, `my_kv` is a valid TileDB
+ * key-value store, and `some_invalid_path` is a potentially existing directory
+ * or file that is not a TileDB object. We also provide a simple function
+ * `print_object_type` that prints the TileDB type to `stdout`.
  *
  * You need to run the following to make this work:
  *
- * ./tiledb_group_create_c
- * ./tiledb_dense_create_c
- * ./tiledb_kv_create_c
- * ./tiledb_object_type_c
+ * ```
+ * $ ./tiledb_group_create_c
+ * $ ./tiledb_dense_create_c
+ * $ ./tiledb_kv_create_c
+ * $ mkdir some_invalid_path
+ * $ ./tiledb_object_type_c
+ * GROUP
+ * ARRAY
+ * KEY_VALUE
+ * INVALID
+ * ```
  */
 
 #include <tiledb/tiledb.h>
