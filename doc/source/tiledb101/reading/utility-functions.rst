@@ -22,8 +22,7 @@ the array.
 Upper bound on buffer sizes
 ---------------------------
 
-Recall from section `Handling Incomplete
-Queries <doc:handling-incomplete-queries>`__ that sparse arrays and
+Recall from section :doc:`Handling Incomplete Queries <handling-incomplete-queries>` that sparse arrays and
 variable-sized attributes pose a challenge in deciding the buffer sizes
 when issuing a read query. The reason is that, (i) for sparse arrays, we
 cannot know in advance the result size as the distribution of the

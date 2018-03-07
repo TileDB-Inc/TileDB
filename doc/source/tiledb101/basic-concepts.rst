@@ -105,7 +105,7 @@ TileDB employs **tile-based** compression. Additionally, it allows the
 user to select different compression schemes on a **per-attribute
 basis**, as attributes are stored separately (as discussed below).
 Compression is an important feature of TileDB and, therefore, we include
-more details in a separate section Compression.
+more details in a separate section :doc:`Compression <compression>`.
 
 .. note::
     The **data tile** (in both dense and sparse
@@ -167,5 +167,5 @@ file, the MBRs for sparse arrays, etc.
     The array schema and fragment metadata constitute internal
     information managed solely by TileDB. This is different from the
     arbitrary metadata that the user may wish to attach to an array, which
-    can be done via TileDB’s key-value store
+    can be done via TileDB’s :doc:`key-value store <key-value-store>`
     functionality.

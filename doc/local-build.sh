@@ -53,7 +53,7 @@ run_doxygen() {
 }
 
 build_site() {
-    sphinx-build -E -b html -d ${build_dir}/doctrees -D language=en ${source_dir} ${build_dir}/html || \
+    sphinx-build -E -W -T -b html -d ${build_dir}/doctrees -D language=en ${source_dir} ${build_dir}/html || \
         die "could not build sphinx site"
 }
 

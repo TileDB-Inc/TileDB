@@ -32,6 +32,8 @@ On Linux, you can modify the ``LD_LIBRARY_PATH`` variable at runtime::
 
 For macOS the linker variable is ``DYLD_LIBARAY_PATH``.
 
+.. _windows-usage:
+
 Windows
 -------
 

@@ -10,3 +10,11 @@
 .wy-side-nav-search > div.version {
     color: rgba(64, 64, 64, 0.3);
 }
+
+.red {
+    color: red;
+}
+
+.green {
+    color: green;
+}
