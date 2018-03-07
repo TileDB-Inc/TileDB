@@ -250,72 +250,74 @@ int cmp_row_order(
 std::string domain_str(const void* domain, Datatype type) {
   std::stringstream ss;
 
-  if (type == Datatype::INT32) {
-    auto domain_ = static_cast<const int*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
+  if (domain == nullptr)
+    return "";
+
+  const int* domain_int32;
+  const int64_t* domain_int64;
+  const float* domain_float32;
+  const double* domain_float64;
+  const int8_t* domain_int8;
+  const uint8_t* domain_uint8;
+  const int16_t* domain_int16;
+  const uint16_t* domain_uint16;
+  const uint32_t* domain_uint32;
+  const uint64_t* domain_uint64;
+
+  switch (type) {
+    case Datatype::INT32:
+      domain_int32 = static_cast<const int*>(domain);
+      ss << "[" << domain_int32[0] << "," << domain_int32[1] << "]";
+      return ss.str();
+    case Datatype::INT64:
+      domain_int64 = static_cast<const int64_t*>(domain);
+      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
+      return ss.str();
+    case Datatype::FLOAT32:
+      domain_float32 = static_cast<const float*>(domain);
+      ss << "[" << domain_float32[0] << "," << domain_float32[1] << "]";
+      return ss.str();
+    case Datatype::FLOAT64:
+      domain_float64 = static_cast<const double*>(domain);
+      ss << "[" << domain_float64[0] << "," << domain_float64[1] << "]";
+      return ss.str();
+    case Datatype::INT8:
+      domain_int8 = static_cast<const int8_t*>(domain);
+      ss << "[" << int(domain_int8[0]) << "," << int(domain_int8[1]) << "]";
+      return ss.str();
+    case Datatype::UINT8:
+      domain_uint8 = static_cast<const uint8_t*>(domain);
+      ss << "[" << int(domain_uint8[0]) << "," << int(domain_uint8[1]) << "]";
+      return ss.str();
+    case Datatype::INT16:
+      domain_int16 = static_cast<const int16_t*>(domain);
+      ss << "[" << domain_int16[0] << "," << domain_int16[1] << "]";
+      return ss.str();
+    case Datatype::UINT16:
+      domain_uint16 = static_cast<const uint16_t*>(domain);
+      ss << "[" << domain_uint16[0] << "," << domain_uint16[1] << "]";
+      return ss.str();
+    case Datatype::UINT32:
+      domain_uint32 = static_cast<const uint32_t*>(domain);
+      ss << "[" << domain_uint32[0] << "," << domain_uint32[1] << "]";
+      return ss.str();
+    case Datatype::UINT64:
+      domain_uint64 = static_cast<const uint64_t*>(domain);
+      ss << "[" << domain_uint64[0] << "," << domain_uint64[1] << "]";
+      return ss.str();
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain type
+      assert(false);
+      return "";
   }
 
-  if (type == Datatype::INT64) {
-    auto domain_ = static_cast<const int64_t*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::FLOAT32) {
-    auto domain_ = static_cast<const float*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::FLOAT64) {
-    auto domain_ = static_cast<const double*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::CHAR) {
-    auto domain_ = static_cast<const char*>(domain);
-    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::INT8) {
-    auto domain_ = static_cast<const int8_t*>(domain);
-    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT8) {
-    auto domain_ = static_cast<const uint8_t*>(domain);
-    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::INT16) {
-    auto domain_ = static_cast<const int16_t*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT16) {
-    auto domain_ = static_cast<const uint16_t*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT32) {
-    auto domain_ = static_cast<const uint32_t*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT64) {
-    auto domain_ = static_cast<const uint64_t*>(domain);
-    ss << "[" << domain_[0] << "," << domain_[1] << "]";
-    return ss.str();
-  }
-
+  assert(false);
   return "";
 }
 
@@ -430,76 +432,74 @@ bool starts_with(const std::string& value, const std::string& prefix) {
 std::string tile_extent_str(const void* tile_extent, Datatype type) {
   std::stringstream ss;
 
-  if (tile_extent == nullptr) {
+  if (tile_extent == nullptr)
     return constants::null_str;
+
+  const int* tile_extent_int32;
+  const int64_t* tile_extent_int64;
+  const float* tile_extent_float32;
+  const double* tile_extent_float64;
+  const int8_t* tile_extent_int8;
+  const uint8_t* tile_extent_uint8;
+  const int16_t* tile_extent_int16;
+  const uint16_t* tile_extent_uint16;
+  const uint32_t* tile_extent_uint32;
+  const uint64_t* tile_extent_uint64;
+
+  switch (type) {
+    case Datatype::INT32:
+      tile_extent_int32 = static_cast<const int*>(tile_extent);
+      ss << *tile_extent_int32;
+      return ss.str();
+    case Datatype::INT64:
+      tile_extent_int64 = static_cast<const int64_t*>(tile_extent);
+      ss << *tile_extent_int64;
+      return ss.str();
+    case Datatype::FLOAT32:
+      tile_extent_float32 = static_cast<const float*>(tile_extent);
+      ss << *tile_extent_float32;
+      return ss.str();
+    case Datatype::FLOAT64:
+      tile_extent_float64 = static_cast<const double*>(tile_extent);
+      ss << *tile_extent_float64;
+      return ss.str();
+    case Datatype::INT8:
+      tile_extent_int8 = static_cast<const int8_t*>(tile_extent);
+      ss << int(*tile_extent_int8);
+      return ss.str();
+    case Datatype::UINT8:
+      tile_extent_uint8 = static_cast<const uint8_t*>(tile_extent);
+      ss << int(*tile_extent_uint8);
+      return ss.str();
+    case Datatype::INT16:
+      tile_extent_int16 = static_cast<const int16_t*>(tile_extent);
+      ss << *tile_extent_int16;
+      return ss.str();
+    case Datatype::UINT16:
+      tile_extent_uint16 = static_cast<const uint16_t*>(tile_extent);
+      ss << *tile_extent_uint16;
+      return ss.str();
+    case Datatype::UINT32:
+      tile_extent_uint32 = static_cast<const uint32_t*>(tile_extent);
+      ss << *tile_extent_uint32;
+      return ss.str();
+    case Datatype::UINT64:
+      tile_extent_uint64 = static_cast<const uint64_t*>(tile_extent);
+      ss << *tile_extent_uint64;
+      return ss.str();
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain type
+      assert(false);
+      return "";
   }
 
-  if (type == Datatype::INT32) {
-    auto tile_extent_ = static_cast<const int*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::INT64) {
-    auto tile_extent_ = static_cast<const int64_t*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::FLOAT32) {
-    auto tile_extent_ = static_cast<const float*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::FLOAT64) {
-    auto tile_extent_ = static_cast<const double*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::CHAR) {
-    auto tile_extent_ = static_cast<const char*>(tile_extent);
-    ss << int(*tile_extent_);
-    return ss.str();
-  }
-
-  if (type == Datatype::INT8) {
-    auto tile_extent_ = static_cast<const int8_t*>(tile_extent);
-    ss << int(*tile_extent_);
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT8) {
-    auto tile_extent_ = static_cast<const uint8_t*>(tile_extent);
-    ss << int(*tile_extent_);
-    return ss.str();
-  }
-
-  if (type == Datatype::INT16) {
-    auto tile_extent_ = static_cast<const int16_t*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT16) {
-    auto tile_extent_ = static_cast<const uint16_t*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT32) {
-    auto tile_extent_ = static_cast<const uint32_t*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
-  if (type == Datatype::UINT64) {
-    auto tile_extent_ = static_cast<const uint64_t*>(tile_extent);
-    ss << *tile_extent_;
-    return ss.str();
-  }
-
+  assert(false);
   return "";
 }
 

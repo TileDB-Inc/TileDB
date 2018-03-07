@@ -127,6 +127,24 @@ const uint32_t empty_uint32 = std::numeric_limits<uint32_t>::max();
 /** The special value for an empty uint64. */
 const uint64_t empty_uint64 = std::numeric_limits<uint64_t>::max();
 
+/** The special value for an empty ASCII. */
+const uint8_t empty_ascii = 0;
+
+/** The special value for an empty UTF8. */
+const uint8_t empty_utf8 = 0;
+
+/** The special value for an empty UTF16. */
+const uint16_t empty_utf16 = 0;
+
+/** The special value for an empty UTF32. */
+const uint32_t empty_utf32 = 0;
+
+/** The special value for an empty UCS2. */
+const uint16_t empty_ucs2 = 0;
+
+/** The special value for an empty UCS4. */
+const uint32_t empty_ucs4 = 0;
+
 /** The file suffix used in TileDB. */
 const char* file_suffix = ".tdb";
 
@@ -251,6 +269,24 @@ const char* uint32_str = "UINT32";
 
 /** The string representation for type uint64. */
 const char* uint64_str = "UINT64";
+
+/** The string representation for type STRING_ASCII. */
+const char* string_ascii_str = "STRING_ASCII";
+
+/** The string representation for type STRING_UTF8. */
+const char* string_utf8_str = "STRING_UTF8";
+
+/** The string representation for type STRING_UTF16. */
+const char* string_utf16_str = "STRING_UTF16";
+
+/** The string representation for type STRING_UTF32. */
+const char* string_utf32_str = "STRING_UTF32";
+
+/** The string representation for type STRING_UCS2. */
+const char* string_ucs2_str = "STRING_UCS2";
+
+/** The string representation for type STRING_UCS4. */
+const char* string_ucs4_str = "STRING_UCS4";
 
 /** The string representation for the dense array type. */
 const char* dense_str = "dense";

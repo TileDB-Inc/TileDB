@@ -46,14 +46,9 @@ namespace sm {
 Attribute::Attribute() = default;
 
 Attribute::Attribute(const char* name, Datatype type) {
-  // Set name
   if (name != nullptr)
     name_ = name;
-
-  // Set type
   type_ = type;
-
-  // Set default compressor and compression level
   cell_val_num_ = 1;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;

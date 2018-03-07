@@ -847,52 +847,94 @@ void ArrayOrderedWriteState::copy_tile_slab() {
   for (unsigned int i = 0, b = 0; i < nattributes; ++i) {
     Datatype type = array_schema->type(attribute_ids_.at(i));
     if (!array_schema->var_size(attribute_ids_[i])) {
-      if (type == Datatype::INT32)
-        copy_tile_slab<int>(i, b);
-      else if (type == Datatype::INT64)
-        copy_tile_slab<int64_t>(i, b);
-      else if (type == Datatype::FLOAT32)
-        copy_tile_slab<float>(i, b);
-      else if (type == Datatype::FLOAT64)
-        copy_tile_slab<double>(i, b);
-      else if (type == Datatype::CHAR)
-        copy_tile_slab<char>(i, b);
-      else if (type == Datatype::INT8)
-        copy_tile_slab<int8_t>(i, b);
-      else if (type == Datatype::UINT8)
-        copy_tile_slab<uint8_t>(i, b);
-      else if (type == Datatype::INT16)
-        copy_tile_slab<int16_t>(i, b);
-      else if (type == Datatype::UINT16)
-        copy_tile_slab<uint16_t>(i, b);
-      else if (type == Datatype::UINT32)
-        copy_tile_slab<uint32_t>(i, b);
-      else if (type == Datatype::UINT64)
-        copy_tile_slab<uint64_t>(i, b);
+      switch (type) {
+        case Datatype::INT32:
+          copy_tile_slab<int>(i, b);
+          break;
+        case Datatype::INT64:
+          copy_tile_slab<int64_t>(i, b);
+          break;
+        case Datatype::FLOAT32:
+          copy_tile_slab<float>(i, b);
+          break;
+        case Datatype::FLOAT64:
+          copy_tile_slab<double>(i, b);
+          break;
+        case Datatype::INT8:
+          copy_tile_slab<int8_t>(i, b);
+          break;
+        case Datatype::UINT8:
+          copy_tile_slab<uint8_t>(i, b);
+          break;
+        case Datatype::INT16:
+          copy_tile_slab<int16_t>(i, b);
+          break;
+        case Datatype::UINT16:
+          copy_tile_slab<uint16_t>(i, b);
+          break;
+        case Datatype::UINT32:
+          copy_tile_slab<uint32_t>(i, b);
+          break;
+        case Datatype::UINT64:
+          copy_tile_slab<uint64_t>(i, b);
+          break;
+        case Datatype::CHAR:
+          copy_tile_slab<char>(i, b);
+          break;
+        case Datatype::STRING_ASCII:
+        case Datatype::STRING_UTF8:
+        case Datatype::STRING_UTF16:
+        case Datatype::STRING_UTF32:
+        case Datatype::STRING_UCS2:
+        case Datatype::STRING_UCS4:
+          copy_tile_slab<uint8_t>(i, b);
+          break;
+      }
       ++b;
     } else {
-      if (type == Datatype::INT32)
-        copy_tile_slab_var<int>(i, b);
-      else if (type == Datatype::INT64)
-        copy_tile_slab_var<int64_t>(i, b);
-      else if (type == Datatype::FLOAT32)
-        copy_tile_slab_var<float>(i, b);
-      else if (type == Datatype::FLOAT64)
-        copy_tile_slab_var<double>(i, b);
-      else if (type == Datatype::CHAR)
-        copy_tile_slab_var<char>(i, b);
-      else if (type == Datatype::INT8)
-        copy_tile_slab_var<int8_t>(i, b);
-      else if (type == Datatype::UINT8)
-        copy_tile_slab_var<uint8_t>(i, b);
-      else if (type == Datatype::INT16)
-        copy_tile_slab_var<int16_t>(i, b);
-      else if (type == Datatype::UINT16)
-        copy_tile_slab_var<uint16_t>(i, b);
-      else if (type == Datatype::UINT32)
-        copy_tile_slab_var<uint32_t>(i, b);
-      else if (type == Datatype::UINT64)
-        copy_tile_slab_var<uint64_t>(i, b);
+      switch (type) {
+        case Datatype::INT32:
+          copy_tile_slab_var<int>(i, b);
+          break;
+        case Datatype::INT64:
+          copy_tile_slab_var<int64_t>(i, b);
+          break;
+        case Datatype::FLOAT32:
+          copy_tile_slab_var<float>(i, b);
+          break;
+        case Datatype::FLOAT64:
+          copy_tile_slab_var<double>(i, b);
+          break;
+        case Datatype::INT8:
+          copy_tile_slab_var<int8_t>(i, b);
+          break;
+        case Datatype::UINT8:
+          copy_tile_slab_var<uint8_t>(i, b);
+          break;
+        case Datatype::INT16:
+          copy_tile_slab_var<int16_t>(i, b);
+          break;
+        case Datatype::UINT16:
+          copy_tile_slab_var<uint16_t>(i, b);
+          break;
+        case Datatype::UINT32:
+          copy_tile_slab_var<uint32_t>(i, b);
+          break;
+        case Datatype::UINT64:
+          copy_tile_slab_var<uint64_t>(i, b);
+          break;
+        case Datatype::CHAR:
+          copy_tile_slab_var<char>(i, b);
+          break;
+        case Datatype::STRING_ASCII:
+        case Datatype::STRING_UTF8:
+        case Datatype::STRING_UTF16:
+        case Datatype::STRING_UTF32:
+        case Datatype::STRING_UCS2:
+        case Datatype::STRING_UCS4:
+          copy_tile_slab_var<uint8_t>(i, b);
+          break;
+      }
       b += 2;
     }
   }

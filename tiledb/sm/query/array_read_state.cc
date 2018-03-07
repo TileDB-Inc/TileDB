@@ -398,119 +398,183 @@ Status ArrayReadState::copy_cells(
   // For easy reference
   Datatype type = array_schema_->type(attribute_id);
 
-  if (type == Datatype::INT32) {
-    int32_t val = constants::empty_int32;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(int32_t));
+  int val_int32;
+  int64_t val_int64;
+  float val_float32;
+  double val_float64;
+  int8_t val_int8;
+  uint8_t val_uint8;
+  int16_t val_int16;
+  uint16_t val_uint16;
+  uint32_t val_uint32;
+  uint64_t val_uint64;
+  char val_char;
+  uint8_t val_ascii;
+  uint8_t val_utf8;
+  uint16_t val_utf16;
+  uint32_t val_utf32;
+  uint16_t val_ucs2;
+  uint32_t val_ucs4;
+
+  switch (type) {
+    case Datatype::INT32:
+      val_int32 = constants::empty_int32;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_int32,
+          datatype_size(type));
+    case Datatype::INT64:
+      val_int64 = constants::empty_int64;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_int64,
+          datatype_size(type));
+    case Datatype::FLOAT32:
+      val_float32 = constants::empty_float32;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_float32,
+          datatype_size(type));
+    case Datatype::FLOAT64:
+      val_float64 = constants::empty_float64;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_float64,
+          datatype_size(type));
+    case Datatype::INT8:
+      val_int8 = constants::empty_int8;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_int8,
+          datatype_size(type));
+    case Datatype::UINT8:
+      val_uint8 = constants::empty_uint8;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_uint8,
+          datatype_size(type));
+    case Datatype::INT16:
+      val_int16 = constants::empty_int16;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_int16,
+          datatype_size(type));
+    case Datatype::UINT16:
+      val_uint16 = constants::empty_uint16;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_uint16,
+          datatype_size(type));
+    case Datatype::UINT32:
+      val_uint32 = constants::empty_uint32;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_uint32,
+          datatype_size(type));
+    case Datatype::UINT64:
+      val_uint64 = constants::empty_uint64;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_uint64,
+          datatype_size(type));
+    case Datatype::CHAR:
+      val_char = constants::empty_char;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_char,
+          datatype_size(type));
+    case Datatype::STRING_ASCII:
+      val_ascii = constants::empty_ascii;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_ascii,
+          datatype_size(type));
+    case Datatype::STRING_UTF8:
+      val_utf8 = constants::empty_utf8;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_utf8,
+          datatype_size(type));
+    case Datatype::STRING_UTF16:
+      val_utf16 = constants::empty_utf16;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_utf16,
+          datatype_size(type));
+    case Datatype::STRING_UTF32:
+      val_utf32 = constants::empty_utf32;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_utf32,
+          datatype_size(type));
+    case Datatype::STRING_UCS2:
+      val_ucs2 = constants::empty_ucs2;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_ucs2,
+          datatype_size(type));
+    case Datatype::STRING_UCS4:
+      val_ucs4 = constants::empty_ucs4;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_ucs4,
+          datatype_size(type));
   }
 
-  if (type == Datatype::INT64) {
-    int64_t val = constants::empty_int64;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(int64_t));
-  }
-
-  if (type == Datatype::FLOAT32) {
-    float_t val = constants::empty_float32;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(float_t));
-  }
-
-  if (type == Datatype::FLOAT64) {
-    double_t val = constants::empty_float64;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(double_t));
-  }
-
-  if (type == Datatype::CHAR) {
-    char val = constants::empty_char;
-    return copy_cells_generic(
-        attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(char));
-  }
-
-  if (type == Datatype::INT8) {
-    int8_t val = constants::empty_int8;
-    return copy_cells_generic(
-        attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(int8_t));
-  }
-
-  if (type == Datatype::UINT8) {
-    uint8_t val = constants::empty_uint8;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(uint8_t));
-  }
-
-  if (type == Datatype::INT16) {
-    int16_t val = constants::empty_int16;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(int16_t));
-  }
-
-  if (type == Datatype::UINT16) {
-    uint16_t val = constants::empty_uint16;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(uint16_t));
-  }
-
-  if (type == Datatype::UINT32) {
-    uint32_t val = constants::empty_uint32;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(uint32_t));
-  }
-
-  if (type == Datatype::UINT64) {
-    uint64_t val = constants::empty_uint64;
-    return copy_cells_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        &val,
-        sizeof(uint64_t));
-  }
-
-  // Error
-  return LOG_STATUS(Status::ARSError("Invalid datatype when copying cells"));
+  assert(false);
+  return LOG_STATUS(
+      Status::ARSError("Cannot copy fixed-sized cells; Unsupported datatype"));
 }
 
 Status ArrayReadState::copy_cells_generic(
@@ -590,162 +654,234 @@ Status ArrayReadState::copy_cells_var(
   // For easy reference
   Datatype type = array_schema_->type(attribute_id);
 
-  if (type == Datatype::INT32) {
-    int32_t val = constants::empty_int32;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(int32_t));
+  int val_int32;
+  int64_t val_int64;
+  float val_float32;
+  double val_float64;
+  int8_t val_int8;
+  uint8_t val_uint8;
+  int16_t val_int16;
+  uint16_t val_uint16;
+  uint32_t val_uint32;
+  uint64_t val_uint64;
+  char val_char;
+  uint8_t val_ascii;
+  uint8_t val_utf8;
+  uint16_t val_utf16;
+  uint32_t val_utf32;
+  uint16_t val_ucs2;
+  uint32_t val_ucs4;
+
+  switch (type) {
+    case Datatype::INT32:
+      val_int32 = constants::empty_int32;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_int32,
+          datatype_size(type));
+    case Datatype::INT64:
+      val_int64 = constants::empty_int64;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_int64,
+          datatype_size(type));
+    case Datatype::FLOAT32:
+      val_float32 = constants::empty_float32;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_float32,
+          datatype_size(type));
+    case Datatype::FLOAT64:
+      val_float64 = constants::empty_float64;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_float64,
+          datatype_size(type));
+    case Datatype::INT8:
+      val_int8 = constants::empty_int8;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_int8,
+          datatype_size(type));
+    case Datatype::UINT8:
+      val_uint8 = constants::empty_uint8;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_uint8,
+          datatype_size(type));
+    case Datatype::INT16:
+      val_int16 = constants::empty_int16;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_int16,
+          datatype_size(type));
+    case Datatype::UINT16:
+      val_uint16 = constants::empty_uint16;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_uint16,
+          datatype_size(type));
+    case Datatype::UINT32:
+      val_uint32 = constants::empty_uint32;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_uint32,
+          datatype_size(type));
+    case Datatype::UINT64:
+      val_uint64 = constants::empty_uint64;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_uint64,
+          datatype_size(type));
+    case Datatype::CHAR:
+      val_char = constants::empty_char;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_char,
+          datatype_size(type));
+    case Datatype::STRING_ASCII:
+      val_ascii = constants::empty_ascii;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_ascii,
+          datatype_size(type));
+    case Datatype::STRING_UTF8:
+      val_utf8 = constants::empty_utf8;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_utf8,
+          datatype_size(type));
+    case Datatype::STRING_UTF16:
+      val_utf16 = constants::empty_utf16;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_utf16,
+          datatype_size(type));
+    case Datatype::STRING_UTF32:
+      val_utf32 = constants::empty_utf32;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_utf32,
+          datatype_size(type));
+    case Datatype::STRING_UCS2:
+      val_ucs2 = constants::empty_ucs2;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_ucs2,
+          datatype_size(type));
+    case Datatype::STRING_UCS4:
+      val_ucs4 = constants::empty_ucs4;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_ucs4,
+          datatype_size(type));
   }
 
-  if (type == Datatype::INT64) {
-    int64_t val = constants::empty_int64;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(int64_t));
-  }
-
-  if (type == Datatype::FLOAT32) {
-    float_t val = constants::empty_float32;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(float_t));
-  }
-
-  if (type == Datatype::FLOAT64) {
-    double_t val = constants::empty_float64;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(double_t));
-  }
-
-  if (type == Datatype::CHAR) {
-    char val = constants::empty_char;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(char));
-  }
-
-  if (type == Datatype::INT8) {
-    int8_t val = constants::empty_int8;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(int8_t));
-  }
-
-  if (type == Datatype::UINT8) {
-    uint8_t val = constants::empty_uint8;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(uint8_t));
-  }
-
-  if (type == Datatype::INT16) {
-    int16_t val = constants::empty_int16;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(int16_t));
-  }
-
-  if (type == Datatype::UINT16) {
-    uint16_t val = constants::empty_uint16;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(uint16_t));
-  }
-
-  if (type == Datatype::UINT32) {
-    uint32_t val = constants::empty_uint32;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(uint32_t));
-  }
-
-  if (type == Datatype::UINT64) {
-    uint64_t val = constants::empty_uint64;
-    return copy_cells_var_generic(
-        attribute_id,
-        buffer,
-        buffer_size,
-        buffer_offset,
-        buffer_var,
-        buffer_var_size,
-        buffer_var_offset,
-        &val,
-        sizeof(uint64_t));
-  }
-
-  // Error
-  return LOG_STATUS(Status::ARSError("Invalid datatype when copying cells"));
+  assert(false);
+  return Status::ARSError(
+      "Cannot copy variable-sized cells; Unsupported datatype");
 }
 
 Status ArrayReadState::copy_cells_var_generic(

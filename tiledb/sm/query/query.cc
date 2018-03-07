@@ -34,6 +34,7 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <cassert>
 #include <set>
 #include <sstream>
 
@@ -370,6 +371,9 @@ Status Query::read() {
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
+  // Zero-out all buffers
+  zero_out_buffers();
+
   // Handle case of no fragments
   if (fragments_.empty()) {
     zero_out_buffer_sizes(buffer_sizes_);
@@ -673,8 +677,6 @@ Status Query::check_subarray(const void* subarray) const {
     return Status::Ok();
 
   switch (array_schema_->domain()->type()) {
-    case Datatype::CHAR:
-      return check_subarray<char>(static_cast<const char*>(subarray));
     case Datatype::INT8:
       return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
     case Datatype::UINT8:
@@ -695,6 +697,16 @@ Status Query::check_subarray(const void* subarray) const {
       return check_subarray<float>(static_cast<const float*>(subarray));
     case Datatype::FLOAT64:
       return check_subarray<double>(static_cast<const double*>(subarray));
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain type
+      assert(0);
+      break;
   }
 
   return Status::Ok();
@@ -842,6 +854,19 @@ void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
       ++buffer_i;
     else
       buffer_i += 2;
+  }
+}
+
+void Query::zero_out_buffers() {
+  unsigned int buffer_i = 0;
+  auto attribute_id_num = (unsigned int)attribute_ids_.size();
+  for (unsigned int i = 0; i < attribute_id_num; ++i) {
+    std::memset(buffers_[buffer_i], 0, buffer_sizes_[buffer_i]);
+    ++buffer_i;
+    if (array_schema_->var_size(attribute_ids_[i])) {
+      std::memset(buffers_[buffer_i], 0, buffer_sizes_[buffer_i]);
+      ++buffer_i;
+    }
   }
 }
 

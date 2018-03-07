@@ -478,6 +478,9 @@ class Query {
    * sizes correspond to the attribute buffers specified upon query creation.
    */
   void zero_out_buffer_sizes(uint64_t* buffer_sizes) const;
+
+  /** Memsets all set buffers to zero. Used only in read queries. */
+  void zero_out_buffers();
 };
 
 }  // namespace sm

@@ -74,6 +74,18 @@
     TILEDB_DATATYPE_ENUM(UINT32),
     /** 64-bit unsigned integer */
     TILEDB_DATATYPE_ENUM(UINT64),
+    /** ASCII string */
+    TILEDB_DATATYPE_ENUM(STRING_ASCII),
+    /** UTF-8 string */
+    TILEDB_DATATYPE_ENUM(STRING_UTF8),
+    /** UTF-16 string */
+    TILEDB_DATATYPE_ENUM(STRING_UTF16),
+    /** UTF-32 string */
+    TILEDB_DATATYPE_ENUM(STRING_UTF32),
+    /** UCS2 string */
+    TILEDB_DATATYPE_ENUM(STRING_UCS2),
+    /** UCS4 string */
+    TILEDB_DATATYPE_ENUM(STRING_UCS4),
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

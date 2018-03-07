@@ -91,6 +91,18 @@ inline std::string to_str(const tiledb_datatype_t& type) {
       return "float32";
     case TILEDB_FLOAT64:
       return "float64";
+    case TILEDB_STRING_ASCII:
+      return "string_ascii";
+    case TILEDB_STRING_UTF8:
+      return "string_utf8";
+    case TILEDB_STRING_UTF16:
+      return "string_utf16";
+    case TILEDB_STRING_UTF32:
+      return "string_utf32";
+    case TILEDB_STRING_UCS2:
+      return "string_ucs2";
+    case TILEDB_STRING_UCS4:
+      return "string_ucs4";
   }
   return "";
 }

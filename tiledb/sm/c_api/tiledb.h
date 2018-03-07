@@ -785,6 +785,8 @@ TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
  * @param name The attribute name.
  * @param type The attribute type.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @note The default number of values per cell is 1.
  */
 TILEDB_EXPORT int tiledb_attribute_create(
     tiledb_ctx_t* ctx,
