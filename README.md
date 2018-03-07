@@ -2,6 +2,7 @@
 
 [![Travis](https://travis-ci.org/TileDB-Inc/TileDB.svg?branch=dev)](https://travis-ci.org/TileDB-Inc/TileDB)
 [![Appveyor](https://ci.appveyor.com/api/projects/status/kb9h9r5xulk6j53c/branch/dev?svg=true)](https://ci.appveyor.com/project/StavrosPapadopoulos/tiledb/branch/dev)
+[![Documentation Status](https://readthedocs.com/projects/tiledb-inc-tiledb/badge/?version=latest)](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/latest/?badge=latest)
 
 **Array data management made fast and easy.**
 
