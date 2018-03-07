@@ -28,6 +28,9 @@ makes writing parallel programs with TileDB on HDFS extremely easy.
     We are planning to add API functionality for checking the **data locality** of an array
     stored on HDFS, i.e., the user will be able to check which machines  store any part of an array.
 
+S3 Object Storage
+-----------------
+
 TileDB utilizes the `AWS C++ SDK <https://github.com/aws/aws-sdk-cpp>`__
 to integrate with S3. TileDB also works well with the S3-compliant
 `minio <https://minio.io>`__ object store, which we use in our testing

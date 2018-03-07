@@ -34,4 +34,4 @@ since TileDB knows that these have been already retrieved.
 .. figure:: Figure_20.png
     :align: center
 
-    Figure 20
+    Figure 20 Incomplete query read example
