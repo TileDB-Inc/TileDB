@@ -84,9 +84,9 @@ Backend support for the Hadoop File System `HDFS <http://hadoop.apache.org/docs/
 
 During the build process the following environmental variables must be set:
 
-* JAVA_HOME: Path to the location of the Java installation.
-* HADOOP_HOME: Path to the location of the HDFS installation.
-* CLASSPATH: The Hadoop jars must be added to the CLASSPATH before running interacting with libhdfs.
+* ``JAVA_HOME``: Path to the location of the Java installation.
+* ``HADOOP_HOME``: Path to the location of the HDFS installation.
+* ``CLASSPATH``: The Hadoop jars must be added to the CLASSPATH before running interacting with libhdfs.
 
 Consult the `HDFS user guide <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html>`_ for installing, setting up, and using the distributed Hadoop file system.
 
@@ -211,4 +211,5 @@ To build and install::
 Python Bindings
 ---------------
 
-Build and install instructions for Python bindings can be found at the TileDB-Inc/TileDB-Py repo.
+Build and install instructions for Python bindings can be found at the
+`TileDB-Inc/TileDB-Py <https://github.com/TileDB-Inc/TileDB-Py>`_ repo.
