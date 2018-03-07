@@ -57,6 +57,8 @@ namespace tiledb {
  *
  * @note The dimension can only be signed or unsigned integral types.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  *
  * tiledb::Context ctx;

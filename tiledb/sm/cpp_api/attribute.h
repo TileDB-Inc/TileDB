@@ -61,6 +61,8 @@ namespace tiledb {
  * - Fixed sized arrays: std::array<T, N> where T is fundamental
  * - Variable length data: std::string, std::vector<T> where T is fundamental
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * tiledb::Context ctx;
  * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");

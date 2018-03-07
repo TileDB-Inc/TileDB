@@ -54,6 +54,8 @@ namespace impl {
  * This is unbuffered; each write is directly dispatched to TileDB. As such
  * it is recommended to issue fewer, larger, writes.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  *   tiledb::Context ctx;
  *   tiledb::VFS vfs(ctx);

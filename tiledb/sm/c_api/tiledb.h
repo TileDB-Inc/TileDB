@@ -276,7 +276,7 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
  *
  * **Example:**
  *
- * This following shows how to get the last error from a TileDB context.
+ * The following shows how to get the last error from a TileDB context.
  *
  * @code{.c}
  * tiledb_error_t* err = NULL;
@@ -298,7 +298,7 @@ TILEDB_EXPORT int tiledb_error_message(
  *
  * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* err = NULL;
  * tiledb_ctx_get_last_error(ctx, &err);
  * const char* msg;
@@ -319,9 +319,9 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_error_t** err);
 /**
  * Creates a TileDB config.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_t* config;
  * tiledb_error_t* error = NULL;
  * tiledb_config_create(&config, &error);
@@ -338,9 +338,9 @@ TILEDB_EXPORT int tiledb_config_create(
 /**
  * Frees a TileDB config.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_t* config;
  * tiledb_error_t* error = NULL;
  * tiledb_config_create(&config, &error);
@@ -386,9 +386,9 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  * - `vfs.hdfs.kerb_ticket_cache_path` <br>
  *    HDFS kerb ticket cache path.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_set(config, "sm.tile_cache_size", "1000000", &error);
  * @endcode
@@ -409,9 +409,9 @@ TILEDB_EXPORT int tiledb_config_set(
 /**
  * Gets a config parameter.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* value;
  * tiledb_error_t* error = NULL;
  * tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
@@ -434,9 +434,9 @@ TILEDB_EXPORT int tiledb_config_get(
 /**
  * Loads config parameters from a (local) text file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_load_from_file(config, "tiledb.conf", &error);
  * @endcode
@@ -454,9 +454,9 @@ TILEDB_EXPORT int tiledb_config_load_from_file(
  * Unsets a config parameter. This will set the config parameter to its
  * default value.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_unset(config, "sm.tile_cache_size", &error);
  * @endcode
@@ -473,9 +473,9 @@ TILEDB_EXPORT int tiledb_config_unset(
 /**
  * Saves the config parameters to a (local) text file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_save_to_file(config, "tiledb.conf", &error);
  * @endcode
@@ -496,12 +496,12 @@ TILEDB_EXPORT int tiledb_config_save_to_file(
 /**
  * Creates an iterator on a config object.
  *
- * **Examples**
+ * **Examples:**
  *
  * The following creates a config iterator without a prefix. This
  * will iterate over all config param/values.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_iter_t* config_iter;
  * tiledb_config_iter_create(config, &config_iter, NULL, &error);
@@ -513,7 +513,7 @@ TILEDB_EXPORT int tiledb_config_save_to_file(
  * as a parameter via `tiledb_config_iter_here`, it will retrieve
  * `region`.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error = NULL;
  * tiledb_config_iter_t* config_iter;
  * tiledb_config_iter_create(config, &config_iter, "vfs.s3.", &error);
@@ -538,17 +538,17 @@ TILEDB_EXPORT int tiledb_config_iter_create(
 /**
  * Resets the iterator.
  *
- * **Examples**
+ * **Examples:**
  *
  * Without a prefix:
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_iter_reset(config, config_iter, NULL, &error);
  * @endcode
  *
  * With a prefix:
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_iter_reset(config, config_iter, "vfs.s3.", &error);
  * @endcode
  *
@@ -571,9 +571,9 @@ TILEDB_EXPORT int tiledb_config_iter_reset(
 /**
  * Frees a config iterator.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_iter_free(&config_iter);
  * @endcode
  *
@@ -585,9 +585,9 @@ TILEDB_EXPORT int tiledb_config_iter_free(tiledb_config_iter_t** config_iter);
 /**
  * Retrieves the config param and value currently pointed by the iterator.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char *param, *value;
  * tiledb_config_iter_here(config_iter, &param, &value, &error);
  * @endcode
@@ -610,9 +610,9 @@ TILEDB_EXPORT int tiledb_config_iter_here(
 /**
  * Moves the iterator to the next param.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_iter_next(config_iter, &error);
  * @endcode
  *
@@ -627,9 +627,9 @@ TILEDB_EXPORT int tiledb_config_iter_next(
 /**
  * Checks if the iterator is done.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int done;
  * tiledb_config_iter_done(config_iter, &done, &error);
  * @endcode
@@ -651,18 +651,18 @@ TILEDB_EXPORT int tiledb_config_iter_done(
  * Creates a TileDB context, which contains the TileDB storage manager
  * that manages everything in the TileDB library.
  *
- * **Examples**
+ * **Examples:**
  *
  * Without config (i.e., use default configuration):
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_ctx_t* ctx;
  * tiledb_ctx_create(&ctx, NULL);
  * @endcode
  *
  * With some config:
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_ctx_t* ctx;
  * tiledb_ctx_create(&ctx, config);
  * @endcode
@@ -677,9 +677,9 @@ TILEDB_EXPORT int tiledb_ctx_create(
 /**
  * Destroys the TileDB context, freeing all associated memory and resources.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_ctx_t* ctx;
  * tiledb_ctx_create(&ctx, NULL);
  * tiledb_ctx_free(&ctx);
@@ -693,9 +693,9 @@ TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t** ctx);
 /**
  * Retrieves the config from a TileDB context.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_config_t* config;
  * tiledb_ctx_get_config(ctx, &config);
  * // Make sure to free the retrieved config
@@ -711,9 +711,9 @@ TILEDB_EXPORT int tiledb_ctx_get_config(
 /**
  * Retrieves the last TileDB error associated with a TileDB context.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_error_t* error;
  * tiledb_ctx_get_last_error(ctx, &error);
  * // Make sure to free the retrieved error, checking first if it is NULL
@@ -729,9 +729,9 @@ TILEDB_EXPORT int tiledb_ctx_get_last_error(
 /**
  * Checks if a given storage filesystem backend is supported.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int is_supported;
  * tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
  * @endcode
@@ -752,9 +752,9 @@ TILEDB_EXPORT int tiledb_ctx_is_supported_fs(
 /**
  * Creates a new TileDB group.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_group_create(ctx, "my_group");
  * @endcode
  *
@@ -771,9 +771,9 @@ TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
 /**
  * Creates a TileDB attribute.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_attribute_create(ctx, &attr, "my_attr", TILEDB_INT32);
  * @endcode
@@ -793,9 +793,9 @@ TILEDB_EXPORT int tiledb_attribute_create(
 /**
  * Destroys a TileDB attribute, freeing associated memory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_attribute_create(ctx, &attr, "my_attr", TILEDB_INT32);
  * tiledb_attribute_free(ctx, &attr);
@@ -811,9 +811,9 @@ TILEDB_EXPORT int tiledb_attribute_free(
 /**
  * Sets a compressor for an attribute.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_set_compressor(ctx, attr, TILEDB_BLOSC_ZSTD, -1);
  * @endcode
  *
@@ -833,17 +833,17 @@ TILEDB_EXPORT int tiledb_attribute_set_compressor(
  * Sets the number of values per cell for an attribute. If this is not
  * used, the default is `1`.
  *
- * **Examples**
+ * **Examples:**
  *
  * For a fixed-sized attribute:
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_set_cell_val_num(ctx, attr, 3);
  * @endcode
  *
  * For a variable-sized attribute:
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_set_cell_val_num(ctx, attr, TILEDB_VAR_NUM);
  * @endcode
  *
@@ -858,9 +858,9 @@ TILEDB_EXPORT int tiledb_attribute_set_cell_val_num(
 /**
  * Retrieves the attribute name.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* attr_name;
  * tiledb_attribute_get_name(ctx, attr, &attr_name);
  * @endcode
@@ -876,9 +876,9 @@ TILEDB_EXPORT int tiledb_attribute_get_name(
 /**
  * Retrieves the attribute type.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_datatype_t attr_type;
  * tiledb_attribute_get_type(ctx, attr, &attr_type);
  * @endcode
@@ -894,9 +894,9 @@ TILEDB_EXPORT int tiledb_attribute_get_type(
 /**
  * Retrieves the attribute compressor and the compression level.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_compressor_t compressor;
  * int level;
  * tiledb_attribute_get_compressor(ctx, attr, &compressor, &level);
@@ -917,9 +917,9 @@ TILEDB_EXPORT int tiledb_attribute_get_compressor(
 /**
  * Retrieves the number of values per cell for the attribute.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * unsigned num;
  * tiledb_attribute_get_cell_val_num(ctx, attr, &num);
  * @endcode
@@ -937,9 +937,9 @@ TILEDB_EXPORT int tiledb_attribute_get_cell_val_num(
 /**
  * Retrieves the cell size for this attribute.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t cell_size;
  * tiledb_attribute_get_cell_size(ctx, attr, &cell_size);
  * @endcode
@@ -956,11 +956,11 @@ TILEDB_EXPORT int tiledb_attribute_get_cell_size(
  * Dumps the contents of an attribute in ASCII form to some output (e.g.,
  * file or stdout).
  *
- * **Example**
+ * **Example:**
  *
  * The following prints the attribute dump to standard output.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_dump(ctx, attr, stdout);
  * @endcode
  *
@@ -979,9 +979,9 @@ TILEDB_EXPORT int tiledb_attribute_dump(
 /**
  * Creates a TileDB domain.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_domain_create(ctx, &domain);
  * @endcode
@@ -996,9 +996,9 @@ TILEDB_EXPORT int tiledb_domain_create(
 /**
  * Destroys a TileDB domain, freeing associated memory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_domain_create(ctx, &domain);
  * tiledb_domain_free(ctx, &domain);
@@ -1014,9 +1014,9 @@ TILEDB_EXPORT int tiledb_domain_free(
 /**
  * Retrieves the domain's type.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_datatype_t type;
  * tiledb_domain_get_type(ctx, domain, &type);
  * @endcode
@@ -1032,9 +1032,9 @@ TILEDB_EXPORT int tiledb_domain_get_type(
 /**
  * Retrieves the domain's rank (number of dimensions).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * unsigned dim_num;
  * tiledb_domain_get_rank(ctx, domain, &dim_num);
  * @endcode
@@ -1050,9 +1050,9 @@ TILEDB_EXPORT int tiledb_domain_get_rank(
 /**
  * Adds a dimension to a TileDB domain.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_t* dim;
  * uint64_t dim_domain[] = {1, 10};
  * tiledb_dimension_create(ctx, &dim, "dim_0", TILEDB_INT64, dim_domain, 5);
@@ -1070,11 +1070,11 @@ TILEDB_EXPORT int tiledb_domain_add_dimension(
 /**
  * Retrieves a dimension object from a domain by index.
  *
- * **Example**
+ * **Example:**
  *
  * The following retrieves the first dimension from a domain.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_t* dim;
  * tiledb_domain_get_dimension_from_index(ctx, domain, 0, &dim);
  * @endcode
@@ -1094,9 +1094,9 @@ TILEDB_EXPORT int tiledb_domain_get_dimension_from_index(
 /**
  * Retrieves a dimension object from a domain by name (key).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_t* dim;
  * tiledb_domain_get_dimension_from_name(ctx, domain, "dim_0", &dim);
  * @endcode
@@ -1117,11 +1117,11 @@ TILEDB_EXPORT int tiledb_domain_get_dimension_from_name(
  * Dumps the info of a domain in ASCII form to some output (e.g.,
  * file or `stdout`).
  *
- * **Example**
+ * **Example:**
  *
  * The following prints the domain dump to the standard output.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_domain_dump(ctx, domain, stdout);
  * @endcode
  *
@@ -1140,9 +1140,9 @@ TILEDB_EXPORT int tiledb_domain_dump(
 /**
  * Creates a dimension.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_t* dim;
  * uint64_t dim_domain[] = {1, 10};
  * tiledb_dimension_create(ctx, &dim, "dim_0", TILEDB_INT64, dim_domain, 5);
@@ -1167,9 +1167,9 @@ TILEDB_EXPORT int tiledb_dimension_create(
 /**
  * Destroys a TileDB dimension, freeing associated memory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_free(ctx, &dim);
  * @endcode
  *
@@ -1183,9 +1183,9 @@ TILEDB_EXPORT int tiledb_dimension_free(
 /**
  * Retrieves the dimension name.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* dim_name;
  * tiledb_dimension_get_name(ctx, dim, &dim_name);
  * @endcode
@@ -1201,9 +1201,9 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
 /**
  * Retrieves the dimension type.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_datatype_t dim_type;
  * tiledb_dimension_get_type(ctx, dim, &dim_type);
  * @endcode
@@ -1219,9 +1219,9 @@ TILEDB_EXPORT int tiledb_dimension_get_type(
 /**
  * Retrieves the domain of the dimension.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t domain[2];
  * tiledb_dimension_get_domain(ctx, dim, &domain);
  * @endcode
@@ -1239,9 +1239,9 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
 /**
  * Retrieves the tile extent of the dimension.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t tile_extent;
  * tiledb_dimension_get_tile_extent(ctx, dim, &tile_extent);
  * @endcode
@@ -1260,11 +1260,11 @@ TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
  * file or stdout).
  *
- * **Example**
+ * **Example:**
  *
  * The following prints the dimension dump to standard output.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_dimension_dump(ctx, dim, stdout);
  * @endcode
  *
@@ -1283,9 +1283,9 @@ TILEDB_EXPORT int tiledb_dimension_dump(
 /**
  * Creates a TileDB array schema object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_t* array_schema;
  * tiledb_array_schema_create(ctx, &array_schema, TILEDB_DENSE);
  * @endcode
@@ -1303,9 +1303,9 @@ TILEDB_EXPORT int tiledb_array_schema_create(
 /**
  * Destroys an array schema, freeing associated memory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_free(ctx, &array_schema);
  * @endcode
  *
@@ -1319,9 +1319,9 @@ TILEDB_EXPORT int tiledb_array_schema_free(
 /**
  * Adds an attribute to an array schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_attribute_create(ctx, &attr, "my_attr", TILEDB_INT32);
  * tiledb_array_schema_add_attribute(ctx, array_schema, attr);
@@ -1340,9 +1340,9 @@ TILEDB_EXPORT int tiledb_array_schema_add_attribute(
 /**
  * Sets a domain for the array schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_domain_create(ctx, &domain);
  * // -- Add dimensions to the domain here -- //
@@ -1362,9 +1362,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_domain(
 /**
  * Sets the tile capacity.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_set_capacity(ctx, array_schema, 10000);
  * @endcode
  *
@@ -1379,9 +1379,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_capacity(
 /**
  * Sets the cell order.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
  * @endcode
  *
@@ -1398,9 +1398,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_cell_order(
 /**
  * Sets the tile order.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_COL_MAJOR);
  * @endcode
  *
@@ -1417,9 +1417,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_tile_order(
 /**
  * Sets the compressor to use for the coordinates.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_set_coords_compressor(
  *     ctx, array_schema, TILEDB_GZIP, -1);
  * @endcode
@@ -1441,9 +1441,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_coords_compressor(
  * Sets the compressor to use for the offsets of variable-sized attribute
  * values.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_set_offsets_compressor(
  *     ctx, array_schema, TILEDB_GZIP, -1);
  * @endcode
@@ -1464,9 +1464,9 @@ TILEDB_EXPORT int tiledb_array_schema_set_offsets_compressor(
 /**
  * Checks the correctness of the array schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_check(ctx, array_schema);
  * @endcode
  *
@@ -1482,9 +1482,9 @@ TILEDB_EXPORT int tiledb_array_schema_check(
  * Retrieves the schema of an array from the disk, creating an array schema
  * struct.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_t* array_schema;
  * tiledb_array_schema_load(ctx, array_schema, "s3://tiledb_bucket/my_array");
  * // Make sure to free the array schema in the end
@@ -1503,9 +1503,9 @@ TILEDB_EXPORT int tiledb_array_schema_load(
 /**
  * Retrieves the array type.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_t* array_schema;
  * tiledb_array_schema_load(ctx, array_schema, "s3://tiledb_bucket/my_array");
  * // Make sure to free the array schema in the end
@@ -1524,9 +1524,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_array_type(
 /**
  * Retrieves the capacity.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t capacity;
  * tiledb_array_schema_get_capacity(ctx, array_schema, &capacity);
  * @endcode
@@ -1544,9 +1544,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_capacity(
 /**
  * Retrieves the cell order.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_layout_t cell_order;
  * tiledb_array_schema_get_cell_order(ctx, array_schema, &cell_order);
  * @endcode
@@ -1564,9 +1564,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_cell_order(
 /**
  * Retrieves the compressor info of the coordinates.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_compressor_t compressor;
  * int level;
  * tiledb_array_schema_get_coords_compressor(
@@ -1588,9 +1588,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_coords_compressor(
 /**
  * Retrieves the compressor info of the offsets.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_compressor_t compressor;
  * int level;
  * tiledb_array_schema_get_offsets_compressor(
@@ -1612,9 +1612,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_offsets_compressor(
 /**
  * Retrieves the array domain.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_array_schema_get_domain(ctx, array_schema, &domain);
  * // Make sure to delete domain in the end
@@ -1633,9 +1633,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_domain(
 /**
  * Retrieves the tile order.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_layout_t tile_order;
  * tiledb_array_schema_get_tile_order(ctx, array_schema, &tile_order);
  * @endcode
@@ -1653,9 +1653,9 @@ TILEDB_EXPORT int tiledb_array_schema_get_tile_order(
 /**
  * Retrieves the number of array attributes.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * unsigned attr_num;
  * tiledb_array_schema_get_attribute_num(ctx, array_schema, &attr_num);
  * @endcode
@@ -1676,11 +1676,11 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_num(
  * Attributes are ordered the same way they were defined
  * when constructing the array schema.
  *
- * **Example**
+ * **Example:**
  *
  * The following retrieves the first attribute in the schema.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_array_schema_get_attribute_from_index(ctx, array_schema, 0, &attr);
  * // Make sure to delete the retrieved attribute in the end.
@@ -1701,11 +1701,11 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_from_index(
 /**
  * Retrieves an attribute given its name (key).
  *
- * **Example**
+ * **Example:**
  *
  * The following retrieves the first attribute in the schema.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_array_schema_get_attribute_from_index(ctx, array_schema, "attr_0",
  * &attr);
@@ -1727,11 +1727,11 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_from_name(
 /**
  * Dumps the array schema in ASCII format in the selected output.
  *
- * **Example**
+ * **Example:**
  *
  * The following prints the array schema dump in standard output.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_schema_dump(ctx, array_schema, stdout);
  * @endcode
  *
@@ -1750,9 +1750,9 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
 /**
  * Creates a TileDB query object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_t* query;
  * tiledb_query_create(ctx, &query, "file:///my_array", TILEDB_READ);
  * @endcode
@@ -1775,11 +1775,11 @@ TILEDB_EXPORT int tiledb_query_create(
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
  *
- * **Example**
+ * **Example:**
  *
  * The following sets a 2D subarray [0,10], [20, 30] to the query.
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t subarray[] = { 0, 10, 20, 30};
  * tiledb_query_set_subarray(ctx, query, subarray);
  * @endcode
@@ -1801,9 +1801,9 @@ TILEDB_EXPORT int tiledb_query_set_subarray(
  * values to be written (if it is a write query), or will hold the
  * results from a read query.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* attributes[] = {"attr_1", "attr_2"};
  * int attr_1[100];
  * float attr_2[100];
@@ -1843,9 +1843,9 @@ TILEDB_EXPORT int tiledb_query_set_buffers(
 /**
  * Sets the layout of the cells to be written or read.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
  * @endcode
  *
@@ -1875,9 +1875,9 @@ TILEDB_EXPORT int tiledb_query_set_layout(
 /**
  * Frees a TileDB query object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_free(ctx, &query);
  * @endcode
  *
@@ -1890,9 +1890,9 @@ TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t** query);
 /**
  * Submits a TileDB query.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_submit(ctx, &query);
  * @endcode
  *
@@ -1907,18 +1907,18 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 /**
  * Submits a TileDB query in asynchronous mode.
  *
- * **Examples**
+ * **Examples:**
  *
  * Submit without a callback.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_submit_async(ctx, &query, NULL, NULL);
  * @endcode
  *
  * Submit with a callback function `print` that takes as input message
  * `msg` and prints it upon completion of the query.
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* msg = "Query completed";
  * tiledb_query_submit_async(ctx, &query, foo, msg);
  * @endcode
@@ -1940,9 +1940,9 @@ TILEDB_EXPORT int tiledb_query_submit_async(
 /**
  * Resets the query buffers.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_reset_buffers(ctx, query, buffers, buffer_sizes);
  * @endcode
  *
@@ -1961,9 +1961,9 @@ TILEDB_EXPORT int tiledb_query_reset_buffers(
 /**
  * Retrieves the status of a query.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_status_t status;
  * tiledb_query_get_status(ctx, query, &status);
  * @endcode
@@ -1981,9 +1981,9 @@ TILEDB_EXPORT int tiledb_query_get_status(
  * read query may be INCOMPLETE due to the fact that its corresponding
  * buffer did not have enough space to hold the results.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_query_status_t status;
  * tiledb_query_get_attribute_status(ctx, query, "attr_1", &status);
  * @endcode
@@ -2007,9 +2007,9 @@ TILEDB_EXPORT int tiledb_query_get_attribute_status(
 /**
  * Creates a new TileDB array given an input schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_create(ctx, "hdfs:///tiledb_arrays/my_array", array_schema);
  * @endcode
  *
@@ -2026,9 +2026,9 @@ TILEDB_EXPORT int tiledb_array_create(
 /**
  * Consolidates the fragments of an array into a single fragment.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_array_consolidate(ctx, "hdfs:///tiledb_arrays/my_array");
  * @endcode
  *
@@ -2043,9 +2043,9 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * Retrieves the non-empty domain from an array. This is the union of the
  * non-empty domains of the array fragments.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t domain[4]; // Assuming a 2D array, 2 [low, high] pairs
  * int is_empty;
  * tiledb_array_get_non_empty_domain(ctx, "my_array", domain, &is_empty);
@@ -2065,9 +2065,9 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  * Computes an upper bound on the buffer sizes required for a read
  * query, for a given subarray and set of attributes.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t buffer_sizes[2];
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {10, 20, 10, 100};
@@ -2103,9 +2103,9 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
 /**
  * Returns the TileDB object type for a given resource path.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_object_t type;
  * tiledb_object_type(ctx, "arrays/my_array", &type);
  * @endcode
@@ -2121,9 +2121,9 @@ TILEDB_EXPORT int tiledb_object_type(
 /**
  * Deletes a TileDB resource (group, array, key-value).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_object_remove(ctx, "arrays/my_array");
  * @endcode
  *
@@ -2136,9 +2136,9 @@ TILEDB_EXPORT int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
 /**
  * Moves a TileDB resource (group, array, key-value).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_object_move(ctx, "arrays/my_array", "arrays/my_array_2", 1);
  * @endcode
  *
@@ -2160,9 +2160,9 @@ TILEDB_EXPORT int tiledb_object_move(
  * when the callback returns 0. Note that this function ignores any object
  * (e.g., file or directory) that is not TileDB-related.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_object_walk(ctx, "arrays", TILEDB_PREORDER, NULL, NULL);
  * @endcode
  *
@@ -2190,9 +2190,9 @@ TILEDB_EXPORT int tiledb_object_walk(
  * Similar to `tiledb_walk`, but now the function visits only the children of
  * `path` (i.e., it does not recursively continue to the children directories.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_object_ls(ctx, "arrays", NULL, NULL);
  * @endcode
  *
@@ -2220,9 +2220,9 @@ TILEDB_EXPORT int tiledb_object_ls(
 /**
  * Creates a TileDB key-value schema object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_schema_t* kv_schema;
  * tiledb_kv_schema_create(ctx, &kv_schema);
  * @endcode
@@ -2237,9 +2237,9 @@ TILEDB_EXPORT int tiledb_kv_schema_create(
 /**
  * Destroys a key-value schema, freeing associated memory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_schema_free(ctx, &kv_schema);
  * @endcode
  *
@@ -2253,9 +2253,9 @@ TILEDB_EXPORT int tiledb_kv_schema_free(
 /**
  * Adds an attribute to a key-value schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_attribute_create(ctx, &attr, "my_attr", TILEDB_INT32);
  * tiledb_kv_schema_add_attribute(ctx, kv_schema, attr);
@@ -2272,9 +2272,9 @@ TILEDB_EXPORT int tiledb_kv_schema_add_attribute(
 /**
  * Checks the correctness of the key-value schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_schema_check(ctx, kv_schema);
  * @endcode
  *
@@ -2290,9 +2290,9 @@ TILEDB_EXPORT int tiledb_kv_schema_check(
  * Retrieves the schema of a key-value store from the disk, creating a
  * key-value schema struct.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_schema_t* kv_schema;
  * tiledb_kv_schema_load(ctx, &kv_schema, "file:///my_kv");
  * // Make sure to delete the kv schema in the end
@@ -2309,9 +2309,9 @@ TILEDB_EXPORT int tiledb_kv_schema_load(
 /**
  * Retrieves the number of array attributes.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * unsigned attribute_num;
  * tiledb_kv_schema_get_attribute_num(ctx, kv_schema, &attribute_num);
  * @endcode
@@ -2332,11 +2332,11 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_num(
  * Attributes are ordered the same way they were defined
  * when constructing the key-value schema.
  *
- * **Example**
+ * **Example:**
  *
  * The following retrieves the first attribute in the kv schema.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_kv_schema_get_attribute_from_index(ctx, kv_schema, 0, &attr);
  * // Make sure to delete the attribute in the end
@@ -2357,9 +2357,9 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_from_index(
 /**
  * Retrieves an attribute given its name (key).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_kv_schema_get_attribute_from_name(ctx, kv_schema, "my_attr", &attr);
  * // Make sure to delete the attribute in the end
@@ -2380,11 +2380,11 @@ TILEDB_EXPORT int tiledb_kv_schema_get_attribute_from_name(
 /**
  * Dumps the key-value schema in ASCII format in the selected output.
  *
- * **Example**
+ * **Example:**
  *
  * The following prints the kv schema dump to standard output.
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_schema_dump(ctx, kv_schema, stdout);
  * @endcode
  *
@@ -2403,9 +2403,9 @@ TILEDB_EXPORT int tiledb_kv_schema_dump(
 /**
  * Creates a key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_t* kv_item;
  * tiledb_kv_item_create(ctx, &kv_item);
  * @endcode
@@ -2420,9 +2420,9 @@ TILEDB_EXPORT int tiledb_kv_item_create(
 /**
  * Frees a key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_free(ctx, &kv_item);
  * @endcode
  *
@@ -2436,9 +2436,9 @@ TILEDB_EXPORT int tiledb_kv_item_free(
 /**
  * Set the key in the key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_set_key(ctx, kv_item, "my_key", TILEDB_CHAR, strlen(my_key));
  * @endcode
  *
@@ -2461,9 +2461,9 @@ TILEDB_EXPORT int tiledb_kv_item_set_key(
  * This function works for both fixed- and variable-sized
  * attributes.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int v = 10;
  * tiledb_kv_item_set_value(ctx, kv_item, "attr_1", v, TILEDB_INT32, sizeof(v));
  * @endcode
@@ -2487,9 +2487,9 @@ TILEDB_EXPORT int tiledb_kv_item_set_value(
 /**
  * Gets the key in the key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* key; // A pointer will be retrieved - not a new char object
  * uint64_t key_size;
  * tiledb_datatype_t key_type;
@@ -2513,9 +2513,9 @@ TILEDB_EXPORT int tiledb_kv_item_get_key(
 /**
  * Gets the value and value size on a given attribute from a key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const int* v; // A pointer will be retrieved - not a new int object
  * uint64_t v_size;
  * tiledb_datatype_t v_type;
@@ -2545,9 +2545,9 @@ TILEDB_EXPORT int tiledb_kv_item_get_value(
 /**
  * Creates a key-value store from the input key-value schema.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_create(ctx, "my_kv", kv_schema);
  * @endcode
  *
@@ -2562,9 +2562,9 @@ TILEDB_EXPORT int tiledb_kv_create(
 /**
  * Consolidates the fragments of a key-value store into a single fragment.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_consolidate(ctx, "my_kv");
  * @endcode
  *
@@ -2578,9 +2578,9 @@ TILEDB_EXPORT int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
  * Sets the parameter that dictates the maximum number of written items
  * buffered in memory before a flush is initiated.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_set_max_buffered_items(ctx, kv, 1000);
  * @endcode
  *
@@ -2595,9 +2595,9 @@ TILEDB_EXPORT int tiledb_kv_set_max_buffered_items(
 /**
  * Prepares a key-value store for reading/writing.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_t* kv;
  * const char* attributes[] = {"attr_1", "attr_2"};
  * tiledb_kv_open(ctx, &kv, "my_kv", attributes, 2);
@@ -2624,9 +2624,9 @@ TILEDB_EXPORT int tiledb_kv_open(
  * Closes a key-value store and frees all memory. All bufferd written items
  * will be flushed to persistent storage.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_close(ctx, &kv);
  * @endcode
  *
@@ -2641,9 +2641,9 @@ TILEDB_EXPORT int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t** kv);
  * internally and periodically flushed to persistent storage.
  * `tiledb_kv_flush` forces flushing the buffered items to storage.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_t* kv_item;
  * tiledb_kv_item_create(ctx, &kv_item);
  * // Add a key and values to the kv item...
@@ -2661,9 +2661,9 @@ TILEDB_EXPORT int tiledb_kv_add_item(
 /**
  * Flushes the buffered items to persistent storage.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_flush(ctx, kv);
  * @endcode
  *
@@ -2677,9 +2677,9 @@ TILEDB_EXPORT int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
  * Retrieves a key-value item based on the input key. If the item with
  * the input key does not exist, `kv_item` is set to `NULL`.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_t* kv_item;
  * tiledb_kv_get_item(ctx, kv, &kv_item, "my_key", TILEDB_CHAR, strlen(my_key));
  * // Make sure to delete the kv item in the end
@@ -2709,9 +2709,9 @@ TILEDB_EXPORT int tiledb_kv_get_item(
  * Creates an iterator for a key-value store. This can be used only
  * for reading. This sets the pointer to the first key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_iter_t* kv_iter;
  * const char* attributes[] = {"attr_0", "attr_1"};
  * tiledb_kv_iter_create(ctx, &kv_iter, "my_kv", attributes, 2);
@@ -2737,9 +2737,9 @@ TILEDB_EXPORT int tiledb_kv_iter_create(
 /**
  * Frees a key-value store iterator.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_iter_free(ctx, &kv_iter);
  * @endcode
  *
@@ -2754,9 +2754,9 @@ TILEDB_EXPORT int tiledb_kv_iter_free(
  * Retrieves the key-value item currently pointed by the iterator.
  * Note that this function creates a new key-value item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_item_t* kv_item;
  * tiledb_kv_iter_here(ctx, kv_iter, &kv_iter);
  * // Make sure to delete kv item in the end
@@ -2773,9 +2773,9 @@ TILEDB_EXPORT int tiledb_kv_iter_here(
 /**
  * Moves the iterator to the next item.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_kv_iter_next(ctx, kv_iter);
  * @endcode
  *
@@ -2789,9 +2789,9 @@ TILEDB_EXPORT int tiledb_kv_iter_next(
 /**
  * Checks if the iterator is done.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int done;
  * tiledb_kv_iter_next(ctx, kv_iter, &done);
  * @endcode
@@ -2811,9 +2811,9 @@ TILEDB_EXPORT int tiledb_kv_iter_done(
 /**
  * Creates a virtual filesystem object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_t* vfs;
  * tiledb_vfs_create(ctx, &vfs, config);
  * @endcode
@@ -2829,9 +2829,9 @@ TILEDB_EXPORT int tiledb_vfs_create(
 /**
  * Frees a virtual filesystem object.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_free(ctx, &vfs);
  * @endcode
  *
@@ -2844,9 +2844,9 @@ TILEDB_EXPORT int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t** vfs);
 /**
  * Creates an object-store bucket.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_create_bucket(ctx, vfs, "s3://tiledb");
  * @endcode
  *
@@ -2861,9 +2861,9 @@ TILEDB_EXPORT int tiledb_vfs_create_bucket(
 /**
  * Deletes an object-store bucket.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_delete_bucket(ctx, vfs, "s3://tiledb");
  * @endcode
  *
@@ -2878,9 +2878,9 @@ TILEDB_EXPORT int tiledb_vfs_remove_bucket(
 /**
  * Deletes the contents of an object-store bucket.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_empty_bucket(ctx, vfs, "s3://tiledb");
  * @endcode
  *
@@ -2895,9 +2895,9 @@ TILEDB_EXPORT int tiledb_vfs_empty_bucket(
 /**
  * Checks if an object-store bucket is empty.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int is_empty;
  * tiledb_vfs_is_empty_bucket(ctx, vfs, "s3://tiledb", &empty);
  * @endcode
@@ -2915,9 +2915,9 @@ TILEDB_EXPORT int tiledb_vfs_is_empty_bucket(
 /**
  * Checks if an object-store bucket exists.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int exists;
  * tiledb_vfs_is_bucket(ctx, vfs, "s3://tiledb", &exists);
  * @endcode
@@ -2935,9 +2935,9 @@ TILEDB_EXPORT int tiledb_vfs_is_bucket(
 /**
  * Creates a directory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_create_dir(ctx, vfs, "hdfs:///temp/my_dir");
  * @endcode
  *
@@ -2952,9 +2952,9 @@ TILEDB_EXPORT int tiledb_vfs_create_dir(
 /**
  * Checks if a directory exists.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int exists;
  * tiledb_vfs_is_dir(ctx, vfs, "hdfs:///temp/my_dir", &exists);
  * @endcode
@@ -2972,9 +2972,9 @@ TILEDB_EXPORT int tiledb_vfs_is_dir(
 /**
  * Removes a directory (recursively).
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_remove_dir(ctx, vfs, "hdfs:///temp/my_dir");
  * @endcode
  *
@@ -2989,9 +2989,9 @@ TILEDB_EXPORT int tiledb_vfs_remove_dir(
 /**
  * Checks if a file exists.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int exists;
  * tiledb_vfs_is_file(ctx, vfs, "hdfs:///temp/my_file", &is_file);
  * @endcode
@@ -3008,9 +3008,9 @@ TILEDB_EXPORT int tiledb_vfs_is_file(
 /**
  * Deletes a file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_remove_file(ctx, vfs, "hdfs:///temp/my_file");
  * @endcode
  *
@@ -3025,9 +3025,9 @@ TILEDB_EXPORT int tiledb_vfs_remove_file(
 /**
  * Retrieves the size of a file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * uint64_t file_size;
  * tiledb_vfs_file_size(ctx, vfs, "hdfs:///temp/my_file", &file_size);
  * @endcode
@@ -3044,9 +3044,9 @@ TILEDB_EXPORT int tiledb_vfs_file_size(
 /**
  * Renames a file or directory.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_move(ctx, vfs, "hdfs:///temp/my_file", "hdfs::///new_file", 1);
  * @endcode
  *
@@ -3068,9 +3068,9 @@ TILEDB_EXPORT int tiledb_vfs_move(
 /**
  * Prepares a file for reading/writing.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_fh_t* fh;
  * tiledb_vfs_open(ctx, vfs, "some_file", TILEDB_VFS_READ, &fh);
  * // Make sure to close and delete the created file handle
@@ -3113,9 +3113,9 @@ TILEDB_EXPORT int tiledb_vfs_open(
  * important to be called after S3 writes, as otherwise the writes will
  * not take effect.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_close(ctx, vfs, fh);
  * @endcode
  *
@@ -3128,9 +3128,9 @@ TILEDB_EXPORT int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 /**
  * Reads from a file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * char buffer[10000];
  * tiledb_vfs_read(ctx, fh, 100, buffer, 10000);
  * @endcode
@@ -3154,9 +3154,9 @@ TILEDB_EXPORT int tiledb_vfs_read(
  * function only **appends** data at the end of the file. If the
  * file does not exist, it will be created.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * const char* msg = "This will be written to the file";
  * tiledb_vfs_write(ctx, fh, buffer, strlen(msg));
  * @endcode
@@ -3176,9 +3176,9 @@ TILEDB_EXPORT int tiledb_vfs_write(
 /**
  * Syncs (flushes) a file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_sync(ctx, fh);
  * @endcode
  *
@@ -3193,9 +3193,9 @@ TILEDB_EXPORT int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
 /**
  * Frees a file handle.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_fh_free(ctx, &fh);
  * @endcode
  *
@@ -3208,9 +3208,9 @@ TILEDB_EXPORT int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t** fh);
 /**
  * Checks if a file handle is closed.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * int is_closed;
  * tiledb_vfs_fh_is_closed(ctx, fh, &is_closed);
  * @endcode
@@ -3226,9 +3226,9 @@ TILEDB_EXPORT int tiledb_vfs_fh_is_closed(
 /**
  * Touches a file, i.e., creates a new empty file.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * tiledb_vfs_touch(ctx, vfs, "my_empty_file");
  * @endcode
  *
@@ -3247,9 +3247,9 @@ TILEDB_EXPORT int tiledb_vfs_touch(
 /**
  * Converts the given file URI to a null-terminated platform-native file path.
  *
- * **Example**
+ * **Example:**
  *
- * @code{.cpp}
+ * @code{.c}
  * char path[TILEDB_MAX_PATH];
  * unsigned length;
  * tiledb_uri_to_path(ctx, kv, &kv_item, "file:///my_array", path, &length);

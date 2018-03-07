@@ -51,6 +51,8 @@ struct ConfigProxy;
 /**
  * Carries configuration parameters for a context.
  *
+ * **Example:**
+ *
  * @code{.cpp}
  * Config conf();
  * conf["vfs.s3.region"] = "us-east-1a";

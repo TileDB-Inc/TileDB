@@ -24,6 +24,11 @@ install:
         scripts/install-clangformat.sh;
       fi
 
+    # Install doxygen
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        sudo apt-get -y install doxygen;
+      fi
+
     # Set up arguments for install-deps.sh and bootstrap.
     - deps_args="";
       bootstrap_args="--enable=coverage,verbose";
@@ -57,7 +62,14 @@ install:
     - make -j4
     - make examples -j4
     - make install
-    
+
+    # Build the documentation (this does not deploy to RTD).
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        pushd $TRAVIS_BUILD_DIR/doc;
+        ./local-build.sh;
+        popd;
+      fi
+
 script:
     - make check-format
     - make check
