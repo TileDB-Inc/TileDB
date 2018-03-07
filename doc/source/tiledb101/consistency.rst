@@ -9,15 +9,16 @@ updates are made to an array, eventually all accesses to the array will
 “see” the last collective global view of the array (i.e., one that
 incorporates all the updates).
 
-The concept of eventual consistency in TileDB is illustrated in :ref:`Figure
-25 <figure-25>`. Suppose that initially the array is empty, and then two writes are
-performed, first ``A`` and then ``B``. We assume that the writes may be
-initiated simultaneously, and may also overlap, since it may take time
-for each write to complete. Suppose that ``A``\ ’s fragment is first in
-the fragment order, which means that either ``A`` started at an earlier
-timestamp than ``B``, or it started at the same time as ``B``, but its
-thread id broke the tie in its favor (recall that the fragment order is
-dictated by the fragment names, which are composed of a thread id and a
+The concept of eventual consistency in TileDB is illustrated in
+:ref:`Figure 25 <figure-25>`. Suppose that initially the array is
+empty, and then two writes are performed, first ``A`` and then
+``B``. We assume that the writes may be initiated simultaneously, and
+may also overlap, since it may take time for each write to
+complete. Suppose that ``A``\ ’s fragment is first in the fragment
+order, which means that either ``A`` started at an earlier timestamp
+than ``B``, or it started at the same time as ``B``, but its thread id
+broke the tie in its favor (recall that the fragment order is dictated
+by the fragment names, which are composed of a thread id and a
 timestamp).
 
 **Eventually** (i.e., at some future point in time), read queries will

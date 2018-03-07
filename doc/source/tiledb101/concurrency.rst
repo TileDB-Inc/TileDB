@@ -31,15 +31,19 @@ multi-processing (for those storage backends that support it).
     but rather resource locking must be implemented as an external
     feature).
 
-==============================    ===========     ============
-Operation                         Thread-safe     Process-safe
-------------------------------    -----------     ------------
-Write/Read Array                    ✔               ✔
-Consolidate Array                   ✔               ✔
-Create Array/Group                  ✔               ✘
-Move/Delete/List/Walk Array         ✘               ✘
-All VFS Operations                  ✘               ✘
-==============================    ===========     ============
+.. These correspond to custom.css rules
+.. role:: red
+.. role:: green
+
+==============================    ===============     ================
+**Operation**                     **Thread-safe**     **Process-safe**
+------------------------------    ---------------     ----------------
+Write/Read Array                    :green:`✔`        :green:`✔`
+Consolidate Array                   :green:`✔`        :green:`✔`
+Create Array/Group                  :green:`✔`        :red:`✘`
+Move/Delete/List/Walk Array         :red:`✘`          :red:`✘`
+All VFS Operations                  :red:`✘`          :red:`✘`
+==============================    ===============     ================
 
 Write/Read Array
 ----------------
@@ -105,8 +109,8 @@ Move/Delete/List/Walk Array
 These operations are not thread-/process-safe.
 
 All VFS Operations
-~~~~~~~~~~~~~~~~~~
+------------------
 
 None of the virtual filesystem operations exposed at the TileDB API
-currently support guaranteed thread-/process-safety. Thread / process
-safety guarantees are inherited from the underlying storage backend.
+currently support guaranteed thread-/process-safety. Thread-/process-safety
+guarantees are inherited from the underlying storage backend.

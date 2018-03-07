@@ -2,16 +2,18 @@ Consolidation
 =============
 
 If an excessive number of update operations occurs, numerous fragments
-are created, which may naturally impact the performance of future reads.
-TileDB offers a consolidation feature, which merges all fragments into a
-single one. In other words, consolidation creates a new fragment sub
-directory under the array directory containing all the most up-to-date
-cell values, deleting the old fragment sub directories. :ref:`Figure 15 <figure-15>`
-depicts the dense array of :ref:`Figure 13 <figure-13>` and the sparse array of :ref:`Figure 14 <figure-14>`
-after their consolidation. Each array now consists of a single fragment.
-Moreover, observe in :ref:`Figure 15 <figure-15>` that the cells of the sparse array are
-properly **re-tiled** based on the tile and cell order (both row-major)
-and the data tile capacity that is equal to 2.
+are created, which may naturally impact the performance of future
+reads.  TileDB offers a consolidation feature, which merges all
+fragments into a single one. In other words, consolidation creates a
+new fragment sub directory under the array directory containing all
+the most up-to-date cell values, deleting the old fragment sub
+directories. :ref:`Figure 15 <figure-15>` depicts the dense array of
+:ref:`Figure 13 <figure-13>` and the sparse array of :ref:`Figure 14
+<figure-14>` after their consolidation. Each array now consists of a
+single fragment.  Moreover, observe in :ref:`Figure 15 <figure-15>`
+that the cells of the sparse array are properly **re-tiled** based on
+the tile and cell order (both row-major) and the data tile capacity
+that is equal to 2.
 
 .. _figure-15:
 
@@ -36,7 +38,7 @@ delete the old fragments and renders the new fragment as **visible**.
     fragments of approximately equal size. Moreover, read performance
     degrades when many data tiles of different fragments overlap in the
     logical space (this will become apparent in section
-    :doc:`Reading <reading>`). Thus, it is important to consolidate those
+    :doc:`Reading <reading/index>`). Thus, it is important to consolidate those
     fragments before others. We are currently implementing a new
     consolidation algorithm that addresses all these issues, and runs
     automatically in the background hiding all these technical details from

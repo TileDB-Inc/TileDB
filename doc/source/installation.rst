@@ -9,22 +9,47 @@ Installation
 
     More info at `TileDB Docker Hub repo <https://hub.docker.com/r/tiledb/tiledb/>`_ and the `TileDB-Docker repo <https://github.com/TileDB-Inc/TileDB-Docker>`_.
 
-Pre-built packages
+Pre-built Packages
 ------------------
+
+Homebrew
+~~~~~~~~
+
+TileDB can be installed easily using the Homebrew package manager for macOS. Install instructions for Homebrew are provided on the `package manager's website <https://brew.sh/>`_.
+
+To install the latest stable version of TileDB::
+
+    brew update
+    brew install tiledb-inc/stable/tiledb
+
+To upgrade to the latest stable version of TileDB::
+
+    brew upgrade tiledb-inc/stable/tiledb
+
+To uninstall TileDB::
+
+    brew uninstall tiledb-inc/stable/tiledb
+
+Homebrew Tap is located at https://github.com/TileDB-Inc/homebrew.
 
 Conda
 ~~~~~
 
-A package for TileDB is available for the `conda package manager <https://conda.io/docs/>`_. Conda makes it easy to install software into separate distinct environments on Windows, Linux, and macOS.
+A package for TileDB is available for the `Conda package manager <https://conda.io/docs/>`_. Conda makes it easy to install software into separate distinct environments on Windows, Linux, and macOS.
 
 ::
 
     conda install -c conda-forge tiledb
 
-**Note**: Packages are not currently built with the HDFS and S3 storage backends enabled.
+**Note**: Conda packages are not currently built with the HDFS and S3 storage backends enabled.
 
-Build from source
------------------
+Windows Binaries
+~~~~~~~~~~~~~~~~
+
+The easiest way to install TileDB on Windows is to download the .zip file containing pre-built Windows binaries from the `latest TileDB release <https://github.com/TileDB-Inc/TileDB/releases>`_. You can then simply configure your project (if using Visual Studio) according to the :ref:`Windows usage <windows-usage>` instructions.
+
+Requirements
+------------
 
 Operating Systems
 ~~~~~~~~~~~~~~~~~
@@ -47,7 +72,15 @@ TileDB has minimal required dependencies and currently relies on the following l
 Optional Dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
-Backed support for the Hadoop File System `HDFS <http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html>`_ is optional. TileDB relies on the C interface to HDFS provided by `libhdfs <http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/LibHdfs.html>`_ to interact with the distributed filesystem.
+S3
+^^
+
+Backend support for S3 stores requires the `AWS C++ SDK <https://github.com/aws/aws-sdk-cpp>`__ to be installed on your system. TileDB also integrates well with the S3-compliant `minio <https://minio.io>`__ object store.
+
+HDFS
+^^^^
+
+Backend support for the Hadoop File System `HDFS <http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html>`_ is optional. TileDB relies on the C interface to HDFS provided by `libhdfs <http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/LibHdfs.html>`_ to interact with the distributed filesystem.
 
 During the build process the following environmental variables must be set:
 
@@ -57,28 +90,11 @@ During the build process the following environmental variables must be set:
 
 Consult the `HDFS user guide <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html>`_ for installing, setting up, and using the distributed Hadoop file system.
 
-macOS
-~~~~~
+Building from Source
+--------------------
 
-TileDB can be installed easily using the Homebrew package manager for macOS. Install instructions for Homebrew are provided on the `package manager's website <https://brew.sh/>`_.
-
-To install the latest stable version of TileDB::
-
-    brew update
-    brew install tiledb-inc/stable/tiledb
-
-To upgrade to the latest stable version of TileDB::
-
-    brew upgrade tiledb-inc/stable/tiledb
-
-To uninstall TileDB::
-
-    brew uninstall tiledb-inc/stable/tiledb
-
-Homebrew Tap is located at https://github.com/TileDB-Inc/homebrew.
-
-POSIX (from source)
-~~~~~~~~~~~~~~~~~~~
+POSIX Systems
+~~~~~~~~~~~~~
 
 Provided in the repo is a convenient install script to install and build binary dependencies on Ubuntu, CentOS, and macOS platforms.
 
@@ -87,7 +103,8 @@ Provided in the repo is a convenient install script to install and build binary 
     git clone https://github.com/TileDB-Inc/TileDB
     git checkout 1.2.0
     cd TileDB
-    scripts/install-deps.sh
+
+While not necessary in most cases, a script is provided to download and install the required TileDB dependencies (useful in continuous integration or other automated installation environments). To use this script, execute ``scripts/install-deps.sh`` with administrator privileges.
 
 To build TileDB, use the bootstrap script to run the CMake build generator::
 
@@ -95,18 +112,19 @@ To build TileDB, use the bootstrap script to run the CMake build generator::
     cd build
     ../bootstap <flags>
 
-===================  ===============================================
-Flag                 Description
--------------------  -----------------------------------------------
---help               Prints command line flag options
---prefix=PREFIX      Install files in tree rooted at ``PREFIX``
-                     (defaults to ``TileDB/dist``)
---dependency=DIRs    Colon separated list to binary dependencies
---enable-debug       Enable debug build
---enable-coverage    Enable build with code coverage support
---enable-verbose     Enable verbose status messages
---enable-hdfs        Enables building with the HDFS storage backend
-===================  ===============================================
+=====================  ======================================================
+**Flag**               **Description**
+---------------------  ------------------------------------------------------
+``--help``             Prints command line flag options
+``--prefix=PREFIX``    Install files in tree rooted at ``PREFIX``
+                       (defaults to ``TileDB/dist``)
+``--dependency=DIRs``  Colon separated list to binary dependencies
+``--enable-debug``     Enable debug build
+``--enable-coverage``  Enable build with code coverage support
+``--enable-verbose``   Enable verbose status messages
+``--enable-hdfs``      Enables building with HDFS storage backend support
+``--enable-s3``        Enables building with S3 storage backend support
+=====================  ======================================================
 
 Then run the generated make script::
 
@@ -124,8 +142,8 @@ TileDB uses the `Catch <https://github.com/philsquared/Catch>`_ C++ unit test fr
 
 Additional `command line flags <https://github.com/philsquared/Catch/blob/master/docs/command-line.md>`_ can be provided to the build/test/tiledb_unit binary for controlling which tests are run and test output.
 
-Windows (from source)
-~~~~~~~~~~~~~~~~~~~~~
+Windows
+~~~~~~~
 
 This section details how to build TileDB from source if you do not wish to use the precompiled DLLs from the .zip file attached to the TileDB releases.
 
@@ -154,25 +172,29 @@ Next create a build directory and install the dependencies::
     > cd build
     > ..\scripts\install-deps.ps1
 
-Run the bootstrap script to run the CMake build generator::
+The ``install-deps.ps1`` script will download, build and install the required TileDB dependencies in the installation prefix (which defaults to ``TileDB\dist``). It does not install the dependencies system-wide, and thus does not require administrator privileges.
+
+Now run the bootstrap script to run the CMake build generator::
 
     > ..\bootstrap.ps1 <flags>
 
-===================  ================================================
-Flag                 Description
--------------------  ------------------------------------------------
--?                   Display a usage message.
--Prefix              Install files in tree rooted at ``PREFIX``
-                     (defaults to ``TileDB\dist``)
--Dependency          Semicolon separated list to binary dependencies.
--CMakeGenerator      Optionally specify the CMake generator string,
-                     e.g. "Visual Studio 15 2017". Check
-                     'cmake --help' for a list of supported
-                     generators.
--EnableDebug         Enable debug build
--EnableVerbose       Enable verbose status messages.
--EnableS3            Enables building with the S3 storage backend.
-===================  ================================================
+=====================  ================================================
+**Flag**               **Description**
+---------------------  ------------------------------------------------
+``-?``                 Display a usage message.
+``-Prefix``            Install files in tree rooted at ``PREFIX``
+                       (defaults to ``TileDB\dist``)
+``-Dependency``        Semicolon separated list to binary dependencies.
+``-CMakeGenerator``    Optionally specify the CMake generator string,
+                       e.g. "Visual Studio 15 2017". Check
+                       'cmake --help' for a list of supported
+                       generators.
+``-EnableDebug``       Enable debug build
+``-EnableVerbose``     Enable verbose status messages.
+``-EnableS3``          Enables building with the S3 storage backend.
+=====================  ================================================
+
+Note that the HDFS storage backend is not yet supported on Windows.
 
 Finally, run the build::
 

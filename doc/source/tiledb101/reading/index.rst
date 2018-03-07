@@ -36,7 +36,7 @@ retrieved from the old fragment for this cell. TileDB implements a read
 algorithm that allows it to skip data that do not qualify for the
 result. Independently of the number of fragments in the array, the user
 always sees the final array logical view as shown in the examples in the
-:doc:`Writing <writing/index>` section.
+:doc:`Writing </tiledb101/writing/index>` section.
 
 .. toctree::
     :maxdepth: 2

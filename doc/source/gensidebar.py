@@ -21,7 +21,6 @@ def write_if_changed(fname, contents):
 
 def generate_sidebar(conf, conf_api):
 
-    do_gen = conf['on_rtd']
     version = conf['rtd_version']
 
     lines = [
@@ -43,8 +42,6 @@ def generate_sidebar(conf, conf_api):
     def write(desc, link):
         if conf_api == 'tiledb':
             args = desc, link
-        elif not do_gen:
-            return
         else:
             args = desc, '%s/%s/%s/%s.html' % (url_base, lang, version, link)
 
@@ -52,9 +49,8 @@ def generate_sidebar(conf, conf_api):
 
     def write_api(project, desc, rst_page):
         if project != conf_api:
-            if do_gen:
-                args = desc, url_base, project, lang, version, rst_page
-                lines.append('    %s API <%s/projects/%s/%s/%s/%s.html>' % args)
+            args = desc, url_base, project, lang, version, rst_page
+            lines.append('    %s API <%s/projects/%s/%s/%s/%s.html>' % args)
         else:
             args = desc, rst_page
             lines.append('    %s API <%s>' % args)
