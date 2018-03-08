@@ -2,7 +2,7 @@
 
 [![Travis](https://travis-ci.org/TileDB-Inc/TileDB.svg?branch=dev)](https://travis-ci.org/TileDB-Inc/TileDB)
 [![Appveyor](https://ci.appveyor.com/api/projects/status/kb9h9r5xulk6j53c/branch/dev?svg=true)](https://ci.appveyor.com/project/StavrosPapadopoulos/tiledb/branch/dev)
-[![Documentation Status](https://readthedocs.com/projects/tiledb-inc-tiledb/badge/?version=latest)](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.com/projects/tiledb-inc-tiledb/badge/?version=latest)](https://docs.tiledb.io/en/latest/?badge=latest)
 
 **Array data management made fast and easy.**
 
@@ -29,7 +29,7 @@ Learn more and see examples and tutorials in the [official documentation](https:
 
 ## Installation
 
-The [installation guide](https://docs.tiledb.io/docs/installation) will walk you through installing TileDB on your machine.
+The [installation guide](https://docs.tiledb.io/en/latest/installation.html) will walk you through installing TileDB on your machine.
 
 The full TileDB documentation can be found at [docs.tiledb.io](https://docs.tiledb.io) and includes many tutorials and examples to get you started.
 
