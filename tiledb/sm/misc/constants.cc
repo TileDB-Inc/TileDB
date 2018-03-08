@@ -33,6 +33,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "tiledb/sm/c_api/tiledb_version.h"
+
 // Include files for platform path max definition.
 #ifdef _WIN32
 #include "tiledb/sm/misc/win_constants.h"
@@ -272,7 +274,8 @@ const char* unordered_str = "unordered";
 const char* null_str = "null";
 
 /** The version in format { major, minor, revision }. */
-const int version[3] = {1, 2, 0};
+const int version[3] = {
+    TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The size of a tile chunk. */
 const uint64_t tile_chunk_size = (uint64_t)std::numeric_limits<int>::max();
