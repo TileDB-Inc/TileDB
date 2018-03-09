@@ -137,6 +137,18 @@ class Dimension {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /** Returns an error if the set domain is invalid. */
+  Status check_domain() const;
+
+  /**
+   * Returns an error if the set domain is invalid.
+   *
+   * @tparam T The type of the dimension domain.
+   * @return Status
+   */
+  template <class T>
+  Status check_domain() const;
+
   /** Returns an error if the set tile extent is invalid. */
   Status check_tile_extent() const;
 

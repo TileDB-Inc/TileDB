@@ -205,10 +205,15 @@ Status Dimension::set_domain(const void* domain) {
     return LOG_STATUS(
         Status::DimensionError("Cannot set domain; Memory allocation error"));
   }
-
   std::memcpy(domain_, domain, domain_size);
 
-  return Status::Ok();
+  auto st = check_domain();
+  if (!st.ok()) {
+    std::free(domain_);
+    domain_ = nullptr;
+  }
+
+  return st;
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
@@ -228,9 +233,13 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   }
   std::memcpy(tile_extent_, tile_extent, type_size);
 
-  RETURN_NOT_OK(check_tile_extent());
+  auto st = check_tile_extent();
+  if (!st.ok()) {
+    std::free(domain_);
+    domain_ = nullptr;
+  }
 
-  return Status::Ok();
+  return st;
 }
 
 void* Dimension::tile_extent() const {
@@ -244,6 +253,49 @@ Datatype Dimension::type() const {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+Status Dimension::check_domain() const {
+  switch (type_) {
+    case Datatype::INT32:
+      return check_domain<int>();
+    case Datatype::INT64:
+      return check_domain<int64_t>();
+    case Datatype::INT8:
+      return check_domain<int8_t>();
+    case Datatype::UINT8:
+      return check_domain<uint8_t>();
+    case Datatype::INT16:
+      return check_domain<int16_t>();
+    case Datatype::UINT16:
+      return check_domain<uint16_t>();
+    case Datatype::UINT32:
+      return check_domain<uint32_t>();
+    case Datatype::UINT64:
+      return check_domain<uint64_t>();
+    case Datatype::FLOAT32:
+      return check_domain<float>();
+    case Datatype::FLOAT64:
+      return check_domain<double>();
+    default:
+      assert(0);
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; Invalid dimension domain type"));
+  }
+}
+
+template <class T>
+Status Dimension::check_domain() const {
+  assert(domain_ != nullptr);
+
+  // Upper bound should not be smaller than lower
+  auto domain = static_cast<const T*>(domain_);
+  if (domain[1] < domain[0])
+    return LOG_STATUS(
+        Status::DimensionError("Domain check failed; Upper domain bound should "
+                               "not be smaller than the lower one"));
+
+  return Status::Ok();
+}
 
 Status Dimension::check_tile_extent() const {
   switch (type_) {
@@ -276,20 +328,36 @@ Status Dimension::check_tile_extent() const {
 
 template <class T>
 Status Dimension::check_tile_extent() const {
+  if (domain_ == nullptr)
+    return LOG_STATUS(
+        Status::DimensionError("Tile extent check failed; Domain not set"));
+
   auto tile_extent = static_cast<T*>(tile_extent_);
   auto domain = static_cast<T*>(domain_);
 
+  // Check if tile extent exceeds domain
   if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double)) {
     if (*tile_extent > domain[1] - domain[0])
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   } else {
-    if (*tile_extent > domain[1] - domain[0] + 1)
+    // Check if tile extent exceeds domain
+    // TODO (sp): Handle negative domains
+    if ((domain[1] - domain[0] < std::numeric_limits<T>::max() - 1) &&
+        (*tile_extent > domain[1] - domain[0] + 1))
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   }
+
+  // Check if expanded domain exceeds type T's max limit
+  auto upper_ceil = (domain[1] / (*tile_extent)) * (*tile_extent);
+  if (upper_ceil != domain[1] &&
+      upper_ceil > std::numeric_limits<T>::max() - (*tile_extent))
+    return LOG_STATUS(
+        Status::DimensionError("Tile extent check failed; Tile extent "
+                               "exceeds domain type's maximum numeric limit"));
 
   return Status::Ok();
 }

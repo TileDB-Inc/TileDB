@@ -794,7 +794,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
-    "C API: Test array schema with invalid domain",
+    "C API: Test array schema with invalid float dense domain",
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
@@ -824,5 +824,44 @@ TEST_CASE_METHOD(
   rc = tiledb_domain_free(ctx_, &domain);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_free(ctx_, &array_schema);
+  CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema with invalid dimension domain and tile extent",
+    "[capi], [array-schema]") {
+  // Create dimension with huge range and no tile extent - ok
+  tiledb_dimension_t* d1;
+  uint64_t dim_domain[] = {0, UINT64_MAX};
+  int rc = tiledb_dimension_create(
+      ctx_, &d1, "d1", TILEDB_UINT64, dim_domain, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Create dimension with huge range and tile extent - error
+  tiledb_dimension_t* d2;
+  uint64_t tile_extent = 7;
+  rc = tiledb_dimension_create(
+      ctx_, &d2, "d2", TILEDB_UINT64, dim_domain, &tile_extent);
+  CHECK(rc == TILEDB_ERR);
+
+  // Create dimension with tile extent exceeding domain - error
+  tiledb_dimension_t* d3;
+  dim_domain[1] = 10;
+  tile_extent = 20;
+  rc = tiledb_dimension_create(
+      ctx_, &d3, "d3", TILEDB_UINT64, dim_domain, &tile_extent);
+  CHECK(rc == TILEDB_ERR);
+
+  // Create dimension with invalud domain - error
+  tiledb_dimension_t* d4;
+  dim_domain[0] = 10;
+  dim_domain[1] = 1;
+  rc = tiledb_dimension_create(
+      ctx_, &d4, "d4", TILEDB_UINT64, dim_domain, &tile_extent);
+  CHECK(rc == TILEDB_ERR);
+
+  // Clean up
+  rc = tiledb_dimension_free(ctx_, &d1);
   CHECK(rc == TILEDB_OK);
 }
