@@ -4,8 +4,15 @@ Installation
 .. note::
     The easiest way to try out TileDB is to use a pre-built Docker image::
 
-        docker pull tiledb/tiledb:1.2.0
-        docker run -it tiledb/tiledb:1.2.0
+        docker pull tiledb/tiledb
+        docker run -it tiledb/tiledb
+    
+    which uses the latest TileDB version, or:: 
+
+        docker pull tiledb/tiledb:<version>
+        docker run -it tiledb/tiledb:<version>
+
+    which uses a specific TileDB version (ex. ``<version>`` could be ``1.2.0``). 
 
     More info at `TileDB Docker Hub repo <https://hub.docker.com/r/tiledb/tiledb/>`_ and the `TileDB-Docker repo <https://github.com/TileDB-Inc/TileDB-Docker>`_.
 
@@ -101,10 +108,10 @@ Provided in the repo is a convenient install script to install and build binary 
 ::
 
     git clone https://github.com/TileDB-Inc/TileDB
-    git checkout 1.2.0
+    git checkout <version>
     cd TileDB
 
-While not necessary in most cases, a script is provided to download and install the required TileDB dependencies (useful in continuous integration or other automated installation environments). To use this script, execute ``scripts/install-deps.sh`` with administrator privileges.
+where ``<version>`` is the version you wish to use (e.g., ``1.2.0``). While not necessary in most cases, a script is provided to download and install the required TileDB dependencies (useful in continuous integration or other automated installation environments). To use this script, execute ``scripts/install-deps.sh`` with administrator privileges.
 
 To build TileDB, use the bootstrap script to run the CMake build generator::
 
