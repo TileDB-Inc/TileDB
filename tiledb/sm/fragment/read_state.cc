@@ -1139,7 +1139,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
     // Determine the start position of the range
     if (max == INVALID_UINT64 || max < min)
       // Subarray max succeeds the tile at position max
-      tile_search_range_[1] = max;
+      tile_search_range_[1] = tile_num - 1;
     else  // Subarray max included in a tile
       tile_search_range_[1] = med;
   }

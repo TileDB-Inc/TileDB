@@ -465,20 +465,6 @@ void FragmentMetadata::get_subarray_tile_domain(
   auto tile_extents =
       static_cast<const T*>(array_schema_->domain()->tile_extents());
 
-  // Get tile domain
-  auto tile_domain = new T[2 * dim_num];
-  T tile_num;  // Per dimension
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    if (&typeid(T) != &typeid(float) && &typeid(T) != &typeid(double))
-      tile_num =
-          ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
-    else
-      tile_num =
-          ceil(double(domain[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
-    tile_domain[2 * i] = 0;
-    tile_domain[2 * i + 1] = tile_num - 1;
-  }
-
   // Calculate subarray in tile domain
   for (unsigned int i = 0; i < dim_num; ++i) {
     auto overlap = MAX(subarray[2 * i], domain[2 * i]);
@@ -488,8 +474,6 @@ void FragmentMetadata::get_subarray_tile_domain(
     subarray_tile_domain[2 * i + 1] =
         (overlap - domain[2 * i]) / tile_extents[i];
   }
-
-  delete[] tile_domain;
 }
 
 template <class T>
