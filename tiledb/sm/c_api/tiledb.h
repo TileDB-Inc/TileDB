@@ -34,6 +34,8 @@
 #ifndef TILEDB_H
 #define TILEDB_H
 
+#include "tiledb_version.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
