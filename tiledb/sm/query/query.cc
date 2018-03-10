@@ -486,8 +486,9 @@ Status Query::set_layout(Layout layout) {
         "Cannot set layout; Ordered layouts can be used when writing to sparse "
         "arrays - use UNORDERED instead"));
 
-  // Layout for 1D vectors is row-major (unless it is set to global order)
-  if (array_schema_->dim_num() == 1 && layout != Layout::GLOBAL_ORDER)
+  // Layout for 1D vectors should not be col-major
+  // Use the equivalent row-major
+  if (array_schema_->dim_num() == 1 && layout == Layout::COL_MAJOR)
     layout_ = Layout::ROW_MAJOR;
   else
     layout_ = layout;
