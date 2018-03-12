@@ -753,19 +753,23 @@ uint64_t Domain::tile_num() const {
       return tile_num<uint32_t>();
     case Datatype::UINT64:
       return tile_num<uint64_t>();
-    case Datatype::CHAR:
-      assert(false);
-      return 0;
     case Datatype::FLOAT32:
-      assert(false);
-      return 0;
     case Datatype::FLOAT64:
-      assert(false);
-      return 0;
-    default:
+      // Operation not supported for float domains
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain types
       assert(false);
       return 0;
   }
+
+  assert(false);
+  return 0;
 }
 
 template <class T>
@@ -799,19 +803,23 @@ uint64_t Domain::tile_num(const void* range) const {
       return tile_num<uint32_t>(static_cast<const uint32_t*>(range));
     case Datatype::UINT64:
       return tile_num<uint64_t>(static_cast<const uint64_t*>(range));
-    case Datatype::CHAR:
-      assert(false);
-      return 0;
     case Datatype::FLOAT32:
-      assert(false);
-      return 0;
     case Datatype::FLOAT64:
-      assert(false);
-      return 0;
-    default:
+      // Operation not supported for float domains
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain types
       assert(false);
       return 0;
   }
+
+  assert(false);
+  return 0;
 }
 
 template <class T>
@@ -870,12 +878,19 @@ uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
     case Datatype::UINT64:
       return tile_slab_col_cell_num(static_cast<const uint64_t*>(subarray));
     case Datatype::CHAR:
-      assert(false);
-      return 0;
-    default:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain types
       assert(false);
       return 0;
   }
+
+  assert(false);
+  return 0;
 }
 
 uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
@@ -902,12 +917,19 @@ uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
     case Datatype::UINT64:
       return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
     case Datatype::CHAR:
-      assert(false);
-      return 0;
-    default:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+      // Not supported domain types
       assert(false);
       return 0;
   }
+
+  assert(false);
+  return 0;
 }
 
 Datatype Domain::type() const {

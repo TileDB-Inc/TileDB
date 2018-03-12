@@ -34,6 +34,7 @@
 
 #include "dimension.h"
 
+#include <cassert>
 #include <sstream>
 
 namespace tiledb {
@@ -77,7 +78,6 @@ tiledb_datatype_t Dimension::type() const {
 std::string Dimension::domain_to_str() const {
   auto domain = _domain();
   auto type = this->type();
-  char* dc;
   int8_t* di8;
   uint8_t* dui8;
   int16_t* di16;
@@ -93,10 +93,6 @@ std::string Dimension::domain_to_str() const {
   ss << "[";
 
   switch (type) {
-    case TILEDB_CHAR:
-      dc = static_cast<char*>(domain);
-      ss << dc[0] << "," << dc[1];
-      break;
     case TILEDB_INT8:
       di8 = static_cast<int8_t*>(domain);
       ss << di8[0] << "," << di8[1];
@@ -137,6 +133,16 @@ std::string Dimension::domain_to_str() const {
       df64 = static_cast<double*>(domain);
       ss << df64[0] << "," << df64[1];
       break;
+    case TILEDB_CHAR:
+    case TILEDB_STRING_ASCII:
+    case TILEDB_STRING_UTF8:
+    case TILEDB_STRING_UTF16:
+    case TILEDB_STRING_UTF32:
+    case TILEDB_STRING_UCS2:
+    case TILEDB_STRING_UCS4:
+      // Not supported domain types
+      assert(0);
+      break;
   }
 
   ss << "]";
@@ -147,7 +153,6 @@ std::string Dimension::domain_to_str() const {
 std::string Dimension::tile_extent_to_str() const {
   auto tile_extent = _tile_extent();
   auto type = this->type();
-  char* tc;
   int8_t* ti8;
   uint8_t* tui8;
   int16_t* ti16;
@@ -162,10 +167,6 @@ std::string Dimension::tile_extent_to_str() const {
   std::stringstream ss;
 
   switch (type) {
-    case TILEDB_CHAR:
-      tc = static_cast<char*>(tile_extent);
-      ss << *tc;
-      break;
     case TILEDB_INT8:
       ti8 = static_cast<int8_t*>(tile_extent);
       ss << *ti8;
@@ -205,6 +206,16 @@ std::string Dimension::tile_extent_to_str() const {
     case TILEDB_FLOAT64:
       tf64 = static_cast<double*>(tile_extent);
       ss << *tf64;
+      break;
+    case TILEDB_CHAR:
+    case TILEDB_STRING_ASCII:
+    case TILEDB_STRING_UTF8:
+    case TILEDB_STRING_UTF16:
+    case TILEDB_STRING_UTF32:
+    case TILEDB_STRING_UCS2:
+    case TILEDB_STRING_UCS4:
+      // Not supported domain (and, hence, extent) types
+      assert(0);
       break;
   }
 

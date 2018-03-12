@@ -36,6 +36,8 @@
 
 #include "tiledb/sm/misc/constants.h"
 
+#include <cassert>
+
 namespace tiledb {
 namespace sm {
 
@@ -71,9 +73,22 @@ inline uint64_t datatype_size(Datatype type) {
       return sizeof(uint32_t);
     case Datatype::UINT64:
       return sizeof(uint64_t);
-    default:
-      return 0;
+    case Datatype::STRING_ASCII:
+      return sizeof(uint8_t);
+    case Datatype::STRING_UTF8:
+      return sizeof(uint8_t);
+    case Datatype::STRING_UTF16:
+      return sizeof(uint16_t);
+    case Datatype::STRING_UTF32:
+      return sizeof(uint32_t);
+    case Datatype::STRING_UCS2:
+      return sizeof(uint16_t);
+    case Datatype::STRING_UCS4:
+      return sizeof(uint32_t);
   }
+
+  assert(false);
+  return 0;
 }
 
 /** Returns the string representation of the input datatype. */
@@ -101,9 +116,30 @@ inline const char* datatype_str(Datatype type) {
       return constants::uint32_str;
     case Datatype::UINT64:
       return constants::uint64_str;
-    default:
-      return "";
+    case Datatype::STRING_ASCII:
+      return constants::string_ascii_str;
+    case Datatype::STRING_UTF8:
+      return constants::string_utf8_str;
+    case Datatype::STRING_UTF16:
+      return constants::string_utf16_str;
+    case Datatype::STRING_UTF32:
+      return constants::string_utf32_str;
+    case Datatype::STRING_UCS2:
+      return constants::string_ucs2_str;
+    case Datatype::STRING_UCS4:
+      return constants::string_ucs4_str;
   }
+
+  assert(false);
+  return 0;
+}
+
+/** Returns true if the input datatype is a string type. */
+inline bool datatype_is_string(Datatype type) {
+  return (
+      type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8 ||
+      type == Datatype::STRING_UTF16 || type == Datatype::STRING_UTF32 ||
+      type == Datatype::STRING_UCS2 || type == Datatype::STRING_UCS4);
 }
 
 }  // namespace sm

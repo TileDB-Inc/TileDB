@@ -58,6 +58,8 @@ class Attribute {
    *
    * @param name The name of the attribute.
    * @param type The type of the attribute.
+   *
+   * @note The default number of values per cell is 1.
    */
   Attribute(const char* name, Datatype type);
 

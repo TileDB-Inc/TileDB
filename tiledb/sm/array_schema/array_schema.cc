@@ -751,56 +751,8 @@ uint64_t ArraySchema::compute_cell_size(unsigned int i) const {
   if (i < attribute_num_ && cell_val_num == constants::var_num)
     return constants::var_size;
 
-  // Fixed-sized cell
-  uint64_t size = 0;
-
-  // Attributes
-  if (i < attribute_num_) {
-    if (type == Datatype::CHAR)
-      size = cell_val_num * sizeof(char);
-    else if (type == Datatype::INT32)
-      size = cell_val_num * sizeof(int);
-    else if (type == Datatype::INT64)
-      size = cell_val_num * sizeof(int64_t);
-    else if (type == Datatype::FLOAT32)
-      size = cell_val_num * sizeof(float);
-    else if (type == Datatype::FLOAT64)
-      size = cell_val_num * sizeof(double);
-    else if (type == Datatype::INT8)
-      size = cell_val_num * sizeof(int8_t);
-    else if (type == Datatype::UINT8)
-      size = cell_val_num * sizeof(uint8_t);
-    else if (type == Datatype::INT16)
-      size = cell_val_num * sizeof(int16_t);
-    else if (type == Datatype::UINT16)
-      size = cell_val_num * sizeof(uint16_t);
-    else if (type == Datatype::UINT32)
-      size = cell_val_num * sizeof(uint32_t);
-    else if (type == Datatype::UINT64)
-      size = cell_val_num * sizeof(uint64_t);
-  } else {  // Coordinates
-    if (type == Datatype::INT32)
-      size = dim_num * sizeof(int);
-    else if (type == Datatype::INT64)
-      size = dim_num * sizeof(int64_t);
-    else if (type == Datatype::FLOAT32)
-      size = dim_num * sizeof(float);
-    else if (type == Datatype::FLOAT64)
-      size = dim_num * sizeof(double);
-    else if (type == Datatype::INT8)
-      size = dim_num * sizeof(int8_t);
-    else if (type == Datatype::UINT8)
-      size = dim_num * sizeof(uint8_t);
-    else if (type == Datatype::INT16)
-      size = dim_num * sizeof(int16_t);
-    else if (type == Datatype::UINT16)
-      size = dim_num * sizeof(uint16_t);
-    else if (type == Datatype::UINT32)
-      size = dim_num * sizeof(uint32_t);
-    else if (type == Datatype::UINT64)
-      size = dim_num * sizeof(uint64_t);
-  }
-  return size;
+  return (i < attribute_num_) ? cell_val_num * datatype_size(type) :
+                                dim_num * datatype_size(type);
 }
 
 Status ArraySchema::set_kv_attributes() {

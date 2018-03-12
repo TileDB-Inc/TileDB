@@ -1,5 +1,9 @@
 # In Progress
 
+## New features
+
+* Added string type support (ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4)
+
 ## API additions
 
 ### C API

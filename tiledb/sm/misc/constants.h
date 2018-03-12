@@ -115,6 +115,24 @@ extern const uint32_t empty_uint32;
 /** The special value for an empty uint64. */
 extern const uint64_t empty_uint64;
 
+/** The special value for an empty ASCII. */
+extern const uint8_t empty_ascii;
+
+/** The special value for an empty UTF8. */
+extern const uint8_t empty_utf8;
+
+/** The special value for an empty UTF16. */
+extern const uint16_t empty_utf16;
+
+/** The special value for an empty UTF32. */
+extern const uint32_t empty_utf32;
+
+/** The special value for an empty UCS2. */
+extern const uint16_t empty_ucs2;
+
+/** The special value for an empty UCS4. */
+extern const uint32_t empty_ucs4;
+
 /** The file suffix used in TileDB. */
 extern const char* file_suffix;
 
@@ -240,6 +258,24 @@ extern const char* uint32_str;
 
 /** The string representation for type uint64. */
 extern const char* uint64_str;
+
+/** The string representation for type STRING_ASCII. */
+extern const char* string_ascii_str;
+
+/** The string representation for type STRING_UTF8. */
+extern const char* string_utf8_str;
+
+/** The string representation for type STRING_UTF16. */
+extern const char* string_utf16_str;
+
+/** The string representation for type STRING_UTF32. */
+extern const char* string_utf32_str;
+
+/** The string representation for type STRING_UCS2. */
+extern const char* string_ucs2_str;
+
+/** The string representation for type STRING_UCS4. */
+extern const char* string_ucs4_str;
 
 /** The string representation for the dense array type. */
 extern const char* dense_str;
