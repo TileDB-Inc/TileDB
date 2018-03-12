@@ -222,7 +222,33 @@ struct type_from_native<double> {
   using type = FLOAT64;
 };
 
-std::string to_str(const tiledb_datatype_t& type);
+inline std::string to_str(const tiledb_datatype_t& type) {
+  switch (type) {
+    case TILEDB_CHAR:
+      return "char";
+    case TILEDB_INT8:
+      return "int8";
+    case TILEDB_UINT8:
+      return "uint8";
+    case TILEDB_INT16:
+      return "int16";
+    case TILEDB_UINT16:
+      return "uint16";
+    case TILEDB_INT32:
+      return "int32";
+    case TILEDB_UINT32:
+      return "uint32";
+    case TILEDB_INT64:
+      return "int64";
+    case TILEDB_UINT64:
+      return "uint64";
+    case TILEDB_FLOAT32:
+      return "float32";
+    case TILEDB_FLOAT64:
+      return "float64";
+  }
+  return "";
+}
 
 }  // namespace impl
 }  // namespace tiledb
