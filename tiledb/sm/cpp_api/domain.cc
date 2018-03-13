@@ -66,8 +66,6 @@ uint64_t Domain::cell_num() const {
         "non-integer domain");
 
   switch (type) {
-    case TILEDB_CHAR:
-      return cell_num<char>();
     case TILEDB_INT8:
       return cell_num<int8_t>();
     case TILEDB_UINT8:

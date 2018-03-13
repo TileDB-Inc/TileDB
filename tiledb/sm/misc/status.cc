@@ -183,6 +183,9 @@ std::string Status::code_to_string() const {
     case StatusCode::FS_HDFS:
       type = "[TileDB::HDFS] Error";
       break;
+    case StatusCode::Attribute:
+      type = "[TileDB::Attribute] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

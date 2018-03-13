@@ -821,7 +821,8 @@ int tiledb_attribute_set_cell_val_num(
     tiledb_ctx_t* ctx, tiledb_attribute_t* attr, unsigned int cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  attr->attr_->set_cell_val_num(cell_val_num);
+  if (save_error(ctx, attr->attr_->set_cell_val_num(cell_val_num)))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 

@@ -415,6 +415,7 @@ Status ArrayReadState::copy_cells(
   uint32_t val_utf32;
   uint16_t val_ucs2;
   uint32_t val_ucs4;
+  uint8_t val_any;
 
   switch (type) {
     case Datatype::INT32:
@@ -569,6 +570,15 @@ Status ArrayReadState::copy_cells(
           buffer_size,
           buffer_offset,
           &val_ucs4,
+          datatype_size(type));
+    case Datatype::ANY:
+      val_any = constants::empty_any;
+      return copy_cells_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          &val_any,
           datatype_size(type));
   }
 
@@ -671,6 +681,7 @@ Status ArrayReadState::copy_cells_var(
   uint32_t val_utf32;
   uint16_t val_ucs2;
   uint32_t val_ucs4;
+  uint8_t val_any;
 
   switch (type) {
     case Datatype::INT32:
@@ -876,6 +887,18 @@ Status ArrayReadState::copy_cells_var(
           buffer_var_size,
           buffer_var_offset,
           &val_ucs4,
+          datatype_size(type));
+    case Datatype::ANY:
+      val_any = constants::empty_any;
+      return copy_cells_var_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          buffer_var,
+          buffer_var_size,
+          buffer_var_offset,
+          &val_any,
           datatype_size(type));
   }
 

@@ -133,6 +133,9 @@ extern const uint16_t empty_ucs2;
 /** The special value for an empty UCS4. */
 extern const uint32_t empty_ucs4;
 
+/** The special value for an empty ANY. */
+extern const uint8_t empty_any;
+
 /** The file suffix used in TileDB. */
 extern const char* file_suffix;
 
@@ -276,6 +279,9 @@ extern const char* string_ucs2_str;
 
 /** The string representation for type STRING_UCS4. */
 extern const char* string_ucs4_str;
+
+/** The string representation for type ANY. */
+extern const char* any_str;
 
 /** The string representation for the dense array type. */
 extern const char* dense_str;

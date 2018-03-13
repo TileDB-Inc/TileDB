@@ -763,6 +763,7 @@ uint64_t Domain::tile_num() const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain types
       assert(false);
       return 0;
@@ -813,6 +814,7 @@ uint64_t Domain::tile_num(const void* range) const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain types
       assert(false);
       return 0;
@@ -884,6 +886,7 @@ uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain types
       assert(false);
       return 0;
@@ -923,6 +926,7 @@ uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain types
       assert(false);
       return 0;

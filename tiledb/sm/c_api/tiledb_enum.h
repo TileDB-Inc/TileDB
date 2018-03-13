@@ -86,6 +86,8 @@
     TILEDB_DATATYPE_ENUM(STRING_UCS2),
     /** UCS4 string */
     TILEDB_DATATYPE_ENUM(STRING_UCS4),
+    /** This can be any datatype. Must store (type tag, value) pairs. */
+    TILEDB_DATATYPE_ENUM(ANY),
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

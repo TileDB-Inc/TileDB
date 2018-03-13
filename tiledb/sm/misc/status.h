@@ -107,7 +107,8 @@ enum class StatusCode : char {
   Config,
   Utils,
   FS_S3,
-  FS_HDFS
+  FS_HDFS,
+  Attribute,
 };
 
 class Status {
@@ -297,6 +298,11 @@ class Status {
   /** Return a UtilsError error class Status with a given message **/
   static Status HDFSError(const std::string& msg) {
     return Status(StatusCode::FS_HDFS, msg, -1);
+  }
+
+  /** Return a AttributeError error class Status with a given message **/
+  static Status AttributeError(const std::string& msg) {
+    return Status(StatusCode::Attribute, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

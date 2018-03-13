@@ -140,6 +140,7 @@ std::string Dimension::domain_to_str() const {
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
+    case TILEDB_ANY:
       // Not supported domain types
       assert(0);
       break;
@@ -214,6 +215,7 @@ std::string Dimension::tile_extent_to_str() const {
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
+    case TILEDB_ANY:
       // Not supported domain (and, hence, extent) types
       assert(0);
       break;

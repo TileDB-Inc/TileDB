@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -49,7 +50,7 @@ Attribute::Attribute(const char* name, Datatype type) {
   if (name != nullptr)
     name_ = name;
   type_ = type;
-  cell_val_num_ = 1;
+  cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
 }
@@ -175,8 +176,15 @@ Status Attribute::serialize(Buffer* buff) {
   return Status::Ok();
 }
 
-void Attribute::set_cell_val_num(unsigned int cell_val_num) {
+Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
+  if (type_ == Datatype::ANY)
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set number of values per cell; Attribute datatype `ANY` is "
+        "always variable-sized"));
+
   cell_val_num_ = cell_val_num;
+
+  return Status::Ok();
 }
 
 void Attribute::set_compressor(Compressor compressor) {
