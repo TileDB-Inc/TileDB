@@ -36,6 +36,7 @@
 #include "tiledb/sm/filesystem/win_filesystem.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/config.h"
 
 #include <iostream>
@@ -513,6 +514,12 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   RETURN_NOT_OK(s3_.connect(s3_config));
 #endif
 
+  thread_pool_ = std::unique_ptr<ThreadPool>(
+      new (std::nothrow) ThreadPool(vfs_params_.max_parallel_ops_));
+  if (thread_pool_.get() == nullptr) {
+    return LOG_STATUS(Status::VFSError("Could not create VFS thread pool"));
+  }
+
   return Status::Ok();
 
   STATS_FUNC_OUT(vfs_init);
@@ -665,6 +672,41 @@ Status VFS::read(
   STATS_FUNC_IN(vfs_read);
   STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
 
+  // Ensure that each thread is responsible for at least min_parallel_size
+  // bytes, and cap the number of parallel operations at the thread pool size.
+  uint64_t num_ops = std::min(
+      std::max(nbytes / vfs_params_.min_parallel_size_, uint64_t(1)),
+      thread_pool_->num_threads());
+
+  if (num_ops == 1) {
+    return read_impl(uri, offset, buffer, nbytes);
+  } else {
+    STATS_COUNTER_ADD(vfs_read_num_parallelized, 1);
+    std::vector<std::future<Status>> results;
+    uint64_t thread_read_nbytes = utils::ceil(nbytes, num_ops);
+
+    for (uint64_t i = 0; i < num_ops; i++) {
+      uint64_t begin = i * thread_read_nbytes,
+               end = std::min((i + 1) * thread_read_nbytes - 1, nbytes - 1);
+      uint64_t thread_nbytes = end - begin + 1;
+      uint64_t thread_offset = offset + begin;
+      auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
+      results.push_back(thread_pool_->enqueue(
+          [this, &uri, thread_offset, thread_buffer, thread_nbytes]() {
+            return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
+          }));
+    }
+
+    bool all_ok = thread_pool_->wait_all(results);
+    return all_ok ? Status::Ok() :
+                    LOG_STATUS(Status::VFSError("VFS parallel read error"));
+  }
+
+  STATS_FUNC_OUT(vfs_read);
+}
+
+Status VFS::read_impl(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::read(uri.to_path(), offset, buffer, nbytes);
@@ -689,8 +731,6 @@ Status VFS::read(
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_read);
 }
 
 bool VFS::supports_fs(Filesystem fs) const {

@@ -282,6 +282,9 @@ std::string tile_extent_str(const void* tile_extent, Datatype type);
  */
 uint64_t timestamp_ms();
 
+/** Returns the value of x/y (integer division) rounded up. */
+uint64_t ceil(uint64_t x, uint64_t y);
+
 }  // namespace utils
 
 }  // namespace sm

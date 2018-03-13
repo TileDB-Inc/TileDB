@@ -158,6 +158,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_array_schema_cache_size(value));
   } else if (param == "sm.fragment_metadata_cache_size") {
     RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(value));
+  } else if (param == "vfs.max_parallel_ops") {
+    RETURN_NOT_OK(set_vfs_max_parallel_ops(value));
+  } else if (param == "vfs.min_parallel_size") {
+    RETURN_NOT_OK(set_vfs_min_parallel_size(value));
   } else if (param == "vfs.s3.region") {
     RETURN_NOT_OK(set_vfs_s3_region(value));
   } else if (param == "vfs.s3.scheme") {
@@ -228,6 +232,16 @@ Status Config::unset(const std::string& param) {
         constants::fragment_metadata_cache_size;
     value << sm_params_.fragment_metadata_cache_size_;
     param_values_["sm.fragment_metadata_cache_size"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.max_parallel_ops") {
+    vfs_params_.max_parallel_ops_ = constants::vfs_max_parallel_ops;
+    value << vfs_params_.max_parallel_ops_;
+    param_values_["vfs.max_parallel_ops"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.min_parallel_size") {
+    vfs_params_.min_parallel_size_ = constants::vfs_min_parallel_size;
+    value << vfs_params_.min_parallel_size_;
+    param_values_["vfs.min_parallel_size"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.region") {
     vfs_params_.s3_params_.region_ = constants::s3_region;
@@ -320,6 +334,14 @@ void Config::set_default_param_values() {
   param_values_["sm.fragment_metadata_cache_size"] = value.str();
   value.str(std::string());
 
+  value << vfs_params_.max_parallel_ops_;
+  param_values_["vfs.max_parallel_ops"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.min_parallel_size_;
+  param_values_["vfs.min_parallel_size"] = value.str();
+  value.str(std::string());
+
   value << vfs_params_.s3_params_.region_;
   param_values_["vfs.s3.region"] = value.str();
   value.str(std::string());
@@ -390,6 +412,22 @@ Status Config::set_sm_tile_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.tile_cache_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_vfs_max_parallel_ops(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.max_parallel_ops_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_vfs_min_parallel_size(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.min_parallel_size_ = v;
 
   return Status::Ok();
 }

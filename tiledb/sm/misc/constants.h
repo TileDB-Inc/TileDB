@@ -166,6 +166,12 @@ extern const uint64_t consolidation_buffer_size;
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
+/** The default maximum number of parallel VFS operations. */
+extern const uint64_t vfs_max_parallel_ops;
+
+/** The default minimum number of bytes in a parallel VFS operation. */
+extern const uint64_t vfs_min_parallel_size;
+
 /** The maximum name length. */
 extern const unsigned uri_max_len;
 

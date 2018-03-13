@@ -4,6 +4,7 @@
 
 * Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
 * Added `TILEDB_ANY` datatype (PR #446)
+* Added parallelized VFS read operations, enabled by default (PR #499)
 
 ## Improvements
 
@@ -23,6 +24,7 @@
 
 * Added `tiledb_query_finalize` function. 
 * Added `tiledb_vfs_get_config` function.
+* Added `vfs.max_parallel_ops` and `vfs.min_parallel_size` config parameters.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.

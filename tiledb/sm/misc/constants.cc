@@ -32,6 +32,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <thread>
 
 #include "tiledb/sm/c_api/tiledb_version.h"
 
@@ -174,6 +175,12 @@ const uint64_t consolidation_buffer_size = 10000000;
 
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
+
+/** The default maximum number of parallel VFS operations. */
+const uint64_t vfs_max_parallel_ops = std::thread::hardware_concurrency();
+
+/** The default minimum number of bytes in a parallel VFS operation. */
+const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
 
 /** The maximum name length. */
 const unsigned uri_max_len = 256;
