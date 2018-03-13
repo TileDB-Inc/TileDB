@@ -38,6 +38,7 @@
 #include "tiledb/sm/kv/kv_item.h"
 #include "tiledb/sm/kv/kv_iter.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/config.h"
@@ -3031,6 +3032,50 @@ int tiledb_uri_to_path(
     path_out[path.length()] = '\0';
     return TILEDB_OK;
   }
+}
+
+/* ****************************** */
+/*             Stats              */
+/* ****************************** */
+
+int tiledb_stats_enable(tiledb_ctx_t* ctx) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  tiledb::sm::stats::all_stats.set_enabled(true);
+
+  return TILEDB_OK;
+}
+
+int tiledb_stats_disable(tiledb_ctx_t* ctx) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  tiledb::sm::stats::all_stats.set_enabled(false);
+
+  return TILEDB_OK;
+}
+
+int tiledb_stats_reset(tiledb_ctx_t* ctx) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  tiledb::sm::stats::all_stats.reset();
+
+  return TILEDB_OK;
+}
+
+int tiledb_stats_dump(tiledb_ctx_t* ctx, FILE* out) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  tiledb::sm::stats::all_stats.dump(out);
+
+  return TILEDB_OK;
 }
 
 /* ****************************** */

@@ -35,6 +35,7 @@
 #include "tiledb/sm/filesystem/posix_filesystem.h"
 #include "tiledb/sm/filesystem/win_filesystem.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/storage_manager/config.h"
 
 #include <iostream>
@@ -47,15 +48,21 @@ namespace sm {
 /* ********************************* */
 
 VFS::VFS() {
+  STATS_FUNC_VOID_IN(vfs_constructor);
+
 #ifdef HAVE_HDFS
   supported_fs_.insert(Filesystem::HDFS);
 #endif
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
 #endif
+
+  STATS_FUNC_VOID_OUT(vfs_constructor);
 }
 
 VFS::~VFS() {
+  STATS_FUNC_VOID_IN(vfs_destructor);
+
 #ifdef HAVE_HDFS
   if (hdfs_ != nullptr) {
     // Do not disconnect - may lead to problems
@@ -64,6 +71,8 @@ VFS::~VFS() {
 #endif
   // Do not disconnect - may lead to problems
   // Status st = s3_.disconnect();
+
+  STATS_FUNC_VOID_OUT(vfs_destructor);
 }
 
 /* ********************************* */
@@ -71,6 +80,8 @@ VFS::~VFS() {
 /* ********************************* */
 
 std::string VFS::abs_path(const std::string& path) {
+  STATS_FUNC_IN(vfs_abs_path);
+
 #ifdef _WIN32
   if (win::is_win_path(path))
     return win::uri_from_path(win::abs_path(path));
@@ -86,9 +97,13 @@ std::string VFS::abs_path(const std::string& path) {
     return path;
   // Certainly starts with "<resource>://" other than "file://"
   return path;
+
+  STATS_FUNC_OUT(vfs_abs_path);
 }
 
 Status VFS::create_dir(const URI& uri) const {
+  STATS_FUNC_IN(vfs_create_dir);
+
   if (is_dir(uri))
     return LOG_STATUS(Status::VFSError(
         std::string("Cannot create directory '") + uri.c_str() +
@@ -117,9 +132,13 @@ Status VFS::create_dir(const URI& uri) const {
   }
   return Status::Error(
       std::string("Unsupported URI scheme: ") + uri.to_string());
+
+  STATS_FUNC_OUT(vfs_create_dir);
 }
 
 Status VFS::create_file(const URI& uri) const {
+  STATS_FUNC_IN(vfs_create_file);
+
   // Do nothing if the file already exists
   if (is_file(uri))
     return Status::Ok();
@@ -148,9 +167,13 @@ Status VFS::create_file(const URI& uri) const {
   }
   return LOG_STATUS(Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_create_file);
 }
 
 Status VFS::create_bucket(const URI& uri) const {
+  STATS_FUNC_IN(vfs_create_bucket);
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.create_bucket(uri);
@@ -162,9 +185,13 @@ Status VFS::create_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot create bucket; Unsupported URI scheme: ") +
       uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_create_bucket);
 }
 
 Status VFS::remove_bucket(const URI& uri) const {
+  STATS_FUNC_IN(vfs_remove_bucket);
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.delete_bucket(uri);
@@ -176,9 +203,13 @@ Status VFS::remove_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot remove bucket; Unsupported URI scheme: ") +
       uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_remove_bucket);
 }
 
 Status VFS::empty_bucket(const URI& uri) const {
+  STATS_FUNC_IN(vfs_empty_bucket);
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.empty_bucket(uri);
@@ -190,9 +221,13 @@ Status VFS::empty_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot remove bucket; Unsupported URI scheme: ") +
       uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_empty_bucket);
 }
 
 Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
+  STATS_FUNC_IN(vfs_is_empty_bucket);
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.is_empty_bucket(uri, is_empty);
@@ -205,9 +240,13 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot remove bucket; Unsupported URI scheme: ") +
       uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_is_empty_bucket);
 }
 
 Status VFS::remove_path(const URI& uri) const {
+  STATS_FUNC_IN(vfs_remove_path);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::remove_path(uri.to_path());
@@ -231,9 +270,13 @@ Status VFS::remove_path(const URI& uri) const {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
   }
+
+  STATS_FUNC_OUT(vfs_remove_path);
 }
 
 Status VFS::remove_file(const URI& uri) const {
+  STATS_FUNC_IN(vfs_remove_file);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::remove_file(uri.to_path());
@@ -258,9 +301,13 @@ Status VFS::remove_file(const URI& uri) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_remove_file);
 }
 
 Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
+  STATS_FUNC_IN(vfs_filelock_lock);
+
   if (uri.is_file())
 #ifdef _WIN32
     return win::filelock_lock(uri.to_path(), fd, shared);
@@ -285,9 +332,13 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_filelock_lock);
 }
 
 Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
+  STATS_FUNC_IN(vfs_filelock_unlock);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::filelock_unlock(fd);
@@ -312,9 +363,13 @@ Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_filelock_unlock);
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  STATS_FUNC_IN(vfs_file_size);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::file_size(uri.to_path(), size);
@@ -339,9 +394,13 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_file_size);
 }
 
 bool VFS::is_dir(const URI& uri) const {
+  STATS_FUNC_IN(vfs_is_dir);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::is_dir(uri.to_path());
@@ -364,9 +423,13 @@ bool VFS::is_dir(const URI& uri) const {
 #endif
   }
   return false;
+
+  STATS_FUNC_OUT(vfs_is_dir);
 }
 
 bool VFS::is_file(const URI& uri) const {
+  STATS_FUNC_IN(vfs_is_file);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::is_file(uri.to_path());
@@ -389,9 +452,13 @@ bool VFS::is_file(const URI& uri) const {
 #endif
   }
   return false;
+
+  STATS_FUNC_OUT(vfs_is_file);
 }
 
 bool VFS::is_bucket(const URI& uri) const {
+  STATS_FUNC_IN(vfs_is_bucket);
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.is_bucket(uri);
@@ -401,9 +468,13 @@ bool VFS::is_bucket(const URI& uri) const {
 #endif
   }
   return false;
+
+  STATS_FUNC_OUT(vfs_is_bucket);
 }
 
 Status VFS::init(const Config::VFSParams& vfs_params) {
+  STATS_FUNC_IN(vfs_init);
+
 #ifdef HAVE_HDFS
   RETURN_NOT_OK(hdfs::connect(hdfs_, vfs_params.hdfs_params_));
 #endif
@@ -423,9 +494,13 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   (void)vfs_params;
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_init);
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+  STATS_FUNC_IN(vfs_ls);
+
   std::vector<std::string> paths;
   if (parent.is_file()) {
 #ifdef _WIN32
@@ -455,9 +530,13 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     uris->emplace_back(path);
   }
   return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_ls);
 }
 
 Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
+  STATS_FUNC_IN(vfs_move_path);
+
   // If new_uri exists, delete it
   if (force && (is_dir(new_uri) || is_file(new_uri)))
     RETURN_NOT_OK(remove_path(new_uri));
@@ -505,10 +584,14 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
   return LOG_STATUS(Status::VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_move_path);
 }
 
 Status VFS::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  STATS_FUNC_IN(vfs_read);
+
   if (!is_file(uri))
     return LOG_STATUS(
         Status::VFSError("Cannot read from file; File does not exist"));
@@ -537,13 +620,21 @@ Status VFS::read(
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_read);
 }
 
 bool VFS::supports_fs(Filesystem fs) const {
+  STATS_FUNC_IN(vfs_supports_fs);
+
   return (supported_fs_.find(fs) != supported_fs_.end());
+
+  STATS_FUNC_OUT(vfs_supports_fs);
 }
 
 Status VFS::sync(const URI& uri) {
+  STATS_FUNC_IN(vfs_sync);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::sync(uri.to_path());
@@ -568,9 +659,13 @@ Status VFS::sync(const URI& uri) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_sync);
 }
 
 Status VFS::open_file(const URI& uri, VFSMode mode) {
+  STATS_FUNC_IN(vfs_open_file);
+
   switch (mode) {
     case VFSMode::VFS_READ:
       if (!is_file(uri))
@@ -597,9 +692,13 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_open_file);
 }
 
 Status VFS::close_file(const URI& uri) {
+  STATS_FUNC_IN(vfs_close_file);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::sync(uri.to_path());
@@ -624,9 +723,13 @@ Status VFS::close_file(const URI& uri) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_close_file);
 }
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
+  STATS_FUNC_IN(vfs_write);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::write(uri.to_path(), buffer, buffer_size);
@@ -651,6 +754,8 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_write);
 }
 
 }  // namespace sm
