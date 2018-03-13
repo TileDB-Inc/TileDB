@@ -72,18 +72,18 @@ wget -P /tmp https://cmake.org/files/v3.9/cmake-3.9.4-Linux-x86_64.tar.gz \
 build_install_zstd() {
   TEMP=`mktemp -d` || die "failed to create zstd tmp build dir"
   pushd $TEMP
-  wget https://github.com/facebook/zstd/archive/v1.3.2.tar.gz
-  tar xzf v1.3.2.tar.gz || die "failed to uncompress zstd repo"
-  cd zstd-1.3.2/lib  && sudo make install PREFIX='/usr' || die "zstd build install failed"
+  wget https://github.com/facebook/zstd/archive/v1.3.3.tar.gz
+  tar xzf v1.3.3.tar.gz || die "failed to uncompress zstd repo"
+  cd zstd-1.3.3/lib  && sudo make install PREFIX='/usr' || die "zstd build install failed"
   popd && rm -rf $TEMP
 }
 
 build_install_blosc() {
   TEMP=`mktemp -d` || die "failed to create blosc tmp build dir"
   pushd $TEMP
-  wget https://github.com/Blosc/c-blosc/archive/v1.12.1.tar.gz
-  tar xzf v1.12.1.tar.gz || die "failed to uncompress blosc repo"
-  cd c-blosc-1.12.1 && mkdir build && cd build
+  wget https://github.com/Blosc/c-blosc/archive/v1.14.0.tar.gz
+  tar xzf v1.14.0.tar.gz || die "failed to uncompress blosc repo"
+  cd c-blosc-1.14.0 && mkdir build && cd build
   cmake -DCMAKE_INSTALL_PREFIX='/usr' .. || die "blosc cmake failed"
   sudo cmake --build . --target install || die "bloc build install failed"
   popd && rm -rf $TEMP
@@ -110,12 +110,11 @@ install_base_deps() {
     if [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs 
       build_install_cmake
-      # zstd is in later versions of Ubuntu
-      if [[ $(apt-cache search libzstd-dev) ]]; then
-        sudo apt-get -y install libzstd-dev
-      else
-        build_install_zstd
-      fi
+      # TODO: packaged zstd version causes issues with blosc
+      #if [[ $(apt-cache search libzstd-dev) ]]; then
+      #  sudo apt-get -y install libzstd-dev
+      #fi
+      build_install_zstd
       build_install_blosc
     elif [ -n "$(command -v yum)" ]; then
       install_yum_pkgs

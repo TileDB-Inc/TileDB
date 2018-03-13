@@ -78,9 +78,9 @@ function Install-LZ4 {
 }
 
 function Install-Blosc {
-    $BloscRoot = (Join-Path $StagingDirectory "c-blosc-1.12.1")
+    $BloscRoot = (Join-Path $StagingDirectory "c-blosc-1.14.0")
     if (!(Test-Path $BloscRoot)) {
-	DownloadIfNotExists $DownloadBloscDest "https://github.com/Blosc/c-blosc/archive/v1.12.1.zip"
+	DownloadIfNotExists $DownloadBloscDest "https://github.com/Blosc/c-blosc/archive/v1.14.0.zip"
 	Unzip $DownloadBloscDest $StagingDirectory
     }
     Push-Location
@@ -102,7 +102,7 @@ function Install-Blosc {
 function Install-Zstd {
     $ZstdRoot = (Join-Path $StagingDirectory "zstd")
     if (!(Test-Path $ZstdRoot)) {
-	DownloadIfNotExists $DownloadZstdDest "https://github.com/facebook/zstd/releases/download/v1.3.2/zstd-v1.3.2-win64.zip"
+	DownloadIfNotExists $DownloadZstdDest "https://github.com/facebook/zstd/releases/download/v1.3.3/zstd-v1.3.3-win64.zip"
 	New-Item -ItemType Directory -Path $ZstdRoot
 	Unzip $DownloadZstdDest $ZstdRoot
     }
