@@ -71,7 +71,9 @@ install:
       fi
 
 script:
-    - make check-format
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        make check-format;
+      fi
     - make check
     - |
       testfile=$(mktemp)
