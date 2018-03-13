@@ -21,7 +21,8 @@ install:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         sudo scripts/install-clangformat.sh;
       else
-        scripts/install-clangformat.sh;
+      # Turn off OSX clang-format check as due to brew install error
+      # scripts/install-clangformat.sh;
       fi
 
     # Install doxygen
