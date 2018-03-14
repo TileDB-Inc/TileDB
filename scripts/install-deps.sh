@@ -101,6 +101,9 @@ install_yum_pkgs() {
 }
 
 install_brew_pkgs() {
+  # speculatively run update & upgrade ignoring error,
+  # sometimes .travis brew cached packages bork on upgrade
+  (brew update && brew upgrade) || true
   brew install wget cmake lzlib lz4 bzip2 zstd || die "could not install brew pkg dependencies"
   brew install tiledb-inc/stable/blosc || die "could not install blosc pkg dependency"
 }
