@@ -882,11 +882,24 @@ void ArrayOrderedWriteState::copy_tile_slab() {
           copy_tile_slab<char>(i, b);
           break;
         case Datatype::STRING_ASCII:
+          copy_tile_slab<uint8_t>(i, b);
+          break;
         case Datatype::STRING_UTF8:
+          copy_tile_slab<uint8_t>(i, b);
+          break;
         case Datatype::STRING_UTF16:
+          copy_tile_slab<uint16_t>(i, b);
+          break;
         case Datatype::STRING_UTF32:
+          copy_tile_slab<uint32_t>(i, b);
+          break;
         case Datatype::STRING_UCS2:
+          copy_tile_slab<uint16_t>(i, b);
+          break;
         case Datatype::STRING_UCS4:
+          copy_tile_slab<uint32_t>(i, b);
+          break;
+        case Datatype::ANY:
           copy_tile_slab<uint8_t>(i, b);
           break;
       }
@@ -927,11 +940,24 @@ void ArrayOrderedWriteState::copy_tile_slab() {
           copy_tile_slab_var<char>(i, b);
           break;
         case Datatype::STRING_ASCII:
+          copy_tile_slab_var<uint8_t>(i, b);
+          break;
         case Datatype::STRING_UTF8:
+          copy_tile_slab_var<uint8_t>(i, b);
+          break;
         case Datatype::STRING_UTF16:
+          copy_tile_slab_var<uint16_t>(i, b);
+          break;
         case Datatype::STRING_UTF32:
+          copy_tile_slab_var<uint32_t>(i, b);
+          break;
         case Datatype::STRING_UCS2:
+          copy_tile_slab_var<uint16_t>(i, b);
+          break;
         case Datatype::STRING_UCS4:
+          copy_tile_slab_var<uint32_t>(i, b);
+          break;
+        case Datatype::ANY:
           copy_tile_slab_var<uint8_t>(i, b);
           break;
       }

@@ -51,8 +51,15 @@ uint64_t UTF16_OFFSET_1 = sizeof(u"aα") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_2 = sizeof(u"aαbβ") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_3 = sizeof(u"aαbβcγ") - UTF16_NULL_SIZE;
 
+struct StringFx {
+  void create_array(const std::string& array_name);
+  void delete_array(const std::string& array_name);
+  void read_array(const std::string& array_name);
+  void write_array(const std::string& array_name);
+};
+
 // Create a simple dense 1D array with three string attributes
-void create_array(const std::string& array_name) {
+void StringFx::create_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_create(&ctx, NULL);
@@ -133,7 +140,7 @@ void create_array(const std::string& array_name) {
   REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
 }
 
-void write_array(const std::string& array_name) {
+void StringFx::write_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_create(&ctx, NULL);
@@ -185,7 +192,7 @@ void write_array(const std::string& array_name) {
   std::free(buffer_a3);
 }
 
-void read_array(const std::string& array_name) {
+void StringFx::read_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_create(&ctx, NULL);
@@ -251,7 +258,7 @@ void read_array(const std::string& array_name) {
   std::free(buffer_a3);
 }
 
-void delete_array(const std::string& array_name) {
+void StringFx::delete_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_create(&ctx, NULL);
@@ -270,7 +277,7 @@ void delete_array(const std::string& array_name) {
   REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
 }
 
-TEST_CASE("C API: Test string support", "[capi], [string]") {
+TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi], [string]") {
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);

@@ -59,7 +59,8 @@ class Attribute {
    * @param name The name of the attribute.
    * @param type The type of the attribute.
    *
-   * @note The default number of values per cell is 1.
+   * @note The default number of values per cell is 1 for all datatypes except
+   *     `ANY`, which is always variable-sized.
    */
   Attribute(const char* name, Datatype type);
 
@@ -117,8 +118,14 @@ class Attribute {
    */
   Status serialize(Buffer* buff);
 
-  /** Sets the attribute number of values per cell. */
-  void set_cell_val_num(unsigned int cell_val_num);
+  /**
+   * Sets the attribute number of values per cell. Note that if the attribute
+   * datatype is `ANY` this function returns an error, since `ANY` datatype
+   * must always be variable-sized.
+   *
+   * @return Status
+   */
+  Status set_cell_val_num(unsigned int cell_val_num);
 
   /** Sets the attribute compressor. */
   void set_compressor(Compressor compressor);

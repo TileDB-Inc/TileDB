@@ -103,6 +103,8 @@ inline std::string to_str(const tiledb_datatype_t& type) {
       return "string_ucs2";
     case TILEDB_STRING_UCS4:
       return "string_ucs4";
+    case TILEDB_ANY:
+      return "any";
   }
   return "";
 }

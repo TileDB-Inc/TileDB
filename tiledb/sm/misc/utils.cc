@@ -312,6 +312,7 @@ std::string domain_str(const void* domain, Datatype type) {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain type
       assert(false);
       return "";
@@ -494,6 +495,7 @@ std::string tile_extent_str(const void* tile_extent, Datatype type) {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::ANY:
       // Not supported domain type
       assert(false);
       return "";

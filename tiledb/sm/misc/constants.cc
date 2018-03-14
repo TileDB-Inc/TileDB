@@ -145,6 +145,9 @@ const uint16_t empty_ucs2 = 0;
 /** The special value for an empty UCS4. */
 const uint32_t empty_ucs4 = 0;
 
+/** The special value for an empty ANY. */
+const uint8_t empty_any = 0;
+
 /** The file suffix used in TileDB. */
 const char* file_suffix = ".tdb";
 
@@ -287,6 +290,9 @@ const char* string_ucs2_str = "STRING_UCS2";
 
 /** The string representation for type STRING_UCS4. */
 const char* string_ucs4_str = "STRING_UCS4";
+
+/** The string representation for type ANY. */
+const char* any_str = "ANY";
 
 /** The string representation for the dense array type. */
 const char* dense_str = "dense";

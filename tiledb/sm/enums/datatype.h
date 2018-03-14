@@ -85,6 +85,8 @@ inline uint64_t datatype_size(Datatype type) {
       return sizeof(uint16_t);
     case Datatype::STRING_UCS4:
       return sizeof(uint32_t);
+    case Datatype::ANY:
+      return sizeof(uint8_t);
   }
 
   assert(false);
@@ -128,6 +130,8 @@ inline const char* datatype_str(Datatype type) {
       return constants::string_ucs2_str;
     case Datatype::STRING_UCS4:
       return constants::string_ucs4_str;
+    case Datatype::ANY:
+      return constants::any_str;
   }
 
   assert(false);
