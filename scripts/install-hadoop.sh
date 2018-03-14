@@ -24,16 +24,17 @@ function install_hadoop {
     sudo chown -R $(whoami) /usr/local/hadoop || die "could not create local hadoop directory"
   pushd /usr/local/hadoop
   # download from closest mirror
-  sudo wget -O hadoop-2.8.2.tar.gz --trust-server-names \
-    "https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=hadoop/common/hadoop-2.8.2/hadoop-2.8.2.tar.gz"
+  sudo wget -O hadoop-3.0.0.tar.gz --trust-server-names \
+      "http://apache.cs.utah.edu/hadoop/common/hadoop-3.0.0/hadoop-3.0.0.tar.gz"
+  # "https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=hadoop/common/hadoop-2.8.2/hadoop-2.8.2.tar.gz"
   if [ $? -ne 0 ]; then
     die "error downloading hadoop from apache mirror"
   fi;
-  sudo tar xzf hadoop-2.8.2.tar.gz || die "error extracting hadoop download"
-  if [ -d ./home/hadoop-2.8.2 ]; then
-     sudo rm -rf ./home/hadoop-2.8.2
+  sudo tar xzf hadoop-3.0.0.tar.gz || die "error extracting hadoop download"
+  if [ -d ./home/hadoop-3.0.0 ]; then
+     sudo rm -rf ./home/hadoop-3.0.0
   fi
-  sudo mv hadoop-2.8.2 home && sudo chown -R $(whoami) /usr/local/hadoop
+  sudo mv hadoop-3.0.0 home && sudo chown -R $(whoami) /usr/local/hadoop
   popd
 }
 
