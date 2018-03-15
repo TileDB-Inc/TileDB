@@ -147,8 +147,8 @@ Status S3::create_dir(const URI& uri) const {
 
 Status S3::create_file(const URI& uri) const {
   if (!uri.is_s3()) {
-    return LOG_STATUS(Status::S3Error(
-        std::string("URI is not an S3 URI: " + uri.to_string())));
+    return LOG_STATUS(Status::S3Error(std::string(
+        "Cannot create file; URI is not an S3 URI: " + uri.to_string())));
   }
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -163,7 +163,11 @@ Status S3::create_file(const URI& uri) const {
   auto putObjectOutcome = client_->PutObject(putObjectRequest);
   if (!putObjectOutcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
-        std::string("S3 object is already open for write ") + uri.c_str()));
+        std::string("Cannot create file ") + uri.c_str() +
+        std::string("\nException:  ") +
+        putObjectOutcome.GetError().GetExceptionName().c_str() +
+        std::string("\nError message:  ") +
+        putObjectOutcome.GetError().GetMessage().c_str()));
   }
   wait_for_object_to_propagate(
       putObjectRequest.GetBucket(), putObjectRequest.GetKey());
