@@ -117,7 +117,8 @@ Status WriteState::finalize() {
   auto storage_manager = fragment_->query()->storage_manager();
   auto& fragment_uri = fragment_->fragment_uri();
 
-  auto fragment_exists = storage_manager->is_dir(fragment_uri);
+  bool fragment_exists;
+  RETURN_NOT_OK(storage_manager->is_dir(fragment_uri, &fragment_exists));
 
   // Check number of cells written (for a dense fragment that exists)
   if (metadata_->dense() && fragment_exists) {
@@ -183,7 +184,9 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   auto& fragment_uri = fragment_->fragment_uri();
   auto storage_manager = fragment_->query()->storage_manager();
-  if (!storage_manager->is_dir(fragment_uri))
+  bool fragment_exists;
+  RETURN_NOT_OK(storage_manager->is_dir(fragment_uri, &fragment_exists))
+  if (!fragment_exists)
     RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
 
   Layout layout = fragment_->query()->layout();

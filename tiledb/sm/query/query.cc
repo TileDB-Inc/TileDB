@@ -148,12 +148,15 @@ const std::vector<unsigned int>& Query::attribute_ids() const {
 Status Query::clear_fragments() {
   Status st_last = Status::Ok();
 
+  bool fragment_exists;
   if (!fragments_borrowed_) {
     for (auto& fragment : fragments_) {
       auto st = fragment->finalize();
       if (!st.ok()) {
         st_last = st;
-        if (storage_manager_->is_dir(fragment->fragment_uri()))
+        RETURN_NOT_OK(storage_manager_->is_dir(
+            fragment->fragment_uri(), &fragment_exists));
+        if (fragment_exists)
           storage_manager_->vfs()->remove_path(fragment->fragment_uri());
       }
 

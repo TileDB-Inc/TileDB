@@ -226,23 +226,64 @@ class StorageManager {
    */
   Status init(Config* config);
 
-  /** Returns true if the input URI is an array directory. */
-  bool is_array(const URI& uri) const;
+  /**
+   * Checks if the input URI represents an array.
+   *
+   * @param The URI to be checked.
+   * @param is_array Set to `true` if the URI is an array and `false` otherwise.
+   * @return Status
+   */
+  Status is_array(const URI& uri, bool* is_array) const;
 
-  /** Checks if the input URI is a directory. */
-  bool is_dir(const URI& uri) const;
+  /**
+   * Checks if the input URI represents a directory.
+   *
+   * @param The URI to be checked.
+   * @param is_dir Set to `true` if the URI is a directory and `false`
+   *     otherwise.
+   * @return Status
+   */
+  Status is_dir(const URI& uri, bool* is_dir) const;
 
-  /** Returns true if the input URI is a fragment directory. */
-  bool is_fragment(const URI& uri) const;
+  /**
+   * Checks if the input URI represents a fragment.
+   *
+   * @param The URI to be checked.
+   * @param is_fragment Set to `true` if the URI is a fragment and `false`
+   *     otherwise.
+   * @return Status
+   */
+  Status is_fragment(const URI& uri, bool* is_fragment) const;
 
-  /** Returns true if the input URI is a group directory. */
-  bool is_group(const URI& uri) const;
+  /**
+   * Checks if the input URI represents a group.
+   *
+   * @param The URI to be checked.
+   * @param is_group Set to `true` if the URI is a group and `false`
+   *     otherwise.
+   * @return Status
+   */
+  Status is_group(const URI& uri, bool* is_group) const;
 
-  /** Checks if the input URI is a file. */
-  bool is_file(const URI& uri) const;
+  /**
+   * Checks if the input URI represents a file.
+   *
+   * @param The URI to be checked.
+   * @param is_file Set to `true` if the URI is a file and `false`
+   *     otherwise.
+   * @return Status
+   */
+  Status is_file(const URI& uri, bool* is_file) const;
 
-  /** Returns true if the input URI is a key-value array directory. */
-  bool is_kv(const URI& uri) const;
+  /**
+   * Checks if the input URI represents a key-value store.
+   *
+   * @param The URI to be checked.
+   * @param is_kv Set to `true` if the URI is a key-value store and `false`
+   *     otherwise.
+   * @return Status
+   */
+  Status is_kv(const URI& uri, bool* is_kv) const;
 
   /**
    * Loads the schema of an array from persistent storage into memory.
@@ -337,10 +378,12 @@ class StorageManager {
 
   /**
    * Returns the tiledb object type
-   * @param uri Path to tiledb object resource
-   * @return ObjectType
+   *
+   * @param uri Path to TileDB object resource
+   * @param type The ObjectType to be retrieved.
+   * @return Status
    */
-  ObjectType object_type(const URI& uri) const;
+  Status object_type(const URI& uri, ObjectType* type) const;
 
   /** Finalizes a query. */
   Status query_finalize(Query* query);

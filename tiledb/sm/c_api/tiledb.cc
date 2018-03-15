@@ -1876,8 +1876,13 @@ int tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
   auto uri = tiledb::sm::URI(path);
-  *type = static_cast<tiledb_object_t>(ctx->storage_manager_->object_type(uri));
+  tiledb::sm::ObjectType object_type;
+  if (save_error(ctx, ctx->storage_manager_->object_type(uri, &object_type)))
+    return TILEDB_ERR;
+
+  *type = static_cast<tiledb_object_t>(object_type);
   return TILEDB_OK;
 }
 
@@ -2767,7 +2772,11 @@ int tiledb_vfs_is_bucket(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_bucket = (int)vfs->vfs_->is_bucket(tiledb::sm::URI(uri));
+  bool exists;
+  if (save_error(ctx, vfs->vfs_->is_bucket(tiledb::sm::URI(uri), &exists)))
+    return TILEDB_ERR;
+
+  *is_bucket = (int)exists;
 
   return TILEDB_OK;
 }
@@ -2788,7 +2797,10 @@ int tiledb_vfs_is_dir(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_dir = (int)vfs->vfs_->is_dir(tiledb::sm::URI(uri));
+  bool exists;
+  if (save_error(ctx, vfs->vfs_->is_dir(tiledb::sm::URI(uri), &exists)))
+    return TILEDB_ERR;
+  *is_dir = (int)exists;
 
   return TILEDB_OK;
 }
@@ -2809,7 +2821,10 @@ int tiledb_vfs_is_file(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_file = (int)vfs->vfs_->is_file(tiledb::sm::URI(uri));
+  bool exists;
+  if (save_error(ctx, vfs->vfs_->is_file(tiledb::sm::URI(uri), &exists)))
+    return TILEDB_ERR;
+  *is_file = (int)exists;
 
   return TILEDB_OK;
 }
@@ -2903,7 +2918,10 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
       return TILEDB_ERR;
 
     // Create an empty file if the file does not exist
-    if (!fh->vfs_->is_file(fh->uri_))
+    bool exists;
+    if (save_error(ctx, fh->vfs_->is_file(fh->uri_, &exists)))
+      return TILEDB_ERR;
+    if (!exists)
       if (save_error(ctx, fh->vfs_->create_file(fh->uri_)))
         return TILEDB_ERR;
   }

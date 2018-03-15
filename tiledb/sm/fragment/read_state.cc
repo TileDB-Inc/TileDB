@@ -74,6 +74,7 @@ ReadState::ReadState(
   init_tile_io();
   init_overflow();
   init_fetched_tiles();
+  // TODO(sp): The following may give an error - create an init function
   init_empty_attributes();
   compute_tile_search_range();
 }
@@ -1296,19 +1297,23 @@ Status ReadState::get_offset(
   return Status::Ok();
 }
 
-void ReadState::init_empty_attributes() {
+Status ReadState::init_empty_attributes() {
   URI uri;
   is_empty_attribute_.resize(attribute_num_ + 1);
+  bool is_file;
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     uri = fragment_->fragment_uri().join_path(
         array_schema_->attribute_name(i) + constants::file_suffix);
-    is_empty_attribute_[i] = !query_->storage_manager()->is_file(uri);
+    RETURN_NOT_OK(query_->storage_manager()->is_file(uri, &is_file));
+    is_empty_attribute_[i] = !is_file;
   }
 
   uri = fragment_->fragment_uri().join_path(
       std::string(constants::coords) + constants::file_suffix);
-  is_empty_attribute_[attribute_num_] =
-      !query_->storage_manager()->is_file(uri);
+  RETURN_NOT_OK(query_->storage_manager()->is_file(uri, &is_file));
+  is_empty_attribute_[attribute_num_] = !is_file;
+
+  return Status::Ok();
 }
 
 void ReadState::init_fetched_tiles() {
