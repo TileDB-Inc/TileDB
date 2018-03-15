@@ -3296,36 +3296,32 @@ TILEDB_EXPORT int tiledb_uri_to_path(
 /**
  * Enable internal statistics gathering.
  *
- * @param ctx The TileDB context.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_stats_enable(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_stats_enable();
 
 /**
  * Disable internal statistics gathering.
  *
- * @param ctx The TileDB context.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_stats_disable(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_stats_disable();
 
 /**
  * Reset all internal statistics counters to 0.
  *
- * @param ctx The TileDB context.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_stats_reset(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_stats_reset();
 
 /**
  * Dump all internal statistics counters to to some output (e.g.,
  * file or stdout).
  *
- * @param ctx The TileDB context.
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_stats_dump(tiledb_ctx_t* ctx, FILE* out);
+TILEDB_EXPORT int tiledb_stats_dump(FILE* out);
 
 #ifdef __cplusplus
 }

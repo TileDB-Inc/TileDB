@@ -3039,43 +3039,23 @@ int tiledb_uri_to_path(
 /*             Stats              */
 /* ****************************** */
 
-int tiledb_stats_enable(tiledb_ctx_t* ctx) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
+int tiledb_stats_enable() {
   tiledb::sm::stats::all_stats.set_enabled(true);
-
   return TILEDB_OK;
 }
 
-int tiledb_stats_disable(tiledb_ctx_t* ctx) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
+int tiledb_stats_disable() {
   tiledb::sm::stats::all_stats.set_enabled(false);
-
   return TILEDB_OK;
 }
 
-int tiledb_stats_reset(tiledb_ctx_t* ctx) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
+int tiledb_stats_reset() {
   tiledb::sm::stats::all_stats.reset();
-
   return TILEDB_OK;
 }
 
-int tiledb_stats_dump(tiledb_ctx_t* ctx, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
+int tiledb_stats_dump(FILE* out) {
   tiledb::sm::stats::all_stats.dump(out);
-
   return TILEDB_OK;
 }
 

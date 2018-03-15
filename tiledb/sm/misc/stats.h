@@ -56,6 +56,11 @@ class Statistics {
 #include "tiledb/sm/misc/stats_counters.h"
 #undef STATS_DEFINE_FUNC_STAT
 
+#define STATS_DEFINE_COUNTER_STAT(counter_name) \
+  std::atomic<uint64_t> counter_##counter_name;
+#include "tiledb/sm/misc/stats_counters.h"
+#undef STATS_DEFINE_COUNTER_STAT
+
   /** Constructor. */
   Statistics();
 
@@ -69,6 +74,10 @@ class Statistics {
   function_name##_call_count = 0;
 #include "tiledb/sm/misc/stats_counters.h"
 #undef STATS_INIT_FUNC_STAT
+
+#define STATS_INIT_COUNTER_STAT(counter_name) counter_##counter_name = 0;
+#include "tiledb/sm/misc/stats_counters.h"
+#undef STATS_INIT_COUNTER_STAT
   }
 
   /** Dump the current counter values to the given file. */
@@ -81,8 +90,8 @@ class Statistics {
   /** True if stats are being gathered. */
   bool enabled_;
 
-  /** Dump all counters to the output. */
-  void dump_all_counters(FILE* out) const {
+  /** Dump all function stats to the output. */
+  void dump_all_func_stats(FILE* out) const {
 #define STATS_REPORT_FUNC_STAT(function_name) \
   fprintf(                                    \
       out,                                    \
@@ -92,6 +101,18 @@ class Statistics {
       (uint64_t)function_name##_total_ns);
 #include "tiledb/sm/misc/stats_counters.h"
 #undef STATS_REPORT_FUNC_STAT
+  }
+
+  /** Dump all counter stats to the output. */
+  void dump_all_counter_stats(FILE* out) const {
+#define STATS_REPORT_COUNTER_STAT(counter_name) \
+  fprintf(                                      \
+      out,                                      \
+      "%-30s%20" PRIu64 "\n",                   \
+      "  " #counter_name ",",                   \
+      (uint64_t)counter_##counter_name);
+#include "tiledb/sm/misc/stats_counters.h"
+#undef STATS_REPORT_COUNTER_STAT
   }
 };
 
@@ -142,6 +163,11 @@ extern Statistics all_stats;
             .count();                                          \
     stats::all_stats.f##_total_ns += __stats_dur_ns;           \
     stats::all_stats.f##_call_count++;                         \
+  }
+/** Adds a value to a counter stat. */
+#define STATS_COUNTER_ADD(counter_name, value)          \
+  if (stats::all_stats.enabled()) {                     \
+    stats::all_stats.counter_##counter_name += (value); \
   }
 
 }  // namespace stats

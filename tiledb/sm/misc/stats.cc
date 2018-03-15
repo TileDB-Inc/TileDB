@@ -24,7 +24,16 @@ void Statistics::dump(FILE* out) const {
       "  "
       "----------------------------------------------------------------------"
       "\n");
-  dump_all_counters(out);
+  dump_all_func_stats(out);
+
+  fprintf(out, "\nCounter statistics:\n");
+  fprintf(out, "%-30s%20s\n", "  Counter name", "Value");
+  fprintf(
+      out,
+      "  "
+      "------------------------------------------------"
+      "\n");
+  dump_all_counter_stats(out);
 }
 
 bool Statistics::enabled() const {
