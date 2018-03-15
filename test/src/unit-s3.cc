@@ -58,6 +58,8 @@ S3Fx::S3Fx() {
   // Connect
   S3::S3Config s3_config;
   s3_config.endpoint_override_ = "localhost:9999";
+  s3_config.scheme_ = "http";
+  s3_config.use_virtual_addressing_ = false;
   REQUIRE(s3_.connect(s3_config).ok());
 
   // Create bucket

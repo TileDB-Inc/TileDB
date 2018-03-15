@@ -246,6 +246,13 @@ DenseArrayFx::DenseArrayFx() {
         tiledb_config_set(
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
         TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
     REQUIRE(error == nullptr);
   }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
