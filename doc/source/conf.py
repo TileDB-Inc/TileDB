@@ -45,7 +45,8 @@ if readthedocs:
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
-    'breathe'
+    'breathe',
+    'sphinx_tabs.tabs'
 ]
 
 if readthedocs:
