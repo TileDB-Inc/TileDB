@@ -334,7 +334,7 @@ const unsigned int s3_max_attempts = 1000;
 const char* s3_allocation_tag = "TileDB";
 
 /** Use virtual addressing (false for minio, true for AWS S3). */
-const bool s3_use_virtual_addressing = false;
+const bool s3_use_virtual_addressing = true;
 
 /** Connect timeout in milliseconds. */
 const long s3_connect_timeout_ms = 3000;
@@ -343,16 +343,16 @@ const long s3_connect_timeout_ms = 3000;
 const long s3_request_timeout_ms = 3000;
 
 /** S3 scheme (http for local minio, https for AWS S3). */
-const char* s3_scheme = "http";
+const char* s3_scheme = "https";
 
 /** Size of file buffers used in the S3 multi-part uploads. */
 const uint64_t s3_file_buffer_size = 5 * 1024 * 1024;
 
 /** S3 region. */
-const char* s3_region = "";
+const char* s3_region = "us-east-1";
 
 /** S3 endpoint override. */
-const char* s3_endpoint_override = "localhost:9999";
+const char* s3_endpoint_override = "";
 
 /** HDFS default kerb ticket cache path. */
 const char* hdfs_kerb_ticket_cache_path = "";

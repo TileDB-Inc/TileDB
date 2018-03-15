@@ -360,33 +360,48 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  * **Parameters**
  *
  * - `sm.tile_cache_size` <br>
- *    The tile cache size in bytes. Any `uint64_t` value is acceptable.
+ *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
+ *    **Default**: 10,000,000
  * - `sm.array_schema_cache_size` <br>
  *    The array schema cache size in bytes. Any `uint64_t` value is acceptable.
+ * <br>
+ *    **Default**: 10,000,000
  * - `sm.fragment_metadata_cache_size` <br>
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
- *    acceptable.
+ *    acceptable. <br>
+ *    **Default**: 10,000,000
  * - `vfs.s3.region` <br>
- *    The S3 region, if S3 is enabled.
+ *    The S3 region, if S3 is enabled. <br>
+ *    **Default**: us-east-1
  * - `vfs.s3.scheme` <br>
- *    The S3 scheme (`http` or `https`), if S3 is enabled.
+ *    The S3 scheme (`http` or `https`), if S3 is enabled. <br>
+ *    **Default**: https
  * - `vfs.s3.endpoint_override` <br>
- *    The S3 endpoint, if S3 is enabled.
+ *    The S3 endpoint, if S3 is enabled. <br>
+ *    **Default**: ""
  * - `vfs.s3.use_virtual_addressing` <br>
- *    The S3 use of virtual addressing (`true` or `false`), if S3 is enabled.
+ *    The S3 use of virtual addressing (`true` or `false`), if S3 is
+ *    enabled. <br>
+ *    **Default**: true
  * - `vfs.s3.file_buffer_size` <br>
  *    The file buffer size (in bytes) used in S3 writes, if S3 is enables. Any
- *    `uint64_t` value is acceptable.
+ *    `uint64_t` value is acceptable. <br>
+ *    **Default**: 5*1024*1024
  * - `vfs.s3.connect_timeout_ms` <br>
- *    The connection timeout in ms. Any `long` value is acceptable.
+ *    The connection timeout in ms. Any `long` value is acceptable. <br>
+ *    **Default**: 3000
  * - `vfs.s3.request_timeout_ms` <br>
- *    The request timeout in ms. Any `long` value is acceptable.
+ *    The request timeout in ms. Any `long` value is acceptable. <br>
+ *    **Default**: 3000
  * - `vfs.hdfs.name_node"` <br>
- *    Name node for HDFS.
+ *    Name node for HDFS. <br>
+ *    **Default**: ""
  * - `vfs.hdfs.username` <br>
- *    HDFS username.
+ *    HDFS username. <br>
+ *    **Default**: ""
  * - `vfs.hdfs.kerb_ticket_cache_path` <br>
- *    HDFS kerb ticket cache path.
+ *    HDFS kerb ticket cache path. <br>
+ *    **Default**: ""
  *
  * **Example:**
  *
