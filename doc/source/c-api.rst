@@ -412,3 +412,14 @@ Version
 -------
 .. doxygenfunction:: tiledb_version
     :project: TileDB-C
+
+Stats
+-----
+.. doxygenfunction:: tiledb_stats_enable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_stats_disable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_stats_reset
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_stats_dump
+    :project: TileDB-C

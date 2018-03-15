@@ -591,6 +591,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
 Status VFS::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   STATS_FUNC_IN(vfs_read);
+  STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
 
   if (!is_file(uri))
     return LOG_STATUS(
@@ -729,6 +730,7 @@ Status VFS::close_file(const URI& uri) {
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   STATS_FUNC_IN(vfs_write);
+  STATS_COUNTER_ADD(vfs_write_total_bytes, buffer_size);
 
   if (uri.is_file()) {
 #ifdef _WIN32
