@@ -50,6 +50,21 @@ A package for TileDB is available for the `Conda package manager <https://conda.
 
 **Note**: Conda packages are not currently built with the HDFS and S3 storage backends enabled.
 
+If you are compiling / linking against the TileDB conda package,
+you need to explicity add the conda env path after activation:
+
+::
+
+    export CPATH=$CONDA_PREFIX/include
+    export LIBRARY_PATH=$CONDA_PREFIX/lib
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
+
+Or as command line flags during compilation:
+
+::
+
+    gcc -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -ltiledb tiledb_example.cc -o tiledb_example
+
 Windows Binaries
 ~~~~~~~~~~~~~~~~
 
