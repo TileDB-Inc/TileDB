@@ -29,6 +29,16 @@ To install the latest stable version of TileDB::
     brew update
     brew install tiledb-inc/stable/tiledb
 
+HDFS and S3 backends are not enabled by default.
+To build / install with one or more backends, use the ``--with-`` switch to enable them::
+
+    brew install tiledb-inc/stable/tiledb --with-s3
+    brew install tiledb-inc/stable/tiledb --with-hdfs
+
+A full list of build options can be viewed with the ``info`` command::
+
+    brew info tiledb-inc/stable/tiledb
+
 To upgrade to the latest stable version of TileDB::
 
     brew upgrade tiledb-inc/stable/tiledb
