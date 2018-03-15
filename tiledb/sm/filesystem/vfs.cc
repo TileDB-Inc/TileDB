@@ -104,7 +104,9 @@ std::string VFS::abs_path(const std::string& path) {
 Status VFS::create_dir(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_dir);
 
-  if (is_dir(uri))
+  bool is_dir;
+  RETURN_NOT_OK(this->is_dir(uri, &is_dir));
+  if (is_dir)
     return LOG_STATUS(Status::VFSError(
         std::string("Cannot create directory '") + uri.c_str() +
         "'; Directory already exists"));
@@ -138,10 +140,6 @@ Status VFS::create_dir(const URI& uri) const {
 
 Status VFS::create_file(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_file);
-
-  // Do nothing if the file already exists
-  if (is_file(uri))
-    return Status::Ok();
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -398,76 +396,93 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   STATS_FUNC_OUT(vfs_file_size);
 }
 
-bool VFS::is_dir(const URI& uri) const {
+Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   STATS_FUNC_IN(vfs_is_dir);
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win::is_dir(uri.to_path());
+    *is_dir = win::is_dir(uri.to_path());
 #else
-    return posix::is_dir(uri.to_path());
+    *is_dir = posix::is_dir(uri.to_path());
 #endif
+    return Status::Ok();
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::is_dir(hdfs_, uri);
+    *is_dir = hdfs::is_dir(hdfs_, uri);
+    return Status::Ok();
 #else
-    return false;
+    *is_dir = false;
+    return LOG_STATUS(
+        Status::VFSError("TileDB was built without HDFS support"));
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.is_dir(uri);
+    *is_dir = s3_.is_dir(uri);
+    return Status::Ok();
 #else
-    return false;
+    *is_dir = false;
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
-  return false;
+  return LOG_STATUS(
+      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_is_dir);
 }
 
-bool VFS::is_file(const URI& uri) const {
+Status VFS::is_file(const URI& uri, bool* is_file) const {
   STATS_FUNC_IN(vfs_is_file);
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win::is_file(uri.to_path());
+    *is_file = win::is_file(uri.to_path());
 #else
-    return posix::is_file(uri.to_path());
+    *is_file = posix::is_file(uri.to_path());
 #endif
+    return Status::Ok();
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::is_file(hdfs_, uri);
+    *is_file = hdfs::is_file(hdfs_, uri);
+    return Status::Ok();
 #else
-    return false;
+    *is_file = false;
+    return LOG_STATUS(
+        Status::VFSError("TileDB was built without HDFS support"));
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.is_file(uri);
+    *is_file = s3_.is_file(uri);
+    return Status::Ok();
 #else
-    return false;
+    *is_file = false;
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
-  return false;
+  return LOG_STATUS(
+      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_is_file);
 }
 
-bool VFS::is_bucket(const URI& uri) const {
+Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   STATS_FUNC_IN(vfs_is_bucket);
 
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.is_bucket(uri);
+    *is_bucket = s3_.is_bucket(uri);
+    return Status::Ok();
 #else
-    (void)uri;
-    return false;
+    *is_bucket = false;
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
-  return false;
+
+  return LOG_STATUS(
+      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_is_bucket);
 }
@@ -538,8 +553,14 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
   STATS_FUNC_IN(vfs_move_path);
 
   // If new_uri exists, delete it
-  if (force && (is_dir(new_uri) || is_file(new_uri)))
-    RETURN_NOT_OK(remove_path(new_uri));
+  if (force) {
+    bool is_dir;
+    RETURN_NOT_OK(this->is_dir(new_uri, &is_dir));
+    bool is_file;
+    RETURN_NOT_OK(this->is_file(new_uri, &is_file));
+    if (is_dir || is_file)
+      RETURN_NOT_OK(remove_path(new_uri));
+  }
 
   // File
   if (old_uri.is_file()) {
@@ -592,10 +613,6 @@ Status VFS::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
   STATS_FUNC_IN(vfs_read);
   STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
-
-  if (!is_file(uri))
-    return LOG_STATUS(
-        Status::VFSError("Cannot read from file; File does not exist"));
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -667,15 +684,18 @@ Status VFS::sync(const URI& uri) {
 Status VFS::open_file(const URI& uri, VFSMode mode) {
   STATS_FUNC_IN(vfs_open_file);
 
+  bool is_file;
+  RETURN_NOT_OK(this->is_file(uri, &is_file));
+
   switch (mode) {
     case VFSMode::VFS_READ:
-      if (!is_file(uri))
+      if (!is_file)
         return LOG_STATUS(Status::VFSError(
             std::string("Cannot open file '") + uri.c_str() +
             "'; File does not exist"));
       break;
     case VFSMode::VFS_WRITE:
-      if (is_file(uri))
+      if (is_file)
         RETURN_NOT_OK(remove_file(uri));
       break;
     case VFSMode::VFS_APPEND:

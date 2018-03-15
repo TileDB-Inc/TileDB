@@ -222,7 +222,9 @@ Status StorageManager::array_consolidate(const char* array_name) {
         Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
   }
   // Check if array exists
-  auto obj_type = object_type(array_uri);
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(array_uri, &obj_type));
+
   if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot consolidate array; Array does not exist"));
@@ -433,16 +435,21 @@ Status StorageManager::create_file(const URI& uri) {
 }
 
 Status StorageManager::delete_fragment(const URI& uri) const {
-  if (!is_fragment(uri)) {
+  bool exists;
+  RETURN_NOT_OK(is_fragment(uri, &exists));
+  if (!exists) {
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot delete fragment directory; '" + uri.to_string() +
+        "Cannot delete fragment; '" + uri.to_string() +
         "' is not a TileDB fragment"));
   }
   return vfs_->remove_path(uri);
 }
 
 Status StorageManager::remove_path(const URI& uri) const {
-  if (object_type(uri) == ObjectType::INVALID) {
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(uri, &obj_type));
+
+  if (obj_type == ObjectType::INVALID) {
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + uri.to_string()));
   }
@@ -451,7 +458,10 @@ Status StorageManager::remove_path(const URI& uri) const {
 
 Status StorageManager::move(
     const URI& old_uri, const URI& new_uri, int force) const {
-  if (object_type(old_uri) == ObjectType::INVALID) {
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(old_uri, &obj_type));
+
+  if (obj_type == ObjectType::INVALID) {
     return LOG_STATUS(Status::StorageManagerError(
         "Not a valid TileDB object: " + old_uri.to_string()));
   }
@@ -501,28 +511,38 @@ Status StorageManager::init(Config* config) {
   return Status::Ok();
 }
 
-bool StorageManager::is_array(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::array_schema_filename));
+Status StorageManager::is_array(const URI& uri, bool* is_array) const {
+  RETURN_NOT_OK(
+      vfs_->is_file(uri.join_path(constants::array_schema_filename), is_array));
+  return Status::Ok();
 }
 
-bool StorageManager::is_dir(const URI& uri) const {
-  return vfs_->is_dir(uri);
+Status StorageManager::is_dir(const URI& uri, bool* is_dir) const {
+  RETURN_NOT_OK(vfs_->is_dir(uri, is_dir));
+  return Status::Ok();
 }
 
-bool StorageManager::is_file(const URI& uri) const {
-  return vfs_->is_file(uri);
+Status StorageManager::is_file(const URI& uri, bool* is_file) const {
+  RETURN_NOT_OK(vfs_->is_file(uri, is_file));
+  return Status::Ok();
 }
 
-bool StorageManager::is_fragment(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::fragment_metadata_filename));
+Status StorageManager::is_fragment(const URI& uri, bool* is_fragment) const {
+  RETURN_NOT_OK(vfs_->is_file(
+      uri.join_path(constants::fragment_metadata_filename), is_fragment));
+  return Status::Ok();
 }
 
-bool StorageManager::is_group(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::group_filename));
+Status StorageManager::is_group(const URI& uri, bool* is_group) const {
+  RETURN_NOT_OK(
+      vfs_->is_file(uri.join_path(constants::group_filename), is_group));
+  return Status::Ok();
 }
 
-bool StorageManager::is_kv(const URI& uri) const {
-  return vfs_->is_file(uri.join_path(constants::kv_schema_filename));
+Status StorageManager::is_kv(const URI& uri, bool* is_kv) const {
+  RETURN_NOT_OK(
+      vfs_->is_file(uri.join_path(constants::kv_schema_filename), is_kv));
+  return Status::Ok();
 }
 
 Status StorageManager::load_array_schema(
@@ -531,18 +551,19 @@ Status StorageManager::load_array_schema(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  bool is_kv = false, is_array = false;
-  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
-  URI kv_schema_uri = array_uri.join_path(constants::kv_schema_filename);
-  if (is_file(array_schema_uri))
-    is_array = true;
-  else if (is_file(kv_schema_uri))
-    is_kv = true;
-  else
+  bool is_array = false;
+  bool is_kv = false;
+  RETURN_NOT_OK(this->is_array(array_uri, &is_array));
+  if (!is_array)
+    RETURN_NOT_OK(this->is_kv(array_uri, &is_kv));
+
+  if (!is_array && !is_kv)
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Schema file not found"));
 
-  URI schema_uri = (is_array) ? array_schema_uri : kv_schema_uri;
+  URI schema_uri = (is_array) ?
+                       array_uri.join_path(constants::array_schema_filename) :
+                       array_uri.join_path(constants::kv_schema_filename);
 
   // Try to read from cache
   bool in_cache;
@@ -590,9 +611,11 @@ Status StorageManager::load_fragment_metadata(
     FragmentMetadata* fragment_metadata) {
   const URI& fragment_uri = fragment_metadata->fragment_uri();
 
-  if (!vfs_->is_dir(fragment_uri))
+  bool fragment_exists;
+  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &fragment_exists));
+  if (!fragment_exists)
     return Status::StorageManagerError(
-        "Cannot load fragment metadata; Fragment directory does not exist");
+        "Cannot load fragment metadata; Fragment does not exist");
 
   URI fragment_metadata_uri = fragment_uri.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -639,15 +662,30 @@ Status StorageManager::move_path(const URI& old_uri, const URI& new_uri) {
   return vfs_->move_path(old_uri, new_uri, false);
 }
 
-ObjectType StorageManager::object_type(const URI& uri) const {
-  if (is_group(uri))
-    return ObjectType::GROUP;
-  if (is_kv(uri))
-    return ObjectType::KEY_VALUE;
-  if (is_array(uri))
-    return ObjectType::ARRAY;
+Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
+  bool is_group;
+  RETURN_NOT_OK(this->is_group(uri, &is_group));
+  if (is_group) {
+    *type = ObjectType::GROUP;
+    return Status::Ok();
+  }
 
-  return ObjectType::INVALID;
+  bool is_kv;
+  RETURN_NOT_OK(this->is_kv(uri, &is_kv));
+  if (is_kv) {
+    *type = ObjectType::KEY_VALUE;
+    return Status::Ok();
+  }
+
+  bool is_array;
+  RETURN_NOT_OK(this->is_array(uri, &is_array));
+  if (is_array) {
+    *type = ObjectType::ARRAY;
+    return Status::Ok();
+  }
+
+  *type = ObjectType::INVALID;
+  return Status::Ok();
 }
 
 Status StorageManager::object_iter_begin(
@@ -669,8 +707,10 @@ Status StorageManager::object_iter_begin(
   (*obj_iter)->recursive_ = true;
 
   // Include the uris that are TileDB objects in the iterator state
+  ObjectType obj_type;
   for (auto& uri : uris) {
-    if (object_type(uri) != ObjectType::INVALID) {
+    RETURN_NOT_OK_ELSE(object_type(uri, &obj_type), delete *obj_iter);
+    if (obj_type != ObjectType::INVALID) {
       (*obj_iter)->objs_.push_back(uri);
       if (order == WalkOrder::POSTORDER)
         (*obj_iter)->expanded_.push_back(false);
@@ -699,8 +739,10 @@ Status StorageManager::object_iter_begin(
   (*obj_iter)->recursive_ = false;
 
   // Include the uris that are TileDB objects in the iterator state
+  ObjectType obj_type;
   for (auto& uri : uris) {
-    if (object_type(uri) != ObjectType::INVALID)
+    RETURN_NOT_OK(object_type(uri, &obj_type))
+    if (obj_type != ObjectType::INVALID)
       (*obj_iter)->objs_.push_back(uri);
   }
 
@@ -745,8 +787,10 @@ Status StorageManager::object_iter_next_postorder(
       obj_iter->expanded_.front() = true;
 
       // Push the new TileDB objects in the front of the iterator's list
+      ObjectType obj_type;
       for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-        if (object_type(*it) != ObjectType::INVALID) {
+        RETURN_NOT_OK(object_type(*it, &obj_type));
+        if (obj_type != ObjectType::INVALID) {
           obj_iter->objs_.push_front(*it);
           obj_iter->expanded_.push_front(false);
         }
@@ -757,7 +801,7 @@ Status StorageManager::object_iter_next_postorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  *type = object_type(front_uri);
+  RETURN_NOT_OK(object_type(front_uri, type));
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -773,7 +817,7 @@ Status StorageManager::object_iter_next_preorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  *type = object_type(front_uri);
+  RETURN_NOT_OK(object_type(front_uri, type));
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -789,8 +833,10 @@ Status StorageManager::object_iter_next_preorder(
   RETURN_NOT_OK(vfs_->ls(front_uri, &uris));
 
   // Push the new TileDB objects in the front of the iterator's list
+  ObjectType obj_type;
   for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-    if (object_type(*it) != ObjectType::INVALID)
+    RETURN_NOT_OK(object_type(*it, &obj_type));
+    if (obj_type != ObjectType::INVALID)
       obj_iter->objs_.push_front(*it);
   }
 
@@ -919,7 +965,9 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
 
   // Delete file if it exists already
-  if (is_file(schema_uri))
+  bool exists;
+  RETURN_NOT_OK(is_file(schema_uri, &exists));
+  if (exists)
     RETURN_NOT_OK_ELSE(remove_path(schema_uri), delete buff);
 
   // Write to file
@@ -947,7 +995,9 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
 Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   const URI& fragment_uri = metadata->fragment_uri();
 
-  if (!vfs_->is_dir(fragment_uri))
+  bool is_dir;
+  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
+  if (!is_dir)
     return Status::Ok();
 
   // Serialize
@@ -1149,7 +1199,13 @@ Status StorageManager::array_open(
     const ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Check if array exists
-  if (!is_array(array_uri) && !is_kv(array_uri)) {
+  bool is_array = false;
+  RETURN_NOT_OK(this->is_array(array_uri, &is_array));
+  bool is_kv = false;
+  if (!is_array)
+    RETURN_NOT_OK(this->is_kv(array_uri, &is_kv));
+
+  if (!is_array && !is_kv) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
@@ -1244,11 +1300,13 @@ Status StorageManager::get_fragment_uris(
   RETURN_NOT_OK(vfs_->ls(array_uri, &uris));
 
   // Get only the fragment uris
+  bool exists;
   for (auto& uri : uris) {
     if (utils::starts_with(uri.last_path_part(), "."))
       continue;
 
-    if (is_fragment(uri))
+    RETURN_NOT_OK(is_fragment(uri, &exists))
+    if (exists)
       fragment_uris->push_back(uri);
   }
 
@@ -1302,8 +1360,9 @@ Status StorageManager::open_array_load_fragment_metadata(
     if (metadata == nullptr) {
       URI coords_uri = uri.join_path(
           std::string("/") + constants::coords + constants::file_suffix);
-      bool dense = !vfs_->is_file(coords_uri);
-      metadata = new FragmentMetadata(open_array->array_schema(), dense, uri);
+      bool sparse;
+      RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+      metadata = new FragmentMetadata(open_array->array_schema(), !sparse, uri);
       RETURN_NOT_OK_ELSE(load_fragment_metadata(metadata), delete metadata);
       open_array->fragment_metadata_add(metadata);
     }

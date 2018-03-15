@@ -583,7 +583,7 @@ class ReadState {
       unsigned int attribute_id, uint64_t i, const uint64_t** offset);
 
   /** Initializes the internal empty attribute structurs. */
-  void init_empty_attributes();
+  Status init_empty_attributes();
 
   /** Initializes the internal fetched tile structures. */
   void init_fetched_tiles();
