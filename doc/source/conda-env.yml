@@ -1,12 +1,10 @@
 name: tiledb-env
 channels:
-  - tiledb
   - conda-forge
   - defaults
 dependencies:
   - cmake
   - Sphinx==1.6.7
-  - sphinx_tabs
   - breathe==4.7.3
   - zlib==1.2.11
   - bzip2>=1.0.0

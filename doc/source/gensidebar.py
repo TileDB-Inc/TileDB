@@ -69,6 +69,7 @@ def generate_sidebar(conf, conf_api):
     write('Introduction', 'introduction')
     write('Installation', 'installation')
     write('Usage', 'usage')
+    write('Working with S3', 's3')
     endl()
 
     toctree('API Reference')
@@ -92,7 +93,6 @@ def generate_sidebar(conf, conf_api):
     write('Object Management', 'tiledb101/object-management')
     write('Storage Backends', 'tiledb101/storage-backends')
     write('Virtual Filesystem', 'tiledb101/virtual-filesystem')
-    write('Working with S3', 'tiledb101/s3')
     write('Language Bindings', 'tiledb101/language-bindings')
     write('Concurrency', 'tiledb101/concurrency')
     write('Consistency', 'tiledb101/consistency')
