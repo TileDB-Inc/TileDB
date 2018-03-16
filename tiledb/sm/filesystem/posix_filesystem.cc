@@ -53,6 +53,58 @@ bool both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
+/**
+ * Reads all nbytes from the given file descriptor, retrying as necessary.
+ *
+ * @param fd Open file descriptor to read from
+ * @param buffer Buffer to hold read data
+ * @param nbytes Number of bytes to read
+ * @param offset Offset in file to start reading from.
+ * @return Number of bytes actually read (< nbytes on error).
+ */
+uint64_t read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
+  auto bytes = reinterpret_cast<char*>(buffer);
+  uint64_t nread = 0;
+  do {
+    ssize_t actual_read =
+        ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
+    if (actual_read == -1) {
+      LOG_STATUS(
+          Status::Error(std::string("POSIX pread error: ") + strerror(errno)));
+      return nread;
+    } else {
+      nread += actual_read;
+    }
+  } while (nread < nbytes);
+
+  return nread;
+}
+
+/**
+ * Writes all nbytes to the given file descriptor, retrying as necessary.
+ *
+ * @param fd Open file descriptor to write to
+ * @param buffer Buffer with data to write
+ * @param nbytes Number of bytes to write
+ * @return Number of bytes actually written (< nbytes on error).
+ */
+uint64_t write_all(int fd, const void* buffer, uint64_t nbytes) {
+  auto bytes = reinterpret_cast<const char*>(buffer);
+  uint64_t written = 0;
+  do {
+    ssize_t actual_written = ::write(fd, bytes + written, nbytes - written);
+    if (actual_written == -1) {
+      LOG_STATUS(
+          Status::Error(std::string("POSIX write error: ") + strerror(errno)));
+      return written;
+    } else {
+      written += actual_written;
+    }
+  } while (written < nbytes);
+
+  return written;
+}
+
 void adjacent_slashes_dedup(std::string* path) {
   assert(utils::starts_with(*path, "file://"));
   path->erase(
@@ -315,8 +367,8 @@ Status read(
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(
-        Status::IOError("Cannot read from file; File opening error"));
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot read from file; ") + strerror(errno)));
   }
   if (offset > std::numeric_limits<off_t>::max()) {
     return LOG_STATUS(Status::IOError(
@@ -328,21 +380,16 @@ Status read(
         std::string("Cannot read from file ' ") + path.c_str() +
         "'; nbytes > SSIZE_MAX"));
   }
-  ssize_t bytes_read = ::pread(fd, buffer, nbytes, offset);
-  if (bytes_read < 0) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot read from file '") + path.c_str() + "'; " +
-        strerror(bytes_read)));
-  }
-  if (bytes_read != ssize_t(nbytes)) {
+  uint64_t bytes_read = read_all(fd, buffer, nbytes, offset);
+  if (bytes_read != nbytes) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot read from file '") + path.c_str() +
         "'; File reading error"));
   }
   // Close file
   if (close(fd)) {
-    return LOG_STATUS(
-        Status::IOError("Cannot read from file; File closing error"));
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot read from file; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -385,8 +432,8 @@ Status write(
   int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   if (fd == -1) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + path +
-        "'; File opening error"));
+        std::string("Cannot write to file '") + path + "'; " +
+        strerror(errno)));
   }
 
   // Append data to the file in batches of constants::max_write_bytes
@@ -394,7 +441,7 @@ Status write(
   uint64_t buffer_bytes_written = 0;
   const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
   while (buffer_size > constants::max_write_bytes) {
-    uint64_t bytes_written = ::write(
+    uint64_t bytes_written = write_all(
         fd,
         buffer_bytes_ptr + buffer_bytes_written,
         constants::max_write_bytes);
@@ -407,7 +454,7 @@ Status write(
     buffer_size -= bytes_written;
   }
   uint64_t bytes_written =
-      ::write(fd, buffer_bytes_ptr + buffer_bytes_written, buffer_size);
+      write_all(fd, buffer_bytes_ptr + buffer_bytes_written, buffer_size);
   if (bytes_written != buffer_size) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
@@ -417,8 +464,7 @@ Status write(
   // Close file
   if (close(fd) != 0) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + path +
-        "'; File closing error"));
+        std::string("Cannot close file '") + path + "'; " + strerror(errno)));
   }
 
   // Success
