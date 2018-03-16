@@ -1,5 +1,6 @@
 name: tiledb-env
 channels:
+  - tiledb
   - conda-forge
   - defaults
 dependencies:
