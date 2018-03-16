@@ -2,8 +2,13 @@
 
 ## New features
 
-* Added string type support (ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4)
-* Added `TILEDB_ANY` datatype
+* Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
+* Added `TILEDB_ANY` datatype (PR #446)
+
+## Improvements
+
+* Minor S3 optimizations and error message fixes (PR #462)
+* Changed S3 default config so that AWS S3 just works (PR #455)
 
 ## API additions
 
@@ -12,9 +17,6 @@
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
   objects such as a simple data struct.
-
-## Improvements
-* Fix issue when linking to the C++ API via the shared library. (#408).
 
 ## Breaking changes
 
@@ -27,6 +29,23 @@
 * `std::array<T, N>` is backed by a `char` tiledb attribute since the size is not guaranteed.
 * `Attribute::set_cell_val_num()` is deprecated. This is now deduced from the Attribute type.
 * Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
+
+# TileDB v1.2.1 Release Notes
+
+## Bug fixes
+
+* Fixed TileDB header includes for all examples (#409)
+* Fixed TileDB library dynamic linking problem for C++ API (#412)
+* Fixed VS2015 build errors (#424)
+* Bug fix in the sparse case (#434)
+* Bug fix for 1D vector query layout (#438)
+
+## Improvements
+
+* Added documentation to API and examples (#410, #414)
+* Migrated docs to Readthedocs (#418, #420, #422, #423, #425)
+* Added dimension domain/tile extent checks (#429)
+
 
 # TileDB v1.2.0 Release Notes
 The 1.2.0 release of TileDB includes many new features, improvements in stability and performance, and two new language interfaces (Python and C++). There are also several breaking changes in the C API and on-disk format, documented below.
