@@ -175,25 +175,28 @@ class VFS {
    * Checks if a directory exists.
    *
    * @param uri The URI of the directory.
-   * @return `True` if the directory exists and `false` otherwise.
+   * @param is_dir Set to `true` if the directory exists and `false` otherwise.
+   * @return Status
    */
-  bool is_dir(const URI& uri) const;
+  Status is_dir(const URI& uri, bool* is_dir) const;
 
   /**
    * Checks if a file exists.
    *
    * @param uri The URI of the file.
-   * @return `True` if the file exists and `false` otherwise.
+   * @param is_file Set to `true` if the file exists and `false` otherwise.
+   * @return Status
    */
-  bool is_file(const URI& uri) const;
+  Status is_file(const URI& uri, bool* is_file) const;
 
   /**
    * Checks if an object-store bucket exists.
    *
    * @param uri The name of the S3 bucket.
-   * @return `True` if the bucket exists and `false` otherwise.
+   * @return is_bucket Set to `true` if the bucket exists and `false` otherwise.
+   * @return Status
    */
-  bool is_bucket(const URI& uri) const;
+  Status is_bucket(const URI& uri, bool* is_bucket) const;
 
   /**
    * Checks if an object-store bucket is empty.
