@@ -102,6 +102,9 @@ std::string Status::code_to_string() const {
     case StatusCode::WriteState:
       type = "[TileDB::WriteState] Error";
       break;
+    case StatusCode::ReadState:
+      type = "[TileDB::ReadState] Error";
+      break;
     case StatusCode::Fragment:
       type = "[TileDB::Fragment] Error";
       break;

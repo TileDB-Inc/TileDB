@@ -55,6 +55,9 @@ class Tile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Constructor. */
+  Tile();
+
   /**
    * Constructor.
    *
@@ -87,8 +90,31 @@ class Tile {
       Buffer* buff,
       bool owns_buff);
 
+  /** Destructor. */
+  ~Tile();
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
   /**
-   * Constructor.
+   * Tile initializer.
+   *
+   * @param type The type of the data to be stored.
+   * @param compression The compression type.
+   * @param cell_size The cell size.
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
+   * @return Status
+   */
+  Status init(
+      Datatype type,
+      Compressor compression,
+      uint64_t cell_size,
+      unsigned int dim_num);
+
+  /**
+   * Tile initializer.
    *
    * @param type The type of the data to be stored.
    * @param compression The compression type.
@@ -98,36 +124,15 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @return Status
    */
-  Tile(
+  Status init(
       Datatype type,
       Compressor compression,
       int compression_level,
       uint64_t tile_size,
       uint64_t cell_size,
       unsigned int dim_num);
-
-  /**
-   * Constructor.
-   *
-   * @param type The type of the data to be stored.
-   * @param compression The compression type.
-   * @param cell_size The cell size.
-   * @param dim_num The number of dimensions in case the tile stores
-   *      coordinates.
-   */
-  Tile(
-      Datatype type,
-      Compressor compression,
-      uint64_t cell_size,
-      unsigned int dim_num);
-
-  /** Destructor. */
-  ~Tile();
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
 
   /** Advances the buffer offset. */
   void advance_offset(uint64_t nbytes);

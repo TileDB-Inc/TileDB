@@ -55,28 +55,15 @@ const uint64_t ReadState::INVALID_UINT64 = UINT64_MAX;
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ReadState::ReadState(
-    const Fragment* fragment, Query* query, FragmentMetadata* metadata)
-    : fragment_(fragment)
-    , metadata_(metadata)
-    , query_(query) {
-  array_schema_ = query_->array_schema();
-  attribute_num_ = array_schema_->attribute_num();
-  coords_size_ = array_schema_->coords_size();
-  done_ = false;
+ReadState::ReadState() {
+  array_schema_ = nullptr;
+  done_ = true;
+  fragment_ = nullptr;
   last_tile_coords_ = nullptr;
-  search_tile_overlap_subarray_ = std::malloc(2 * coords_size_);
-  search_tile_pos_ = INVALID_UINT64;
-
-  tile_coords_aux_ = std::malloc(coords_size_);
-
-  init_tiles();
-  init_tile_io();
-  init_overflow();
-  init_fetched_tiles();
-  // TODO(sp): The following may give an error - create an init function
-  init_empty_attributes();
-  compute_tile_search_range();
+  metadata_ = nullptr;
+  query_ = nullptr;
+  search_tile_overlap_subarray_ = nullptr;
+  tile_coords_aux_ = nullptr;
 }
 
 ReadState::~ReadState() {
@@ -105,6 +92,34 @@ ReadState::~ReadState() {
 /* ****************************** */
 /*              API               */
 /* ****************************** */
+
+Status ReadState::init(
+    const Fragment* fragment, Query* query, FragmentMetadata* metadata) {
+  fragment_ = fragment;
+  metadata_ = metadata;
+  query_ = query;
+  array_schema_ = query_->array_schema();
+  attribute_num_ = array_schema_->attribute_num();
+  coords_size_ = array_schema_->coords_size();
+  done_ = false;
+  last_tile_coords_ = nullptr;
+  search_tile_pos_ = INVALID_UINT64;
+
+  search_tile_overlap_subarray_ = std::malloc(2 * coords_size_);
+  tile_coords_aux_ = std::malloc(coords_size_);
+  if (search_tile_overlap_subarray_ == nullptr || tile_coords_aux_ == nullptr)
+    return LOG_STATUS(Status::ReadStateError(
+        "Cannot initialize read state; Member memory allocation failed"));
+
+  RETURN_NOT_OK(init_tiles());
+  init_tile_io();
+  init_overflow();
+  init_fetched_tiles();
+  RETURN_NOT_OK(init_empty_attributes());
+  compute_tile_search_range();
+
+  return Status::Ok();
+}
 
 Status ReadState::copy_cells(
     unsigned int attribute_id,
@@ -1328,36 +1343,57 @@ void ReadState::init_overflow() {
     overflow_[i] = false;
 }
 
-void ReadState::init_tiles() {
+Status ReadState::init_tiles() {
   auto dim_num = array_schema_->domain()->dim_num();
 
+  auto tile = (Tile*)nullptr;
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_schema_->attribute(i);
     bool var_size = attr->var_size();
 
-    tiles_.emplace_back(new Tile(
-        (var_size) ? constants::cell_var_offset_type : attr->type(),
-        (var_size) ? array_schema_->cell_var_offsets_compression() :
-                     attr->compressor(),
-        (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
-        0));
+    tile = new Tile();
+    RETURN_NOT_OK_ELSE(
+        tile->init(
+            (var_size) ? constants::cell_var_offset_type : attr->type(),
+            (var_size) ? array_schema_->cell_var_offsets_compression() :
+                         attr->compressor(),
+            (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
+            0),
+        delete tile);
+    tiles_.emplace_back(tile);
 
-    if (var_size)
-      tiles_var_.emplace_back(new Tile(
-          attr->type(), attr->compressor(), datatype_size(attr->type()), 0));
-    else
+    if (var_size) {
+      tile = new Tile();
+      RETURN_NOT_OK_ELSE(
+          tile->init(
+              attr->type(), attr->compressor(), datatype_size(attr->type()), 0),
+          delete tile);
+      tiles_var_.emplace_back(tile);
+    } else {
       tiles_var_.emplace_back(nullptr);
+    }
   }
-  tiles_.emplace_back(new Tile(
-      array_schema_->coords_type(),
-      array_schema_->coords_compression(),
-      array_schema_->coords_size(),
-      dim_num));
-  tiles_.emplace_back(new Tile(
-      array_schema_->coords_type(),
-      array_schema_->coords_compression(),
-      array_schema_->coords_size(),
-      dim_num));
+
+  tile = new Tile();
+  RETURN_NOT_OK_ELSE(
+      tile->init(
+          array_schema_->coords_type(),
+          array_schema_->coords_compression(),
+          array_schema_->coords_size(),
+          dim_num),
+      delete tile);
+  tiles_.emplace_back(tile);
+  tile = new Tile();
+  RETURN_NOT_OK_ELSE(
+      tile->init(
+          array_schema_->coords_type(),
+          array_schema_->coords_compression(),
+          array_schema_->coords_size(),
+          dim_num),
+      delete tile);
+  tiles_.emplace_back(tile);
+
+  return Status::Ok();
 }
 
 void ReadState::init_tile_io() {
