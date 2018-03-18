@@ -83,6 +83,9 @@ std::string Config::get(const std::string& param) const {
   tiledb_config_get(config_.get(), param.c_str(), &val, &err);
   impl::check_config_error(err);
 
+  if (val == nullptr)
+    throw TileDBError("Config Error: Invalid parameter '" + param + "'");
+
   return val;
 }
 
