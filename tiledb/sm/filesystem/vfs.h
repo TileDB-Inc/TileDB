@@ -86,6 +86,12 @@ class VFS {
   static std::string abs_path(const std::string& path);
 
   /**
+   * Return a config object containing the VFS parameters. All other non-VFS
+   * parameters will are set to default values.
+   */
+  Config config() const;
+
+  /**
    * Creates a directory.
    *
    * @param uri The URI of the directory.
@@ -302,6 +308,9 @@ class VFS {
 #ifdef HAVE_S3
   S3 s3_;
 #endif
+
+  /** VFS parameters. */
+  Config::VFSParams vfs_params_;
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;

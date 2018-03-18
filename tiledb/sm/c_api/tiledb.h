@@ -725,7 +725,7 @@ TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t** ctx);
  * // Make sure to free the retrieved config
  * @endcode
  *
- * @param ctx The TileDB context to be created.
+ * @param ctx The TileDB context.
  * @param config The config to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
@@ -2884,6 +2884,25 @@ TILEDB_EXPORT int tiledb_vfs_create(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t** vfs);
+
+/**
+ * Retrieves the config from a VFS context.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_vfs_get_config(ctx, vfs, &config);
+ * // Make sure to free the retrieved config
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The VFS object.
+ * @param config The config to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_get_config(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config);
 
 /**
  * Creates an object-store bucket.

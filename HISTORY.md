@@ -20,6 +20,7 @@
 ### C API
 
 * Added `tiledb_query_finalize` function. 
+* Added `tiledb_vfs_get_config` function.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.

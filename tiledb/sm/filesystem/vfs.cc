@@ -101,6 +101,10 @@ std::string VFS::abs_path(const std::string& path) {
   STATS_FUNC_OUT(vfs_abs_path);
 }
 
+Config VFS::config() const {
+  return Config(vfs_params_);
+}
+
 Status VFS::create_dir(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_dir);
 
@@ -490,6 +494,8 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 Status VFS::init(const Config::VFSParams& vfs_params) {
   STATS_FUNC_IN(vfs_init);
 
+  vfs_params_ = vfs_params;
+
 #ifdef HAVE_HDFS
   RETURN_NOT_OK(hdfs::connect(hdfs_, vfs_params.hdfs_params_));
 #endif
@@ -505,8 +511,6 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   s3_config.request_timeout_ms_ = vfs_params.s3_params_.request_timeout_ms_;
   RETURN_NOT_OK(s3_.connect(s3_config));
 #endif
-
-  (void)vfs_params;
 
   return Status::Ok();
 

@@ -668,7 +668,6 @@ int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
   if (*config == nullptr)
     return TILEDB_OOM;
 
-  // Create storage manager
   (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
   if ((*config)->config_ == nullptr) {
     delete (*config);
@@ -677,7 +676,6 @@ int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
 
   *((*config)->config_) = ctx->storage_manager_->config();
 
-  // Success
   return TILEDB_OK;
 }
 
@@ -2733,6 +2731,29 @@ int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t** vfs) {
     *vfs = nullptr;
   }
 
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_get_config(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Create storage manager
+  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
+    return TILEDB_OOM;
+  }
+
+  *((*config)->config_) = vfs->vfs_->config();
+
+  // Success
   return TILEDB_OK;
 }
 
