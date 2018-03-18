@@ -56,6 +56,11 @@ Config::Config() {
   set_default_param_values();
 }
 
+Config::Config(const VFSParams& vfs_params)
+    : vfs_params_(vfs_params) {
+  set_default_param_values();
+}
+
 Config::~Config() = default;
 
 /* ****************************** */

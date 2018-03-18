@@ -112,6 +112,9 @@ class Config {
   /** Constructor. */
   Config();
 
+  /** Constructor. */
+  Config(const VFSParams& vfs_params);
+
   /** Destructor. */
   ~Config();
 
