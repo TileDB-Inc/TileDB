@@ -82,6 +82,9 @@ int main() {
   // Submit query
   tiledb_query_submit(ctx, query);
 
+  // Finalize query
+  tiledb_query_finalize(ctx, query);
+
   // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);

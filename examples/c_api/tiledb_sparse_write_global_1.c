@@ -98,9 +98,10 @@ int main() {
   // Submit query
   tiledb_query_submit(ctx, query);
 
-  // Clean up. It is extremely important to **always free the query**.
-  // In addition to cleaning up any internal state for the query, this function
-  // finalizes the write by **flushing** any cached data to the files.
+  // Finalize query
+  tiledb_query_finalize(ctx, query);
+
+  // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);
 

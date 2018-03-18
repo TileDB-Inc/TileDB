@@ -143,6 +143,9 @@ int main() {
     printf("%10.1f%10.1f\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
+  // Finalize query
+  tiledb_query_finalize(ctx, query);
+
   // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);

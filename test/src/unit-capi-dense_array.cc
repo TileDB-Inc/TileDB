@@ -482,6 +482,11 @@ int* DenseArrayFx::read_dense_array_2D(
   // Read from array
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_query_finalize(ctx_, query);  // Second time must create no problem
+  REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
   rc = tiledb_query_free(ctx_, &query);
@@ -546,6 +551,8 @@ void DenseArrayFx::update_dense_array_2D(
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
@@ -612,6 +619,10 @@ void DenseArrayFx::write_dense_array_by_tiles(
     }
   }
 
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
   // Finalize the query
   rc = tiledb_query_free(ctx_, &query);
   REQUIRE(rc == TILEDB_OK);
@@ -648,6 +659,8 @@ void DenseArrayFx::write_dense_subarray_2D(
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
@@ -749,6 +762,8 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   int64_t subarray_5[] = {0, 5, 10, 10};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_5);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, &query);
   CHECK(rc == TILEDB_OK);
 }
@@ -884,10 +899,12 @@ void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-
-  // Free/finalize query - this should fail
-  rc = tiledb_query_free(ctx_, &query);
+  rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_ERR);
+
+  // Free query
+  rc = tiledb_query_free(ctx_, &query);
+  REQUIRE(rc == TILEDB_OK);
 }
 
 void DenseArrayFx::check_sparse_writes(const std::string& path) {

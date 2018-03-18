@@ -52,7 +52,6 @@
  * The query returns the subarray depicted in blue in figure
  * `<TileDB-repo>/examples/figures/sparse_subarray.png`.
  *
- *
  * The program prints the cell values of `a1` in the subarray in column-major
  * order. Observe that the loop is executed twice, retrieving two cells in the
  * first iteration (since our buffer had space only for 2 cells) and the third
@@ -107,6 +106,9 @@ int main() {
     // Get status
     tiledb_query_get_attribute_status(ctx, query, "a1", &status);
   } while (status == TILEDB_INCOMPLETE);
+
+  // Finalize query
+  tiledb_query_finalize(ctx, query);
 
   // Clean up
   tiledb_query_free(ctx, &query);

@@ -385,6 +385,8 @@ int* SparseArrayFx::read_sparse_array_2D(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
   rc = tiledb_query_free(ctx_, &query);
@@ -433,6 +435,8 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query

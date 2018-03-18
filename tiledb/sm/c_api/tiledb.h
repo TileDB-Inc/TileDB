@@ -1899,6 +1899,24 @@ TILEDB_EXPORT int tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
+ * Finalizes a TileDB query object, flushing all internal state.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_t* query;
+ * // ... Your code here ... //
+ * tiledb_query_finalize(ctx, query);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object to be finalized.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_query_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+/**
  * Frees a TileDB query object.
  *
  * **Example:**

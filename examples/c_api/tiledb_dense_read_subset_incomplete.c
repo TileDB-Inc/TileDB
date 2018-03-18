@@ -111,6 +111,9 @@ int main() {
     tiledb_query_get_attribute_status(ctx, query, "a1", &status);
   } while (status == TILEDB_INCOMPLETE);
 
+  // Finalize query
+  tiledb_query_finalize(ctx, query);
+
   // Clean up
   tiledb_query_free(ctx, &query);
   tiledb_ctx_free(&ctx);

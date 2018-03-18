@@ -235,7 +235,10 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, write_query);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_query_free(ctx_, &write_query);
+  rc = tiledb_query_finalize(ctx_, write_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_free(ctx_, &write_query);
+  REQUIRE(rc == TILEDB_OK);
 }
 
 void DenseVectorFx::check_read(
@@ -258,6 +261,8 @@ void DenseVectorFx::check_read(
   rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, read_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, &read_query);
   REQUIRE(rc == TILEDB_OK);
@@ -285,7 +290,10 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, update_query);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_query_free(ctx_, &update_query);
+  rc = tiledb_query_finalize(ctx_, update_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_free(ctx_, &update_query);
+  REQUIRE(rc == TILEDB_OK);
 
   // Read
   int64_t buffer[] = {0, 0, 0};
@@ -302,6 +310,8 @@ void DenseVectorFx::check_update(const std::string& path) {
   rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, read_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, &read_query);
   REQUIRE(rc == TILEDB_OK);
