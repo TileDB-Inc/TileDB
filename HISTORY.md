@@ -10,6 +10,11 @@
 * Minor S3 optimizations and error message fixes (PR #462)
 * Changed S3 default config so that AWS S3 just works (PR #455)
 
+## Bug Fixes
+
+* Memory overflow error handling (moved from constructors to init functions)
+* Memory leaks with realloc in case of error
+
 ## API additions
 
 ### C API

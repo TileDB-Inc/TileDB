@@ -139,15 +139,17 @@ Status Buffer::realloc(uint64_t nbytes) {
 
   if (data_ == nullptr) {
     data_ = std::malloc(nbytes);
-  } else {
-    if (nbytes > alloced_size_)
-      data_ = std::realloc(data_, nbytes);
-  }
-
-  if (data_ == nullptr) {
-    alloced_size_ = 0;
-    return LOG_STATUS(Status::BufferError(
-        "Cannot reallocate buffer; Memory allocation failed"));
+    if (data_ == nullptr) {
+      return LOG_STATUS(Status::BufferError(
+          "Cannot allocate buffer; Memory allocation failed"));
+    }
+  } else if (nbytes > alloced_size_) {
+    auto new_data = std::realloc(data_, nbytes);
+    if (new_data == nullptr) {
+      return LOG_STATUS(Status::BufferError(
+          "Cannot reallocate buffer; Memory allocation failed"));
+    }
+    data_ = new_data;
   }
 
   alloced_size_ = nbytes;
