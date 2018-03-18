@@ -77,14 +77,8 @@ class ReadState {
   /*    CONSTRUCTORS & DESTRUCTORS     */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param fragment The fragment the read state belongs to.
-   * @param bookkeeping The bookkeeping of the fragment.
-   */
-  ReadState(
-      const Fragment* fragment, Query* query, FragmentMetadata* bookkeeping);
+  /** Constructor. */
+  ReadState();
 
   /** Destructor. */
   ~ReadState();
@@ -92,6 +86,16 @@ class ReadState {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Initializer.
+   *
+   * @param fragment The fragment the read state belongs to.
+   * @param bookkeeping The bookkeeping of the fragment.
+   * @return Status
+   */
+  Status init(
+      const Fragment* fragment, Query* query, FragmentMetadata* bookkeeping);
 
   /**
    * Copies the cells of the input attribute into the input buffers, as
@@ -592,7 +596,7 @@ class ReadState {
   void init_overflow();
 
   /** Initializes the internal tile structures. */
-  void init_tiles();
+  Status init_tiles();
 
   /** Initializes the internal Tile I/O structures. */
   void init_tile_io();

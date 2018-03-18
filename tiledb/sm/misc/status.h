@@ -80,6 +80,7 @@ enum class StatusCode : char {
   Error,
   StorageManager,
   WriteState,
+  ReadState,
   Fragment,
   FragmentMetadata,
   ArraySchema,
@@ -228,6 +229,11 @@ class Status {
   /** Return a WriteStateError error class Status with a given message **/
   static Status WriteStateError(const std::string& msg) {
     return Status(StatusCode::WriteState, msg, -1);
+  }
+
+  /** Return a ReadStateError error class Status with a given message **/
+  static Status ReadStateError(const std::string& msg) {
+    return Status(StatusCode::ReadState, msg, -1);
   }
 
   /** Return a QueryError error class Status with a given message **/

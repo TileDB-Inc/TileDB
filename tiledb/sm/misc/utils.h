@@ -185,6 +185,8 @@ std::string domain_str(const void* domain, Datatype type);
  * @param buffer_allocated_size The original allocated size of the buffer.
  *     After the function call, this size doubles.
  * @return Status.
+ *
+ * @note Upon failure to reallocate, the input buffer remains intact.
  */
 Status expand_buffer(void*& buffer, uint64_t* buffer_allocated_size);
 

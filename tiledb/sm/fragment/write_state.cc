@@ -53,33 +53,12 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriteState::WriteState(const Fragment* fragment)
-    : fragment_(fragment) {
-  metadata_ = fragment_->metadata();
-
-  init_tiles();
-  init_tile_io();
-
-  // For easy reference
-  auto array_schema = fragment_->query()->array_schema();
-  auto attribute_num = array_schema->attribute_num();
-  uint64_t coords_size = array_schema->coords_size();
-
-  // Initialize the number of cells written in the current tile
-  tile_cell_num_.resize(attribute_num + 1);
-  for (unsigned int i = 0; i < attribute_num + 1; ++i)
-    tile_cell_num_[i] = 0;
-
-  // Initialize the current size of the variable attribute file
-  buffer_var_offsets_.resize(attribute_num);
-  for (unsigned int i = 0; i < attribute_num; ++i)
-    buffer_var_offsets_[i] = 0;
-
-  mbr_ = std::malloc(2 * coords_size);
-  bounding_coords_ = std::malloc(2 * coords_size);
-  tile_coords_aux_ = std::malloc(coords_size);
-
-  cells_written_.resize(attribute_num + 1);
+WriteState::WriteState() {
+  metadata_ = nullptr;
+  bounding_coords_ = nullptr;
+  fragment_ = nullptr;
+  mbr_ = nullptr;
+  tile_coords_aux_ = nullptr;
 }
 
 WriteState::~WriteState() {
@@ -108,6 +87,50 @@ WriteState::~WriteState() {
 /* ****************************** */
 /*           MUTATORS             */
 /* ****************************** */
+
+Status WriteState::init(const Fragment* fragment) {
+  fragment_ = fragment;
+  metadata_ = fragment_->metadata();
+
+  RETURN_NOT_OK(init_tiles());
+  RETURN_NOT_OK(init_tile_io());
+
+  // For easy reference
+  auto array_schema = fragment_->query()->array_schema();
+  auto attribute_num = array_schema->attribute_num();
+  uint64_t coords_size = array_schema->coords_size();
+
+  // Initialize the number of cells written in the current tile
+  tile_cell_num_.resize(attribute_num + 1);
+  for (unsigned int i = 0; i < attribute_num + 1; ++i)
+    tile_cell_num_[i] = 0;
+
+  // Initialize the current size of the variable attribute file
+  buffer_var_offsets_.resize(attribute_num);
+  for (unsigned int i = 0; i < attribute_num; ++i)
+    buffer_var_offsets_[i] = 0;
+
+  mbr_ = std::malloc(2 * coords_size);
+  if (mbr_ == nullptr)
+    return LOG_STATUS(Status::WriteStateError(
+        "Cannot initialize write state; MBR allocation failed"));
+
+  bounding_coords_ = std::malloc(2 * coords_size);
+  if (bounding_coords_ == nullptr)
+    return LOG_STATUS(
+        Status::WriteStateError("Cannot initialize write state; Bounding "
+                                "coordinates allocation failed"));
+
+  tile_coords_aux_ = std::malloc(coords_size);
+  if (tile_coords_aux_ == nullptr)
+    return LOG_STATUS(
+        Status::WriteStateError("Cannot initialize write state; Auxiliary tile "
+                                "coordinates allocation failed"));
+
+  cells_written_.resize(attribute_num + 1);
+
+  return Status::Ok();
+}
 
 Status WriteState::finalize() {
   // For easy reference
@@ -251,45 +274,62 @@ void WriteState::expand_mbr(const T* coords) {
   }
 }
 
-void WriteState::init_tiles() {
+Status WriteState::init_tiles() {
   auto array_schema = fragment_->query()->array_schema();
   auto attribute_num = array_schema->attribute_num();
+  auto tile = (Tile*)nullptr;
+
   for (unsigned int i = 0; i < attribute_num; ++i) {
     auto attr = array_schema->attribute(i);
     bool var_size = attr->var_size();
 
-    tiles_.emplace_back(new Tile(
-        (var_size) ? constants::cell_var_offset_type : attr->type(),
-        (var_size) ? array_schema->cell_var_offsets_compression() :
-                     attr->compressor(),
-        (var_size) ? array_schema->cell_var_offsets_compression_level() :
-                     attr->compression_level(),
-        fragment_->tile_size(i),
-        (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
-        0));
+    tile = new Tile();
+    RETURN_NOT_OK_ELSE(
+        tile->init(
+            (var_size) ? constants::cell_var_offset_type : attr->type(),
+            (var_size) ? array_schema->cell_var_offsets_compression() :
+                         attr->compressor(),
+            (var_size) ? array_schema->cell_var_offsets_compression_level() :
+                         attr->compression_level(),
+            fragment_->tile_size(i),
+            (var_size) ? constants::cell_var_offset_size : attr->cell_size(),
+            0),
+        delete tile);
+    tiles_.emplace_back(tile);
 
     if (var_size) {
-      tiles_var_.emplace_back(new Tile(
-          attr->type(),
-          attr->compressor(),
-          attr->compression_level(),
-          fragment_->tile_size(i),
-          datatype_size(attr->type()),
-          0));
+      tile = new Tile();
+      RETURN_NOT_OK_ELSE(
+          tile->init(
+              attr->type(),
+              attr->compressor(),
+              attr->compression_level(),
+              fragment_->tile_size(i),
+              datatype_size(attr->type()),
+              0),
+          delete tile);
+      tiles_var_.emplace_back(tile);
     } else {
       tiles_var_.emplace_back(nullptr);
     }
   }
-  tiles_.emplace_back(new Tile(
-      array_schema->coords_type(),
-      array_schema->coords_compression(),
-      array_schema->coords_compression_level(),
-      fragment_->tile_size(array_schema->attribute_num()),
-      array_schema->coords_size(),
-      array_schema->domain()->dim_num()));
+
+  tile = new Tile();
+  RETURN_NOT_OK_ELSE(
+      tile->init(
+          array_schema->coords_type(),
+          array_schema->coords_compression(),
+          array_schema->coords_compression_level(),
+          fragment_->tile_size(array_schema->attribute_num()),
+          array_schema->coords_size(),
+          array_schema->domain()->dim_num()),
+      delete tile);
+  tiles_.emplace_back(tile);
+
+  return Status::Ok();
 }
 
-void WriteState::init_tile_io() {
+Status WriteState::init_tile_io() {
   auto array_schema = fragment_->query()->array_schema();
   auto attribute_num = array_schema->attribute_num();
   auto query = fragment_->query();
@@ -307,6 +347,8 @@ void WriteState::init_tile_io() {
   }
   tile_io_.emplace_back(
       new TileIO(query->storage_manager(), fragment_->coords_uri()));
+
+  return Status::Ok();
 }
 
 void WriteState::sort_cell_pos(
