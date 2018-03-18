@@ -162,7 +162,10 @@ Status TileIO::read_generic_tile_header(
 
   delete header_buff;
 
-  *tile = new Tile((Datatype)datatype, (Compressor)compressor, cell_size, 0);
+  *tile = new Tile();
+  RETURN_NOT_OK_ELSE(
+      (*tile)->init((Datatype)datatype, (Compressor)compressor, cell_size, 0),
+      delete tile);
 
   return Status::Ok();
 }

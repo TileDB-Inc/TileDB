@@ -42,12 +42,22 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Tile::Tile(unsigned int dim_num) {
+Tile::Tile() {
   buffer_ = nullptr;
   cell_size_ = 0;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
-  dim_num_ = dim_num;
+  dim_num_ = 0;
+  owns_buff_ = true;
+  type_ = Datatype::INT32;
+}
+
+Tile::Tile(unsigned int dim_num)
+    : dim_num_(dim_num) {
+  buffer_ = nullptr;
+  cell_size_ = 0;
+  compressor_ = Compressor::NO_COMPRESSION;
+  compression_level_ = -1;
   owns_buff_ = true;
   type_ = Datatype::INT32;
 }
@@ -69,37 +79,6 @@ Tile::Tile(
     , type_(type) {
 }
 
-Tile::Tile(
-    Datatype type,
-    Compressor compressor,
-    int compression_level,
-    uint64_t tile_size,
-    uint64_t cell_size,
-    unsigned int dim_num)
-    : cell_size_(cell_size)
-    , compressor_(compressor)
-    , compression_level_(compression_level)
-    , dim_num_(dim_num)
-    , type_(type) {
-  buffer_ = new Buffer();
-  buffer_->realloc(tile_size);
-  owns_buff_ = true;
-}
-
-Tile::Tile(
-    Datatype type,
-    Compressor compressor,
-    uint64_t cell_size,
-    unsigned int dim_num)
-    : cell_size_(cell_size)
-    , compressor_(compressor)
-    , dim_num_(dim_num)
-    , type_(type) {
-  buffer_ = new Buffer();
-  compression_level_ = -1;
-  owns_buff_ = true;
-}
-
 Tile::~Tile() {
   if (owns_buff_)
     delete buffer_;
@@ -108,6 +87,46 @@ Tile::~Tile() {
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+Status Tile::init(
+    Datatype type,
+    Compressor compressor,
+    uint64_t cell_size,
+    unsigned int dim_num) {
+  cell_size_ = cell_size;
+  compressor_ = compressor;
+  dim_num_ = dim_num;
+  type_ = type;
+
+  buffer_ = new Buffer();
+  if (buffer_ == nullptr)
+    return LOG_STATUS(
+        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+
+  return Status::Ok();
+}
+
+Status Tile::init(
+    Datatype type,
+    Compressor compressor,
+    int compression_level,
+    uint64_t tile_size,
+    uint64_t cell_size,
+    unsigned int dim_num) {
+  cell_size_ = cell_size;
+  compressor_ = compressor;
+  compression_level_ = compression_level;
+  dim_num_ = dim_num;
+  type_ = type;
+
+  buffer_ = new Buffer();
+  if (buffer_ == nullptr)
+    return LOG_STATUS(
+        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
+  RETURN_NOT_OK(buffer_->realloc(tile_size));
+
+  return Status::Ok();
+}
 
 void Tile::advance_offset(uint64_t nbytes) {
   buffer_->advance_offset(nbytes);

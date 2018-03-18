@@ -52,12 +52,8 @@ class WriteState {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param fragment The fragment the write state belongs to.
-   */
-  explicit WriteState(const Fragment* fragment);
+  /** Constructor. */
+  WriteState();
 
   /** Destructor. */
   ~WriteState();
@@ -65,6 +61,14 @@ class WriteState {
   /* ********************************* */
   /*              MUTATORS             */
   /* ********************************* */
+
+  /**
+   * Initializer.
+   *
+   * @param fragment The fragment the write state belongs to.
+   * @return Status
+   */
+  Status init(const Fragment* fragment);
 
   /**
    * Finalizes the fragment.
@@ -157,10 +161,10 @@ class WriteState {
   void expand_mbr(const T* coords);
 
   /** Initializes the internal tile structures. */
-  void init_tiles();
+  Status init_tiles();
 
   /** Initializes the internal Tile I/O structures. */
-  void init_tile_io();
+  Status init_tile_io();
 
   /**
    * Sorts the input cell coordinates according to the order specified in the

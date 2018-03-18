@@ -155,21 +155,28 @@ Status Fragment::init(
     write_state_ = nullptr;
     return st;
   }
-  write_state_ = new WriteState(this);
+  write_state_ = new WriteState();
+  st = write_state_->init(this);
+  if (!st.ok()) {
+    delete metadata_;
+    delete write_state_;
+    metadata_ = nullptr;
+    write_state_ = nullptr;
+    return st;
+  }
 
   // Success
   return Status::Ok();
 }
 
 Status Fragment::init(const URI& uri, FragmentMetadata* metadata) {
-  // Set member attributes
   fragment_uri_ = uri;
   metadata_ = metadata;
   dense_ = metadata_->dense();
 
-  read_state_ = new ReadState(this, query_, metadata_);
+  read_state_ = new ReadState();
+  RETURN_NOT_OK(read_state_->init(this, query_, metadata_));
 
-  // Success
   return Status::Ok();
 }
 
