@@ -183,6 +183,8 @@ void check_save_to_file() {
   ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.s3.connect_max_tries 5\n";
+  ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
   ss << "vfs.s3.file_buffer_size 5242880\n";
   ss << "vfs.s3.region us-east-1\n";
@@ -352,6 +354,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
   all_param_values["vfs.s3.file_buffer_size"] = "5242880";
   all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.connect_max_tries"] = "5";
+  all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
@@ -364,6 +368,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.use_virtual_addressing"] = "true";
   vfs_param_values["s3.file_buffer_size"] = "5242880";
   vfs_param_values["s3.connect_timeout_ms"] = "3000";
+  vfs_param_values["s3.connect_max_tries"] = "5";
+  vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
@@ -376,6 +382,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["use_virtual_addressing"] = "true";
   s3_param_values["file_buffer_size"] = "5242880";
   s3_param_values["connect_timeout_ms"] = "3000";
+  s3_param_values["connect_max_tries"] = "5";
+  s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["request_timeout_ms"] = "3000";
 
   // Create an iterator and iterate over all parameters

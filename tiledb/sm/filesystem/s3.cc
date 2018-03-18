@@ -80,6 +80,11 @@ Status S3::connect(const S3Config& s3_config) {
   config.connectTimeoutMs = s3_config.connect_timeout_ms_;
   config.requestTimeoutMs = s3_config.request_timeout_ms_;
 
+  config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
+      constants::s3_allocation_tag,
+      s3_config.connect_max_tries_,
+      s3_config.connect_scale_factor_);
+
   // Connect S3 client
   client_ = Aws::MakeShared<Aws::S3::S3Client>(
       constants::s3_allocation_tag,

@@ -43,6 +43,7 @@
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
+#include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/utils/HashingUtils.h>
 #include <aws/core/utils/Outcome.h>
@@ -92,8 +93,10 @@ class S3 {
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
       file_buffer_size_ = constants::s3_file_buffer_size;
-      connect_timeout_ms_ = constants::s3_connect_timeout_ms;
       request_timeout_ms_ = constants::s3_request_timeout_ms;
+      connect_timeout_ms_ = constants::s3_connect_timeout_ms;
+      connect_max_tries_ = constants::s3_connect_max_tries;
+      connect_scale_factor_ = constants::s3_connect_scale_factor;
     }
 
     std::string region_;
@@ -101,8 +104,10 @@ class S3 {
     std::string endpoint_override_;
     bool use_virtual_addressing_;
     uint64_t file_buffer_size_;
-    long connect_timeout_ms_;
     long request_timeout_ms_;
+    long connect_timeout_ms_;
+    long connect_max_tries_;
+    long connect_scale_factor_;
   };
 
   /* ********************************* */
