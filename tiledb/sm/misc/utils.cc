@@ -324,10 +324,10 @@ std::string domain_str(const void* domain, Datatype type) {
 
 Status expand_buffer(void*& buffer, uint64_t* buffer_allocated_size) {
   *buffer_allocated_size *= 2;
-  buffer = std::realloc(buffer, *buffer_allocated_size);
-  if (buffer == nullptr) {
+  auto new_buffer = std::realloc(buffer, *buffer_allocated_size);
+  if (new_buffer == nullptr)
     return LOG_STATUS(Status::MemError("Cannot reallocate buffer"));
-  }
+  buffer = new_buffer;
   return Status::Ok();
 }
 
