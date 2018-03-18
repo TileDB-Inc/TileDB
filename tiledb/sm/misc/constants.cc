@@ -381,6 +381,12 @@ const bool s3_use_virtual_addressing = true;
 /** Connect timeout in milliseconds. */
 const long s3_connect_timeout_ms = 3000;
 
+/** Connect max tries. */
+const long s3_connect_max_tries = 5;
+
+/** Connect scale factor for exponential backoff. */
+const long s3_connect_scale_factor = 25;
+
 /** Request timeout in milliseconds. */
 const long s3_request_timeout_ms = 3000;
 

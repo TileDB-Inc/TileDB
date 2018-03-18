@@ -68,6 +68,8 @@ class Config {
     bool use_virtual_addressing_;
     uint64_t file_buffer_size_;
     long connect_timeout_ms_;
+    long connect_max_tries_;
+    long connect_scale_factor_;
     long request_timeout_ms_;
 
     S3Params() {
@@ -77,6 +79,8 @@ class Config {
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
       file_buffer_size_ = constants::s3_file_buffer_size;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
+      connect_max_tries_ = constants::s3_connect_max_tries;
+      connect_scale_factor_ = constants::s3_connect_scale_factor;
       request_timeout_ms_ = constants::s3_request_timeout_ms;
     }
   };
@@ -165,6 +169,13 @@ class Config {
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
+   * - `vfs.s3.connect_max_tries` <br>
+   *    The maximum tries for a connection. Any `long` value is acceptable. <br>
+   *    **Default**: 5
+   * - `vfs.s3.connect_scale_factor` <br>
+   *    The scale factor for exponential backofff when connecting to S3.
+   *    Any `long` value is acceptable. <br>
+   *    **Default**: 25
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -252,6 +263,12 @@ class Config {
 
   /** Sets the S3 connect timeout in milliseconds. */
   Status set_vfs_s3_connect_timeout_ms(const std::string& value);
+
+  /** Sets the S3 connect maximum tries. */
+  Status set_vfs_s3_connect_max_tries(const std::string& value);
+
+  /** Sets the S3 connect scale factor for exponential backoff. */
+  Status set_vfs_s3_connect_scale_factor(const std::string& value);
 
   /** Sets the S3 request timeout in milliseconds. */
   Status set_vfs_s3_request_timeout_ms(const std::string& value);

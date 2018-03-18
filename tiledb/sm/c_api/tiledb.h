@@ -390,6 +390,13 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  * - `vfs.s3.connect_timeout_ms` <br>
  *    The connection timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000
+ * - `vfs.s3.connect_max_tries` <br>
+ *    The maximum tries for a connection. Any `long` value is acceptable. <br>
+ *    **Default**: 5
+ * - `vfs.s3.connect_scale_factor` <br>
+ *    The scale factor for exponential backofff when connecting to S3.
+ *    Any `long` value is acceptable. <br>
+ *    **Default**: 25
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000

@@ -165,6 +165,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_file_buffer_size(value));
   } else if (param == "vfs.s3.connect_timeout_ms") {
     RETURN_NOT_OK(set_vfs_s3_connect_timeout_ms(value));
+  } else if (param == "vfs.s3.connect_max_tries") {
+    RETURN_NOT_OK(set_vfs_s3_connect_max_tries(value));
+  } else if (param == "vfs.s3.connect_scale_factor") {
+    RETURN_NOT_OK(set_vfs_s3_connect_scale_factor(value));
   } else if (param == "vfs.s3.request_timeout_ms") {
     RETURN_NOT_OK(set_vfs_s3_request_timeout_ms(value));
   } else if (param == "vfs.hdfs.name_node") {
@@ -254,6 +258,17 @@ Status Config::unset(const std::string& param) {
     value << vfs_params_.s3_params_.connect_timeout_ms_;
     param_values_["vfs.s3.connect_timeout_ms"] = value.str();
     value.str(std::string());
+  } else if (param == "vfs.s3.connect_max_tries") {
+    vfs_params_.s3_params_.connect_max_tries_ = constants::s3_connect_max_tries;
+    value << vfs_params_.s3_params_.connect_max_tries_;
+    param_values_["vfs.s3.connect_max_tries"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.connect_scale_factor") {
+    vfs_params_.s3_params_.connect_scale_factor_ =
+        constants::s3_connect_scale_factor;
+    value << vfs_params_.s3_params_.connect_scale_factor_;
+    param_values_["vfs.s3.connect_scale_factor"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.request_timeout_ms") {
     vfs_params_.s3_params_.request_timeout_ms_ =
         constants::s3_request_timeout_ms;
@@ -323,6 +338,14 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.connect_timeout_ms_;
   param_values_["vfs.s3.connect_timeout_ms"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.connect_max_tries_;
+  param_values_["vfs.s3.connect_max_tries"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.connect_scale_factor_;
+  param_values_["vfs.s3.connect_scale_factor"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.s3_params_.request_timeout_ms_;
@@ -405,6 +428,20 @@ Status Config::set_vfs_s3_connect_timeout_ms(const std::string& value) {
   long v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.s3_params_.connect_timeout_ms_ = v;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_connect_max_tries(const std::string& value) {
+  long v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.s3_params_.connect_max_tries_ = v;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_connect_scale_factor(const std::string& value) {
+  long v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.s3_params_.connect_scale_factor_ = v;
   return Status::Ok();
 }
 
