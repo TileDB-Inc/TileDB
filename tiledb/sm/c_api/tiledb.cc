@@ -123,6 +123,7 @@ struct tiledb_domain_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_;
+  bool finalized_;
 };
 
 struct tiledb_kv_schema_t {
@@ -1631,6 +1632,8 @@ int tiledb_query_create(
     return TILEDB_ERR;
   }
 
+  (*query)->finalized_ = false;
+
   // Success
   return TILEDB_OK;
 }
@@ -1684,26 +1687,36 @@ int tiledb_query_set_layout(
   return TILEDB_OK;
 }
 
-int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t** query) {
+int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
-  if (query == nullptr || *query == nullptr)
+  if (query == nullptr || query->finalized_)
     return TILEDB_OK;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, *query) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Finalize query and check error
-  int rc = TILEDB_OK;
-  if (save_error(ctx, ctx->storage_manager_->query_finalize((*query)->query_)))
-    rc = TILEDB_ERR;
+  if (save_error(ctx, ctx->storage_manager_->query_finalize(query->query_)))
+    return TILEDB_ERR;
+
+  query->finalized_ = true;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t** query) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (query == nullptr || *query == nullptr)
+    return TILEDB_OK;
 
   delete (*query)->query_;
   delete *query;
   *query = nullptr;
 
-  return rc;
+  return TILEDB_OK;
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {

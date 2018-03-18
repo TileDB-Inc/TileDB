@@ -18,6 +18,9 @@
 ## API additions
 
 ### C API
+
+* Added `tiledb_query_finalize` function. 
+
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
@@ -26,6 +29,9 @@
 ## Breaking changes
 
 ### C API
+
+* `tiledb_query_finalize` must **always** be called before `tiledb_query_free`.
+
 ### C++ API
 * `max_buffer_elements` was renamed to `max_buffer_sizes` and now reports sizes in bytes instead of number of elements. This was done to support
   arbitrary POD types.

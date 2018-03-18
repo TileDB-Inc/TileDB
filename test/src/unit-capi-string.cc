@@ -183,6 +183,8 @@ void StringFx::write_array(const std::string& array_name) {
   // Submit query
   rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx, query);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
@@ -225,6 +227,8 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Submit query
   rc = tiledb_query_submit(ctx, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
