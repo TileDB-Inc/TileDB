@@ -26,6 +26,8 @@
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
   objects such as a simple data struct.
+* Added a `Dimension::create` factory function that does not take tile extent,
+  which sets the tile extent to `NULL`. 
 
 ## Breaking changes
 
