@@ -112,7 +112,8 @@ class TILEDB_EXPORT Dimension {
    * @param ctx The TileDB context.
    * @param name The dimension name.
    * @param domain The dimension domain.
-   * @return A new `Attribute` object.
+   * @param extent The tile extent on the dimension.
+   * @return A new `Dimension` object.
    */
   template <typename T>
   static Dimension create(
@@ -125,6 +126,27 @@ class TILEDB_EXPORT Dimension {
         DataT::tiledb_num == 1,
         "Dimension types cannot be compound, use arithmetic type.");
     return create_impl(ctx, name, DataT::tiledb_type, &domain, &extent);
+  }
+
+  /**
+   * Factory function for creating a new dimension with datatype T.
+   *
+   * @tparam T int, char, etc...
+   * @param ctx The TileDB context.
+   * @param name The dimension name.
+   * @param domain The dimension domain.
+   * @return A new `Dimension` object.
+   */
+  template <typename T>
+  static Dimension create(
+      const Context& ctx,
+      const std::string& name,
+      const std::array<T, 2>& domain) {
+    using DataT = impl::TypeHandler<T>;
+    static_assert(
+        DataT::tiledb_num == 1,
+        "Dimension types cannot be compound, use arithmetic type.");
+    return create_impl(ctx, name, DataT::tiledb_type, &domain, nullptr);
   }
 
  private:
