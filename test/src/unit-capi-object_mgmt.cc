@@ -277,36 +277,22 @@ void ObjectMgmtFx::check_move(const std::string& path) {
   auto new2 = group + "new2";
   REQUIRE(tiledb_group_create(ctx_, old1.c_str()) == TILEDB_OK);
   REQUIRE(tiledb_group_create(ctx_, old2.c_str()) == TILEDB_OK);
-  CHECK(
-      tiledb_object_move(ctx_, old1.c_str(), new1.c_str(), false) == TILEDB_OK);
+  CHECK(tiledb_object_move(ctx_, old1.c_str(), new1.c_str()) == TILEDB_OK);
 
   tiledb_object_t type;
   CHECK(tiledb_object_type(ctx_, new1.c_str(), &type) == TILEDB_OK);
   CHECK(type == TILEDB_GROUP);
 
-  // Check error on name conflict
-  CHECK(
-      tiledb_object_move(ctx_, new1.c_str(), old2.c_str(), false) ==
-      TILEDB_ERR);
-
-  // Check force move works on name conflict
-  CHECK(
-      tiledb_object_move(ctx_, new1.c_str(), old2.c_str(), true) == TILEDB_OK);
-
   // Check move array
   auto array = group + ARRAY;
   auto array2 = group + "new_array";
   create_array(array);
-  CHECK(
-      tiledb_object_move(ctx_, array.c_str(), array2.c_str(), false) ==
-      TILEDB_OK);
+  CHECK(tiledb_object_move(ctx_, array.c_str(), array2.c_str()) == TILEDB_OK);
 
   // Check error on invalid path
   auto inv1 = path + "invalid_path";
   auto inv2 = path + "new_invalid_path";
-  CHECK(
-      tiledb_object_move(ctx_, inv1.c_str(), inv2.c_str(), false) ==
-      TILEDB_ERR);
+  CHECK(tiledb_object_move(ctx_, inv1.c_str(), inv2.c_str()) == TILEDB_ERR);
 }
 
 /**

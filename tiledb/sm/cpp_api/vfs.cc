@@ -123,11 +123,18 @@ uint64_t VFS::file_size(const std::string& uri) const {
   return ret;
 }
 
-void VFS::move(
-    const std::string& old_uri, const std::string& new_uri, bool force) const {
+void VFS::move_file(
+    const std::string& old_uri, const std::string& new_uri) const {
   auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_vfs_move(
-      ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str(), (int)force));
+  ctx.handle_error(
+      tiledb_vfs_move_file(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str()));
+}
+
+void VFS::move_dir(
+    const std::string& old_uri, const std::string& new_uri) const {
+  auto& ctx = ctx_.get();
+  ctx.handle_error(
+      tiledb_vfs_move_dir(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str()));
 }
 
 void VFS::touch(const std::string& uri) const {

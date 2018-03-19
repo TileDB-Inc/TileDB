@@ -240,6 +240,14 @@ Status StorageManager::array_create(
         Status::StorageManagerError("Cannot create array; Empty array schema"));
   }
 
+  // Check if array exists
+  bool exists;
+  RETURN_NOT_OK(is_array(array_uri, &exists));
+  if (exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot create array; Array '") + array_uri.c_str() +
+        "' already exists"));
+
   object_create_mtx_.lock();
 
   array_schema->set_array_uri(array_uri);
@@ -259,16 +267,16 @@ Status StorageManager::array_create(
   // Store array schema
   st = store_array_schema(array_schema);
   if (!st.ok()) {
-    vfs_->remove_path(array_uri);
+    vfs_->remove_file(array_uri);
     object_create_mtx_.unlock();
     return st;
   }
 
   // Create array filelock
   URI filelock_uri = array_uri.join_path(constants::filelock_name);
-  st = vfs_->create_file(filelock_uri);
+  st = vfs_->touch(filelock_uri);
   if (!st.ok()) {
-    vfs_->remove_path(array_uri);
+    vfs_->remove_file(array_uri);
     object_create_mtx_.unlock();
     return st;
   }
@@ -430,8 +438,8 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
-Status StorageManager::create_file(const URI& uri) {
-  return vfs_->create_file(uri);
+Status StorageManager::touch(const URI& uri) {
+  return vfs_->touch(uri);
 }
 
 Status StorageManager::delete_fragment(const URI& uri) const {
@@ -442,31 +450,45 @@ Status StorageManager::delete_fragment(const URI& uri) const {
         "Cannot delete fragment; '" + uri.to_string() +
         "' is not a TileDB fragment"));
   }
-  return vfs_->remove_path(uri);
+  return vfs_->remove_dir(uri);
 }
 
-Status StorageManager::remove_path(const URI& uri) const {
+Status StorageManager::object_remove(const char* path) const {
+  auto uri = URI(path);
+  if (uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot remove object '") + path + "'; Invalid URI"));
+
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(uri, &obj_type));
-
-  if (obj_type == ObjectType::INVALID) {
+  if (obj_type == ObjectType::INVALID)
     return LOG_STATUS(Status::StorageManagerError(
-        "Not a valid TileDB object: " + uri.to_string()));
-  }
-  return vfs_->remove_path(uri);
+        std::string("Cannot remove object '") + path +
+        "'; Invalid TileDB object"));
+
+  return vfs_->remove_dir(uri);
 }
 
-Status StorageManager::move(
-    const URI& old_uri, const URI& new_uri, int force) const {
+Status StorageManager::object_move(
+    const char* old_path, const char* new_path) const {
+  auto old_uri = URI(old_path);
+  if (old_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot move object '") + old_path + "'; Invalid URI"));
+
+  auto new_uri = URI(new_path);
+  if (new_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot move object to '") + new_path + "'; Invalid URI"));
+
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(old_uri, &obj_type));
-
-  if (obj_type == ObjectType::INVALID) {
+  if (obj_type == ObjectType::INVALID)
     return LOG_STATUS(Status::StorageManagerError(
-        "Not a valid TileDB object: " + old_uri.to_string()));
-  }
+        std::string("Cannot move object '") + old_path +
+        "'; Invalid TileDB object"));
 
-  return vfs_->move_path(old_uri, new_uri, force);
+  return vfs_->move_dir(old_uri, new_uri);
 }
 
 Status StorageManager::group_create(const std::string& group) {
@@ -474,7 +496,15 @@ Status StorageManager::group_create(const std::string& group) {
   URI uri(group);
   if (uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot create group; '" + group + "' invalid group URI"));
+        "Cannot create group '" + group + "'; Invalid group URI"));
+
+  // Check if group exists
+  bool exists;
+  RETURN_NOT_OK(is_group(uri, &exists));
+  if (exists)
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot create group; Group '") + uri.c_str() +
+        "' already exists"));
 
   object_create_mtx_.lock();
 
@@ -483,9 +513,9 @@ Status StorageManager::group_create(const std::string& group) {
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  auto st = vfs_->create_file(group_filename);
+  auto st = vfs_->touch(group_filename);
   if (!st.ok()) {
-    vfs_->remove_path(uri);
+    vfs_->remove_dir(uri);
     object_create_mtx_.unlock();
     return st;
   }
@@ -517,10 +547,12 @@ Status StorageManager::is_array(const URI& uri, bool* is_array) const {
   return Status::Ok();
 }
 
+/*
 Status StorageManager::is_dir(const URI& uri, bool* is_dir) const {
-  RETURN_NOT_OK(vfs_->is_dir(uri, is_dir));
-  return Status::Ok();
+RETURN_NOT_OK(vfs_->is_dir(uri, is_dir));
+return Status::Ok();
 }
+ */
 
 Status StorageManager::is_file(const URI& uri, bool* is_file) const {
   RETURN_NOT_OK(vfs_->is_file(uri, is_file));
@@ -612,7 +644,7 @@ Status StorageManager::load_fragment_metadata(
   const URI& fragment_uri = fragment_metadata->fragment_uri();
 
   bool fragment_exists;
-  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &fragment_exists));
+  RETURN_NOT_OK(is_fragment(fragment_uri, &fragment_exists));
   if (!fragment_exists)
     return Status::StorageManagerError(
         "Cannot load fragment metadata; Fragment does not exist");
@@ -656,10 +688,6 @@ Status StorageManager::load_fragment_metadata(
   delete buff;
 
   return st;
-}
-
-Status StorageManager::move_path(const URI& old_uri, const URI& new_uri) {
-  return vfs_->move_path(old_uri, new_uri, false);
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
@@ -968,7 +996,7 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   bool exists;
   RETURN_NOT_OK(is_file(schema_uri, &exists));
   if (exists)
-    RETURN_NOT_OK_ELSE(remove_path(schema_uri), delete buff);
+    RETURN_NOT_OK_ELSE(vfs_->remove_file(schema_uri), delete buff);
 
   // Write to file
   buff->reset_offset();
@@ -993,9 +1021,10 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
 }
 
 Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
-  const URI& fragment_uri = metadata->fragment_uri();
-
+  // Do nothing if fragment directory does not exist. The fragment directory
+  // is created only when some attribute file is written
   bool is_dir;
+  const URI& fragment_uri = metadata->fragment_uri();
   RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
   if (!is_dir)
     return Status::Ok();
@@ -1297,7 +1326,7 @@ Status StorageManager::get_fragment_uris(
     const URI& array_uri, std::vector<URI>* fragment_uris) const {
   // Get all uris in the array directory
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri, &uris));
+  RETURN_NOT_OK(vfs_->ls(array_uri.join_path(""), &uris));
 
   // Get only the fragment uris
   bool exists;

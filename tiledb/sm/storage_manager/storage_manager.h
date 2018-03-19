@@ -191,21 +191,11 @@ class StorageManager {
   /** Creates a directory with the input URI. */
   Status create_dir(const URI& uri);
 
-  /** Creates a file with the input URI. */
-  Status create_file(const URI& uri);
+  /** Creates an empty file with the input URI. */
+  Status touch(const URI& uri);
 
   /** Deletes a fragment directory. */
   Status delete_fragment(const URI& uri) const;
-
-  /** Move (rename) a resource, skips check that resource is a valid TileDB
-   * object */
-  Status move_path(const URI& old_uri, const URI& new_uri);
-
-  /** Safely removes a TileDB resource. */
-  Status remove_path(const URI& uri) const;
-
-  /** Safely moves a TileDB resource. */
-  Status move(const URI& old_uri, const URI& new_uri, int force = 0) const;
 
   /**
    * Creates a TileDB group.
@@ -302,6 +292,15 @@ class StorageManager {
    * @return Status
    */
   Status load_fragment_metadata(FragmentMetadata* metadata);
+
+  /** Removes a TileDB object (group, array, kv). */
+  Status object_remove(const char* path) const;
+
+  /**
+   * Renames a TileDB object (group, array, kv). If
+   * `new_path` exists, `new_path` will be overwritten.
+   */
+  Status object_move(const char* old_path, const char* new_path) const;
 
   /**
    * Creates a new object iterator for the input path. The iteration

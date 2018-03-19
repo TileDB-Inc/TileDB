@@ -163,9 +163,13 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_dir);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
+  // Second time succeeds as well
   rc = tiledb_vfs_create_dir(ctx_, vfs_, path.c_str());
-  REQUIRE(rc == TILEDB_ERR);  // Second time should fail
+  REQUIRE(rc == TILEDB_OK);
 
   // Remove directory recursively
   auto subdir = path + "subdir/";
@@ -173,7 +177,10 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_dir);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
   rc = tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir);
@@ -190,9 +197,18 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_dir);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
+  int is_file = 0;
+  std::string some_file = subdir + "some_file";
+  rc = tiledb_vfs_touch(ctx_, vfs_, some_file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, some_file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
   auto subdir2 = path + "subdir2/";
-  rc = tiledb_vfs_move(ctx_, vfs_, subdir.c_str(), subdir2.c_str(), true);
+  rc = tiledb_vfs_move_dir(ctx_, vfs_, subdir.c_str(), subdir2.c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
@@ -202,7 +218,6 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(is_dir);
 
   // Invalid file
-  int is_file = 0;
   std::string foo_file = path + "foo";
   rc = tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -267,7 +282,7 @@ void VFSFx::check_move(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
-  rc = tiledb_vfs_move(ctx_, vfs_, file.c_str(), file2.c_str(), true);
+  rc = tiledb_vfs_move_file(ctx_, vfs_, file.c_str(), file2.c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -295,12 +310,18 @@ void VFSFx::check_move(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_dir);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
   rc = tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_dir);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
   rc = tiledb_vfs_touch(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
@@ -311,7 +332,7 @@ void VFSFx::check_move(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
-  rc = tiledb_vfs_move(ctx_, vfs_, dir.c_str(), dir2.c_str(), true);
+  rc = tiledb_vfs_move_dir(ctx_, vfs_, dir.c_str(), dir2.c_str());
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
@@ -358,7 +379,7 @@ void VFSFx::check_move(const std::string& path) {
       rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str());
       REQUIRE(rc == TILEDB_OK);
 
-      rc = tiledb_vfs_move(ctx_, vfs_, subdir2.c_str(), subdir3.c_str(), true);
+      rc = tiledb_vfs_move_dir(ctx_, vfs_, subdir2.c_str(), subdir3.c_str());
       REQUIRE(rc == TILEDB_OK);
       rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
       REQUIRE(rc == TILEDB_OK);
@@ -562,13 +583,12 @@ std::string VFSFx::random_bucket_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
-  check_vfs(FILE_TEMP_DIR);
-
   if (supports_s3_)
     check_vfs(S3_TEMP_DIR);
-
-  if (supports_hdfs_)
+  else if (supports_hdfs_)
     check_vfs(HDFS_TEMP_DIR);
+  else
+    check_vfs(FILE_TEMP_DIR);
 }
 
 TEST_CASE_METHOD(

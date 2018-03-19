@@ -36,19 +36,22 @@ to integrate with S3. TileDB also works well with the S3-compliant
 `minio <https://minio.io>`__ object store, which we use in our testing
 framework. Users can create TileDB arrays in S3 buckets and access them
 as any other local TileDB array by using the URI of the TileDB array on
-S3, e.g., ``s3://<bucket>/path/to/array``.
+S3, e.g., ``s3://bucket/path/to/array``.
 
-Recall that a TileDB array is stored essentially as a **directory**.
-Moreover, users can create groups of arrays in a hierarchical structure,
-similar to the traditional filesystem directory hierarchy. We wish to
-retain the TileDB hierarchical structure of groups and arrays on every
-storage backend for consistency. However, there is no notion of a
-"directory" on S3. We workaround this by creating a special empty S3
-file for every directory ``s3://<bucket>/path/to/dir``, which is simply
-called ``s3://<bucket>/path/to/dir/`` (notice the ``/`` at the end of
-the name). In fact, all TileDB-generated S3 objects that end in ``/``
-indicate special directory files. This enables consistent use of URI's
-as array names across all storage backends.
+The hierarchical organization of arrays and key-value stores into groups is
+preserved on S3, by simply following the same traditional path conventions
+for S3 URIs as well (i.e., by using ``/`` to denote a directory).
+At a physical level, TileDB stores on S3 all the files it would create
+locally as objects. For instance, for array ``s3://bucket/path/to/array``,
+TileDB creates array schema object ``s3://bucket/path/to/array/__array_schema.tdb``,
+fragment metadata object ``s3://bucket/path/to/array/<fragment>/__fragment_metadata.tdb``,
+and similarly all the other files/objects. Since there is no notion of a
+"directory" on S3, nothing special is persisted on S3 for directories, e.g.,
+``s3://bucket/path/to/array/<fragment>/`` does not exist as an object.
+This makes it very easy to copy a local array ``/path/to/array`` to an
+S3 bucket with the `AWS CLI <https://aws.amazon.com/cli/>`_ as follows: ::
+
+    aws s3 sync /path/to/array s3://bucket/path/to/array
 
 TileDB writes the various fragment files as **append-only** objects
 using the **multi-part upload** API of the AWS SDK. In addition to

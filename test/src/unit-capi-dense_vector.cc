@@ -267,7 +267,9 @@ void DenseVectorFx::check_read(
   rc = tiledb_query_free(ctx_, &read_query);
   REQUIRE(rc == TILEDB_OK);
 
-  CHECK((buffer[0] == 0 && buffer[1] == 1 && buffer[2] == 2));
+  CHECK(buffer[0] == 0);
+  CHECK(buffer[1] == 1);
+  CHECK(buffer[2] == 2);
 }
 
 void DenseVectorFx::check_update(const std::string& path) {

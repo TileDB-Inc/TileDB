@@ -81,8 +81,7 @@ Status disconnect(hdfsFS& fs) {
   return Status::Ok();
 }
 
-// remove a path (recursive)
-Status remove_path(hdfsFS fs, const URI& uri) {
+Status remove_dir(hdfsFS fs, const URI& uri) {
   int rc = hdfsDelete(fs, uri.to_path().c_str(), 1);
   if (rc < 0) {
     return LOG_STATUS(
@@ -171,8 +170,7 @@ bool is_file(hdfsFS fs, const URI& uri) {
   return false;
 }
 
-// create a file with the given path
-Status create_file(hdfsFS fs, const URI& uri) {
+Status touch(hdfsFS fs, const URI& uri) {
   // Open file
   hdfsFile writeFile =
       hdfsOpenFile(fs, uri.to_path().c_str(), O_WRONLY, 0, 0, 0);

@@ -102,7 +102,7 @@ Status create_dir(const std::string& path) {
   return Status::Ok();
 }
 
-Status create_file(const std::string& filename) {
+Status touch(const std::string& filename) {
   if (win::is_file(filename)) {
     return Status::Ok();
   }
@@ -188,19 +188,13 @@ err:
       std::string("Failed to remove directory '" + path + "'")));
 }
 
-Status remove_path(const std::string& path) {
-  if (win::is_file(path)) {
-    return remove_file(path);
-  } else if (win::is_dir(path)) {
+Status remove_dir(const std::string& path) {
+  if (win::is_dir(path)) {
     return recursively_remove_directory(path);
   } else {
     return LOG_STATUS(Status::IOError(std::string(
         "Failed to delete path '" + path + "'; not a valid path.")));
   }
-}
-
-Status delete_dir(const std::string& path) {
-  return recursively_remove_directory(path);
 }
 
 Status remove_file(const std::string& path) {

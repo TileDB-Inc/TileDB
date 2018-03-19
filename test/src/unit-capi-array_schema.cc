@@ -309,6 +309,10 @@ void ArraySchemaFx::create_array(const std::string& path) {
   rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
+  // Create the array again - should fail
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Clean up
   rc = tiledb_array_schema_free(ctx_, &array_schema);
   REQUIRE(rc == TILEDB_OK);

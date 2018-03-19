@@ -1690,6 +1690,8 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (query == nullptr || query->finalized_)
     return TILEDB_OK;
 
+  query->finalized_ = true;
+
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1697,8 +1699,6 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Finalize query and check error
   if (save_error(ctx, ctx->storage_manager_->query_finalize(query->query_)))
     return TILEDB_ERR;
-
-  query->finalized_ = true;
 
   return TILEDB_OK;
 }
@@ -1902,19 +1902,16 @@ int tiledb_object_type(
 int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  auto uri = tiledb::sm::URI(path);
-  if (save_error(ctx, ctx->storage_manager_->remove_path(uri)))
+  if (save_error(ctx, ctx->storage_manager_->object_remove(path)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
 
 int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force) {
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  auto old_uri = tiledb::sm::URI(old_path);
-  auto new_uri = tiledb::sm::URI(new_path);
-  if (save_error(ctx, ctx->storage_manager_->move(old_uri, new_uri, force)))
+  if (save_error(ctx, ctx->storage_manager_->object_move(old_path, new_path)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2846,7 +2843,7 @@ int tiledb_vfs_remove_dir(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->remove_path(tiledb::sm::URI(uri))))
+  if (save_error(ctx, vfs->vfs_->remove_dir(tiledb::sm::URI(uri))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2887,19 +2884,35 @@ int tiledb_vfs_file_size(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_move(
+int tiledb_vfs_move_file(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri,
-    int force) {
+    const char* new_uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (save_error(
           ctx,
-          vfs->vfs_->move_path(
-              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri), force)))
+          vfs->vfs_->move_file(
+              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_vfs_move_dir(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          vfs->vfs_->move_dir(
+              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri))))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2958,7 +2971,7 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
     if (save_error(ctx, fh->vfs_->is_file(fh->uri_, &exists)))
       return TILEDB_ERR;
     if (!exists)
-      if (save_error(ctx, fh->vfs_->create_file(fh->uri_)))
+      if (save_error(ctx, fh->vfs_->touch(fh->uri_)))
         return TILEDB_ERR;
   }
 
@@ -3059,7 +3072,7 @@ int tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, vfs->vfs_->create_file(tiledb::sm::URI(uri))))
+  if (save_error(ctx, vfs->vfs_->touch(tiledb::sm::URI(uri))))
     return TILEDB_ERR;
 
   return TILEDB_OK;

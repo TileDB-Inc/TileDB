@@ -65,7 +65,7 @@ int main() {
 
   // Moving files (moving directories is similar)
   std::cout << "Moving file dir_A/file_A to dir_A/file_B\n";
-  vfs.move("dir_A/file_A", "dir_A/file_B", true);
+  vfs.move_file("dir_A/file_A", "dir_A/file_B");
 
   // Deleting files and directories
   std::cout << "Deleting dir_A/file_B and dir_A\n";
