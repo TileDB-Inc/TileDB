@@ -109,32 +109,22 @@ class TILEDB_EXPORT Array {
   }
 
   /**
-   * Compute an upper bound on the buffer size needed to read a subarray.
-   * Sizes are reported in bytes. They must be divided by the sizeof() of
-   * the attribute type to get number of elements.
-   *
-   * @details
-   * For example, assume we have a 2x1 array and sizes = max_buffer_sizes(...);
-   *  - Attribute a1 of type std::vector<int> = {{1,2,3}, {4}}
-   *    sizes["a1"].first >= 2
-   *    sizes["a1"].second >= 4 * sizeof(int)
-   *  - Attribute a2 of type int[2] = {{1,2}, {3,4}}
-   *    sizes["a1"].first  == 0
-   *    sizes["a1"].second >= 4 * sizeof(int)
+   * Compute an upper bound on the buffer elements needed to read a subarray.
    *
    * @tparam T The domain datatype
-   * @param uri array name
+   * @param uri The array URI.
    * @param schema The array schema
-   * @param subarray Subarray to compute sizes for
-   * @return The maximum number of bytes for each array attribute.
-   *     Note that two sizes are returned per attribute. The first
-   *     is the maximum number of elements in the offset buffer,
-   *     and the second is the maximum size of the value buffer in
-   *     bytes. For fixed size attributes, the first is always 0.
+   * @param subarray Targeted subarray.
+   * @return The maximum number of elements for each array attribute (plus
+   *     coordinates for sparse arrays).
+   *     Note that two numbers are returned per attribute. The first
+   *     is the maximum number of elements in the offset buffer
+   *     (0 for fixed-sized attributes and coordinates),
+   *     and the second is the maximum number of elements of the value buffer.
    */
   template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  max_buffer_sizes(
+  max_buffer_elements(
       const std::string& uri,
       const ArraySchema& schema,
       const std::vector<T>& subarray) {
@@ -170,52 +160,43 @@ class TILEDB_EXPORT Array {
     unsigned sid = 0;
     for (const auto& a : attrs) {
       auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
-      ret[a.first] = var ?
-                         std::pair<uint64_t, uint64_t>(
-                             sizes[sid] / TILEDB_OFFSET_SIZE, sizes[sid + 1]) :
-                         std::pair<uint64_t, uint64_t>(0, sizes[sid]);
+      ret[a.first] =
+          var ? std::pair<uint64_t, uint64_t>(
+                    sizes[sid] / TILEDB_OFFSET_SIZE,
+                    sizes[sid + 1] / tiledb_datatype_size(a.second.type())) :
+                std::pair<uint64_t, uint64_t>(0, sizes[sid]);
       sid += var ? 2 : 1;
     }
 
     if (schema.array_type() == TILEDB_SPARSE)
       ret[TILEDB_COORDS] = std::pair<uint64_t, uint64_t>(
-          sizes.back() / tiledb_datatype_size(schema.domain().type()), 0);
+          0, sizes.back() / tiledb_datatype_size(schema.domain().type()));
 
     return ret;
   }
 
   /**
-   * Compute an upper bound on the buffer size needed to read a subarray.
-   * Sizes are reported in bytes. They must be divided by the sizeof() of
-   * the attribute type to get number of elements.
-   *
-   * @details
-   * For example, assume we have a 2x1 array and sizes = max_buffer_sizes(...);
-   *  - Attribute a1 of type std::vector<int> = {{1,2,3}, {4}}
-   *    sizes["a1"].first >= 2
-   *    sizes["a1"].second >= 4 * sizeof(int)
-   *  - Attribute a2 of type int[2] = {{1,2}, {3,4}}
-   *    sizes["a1"].first  == 0
-   *    sizes["a1"].second >= 4 * sizeof(int)
+   * Compute an upper bound on the buffer elements needed to read a subarray.
    *
    * @tparam T The domain datatype
    * @param ctx The TileDB context
-   * @param uri array name
-   * @param subarray Subarray to compute sizes for
-   * @return The maximum number of bytes for each array attribute.
-   *     Note that two sizes are returned per attribute. The first
-   *     is the maximum number of elements in the offset buffer,
-   *     and the second is the maximum size of the value buffer in
-   *     bytes. For fixed size attributes, the first is always 0.
+   * @param uri The array URI.
+   * @param subarray Targeted subarray.
+   * @return The maximum number of elements for each array attribute (plus
+   *     coordinates for sparse arrays).
+   *     Note that two numbers are returned per attribute. The first
+   *     is the maximum number of elements in the offset buffer
+   *     (0 for fixed-sized attributes and coordinates),
+   *     and the second is the maximum number of elements of the value buffer.
    */
   template <typename T>
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  max_buffer_sizes(
+  max_buffer_elements(
       const Context& ctx,
       const std::string& uri,
       const std::vector<T>& subarray) {
     ArraySchema schema(ctx, uri);
-    return max_buffer_sizes<T>(uri, schema, subarray);
+    return max_buffer_elements<T>(uri, schema, subarray);
   }
 };
 

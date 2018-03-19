@@ -134,8 +134,8 @@ class TILEDB_EXPORT Query {
    * from the attribute name to a pair of values.
    *
    * The first is number of elements for var size attributes, and the second
-   * is number of elements in the data buffer. For fixed sized attributes,
-   * the first is always 0.
+   * is number of elements in the data buffer. For fixed sized attributes
+   * (and coordinates), the first is always 0.
    */
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   result_buffer_elements() const;

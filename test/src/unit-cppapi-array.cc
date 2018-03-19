@@ -123,19 +123,20 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
           std::end(a4buf.second),
           Point{{0, 0, 0}, 0});
 
-      auto buffsizes = Array::max_buffer_sizes(ctx, "cpp_unit_array", subarray);
-      CHECK(buffsizes.count("a1"));
-      CHECK(buffsizes.count("a2"));
-      CHECK(buffsizes.count("a3"));
-      CHECK(buffsizes.count("a4"));
-      CHECK(buffsizes["a1"].first == 0);
-      CHECK(buffsizes["a1"].second >= 2 * sizeof(int));
-      CHECK(buffsizes["a2"].first == 2);
-      CHECK(buffsizes["a2"].second >= 7);
-      CHECK(buffsizes["a3"].first == 0);
-      CHECK(buffsizes["a3"].second >= 4 * sizeof(double));
-      CHECK(buffsizes["a4"].first == 2);
-      CHECK(buffsizes["a4"].second >= 3 * sizeof(Point));
+      auto buff_el =
+          Array::max_buffer_elements(ctx, "cpp_unit_array", subarray);
+      CHECK(buff_el.count("a1"));
+      CHECK(buff_el.count("a2"));
+      CHECK(buff_el.count("a3"));
+      CHECK(buff_el.count("a4"));
+      CHECK(buff_el["a1"].first == 0);
+      CHECK(buff_el["a1"].second >= 2);
+      CHECK(buff_el["a2"].first == 2);
+      CHECK(buff_el["a2"].second >= 7);
+      CHECK(buff_el["a3"].first == 0);
+      CHECK(buff_el["a3"].second >= 4);
+      CHECK(buff_el["a4"].first == 2);
+      CHECK(buff_el["a4"].second >= 3);
 
       Query query(ctx, "cpp_unit_array", TILEDB_READ);
       query.set_buffer("a1", a1);
