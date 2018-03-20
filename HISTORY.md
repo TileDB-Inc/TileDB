@@ -37,14 +37,10 @@
 * `tiledb_query_finalize` must **always** be called before `tiledb_query_free`.
 
 ### C++ API
-* `max_buffer_elements` was renamed to `max_buffer_sizes` and now reports sizes in bytes instead of number of elements. This was done to support
-  arbitrary POD types.
-* Buffer size reporting for variable-sized attributes was normalized: offsets will always come first. This impacts `Array::max_buffer_sizes` and `Query::result_buffer_elements`.
-  If `pair.first` is 0, it is a fixed size attribute.
+* Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
 * `std::array<T, N>` is backed by a `char` tiledb attribute since the size is not guaranteed.
 * `Attribute::set_cell_val_num()` is deprecated. This is now deduced from the Attribute type.
 * Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
-* Modified `Array::max_buffer_sizes` to always return a pair of sizes in bytes.
 
 # TileDB v1.2.1 Release Notes
 

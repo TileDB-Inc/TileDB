@@ -76,7 +76,7 @@ int main() {
       a2_buff, result_el["a2"].first, result_el["a2"].second);
   auto a3 = tiledb::group_by_cell<2>(a3_buff);
   auto coords =
-      tiledb::group_by_cell<2>(coords_buff, result_el[TILEDB_COORDS].first);
+      tiledb::group_by_cell<2>(coords_buff, result_el[TILEDB_COORDS].second);
 
   std::cout << "Result num: " << result_el["a1"].first << "\n\n";
   std::cout << std::setw(8) << TILEDB_COORDS << std::setw(9) << "a1"
