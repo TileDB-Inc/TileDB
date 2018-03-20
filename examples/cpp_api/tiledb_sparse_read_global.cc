@@ -55,7 +55,7 @@ int main() {
   // Print maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {1, 4, 1, 4};
   auto max_sizes =
-      tiledb::Array::max_buffer_sizes(ctx, "my_sparse_array", subarray);
+      tiledb::Array::max_buffer_elements(ctx, "my_sparse_array", subarray);
   std::cout << "\nMaximum buffer elements:\n";
   for (const auto& e : max_sizes) {
     std::cout << e.first << ": (" << e.second.first << ", " << e.second.second
@@ -63,11 +63,11 @@ int main() {
   }
 
   // Prepare cell buffers
-  std::vector<int> a1_buff(max_sizes["a1"].second / sizeof(int));
+  std::vector<int> a1_buff(max_sizes["a1"].second);
   std::vector<uint64_t> a2_offsets(max_sizes["a2"].first);
-  std::vector<char> a2_data(max_sizes["a2"].second / sizeof(char));
-  std::vector<float> a3_buff(max_sizes["a3"].second / sizeof(float));
-  std::vector<uint64_t> coords_buff(max_sizes[TILEDB_COORDS].first);
+  std::vector<char> a2_data(max_sizes["a2"].second);
+  std::vector<float> a3_buff(max_sizes["a3"].second);
+  std::vector<uint64_t> coords_buff(max_sizes[TILEDB_COORDS].second);
 
   // Create query
   tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
