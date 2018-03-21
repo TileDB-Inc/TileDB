@@ -62,7 +62,7 @@ int main() {
     query.submit();
     auto result_el = query.result_buffer_elements();
 
-    for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+    for (unsigned i = 0; i < result_el["a1"].second; ++i) {
       std::cout << a1_data[i] << "\n";
     }
   } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);

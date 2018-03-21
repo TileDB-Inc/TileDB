@@ -113,6 +113,11 @@ class TILEDB_EXPORT Attribute {
    */
   unsigned cell_val_num() const;
 
+  /** Check if attribute is variable sized. **/
+  bool variable_sized() const {
+    return cell_val_num() == TILEDB_VAR_NUM;
+  }
+
   /** Returns the attribute compressor. */
   Compressor compressor() const;
 
@@ -150,6 +155,27 @@ class TILEDB_EXPORT Attribute {
     using DataT = typename impl::TypeHandler<T>;
     auto a = create(ctx, name, DataT::tiledb_type);
     a.set_cell_val_num(DataT::tiledb_num);
+    return a;
+  }
+
+  /**
+   * Factory function for creating a new attribute with datatype T.
+   *
+   * @tparam T Datatype of the attribute. Can either be arithmetic type,
+   *         C-style array, std::string, std::vector, or any trivially
+   *         copyable classes (defined by std::is_trivially_copyable).
+   * @param ctx The TileDB context.
+   * @param name The attribute name.
+   * @param compressor Compressor to use for attribute
+   * @return A new Attribute object.
+   */
+  template <typename T>
+  static Attribute create(
+      const Context& ctx,
+      const std::string& name,
+      const Compressor& compressor) {
+    auto a = create<T>(ctx, name);
+    a.set_compressor(compressor);
     return a;
   }
 

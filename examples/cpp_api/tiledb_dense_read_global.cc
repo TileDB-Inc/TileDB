@@ -77,7 +77,10 @@ int main() {
   query.set_buffer("a3", a3_buff);
 
   // Submit query
-  std::cout << "\nQuery submitted: " << query.submit() << "\n\n";
+  std::cout << "\nQuery submitted: " << query.submit();
+  std::cout << "\n\ta1: " << query.attribute_status("a1")
+            << "\n\ta2: " << query.attribute_status("a2")
+            << "\n\ta3: " << query.attribute_status("a3");
 
   // Print cell values (assumes all attributes are read)
   auto result_el = query.result_buffer_elements();
@@ -87,11 +90,11 @@ int main() {
       a2_buff, result_el["a2"].first, result_el["a2"].second);
   auto a3 = tiledb::group_by_cell<2>(a3_buff);
 
-  std::cout << "Result num: " << result_el["a1"].first << "\n\n";
+  std::cout << "\n\nResult num: " << result_el["a1"].second << "\n\n";
   std::cout << std::setw(5) << "a1" << std::setw(10) << "a2" << std::setw(10)
             << "a3[0]" << std::setw(11) << "a3[1]\n";
   std::cout << "-------------------------------------\n";
-  for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+  for (unsigned i = 0; i < result_el["a1"].second; ++i) {
     std::cout << std::setw(5) << a1_buff[i] << std::setw(10)
               << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
               << a3[i][0] << std::setw(10) << a3[i][1] << '\n';

@@ -193,24 +193,27 @@ class TILEDB_EXPORT Query {
   /**
    * Sets a buffer for a fixed-sized attribute.
    *
-   * @tparam Vec buffer type. Should always be a vector of the attribute type.
+   * @tparam Vec buffer. Should always be a vector type of the attribute type.
    * @param attr Attribute name
    * @param buf Buffer vector with elements of the attribute type.
    **/
   template <typename Vec>
   void set_buffer(const std::string& attr, Vec& buf) {
     using attribute_t = typename Vec::value_type;
+    uint64_t element_size;
     if (array_attributes_.count(attr)) {
       const auto& a = array_attributes_.at(attr);
       impl::type_check<attribute_t>(a.type(), 0);
+      element_size = a.variable_sized() ? sizeof(attribute_t) : a.cell_size();
     } else if (attr == TILEDB_COORDS) {
       impl::type_check<attribute_t>(schema_.domain().type());
+      element_size = tiledb_datatype_size(schema_.domain().type());
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        static_cast<uint64_t>(buf.size()),  // Want num elements
-        sizeof(attribute_t),
+        static_cast<uint64_t>(buf.size() * sizeof(attribute_t)),
+        std::move(element_size),
         const_cast<void*>(reinterpret_cast<const void*>(buf.data())));
     attrs_.emplace_back(attr);
   }
@@ -222,6 +225,9 @@ class TILEDB_EXPORT Query {
    * @param attr Attribute name
    * @param offsets Offsets where a new element begins in the data buffer.
    * @param data Buffer vector with elements of the attribute type.
+   *        For variable sized attributes, the buffer should be flattened. E.x.
+   *        an attribute of type std::string should have a buffer Vec type of
+   *        std::string, where the values of each cell are concatenated.
    **/
   template <typename Vec>
   void set_buffer(
@@ -232,7 +238,9 @@ class TILEDB_EXPORT Query {
     set_buffer(attr, data);
 
     var_offsets_[attr] = std::tuple<uint64_t, uint64_t, void*>(
-        offsets.size(), sizeof(uint64_t), offsets.data());
+        offsets.size() * TILEDB_OFFSET_SIZE,
+        TILEDB_OFFSET_SIZE,
+        offsets.data());
   }
 
   /**
@@ -248,11 +256,9 @@ class TILEDB_EXPORT Query {
     set_buffer(attr, buf.first, buf.second);
   }
 
-  /** Set the coordinate buffer for sparse arrays **/
+  /** Set the coordinate buffer for unordered queries **/
   template <typename Vec>
   void set_coordinates(Vec& buf) {
-    if (schema_.array_type() != TILEDB_SPARSE)
-      throw TileDBError("Cannot set coordinates for a dense array query");
     set_buffer(TILEDB_COORDS, buf);
   }
 
@@ -319,7 +325,10 @@ class TILEDB_EXPORT Query {
   std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>>
       attr_buffs_;
 
-  /** Keeps track of vector value_type sizes to convert back at return. */
+  /**
+   * Keeps track of buffer element sizes to convert at return. This is
+   * the datatype size * cell_num.
+   **/
   std::vector<uint64_t> sub_tsize_;
 
   /** URI of array being queried. **/

@@ -77,9 +77,9 @@ namespace tiledb {
  * schema.add_attribute(a1);
  *
  * // Specify tile memory layout
- * schema.set_tile_order(TILEDB_GLOBAL_ORDER);
+ * schema.set_tile_order(TILEDB_ROW_MAJOR);
  * // Specify cell memory layout within each tile
- * schema.set_cell_order(TILEDB_GLOBAL_ORDER);
+ * schema.set_cell_order(TILEDB_ROW_MAJOR);
  * schema.set_capacity(10); // For sparse, set capacity of each tile
  *
  * tiledb::Array::create(schema, "my_array"); // Make array with schema

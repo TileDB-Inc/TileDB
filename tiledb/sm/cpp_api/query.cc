@@ -164,12 +164,12 @@ void Query::prepare_submission() {
     if (var_offsets_.count(a)) {
       std::tie(bufsize, tsize, ptr) = var_offsets_[a];
       all_buff_.push_back(ptr);
-      buff_sizes_.push_back(bufsize * tsize);
+      buff_sizes_.push_back(bufsize);
       sub_tsize_.push_back(tsize);
     }
     std::tie(bufsize, tsize, ptr) = attr_buffs_[a];
     all_buff_.push_back(ptr);
-    buff_sizes_.push_back(bufsize * tsize);
+    buff_sizes_.push_back(bufsize);
     attr_names_.push_back(a.c_str());
     sub_tsize_.push_back(tsize);
   }

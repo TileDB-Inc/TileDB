@@ -164,7 +164,8 @@ class TILEDB_EXPORT Array {
           var ? std::pair<uint64_t, uint64_t>(
                     sizes[sid] / TILEDB_OFFSET_SIZE,
                     sizes[sid + 1] / tiledb_datatype_size(a.second.type())) :
-                std::pair<uint64_t, uint64_t>(0, sizes[sid]);
+                std::pair<uint64_t, uint64_t>(
+                    0, sizes[sid] / tiledb_datatype_size(a.second.type()));
       sid += var ? 2 : 1;
     }
 

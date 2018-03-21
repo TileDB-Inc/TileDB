@@ -44,15 +44,18 @@
 namespace tiledb {
 
 /**
- * Covert an (offset, data) vector pair into a single vector of vectors.
+ * Convert an (offset, data) vector pair into a single vector of vectors.
  *
- * @tparam T underlying datatype
- * @tparam E element type. usually std::vector<T> or std::string. Must be
- *     constructable by a buff::iterator pair
- * @param offsets Offsets vector
- * @param data Data vector
- * @param num_offsets Number of offset elements populated by query
- * @param num_data Number of data elements populated by query.
+ * @tparam T underlying attribute datatype
+ * @tparam E Cell type. usually std::vector<T> or std::string. Must be
+ *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
+ * @param offsets Offsets vector. This specifies the start offset of each
+ *        cell in the data vector.
+ * @param data Data vector. Flat data buffer will cell contents.
+ * @param num_offsets Number of offset elements populated by query. If the
+ *        entire buffer is to be grouped, use offsets.size().
+ * @param num_data Number of data elements populated by query. If the
+ *        entire buffer is to be grouped, use data.size().
  * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
@@ -76,9 +79,9 @@ std::vector<E> group_by_cell(
  * Covert an (offset, data) vector pair into a single vector of vectors.
  * Uses whole vectors.
  *
- * @tparam T underlying datatype
- * @tparam E element type. usually std::vector<T> or std::string. Must be
- *     constructable by a buff::iterator pair
+ * @tparam T underlying attribute datatype
+ * @tparam E Cell type. usually std::vector<T> or std::string. Must be
+ *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param offsets Offsets vector
  * @param data Data vector
  * @param num_offsets Number of offset elements populated by query
@@ -94,9 +97,9 @@ std::vector<E> group_by_cell(
 /**
  * Covert an (offset, data) vector pair into a single vector of vectors.
  *
- * @tparam T underlying datatype
- * @tparam E element type. usually std::vector<T> or std::string. Must be
- *     constructable by a buff::iterator pair
+ * @tparam T underlying attribute datatype
+ * @tparam E Cell type. usually std::vector<T> or std::string. Must be
+ *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param buff pair<offset_vec, data_vec>
  * @param num_offsets Number of offset elements populated by query
  * @param num_data Number of data elements populated by query.
@@ -113,9 +116,9 @@ std::vector<E> group_by_cell(
 /**
  * Group by cell at runtime.
  *
- * @tparam T Element type
- * @tparam E element type. usually std::vector<T> or std::string. Must be
- * constructable by a buff::iterator pair
+ * @tparam T underlying attribute datatype
+ * @tparam E Cell type. usually std::vector<T> or std::string. Must be
+ *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param buff data buffer
  * @param el_per_cell Number of elements per cell to group together
  * @param num_buff Number of elements populated by query. To group whole buffer,
@@ -140,8 +143,8 @@ std::vector<E> group_by_cell(
  * Group by cell at runtime. Uses whole data buffer.
  *
  * @tparam T Element type
- * @tparam E element type. usually std::vector<T> or std::string. Must be
- * constructable by a buff::iterator pair
+ * @tparam E Cell type. usually std::vector<T> or std::string. Must be
+ *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param buff data buffer
  * @param el_per_cell Number of elements per cell to group together
  * @param num_buff Number of elements populated by query. To group whole buffer,
