@@ -549,7 +549,6 @@ void ArrayOrderedReadState::async_done(void* data) {
   }
 
   // Handle overflow
-  bool sparse = array_schema->dense();
   if (overflow) {  // OVERFLOW
     // Update buffer sizes
     for (unsigned int i = 0, b = 0; i < anum; ++i) {
@@ -571,9 +570,8 @@ void ArrayOrderedReadState::async_done(void* data) {
       } else {  // VAR
         if (query->overflow(i)) {
           // Expand offset buffer only in the case of sparse arrays
-          if (sparse)
-            utils::expand_buffer(
-                asrs->buffers_[id][b], &(asrs->buffer_sizes_[id][b]));
+          utils::expand_buffer(
+              asrs->buffers_[id][b], &(asrs->buffer_sizes_[id][b]));
           // Re-assign the buffer size for the fixed-sized offsets
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
           ++b;
