@@ -59,11 +59,12 @@ struct CPPArrayFx {
         ctx, "a3");  // (char, sizeof(std::array<double,2>)
     auto a4 =
         Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
+    auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point)
     a1.set_compressor({TILEDB_BLOSC_LZ, -1});
 
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema.set_domain(domain);
-    schema.add_attributes(a1, a2, a3, a4);
+    schema.add_attributes(a1, a2, a3, a4, a5);
 
     Array::create("cpp_unit_array", schema);
   }
@@ -92,6 +93,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
     std::vector<std::vector<Point>> a4 = {
         {{{{1, 2, 3}, 4.1}, {{2, 3, 4}, 5.2}}}, {{{{5, 6, 7}, 8.3}}}};
+    std::vector<Point> a5 = {{{5, 6, 7}, 8.3}, {{5, 6, 7}, 8.3}};
 
     auto a2buf = ungroup_var_buffer(a2);
     auto a4buf = ungroup_var_buffer(a4);
@@ -105,6 +107,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3);
       query.set_buffer("a4", a4buf);
+      query.set_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -122,6 +125,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
           std::begin(a4buf.second),
           std::end(a4buf.second),
           Point{{0, 0, 0}, 0});
+      std::fill(std::begin(a5), std::end(a5), Point{{0, 0, 0}, 0});
 
       auto buff_el =
           Array::max_buffer_elements(ctx, "cpp_unit_array", subarray);
@@ -129,6 +133,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(buff_el.count("a2"));
       CHECK(buff_el.count("a3"));
       CHECK(buff_el.count("a4"));
+      CHECK(buff_el.count("a5"));
       CHECK(buff_el["a1"].first == 0);
       CHECK(buff_el["a1"].second >= 2);
       CHECK(buff_el["a2"].first == 2);
@@ -137,18 +142,21 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(buff_el["a3"].second >= 4);
       CHECK(buff_el["a4"].first == 2);
       CHECK(buff_el["a4"].second >= 3);
+      CHECK(buff_el["a5"].first == 0);
+      CHECK(buff_el["a5"].second >= 2);
 
       Query query(ctx, "cpp_unit_array", TILEDB_READ);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3);
       query.set_buffer("a4", a4buf);
+      query.set_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
       query.set_subarray(subarray);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
       auto ret = query.result_buffer_elements();
-      REQUIRE(ret.size() == 4);
+      REQUIRE(ret.size() == 5);
       CHECK(ret["a1"].first == 0);
       CHECK(ret["a1"].second == 2);
       CHECK(ret["a2"].first == 2);
@@ -157,6 +165,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(ret["a3"].second == 2);
       CHECK(ret["a4"].first == 2);
       CHECK(ret["a4"].second == 3);
+      CHECK(ret["a5"].first == 0);
+      CHECK(ret["a5"].second == 2);
 
       CHECK(a1[0] == 1);
       CHECK(a1[1] == 2);

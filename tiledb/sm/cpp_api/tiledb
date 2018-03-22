@@ -35,7 +35,6 @@
 #ifndef TILEDB_CPP_H
 #define TILEDB_CPP_H
 
-#include "tiledb.h"
 #include "array.h"
 #include "array_schema.h"
 #include "attribute.h"
@@ -47,6 +46,7 @@
 #include "dimension.h"
 #include "domain.h"
 #include "exception.h"
+#include "filebuf.h"
 #include "group.h"
 #include "map.h"
 #include "map_item.h"
@@ -57,9 +57,9 @@
 #include "object_iter.h"
 #include "query.h"
 #include "schema_base.h"
+#include "tiledb.h"
 #include "utils.h"
 #include "version.h"
 #include "vfs.h"
-#include "filebuf.h"
 
 #endif  // TILEDB_CPP_H

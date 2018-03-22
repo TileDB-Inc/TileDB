@@ -78,12 +78,12 @@ int main() {
   auto coords =
       tiledb::group_by_cell<2>(coords_buff, result_el[TILEDB_COORDS].second);
 
-  std::cout << "Result num: " << result_el["a1"].first << "\n\n";
+  std::cout << "Result num: " << result_el["a1"].second << "\n\n";
   std::cout << std::setw(8) << TILEDB_COORDS << std::setw(9) << "a1"
             << std::setw(9) << "a2" << std::setw(11) << "a3[0]" << std::setw(10)
             << "a3[1]\n";
   std::cout << "------------------------------------------------\n";
-  for (unsigned i = 0; i < result_el["a1"].first; ++i) {
+  for (unsigned i = 0; i < result_el["a1"].second; ++i) {
     std::cout << "(" << coords[i][0] << ", " << coords[i][1] << ")"
               << std::setw(10) << a1_buff[i] << std::setw(10)
               << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
