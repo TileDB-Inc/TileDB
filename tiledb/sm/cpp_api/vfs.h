@@ -115,9 +115,11 @@ class TILEDB_EXPORT VFS {
   /** Retrieves the size of a file with the input URI. */
   uint64_t file_size(const std::string& uri) const;
 
-  /** Renames a TileDB path from an old URI to a new URI. */
-  void move(
-      const std::string& old_uri, const std::string& new_uri, bool force) const;
+  /** Renames a TileDB file from an old URI to a new URI. */
+  void move_file(const std::string& old_uri, const std::string& new_uri) const;
+
+  /** Renames a TileDB directory from an old URI to a new URI. */
+  void move_dir(const std::string& old_uri, const std::string& new_uri) const;
 
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const;

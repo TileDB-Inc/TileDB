@@ -276,17 +276,17 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unsorted.
+   * coordinates are unordered.
    *
    * @param buffers See write().
    * @param buffer_sizes See write().
    * @return Status
    */
-  Status write_sparse_unsorted(void** buffers, uint64_t* buffer_sizes);
+  Status write_sparse_unordered(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unsorted, focusing on a single fixed-sized attribute.
+   * coordinates are unordered, focusing on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer The buffer to write.
@@ -294,7 +294,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return Status
    */
-  Status write_sparse_unsorted_attr(
+  Status write_sparse_unordered_attr(
       unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
@@ -302,7 +302,7 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unsorted, focusing on a single variable-sized attribute.
+   * coordinates are unordered, focusing on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer The buffer storing the offsets of the variable-sized cells.
@@ -312,7 +312,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return Status
    */
-  Status write_sparse_unsorted_attr_var(
+  Status write_sparse_unordered_attr_var(
       unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,

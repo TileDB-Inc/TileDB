@@ -137,14 +137,29 @@ Status WriteState::finalize() {
   auto array_schema = fragment_->query()->array_schema();
   unsigned attribute_num = array_schema->attribute_num();
   auto cell_num = metadata_->cell_num_in_domain();
-  auto storage_manager = fragment_->query()->storage_manager();
-  auto& fragment_uri = fragment_->fragment_uri();
 
-  bool fragment_exists;
-  RETURN_NOT_OK(storage_manager->is_dir(fragment_uri, &fragment_exists));
+  // Check if fragment exists (i.e., some cells were written)
+  bool fragment_exists = false;
+  for (const auto& c : cells_written_) {
+    if (c > 0) {
+      fragment_exists = true;
+      break;
+    }
+  }
 
-  // Check number of cells written (for a dense fragment that exists)
-  if (metadata_->dense() && fragment_exists) {
+  // Do nothing if fragment does not exist
+  if (!fragment_exists)
+    return Status::Ok();
+
+  // Write last tile (applicable only to the sparse case)
+  if (!tiles_[attribute_num]->empty())
+    RETURN_NOT_OK(write_last_tile());
+
+  // Sync all attributes
+  RETURN_NOT_OK(close_files());
+
+  if (metadata_->dense()) {  // DENSE
+    // Check number of cells written
     for (unsigned i = 0; i < attribute_num; ++i) {
       if (cells_written_[i] != 0 && cells_written_[i] != cell_num)
         return LOG_STATUS(Status::WriteStateError(
@@ -152,25 +167,17 @@ Status WriteState::finalize() {
             array_schema->attribute_name(i) +
             "'; Incorrect number of cells written"));
     }
+  } else {  // SPARSE
+    // Number of cells written should be equal across all attributes
+    if (!metadata_->dense() && fragment_exists) {
+      for (unsigned i = 1; i < cells_written_.size(); ++i) {
+        if (cells_written_[i] != cells_written_[i - 1])
+          return LOG_STATUS(Status::WriteStateError(
+              std::string("Cannot finalize write state; The number of cells "
+                          "written across the attributes is not the same")));
+      }
+    }
   }
-
-  // Number of cells written in a sparse fragment should be equal across
-  // all attributes
-  if (!metadata_->dense() && fragment_exists) {
-    for (unsigned i = 1; i < cells_written_.size(); ++i)
-      if (cells_written_[i] != cells_written_[i - 1])
-        return LOG_STATUS(Status::WriteStateError(
-            std::string("Cannot finalize write state; The number of cells "
-                        "written across the attributes is not the same")));
-  }
-
-  // Write last tile (applicable only to the sparse case)
-  if (!tiles_[attribute_num]->empty())
-    RETURN_NOT_OK(write_last_tile());
-
-  // Sync all attributes
-  if (fragment_exists)
-    RETURN_NOT_OK(close_files());
 
   // Success
   return Status::Ok();
@@ -204,23 +211,37 @@ Status WriteState::close_files() {
 }
 
 Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
-  // Create fragment directory if it does not exist
-  auto& fragment_uri = fragment_->fragment_uri();
-  auto storage_manager = fragment_->query()->storage_manager();
-  bool fragment_exists;
-  RETURN_NOT_OK(storage_manager->is_dir(fragment_uri, &fragment_exists))
-  if (!fragment_exists)
-    RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
+  // Sanity check
+  if (buffers == nullptr || buffer_sizes == nullptr)
+    return LOG_STATUS(Status::WriteStateError(
+        "Cannot write; Invalid buffers or buffer sizes"));
 
-  Layout layout = fragment_->query()->layout();
+  // Check if buffers are empty
+  auto& attribute_ids = fragment_->query()->attribute_ids();
+  auto attribute_id_num = (unsigned int)attribute_ids.size();
+  bool empty_buffers = true;
+  for (unsigned i = 0; i < attribute_id_num; ++i) {
+    if (buffer_sizes[i] > 0) {
+      empty_buffers = false;
+      break;
+    }
+  }
+
+  // If the buffers are empty, do nothing
+  if (empty_buffers)
+    return Status::Ok();
+
+  // Create fragment directory (if it does not exist)
+  auto storage_manager = fragment_->query()->storage_manager();
+  auto& fragment_uri = fragment_->fragment_uri();
+  RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
 
   // Dispatch the proper write command
+  Layout layout = fragment_->query()->layout();
   if (layout == Layout::GLOBAL_ORDER || layout == Layout::COL_MAJOR ||
       layout == Layout::ROW_MAJOR) {  // Ordered
     // For easy reference
     auto array_schema = fragment_->query()->array_schema();
-    auto& attribute_ids = fragment_->query()->attribute_ids();
-    auto attribute_id_num = (unsigned int)attribute_ids.size();
 
     // Write each attribute individually
     unsigned int buffer_i = 0;
@@ -245,7 +266,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   }
 
   if (layout == Layout::UNORDERED)  // UNORDERED
-    return write_sparse_unsorted(buffers, buffer_sizes);
+    return write_sparse_unordered(buffers, buffer_sizes);
 
   return LOG_STATUS(
       Status::WriteStateError("Cannot write to fragment; Invalid mode"));
@@ -578,6 +599,10 @@ Status WriteState::write_attr_last(unsigned int attribute_id) {
   metadata_->append_tile_offset(attribute_id, bytes_written);
   tile->reset_offset();
 
+  auto array_schema = fragment_->query()->array_schema();
+  cells_written_[attribute_id] +=
+      tile->size() / array_schema->cell_size(attribute_id);
+
   return Status::Ok();
 }
 
@@ -656,6 +681,9 @@ Status WriteState::write_attr_var_last(unsigned int attribute_id) {
   tile->reset_offset();
   tile_var->reset_offset();
 
+  cells_written_[attribute_id] +=
+      tile->size() / constants::cell_var_offset_size;
+
   return Status::Ok();
 }
 
@@ -681,7 +709,7 @@ Status WriteState::write_last_tile() {
   return Status::Ok();
 }
 
-Status WriteState::write_sparse_unsorted(
+Status WriteState::write_sparse_unordered(
     void** buffers, uint64_t* buffer_sizes) {
   // For easy reference
   auto query = fragment_->query();
@@ -702,14 +730,14 @@ Status WriteState::write_sparse_unsorted(
   int buffer_i = 0;
   for (int i = 0; i < attribute_id_num; ++i) {
     if (!array_schema->var_size(attribute_ids[i])) {  // FIXED CELLS
-      RETURN_NOT_OK(write_sparse_unsorted_attr(
+      RETURN_NOT_OK(write_sparse_unordered_attr(
           attribute_ids[i],
           buffers[buffer_i],
           buffer_sizes[buffer_i],
           cell_pos));
       ++buffer_i;
     } else {  // VARIABLE-SIZED CELLS
-      RETURN_NOT_OK(write_sparse_unsorted_attr_var(
+      RETURN_NOT_OK(write_sparse_unordered_attr_var(
           attribute_ids[i],
           buffers[buffer_i],  // offsets
           buffer_sizes[buffer_i],
@@ -724,7 +752,7 @@ Status WriteState::write_sparse_unsorted(
   return Status::Ok();
 }
 
-Status WriteState::write_sparse_unsorted_attr(
+Status WriteState::write_sparse_unordered_attr(
     unsigned int attribute_id,
     void* buffer,
     uint64_t buffer_size,
@@ -737,7 +765,7 @@ Status WriteState::write_sparse_unsorted_attr(
   uint64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != uint64_t(cell_pos.size())) {
     return LOG_STATUS(Status::WriteStateError(
-        std::string("Cannot write sparse unsorted; Invalid number of "
+        std::string("Cannot write sparse unordered; Invalid number of "
                     "cells in attribute '") +
         array_schema->attribute_name(attribute_id) + "'"));
   }
@@ -776,7 +804,7 @@ Status WriteState::write_sparse_unsorted_attr(
   return Status::Ok();
 }
 
-Status WriteState::write_sparse_unsorted_attr_var(
+Status WriteState::write_sparse_unordered_attr_var(
     unsigned int attribute_id,
     void* buffer,
     uint64_t buffer_size,
@@ -793,7 +821,7 @@ Status WriteState::write_sparse_unsorted_attr_var(
   uint64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != uint64_t(cell_pos.size())) {
     return LOG_STATUS(Status::WriteStateError(
-        std::string("Cannot write sparse unsorted variable; "
+        std::string("Cannot write sparse unordered variable; "
                     "Invalid number of cells in attribute '") +
         array_schema->attribute_name(attribute_id) + "'"));
   }

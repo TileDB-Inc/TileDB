@@ -165,7 +165,7 @@ Status create_dir(const std::string& path) {
   return Status::Ok();
 }
 
-Status create_file(const std::string& filename) {
+Status touch(const std::string& filename) {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd) != 0) {
     return LOG_STATUS(Status::IOError(
@@ -202,7 +202,7 @@ int unlink_cb(
   return rc;
 }
 
-Status remove_path(const std::string& path) {
+Status remove_dir(const std::string& path) {
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
   if (rc)
     return LOG_STATUS(Status::IOError(

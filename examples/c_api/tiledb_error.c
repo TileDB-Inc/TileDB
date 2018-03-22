@@ -40,8 +40,8 @@
  * ```
  * $ ./tiledb_error_c
  * Group created successfully!
- * [TileDB::VFS] Error: Cannot create directory 'file://<cwd>/my_group';
- * Directory already exists
+ * [TileDB::StorageManager] Error: Cannot create group; Group
+ * 'file://<cwd>/my_group' already exists
  * ```
  */
 

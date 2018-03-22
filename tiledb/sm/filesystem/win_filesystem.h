@@ -69,7 +69,7 @@ Status create_dir(const std::string& path);
  * @param filename The name of the file to be created.
  * @return Status
  */
-Status create_file(const std::string& filename);
+Status touch(const std::string& filename);
 
 /**
  * Returns the directory where the program is executed.
@@ -80,14 +80,12 @@ Status create_file(const std::string& filename);
 std::string current_dir();
 
 /**
- * Removes a given path recursively.
+ * Removes a given directory recursively.
  *
- * @param path The path of the file / directory to be deleted.
+ * @param path The path of the directory to be deleted.
  * @return Status
  */
-Status remove_path(const std::string& path);
-
-/** Deletes the file in the input path. */
+Status remove_dir(const std::string& path);
 
 /**
  * Removes a given path.

@@ -56,29 +56,18 @@ struct WinFx {
   const std::string TEMP_DIR = win::current_dir() + "/";
 
   WinFx() {
-    bool success = false;
-    if (path_exists(TEMP_DIR + "tiledb_test_dir")) {
-      success = remove_path(TEMP_DIR + "tiledb_test_dir");
-      assert(success);
-    }
-    if (path_exists(TEMP_DIR + "tiledb_test_file")) {
-      success = remove_path(TEMP_DIR + "tiledb_test_file");
-      assert(success);
-    }
+    if (path_exists(TEMP_DIR + "tiledb_test_dir"))
+      REQUIRE(win::remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
+    if (path_exists(TEMP_DIR + "tiledb_test_file"))
+      REQUIRE(win::remove_file(TEMP_DIR + "tiledb_test_file").ok());
   }
 
   ~WinFx() {
-    bool success = false;
-    success = remove_path(TEMP_DIR + "tiledb_test_dir");
-    assert(success);
+    REQUIRE(win::remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
   }
 
   bool path_exists(std::string path) {
     return win::is_file(path) || win::is_dir(path);
-  }
-
-  bool remove_path(std::string path) {
-    return win::remove_path(path).ok();
   }
 };
 
@@ -127,33 +116,33 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(win::is_dir(test_dir.to_path()));
 
   CHECK(!win::is_file(test_file.to_path()));
-  st = win::create_file(test_file.to_path());
+  st = win::touch(test_file.to_path());
   CHECK(st.ok());
   CHECK(win::is_file(test_file.to_path()));
-  st = win::create_file(test_file.to_path());
+  st = win::touch(test_file.to_path());
   CHECK(st.ok());
   CHECK(win::is_file(test_file.to_path()));
 
-  st = win::create_file(test_file.to_path());
+  st = win::touch(test_file.to_path());
   CHECK(st.ok());
-  st = win::remove_path(test_file.to_path());
+  st = win::remove_file(test_file.to_path());
   CHECK(st.ok());
   CHECK(!win::is_file(test_file.to_path()));
 
-  st = win::remove_path(test_dir.to_path());
+  st = win::remove_dir(test_dir.to_path());
   CHECK(st.ok());
   CHECK(!win::is_dir(test_dir.to_path()));
 
   st = win::create_dir(test_dir.to_path());
   CHECK(st.ok());
-  st = win::create_file(test_file.to_path());
+  st = win::touch(test_file.to_path());
   CHECK(st.ok());
-  st = win::remove_path(test_dir.to_path());
+  st = win::remove_dir(test_dir.to_path());
   CHECK(st.ok());
   CHECK(!win::is_dir(test_dir.to_path()));
 
   st = win::create_dir(test_dir.to_path());
-  st = win::create_file(test_file.to_path());
+  st = win::touch(test_file.to_path());
   CHECK(st.ok());
 
   const unsigned buffer_size = 100000;
@@ -205,7 +194,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(nbytes == buffer_size);
 
   st =
-      win::remove_path(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
+      win::remove_file(URI("file:///tiledb_test_dir/i_dont_exist").to_string());
   CHECK(!st.ok());
 
   st = win::move_path(test_file.to_path(), URI(test_file_path + "2").to_path());

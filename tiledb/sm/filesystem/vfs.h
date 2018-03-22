@@ -94,6 +94,10 @@ class VFS {
   /**
    * Creates a directory.
    *
+   * - On S3, this is a noop.
+   * - On all other backends, if the directory exists, the function
+   *   just succeeds without doing anything.
+   *
    * @param uri The URI of the directory.
    * @return Status
    */
@@ -105,7 +109,7 @@ class VFS {
    * @param uri The URI of the file.
    * @return Status
    */
-  Status create_file(const URI& uri) const;
+  Status touch(const URI& uri) const;
 
   /**
    * Creates an object-store bucket.
@@ -132,12 +136,12 @@ class VFS {
   Status empty_bucket(const URI& uri) const;
 
   /**
-   * Removes a given path (recursive)
+   * Removes a given directory (recursive)
    *
-   * @param uri The uri of the path to be removed
+   * @param uri The uri of the directory to be removed
    * @return Status
    */
-  Status remove_path(const URI& uri) const;
+  Status remove_dir(const URI& uri) const;
 
   /**
    * Deletes a file.
@@ -183,6 +187,10 @@ class VFS {
    * @param uri The URI of the directory.
    * @param is_dir Set to `true` if the directory exists and `false` otherwise.
    * @return Status
+   *
+   * @note For S3, this function will return `true` if there is an object
+   *     with prefix `uri/` (TileDB will append `/` internally to `uri`
+   *     only if it does not exist), and `false` othewise.
    */
   Status is_dir(const URI& uri, bool* is_dir) const;
 
@@ -225,15 +233,22 @@ class VFS {
   Status ls(const URI& parent, std::vector<URI>* uris) const;
 
   /**
-   * Renames a path.
+   * Renames a file.
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @param force Force the rename even if `new_uri` exists. In the latter
-   *     case `new_uri` will be overwritten.
    * @return Status
    */
-  Status move_path(const URI& old_uri, const URI& new_uri, bool force);
+  Status move_file(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Renames a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  Status move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
    * Reads from a file.

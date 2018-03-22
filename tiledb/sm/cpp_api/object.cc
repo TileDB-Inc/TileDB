@@ -118,10 +118,8 @@ void Object::remove(const Context& ctx, const std::string& uri) {
 void Object::move(
     const Context& ctx,
     const std::string& old_uri,
-    const std::string& new_uri,
-    bool force) {
-  ctx.handle_error(
-      tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str(), (int)force));
+    const std::string& new_uri) {
+  ctx.handle_error(tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str()));
 }
 
 /* ********************************* */

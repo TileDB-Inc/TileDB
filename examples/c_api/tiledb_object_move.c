@@ -76,12 +76,12 @@ int main() {
   tiledb_ctx_create(&ctx, NULL);
 
   // Rename a valid group and array
-  tiledb_object_move(ctx, "my_group", "my_group_2", 1);
+  tiledb_object_move(ctx, "my_group", "my_group_2");
   tiledb_object_move(
-      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array", 0);
+      ctx, "my_dense_array", "my_group_2/dense_arrays/my_dense_array");
 
   // Rename an invalid path
-  int rc = tiledb_object_move(ctx, "invalid_path", "path", 0);
+  int rc = tiledb_object_move(ctx, "invalid_path", "path");
   if (rc == TILEDB_ERR)
     printf("Failed moving invalid path\n");
 

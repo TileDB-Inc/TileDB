@@ -49,7 +49,7 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   REQUIRE(st.ok());
 
   if (hdfs::is_dir(fs, URI("hdfs:///tiledb_test"))) {
-    st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test"));
+    st = hdfs::remove_dir(fs, URI("hdfs:///tiledb_test"));
     CHECK(st.ok());
   }
 
@@ -61,14 +61,14 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   st = hdfs::create_dir(fs, URI("hdfs:///tiledb_test"));
   CHECK(!st.ok());
 
-  st = hdfs::create_file(fs, URI("hdfs:///tiledb_test_file"));
+  st = hdfs::touch(fs, URI("hdfs:///tiledb_test_file"));
   CHECK(st.ok());
   CHECK(hdfs::is_file(fs, URI("hdfs:///tiledb_test_file")));
 
   st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test_file"));
   CHECK(st.ok());
 
-  st = hdfs::create_file(fs, URI("hdfs:///tiledb_test/tiledb_test_file"));
+  st = hdfs::touch(fs, URI("hdfs:///tiledb_test/tiledb_test_file"));
   CHECK(st.ok());
 
   tSize buffer_size = 100000;
@@ -121,13 +121,13 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
-  st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test/i_dont_exist"));
+  st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test/i_dont_exist"));
   CHECK(!st.ok());
 
   st = hdfs::remove_file(fs, URI("hdfs:///tiledb_test/tiledb_test_file"));
   CHECK(st.ok());
 
-  st = hdfs::remove_path(fs, URI("hdfs:///tiledb_test"));
+  st = hdfs::remove_dir(fs, URI("hdfs:///tiledb_test"));
   CHECK(st.ok());
 
   st = hdfs::disconnect(fs);

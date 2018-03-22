@@ -79,7 +79,7 @@ int main() {
 
   // Moving files (moving directories is similar)
   printf("Moving file dir_A/file_A to dir_A/file_B\n");
-  tiledb_vfs_move(ctx, vfs, "dir_A/file_A", "dir_A/file_B", 1);
+  tiledb_vfs_move_file(ctx, vfs, "dir_A/file_A", "dir_A/file_B");
 
   // Deleting files and directories. Note that, in the case of directories,
   // the function will delete all the contents of the directory (i.e., it

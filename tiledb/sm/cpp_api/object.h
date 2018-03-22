@@ -110,15 +110,11 @@ class TILEDB_EXPORT Object {
    *
    * @param old_uri The path to the old object.
    * @param new_uri The path to the new object.
-   * @param force If set to `true` the move will be forced and overwrite
-   *     an existing `new_uri` object. Otherwise, the function will throw
-   *     an error.
    */
   static void move(
       const Context& ctx,
       const std::string& old_uri,
-      const std::string& new_uri,
-      bool force);
+      const std::string& new_uri);
 
  private:
   /* ********************************* */

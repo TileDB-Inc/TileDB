@@ -108,12 +108,12 @@ Config VFS::config() const {
 Status VFS::create_dir(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_dir);
 
-  bool is_dir;
-  RETURN_NOT_OK(this->is_dir(uri, &is_dir));
-  if (is_dir)
-    return LOG_STATUS(Status::VFSError(
-        std::string("Cannot create directory '") + uri.c_str() +
-        "'; Directory already exists"));
+  if (!uri.is_s3()) {
+    bool is_dir;
+    RETURN_NOT_OK(this->is_dir(uri, &is_dir));
+    if (is_dir)
+      return Status::Ok();
+  }
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -126,35 +126,37 @@ Status VFS::create_dir(const URI& uri) const {
 #ifdef HAVE_HDFS
     return hdfs::create_dir(hdfs_, uri);
 #else
-    return Status::VFSError("TileDB was built without HDFS support");
+    return LOG_STATUS(
+        Status::VFSError("TileDB was built without HDFS support"));
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.create_dir(uri);
+    // It is a noop for S3
+    return Status::Ok();
 #else
-    return Status::VFSError("TileDB was built without S3 support");
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
-  return Status::Error(
-      std::string("Unsupported URI scheme: ") + uri.to_string());
+  return LOG_STATUS(
+      Status::Error(std::string("Unsupported URI scheme: ") + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_create_dir);
 }
 
-Status VFS::create_file(const URI& uri) const {
+Status VFS::touch(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_file);
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win::create_file(uri.to_path());
+    return win::touch(uri.to_path());
 #else
-    return posix::create_file(uri.to_path());
+    return posix::touch(uri.to_path());
 #endif
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::create_file(hdfs_, uri);
+    return hdfs::touch(hdfs_, uri);
 #else
     return LOG_STATUS(
         Status::VFSError("TileDB was built without HDFS support"));
@@ -162,9 +164,9 @@ Status VFS::create_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.create_file(uri);
+    return s3_.touch(uri);
 #else
-    return Status::VFSError("TileDB was built without S3 support");
+    return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
   return LOG_STATUS(Status::VFSError(
@@ -196,7 +198,7 @@ Status VFS::remove_bucket(const URI& uri) const {
 
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.delete_bucket(uri);
+    return s3_.remove_bucket(uri);
 #else
     (void)uri;
     return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
@@ -246,25 +248,25 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   STATS_FUNC_OUT(vfs_is_empty_bucket);
 }
 
-Status VFS::remove_path(const URI& uri) const {
-  STATS_FUNC_IN(vfs_remove_path);
+Status VFS::remove_dir(const URI& uri) const {
+  STATS_FUNC_IN(vfs_remove_dir);
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win::remove_path(uri.to_path());
+    return win::remove_dir(uri.to_path());
 #else
-    return posix::remove_path(uri.to_path());
+    return posix::remove_dir(uri.to_path());
 #endif
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs::remove_path(hdfs_, uri);
+    return hdfs::remove_dir(hdfs_, uri);
 #else
     return LOG_STATUS(
         Status::VFSError("TileDB was built without HDFS support"));
 #endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.remove_path(uri);
+    return s3_.remove_dir(uri);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
@@ -273,7 +275,7 @@ Status VFS::remove_path(const URI& uri) const {
         Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
   }
 
-  STATS_FUNC_OUT(vfs_remove_path);
+  STATS_FUNC_OUT(vfs_remove_dir);
 }
 
 Status VFS::remove_file(const URI& uri) const {
@@ -296,7 +298,7 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.remove_file(uri);
+    return s3_.remove_object(uri);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
@@ -389,7 +391,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.file_size(uri, size);
+    return s3_.object_size(uri, size);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
@@ -423,8 +425,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_dir = s3_.is_dir(uri);
-    return Status::Ok();
+    return s3_.is_dir(uri, is_dir);
 #else
     *is_dir = false;
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
@@ -459,7 +460,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_file = s3_.is_file(uri);
+    *is_file = s3_.is_object(uri);
     return Status::Ok();
 #else
     *is_file = false;
@@ -553,18 +554,14 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   STATS_FUNC_OUT(vfs_ls);
 }
 
-Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
-  STATS_FUNC_IN(vfs_move_path);
+Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
+  STATS_FUNC_IN(vfs_move_file);
 
-  // If new_uri exists, delete it
-  if (force) {
-    bool is_dir;
-    RETURN_NOT_OK(this->is_dir(new_uri, &is_dir));
-    bool is_file;
-    RETURN_NOT_OK(this->is_file(new_uri, &is_file));
-    if (is_dir || is_file)
-      RETURN_NOT_OK(remove_path(new_uri));
-  }
+  // If new_uri exists, delete it or raise an error based on `force`
+  bool is_file;
+  RETURN_NOT_OK(this->is_file(new_uri, &is_file));
+  if (is_file)
+    RETURN_NOT_OK(remove_file(new_uri));
 
   // File
   if (old_uri.is_file()) {
@@ -596,7 +593,7 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3())
 #ifdef HAVE_S3
-      return s3_.move_path(old_uri, new_uri);
+      return s3_.move_object(old_uri, new_uri);
 #else
       return LOG_STATUS(
           Status::VFSError("TileDB was built without S3 support"));
@@ -610,7 +607,57 @@ Status VFS::move_path(const URI& old_uri, const URI& new_uri, bool force) {
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string()));
 
-  STATS_FUNC_OUT(vfs_move_path);
+  STATS_FUNC_OUT(vfs_move_file);
+}
+
+Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+  STATS_FUNC_IN(vfs_move_dir);
+
+  // File
+  if (old_uri.is_file()) {
+    if (new_uri.is_file()) {
+#ifdef _WIN32
+      return win::move_path(old_uri.to_path(), new_uri.to_path());
+#else
+      return posix::move_path(old_uri.to_path(), new_uri.to_path());
+#endif
+    }
+    return LOG_STATUS(Status::VFSError(
+        "Moving files across filesystems is not supported yet"));
+  }
+
+  // HDFS
+  if (old_uri.is_hdfs()) {
+    if (new_uri.is_hdfs())
+#ifdef HAVE_HDFS
+      return hdfs::move_path(hdfs_, old_uri, new_uri);
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without HDFS support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Moving files across filesystems is not supported yet"));
+  }
+
+  // S3
+  if (old_uri.is_s3()) {
+    if (new_uri.is_s3())
+#ifdef HAVE_S3
+      return s3_.move_dir(old_uri, new_uri);
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without S3 support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Moving files across filesystems is not supported yet"));
+  }
+
+  // Unsupported filesystem
+  return LOG_STATUS(Status::VFSError(
+      "Unsupported URI schemes: " + old_uri.to_string() + ", " +
+      new_uri.to_string()));
+
+  STATS_FUNC_OUT(vfs_move_dir);
 }
 
 Status VFS::read(
@@ -741,7 +788,7 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.flush_file(uri);
+    return s3_.flush_object(uri);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif

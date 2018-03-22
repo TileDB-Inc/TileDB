@@ -73,8 +73,6 @@
 namespace tiledb {
 namespace sm {
 
-class BufferCache;
-
 /**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
@@ -141,59 +139,25 @@ class S3 {
   Status create_bucket(const URI& bucket) const;
 
   /**
-   * Creates a new directory. Directories are not really supported in S3.
-   * Instead we just create an empty file having a ".dir" suffix
-   *
-   * @param uri The URI of the directory resource to be created.
-   * @return Status
-   */
-  Status create_dir(const URI& uri) const;
-
-  /**
-   * Creates an empty object.
-   *
-   * @param uri The URI of the object to be created.
-   * @return Status
-   */
-  Status create_file(const URI& uri) const;
-
-  /**
    * Disconnects a S3 client.
    *
    * @return Status
    */
   Status disconnect();
 
-  /**
-   * Deletes a bucket.
-   *
-   * @param bucket The name of the bucket to be deleted.
-   * @return Status
-   */
-  Status delete_bucket(const URI& bucket) const;
-
   /** Removes the contents of an S3 bucket. */
   Status empty_bucket(const URI& bucket) const;
 
-  /** Checks if a bucket is empty. */
-  Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
-
   /**
-   * Returns the size of the input file with a given URI in bytes.
-   *
-   * @param uri The URI of the file.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
-   */
-  Status file_size(const URI& uri, uint64_t* nbytes) const;
-
-  /**
-   * Flushes a file to s3, finalizing the multpart upload.
+   * Flushes an object to S3, finalizing the multpart upload.
    *
    * @param uri The URI of the object to be flushed.
    * @return Status
    */
-  Status flush_file(const URI& uri);
+  Status flush_object(const URI& uri);
+
+  /** Checks if a bucket is empty. */
+  Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
 
   /**
    * Check if a bucket exists.
@@ -204,69 +168,153 @@ class S3 {
   bool is_bucket(const URI& uri) const;
 
   /**
-   * Checks if the URI is an existing S3 directory. Checks if the ".dir" object
-   * exists
+   * Checks if there is an object with prefix `uri/`. For instance, suppose
+   * the following objects exist:
    *
-   * @param uri The URI of the directory to be checked
-   * @return `True` if `uri` is an existing directory, `false` otherwise.
+   * `s3://some_bucket/foo/bar1`
+   * `s3://some_bucket/foo2`
+   *
+   * `is_dir(`s3://some_bucket/foo`) and `is_dir(`s3://some_bucket/foo`) will
+   * both return `true`, whereas `is_dir(`s3://some_bucket/foo2`) will return
+   * `false`. This is because the function will first convert the input to
+   * `s3://some_bucket/foo2/` (appending `/` in the end) and then check if
+   * there exists any object with prefix `s3://some_bucket/foo2/` (in this
+   * case there is not).
+   *
+   * @param uri The URI to check.
+   * @param exists Sets it to `true` if the above mentioned condition holds.
+   * @return Status
    */
-  bool is_dir(const URI& uri) const;
+  Status is_dir(const URI& uri, bool* exists) const;
 
   /**
    * Checks if the given URI is an existing S3 object.
    *
-   * @param uri The URI of the file to be checked.
-   * @return `True` if `uri` is an existing file, and `false` otherwise.
+   * @param uri The URI of the object to be checked.
+   * @return `True` if `uri` is an existing object, and `false` otherwise.
    */
-  bool is_file(const URI& uri) const;
+  bool is_object(const URI& uri) const;
 
   /**
-   * Lists the files one level deep under a given path.
+   * Lists the objects that start with `prefix`. Full URI paths are
+   * retrieved for the matched objects. If a delimiter is specified,
+   * the URI paths will be truncated to the first delimiter character.
+   * For instance, if there is a hierarchy:
    *
-   * @param uri The URI of the parent directory path.
+   * - `foo/bar/baz`
+   * - `foo/bar/bash`
+   * - `foo/bar/bang`
+   * - `foo/boo`
+   *
+   * and the delimiter is `/`, the returned URIs will be
+   *
+   * - `foo/boo`
+   * - `foo/bar/`
+   *
+   * @param prefix The prefix URI.
    * @param paths Pointer of a vector of URIs to store the retrieved paths.
+   * @param delimiter The delimiter that will
+   * @param max_paths The maximum number of paths to be retrieved. The default
+   *     `-1` indicates that no upper bound is specified.
    * @return Status
    */
-  Status ls(const URI& uri, std::vector<std::string>* paths) const;
+  Status ls(
+      const URI& prefix,
+      std::vector<std::string>* paths,
+      const std::string& delimiter = "/",
+      int max_paths = -1) const;
 
   /**
-   * Move a given filesystem path. This is a difficult task for S3 if the
-   * path is a directory, because we need to recursively rename all objects
-   * inside the directory.
+   * Renames an object.
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status move_path(const URI& old_uri, const URI& new_uri);
+  Status move_object(const URI& old_uri, const URI& new_uri);
 
   /**
-   *  Reads data from a file into a buffer.
+   * Renames a directory. Note that this is an expensive operation.
+   * The function will essentially copy all objects with directory
+   * prefix `old_uri` to new objects with prefix `new_uri` and then
+   * delete the old ones.
    *
-   * @param uri The URI of the file to be read.
-   * @param offset The offset in the file from which the read will start.
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   * @return Status
+   */
+  Status move_dir(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Returns the size of the input object with a given URI in bytes.
+   *
+   * @param uri The URI of the object.
+   * @param nbytes Pointer to `uint64_t` bytes to return.
+   * @return Status
+   */
+  Status object_size(const URI& uri, uint64_t* nbytes) const;
+
+  /**
+   * Reads data from an object into a buffer.
+   *
+   * @param uri The URI of the object to be read.
+   * @param offset The offset in the object from which the read will start.
    * @param buffer The buffer into which the data will be written.
-   * @param length The size of the data to be read from the file.
+   * @param length The size of the data to be read from the object.
    * @return Status
    */
   Status read(
       const URI& uri, off_t offset, void* buffer, uint64_t length) const;
 
   /**
-   * Deletes a file with a given URI.
+   * Deletes a bucket.
    *
-   * @param uri The URI of the file to be deleted.
+   * @param bucket The name of the bucket to be deleted.
    * @return Status
    */
-  Status remove_file(const URI& uri) const;
+  Status remove_bucket(const URI& bucket) const;
 
   /**
-   * Removes a "directory" with a given URI (and all its contents)
+   * Deletes an object with a given URI.
    *
-   * @param uri The URI of the directory to be removed.
+   * @param uri The URI of the object to be deleted.
    * @return Status
    */
-  Status remove_path(const URI& uri) const;
+  Status remove_object(const URI& uri) const;
+
+  /**
+   * Deletes all objects with prefix `prefix/` (if the ending `/` does not
+   * exist in `prefix`, it is added by the function.
+   *
+   * For instance, suppose there exist the following objects:
+   * - `s3://some_bucket/foo/bar1`
+   * - `s3://some_bucket/foo/bar2/bar3
+   * - `s3://some_bucket/foo/bar4
+   * - `s3://some_bucket/foo2`
+   *
+   * `remove("s3://some_bucket/foo")` and `remove("s3://some_bucket/foo/")`
+   * will delete objects:
+   *
+   * - `s3://some_bucket/foo/bar1`
+   * - `s3://some_bucket/foo/bar2/bar3
+   * - `s3://some_bucket/foo/bar4
+   *
+   * In contrast, `remove("s3://some_bucket/foo2")` will not delete anything;
+   * the function internally appends `/` to the end of the URI, and therefore
+   * there is not object with prefix "s3://some_bucket/foo2/" in this example.
+   *
+   * @param uri The prefix of the objects to be deleted.
+   * @return Status
+   */
+  Status remove_dir(const URI& prefix) const;
+
+  /**
+   * Creates an empty object.
+   *
+   * @param uri The URI of the object to be created.
+   * @return Status
+   */
+  Status touch(const URI& uri) const;
 
   /**
    * Writes the input buffer to an S3 object. Note that this is essentially
@@ -316,27 +364,13 @@ class S3 {
   /* ********************************* */
 
   /**
-   * Copies the directory identified by `old_uri` to a new one identified by
-   * `new_uri`. This is done recursively for
-   * all the objects that have as prefix the directory path.
+   * Copies an object.
    *
-   * @param old_uri The directory to be copied.
-   * @param new_uri The newly created directory.
+   * @param old_uri The object to be copied.
+   * @param new_uri The newly created object.
    * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Copies a file.
-   *
-   * @param old_uri The file to be copied.
-   * @param new_uri The newly created file.
-   * @return Status
-   */
-  Status copy_file(const URI& old_uri, const URI& new_uri);
-
-  /** Removes the contents of an S3 bucket. */
-  Status empty_bucket(const Aws::String& bucketName) const;
+  Status copy_object(const URI& old_uri, const URI& new_uri);
 
   /**
    * Fills the file buffer (given as an input `Buffer` object) from the
@@ -356,9 +390,16 @@ class S3 {
       uint64_t* nbytes_filled);
 
   /**
-   * Simply removes a potential `/` character from the front of `object_key`.
+   * Returns the input `path` after adding a `/` character
+   * at the front if it does not exist.
    */
-  Aws::String fix_path(const Aws::String& object_key) const;
+  std::string add_front_slash(const std::string& path) const;
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the front if it exists.
+   */
+  std::string remove_front_slash(const std::string& path) const;
 
   /**
    * Writes the contents of the input buffer to the S3 object given by
@@ -389,17 +430,6 @@ class S3 {
    */
   std::string join_authority_and_path(
       const std::string& authority, const std::string& path) const;
-
-  /**
-   * Replaces in the `str` string the string `from` with string `to`.
-   *
-   * @param str The target string.
-   * @param from The string to be replaced.
-   * @param to The new string that will substitute `from`.
-   * @return `true` if `from` exists in `str` and `false` otherwise.
-   */
-  bool replace(
-      std::string& str, const std::string& from, const std::string& to) const;
 
   /** Waits for the input object to be propagated. */
   bool wait_for_object_to_propagate(

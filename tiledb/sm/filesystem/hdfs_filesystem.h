@@ -110,7 +110,7 @@ bool is_file(hdfsFS fs, const URI& uri);
  * @param uri The URI of the file to be created.
  * @return Status
  */
-Status create_file(hdfsFS fs, const URI& uri);
+Status touch(hdfsFS fs, const URI& uri);
 
 /**
  * Delete a file with a given URI.
@@ -122,13 +122,13 @@ Status create_file(hdfsFS fs, const URI& uri);
 Status remove_file(hdfsFS fs, const URI& uri);
 
 /**
- * Remove a path with a given URI (recursively)
+ * Remove a directory with a given URI (recursively)
  *
  * @param fs Connected hdfsFS filesystem handle.
- * @param uri The URI of the path to be removed.
+ * @param uri The URI of the directory to be removed.
  * @return Status
  */
-Status remove_path(hdfsFS fs, const URI& uri);
+Status remove_dir(hdfsFS fs, const URI& uri);
 
 /**
  *  Reads data from a file into a buffer.

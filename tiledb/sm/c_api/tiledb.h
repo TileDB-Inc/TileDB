@@ -2183,18 +2183,16 @@ TILEDB_EXPORT int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path);
  * **Example:**
  *
  * @code{.c}
- * tiledb_object_move(ctx, "arrays/my_array", "arrays/my_array_2", 1);
+ * tiledb_object_move(ctx, "arrays/my_array", "arrays/my_array_2");
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param old_path The old TileDB directory.
  * @param new_path The new TileDB directory.
- * @param force Move resource even if an existing resource exists at the given
- *     path if set to `1` (i.e., overwrite existing resource).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path, int force);
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path);
 
 /**
  * Walks (iterates) over the TileDB objects contained in *path*. The traversal
@@ -2998,6 +2996,10 @@ TILEDB_EXPORT int tiledb_vfs_is_bucket(
 /**
  * Creates a directory.
  *
+ * - On S3, this is a noop.
+ * - On all other backends, if the directory exists, the function
+ *   just succeeds without doing anything.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -3028,6 +3030,10 @@ TILEDB_EXPORT int tiledb_vfs_create_dir(
  * @param is_dir Sets it to `1` if the directory exists and `0`
  *     otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note For S3, this function will return `true` if there is an object
+ *     with prefix `uri/` (TileDB will append `/` internally to `uri`
+ *     only if it does not exist), and `false` othewise.
  */
 TILEDB_EXPORT int tiledb_vfs_is_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_dir);
@@ -3105,28 +3111,47 @@ TILEDB_EXPORT int tiledb_vfs_file_size(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
 
 /**
- * Renames a file or directory.
+ * Renames a file. If the destination file exists, it will be overwritten.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_move(ctx, vfs, "hdfs:///temp/my_file", "hdfs::///new_file", 1);
+ * tiledb_vfs_move_file(
+ * ctx, vfs, "hdfs:///temp/my_file", "hdfs::///new_file");
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object.
  * @param old_uri The old URI.
  * @param new_uri The new URI.
- * @param force Move the file/directory even if the destination URI exists.w
- *     In the latter case, the destination URI is overwritten.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_vfs_move(
+TILEDB_EXPORT int tiledb_vfs_move_file(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
-    const char* new_uri,
-    int force);
+    const char* new_uri);
+
+/**
+ * Renames a directory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_move_dir(ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param old_uri The old URI.
+ * @param new_uri The new URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_vfs_move_dir(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri);
 
 /**
  * Prepares a file for reading/writing.
