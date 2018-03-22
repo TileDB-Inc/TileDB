@@ -58,7 +58,7 @@ namespace impl {
 
 /** Used to defer compilation of static_assert until type is known. **/
 template <typename T>
-struct defer : std::false_type {};
+struct defer_assert : std::false_type {};
 
 /** SFINAE handler for types that make sense to be bitwise copied. **/
 template <typename T>
@@ -137,6 +137,76 @@ struct type_to_tiledb<double> {
   static const tiledb_datatype_t tiledb_type = TILEDB_FLOAT64;
 };
 
+/** Convert tiledb_datatype_t to a type. **/
+template <tiledb_datatype_t T>
+struct tiledb_to_type;
+
+template <>
+struct tiledb_to_type<TILEDB_CHAR> {
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_CHAR;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_INT8> {
+  using type = int8_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT8;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_UINT8> {
+  using type = uint8_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT8;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_INT16> {
+  using type = int16_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT16;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_UINT16> {
+  using type = uint16_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT16;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_INT32> {
+  using type = int32_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT32;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_UINT32> {
+  using type = uint32_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT32;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_INT64> {
+  using type = int64_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_INT64;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_UINT64> {
+  using type = uint64_t;
+  static const tiledb_datatype_t tiledb_type = TILEDB_UINT64;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_FLOAT32> {
+  using type = float;
+  static const tiledb_datatype_t tiledb_type = TILEDB_FLOAT32;
+};
+
+template <>
+struct tiledb_to_type<TILEDB_FLOAT64> {
+  using type = double;
+  static const tiledb_datatype_t tiledb_type = TILEDB_FLOAT64;
+};
+
 /**
  * A type handler provides a mapping from a C++ type to a TileDB
  * representation.
@@ -158,7 +228,7 @@ struct type_to_tiledb<double> {
  */
 template <typename T, typename Enable = void>
 struct TypeHandler {
-  static_assert(defer<T>::value, "No TypeHandler exists for type.");
+  static_assert(defer_assert<T>::value, "No TypeHandler exists for type.");
 };
 
 /** Handler for all trivially copyable types, such as POD structs. **/
