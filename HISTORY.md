@@ -1,56 +1,35 @@
-# In Progress
+# TileDB v1.2.2 Release Notes
 
-## New features
+## Bug fixes
 
-* Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
-* Added `TILEDB_ANY` datatype (PR #446)
+* Fix I/O bug on POSIX systems with large reads/writes ([#467](https://github.com/TileDB-Inc/TileDB/pull/467))
+* Memory overflow error handling (moved from constructors to init functions) ([#472](https://github.com/TileDB-Inc/TileDB/pull/472))
+* Memory leaks with realloc in case of error ([#472](https://github.com/TileDB-Inc/TileDB/pull/472))
+* Handle non-existent config param in C++ API ([#475](https://github.com/TileDB-Inc/TileDB/pull/475))
+* Read query overflow handling ([#485](https://github.com/TileDB-Inc/TileDB/pull/485))
 
 ## Improvements
 
-* Minor S3 optimizations and error message fixes (PR #462)
-* Changed S3 default config so that AWS S3 just works (PR #455)
-
-## Bug Fixes
-
-* Memory overflow error handling (moved from constructors to init functions)
-* Memory leaks with realloc in case of error
-* Handle non-existent config param in C++ API.
-
-## API additions
-
-### C API
-### C++ API
-* Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
-* `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
-  objects such as a simple data struct.
-
-## Breaking changes
-
-### C API
-### C++ API
-* `max_buffer_elements` was renamed to `max_buffer_sizes` and now reports sizes in bytes instead of number of elements. This was done to support
-  arbitrary POD types.
-* Buffer size reporting for variable-sized attributes was normalized: offsets will always come first. This impacts `Array::max_buffer_sizes` and `Query::result_buffer_elements`.
-  If `pair.first` is 0, it is a fixed size attribute.
-* `std::array<T, N>` is backed by a `char` tiledb attribute since the size is not guaranteed.
-* `Attribute::set_cell_val_num()` is deprecated. This is now deduced from the Attribute type.
-* Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
+* Changed S3 default config so that AWS S3 just works ([#455](https://github.com/TileDB-Inc/TileDB/pull/455))
+* Minor S3 optimizations and error message fixes ([#462](https://github.com/TileDB-Inc/TileDB/pull/462))
+* Documentation additions including S3 usage ([#456](https://github.com/TileDB-Inc/TileDB/pull/456), [#458](https://github.com/TileDB-Inc/TileDB/pull/458), [#459](https://github.com/TileDB-Inc/TileDB/pull/459))
+* Various CI improvements ([#449](https://github.com/TileDB-Inc/TileDB/pull/449))
 
 # TileDB v1.2.1 Release Notes
 
 ## Bug fixes
 
-* Fixed TileDB header includes for all examples (#409)
-* Fixed TileDB library dynamic linking problem for C++ API (#412)
-* Fixed VS2015 build errors (#424)
-* Bug fix in the sparse case (#434)
-* Bug fix for 1D vector query layout (#438)
+* Fixed TileDB header includes for all examples ([#409](https://github.com/TileDB-Inc/TileDB/pull/409))
+* Fixed TileDB library dynamic linking problem for C++ API ([#412](https://github.com/TileDB-Inc/TileDB/pull/412))
+* Fixed VS2015 build errors ([#424](https://github.com/TileDB-Inc/TileDB/pull/424))
+* Bug fix in the sparse case ([#434](https://github.com/TileDB-Inc/TileDB/pull/434))
+* Bug fix for 1D vector query layout ([#438](https://github.com/TileDB-Inc/TileDB/pull/438))
 
 ## Improvements
 
-* Added documentation to API and examples (#410, #414)
-* Migrated docs to Readthedocs (#418, #420, #422, #423, #425)
-* Added dimension domain/tile extent checks (#429)
+* Added documentation to API and examples ([#410](https://github.com/TileDB-Inc/TileDB/pull/410), [#414](https://github.com/TileDB-Inc/TileDB/pull/414))
+* Migrated docs to Readthedocs ([#418](https://github.com/TileDB-Inc/TileDB/pull/418), [#420](https://github.com/TileDB-Inc/TileDB/pull/420), [#422](https://github.com/TileDB-Inc/TileDB/pull/422), [#423](https://github.com/TileDB-Inc/TileDB/pull/423), [#425](https://github.com/TileDB-Inc/TileDB/pull/425))
+* Added dimension domain/tile extent checks ([#429](https://github.com/TileDB-Inc/TileDB/pull/429))
 
 
 # TileDB v1.2.0 Release Notes
