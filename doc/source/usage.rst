@@ -1,32 +1,59 @@
 Usage
 =====
 
-If TileDB is not installed globally, or you would like to specify a custom version of tiledb
-to build and link against you need to specify the correct paths for including ``tiledb.h``
-and linking the ``libtiledb`` shared library.
+If TileDB is not installed globally, or you would like to specify a custom version of
+TileDB to build and link against, you will need to specify the correct paths for including
+the ``tiledb/tiledb.h`` (C API) or ``tiledb/tiledb`` (C++ API) files and linking to the
+``libtiledb`` shared library.
 
 macOS or Linux
 --------------
 
-By default the make install script without specifying an install prefix, ``../bootstrap --prefix=PREFIX``,
-installs to the dist folder in the TileDB repo: ``<path/to/TileDB>/dist``.
+By default, if you do not specify an installation prefix with
+``../bootstrap --prefix=PREFIX``, TileDB is installed to the ``dist`` folder in the root
+TileDB directory: ``</path/to/TileDB>/dist``.
 
-To include the ``tiledb.h`` header file and link the TileDB dynamically shared library
-``libtiledb.(so, dylib)`` in your C / C++ project::
+To build and link to the TileDB C API, add ``#include <tiledb/tiledb.h>`` to your C or C++
+project and link to the TileDB shared library ``libtiledb.(so, dylib)``, e.g.::
 
     gcc -x c++ example.cpp \
         -I</path/to/TileDB>/dist/include \
         -L</path/to/TileDB>/dist/lib \
         -ltiledb -o example
 
-If dynamically linking ``libtiledb`` from a non-standard location,
-you must make the linker aware of where the shared library resides.
+The ``-I`` and ``-L`` options are required if TileDB is not installed globally on your
+system.
 
-On Linux, you can modify the ``LD_LIBRARY_PATH`` variable at runtime::
+To use the C++ API, add ``#include <tiledb/tiledb>`` to your C++ project. The TileDB C++
+API requires a compiler with C++11 support, so your project must be compiled using the
+C++11 standard, e.g.::
 
-    env LD_LIBRARY_PATH="<path/to/TileDB>/dist/lib:$LD_LIBRARY_PATH" ./example
+    g++ -std=c++11 example.cpp \
+        -I</path/to/TileDB>/dist/include \
+        -L</path/to/TileDB>/dist/lib \
+        -ltiledb -o example
 
-For macOS the linker variable is ``DYLD_LIBARAY_PATH``.
+At runtime, if you linked to ``libtiledb`` in a non-standard location, you must make the
+linker aware of where the shared library resides.
+
+On Linux, you can modify the ``LD_LIBRARY_PATH`` environment variable at runtime::
+
+    env LD_LIBRARY_PATH="</path/to/TileDB>/dist/lib:$LD_LIBRARY_PATH" ./example
+
+For macOS the linker environment variable is ``DYLD_LIBARAY_PATH``.
+
+You can avoid the use of these environment variables by installing TileDB in a global
+(standard) location on your system, or hard-coding the path to the TileDB library at build
+time by configuring the ``rpath``, e.g.::
+
+    g++ -std=c++11 example.cpp \
+        -I</path/to/TileDB>/dist/include \
+        -L</path/to/TileDB>/dist/lib \
+        -Wl,-rpath,</path/to/TileDB>/dist/lib \
+        -ltiledb -o example
+
+Building your program this way will result in a binary that will run without having to
+configure the ``LD_LIBRARY_PATH`` or ``DYLD_LIBRARY_PATH`` environment variables.
 
 .. _windows-usage:
 
@@ -44,7 +71,7 @@ Under the General options for the Linker, edit the "Additional Library Directori
 Add a new entry pointing to your TileDB installation, e.g. ``C:\path\to\TileDB\lib``.
 Under the Input options for Linker, edit "Additional Dependencies" and add tiledb.lib.
 
-You should now be able to ``#include <tiledb/tiledb.h>`` in your project.
+You should now be able to ``#include <tiledb/tiledb.h>`` (C API) or ``#include <tiledb/tiledb>`` (C++ API) in your project.
 
 Note that at runtime, the directory containing the DLLs must be in your PATH environment variable,
 or you will see error messages at startup that the TileDB library or its dependencies could not be located.
