@@ -12,6 +12,7 @@ function update_apt_repo  {
     sudo apt-get purge -y openjdk* &&
     sudo add-apt-repository -y ppa:webupd8team/java &&
     sudo apt-get update -y
+    sudo apt-get install curl
 } 
 
 function install_java {
@@ -24,17 +25,16 @@ function install_hadoop {
     sudo chown -R $(whoami) /usr/local/hadoop || die "could not create local hadoop directory"
   pushd /usr/local/hadoop
   # download from closest mirror
-  sudo wget -O hadoop-3.0.0.tar.gz --trust-server-names \
-      "http://apache.cs.utah.edu/hadoop/common/hadoop-3.0.0/hadoop-3.0.0.tar.gz"
-  # "https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=hadoop/common/hadoop-2.8.2/hadoop-2.8.2.tar.gz"
+  sudo curl -G -L -d "action=download" -d "filename=hadoop/common/hadoop-3.0.1/hadoop-3.0.1.tar.gz" \
+	  https://www.apache.org/dyn/mirrors/mirrors.cgi -o hadoop-3.0.1.tar.gz
   if [ $? -ne 0 ]; then
     die "error downloading hadoop from apache mirror"
   fi;
-  sudo tar xzf hadoop-3.0.0.tar.gz || die "error extracting hadoop download"
-  if [ -d ./home/hadoop-3.0.0 ]; then
-     sudo rm -rf ./home/hadoop-3.0.0
+  sudo tar xzf hadoop-3.0.1.tar.gz || die "error extracting hadoop download"
+  if [ -d ./home/hadoop-3.0.1 ]; then
+     sudo rm -rf ./home/hadoop-3.0.1
   fi
-  sudo mv hadoop-3.0.0 home && sudo chown -R $(whoami) /usr/local/hadoop
+  sudo mv hadoop-3.0.1 home && sudo chown -R $(whoami) /usr/local/hadoop
   popd
 }
 
