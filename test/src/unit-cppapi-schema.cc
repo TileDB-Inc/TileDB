@@ -37,10 +37,15 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   using namespace tiledb;
   Context ctx;
 
-  Domain domain(ctx);
-  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
-  auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-  domain.add_dimension(d1).add_dimension(d2);
+  Domain dense_domain(ctx);
+  auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+  dense_domain.add_dimension(id1).add_dimension(id2);
+
+  Domain sparse_domain(ctx);
+  auto fd1 = Dimension::create<double>(ctx, "d1", {{-100.0, 100.0}}, 10.0);
+  auto fd2 = Dimension::create<double>(ctx, "d2", {{-100.0, 100.0}}, 10.0);
+  sparse_domain.add_dimension(fd1).add_dimension(fd2);
 
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<char>(ctx, "a2");
@@ -49,10 +54,14 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   a2.set_cell_val_num(TILEDB_VAR_NUM);
   a3.set_cell_val_num(2);
 
-  SECTION("Array Schema") {
+  SECTION("Dense Array Schema") {
     ArraySchema schema(ctx, TILEDB_DENSE);
-    schema.set_domain(domain);
-    schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+    // cannot have a floating point dense array domain
+    CHECK_THROWS(schema.set_domain(sparse_domain));
+    schema.set_domain(dense_domain);
+    schema.add_attribute(a1);
+    schema.add_attribute(a2);
+    schema.add_attribute(a3);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
@@ -79,6 +88,40 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(dims[0].domain<int>().second == 100);
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<int>() == 10);
+  }
+
+  SECTION("Sparse Array Schema") {
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(sparse_domain);
+    schema.add_attribute(a1);
+    schema.add_attribute(a2);
+    schema.add_attribute(a3);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_tile_order(TILEDB_COL_MAJOR);
+    schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
+    schema.set_coords_compressor({TILEDB_ZSTD, -1});
+
+    auto attrs = schema.attributes();
+    CHECK(attrs.count("a1") == 1);
+    CHECK(attrs.count("a2") == 1);
+    CHECK(attrs.count("a3") == 1);
+    REQUIRE(schema.attribute_num() == 3);
+    CHECK(schema.attribute(0).name() == "a1");
+    CHECK(schema.attribute(1).name() == "a2");
+    CHECK(schema.attribute(2).name() == "a3");
+    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
+    CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
+    CHECK(schema.attribute("a3").cell_val_num() == 2);
+
+    auto dims = schema.domain().dimensions();
+    REQUIRE(dims.size() == 2);
+    CHECK(dims[0].name() == "d1");
+    CHECK(dims[1].name() == "d2");
+    CHECK_THROWS(dims[0].domain<float>());
+    CHECK(dims[0].domain<double>().first == -100.0);
+    CHECK(dims[0].domain<double>().second == 100.0);
+    CHECK_THROWS(dims[0].tile_extent<unsigned>());
+    CHECK(dims[0].tile_extent<double>() == 10.0);
   }
 
   SECTION("Map Schema") {
