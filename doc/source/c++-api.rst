@@ -26,36 +26,36 @@ Exceptions
 .. doxygenstruct:: tiledb::AttributeError
     :project: TileDB-C++
 
-Array
------
-.. doxygenclass:: tiledb::Array
-    :project: TileDB-C++
-    :members:
-
-Array Schema
-------------
-.. doxygenclass:: tiledb::ArraySchema
-    :project: TileDB-C++
-    :members:
-
-Attribute
----------
-.. doxygenclass:: tiledb::Attribute
-    :project: TileDB-C++
-    :members:
-
-Domain
-------
-.. doxygenclass:: tiledb::Domain
-    :project: TileDB-C++
-    :members:
-
 Dimension
 ---------
 .. doxygenclass:: tiledb::Dimension
     :project: TileDB-C++
     :members:
-
+    
+Domain
+------
+.. doxygenclass:: tiledb::Domain
+    :project: TileDB-C++
+    :members:
+    
+Attribute
+---------
+.. doxygenclass:: tiledb::Attribute
+    :project: TileDB-C++
+    :members:
+  
+Array Schema
+------------
+.. doxygenclass:: tiledb::ArraySchema
+    :project: TileDB-C++
+    :members:
+    
+Array
+-----
+.. doxygenclass:: tiledb::Array
+    :project: TileDB-C++
+    :members:
+    
 Query
 -----
 .. doxygenclass:: tiledb::Query
