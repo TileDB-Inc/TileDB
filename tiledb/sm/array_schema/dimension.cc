@@ -277,7 +277,6 @@ Status Dimension::check_domain() const {
     case Datatype::FLOAT64:
       return check_domain<double>();
     default:
-      assert(0);
       return LOG_STATUS(Status::DimensionError(
           "Domain check failed; Invalid dimension domain type"));
   }
@@ -320,7 +319,6 @@ Status Dimension::check_tile_extent() const {
     case Datatype::FLOAT64:
       return check_tile_extent<double>();
     default:
-      assert(0);
       return LOG_STATUS(Status::DimensionError(
           "Tile extent check failed; Invalid dimension domain type"));
   }
