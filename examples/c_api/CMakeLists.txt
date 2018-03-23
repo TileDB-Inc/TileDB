@@ -25,44 +25,44 @@
 # THE SOFTWARE.
 #
 
-set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+# Use C99 as the standard for these examples.
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF) # Don't use GNU extensions
+
+# Add custom target 'examples_c'
+add_custom_target(examples_c DEPENDS tiledb_shared)
 
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
-  if (WIN32)
-    target_link_libraries(${TARGET}_c tiledb_shared)
-  else()
-    target_link_libraries(${TARGET}_c tiledb_shared -lpthread)
+  target_link_libraries(${TARGET}_c tiledb_shared)
+  if (NOT WIN32)
+    # On Linux, must explicitly link -lpthread in order for static linking
+    # to libzstd or libcurl to work.
+    target_link_libraries(${TARGET}_c pthread)
   endif()
+  target_include_directories(${TARGET}_c PUBLIC
+    "${CMAKE_BINARY_DIR}/examples/"
+  )
+  add_dependencies(examples_c ${TARGET}_c)
 endfunction()
 
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "*.c")
 
-# Include TileDB C API headers
-include_directories(BEFORE 
-    "${CMAKE_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/"
-    "${CMAKE_BINARY_DIR}/examples/"
-)
-
-# Initialize name for example binaries
-set(EXAMPLE_C_BINS)
-
 # Iterate over all example sources and call the build function
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
   # Get the binary name
-  STRING(REGEX REPLACE "^${CMAKE_SOURCE_DIR}/examples/c_api/" ""
-         EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
+  string(REGEX
+    REPLACE "^${CMAKE_SOURCE_DIR}/examples/c_api/" ""
+    EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
   )
-  STRING(REGEX REPLACE ".c$" "" EXAMPLE_BIN ${EXAMPLE_STRIPPED})
-  set(EXAMPLE_C_BINS ${EXAMPLE_C_BINS} ${EXAMPLE_BIN}_c)
+  string(REGEX
+    REPLACE ".c$" ""
+    EXAMPLE_BIN ${EXAMPLE_STRIPPED}
+  )
 
   # Build example executable
   build_TileDB_example_capi(${EXAMPLE_BIN})
 endforeach()
-
-# Add custom target 'examples'
-add_custom_target(examples_c DEPENDS tiledb_shared)
-add_dependencies(examples_c ${EXAMPLE_C_BINS} tiledb_shared)

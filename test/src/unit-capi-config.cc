@@ -37,6 +37,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <thread>
 
 void remove_file(const std::string& filename) {

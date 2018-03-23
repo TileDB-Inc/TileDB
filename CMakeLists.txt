@@ -26,16 +26,13 @@
 # THE SOFTWARE.
 #
 
-project(TileDB)
-cmake_minimum_required(VERSION 2.8)
+############################################################
+# CMake setup
+############################################################
 
-# Set the cmake Module path
+cmake_minimum_required(VERSION 3.3)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-# Default user definitions
-set(USE_HDFS False CACHE BOOL "Enables HDFS support using the official Hadoop JNI bindings")
-set(USE_S3 False CACHE BOOL "Enables S3/minio support using aws-cpp-sdk")
-set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -45,84 +42,70 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif()
 
-set(TILEDB_LIB_DEPENDENCIES)
+# Set C++11 as required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) # Don't use GNU extensions
 
-# Find required library dependencies
-find_package(ZLIB REQUIRED)
-include_directories(${ZLIB_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${ZLIB_LIBRARIES})
-find_package(LZ4 REQUIRED)
-include_directories(${LZ4_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LZ4_LIBRARIES})
-find_package(BLOSC REQUIRED)
-include_directories(${BLOSC_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BLOSC_LIBRARIES})
-find_package(ZSTD REQUIRED)
-include_directories(${ZSTD_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${ZSTD_LIBRARIES})
-find_package(Bzip2 REQUIRED)
-include_directories(${BZIP2_INCLUDE_DIR})
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
+# Set -fvisibility=hidden (or equivalent) flags by default.
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-# On Windows, set a variable for the dependency install location.
-# Defaults to install in the same TileDB installation location.
-if (WIN32)
-  set(TILEDB_DEPENDENCY_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}")
-  add_definitions(/DTILEDB_MSVC_EXPORTS)
+############################################################
+# Build options
+############################################################
+
+# Note: when adding options, make sure to forward them via INHERITED_CMAKE_ARGS
+# in TileDB-Superbuild.cmake.
+
+option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
+option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
+option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
+option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
+option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
+option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
+option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
+option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
+
+############################################################
+# Superbuild setup
+############################################################
+
+# Set the variable used when calling find_package(), find_file() etc.
+# to determine if NO_DEFAULT_PATH should be passed.
+if (TILEDB_FORCE_ALL_DEPS)
+  set(TILEDB_DEPS_NO_DEFAULT_PATH NO_DEFAULT_PATH)
+else()
+  set(TILEDB_DEPS_NO_DEFAULT_PATH)
 endif()
 
-# Find optional library dependencies
-if(USE_HDFS)
-  find_package(LIBJVM REQUIRED)
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBJVM_LIBRARIES})
-
-  find_package(LIBHDFS REQUIRED)
-  include_directories(${LIBHDFS_INCLUDE_DIR})
-  # This variable is defined in FindJNI module included in the FindHDFS.cmake file
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBHDFS_LIBRARY})
+# If this is an in-IDE build, we need to disable the superbuild and explicitly
+# set the EP base dir. The normal 'cmake && make' process won't need this step,
+# it is for better CLion support of this superbuild architecture.
+if (TILEDB_CMAKE_IDE)
+  set(TILEDB_SUPERBUILD OFF)
+  set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
 endif()
 
-if(USE_S3)
-  cmake_minimum_required(VERSION 3.2)
-  find_package(AWSSDK)
-
-  message(STATUS "AWSSDK_LIB_DIR: ${AWSSDK_LIB_DIR}")
-  message(STATUS "AWSSDK_INC_DIR: ${AWSSDK_INCLUDE_DIR}")
-  message(STATUS "AWSSDK_BIN_DIR: ${AWSSDK_BIN_DIR}")
-
-  set(AWS_SERVICE s3)
-  AWSSDK_LIB_DEPS(AWS_SERVICE AWS_DEPS)
-
-  message(STATUS "AWS service ${AWS_SERVICE} depends on libs: ${AWS_DEPS}")
-  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICE AWS_LINKED_LIBS)
-  message(STATUS "AWS linked libs: ${AWS_LINKED_LIBS}")
-
-  set(AWS_LIBRARIES)
-  foreach(LIB ${AWS_LINKED_LIBS})
-    find_library("AWS_FOUND_${LIB}" NAMES ${LIB} PATHS ${AWSSDK_LIB_DIR} NO_DEFAULT_PATH)
-    message(STATUS "AWS LIB PATH: ${LIB} ${AWS_FOUND_${LIB}}")
-    set(AWS_LIBRARIES ${AWS_LIBRARIES} ${AWS_FOUND_${LIB}})
-  endforeach()
-
-  if (APPLE)
-    add_definitions(-DUNDER_MACOS)
-  endif()
-
-  if (WIN32)
-    add_definitions(-DUSE_IMPORT_EXPORT)
-    include_directories(${AWSSDK_INCLUDE_DIR})
-    set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_LIBRARIES})
-  else()
-    message(STATUS "AWS_DEPS_LIBRARIES: ${AWS_DEPS_LIBRARIES}")
-    message(STATUS "AWS_DEPS_INCLUDE_DIRS: ${AWS_DEPS_INCLUDE_DIRS}")
-    message(STATUS "AWS_DEPS_CFLAGS_OTHER: ${AWS_DEPS_CFLAGS_OTHER}")
-    include_directories(${AWS_DEPS_INCLUDE_DIRS})
-    set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${AWS_LIBRARIES})
-  endif()
+# Perform superbuild config and exit.
+if (TILEDB_SUPERBUILD)
+  project(TileDB-Superbuild)
+  message(STATUS "Starting TileDB superbuild.")
+  include("cmake/TileDB-Superbuild.cmake")
+  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
+  # Stop processing this file here.
+  return()
 endif()
 
-# Set C++ 2011 flag
-include(SetCXX2011Flag REQUIRED)
+project(TileDB)
+message(STATUS "Starting TileDB regular build.")
+# Paths to locate the installed external projects.
+set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
+set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
+
+############################################################
+# Compile options/definitions for all targets
+############################################################
 
 # Set compiler flags
 if (WIN32)
@@ -135,62 +118,48 @@ if (WIN32)
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
   #   C4996: deprecation warning about e.g. sscanf.
-  set(MSVC_DISABLE_WARNINGS "/wd4101 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996")
-  # Note: MSVC has the behavior of -fvisibility=hidden by default (you must
-  # explicitly export all symbols you want exported).
-  set(CMAKE_CXX_FLAGS_DEBUG "/DDEBUG /Od /Zi /W4 /WX ${MSVC_DISABLE_WARNINGS}")
-  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /Ox /W4 /WX ${MSVC_DISABLE_WARNINGS}")
+  add_compile_options(/W4 /wd4101 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  # Warnings as errors:
+  if (TILEDB_WERROR)
+    add_compile_options(/WX)
+  endif()
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOGDI")
+  add_compile_options(/DNOGDI)
   # Add /MPn flag from CMake invocation (if defined).
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_MP_FLAG}")
+  add_compile_options(${MSVC_MP_FLAG})
+  # Build-specific flags
+  if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(/DDEBUG /Od /Zi)
+  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
+    add_compile_options(/DNDEBUG /Ox)
+  endif()
 else()
-  set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3 -fvisibility=hidden -Werror -Wall -Wextra")
-  set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Werror -Wall -Wextra")
-  set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage -Werror -Wall -Wextra")
+  add_compile_options(-Wall -Wextra)
+  if (TILEDB_WERROR)
+    add_compile_options(-Werror)
+  endif()
+  # Build-specific flags
+  if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
+  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
+    add_compile_options(-DNDEBUG -O3)
+  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
+    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+  endif()
 
-  if(NOT APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+  # Use -Wno-literal-suffix on Linux with C++ sources.
+  if (NOT APPLE)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
   endif()
 endif()
 
-# Enable sanitizers only on clang for now
-if(SANITIZER)
-  if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
-  endif()
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    string(TOLOWER ${SANITIZER} SANITIZER)
-    if(NOT SANITIZER MATCHES "^(address|memory|thread|undefined)$")
-      message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-    else()
-      message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-    endif()
-    set(_SANITIZER_COMPILE_OPTIONS "-g -fno-omit-frame-pointer -fno-optimize-sibling-calls")
-    set(_SANITIZER_COMPILE_FLAG "-fsanitize=${SANITIZER}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_SANITIZER_COMPILE_OPTIONS} ${_SANITIZER_COMPILE_FLAG}" )
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${_SANITIZER_COMPILE_FLAG}")
-  else()
-    message(WARNING "Sanitizers only enabled for the clang compiler")
-  endif()
-endif()
-
-
-# Add definitions
+# Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
-if(USE_HDFS)
-  add_definitions(-DHAVE_HDFS)
-  message(STATUS "The TileDB library is compiled with HDFS support.")
-endif()
-if(USE_S3)
-  add_definitions(-DHAVE_S3)
-  message(STATUS "The TileDB library is compiled with S3 support.")
-endif()
-if(TILEDB_VERBOSE)
-  add_definitions(-DTILEDB_VERBOSE)
-  message(STATUS "The TileDB library is compiled with verbosity.")
-endif()
+
+############################################################
+# Enable testing and add subdirectories
+############################################################
 
 # Enable testing
 enable_testing()
@@ -204,59 +173,16 @@ add_subdirectory(examples)
 # Build unit tests
 add_subdirectory(test)
 
-############################################################
-# "make format" and "make check-format" targets
-############################################################
-set(SCRIPTS_DIR "${CMAKE_SOURCE_DIR}/scripts")
-
-find_package(ClangTools)
-if (${CLANG_FORMAT_FOUND})
-  # runs clang format and updates files in place.
-  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-          ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/examples
-          -name \\*.cc -or -name \\*.c -or -name \\*.h`)
-
-  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
-  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
-          ${CMAKE_CURRENT_SOURCE_DIR}/test/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/examples
-          -name \\*.cc -or -name \\*.c -or -name \\*.h`)
-endif()
-
-###########################################################
-# Doxygen documentation
-###########################################################
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  file(GLOB_RECURSE TILEDB_CORE_HEADERS "tiledb/sm/*.h")
-  list(APPEND TILEDB_CORE_HEADERS "tiledb/sm/cpp_api/tiledb")
-  add_custom_command(
-     OUTPUT ${CMAKE_BINARY_DIR}/doxyfile.in
-      COMMAND mkdir -p doxygen
-      COMMAND echo INPUT = ${CMAKE_SOURCE_DIR}/doc/mainpage.dox
-              ${TILEDB_CORE_HEADERS} > ${CMAKE_BINARY_DIR}/doxyfile.in
-      COMMAND echo FILE_PATTERNS = *.h >> ${CMAKE_BINARY_DIR}/doxyfile.in
-      COMMENT "Preparing for Doxygen documentation" VERBATIM
-  )
-  add_custom_target(
-      doc ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/Doxyfile.mk >
-          ${CMAKE_BINARY_DIR}/Doxyfile.log 2>&1
-      COMMENT "Generating API documentation with Doxygen" VERBATIM
-      DEPENDS ${CMAKE_BINARY_DIR}/doxyfile.in
-  )
-endif(DOXYGEN_FOUND)
-
 ###########################################################
 # Uninstall
 ###########################################################
-set(CMD "xargs printf '-- Uninstalling: %s\\\\n' <install_manifest.txt")
+
+set(CMD "xargs printf -- '-- Uninstalling: %s\\\\n' <install_manifest.txt")
 add_custom_target(
    uninstall
-   COMMAND echo "Uninstalling TileDB..."
+   COMMAND echo "Uninstalling TileDB from ${CMAKE_INSTALL_PREFIX}..."
    COMMAND eval "${CMD}"
    COMMAND xargs rm -f < install_manifest.txt
+   COMMAND rmdir "${CMAKE_INSTALL_PREFIX}/include/tiledb"
    COMMAND echo "TileDB uninstalled"
 )

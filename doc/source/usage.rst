@@ -73,6 +73,10 @@ Under the Input options for Linker, edit "Additional Dependencies" and add tiled
 
 You should now be able to ``#include <tiledb/tiledb.h>`` (C API) or ``#include <tiledb/tiledb>`` (C++ API) in your project.
 
+When building your project, ensure that the ``x64`` build configuration is
+selected. Because TileDB is currently only available as a 64-bit library,
+applications that link with TileDB must also be 64-bit.
+
 Note that at runtime, the directory containing the DLLs must be in your PATH environment variable,
 or you will see error messages at startup that the TileDB library or its dependencies could not be located.
 You can do this in Visual Studio by adding ``PATH=C:\path\to\TileDB\bin`` to the "Environment" setting under

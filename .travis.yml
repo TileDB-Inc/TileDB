@@ -9,10 +9,10 @@ matrix:
     - os: linux
 
     - os: linux
-      env: USE_HDFS="ON"
+      env: TILEDB_HDFS="ON"
 
     - os: linux
-      env: USE_S3="ON"
+      env: TILEDB_S3="ON"
 
     - os: osx
 
@@ -31,26 +31,25 @@ install:
 
     # Set up arguments for install-deps.sh and bootstrap.
     - deps_args="";
-      bootstrap_args="--enable=coverage,verbose";
-      if [[ "$USE_HDFS" == "ON" ]]; then
+      bootstrap_args="--enable=verbose";
+      if [[ "$TILEDB_HDFS" == "ON" ]]; then
         deps_args="${deps_args} --enable-hdfs";
         bootstrap_args="${bootstrap_args} --enable-hdfs";
       fi;
-      if [[ "$USE_S3" == "ON" ]]; then
+      if [[ "$TILEDB_S3" == "ON" ]]; then
         deps_args="${deps_args} --enable-s3";
         bootstrap_args="${bootstrap_args} --enable-s3";
       fi
 
-    # Install library dependencies
-    - scripts/install-deps.sh $deps_args
-
     # Start HDFS server if enabled
-    - if [[ "$USE_HDFS" == "ON" ]]; then
+    - if [[ "$TILEDB_HDFS" == "ON" ]]; then
+        source scripts/install-hadoop.sh;
         source scripts/run-hadoop.sh;
       fi
 
     # Start minio server if S3 is enabled
-    - if [[ "$USE_S3" == "ON" ]]; then
+    - if [[ "$TILEDB_S3" == "ON" ]]; then
+        source scripts/install-minio.sh;
         source scripts/run-minio.sh;
       fi
 
@@ -61,7 +60,7 @@ install:
 
     - make -j4
     - make examples -j4
-    - make install
+    - make -C tiledb install
 
     # Build the documentation (this does not deploy to RTD).
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then

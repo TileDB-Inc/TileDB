@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 struct KVFx {
@@ -113,6 +114,7 @@ KVFx::KVFx() {
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   if (supports_s3_) {
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -125,6 +127,7 @@ KVFx::KVFx() {
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
+#endif
   }
   REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);

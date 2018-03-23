@@ -41,6 +41,7 @@
 #endif
 
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 struct VFSFx {
@@ -123,6 +124,7 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
   REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   if (supports_s3_) {
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -135,6 +137,7 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
+#endif
   }
 
   // Set number of threads
