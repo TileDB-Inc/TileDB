@@ -35,6 +35,7 @@
 #ifndef TILEDB_CPP_API_TYPE_H
 #define TILEDB_CPP_API_TYPE_H
 
+#include "encoded_string.h"
 #include "tiledb.h"
 
 #include <cstdint>
@@ -283,6 +284,36 @@ struct TypeHandler<std::basic_string<T>, enable_trivial<T>> {
   static void set(std::basic_string<T>& dest, const void* d, size_t size) {
     auto num = size / sizeof(value_type);
     dest.resize(num);
+    memcpy(data(dest), d, size);
+  }
+};
+
+/** Handler for encoded strings **/
+template <typename T, Encoding E>
+struct TypeHandler<EncodedString<T, E>, enable_trivial<T>> {
+  using type = EncodedString<T, E>;
+  using element_th = TypeHandler<T>;  // T is T of basic_string<T>
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type =
+      impl::encoding_to_tiledb<E>::tiledb_type;
+  static constexpr unsigned tiledb_num =
+      std::numeric_limits<unsigned>::max();  // TODO constexpr VAR_NUM
+
+  static size_t size(const type& v) {
+    return v.str.size();
+  }
+
+  static value_type* data(type& v) {
+    return const_cast<char*>(v.str.data());
+  }
+
+  static value_type const* data(type const& v) {
+    return v.str.data();
+  }
+
+  static void set(type& dest, const void* d, size_t size) {
+    auto num = size / sizeof(value_type);
+    dest.str.resize(num);
     memcpy(data(dest), d, size);
   }
 };
