@@ -55,7 +55,8 @@ namespace tiledb {
  * properties of a Domain derive from the underlying dimensions. A
  * Domain is a component of an ArraySchema.
  *
- * @note The dimension can only be signed or unsigned integral types.
+ * @note The dimension can only be signed or unsigned integral types,
+ * as well as floating point for sparse array domains.
  *
  * **Example:**
  *
