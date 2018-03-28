@@ -189,6 +189,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Attribute:
       type = "[TileDB::Attribute] Error";
       break;
+    case StatusCode::SparseReader:
+      type = "[TileDB::SparseReader] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

@@ -67,6 +67,12 @@ Status Consolidator::consolidate(const char* array_name) {
   auto array_schema = (ArraySchema*)nullptr;
   RETURN_NOT_OK(storage_manager_->load_array_schema(array_uri, &array_schema));
 
+  // Create subarray
+  void* subarray = nullptr;
+  RETURN_NOT_OK_ELSE(
+      create_subarray(array_uri.to_string(), array_schema, &subarray),
+      delete array_schema);
+
   // Prepare buffers
   void** buffers;
   uint64_t* buffer_sizes;
@@ -80,9 +86,9 @@ Status Consolidator::consolidate(const char* array_name) {
   auto query_r = new Query();
   auto query_w = new Query();
   Status st = create_queries(
-      array_schema,
       query_r,
       query_w,
+      subarray,
       array_name,
       buffers,
       buffer_sizes,
@@ -95,7 +101,7 @@ Status Consolidator::consolidate(const char* array_name) {
     goto clean_up;
 
   // Read from one array and write to the other
-  st = copy_array(query_r, query_w);
+  st = copy_array(subarray, query_r, query_w);
   if (!st.ok())
     goto clean_up;
 
@@ -124,6 +130,8 @@ Status Consolidator::consolidate(const char* array_name) {
 
 // Clean up
 clean_up:
+  if (subarray != nullptr)
+    std::free(subarray);
   delete array_schema;
   free_buffers(buffer_num, buffers, buffer_sizes);
   delete query_r;
@@ -136,13 +144,38 @@ clean_up:
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status Consolidator::copy_array(Query* query_r, Query* query_w) {
-  do {
-    RETURN_NOT_OK(storage_manager_->query_submit(query_r));
-    RETURN_NOT_OK(storage_manager_->query_submit(query_w));
-  } while (query_r->status() == QueryStatus::INCOMPLETE);
+Status Consolidator::copy_array(
+    void* read_subarray, Query* query_r, Query* query_w) {
+  // Compute subarrays
+  std::vector<void*> subarrays;
+  RETURN_NOT_OK(query_r->compute_subarrays(read_subarray, &subarrays));
 
-  return Status::Ok();
+  for (auto subarray : subarrays) {
+    auto s = (uint64_t*)subarray;
+    std::cout << s[0] << " " << s[1] << " " << s[2] << " " << s[3] << "\n";
+  }
+
+  // Perform a potentilly step-wise copy in a loop
+  Status st = Status::Ok();
+  for (const auto& s : subarrays) {
+    st = query_r->set_subarray(s);
+    if (!st.ok())
+      break;
+    st = storage_manager_->query_submit(query_r);
+    if (!st.ok())
+      break;
+    st = storage_manager_->query_submit(query_w);
+    if (!st.ok())
+      break;
+  }
+
+  // Clean up
+  for (const auto& s : subarrays) {
+    if (s != nullptr)
+      std::free(s);
+  }
+
+  return st;
 }
 
 Status Consolidator::create_buffers(
@@ -195,47 +228,24 @@ Status Consolidator::create_buffers(
 }
 
 Status Consolidator::create_queries(
-    ArraySchema* array_schema,
     Query* query_r,
     Query* query_w,
+    void* subarray,
     const char* array_name,
     void** buffers,
     uint64_t* buffer_sizes,
     unsigned int* fragment_num) {
-  void* subarray = nullptr;
-  bool dense = array_schema->dense();
-
-  // Create subarray only for the dense case
-  if (dense) {
-    subarray = std::malloc(2 * array_schema->coords_size());
-    if (subarray == nullptr)
-      return LOG_STATUS(Status::ConsolidationError(
-          "Cannot create queries; Failed to allocate memory for subarray"));
-    bool is_empty;
-    RETURN_NOT_OK_ELSE(
-        storage_manager_->array_get_non_empty_domain(
-            array_name, subarray, &is_empty),
-        std::free(subarray));
-    assert(!is_empty);
-    array_schema->domain()->expand_domain(subarray);
-  }
-
   // Create read query
-  auto st = storage_manager_->query_init(
+  RETURN_NOT_OK(storage_manager_->query_init(
       query_r,
       array_name,
       QueryType::READ,
       Layout::GLOBAL_ORDER,
-      subarray,
+      nullptr,
       nullptr,
       0,
       buffers,
-      buffer_sizes);
-  if (!st.ok()) {
-    if (subarray != nullptr)
-      std::free(subarray);
-    return st;
-  }
+      buffer_sizes));
 
   // Get fragment num and terminate with success if it is <=1
   *fragment_num = query_r->fragment_num();
@@ -244,15 +254,10 @@ Status Consolidator::create_queries(
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
   URI new_fragment_uri = query_r->last_fragment_uri();
-  st = rename_new_fragment_uri(&new_fragment_uri);
-  if (!st.ok()) {
-    if (subarray != nullptr)
-      std::free(subarray);
-    return st;
-  }
+  RETURN_NOT_OK(rename_new_fragment_uri(&new_fragment_uri));
 
   // Create write query
-  st = storage_manager_->query_init(
+  RETURN_NOT_OK(storage_manager_->query_init(
       query_w,
       array_name,
       QueryType::WRITE,
@@ -262,13 +267,31 @@ Status Consolidator::create_queries(
       0,
       buffers,
       buffer_sizes,
-      new_fragment_uri);
+      new_fragment_uri));
 
-  // Clean up
-  if (subarray != nullptr)
-    std::free(subarray);
+  return Status::Ok();
+}
 
-  return st;
+Status Consolidator::create_subarray(
+    const std::string& array_name,
+    const ArraySchema* array_schema,
+    void** subarray) const {
+  // Create subarray only for the dense case
+  if (array_schema->dense()) {
+    *subarray = std::malloc(2 * array_schema->coords_size());
+    if (*subarray == nullptr)
+      return LOG_STATUS(Status::ConsolidationError(
+          "Cannot create subarray; Failed to allocate memory"));
+    bool is_empty;
+    RETURN_NOT_OK_ELSE(
+        storage_manager_->array_get_non_empty_domain(
+            array_name.c_str(), *subarray, &is_empty),
+        std::free(subarray));
+    assert(!is_empty);
+    array_schema->domain()->expand_domain(*subarray);
+  }
+
+  return Status::Ok();
 }
 
 Status Consolidator::delete_old_fragments(const std::vector<URI>& uris) {

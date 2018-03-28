@@ -49,7 +49,7 @@ KVIter::KVIter(StorageManager* storage_manager)
   kv_ = nullptr;
   status_ = QueryStatus::COMPLETED;
   item_num_ = 0;
-  max_item_num_ = 0;
+  max_item_num_ = constants::kv_max_items;
 }
 
 KVIter::~KVIter() {
@@ -130,8 +130,6 @@ Status KVIter::init_read_query() {
       storage_manager_->query_init(query_, kv_uri_.c_str(), QueryType::READ));
 
   // Set buffers
-  max_item_num_ =
-      std::max(constants::kv_buffer_size / (2 * sizeof(uint64_t)), uint64_t(1));
   read_buffers_[0] = new (std::nothrow) uint64_t[2 * max_item_num_];
   if (read_buffers_[0] == nullptr)
     return LOG_STATUS(Status::KVIterError(

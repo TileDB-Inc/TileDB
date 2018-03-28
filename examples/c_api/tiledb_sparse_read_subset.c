@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_sparse_read_subset_incomplete.c
+ * @file   tiledb_sparse_read_subset.c
  *
  * @section LICENSE
  *
@@ -39,13 +39,11 @@
  * ```
  * $ ./tiledb_sparse_create_c
  * $ ./tiledb_sparse_write_global_1_c
- * $ ./tiledb_sparse_read_subset_incomplete_c
+ * $ ./tiledb_sparse_read_subset_c
  * a1
  * ---
- * Reading cells...
  * 5
  * 6
- * Reading cells...
  * 7
  * ```
  *
@@ -53,9 +51,7 @@
  * `<TileDB-repo>/examples/figures/sparse_subarray.png`.
  *
  * The program prints the cell values of `a1` in the subarray in column-major
- * order. Observe that the loop is executed twice, retrieving two cells in the
- * first iteration (since our buffer had space only for 2 cells) and the third
- * in the second iteration.
+ * order.
  */
 
 #include <tiledb/tiledb.h>
@@ -68,7 +64,7 @@ int main() {
   // Prepare cell buffers. Notice that this time we prepare a buffer only for
   // `a1` (as we will not be querying the rest of the attributes) and we assign
   // space that **will not** be able to hold the entire result.
-  int buffer_a1[2];
+  int buffer_a1[3];
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
@@ -82,30 +78,13 @@ int main() {
   tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
+  tiledb_query_submit(ctx, query);
 
-  // Loop until the query is completed.
-  // The buffer we created the query with cannot hold the entire result.
-  // Instead of crashing, query submission will try to fill as many result
-  // cells in the buffer as it can and then gracefully terminate. TileDB
-  // allows the user to check the query status for `a1` via API functions.
-  // While the status is "incomplete", the code continues the loop to retrieve
-  // the next results. Notice that we are submitting the **same** query; the
-  // query is **stateful** and will resume from where it stopped. Eventually
-  // the status becomes "completed" and the loop exits.
+  // Print the results
   printf("a1\n---\n");
-  tiledb_query_status_t status;
-  do {
-    printf("Reading cells...\n");
-    tiledb_query_submit(ctx, query);
-
-    // Print cell values
-    uint64_t result_num = buffer_sizes[0] / sizeof(int);
-    for (uint64_t i = 0; i < result_num; ++i)
-      printf("%d\n", buffer_a1[i]);
-
-    // Get status
-    tiledb_query_get_attribute_status(ctx, query, "a1", &status);
-  } while (status == TILEDB_INCOMPLETE);
+  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  for (uint64_t i = 0; i < result_num; ++i)
+    printf("%d\n", buffer_a1[i]);
 
   // Finalize query
   tiledb_query_finalize(ctx, query);

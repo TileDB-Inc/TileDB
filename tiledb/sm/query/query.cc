@@ -1,5 +1,5 @@
 /**
- * @file   query.h
+ * @file   query.cc
  *
  * @section LICENSE
  *
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -38,12 +39,12 @@
 #include <set>
 #include <sstream>
 
+namespace tiledb {
+namespace sm {
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
-
-namespace tiledb {
-namespace sm {
 
 Query::Query() {
   common_query_ = nullptr;
@@ -62,6 +63,7 @@ Query::Query() {
   consolidation_fragment_uri_ = URI();
   status_ = QueryStatus::INPROGRESS;
   layout_ = Layout::ROW_MAJOR;
+  buffer_num_ = 0;
 }
 
 Query::Query(Query* common_query) {
@@ -80,6 +82,7 @@ Query::Query(Query* common_query) {
   layout_ = common_query->layout();
   status_ = QueryStatus::INPROGRESS;
   consolidation_fragment_uri_ = common_query->consolidation_fragment_uri_;
+  buffer_num_ = common_query->buffer_num_;
 }
 
 Query::~Query() {
@@ -185,6 +188,94 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
   return Status::Ok();
 }
 
+Status Query::compute_subarrays(
+    void* subarray, std::vector<void*>* subarrays) const {
+  // Prepare subarray
+  auto domain = array_schema_->domain();
+  uint64_t subarray_size = 2 * array_schema_->coords_size();
+  void* first_subarray = std::malloc(subarray_size);
+  if (first_subarray == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot compute subarrays; Failed to allocate memory"));
+  auto to_copy = (subarray != nullptr) ? subarray : domain->domain();
+  std::memcpy(first_subarray, to_copy, subarray_size);
+
+  // Prepare buffer sizes
+  std::vector<uint64_t> max_buffer_sizes;
+  max_buffer_sizes.resize(buffer_num_);
+
+  // Compute subarrays
+  std::list<void*> my_subarrays;
+  my_subarrays.emplace_back(first_subarray);
+  auto it = my_subarrays.begin();
+  Status st = Status::Ok();
+  do {
+    // Compute max buffer sizes for the current subarray
+    st = storage_manager_->array_compute_max_read_buffer_sizes(
+        array_schema_,
+        fragment_metadata_,
+        *it,
+        attribute_ids_,
+        &max_buffer_sizes[0],
+        buffer_num_);
+    if (!st.ok())
+      break;
+
+    // Handle case of no results
+    auto no_results = true;
+    for (unsigned i = 0; i < buffer_num_; ++i) {
+      if (max_buffer_sizes[i] != 0) {
+        no_results = false;
+        break;
+      }
+    }
+    if (no_results) {
+      std::free(*it);
+      it = my_subarrays.erase(it);
+      continue;
+    }
+
+    // Handle case of split
+    auto must_split = false;
+    for (unsigned i = 0; i < buffer_num_; ++i) {
+      if (max_buffer_sizes[i] > buffer_sizes_[i]) {
+        must_split = true;
+        break;
+      }
+    }
+    if (must_split) {
+      void *subarray_1 = nullptr, *subarray_2 = nullptr;
+      st = domain->split_subarray(*it, layout_, &subarray_1, &subarray_2);
+      if (!st.ok())
+        break;
+      if (subarray_1 == nullptr || subarray_2 == nullptr) {
+        st = LOG_STATUS(Status::QueryError(
+            "Cannot compute subarrays; Subarray is not splittable"));
+        break;
+      }
+      my_subarrays.insert(std::next(it), subarray_2);
+      my_subarrays.insert(std::next(it), subarray_1);
+      it = my_subarrays.erase(it);
+      continue;
+    }
+
+    ++it;
+  } while (it != my_subarrays.end());
+
+  // Clean up upon error
+  if (!st.ok()) {
+    for (auto s : my_subarrays)
+      std::free(s);
+    return st;
+  }
+
+  // Prepare the result
+  for (auto s : my_subarrays)
+    subarrays->emplace_back(s);
+
+  return Status::Ok();
+}
+
 Status Query::finalize() {
   // Clear sorted read state
   if (array_ordered_read_state_ != nullptr)
@@ -273,6 +364,7 @@ Status Query::init(
   consolidation_fragment_uri_ = consolidation_fragment_uri;
 
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
+  RETURN_NOT_OK(array_schema->buffer_num(attribute_ids_, &buffer_num_));
   RETURN_NOT_OK(set_subarray(subarray));
   RETURN_NOT_OK(init_fragments(fragment_metadata_));
 
@@ -299,6 +391,8 @@ Status Query::init(
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
   fragment_metadata_ = fragment_metadata;
+
+  RETURN_NOT_OK(array_schema->buffer_num(attribute_ids, &buffer_num_));
 
   if (add_coords)
     this->add_coords();
@@ -360,7 +454,437 @@ Status Query::overflow(
   return Status::Ok();
 }
 
+Status Query::sparse_read() {
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return sparse_read<int8_t>();
+    case Datatype::UINT8:
+      return sparse_read<uint8_t>();
+    case Datatype::INT16:
+      return sparse_read<int16_t>();
+    case Datatype::UINT16:
+      return sparse_read<uint16_t>();
+    case Datatype::INT32:
+      return sparse_read<int>();
+    case Datatype::UINT32:
+      return sparse_read<unsigned>();
+    case Datatype::INT64:
+      return sparse_read<int64_t>();
+    case Datatype::UINT64:
+      return sparse_read<uint64_t>();
+    case Datatype::FLOAT32:
+      return sparse_read<float>();
+    case Datatype::FLOAT64:
+      return sparse_read<double>();
+    default:
+      return LOG_STATUS(
+          Status::SparseReaderError("Cannot read; Unsupported domain type"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::sparse_read() {
+  status_ = QueryStatus::INPROGRESS;
+
+  // Get overlapping tile indexes
+  OverlappingTileVec tiles;
+  RETURN_NOT_OK(compute_overlapping_tiles<T>(&tiles));
+
+  // Read tiles
+  RETURN_NOT_OK(read_tiles(constants::coords, &tiles));
+  for (const auto& attr : attributes_) {
+    if (attr != constants::coords)
+      RETURN_NOT_OK(read_tiles(attr, &tiles));
+  }
+
+  // Compute the read coordinates for all fragments
+  std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
+  RETURN_NOT_OK(compute_overlapping_coords<T>(tiles, &coords));
+
+  // Sort and dedup the coordinates (not applicable to the global order
+  // layout for a single fragment)
+  if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
+    RETURN_NOT_OK(sort_coords<T>(&coords));
+    RETURN_NOT_OK(dedup_coords<T>(&coords));
+  }
+
+  // Compute the maximal cell ranges
+  OverlappingCellRangeList cell_ranges;
+  RETURN_NOT_OK(compute_cell_ranges(coords, &cell_ranges));
+  coords.clear();
+
+  // Copy cells
+  for (const auto& attr : attributes_)
+    RETURN_NOT_OK(copy_cells(attr, cell_ranges));
+
+  status_ = QueryStatus::COMPLETED;
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
+  // For easy reference
+  auto subarray = (T*)subarray_;
+  auto dim_num = array_schema_->dim_num();
+  auto fragment_num = fragment_metadata_.size();
+  bool full_overlap;
+
+  // Find overlapping tile indexes for each fragment
+  tiles->clear();
+  for (unsigned i = 0; i < fragment_num; ++i) {
+    auto mbrs = fragment_metadata_[i]->mbrs();
+    auto mbr_num = (uint64_t)mbrs.size();
+    for (uint64_t j = 0; j < mbr_num; ++j) {
+      if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
+        auto tile = std::make_shared<OverlappingTile>(i, j, full_overlap);
+        tiles->emplace_back(tile);
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Query::read_tiles(
+    const std::string& attr_name, OverlappingTileVec* tiles) const {
+  // Prepare tile IO
+  unsigned attr_id;
+  RETURN_NOT_OK(array_schema_->attribute_id(attr_name, &attr_id));
+  auto var_size = array_schema_->var_size(attr_id);
+  std::vector<std::shared_ptr<TileIO>> tile_io;
+  std::vector<std::shared_ptr<TileIO>> tile_io_var;
+  for (const auto& f : fragment_metadata_) {
+    tile_io.emplace_back(std::make_shared<TileIO>(
+        storage_manager_, f->attr_uri(attr_id), f->file_sizes(attr_id)));
+    if (var_size)
+      tile_io_var.emplace_back(std::make_shared<TileIO>(
+          storage_manager_,
+          f->attr_var_uri(attr_id),
+          f->file_var_sizes(attr_id)));
+    else
+      tile_io_var.emplace_back();
+  }
+  bool is_coords = (attr_id == array_schema_->attribute_num());
+
+  // For each fragment, read the tiles
+  for (auto& tile : *tiles) {
+    auto& tile_pair = tile->attr_tiles_[attr_name];
+
+    // Fixed-sized or offsets tile
+    auto t = std::make_shared<Tile>();
+    RETURN_NOT_OK(t->init(
+        (var_size) ? constants::cell_var_offset_type :
+                     array_schema_->type(attr_id),
+        (var_size) ? array_schema_->cell_var_offsets_compression() :
+                     array_schema_->compression(attr_id),
+        (var_size) ? constants::cell_var_offset_size :
+                     array_schema_->cell_size(attr_id),
+        (is_coords) ? array_schema_->dim_num() : 0));
+    RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
+        t.get(),
+        fragment_metadata_[tile->fragment_idx_]->file_offset(
+            attr_id, tile->tile_idx_),
+        fragment_metadata_[tile->fragment_idx_]->compressed_tile_size(
+            attr_id, tile->tile_idx_),
+        fragment_metadata_[tile->fragment_idx_]->tile_size(
+            attr_id, tile->tile_idx_)));
+    tile_pair.first = t;
+
+    // Var-sized tile
+    if (var_size) {
+      auto t_var = std::make_shared<Tile>();
+      RETURN_NOT_OK(t_var->init(
+          array_schema_->type(attr_id),
+          array_schema_->compression(attr_id),
+          datatype_size(array_schema_->type(attr_id)),
+          0));
+      RETURN_NOT_OK(tile_io_var[tile->fragment_idx_]->read(
+          t_var.get(),
+          fragment_metadata_[tile->fragment_idx_]->file_var_offset(
+              attr_id, tile->tile_idx_),
+          fragment_metadata_[tile->fragment_idx_]->compressed_tile_var_size(
+              attr_id, tile->tile_idx_),
+          fragment_metadata_[tile->fragment_idx_]->tile_var_size(
+              attr_id, tile->tile_idx_)));
+      tile_pair.second = t_var;
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_overlapping_coords(
+    const OverlappingTileVec& tiles,
+    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+  for (const auto& tile : tiles) {
+    std::list<std::shared_ptr<OverlappingCoords<T>>> tile_coords;
+    if (tile.get()->full_overlap_) {
+      RETURN_NOT_OK(get_all_coords<T>(tile, &tile_coords));
+    } else {
+      RETURN_NOT_OK(compute_overlapping_coords<T>(tile, &tile_coords));
+    }
+    coords->splice(coords->end(), tile_coords);
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_overlapping_coords(
+    const std::shared_ptr<OverlappingTile>& tile,
+    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+  auto dim_num = array_schema_->dim_num();
+  const auto t = tile->attr_tiles_.find(constants::coords)->second.first;
+  auto t_ptr = t.get();
+  auto coords_num = t_ptr->cell_num();
+  auto subarray = (T*)subarray_;
+  auto c = (T*)t_ptr->data();
+
+  for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
+    if (utils::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
+      coords->emplace_back(
+          std::make_shared<OverlappingCoords<T>>(tile, &c[pos], i));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::get_all_coords(
+    const std::shared_ptr<OverlappingTile>& tile,
+    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+  auto dim_num = array_schema_->dim_num();
+  const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
+  auto t_ptr = t.get();
+  auto coords_num = t_ptr->cell_num();
+  auto c = (T*)t_ptr->data();
+
+  for (uint64_t i = 0; i < coords_num; ++i)
+    coords->emplace_back(
+        std::make_shared<OverlappingCoords<T>>(tile, &c[i * dim_num], i));
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::sort_coords(
+    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+  if (layout_ == Layout::GLOBAL_ORDER) {
+    auto domain = array_schema_->domain();
+    coords->sort(GlobalCmp<T>(domain));
+  } else {
+    auto dim_num = array_schema_->dim_num();
+    if (layout_ == Layout::ROW_MAJOR)
+      coords->sort(RowCmp<T>(dim_num));
+    else if (layout_ == Layout::COL_MAJOR)
+      coords->sort(ColCmp<T>(dim_num));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::dedup_coords(
+    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+  auto coords_size = array_schema_->coords_size();
+  auto it = coords->begin();
+  while (it != coords->end()) {
+    auto next_it = std::next(it);
+    if (next_it != coords->end() &&
+        !std::memcmp(
+            it->get()->coords_, next_it->get()->coords_, coords_size)) {
+      if (it->get()->tile_.get()->fragment_idx_ <
+          next_it->get()->tile_.get()->fragment_idx_)
+        it = coords->erase(it);
+      else
+        coords->erase(next_it);
+    }
+    ++it;
+  }
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_cell_ranges(
+    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+    OverlappingCellRangeList* cell_ranges) const {
+  // Trivial case
+  auto coords_num = (uint64_t)coords.size();
+  if (coords_num == 0)
+    return Status::Ok();
+
+  // Initialize the first range
+  auto it = coords.begin();
+  uint64_t start_pos = it->get()->pos_;
+  uint64_t end_pos = start_pos;
+  auto tile = it->get()->tile_;
+
+  // Scan the coordinates and compute ranges
+  for (++it; it != coords.end(); ++it) {
+    if (it->get()->tile_.get() == tile.get() &&
+        it->get()->pos_ == end_pos + 1) {
+      // Same range - advance end position
+      end_pos = it->get()->pos_;
+    } else {
+      // New range - append previous range
+      cell_ranges->emplace_back(
+          std::make_shared<OverlappingCellRange>(tile, start_pos, end_pos));
+      start_pos = it->get()->pos_;
+      end_pos = start_pos;
+      tile = it->get()->tile_;
+    }
+  }
+
+  // Append the last range
+  cell_ranges->emplace_back(
+      std::make_shared<OverlappingCellRange>(tile, start_pos, end_pos));
+
+  return Status::Ok();
+}
+
+template <class T>
+bool Query::overlap(
+    const T* a, const T* b, unsigned dim_num, bool* a_contains_b) const {
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
+      return false;
+  }
+
+  *a_contains_b = true;
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[2 * i] > b[2 * i] || a[2 * i + 1] < b[2 * i + 1]) {
+      *a_contains_b = false;
+      break;
+    }
+  }
+
+  return true;
+}
+
+Status Query::copy_cells(
+    const std::string& attribute,
+    const OverlappingCellRangeList& cell_ranges) const {
+  unsigned attr_id;
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  if (array_schema_->var_size(attr_id))
+    return copy_var_cells(attribute, cell_ranges);
+  return copy_fixed_cells(attribute, cell_ranges);
+}
+
+Status Query::buffer_idx(const std::string& attribute, unsigned* bid) const {
+  unsigned attr_id;
+  *bid = 0;
+  for (const auto& a : attributes_) {
+    if (a == attribute)
+      return Status::Ok();
+    RETURN_NOT_OK(array_schema_->attribute_id(a, &attr_id));
+    *bid += 1 + (unsigned)array_schema_->var_size(attr_id);
+  }
+
+  return Status::QueryError(
+      std::string("Cannot retrieve buffer index; Invalid attribute '") +
+      attribute + "'");
+}
+
+Status Query::copy_fixed_cells(
+    const std::string& attribute,
+    const OverlappingCellRangeList& cell_ranges) const {
+  // For easy reference
+  unsigned attr_id, bid;
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  RETURN_NOT_OK(buffer_idx(attribute, &bid));
+  auto buffer = (unsigned char*)buffers_[bid];
+  uint64_t buffer_offset = 0;
+  auto cell_size = array_schema_->cell_size(attr_id);
+
+  // Copy cells
+  for (const auto& cr : cell_ranges) {
+    const auto& tile = cr->tile_->attr_tiles_.find(attribute)->second.first;
+    auto data = (unsigned char*)tile->data();
+    auto bytes_to_copy = (cr->end_ - cr->start_ + 1) * cell_size;
+    if (buffer_offset + bytes_to_copy > buffer_sizes_[bid])
+      return LOG_STATUS(Status::QueryError(
+          std::string("Cannot copy cells for attribute '") + attribute +
+          "'; Result buffer overflowed"));
+    std::memcpy(
+        buffer + buffer_offset,
+        data + cr.get()->start_ * cell_size,
+        bytes_to_copy);
+    buffer_offset += bytes_to_copy;
+  }
+
+  // Update buffer sizes
+  buffer_sizes_[bid] = buffer_offset;
+
+  return Status::Ok();
+}
+
+Status Query::copy_var_cells(
+    const std::string& attribute,
+    const OverlappingCellRangeList& cell_ranges) const {
+  // For easy reference
+  unsigned attr_id, bid;
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  RETURN_NOT_OK(buffer_idx(attribute, &bid));
+  auto buffer = (unsigned char*)buffers_[bid];
+  auto buffer_var = (unsigned char*)buffers_[bid + 1];
+  uint64_t buffer_offset = 0;
+  uint64_t buffer_var_offset = 0;
+  uint64_t offset_size = constants::cell_var_offset_size;
+  uint64_t cell_var_size;
+
+  // Copy cells
+  for (const auto& cr : cell_ranges) {
+    const auto& tile_pair = cr->tile_->attr_tiles_.find(attribute)->second;
+    const auto& tile = tile_pair.first;
+    const auto& tile_var = tile_pair.second;
+    const auto offsets = (uint64_t*)tile->data();
+    auto data = (unsigned char*)tile_var->data();
+    auto cell_num = tile->cell_num();
+    auto tile_var_size = tile_var->size();
+
+    for (uint64_t i = cr->start_; i <= cr->end_; ++i) {
+      // Copy offsets
+      if (buffer_offset + offset_size > buffer_sizes_[bid])
+        return LOG_STATUS(Status::QueryError(
+            std::string("Cannot copy cell offsets for var-sized attribute '") +
+            attribute + "'; Result buffer overflowed"));
+      std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
+      buffer_offset += offset_size;
+
+      // Copy values
+      cell_var_size = (i != cell_num - 1) ?
+                          offsets[i + 1] - offsets[i] :
+                          tile_var_size - (offsets[i] - offsets[0]);
+
+      if (buffer_var_offset + cell_var_size > buffer_sizes_[bid + 1])
+        return LOG_STATUS(Status::QueryError(
+            std::string("Cannot copy cell data for var-sized attribute '") +
+            attribute + "'; Result buffer overflowed"));
+
+      std::memcpy(
+          buffer_var + buffer_var_offset,
+          &data[offsets[i] - offsets[0]],
+          cell_var_size);
+      buffer_var_offset += cell_var_size;
+    }
+  }
+
+  // Update buffer sizes
+  buffer_sizes_[bid] = buffer_offset;
+  buffer_sizes_[bid + 1] = buffer_var_offset;
+
+  return Status::Ok();
+}
+
 Status Query::read() {
+  if (!array_schema_->dense())
+    return sparse_read();
+
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
@@ -446,6 +970,10 @@ Status Query::set_buffers(
   RETURN_NOT_OK(
       array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
 
+  // Set attribute names
+  for (unsigned i = 0; i < attribute_num; ++i)
+    attributes_.emplace_back(attributes[i]);
+
   // Set buffers and buffer sizes
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
@@ -507,7 +1035,7 @@ Status Query::set_subarray(const void* subarray) {
   uint64_t subarray_size = 2 * array_schema_->coords_size();
 
   if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
+    subarray_ = std::malloc(subarray_size);
 
   if (subarray_ == nullptr)
     return LOG_STATUS(
@@ -830,6 +1358,10 @@ Status Query::set_attributes(
       return LOG_STATUS(Status::QueryError(
           "Cannot initialize array schema; Duplicate attributes"));
   }
+
+  // Set attribute names
+  for (const auto& attr : attributes_vec)
+    attributes_.emplace_back(attr);
 
   // Set attribute ids
   RETURN_NOT_OK(

@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -179,22 +180,20 @@ uint64_t FragmentMetadata::cell_num_in_domain() const {
 template <class T>
 Status FragmentMetadata::compute_max_read_buffer_sizes(
     const T* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const {
   if (dense_)
     return compute_max_read_buffer_sizes_dense(
-        subarray, attributes, attribute_num, buffer_num, buffer_sizes);
+        subarray, attribute_ids, buffer_num, buffer_sizes);
   return compute_max_read_buffer_sizes_sparse(
-      subarray, attributes, attribute_num, buffer_num, buffer_sizes);
+      subarray, attribute_ids, buffer_num, buffer_sizes);
 }
 
 template <class T>
 Status FragmentMetadata::compute_max_read_buffer_sizes_dense(
     const T* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const {
   // Zero out all buffer sizes
@@ -204,15 +203,12 @@ Status FragmentMetadata::compute_max_read_buffer_sizes_dense(
   // Calculate the ids of all tiles overlapping with subarray
   auto tids = compute_overlapping_tile_ids(subarray);
 
-  // Calculate attribute ids and var sizes
-  std::vector<unsigned> attribute_ids;
+  // Calculate var sizes
   std::vector<bool> var_sizes;
-  unsigned aid;
-  for (unsigned i = 0; i < attribute_num; ++i) {
-    RETURN_NOT_OK(array_schema_->attribute_id(attributes[i], &aid));
-    attribute_ids.emplace_back(aid);
+  var_sizes.reserve(attribute_ids.size());
+  for (auto aid : attribute_ids)
     var_sizes.push_back(array_schema_->var_size(aid));
-  }
+  auto attribute_num = attribute_ids.size();
 
   // Compute buffer sizes
   unsigned bid;
@@ -237,22 +233,18 @@ Status FragmentMetadata::compute_max_read_buffer_sizes_dense(
 template <class T>
 Status FragmentMetadata::compute_max_read_buffer_sizes_sparse(
     const T* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const {
   for (unsigned i = 0; i < buffer_num; ++i)
     buffer_sizes[i] = 0;
 
-  // Calculate attribute ids and var sizes
-  std::vector<unsigned> attribute_ids;
+  // Calculate var sizes
   std::vector<bool> var_sizes;
-  unsigned aid;
-  for (unsigned i = 0; i < attribute_num; ++i) {
-    RETURN_NOT_OK(array_schema_->attribute_id(attributes[i], &aid));
-    attribute_ids.emplace_back(aid);
+  var_sizes.reserve(attribute_ids.size());
+  for (auto aid : attribute_ids)
     var_sizes.push_back(array_schema_->var_size(aid));
-  }
+  auto attribute_num = attribute_ids.size();
 
   unsigned bid, tid = 0;
   auto dim_num = array_schema_->dim_num();
@@ -398,6 +390,75 @@ uint64_t FragmentMetadata::tile_num() const {
     return array_schema_->domain()->tile_num(domain_);
 
   return (uint64_t)mbrs_.size();
+}
+
+URI FragmentMetadata::attr_uri(unsigned int attribute_id) const {
+  if (attribute_id == array_schema_->attribute_num())
+    return fragment_uri_.join_path(
+        std::string(constants::coords) + constants::file_suffix);
+
+  const Attribute* attr = array_schema_->attribute(attribute_id);
+  return fragment_uri_.join_path(attr->name() + constants::file_suffix);
+}
+
+URI FragmentMetadata::attr_var_uri(unsigned int attribute_id) const {
+  auto attr = array_schema_->attribute(attribute_id);
+  return fragment_uri_.join_path(
+      attr->name() + "_var" + constants::file_suffix);
+}
+
+uint64_t FragmentMetadata::file_offset(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  return tile_offsets_[attribute_id][tile_idx];
+}
+
+uint64_t FragmentMetadata::file_var_offset(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  return tile_var_offsets_[attribute_id][tile_idx];
+}
+
+uint64_t FragmentMetadata::compressed_tile_size(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  // Check if the tile is not compressed
+  if (array_schema_->var_size(attribute_id)) {
+    if (constants::cell_var_offsets_compression == Compressor::NO_COMPRESSION)
+      return 0;  // Uncompressed offsets tile
+  } else {
+    if (array_schema_->compression(attribute_id) == Compressor::NO_COMPRESSION)
+      return 0;  // Uncompressed fix-sized value tile
+  }
+
+  auto tile_num = this->tile_num();
+  return (tile_idx != tile_num - 1) ?
+             tile_offsets_[attribute_id][tile_idx + 1] -
+                 tile_offsets_[attribute_id][tile_idx] :
+             file_sizes_[attribute_id] - tile_offsets_[attribute_id][tile_idx];
+}
+
+uint64_t FragmentMetadata::compressed_tile_var_size(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  if (array_schema_->compression(attribute_id) == Compressor::NO_COMPRESSION)
+    return 0;
+
+  auto tile_num = this->tile_num();
+  return (tile_idx != tile_num - 1) ?
+             tile_var_offsets_[attribute_id][tile_idx + 1] -
+                 tile_var_offsets_[attribute_id][tile_idx] :
+             file_var_sizes_[attribute_id] -
+                 tile_var_offsets_[attribute_id][tile_idx];
+}
+
+uint64_t FragmentMetadata::tile_size(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  auto var_size = array_schema_->var_size(attribute_id);
+  auto cell_num = this->cell_num(tile_idx);
+  return (var_size) ? cell_num * constants::cell_var_offset_size :
+                      cell_num * array_schema_->cell_size(attribute_id);
+}
+
+uint64_t FragmentMetadata::tile_var_size(
+    unsigned attribute_id, uint64_t tile_idx) const {
+  return tile_var_sizes_[attribute_id][tile_idx];
 }
 
 const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_offsets()
@@ -1039,62 +1100,52 @@ template Status FragmentMetadata::append_mbr<double>(const void* mbr);
 
 template Status FragmentMetadata::compute_max_read_buffer_sizes<int8_t>(
     const int8_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<uint8_t>(
     const uint8_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<int16_t>(
     const int16_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<uint16_t>(
     const uint16_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<int>(
     const int* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<unsigned>(
     const unsigned* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<int64_t>(
     const int64_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<uint64_t>(
     const uint64_t* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<float>(
     const float* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 template Status FragmentMetadata::compute_max_read_buffer_sizes<double>(
     const double* subarray,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
 

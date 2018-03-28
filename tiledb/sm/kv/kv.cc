@@ -100,7 +100,6 @@ Status KV::init(
   }
 
   assert(attributes_.size() == types_.size());
-
   RETURN_NOT_OK(prepare_query_attributes());
   RETURN_NOT_OK(schema_->buffer_num(
       (const char**)read_attributes_, read_attribute_num_, &read_buffer_num_));
@@ -434,7 +433,6 @@ void KV::clear_write_buffers() {
 Status KV::init_read_buffers() {
   for (unsigned i = 0; i < read_buffer_num_; ++i) {
     auto buff = new Buffer();
-    buff->realloc(constants::kv_buffer_size);
     read_buff_vec_.emplace_back(buff);
   }
 
@@ -473,7 +471,9 @@ Status KV::populate_write_buffers() {
 }
 
 Status KV::prepare_read_buffers() {
-  clear_read_buffers();
+  if (read_buffers_ != nullptr)
+    return Status::Ok();
+
   auto buffer_num = read_buff_vec_.size();
   read_buffers_ = new (std::nothrow) void*[buffer_num];
   read_buffer_sizes_ = new (std::nothrow) uint64_t[buffer_num];
@@ -594,12 +594,19 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[2] = hash.second;
   subarray[3] = hash.second;
 
-  QueryStatus query_status;
-  do {
-    RETURN_NOT_OK(submit_read_query(subarray, &query_status));
-    if (query_status == QueryStatus::INCOMPLETE)
-      RETURN_NOT_OK(realloc_read_buffers());
-  } while (query_status != QueryStatus::COMPLETED);
+  // Compute max buffer sizes
+  RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
+      kv_uri_.c_str(),
+      subarray,
+      (const char**)read_attributes_,
+      read_attribute_num_,
+      read_buffer_sizes_));
+
+  // Potentially reallocate read buffers
+  RETURN_NOT_OK(realloc_read_buffers());
+
+  // Submit query
+  RETURN_NOT_OK(submit_read_query(subarray));
 
   // Check if item exists
   *found = true;
@@ -615,8 +622,8 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 
 Status KV::realloc_read_buffers() {
   for (unsigned i = 0; i < read_buffer_num_; ++i) {
-    if (read_buffer_sizes_[i] == 0) {
-      read_buff_vec_[i]->realloc(2 * read_buff_vec_[i]->alloced_size());
+    if (read_buffer_sizes_[i] > read_buff_vec_[i]->alloced_size()) {
+      RETURN_NOT_OK(read_buff_vec_[i]->realloc(read_buffer_sizes_[i]));
       read_buffers_[i] = read_buff_vec_[i]->data();
       read_buffer_sizes_[i] = read_buff_vec_[i]->alloced_size();
     }
@@ -625,7 +632,7 @@ Status KV::realloc_read_buffers() {
   return Status::Ok();
 }
 
-Status KV::submit_read_query(const uint64_t* subarray, QueryStatus* status) {
+Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = new Query();
   RETURN_NOT_OK_ELSE(
@@ -638,10 +645,11 @@ Status KV::submit_read_query(const uint64_t* subarray, QueryStatus* status) {
           read_buffers_,
           read_buffer_sizes_),
       delete query);
+
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
-  *status = query->status();
+
   delete query;
 
   return Status::Ok();

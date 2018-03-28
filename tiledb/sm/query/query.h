@@ -43,6 +43,8 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <functional>
+#include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace tiledb {
@@ -57,6 +59,89 @@ class StorageManager;
 /** Processes a (read/write) query. */
 class Query {
  public:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * For each fixed-sized attributes, the second tile in the pair is
+   * ignored. For var-sized attributes, the first is a pointer to the
+   * offsets tile and the second is a pointer to the var-sized values tile.
+   */
+  typedef std::pair<std::shared_ptr<Tile>, std::shared_ptr<Tile>> TilePair;
+
+  /** Information about a tile (across multiple attributes). */
+  struct OverlappingTile {
+    /** A fragment index. */
+    unsigned fragment_idx_;
+    /** The tile index in the fragment. */
+    uint64_t tile_idx_;
+    /** `true` if the overlap is full, and `false` if it is partial. */
+    bool full_overlap_;
+    /**
+     * Maps attribute names to attribute tiles. Note that the coordinates
+     * are a special attribute as well.
+     */
+    std::unordered_map<std::string, TilePair> attr_tiles_;
+
+    /** Constructor. */
+    OverlappingTile(
+        unsigned fragment_idx, uint64_t tile_idx, bool full_overlapp)
+        : fragment_idx_(fragment_idx)
+        , tile_idx_(tile_idx)
+        , full_overlap_(full_overlapp) {
+    }
+  };
+
+  /** A vector of overlapping tiles. */
+  typedef std::vector<std::shared_ptr<OverlappingTile>> OverlappingTileVec;
+
+  /** A cell range belonging to a particular overlapping tile. */
+  struct OverlappingCellRange {
+    /** The tile the cell range belongs to. */
+    std::shared_ptr<OverlappingTile> tile_;
+    /** The starting cell in the range. */
+    uint64_t start_;
+    /** The ending cell in the range. */
+    uint64_t end_;
+
+    /** Constructor. */
+    OverlappingCellRange(
+        std::shared_ptr<OverlappingTile> tile, uint64_t start, uint64_t end)
+        : tile_(std::move(tile))
+        , start_(start)
+        , end_(end) {
+    }
+  };
+
+  /** A list of cell ranges. */
+  typedef std::list<std::shared_ptr<OverlappingCellRange>>
+      OverlappingCellRangeList;
+
+  /**
+   * Records the overlapping tile and position of the coordinates
+   * in that tile.
+   *
+   * @tparam T The coords type
+   */
+  template <class T>
+  struct OverlappingCoords {
+    /** The overlapping tile the coords belong to. */
+    std::shared_ptr<OverlappingTile> tile_;
+    /** The coordinates. */
+    const T* coords_;
+    /** The position of the coordinates in the tile. */
+    uint64_t pos_;
+
+    /** Constructor. */
+    OverlappingCoords(
+        std::shared_ptr<OverlappingTile> tile, const T* coords, uint64_t pos)
+        : tile_(std::move(tile))
+        , coords_(coords)
+        , pos_(pos) {
+    }
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -79,6 +164,156 @@ class Query {
   /*                 API               */
   /* ********************************* */
 
+  /**
+   * Computes info about the overlapping tiles, such as which fragment they
+   * belong to, the tile index and the type of overlap.
+   *
+   * @tparam T The coords type.
+   * @param tiles The tiles to be computed.
+   * @return Status
+   */
+  template <class T>
+  Status compute_overlapping_tiles(OverlappingTileVec* tiles) const;
+
+  /**
+   * Retrieves the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
+   * @param attr_name The attribute name.
+   * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @return Status
+   */
+  Status read_tiles(
+      const std::string& attr_name, OverlappingTileVec* tiles) const;
+
+  /**
+   * Computes the overlapping coordinates for a given subarray.
+   *
+   * @tparam T The coords type.
+   * @param tiles The tiles to get the overlapping coordinates from.
+   * @param coords The coordinates to be retrieved.
+   * @return Status
+   */
+  template <class T>
+  Status compute_overlapping_coords(
+      const OverlappingTileVec& tiles,
+      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+
+  /**
+   * Retrieves the coordinates that overlap the subarray from the input
+   * overlapping tile.
+   *
+   * @tparam T The coords type.
+   * @param The overlapping tile.
+   * @param coords The overlapping coordinates to retrieve.
+   * @return Status
+   */
+  template <class T>
+  Status compute_overlapping_coords(
+      const std::shared_ptr<OverlappingTile>& tile,
+      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+
+  /**
+   * Gets all the coordinates of the input tile into `coords`.
+   *
+   * @tparam T The coords type.
+   * @param tile The overlapping tile to read the coordinates from.
+   * @param coords The overlapping coordinates to copy into.
+   * @return Status
+   */
+  template <class T>
+  Status get_all_coords(
+      const std::shared_ptr<OverlappingTile>& tile,
+      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+
+  /**
+   * Sorts the input coordinates according to the input layout.
+   *
+   * @tparam T The coords type.
+   * @param coords The coordinates to sort.
+   * @return Status
+   */
+  template <class T>
+  Status sort_coords(
+      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+
+  /**
+   * Deduplicates the input coordinates, breaking ties giving preference
+   * to the largest fragment index (i.e., it prefers more recent fragments).
+   *
+   * @tparam T The coords type.
+   * @param coords The coordinates to dedup.
+   * @return Status
+   */
+  template <class T>
+  Status dedup_coords(
+      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+
+  /**
+   * Compute the maximal cell ranges of contiguous cell positions.
+   *
+   * @tparam T The coords type.
+   * @param coords The coordinates to compute the ranges from.
+   * @param cell_ranges The cell ranges to compute.
+   * @return Status
+   */
+  template <class T>
+  Status compute_cell_ranges(
+      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+      OverlappingCellRangeList* cell_ranges) const;
+
+  /**
+   * Copies the cells for the input attribute and cell ranges, into
+   * the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param cell_ranges The cell ranges to copy cells for.
+   * @return Status
+   */
+  Status copy_cells(
+      const std::string& attribute,
+      const OverlappingCellRangeList& cell_ranges) const;
+
+  /**
+   * Copies the cells for the input **fixed-sized** attribute and cell
+   * ranges, into the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param cell_ranges The cell ranges to copy cells for.
+   * @return Status
+   */
+  Status copy_fixed_cells(
+      const std::string& attribute,
+      const OverlappingCellRangeList& cell_ranges) const;
+
+  /**
+   * Copies the cells for the input **var-sized** attribute and cell
+   * ranges, into the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param cell_ranges The cell ranges to copy cells for.
+   * @return Status
+   */
+  Status copy_var_cells(
+      const std::string& attribute,
+      const OverlappingCellRangeList& cell_ranges) const;
+
+  /**
+   * Checks whether two hyper-rectangles overlap, and determines whether
+   * the first rectangle contains the second.
+   *
+   * @tparam T The domain type.
+   * @param a The first rectangle.
+   * @param b The second rectangle.
+   * @param dim_num The number of dimensions.
+   * @param a_contains_b Determines whether the first rectangle contains the
+   *     second.
+   * @return `True` if the rectangles overlap, and `false` otherwise.
+   */
+  template <class T>
+  bool overlap(
+      const T* a, const T* b, unsigned dim_num, bool* a_contains_b) const;
+
   /** Returns the array schema.*/
   const ArraySchema* array_schema() const;
 
@@ -87,6 +322,9 @@ class Query {
 
   /** Returns the list of ids of attributes involved in the query. */
   const std::vector<unsigned int>& attribute_ids() const;
+
+  /** Retrieves the index of the buffer corresponding to the input attribute. */
+  Status buffer_idx(const std::string& attribute, unsigned* bid) const;
 
   /** Finalizes and deletes the created fragments. */
   Status clear_fragments();
@@ -99,6 +337,17 @@ class Query {
    * @return Status
    */
   Status coords_buffer_i(int* coords_buffer_i) const;
+
+  /**
+   * Computes a vector of `subarrays` into which `subarray` must be partitioned,
+   * such that each subarray in `subarrays` can be saferly answered by the
+   * query without a memory overflow.
+   *
+   * @param subarray The input subarray.
+   * @param subarrays The vector of subarray partitions to be retrieved.
+   * @return Status
+   */
+  Status compute_subarrays(void* subarray, std::vector<void*>* subarrays) const;
 
   /**
    * Finalizes the query, properly finalizing and deleting the involved
@@ -227,6 +476,13 @@ class Query {
    */
   Status overflow(const char* attribute_name, unsigned int* overflow) const;
 
+  // TODO
+  Status sparse_read();
+
+  // TODO
+  template <class T>
+  Status sparse_read();
+
   /** Executes a read query. */
   Status read();
 
@@ -330,6 +586,9 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The names of the attributes involved in the query. */
+  std::vector<std::string> attributes_;
+
   /** The array schema. */
   const ArraySchema* array_schema_;
 
@@ -364,6 +623,9 @@ class Query {
 
   /** The corresponding buffer sizes. */
   uint64_t* buffer_sizes_;
+
+  /** Number of buffers. */
+  unsigned buffer_num_;
 
   /** A function that will be called upon the completion of an async query. */
   std::function<void(void*)> callback_;

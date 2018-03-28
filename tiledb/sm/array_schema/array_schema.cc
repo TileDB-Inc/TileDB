@@ -206,6 +206,25 @@ Status ArraySchema::buffer_num(
   return Status::Ok();
 }
 
+Status ArraySchema::buffer_num(
+    const std::vector<unsigned>& attribute_ids,
+    unsigned int* buffer_num) const {
+  *buffer_num = 0;
+  for (auto id : attribute_ids) {
+    if (id == attribute_num_ + 1)
+      id = attribute_num_;
+    if (id > attribute_num_)
+      return LOG_STATUS(Status::ArraySchemaError(
+          "Cannot compute number of buffers; Invalid attribute id"));
+    if (var_size(id))
+      (*buffer_num) += 2;
+    else
+      ++(*buffer_num);
+  }
+
+  return Status::Ok();
+}
+
 uint64_t ArraySchema::capacity() const {
   return capacity_;
 }
@@ -285,7 +304,7 @@ Status ArraySchema::check() const {
 Compressor ArraySchema::compression(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 
-  if (attr_id == attribute_num_ + 1)
+  if (attr_id == attribute_num_ || attr_id == attribute_num_ + 1)
     return coords_compression_;
 
   return attributes_[attr_id]->compressor();

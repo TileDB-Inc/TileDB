@@ -171,7 +171,7 @@ const char* group_filename = "__tiledb_group.tdb";
 const uint64_t internal_buffer_size = 10000000;
 
 /** The buffer size for each attribute used in consolidation. */
-const uint64_t consolidation_buffer_size = 10000000;
+const uint64_t consolidation_buffer_size = 50000000;
 
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
@@ -366,12 +366,6 @@ const char* key_dim_1 = "__key_dim_1";
  * is represented as a 2-dimensional uint64_t value.
  */
 const char* key_dim_2 = "__key_dim_2";
-
-/**
- * Default size to be allocated for an internal key-value buffer when reading
- * from a key-value store.
- */
-uint64_t kv_buffer_size = 1000;
 
 /** Maximum number of items to be buffered before a flush. */
 uint64_t kv_max_items = 1000;

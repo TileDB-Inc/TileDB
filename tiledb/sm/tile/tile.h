@@ -97,6 +97,9 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the number of cells stored in the tile. */
+  uint64_t cell_num() const;
+
   /**
    * Tile initializer.
    *

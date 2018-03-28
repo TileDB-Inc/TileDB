@@ -220,6 +220,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   auto& attribute_ids = fragment_->query()->attribute_ids();
   auto attribute_id_num = (unsigned int)attribute_ids.size();
   bool empty_buffers = true;
+
   for (unsigned i = 0; i < attribute_id_num; ++i) {
     if (buffer_sizes[i] > 0) {
       empty_buffers = false;
@@ -632,7 +633,6 @@ Status WriteState::write_attr_var(
   uint64_t bytes_written_var = 0;
   do {
     RETURN_NOT_OK(tile->write_with_shift(buf, buffer_var_offset));
-
     uint64_t bytes_to_write_var =
         (buf->end()) ?
             buffer_var_offset + buffer_var_size - tile->value<uint64_t>(0) :

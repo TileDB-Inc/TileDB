@@ -127,6 +127,58 @@ class StorageManager {
       uint64_t* buffer_sizes);
 
   /**
+   * Computes an upper bound on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes.
+   *
+   * @param array_schema The array schema
+   * @param fragment_metadata The fragment metadata of the array.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param attribute_ids The attribute ids to focus on.
+   * @param buffer_sizes The buffer sizes to be retrieved. Note that one
+   *     buffer size corresponds to a fixed-sized attributes, and two
+   *     buffer sizes for a variable-sized attribute (the first is the
+   *     size of the offsets, whereas the second is the size of the
+   *     actual variable-sized cell values.
+   * @param buffer_num The number of buffers.
+   * @return Status
+   */
+  Status array_compute_max_read_buffer_sizes(
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const void* subarray,
+      const std::vector<unsigned>& attribute_ids,
+      uint64_t* buffer_sizes,
+      unsigned buffer_num);
+
+  /**
+   * Computes an upper bound on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes.
+   *
+   * @tparam T The domain type.
+   * @param array_schema The array schema
+   * @param fragment_metadata The fragment metadata of the array.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param attribute_ids The attribute ids to focus on.
+   * @param buffer_sizes The buffer sizes to be retrieved. Note that one
+   *     buffer size corresponds to a fixed-sized attributes, and two
+   *     buffer sizes for a variable-sized attribute (the first is the
+   *     size of the offsets, whereas the second is the size of the
+   *     actual variable-sized cell values.
+   * @param buffer_num The number of buffers.
+   * @return Status
+   */
+  template <class T>
+  Status array_compute_max_read_buffer_sizes(
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const T* subarray,
+      const std::vector<unsigned>& attribute_ids,
+      uint64_t* buffer_sizes,
+      unsigned buffer_num);
+
+  /**
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.
@@ -605,35 +657,6 @@ class StorageManager {
 
   /** Closes an array. */
   Status array_close(URI array);
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @tparam T The domain type.
-   * @param array_schema The array schema.
-   * @param metadata The array fragment metadata.
-   * @param subarray The subarray to focus on.
-   * @param attributes The attributes to focus on.
-   * @param attribute_num The number of attributes.
-   * @param buffer_num The number of buffers corresponding to the input
-   *     attributes.
-   * @param buffer_sizes The buffer sizes to be retrieved. Note that one
-   *     buffer size corresponds to a fixed-sized attributes, and two
-   *     buffer sizes for a variable-sized attribute (the first is the
-   *     size of the offsets, whereas the second is the size of the
-   *     actual variable-sized cell values.
-   * @return Status
-   */
-  template <class T>
-  Status array_compute_max_read_buffer_sizes(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& metadata,
-      const T* subarray,
-      const char** attributes,
-      unsigned attribute_num,
-      unsigned buffer_num,
-      uint64_t* buffer_sizes);
 
   /**
    * Retrieves the non-empty domain from the input fragment metadata. This is

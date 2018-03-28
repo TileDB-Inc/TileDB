@@ -110,6 +110,7 @@ enum class StatusCode : char {
   FS_S3,
   FS_HDFS,
   Attribute,
+  SparseReader,
 };
 
 class Status {
@@ -309,6 +310,11 @@ class Status {
   /** Return a AttributeError error class Status with a given message **/
   static Status AttributeError(const std::string& msg) {
     return Status(StatusCode::Attribute, msg, -1);
+  }
+
+  /** Return a SparseReadwerError error class Status with a given message **/
+  static Status SparseReaderError(const std::string& msg) {
+    return Status(StatusCode::SparseReader, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

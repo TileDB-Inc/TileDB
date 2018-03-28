@@ -88,6 +88,10 @@ Tile::~Tile() {
 /*               API              */
 /* ****************************** */
 
+uint64_t Tile::cell_num() const {
+  return size() / cell_size_;
+}
+
 Status Tile::init(
     Datatype type,
     Compressor compressor,

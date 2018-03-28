@@ -318,8 +318,8 @@ class KV {
    */
   Status realloc_read_buffers();
 
-  /** Submits a read query, retrieving the query status. */
-  Status submit_read_query(const uint64_t* subarray, QueryStatus* status);
+  /** Submits a read query. */
+  Status submit_read_query(const uint64_t* subarray);
 
   /** Submits a write query. */
   Status submit_write_query();

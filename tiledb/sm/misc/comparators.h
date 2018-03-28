@@ -38,6 +38,8 @@
 #include <cinttypes>
 #include <vector>
 
+#include "tiledb/sm/query/query.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -247,6 +249,132 @@ class SmallerRow {
   const T* buffer_;
   /** Number of dimensions. */
   unsigned int dim_num_;
+};
+
+/** Wrapper of comparison function for sorting coords on row-major order. */
+template <class T>
+class RowCmp {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param dim_num The number of dimensions of the coords.
+   */
+  RowCmp(unsigned dim_num)
+      : dim_num_(dim_num) {
+  }
+
+  /**
+   * Comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(
+      const std::shared_ptr<Query::OverlappingCoords<T>>& a,
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+    for (unsigned int i = 0; i < dim_num_; ++i) {
+      if (a->coords_[i] < b->coords_[i])
+        return true;
+      if (a->coords_[i] > b->coords_[i])
+        return false;
+      // else a->coords_[i] == b->coords_[i] --> continue
+    }
+
+    return false;
+  }
+
+ private:
+  /** The number of dimensions. */
+  unsigned dim_num_;
+};
+
+/** Wrapper of comparison function for sorting coords on col-major order. */
+template <class T>
+class ColCmp {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param dim_num The number of dimensions of the coords.
+   */
+  ColCmp(unsigned dim_num)
+      : dim_num_(dim_num) {
+  }
+
+  /**
+   * Comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(
+      const std::shared_ptr<Query::OverlappingCoords<T>>& a,
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+    for (unsigned int i = dim_num_ - 1;; --i) {
+      if (a->coords_[i] < b->coords_[i])
+        return true;
+      if (a->coords_[i] > b->coords_[i])
+        return false;
+      // else a->coords_[i] == b->coords_[i] --> continue
+
+      if (i == 0)
+        break;
+    }
+
+    return false;
+  }
+
+ private:
+  /** The number of dimensions. */
+  unsigned dim_num_;
+};
+
+/**
+ * Wrapper of comparison function for sorting coords on the global order
+ * of some domain.
+ */
+template <class T>
+class GlobalCmp {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param dim_num The number of dimensions of the coords.
+   */
+  GlobalCmp(const Domain* domain)
+      : domain_(domain) {
+  }
+
+  /**
+   * Comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(
+      const std::shared_ptr<Query::OverlappingCoords<T>>& a,
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+    // Compare tile order first
+    auto tile_cmp = domain_->tile_order_cmp<T>(a->coords_, b->coords_);
+
+    if (tile_cmp == -1)
+      return true;
+    if (tile_cmp == 1)
+      return false;
+    // else tile_cmp == 0 --> continue
+
+    // Compare cell order
+    auto cell_cmp = domain_->cell_order_cmp(a->coords_, b->coords_);
+    return (cell_cmp == -1 || cell_cmp == 0);
+  }
+
+ private:
+  /** The domain. */
+  const Domain* domain_;
 };
 
 }  // namespace sm
