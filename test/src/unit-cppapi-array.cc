@@ -84,7 +84,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
     CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
     std::vector<int> subarray = {0, 5, 0, 5};
-    query.set_subarray<int>(subarray);
+    query.set_subarray(subarray);
   }
 
   SECTION("Read/Write") {
