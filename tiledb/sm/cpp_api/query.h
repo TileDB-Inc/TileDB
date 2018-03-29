@@ -147,24 +147,25 @@ class TILEDB_EXPORT Query {
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
    *
+   * @note set_subarray(std::vector) is preferred as it is safer.
+   *
    * @tparam T Array domain datatype
-   * @param pairs The subarray defined as pairs of [start, stop] per dimension.
+   * @param pairs Subarray pointer defined as an array of [start, stop] values
+   * per dimension.
+   * @param size The number of subarray elements.
    */
   template <typename T = uint64_t>
-  void set_subarray(const std::vector<T>& pairs) {
+  void set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
-
     auto& ctx = ctx_.get();
-    if (pairs.size() != schema_.domain().rank() * 2) {
+    if (size != schema_.domain().rank() * 2) {
       throw SchemaMismatch(
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
     }
-    ctx.handle_error(
-        tiledb_query_set_subarray(ctx, query_.get(), pairs.data()));
-
+    ctx.handle_error(tiledb_query_set_subarray(ctx, query_.get(), pairs));
     subarray_cell_num_ = pairs[1] - pairs[0] + 1;
-    for (unsigned i = 2; i < pairs.size() - 1; i += 2) {
+    for (unsigned i = 2; i < size - 1; i += 2) {
       subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
     }
   }
@@ -173,9 +174,37 @@ class TILEDB_EXPORT Query {
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
    *
+   * @tparam T Array domain datatype.  Should always be a vector of the domain
+   * type.
+   * @param pairs The subarray defined as a vector of [start, stop] coordinates
+   * per dimension.
+   */
+  template <typename Vec>
+  void set_subarray(const Vec& pairs) {
+    set_subarray(pairs.data(), pairs.size());
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
+   *
+   * @tparam T Array domain datatype.  Should always be a vector of the domain
+   * type.
+   * @param pairs List of [start, stop] coordinates per dimension.
+   */
+  template <typename T = uint64_t>
+  void set_subarray(const std::initializer_list<T>& l) {
+    set_subarray(std::vector<T>(l));
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
+   *
    * @note set_subarray(std::vector) is preferred and avoids an extra copy.
    *
-   * @tparam T Array domain datatype
+   * @tparam T Array domain datatype.  Should always be a vector of the domain
+   * type.
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
@@ -190,6 +219,60 @@ class TILEDB_EXPORT Query {
     set_subarray(buf);
   }
 
+  /** Set the coordinate buffer for unordered queries
+   *
+   * @note set_coordinates(std::vector) is preferred as it is safer.
+   *
+   * @tparam T Array domain datatype
+   * @param buf Coordinate array buffer pointer
+   * @param size The number of elements in the coordinate array buffer
+   * **/
+  template <typename T>
+  void set_coordinates(const T* buf, uint64_t size) {
+    set_buffer(TILEDB_COORDS, buf, size);
+  }
+
+  /** Set the coordinate buffer for unordered queries
+   *
+   * @tparam Vec Array domain datatype. Should always be a vector of the domain
+   * type.
+   * @param buf Coordinate vector
+   * **/
+  template <typename Vec>
+  void set_coordinates(Vec& buf) {
+    set_coordinates(buf.data(), buf.size());
+  }
+
+  /**
+   * Sets a buffer for a fixed-sized attribute.
+   *
+   * @note set_buffer(std::string, std::vector) is preferred as it is safer.
+   *
+   * @tparam Vec buffer. Should always be a vector type of the attribute type.
+   * @param attr Attribute name
+   * @param buf Buffer array pointer with elements of the attribute type.
+   * @param size Number of array elements
+   **/
+  template <typename T>
+  void set_buffer(const std::string& attr, const T* buf, uint64_t size) {
+    uint64_t element_size = 0;
+    if (array_attributes_.count(attr)) {
+      const auto& a = array_attributes_.at(attr);
+      impl::type_check<T>(a.type(), 0);
+      element_size = a.variable_sized() ? sizeof(T) : a.cell_size();
+    } else if (attr == TILEDB_COORDS) {
+      impl::type_check<T>(schema_.domain().type());
+      element_size = tiledb_datatype_size(schema_.domain().type());
+    } else {
+      throw AttributeError("Attribute does not exist: " + attr);
+    }
+    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
+        sizeof(T) * size,
+        std::move(element_size),
+        const_cast<void*>(reinterpret_cast<const void*>(buf)));
+    attrs_.emplace_back(attr);
+  }
+
   /**
    * Sets a buffer for a fixed-sized attribute.
    *
@@ -199,23 +282,39 @@ class TILEDB_EXPORT Query {
    **/
   template <typename Vec>
   void set_buffer(const std::string& attr, Vec& buf) {
-    using attribute_t = typename Vec::value_type;
-    uint64_t element_size;
-    if (array_attributes_.count(attr)) {
-      const auto& a = array_attributes_.at(attr);
-      impl::type_check<attribute_t>(a.type(), 0);
-      element_size = a.variable_sized() ? sizeof(attribute_t) : a.cell_size();
-    } else if (attr == TILEDB_COORDS) {
-      impl::type_check<attribute_t>(schema_.domain().type());
-      element_size = tiledb_datatype_size(schema_.domain().type());
-    } else {
-      throw AttributeError("Attribute does not exist: " + attr);
+    return set_buffer(attr, buf.data(), buf.size());
+  }
+
+  /**
+   * Sets a buffer for a variable-sized attribute.
+   *
+   * @note set_buffer(std::string, std::vector, std::vector) is preferred as it
+   *is safer.
+   *
+   * @tparam Vec buffer type. Should always be a vector of the attribute type.
+   * @param attr Attribute name
+   * @param offsets Offsets array pointer where a new element begins in the data
+   *buffer.
+   * @param offsets_size Number of elements in offsets buffer.
+   * @param data Buffer array pointer with elements of the attribute type.
+   *        For variable sized attributes, the buffer should be flattened.
+   * @param size Number of array elements in data buffer.
+   **/
+  template <typename T>
+  void set_buffer(
+      const std::string& attr,
+      const uint64_t* offsets,
+      uint64_t offset_size,
+      const T* data,
+      uint64_t size) {
+    if (attr == TILEDB_COORDS) {
+      throw TileDBError("Cannot set coordinate buffer as variable sized.");
     }
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        static_cast<uint64_t>(buf.size() * sizeof(attribute_t)),
-        std::move(element_size),
-        const_cast<void*>(reinterpret_cast<const void*>(buf.data())));
-    attrs_.emplace_back(attr);
+    set_buffer(attr, data, size);
+    var_offsets_[attr] = std::tuple<uint64_t, uint64_t, void*>(
+        TILEDB_OFFSET_SIZE * offset_size,
+        TILEDB_OFFSET_SIZE,
+        const_cast<void*>(reinterpret_cast<const void*>(offsets)));
   }
 
   /**
@@ -232,15 +331,7 @@ class TILEDB_EXPORT Query {
   template <typename Vec>
   void set_buffer(
       const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
-    if (attr == TILEDB_COORDS) {
-      throw TileDBError("Cannot set coordinate buffer as variable sized.");
-    }
-    set_buffer(attr, data);
-
-    var_offsets_[attr] = std::tuple<uint64_t, uint64_t, void*>(
-        offsets.size() * TILEDB_OFFSET_SIZE,
-        TILEDB_OFFSET_SIZE,
-        offsets.data());
+    set_buffer(attr, offsets.data(), offsets.size(), data.data(), data.size());
   }
 
   /**
@@ -254,12 +345,6 @@ class TILEDB_EXPORT Query {
   void set_buffer(
       const std::string& attr, std::pair<std::vector<uint64_t>, Vec>& buf) {
     set_buffer(attr, buf.first, buf.second);
-  }
-
-  /** Set the coordinate buffer for unordered queries **/
-  template <typename Vec>
-  void set_coordinates(Vec& buf) {
-    set_buffer(TILEDB_COORDS, buf);
   }
 
   /* ********************************* */
