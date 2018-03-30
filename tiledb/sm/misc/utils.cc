@@ -519,6 +519,10 @@ uint64_t timestamp_ms() {
 #endif
 }
 
+uint64_t ceil(uint64_t x, uint64_t y) {
+  return x / y + (x % y != 0);
+}
+
 // Explicit template instantiations
 template uint64_t cell_num_in_subarray<int>(
     const int* subarray, unsigned int dim_num);

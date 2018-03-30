@@ -128,16 +128,19 @@ STATS_REPORT_FUNC_STAT(vfs_write)
 // VFS
 STATS_DEFINE_COUNTER_STAT(vfs_read_total_bytes)
 STATS_DEFINE_COUNTER_STAT(vfs_write_total_bytes)
+STATS_DEFINE_COUNTER_STAT(vfs_read_num_parallelized)
 #endif
 
 #ifdef STATS_INIT_COUNTER_STAT
 // VFS
 STATS_INIT_COUNTER_STAT(vfs_read_total_bytes)
 STATS_INIT_COUNTER_STAT(vfs_write_total_bytes)
+STATS_INIT_COUNTER_STAT(vfs_read_num_parallelized)
 #endif
 
 #ifdef STATS_REPORT_COUNTER_STAT
 // VFS
 STATS_REPORT_COUNTER_STAT(vfs_read_total_bytes)
 STATS_REPORT_COUNTER_STAT(vfs_write_total_bytes)
+STATS_REPORT_COUNTER_STAT(vfs_read_num_parallelized)
 #endif

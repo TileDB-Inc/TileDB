@@ -37,6 +37,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <thread>
 
 void remove_file(const std::string& filename) {
   // Remove file
@@ -183,6 +184,8 @@ void check_save_to_file() {
   ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.max_parallel_ops " << std::thread::hardware_concurrency() << "\n";
+  ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
@@ -348,6 +351,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.array_schema_cache_size"] = "1000";
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
+  all_param_values["vfs.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.endpoint_override"] = "";
@@ -362,6 +368,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> vfs_param_values;
+  vfs_param_values["max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.endpoint_override"] = "";

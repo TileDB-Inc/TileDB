@@ -370,6 +370,12 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
  *    acceptable. <br>
  *    **Default**: 10,000,000
+ * - `vfs.max_parallel_ops` <br>
+ *    The maximum number of VFS parallel operations.<br>
+ *    **Default**: number of cores
+ * - `vfs.min_parallel_size` <br>
+ *    The minimum number of bytes for a parallel VFS operation.<br>
+ *    **Default**: 10MB
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
  *    **Default**: us-east-1

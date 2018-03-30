@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/config.h"
 
@@ -329,6 +330,21 @@ class VFS {
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
+
+  /** Thread pool for parallel I/O operations. */
+  std::unique_ptr<ThreadPool> thread_pool_;
+
+  /**
+   * Reads from a file by calling the specific backend read function.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @return Status
+   */
+  Status read_impl(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 };
 
 }  // namespace sm

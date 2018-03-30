@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/status.h"
 
 #include <map>
+#include <thread>
 
 namespace tiledb {
 namespace sm {
@@ -100,8 +101,12 @@ class Config {
   struct VFSParams {
     S3Params s3_params_;
     HDFSParams hdfs_params_;
+    uint64_t max_parallel_ops_;
+    uint64_t min_parallel_size_;
 
     VFSParams() {
+      max_parallel_ops_ = constants::vfs_max_parallel_ops;
+      min_parallel_size_ = constants::vfs_min_parallel_size;
     }
   };
 
@@ -152,6 +157,12 @@ class Config {
    *    The fragment metadata cache size in bytes. Any `uint64_t` value is
    *    acceptable. <br>
    *    **Default**: 10,000,000
+   * - `vfs.max_parallel_ops` <br>
+   *    The maximum number of VFS parallel operations.<br>
+   *    **Default**: number of cores
+   * - `vfs.min_parallel_size` <br>
+   *    The minimum number of bytes in a parallel VFS operation.<br>
+   *    **Default**: 10MB
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -248,6 +259,12 @@ class Config {
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);
+
+  /** Sets the max number of allowed VFS parallel operations. */
+  Status set_vfs_max_parallel_ops(const std::string& value);
+
+  /** Sets the min number of bytes of a VFS parallel operation. */
+  Status set_vfs_min_parallel_size(const std::string& value);
 
   /** Sets the S3 region. */
   Status set_vfs_s3_region(const std::string& value);
