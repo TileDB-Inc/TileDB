@@ -1,5 +1,5 @@
 /**
- * @file   win_filesystem.cc
+ * @file   win.cc
  *
  * @section LICENSE
  *
@@ -29,12 +29,12 @@
  *
  * This file includes definitions of Windows filesystem functions.
  */
-
 #ifdef _WIN32
 
-#include "tiledb/sm/filesystem/win_filesystem.h"
+#include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <Shlwapi.h>
@@ -46,9 +46,9 @@
 namespace tiledb {
 namespace sm {
 
-namespace win {
-
-static std::string get_last_error_msg() {
+namespace {
+/** Returns the last Windows error message string. */
+std::string get_last_error_msg() {
   DWORD err = GetLastError();
   LPVOID lpMsgBuf;
   if (FormatMessage(
@@ -67,8 +67,9 @@ static std::string get_last_error_msg() {
   LocalFree(lpMsgBuf);
   return msg;
 }
+}  // namespace
 
-std::string abs_path(const std::string& path) {
+std::string Win::abs_path(const std::string& path) {
   if (path.length() == 0) {
     return current_dir();
   }
@@ -88,8 +89,8 @@ std::string abs_path(const std::string& path) {
   return str_result;
 }
 
-Status create_dir(const std::string& path) {
-  if (win::is_dir(path)) {
+Status Win::create_dir(const std::string& path) const {
+  if (is_dir(path)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
@@ -102,8 +103,8 @@ Status create_dir(const std::string& path) {
   return Status::Ok();
 }
 
-Status touch(const std::string& filename) {
-  if (win::is_file(filename)) {
+Status Win::touch(const std::string& filename) const {
+  if (is_file(filename)) {
     return Status::Ok();
   }
 
@@ -122,7 +123,7 @@ Status touch(const std::string& filename) {
   return Status::Ok();
 }
 
-std::string current_dir() {
+std::string Win::current_dir() {
   std::string dir;
   unsigned long length = GetCurrentDirectory(0, nullptr);
   char* path = (char*)std::malloc(length * sizeof(char));
@@ -135,7 +136,7 @@ std::string current_dir() {
   return dir;
 }
 
-static Status recursively_remove_directory(const std::string& path) {
+Status Win::recursively_remove_directory(const std::string& path) const {
   const std::string glob = path + "\\*";
   WIN32_FIND_DATA find_data;
 
@@ -188,8 +189,8 @@ err:
       std::string("Failed to remove directory '" + path + "'")));
 }
 
-Status remove_dir(const std::string& path) {
-  if (win::is_dir(path)) {
+Status Win::remove_dir(const std::string& path) const {
+  if (is_dir(path)) {
     return recursively_remove_directory(path);
   } else {
     return LOG_STATUS(Status::IOError(std::string(
@@ -197,7 +198,7 @@ Status remove_dir(const std::string& path) {
   }
 }
 
-Status remove_file(const std::string& path) {
+Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
     return LOG_STATUS(
         Status::IOError(std::string("Failed to delete file '" + path + "'")));
@@ -205,7 +206,7 @@ Status remove_file(const std::string& path) {
   return Status::Ok();
 }
 
-Status file_size(const std::string& path, uint64_t* size) {
+Status Win::file_size(const std::string& path, uint64_t* size) const {
   LARGE_INTEGER nbytes;
   HANDLE file_h = CreateFile(
       path.c_str(),
@@ -229,7 +230,8 @@ Status file_size(const std::string& path, uint64_t* size) {
   return Status::Ok();
 }
 
-Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
+Status Win::filelock_lock(
+    const std::string& filename, filelock_t* fd, bool shared) const {
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_READ | GENERIC_WRITE,
@@ -260,7 +262,7 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   return Status::Ok();
 }
 
-Status filelock_unlock(filelock_t fd) {
+Status Win::filelock_unlock(filelock_t fd) const {
   OVERLAPPED overlapped = {0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);
@@ -271,15 +273,28 @@ Status filelock_unlock(filelock_t fd) {
   return Status::Ok();
 }
 
-bool is_dir(const std::string& path) {
+Status Win::init(
+    const Config::VFSParams& vfs_params, ThreadPool* vfs_thread_pool) {
+  if (vfs_thread_pool == nullptr) {
+    return LOG_STATUS(
+        Status::VFSError("Cannot initialize with null thread pool"));
+  }
+
+  vfs_params_ = vfs_params;
+  vfs_thread_pool_ = vfs_thread_pool;
+
+  return Status::Ok();
+}
+
+bool Win::is_dir(const std::string& path) const {
   return PathIsDirectory(path.c_str());
 }
 
-bool is_file(const std::string& path) {
+bool Win::is_file(const std::string& path) const {
   return PathFileExists(path.c_str()) && !PathIsDirectory(path.c_str());
 }
 
-Status ls(const std::string& path, std::vector<std::string>* paths) {
+Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
   WIN32_FIND_DATA find_data;
@@ -321,7 +336,8 @@ err:
   return LOG_STATUS(Status::IOError(std::string("Failed to list directory.")));
 }
 
-Status move_path(const std::string& old_path, const std::string& new_path) {
+Status Win::move_path(
+    const std::string& old_path, const std::string& new_path) const {
   if (MoveFileEx(
           old_path.c_str(), new_path.c_str(), MOVEFILE_REPLACE_EXISTING) == 0) {
     return LOG_STATUS(Status::IOError(std::string(
@@ -330,8 +346,11 @@ Status move_path(const std::string& old_path, const std::string& new_path) {
   return Status::Ok();
 }
 
-Status read(
-    const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
+Status Win::read(
+    const std::string& path,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes) const {
   // Open the file (OPEN_EXISTING with CreateFile() will only open, not create,
   // the file).
   HANDLE file_h = CreateFile(
@@ -371,7 +390,7 @@ Status read(
   return Status::Ok();
 }
 
-Status sync(const std::string& path) {
+Status Win::sync(const std::string& path) const {
   if (!is_file(path)) {
     return Status::Ok();
   }
@@ -405,8 +424,8 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
-Status write(
-    const std::string& path, const void* buffer, uint64_t buffer_size) {
+Status Win::write(
+    const std::string& path, const void* buffer, uint64_t buffer_size) const {
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
       path.c_str(),
@@ -421,43 +440,55 @@ Status write(
         "Cannot write to file '" + path + "'; File opening error"));
   }
 
-  LARGE_INTEGER offset_lg_int;
-  offset_lg_int.QuadPart = 0;
-  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_END) == 0) {
+  // Get the current file size.
+  LARGE_INTEGER file_size_lg_int;
+  if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
     CloseHandle(file_h);
     return LOG_STATUS(Status::IOError(
-        "Cannot write to file '" + path + "'; File seek error"));
+        "Cannot write to file '" + path + "'; File size error"));
   }
+  uint64_t file_offset = file_size_lg_int.QuadPart;
 
-  // Append data to the file in batches of constants::max_write_bytes
-  // bytes at a time
-  unsigned long bytes_written = 0;
-  uint64_t byte_idx = 0;
-  const char* byte_buffer = reinterpret_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
-    if (WriteFile(
-            file_h,
-            byte_buffer + byte_idx,
-            constants::max_write_bytes,
-            &bytes_written,
-            NULL) == 0 ||
-        bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + path +
-          "'; File writing error"));
+  // Ensure that each thread is responsible for at least min_parallel_size
+  // bytes, and cap the number of parallel operations at the thread pool size.
+  uint64_t num_ops = std::min(
+      std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
+      vfs_thread_pool_->num_threads());
+
+  if (num_ops == 1) {
+    if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
+      CloseHandle(file_h);
+      return LOG_STATUS(
+          Status::IOError(std::string("Cannot write to file '") + path));
     }
-    buffer_size -= constants::max_write_bytes;
-    byte_idx += constants::max_write_bytes;
-  }
-  if (WriteFile(
-          file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, NULL) ==
-          0 ||
-      bytes_written != buffer_size) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + path +
-        "'; File writing error"));
+  } else {
+    STATS_COUNTER_ADD(vfs_win32_write_num_parallelized, 1);
+    std::vector<std::future<Status>> results;
+    uint64_t thread_write_nbytes = utils::ceil(buffer_size, num_ops);
+
+    for (uint64_t i = 0; i < num_ops; i++) {
+      uint64_t begin = i * thread_write_nbytes,
+               end =
+                   std::min((i + 1) * thread_write_nbytes - 1, buffer_size - 1);
+      uint64_t thread_nbytes = end - begin + 1;
+      uint64_t thread_file_offset = file_offset + begin;
+      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
+      results.push_back(vfs_thread_pool_->enqueue(
+          [file_h, thread_file_offset, thread_buffer, thread_nbytes]() {
+            return write_at(
+                file_h, thread_file_offset, thread_buffer, thread_nbytes);
+          }));
+    }
+
+    bool all_ok = vfs_thread_pool_->wait_all(results);
+    if (!all_ok) {
+      CloseHandle(file_h);
+      return LOG_STATUS(
+          Status::IOError(std::string("Cannot write to file '") + path));
+    }
   }
 
+  // Always close the handle.
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status::IOError(
         "Cannot write to file '" + path + "'; File closing error"));
@@ -466,7 +497,56 @@ Status write(
   return Status::Ok();
 }
 
-std::string uri_from_path(const std::string& path) {
+Status Win::write_at(
+    HANDLE file_h,
+    uint64_t file_offset,
+    const void* buffer,
+    uint64_t buffer_size) {
+  // Write data to the file in batches of constants::max_write_bytes bytes at a
+  // time. Because this may be called in multiple threads, we don't seek the
+  // file handle. Instead, we use the OVERLAPPED struct to specify an offset at
+  // which to write. Note that the file handle does not have to be opened in
+  // "overlapped" mode (i.e. async writes) to do this.
+  unsigned long bytes_written = 0;
+  uint64_t byte_idx = 0;
+  const char* byte_buffer = reinterpret_cast<const char*>(buffer);
+  while (buffer_size > constants::max_write_bytes) {
+    LARGE_INTEGER offset;
+    offset.QuadPart = file_offset;
+    OVERLAPPED ov = {0};
+    ov.Offset = offset.LowPart;
+    ov.OffsetHigh = offset.HighPart;
+    if (WriteFile(
+            file_h,
+            byte_buffer + byte_idx,
+            constants::max_write_bytes,
+            &bytes_written,
+            &ov) == 0 ||
+        bytes_written != constants::max_write_bytes) {
+      return LOG_STATUS(Status::IOError(std::string(
+          "Cannot write to file; File writing error: " +
+          get_last_error_msg())));
+    }
+    buffer_size -= constants::max_write_bytes;
+    byte_idx += constants::max_write_bytes;
+    file_offset += constants::max_write_bytes;
+  }
+  LARGE_INTEGER offset;
+  offset.QuadPart = file_offset;
+  OVERLAPPED ov = {0};
+  ov.Offset = offset.LowPart;
+  ov.OffsetHigh = offset.HighPart;
+  if (WriteFile(
+          file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, &ov) ==
+          0 ||
+      bytes_written != buffer_size) {
+    return LOG_STATUS(Status::IOError(std::string(
+        "Cannot write to file; File writing error: " + get_last_error_msg())));
+  }
+  return Status::Ok();
+}
+
+std::string Win::uri_from_path(const std::string& path) {
   if (path.length() == 0) {
     return "";
   }
@@ -482,7 +562,7 @@ std::string uri_from_path(const std::string& path) {
   return str_uri;
 }
 
-std::string path_from_uri(const std::string& uri) {
+std::string Win::path_from_uri(const std::string& uri) {
   if (uri.length() == 0) {
     return "";
   }
@@ -502,7 +582,7 @@ std::string path_from_uri(const std::string& uri) {
   return str_path;
 }
 
-bool is_win_path(const std::string& path) {
+bool Win::is_win_path(const std::string& path) {
   if (path.empty()) {
     // Special case to match the behavior of posix_filesystem.
     return true;
@@ -520,8 +600,6 @@ bool is_win_path(const std::string& path) {
     }
   }
 }
-
-}  // namespace win
 
 }  // namespace sm
 }  // namespace tiledb

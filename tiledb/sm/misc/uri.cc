@@ -36,7 +36,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
-#include "tiledb/sm/filesystem/win_filesystem.h"
+#include "tiledb/sm/filesystem/win.h"
 #endif
 
 #include <iostream>
@@ -163,7 +163,7 @@ URI URI::parent() const {
 std::string URI::to_path(const std::string& uri) {
   if (is_file(uri)) {
 #ifdef _WIN32
-    return win::path_from_uri(uri);
+    return Win::path_from_uri(uri);
 #else
     return uri.substr(std::string("file://").size());
 #endif

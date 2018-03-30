@@ -34,9 +34,9 @@
 #include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
-#include "tiledb/sm/filesystem/win_filesystem.h"
+#include "tiledb/sm/filesystem/win.h"
 #else
-#include "tiledb/sm/filesystem/posix_filesystem.h"
+#include "tiledb/sm/filesystem/posix.h"
 #endif
 
 using namespace tiledb::sm;
@@ -44,12 +44,12 @@ using namespace tiledb::sm;
 #ifdef _WIN32
 static const char PATH_SEPARATOR = '\\';
 static std::string current_dir() {
-  return win::current_dir();
+  return Win::current_dir();
 }
 #else
 static const char PATH_SEPARATOR = '/';
 static std::string current_dir() {
-  return posix::current_dir();
+  return Posix::current_dir();
 }
 #endif
 
@@ -103,9 +103,9 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
 #ifdef _WIN32
-  CHECK(uri.to_string() == win::uri_from_path(win::current_dir()) + "/path1");
+  CHECK(uri.to_string() == Win::uri_from_path(Win::current_dir()) + "/path1");
 #else
-  CHECK(uri.to_string() == "file://" + posix::current_dir() + "/path1");
+  CHECK(uri.to_string() == "file://" + Posix::current_dir() + "/path1");
 #endif
 
   uri = URI(".");
@@ -188,7 +188,7 @@ TEST_CASE("URI: Test Windows paths", "[uri]") {
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(
       uri.to_string() ==
-      win::uri_from_path(win::current_dir()) + "/path1/path2");
+      Win::uri_from_path(Win::current_dir()) + "/path1/path2");
 }
 
 #endif

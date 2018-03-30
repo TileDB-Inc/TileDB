@@ -33,9 +33,9 @@
 
 #include "catch.hpp"
 #ifdef _WIN32
-#include "tiledb/sm/filesystem/win_filesystem.h"
+#include "tiledb/sm/filesystem/win.h"
 #else
-#include "tiledb/sm/filesystem/posix_filesystem.h"
+#include "tiledb/sm/filesystem/posix.h"
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
@@ -64,11 +64,11 @@ struct SparseArrayFx {
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
-      tiledb::sm::win::current_dir() + "\\tiledb_test\\";
+      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
-      tiledb::sm::posix::current_dir() + "/tiledb_test/";
+      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
   int ITER_NUM = 5;
   const std::string ARRAY = "sparse_array";

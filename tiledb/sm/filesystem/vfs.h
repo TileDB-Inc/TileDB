@@ -37,6 +37,8 @@
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/filelock.h"
+#include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
@@ -329,6 +331,12 @@ class VFS {
 /* ********************************* */
 #ifdef HAVE_S3
   S3 s3_;
+#endif
+
+#ifdef _WIN32
+  Win win_;
+#else
+  Posix posix_;
 #endif
 
 #ifdef HAVE_HDFS
