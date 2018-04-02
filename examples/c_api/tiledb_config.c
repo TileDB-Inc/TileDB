@@ -42,7 +42,7 @@
  * "vfs.hdfs.username" : ""
  * "vfs.s3.connect_timeout_ms" : "3000"
  * "vfs.s3.endpoint_override" : "localhost:9000"
- * "vfs.s3.file_buffer_size" : "5242880"
+ * "vfs.s3.multipart_part_size" : "5242880"
  * "vfs.s3.region" : ""
  * "vfs.s3.request_timeout_ms" : "3000"
  * "vfs.s3.scheme" : "http"
@@ -53,7 +53,7 @@
  * VFS S3 settings:
  * "connect_timeout_ms" : "5000"
  * "endpoint_override" : "localhost:8888"
- * "file_buffer_size" : "5242880"
+ * "multipart_part_size" : "5242880"
  * "region" : ""
  * "request_timeout_ms" : "3000"
  * "scheme" : "http"

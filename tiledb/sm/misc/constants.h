@@ -384,8 +384,8 @@ extern const long s3_request_timeout_ms;
 /** S3 scheme (http for local minio, https for AWS S3). */
 extern const char* s3_scheme;
 
-/** Size of file buffers used in the S3 multi-part uploads. */
-extern const uint64_t s3_file_buffer_size;
+/** Size of parts used in the S3 multi-part uploads. */
+extern const uint64_t s3_multipart_part_size;
 
 /** S3 region. */
 extern const char* s3_region;

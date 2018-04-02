@@ -59,6 +59,8 @@ STATS_DEFINE_FUNC_STAT(vfs_remove_dir)
 STATS_DEFINE_FUNC_STAT(vfs_supports_fs)
 STATS_DEFINE_FUNC_STAT(vfs_sync)
 STATS_DEFINE_FUNC_STAT(vfs_write)
+STATS_DEFINE_FUNC_STAT(vfs_s3_fill_file_buffer)
+STATS_DEFINE_FUNC_STAT(vfs_s3_write_multipart)
 #endif
 
 #ifdef STATS_INIT_FUNC_STAT
@@ -90,6 +92,8 @@ STATS_INIT_FUNC_STAT(vfs_remove_dir)
 STATS_INIT_FUNC_STAT(vfs_supports_fs)
 STATS_INIT_FUNC_STAT(vfs_sync)
 STATS_INIT_FUNC_STAT(vfs_write)
+STATS_INIT_FUNC_STAT(vfs_s3_fill_file_buffer)
+STATS_INIT_FUNC_STAT(vfs_s3_write_multipart)
 
 #endif
 
@@ -122,6 +126,8 @@ STATS_REPORT_FUNC_STAT(vfs_remove_dir)
 STATS_REPORT_FUNC_STAT(vfs_supports_fs)
 STATS_REPORT_FUNC_STAT(vfs_sync)
 STATS_REPORT_FUNC_STAT(vfs_write)
+STATS_REPORT_FUNC_STAT(vfs_s3_fill_file_buffer)
+STATS_REPORT_FUNC_STAT(vfs_s3_write_multipart)
 #endif
 
 #ifdef STATS_DEFINE_COUNTER_STAT
@@ -129,6 +135,8 @@ STATS_REPORT_FUNC_STAT(vfs_write)
 STATS_DEFINE_COUNTER_STAT(vfs_read_total_bytes)
 STATS_DEFINE_COUNTER_STAT(vfs_write_total_bytes)
 STATS_DEFINE_COUNTER_STAT(vfs_read_num_parallelized)
+STATS_DEFINE_COUNTER_STAT(vfs_s3_num_parts_written)
+STATS_DEFINE_COUNTER_STAT(vfs_s3_write_num_parallelized)
 #endif
 
 #ifdef STATS_INIT_COUNTER_STAT
@@ -136,6 +144,8 @@ STATS_DEFINE_COUNTER_STAT(vfs_read_num_parallelized)
 STATS_INIT_COUNTER_STAT(vfs_read_total_bytes)
 STATS_INIT_COUNTER_STAT(vfs_write_total_bytes)
 STATS_INIT_COUNTER_STAT(vfs_read_num_parallelized)
+STATS_INIT_COUNTER_STAT(vfs_s3_num_parts_written)
+STATS_INIT_COUNTER_STAT(vfs_s3_write_num_parallelized)
 #endif
 
 #ifdef STATS_REPORT_COUNTER_STAT
@@ -143,4 +153,6 @@ STATS_INIT_COUNTER_STAT(vfs_read_num_parallelized)
 STATS_REPORT_COUNTER_STAT(vfs_read_total_bytes)
 STATS_REPORT_COUNTER_STAT(vfs_write_total_bytes)
 STATS_REPORT_COUNTER_STAT(vfs_read_num_parallelized)
+STATS_REPORT_COUNTER_STAT(vfs_s3_num_parts_written)
+STATS_REPORT_COUNTER_STAT(vfs_s3_write_num_parallelized)
 #endif

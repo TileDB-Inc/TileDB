@@ -67,7 +67,7 @@ class Config {
     std::string scheme_;
     std::string endpoint_override_;
     bool use_virtual_addressing_;
-    uint64_t file_buffer_size_;
+    uint64_t multipart_part_size_;
     long connect_timeout_ms_;
     long connect_max_tries_;
     long connect_scale_factor_;
@@ -78,7 +78,7 @@ class Config {
       scheme_ = constants::s3_scheme;
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
-      file_buffer_size_ = constants::s3_file_buffer_size;
+      multipart_part_size_ = constants::s3_multipart_part_size;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
       connect_max_tries_ = constants::s3_connect_max_tries;
       connect_scale_factor_ = constants::s3_connect_scale_factor;
@@ -161,7 +161,8 @@ class Config {
    *    The maximum number of VFS parallel operations.<br>
    *    **Default**: number of cores
    * - `vfs.min_parallel_size` <br>
-   *    The minimum number of bytes in a parallel VFS operation.<br>
+   *    The minimum number of bytes in a parallel VFS operation. (Does not
+   *    affect parallel S3 writes.)<br>
    *    **Default**: 10MB
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
@@ -176,9 +177,11 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
-   * - `vfs.s3.file_buffer_size` <br>
-   *    The file buffer size (in bytes) used in S3 writes, if S3 is enables. Any
-   *    `uint64_t` value is acceptable. <br>
+   * - `vfs.s3.multipart_part_size` <br>
+   *    The part size (in bytes) used in S3 multipart writes, if S3 is enabled.
+   *    Any `uint64_t` value is acceptable. Note: `vfs.s3.multipart_part_size *
+   *    vfs.max_parallel_ops` bytes will be buffered before issuing multipart
+   *    uploads in parallel. <br>
    *    **Default**: 5*1024*1024
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
@@ -278,8 +281,8 @@ class Config {
   /** Sets the S3 virtual addressing. */
   Status set_vfs_s3_use_virtual_addressing(const std::string& value);
 
-  /** Sets the S3 file buffer size. */
-  Status set_vfs_s3_file_buffer_size(const std::string& value);
+  /** Sets the S3 multipart part size. */
+  Status set_vfs_s3_multipart_part_size(const std::string& value);
 
   /** Sets the S3 connect timeout in milliseconds. */
   Status set_vfs_s3_connect_timeout_ms(const std::string& value);

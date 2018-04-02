@@ -397,8 +397,8 @@ const long s3_request_timeout_ms = 3000;
 /** S3 scheme (http for local minio, https for AWS S3). */
 const char* s3_scheme = "https";
 
-/** Size of file buffers used in the S3 multi-part uploads. */
-const uint64_t s3_file_buffer_size = 5 * 1024 * 1024;
+/** Size of parts used in the S3 multi-part uploads. */
+const uint64_t s3_multipart_part_size = 5 * 1024 * 1024;
 
 /** S3 region. */
 const char* s3_region = "us-east-1";

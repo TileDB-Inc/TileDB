@@ -34,7 +34,9 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/storage_manager/config.h"
 
 #include <fstream>
 #include <thread>
@@ -47,6 +49,7 @@ struct S3Fx {
       tiledb::sm::URI(S3_PREFIX + random_bucket_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   tiledb::sm::S3 s3_;
+  ThreadPool thread_pool_;
 
   S3Fx();
   ~S3Fx();
@@ -60,7 +63,7 @@ S3Fx::S3Fx() {
   s3_config.endpoint_override_ = "localhost:9999";
   s3_config.scheme_ = "http";
   s3_config.use_virtual_addressing_ = false;
-  REQUIRE(s3_.connect(s3_config).ok());
+  REQUIRE(s3_.init(s3_config, &thread_pool_).ok());
 
   // Create bucket
   if (s3_.is_bucket(S3_BUCKET))
