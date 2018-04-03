@@ -11,6 +11,7 @@
 * Minor S3 optimizations and error message fixes (PR #462)
 * Changed S3 default config so that AWS S3 just works (PR #455)
 * Got rid of special S3 "directory objects"
+* Refactored sparse reads, making them simpler and more amenable to parallelization.
 
 ## Bug Fixes
 

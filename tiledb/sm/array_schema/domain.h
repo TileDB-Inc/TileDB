@@ -76,6 +76,85 @@ class Domain {
   /* ********************************* */
 
   /**
+   * Splits the input subarray in half, in a way that the input layout is
+   * respected. This means that if the two resulting subarrays were to
+   * be issued as consecutive queries with the input layout, the retrieved
+   * result would be correct (i.e., the resulting cells would respect the
+   * input layout).
+   *
+   * @param subarray The input subarray.
+   * @param layout The query layout.
+   * @param subarray_1 The first subarray resulting from the split.
+   * @param subarray_2 The second subarray resulting from the split.
+   * @return Status
+   */
+  Status split_subarray(
+      void* subarray,
+      Layout layout,
+      void** subarray_1,
+      void** subarray_2) const;
+
+  /**
+   * Splits the input subarray in half, in a way that the input layout is
+   * respected. This means that if the two resulting subarrays were to
+   * be issued as consecutive queries with the input layout, the retrieved
+   * result would be correct (i.e., the resulting cells would respect the
+   * input layout).
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param layout The query layout.
+   * @param subarray_1 The first subarray resulting from the split.
+   * @param subarray_2 The second subarray resulting from the split.
+   * @return Status
+   */
+  template <class T>
+  Status split_subarray(
+      void* subarray,
+      Layout layout,
+      void** subarray_1,
+      void** subarray_2) const;
+
+  /**
+   * Splits the input subarray in half, in a way that the global layout is
+   * respected. This means that if the two resulting subarrays were to
+   * be issued as consecutive queries with the input layout, the retrieved
+   * result would be correct (i.e., the resulting cells would respect the
+   * global layout).
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param layout The query layout.
+   * @param subarray_1 The first subarray resulting from the split.
+   * @param subarray_2 The second subarray resulting from the split.
+   * @return Status
+   */
+  template <class T>
+  Status split_subarray_global(
+      void* subarray, void** subarray_1, void** subarray_2) const;
+
+  /**
+   * Splits the input subarray in half, in a way that the input cell layout is
+   * respected. This means that if the two resulting subarrays were to
+   * be issued as consecutive queries with the cell layout, the retrieved
+   * result would be correct (i.e., the resulting cells would respect the
+   * input layout).
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param cell_layout The cell layout.
+   * @param subarray_1 The first subarray resulting from the split.
+   * @param subarray_2 The second subarray resulting from the split.
+   * @return Status
+   */
+  template <class T>
+  Status split_subarray_cell(
+      void* subarray,
+      Layout cell_layout,
+      void** subarray_1,
+      void** subarray_2) const;
+
+  /**
    * Adds a dimension to the domain.
    *
    * @param dim The dimension to be added.
@@ -452,6 +531,20 @@ class Domain {
   template <class T>
   int tile_order_cmp(
       const T* coords_a, const T* coords_b, T* tile_coords) const;
+
+  /**
+   * Checks the tile order of the input coordinates.
+   *
+   * @tparam T The coordinates type.
+   * @param coords_a The first input coordinates.
+   * @param coords_b The second input coordinates.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinates succeed the second on the tile order
+   */
+  template <class T>
+  int tile_order_cmp(const T* coords_a, const T* coords_b) const;
 
   /** Return the number of cells in a column tile slab of an input subarray. */
   uint64_t tile_slab_col_cell_num(const void* subarray) const;

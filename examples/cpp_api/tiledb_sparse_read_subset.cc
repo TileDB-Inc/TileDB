@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_sparse_read_subset_incomplete.cc
+ * @file   tiledb_sparse_read_subset.cc
  *
  * @section LICENSE
  *
@@ -37,7 +37,7 @@
  *
  * $ ./tiledb_sparse_create_cpp
  * $ ./tiledb_sparse_write_global_1_cpp
- * $ ./tiledb_sparse_read_subset_incomplete_cpp
+ * $ ./tiledb_sparse_read_subset_cpp
  */
 
 #include <tiledb/tiledb>
@@ -47,25 +47,20 @@ int main() {
   tiledb::Context ctx;
 
   // Prepare cell buffers
-  std::vector<int> a1_data(2);
+  std::vector<int> a1_data(3);
 
   // Create query
   tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
   query.set_layout(TILEDB_COL_MAJOR);
   query.set_subarray<uint64_t>({3, 4, 2, 4});
   query.set_buffer("a1", a1_data);
+  query.submit();
 
-  // Loop until the query is completed
+  // Print the results
   std::cout << "a1\n---\n";
-  do {
-    std::cout << "Reading cells...\n";
-    query.submit();
-    auto result_el = query.result_buffer_elements();
-
-    for (unsigned i = 0; i < result_el["a1"].second; ++i) {
-      std::cout << a1_data[i] << "\n";
-    }
-  } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);
+  auto result_el = query.result_buffer_elements();
+  for (unsigned i = 0; i < result_el["a1"].second; ++i)
+    std::cout << a1_data[i] << "\n";
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

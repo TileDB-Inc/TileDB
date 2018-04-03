@@ -53,6 +53,13 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+TileIO::TileIO() {
+  buffer_ = nullptr;
+  file_size_ = 0;
+  storage_manager_ = nullptr;
+  uri_ = URI("");
+}
+
 TileIO::TileIO(StorageManager* storage_manager, const URI& uri)
     : storage_manager_(storage_manager)
     , uri_(uri) {

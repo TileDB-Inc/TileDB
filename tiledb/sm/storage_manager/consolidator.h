@@ -85,11 +85,12 @@ class Consolidator {
    * Copies the array by reading from the fragments to be consolidated
    * (with *query_r*) and writing to the new fragment (with *query_w*).
    *
+   * @param read_subarray The read subarray.
    * @param query_r The read query.
    * @param query_w The write query.
    * @return Status
    */
-  Status copy_array(Query* query_r, Query* query_w);
+  Status copy_array(void* read_subarray, Query* query_r, Query* query_w);
 
   /**
    * Creates the buffers that will be used upon reading the input fragments and
@@ -114,6 +115,7 @@ class Consolidator {
    *
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
+   * @param write_subarray The subarray to write into.
    * @param array_name The array name.
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
@@ -121,13 +123,19 @@ class Consolidator {
    * @return Status
    */
   Status create_queries(
-      ArraySchema* array_schema,
       Query* query_r,
       Query* query_w,
+      void* write_subarray,
       const char* array_name,
       void** buffers,
       uint64_t* buffer_sizes,
       unsigned int* fragment_num);
+
+  /** Creates the subarray that should represent the entire array domain. */
+  Status create_subarray(
+      const std::string& array_name,
+      const ArraySchema* array_schema,
+      void** subarray) const;
 
   /**
    * Deletes the old fragments that got consolidated.

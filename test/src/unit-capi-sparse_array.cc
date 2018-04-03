@@ -531,7 +531,7 @@ void SparseArrayFx::check_sorted_reads(
 }
 
 TEST_CASE_METHOD(
-    SparseArrayFx, "C API: Test sorted reads", "[capi], [sparse]") {
+    SparseArrayFx, "C API: Test sparse sorted reads", "[capi], [sparse]") {
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {
@@ -788,4 +788,69 @@ TEST_CASE_METHOD(
           array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse buffer overflow",
+    "[capi], [sparse], [sparse-overflow]") {
+  // Parameters used in this test
+  int64_t domain_size_0 = 5000;
+  int64_t domain_size_1 = 1000;
+  int64_t tile_extent_0 = 100;
+  int64_t tile_extent_1 = 100;
+  int64_t domain_0_lo = 0;
+  int64_t domain_0_hi = domain_size_0 - 1;
+  int64_t domain_1_lo = 0;
+  int64_t domain_1_hi = domain_size_1 - 1;
+  auto array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+
+  create_sparse_array_2D(
+      array_name,
+      tile_extent_0,
+      tile_extent_1,
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      100000,
+      TILEDB_NO_COMPRESSION,
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR);
+
+  write_sparse_array_unsorted_2D(array_name, domain_size_0, domain_size_1);
+
+  // Initialize a subarray
+  const int64_t subarray[] = {
+      domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
+
+  // Subset over a specific attribute
+  const char* attributes[] = {ATTR_NAME};
+
+  // Prepare the buffers that will store the result
+  int buffer_a1[1];
+  void* buffers[] = {buffer_a1};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
+
+  // Create query
+  tiledb_query_t* query;
+  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 1, buffers, buffer_sizes);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Free/finalize query
+  rc = tiledb_query_free(ctx_, &query);
+  REQUIRE(rc == TILEDB_OK);
 }

@@ -143,8 +143,7 @@ class FragmentMetadata {
    *
    * @tparam T The coordinates type.
    * @param subarray The targeted subarray.
-   * @param attributes The targeted attributes.
-   * @param attribute_num The attribute number.
+   * @param attribute_ids The ids of the targeted attributes.
    * @param buffer_num The number of buffer sizes.
    * @param buffer_sizes The buffer sizes to be computed. Note that there is
    *     a single buffer size per fixed-sized attribute, and two for every
@@ -155,8 +154,7 @@ class FragmentMetadata {
   template <class T>
   Status compute_max_read_buffer_sizes(
       const T* subarray,
-      const char** attributes,
-      unsigned attribute_num,
+      const std::vector<unsigned>& attribute_ids,
       unsigned buffer_num,
       uint64_t* buffer_sizes) const;
 
@@ -167,8 +165,7 @@ class FragmentMetadata {
    *
    * @tparam T The coordinates type.
    * @param subarray The targeted subarray.
-   * @param attributes The targeted attributes.
-   * @param attribute_num The attribute number.
+   * @param attribute_ids The ids of the targeted attributes.
    * @param buffer_num The number of buffer sizes.
    * @param buffer_sizes The buffer sizes to be computed. Note that there is
    *     a single buffer size per fixed-sized attribute, and two for every
@@ -179,8 +176,7 @@ class FragmentMetadata {
   template <class T>
   Status compute_max_read_buffer_sizes_dense(
       const T* subarray,
-      const char** attributes,
-      unsigned attribute_num,
+      const std::vector<unsigned>& attribute_ids,
       unsigned buffer_num,
       uint64_t* buffer_sizes) const;
 
@@ -191,8 +187,7 @@ class FragmentMetadata {
    *
    * @tparam T The coordinates type.
    * @param subarray The targeted subarray.
-   * @param attributes The targeted attributes.
-   * @param attribute_num The attribute number.
+   * @param attribute_ids The ids of the targeted attributes.
    * @param buffer_num The number of buffer sizes.
    * @param buffer_sizes The buffer sizes to be computed. Note that there is
    *     a single buffer size per fixed-sized attribute, and two for every
@@ -203,8 +198,7 @@ class FragmentMetadata {
   template <class T>
   Status compute_max_read_buffer_sizes_sparse(
       const T* subarray,
-      const char** attributes,
-      unsigned attribute_num,
+      const std::vector<unsigned>& attribute_ids,
       unsigned buffer_num,
       uint64_t* buffer_sizes) const;
 
@@ -270,6 +264,76 @@ class FragmentMetadata {
 
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
+
+  /** Returns the URI of the input attribute. */
+  URI attr_uri(unsigned int attribute_id) const;
+
+  /** Returns the URI of the variable-sized attribute with the input id. */
+  URI attr_var_uri(unsigned int attribute_id) const;
+
+  /**
+   * Returns the starting offset of the input tile of input attribute
+   * in the file. If the attribute is var-sized, it returns the starting
+   * offset of the offsets tile.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The file offset.
+   */
+  uint64_t file_offset(unsigned attribute_id, uint64_t tile_idx) const;
+
+  /**
+   * Returns the starting offset of the input tile of input attribute
+   * in the file. The attribute must be var-sized.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The file offset.
+   */
+  uint64_t file_var_offset(unsigned attribute_id, uint64_t tile_idx) const;
+
+  /**
+   * Returns the compressed tile size for a given attribute
+   * and tile index. If the attribute is var-sized, this will return
+   * the size of the offsets tile.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The tile size.
+   */
+  uint64_t compressed_tile_size(unsigned attribute_id, uint64_t tile_idx) const;
+
+  /**
+   * Returns the compressed tile size for a given var-sized attribute
+   * and tile index.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The tile size.
+   */
+  uint64_t compressed_tile_var_size(
+      unsigned attribute_id, uint64_t tile_idx) const;
+
+  /**
+   * Returns the (uncompressed) tile size for a given attribute
+   * and tile index. If the attribute is var-sized, this will return
+   * the size of the offsets tile.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The tile size.
+   */
+  uint64_t tile_size(unsigned attribute_id, uint64_t tile_idx) const;
+
+  /**
+   * Returns the (uncompressed) tile size for a given var-sized attribute
+   * and tile index.
+   *
+   * @param attribute_id The attribute id.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The tile size.
+   */
+  uint64_t tile_var_size(unsigned attribute_id, uint64_t tile_idx) const;
 
   /** Returns the tile offsets. */
   const std::vector<std::vector<uint64_t>>& tile_offsets() const;

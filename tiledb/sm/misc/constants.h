@@ -354,12 +354,6 @@ extern const char* key_dim_1;
  */
 extern const char* key_dim_2;
 
-/**
- * Default size to be allocated for a key-value internal buffer when reading
- * from a key-value store.
- */
-extern uint64_t kv_buffer_size;
-
 /** Maximum number of items to be buffered before a flush. */
 extern uint64_t kv_max_items;
 

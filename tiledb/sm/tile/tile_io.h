@@ -49,8 +49,8 @@ class TileIO {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  TileIO() = default;
+  /** Constructor. */
+  TileIO();
 
   /**
    * Constructor.
