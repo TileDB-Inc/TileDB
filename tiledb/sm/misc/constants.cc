@@ -373,6 +373,9 @@ uint64_t kv_max_items = 1000;
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 1000;
 
+/** Milliseconds of wait time between S3 attempts. */
+const unsigned int s3_attempt_sleep_ms = 100;
+
 /** An allocation tag used for logging. */
 const char* s3_allocation_tag = "TileDB";
 

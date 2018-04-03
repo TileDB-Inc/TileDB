@@ -113,6 +113,12 @@ Status S3::create_bucket(const URI& bucket) const {
         std::string("\nError message:  ") +
         create_bucket_outcome.GetError().GetMessage().c_str()));
   }
+
+  if (!wait_for_bucket_to_be_created(bucket)) {
+    return LOG_STATUS(Status::S3Error(
+        "Failed waiting for bucket " + bucket.to_string() + " to be created."));
+  }
+
   return Status::Ok();
 }
 
@@ -635,7 +641,8 @@ bool S3::wait_for_object_to_propagate(
     if (headObjectOutcome.IsSuccess())
       return true;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
   }
 
   return false;
@@ -652,9 +659,23 @@ bool S3::wait_for_object_to_be_deleted(
     if (!head_object_outcome.IsSuccess())
       return true;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
   }
 
+  return false;
+}
+
+bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
+  unsigned attempts_cnt = 0;
+  while (attempts_cnt++ < constants::s3_max_attempts) {
+    if (is_bucket(bucket_uri)) {
+      return true;
+    }
+
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+  }
   return false;
 }
 
