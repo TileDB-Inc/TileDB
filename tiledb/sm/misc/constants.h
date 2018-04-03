@@ -360,6 +360,9 @@ extern uint64_t kv_max_items;
 /** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;
 
+/** Milliseconds of wait time between S3 attempts. */
+extern const unsigned int s3_attempt_sleep_ms;
+
 /** An allocation tag used for logging. */
 extern const char* s3_allocation_tag;
 
