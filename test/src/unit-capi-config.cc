@@ -189,7 +189,7 @@ void check_save_to_file() {
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
-  ss << "vfs.s3.file_buffer_size 5242880\n";
+  ss << "vfs.s3.multipart_part_size 5242880\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.scheme https\n";
@@ -358,7 +358,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
-  all_param_values["vfs.s3.file_buffer_size"] = "5242880";
+  all_param_values["vfs.s3.multipart_part_size"] = "5242880";
   all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
@@ -375,7 +375,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
-  vfs_param_values["s3.file_buffer_size"] = "5242880";
+  vfs_param_values["s3.multipart_part_size"] = "5242880";
   vfs_param_values["s3.connect_timeout_ms"] = "3000";
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
@@ -389,7 +389,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["region"] = "us-east-1";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
-  s3_param_values["file_buffer_size"] = "5242880";
+  s3_param_values["multipart_part_size"] = "5242880";
   s3_param_values["connect_timeout_ms"] = "3000";
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";

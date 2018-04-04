@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* Added parallel S3 writes, enabled by default.
 * Minor S3 optimizations and error message fixes (PR #462)
 * Changed S3 default config so that AWS S3 just works (PR #455)
 * Got rid of special S3 "directory objects"
@@ -26,6 +27,7 @@
 * Added `tiledb_query_finalize` function. 
 * Added `tiledb_vfs_get_config` function.
 * Added `vfs.max_parallel_ops` and `vfs.min_parallel_size` config parameters.
+* Added `vfs.s3.multipart_part_size` config parameter.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -41,6 +43,7 @@
 * `tiledb_query_finalize` must **always** be called before `tiledb_query_free`.
 * Removed `tiledb_vfs_move` and added `tiledb_vfs_move_file` and `tiledb_vfs_move_dir` instead.
 * Removed `force` argument from `tiledb_vfs_move_*` and `tiledb_object_move`.
+* Removed `vfs.s3.file_buffer_size` config parameter.
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
@@ -49,6 +52,7 @@
 * Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
 * Removed `VFS::move` and added `VFS::move_file` and `VFS::move_dir` instead.
 * Removed `force` argument from `VFS::move_*` and `Object::move`.
+* Removed `vfs.s3.file_buffer_size` config parameter.
 
 # TileDB v1.2.1 Release Notes
 

@@ -37,6 +37,8 @@
 
 #include "boost/bufferstream.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -53,7 +55,7 @@ namespace sm {
 
 S3::S3() {
   client_ = nullptr;
-  file_buffer_size_ = 0;
+  multipart_part_size_ = 0;
 }
 
 S3::~S3() {
@@ -65,9 +67,17 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::connect(const S3Config& s3_config) {
+Status S3::init(const S3Config& s3_config, ThreadPool* thread_pool) {
+  if (thread_pool == nullptr) {
+    return LOG_STATUS(
+        Status::S3Error("Can't initialize with null thread pool."));
+  }
+
   Aws::InitAPI(options_);
-  file_buffer_size_ = s3_config.file_buffer_size_;
+
+  vfs_thread_pool_ = thread_pool;
+  multipart_part_size_ = s3_config.multipart_part_size_;
+  file_buffer_size_ = multipart_part_size_ * thread_pool->num_threads();
 
   Aws::Client::ClientConfiguration config;
   if (!s3_config.region_.empty())
@@ -180,7 +190,7 @@ Status S3::flush_object(const URI& uri) {
   // Flush and delete file buffer
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
-  RETURN_NOT_OK(flush_file_buffer(uri, buff));
+  RETURN_NOT_OK(flush_file_buffer(uri, buff, true));
   delete buff;
   file_buffers_.erase(uri.to_string());
 
@@ -192,7 +202,21 @@ Status S3::flush_object(const URI& uri) {
   if (multipart_upload_it == multipart_upload_.end())
     return Status::Ok();
 
+  // Get the completed upload object
   auto completed_multipart_upload = multipart_upload_it->second;
+
+  // Add all the completed parts (sorted by part number) to the upload object.
+  auto completed_parts_it = multipart_upload_completed_parts_.find(path_c_str);
+  if (completed_parts_it == multipart_upload_completed_parts_.end()) {
+    return LOG_STATUS(Status::S3Error(
+        "Unable to find completed parts list for S3 object " +
+        uri.to_string()));
+  }
+  for (auto& tup : completed_parts_it->second) {
+    Aws::S3::Model::CompletedPart& part = std::get<1>(tup);
+    completed_multipart_upload.AddParts(part);
+  }
+
   auto multipart_upload_request_it = multipart_upload_request_.find(path_c_str);
   auto complete_multipart_upload_request = multipart_upload_request_it->second;
   complete_multipart_upload_request.WithMultipartUpload(
@@ -207,6 +231,7 @@ Status S3::flush_object(const URI& uri) {
   multipart_upload_part_number_.erase(path_c_str);
   multipart_upload_request_.erase(multipart_upload_request_it);
   multipart_upload_.erase(multipart_upload_it);
+  multipart_upload_completed_parts_.erase(path_c_str);
 
   //  fails when flushing directories or removed files
   if (!complete_multipart_upload_outcome.IsSuccess()) {
@@ -477,6 +502,10 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
         std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
+  // This write is never considered the last part of an object. The last part is
+  // only uploaded with flush_object().
+  const bool is_last_part = false;
+
   // Get file buffer
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
@@ -487,15 +516,15 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
 
   // Flush file buffer
   if (buff->size() == file_buffer_size_)
-    RETURN_NOT_OK(flush_file_buffer(uri, buff));
+    RETURN_NOT_OK(flush_file_buffer(uri, buff, is_last_part));
 
   // Write chunks
   uint64_t new_length = length - nbytes_filled;
   uint64_t offset = nbytes_filled;
   while (new_length > 0) {
     if (new_length >= file_buffer_size_) {
-      RETURN_NOT_OK(
-          write_multipart(uri, (char*)buffer + offset, file_buffer_size_));
+      RETURN_NOT_OK(write_multipart(
+          uri, (char*)buffer + offset, file_buffer_size_, is_last_part));
       offset += file_buffer_size_;
       new_length -= file_buffer_size_;
     } else {
@@ -546,11 +575,15 @@ Status S3::fill_file_buffer(
     const void* buffer,
     uint64_t length,
     uint64_t* nbytes_filled) {
+  STATS_FUNC_IN(vfs_s3_fill_file_buffer);
+
   *nbytes_filled = std::min(file_buffer_size_ - buff->size(), length);
   if (*nbytes_filled > 0)
     RETURN_NOT_OK(buff->write(buffer, *nbytes_filled));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_s3_fill_file_buffer);
 }
 
 std::string S3::add_front_slash(const std::string& path) const {
@@ -563,9 +596,9 @@ std::string S3::remove_front_slash(const std::string& path) const {
   return path;
 }
 
-Status S3::flush_file_buffer(const URI& uri, Buffer* buff) {
+Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
   if (buff->size() > 0) {
-    RETURN_NOT_OK(write_multipart(uri, buff->data(), buff->size()));
+    RETURN_NOT_OK(write_multipart(uri, buff->data(), buff->size(), last_part));
     buff->reset_size();
   }
 
@@ -607,7 +640,8 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
 
   multipart_upload_IDs_[path_c_str] =
       multipart_upload_outcome.GetResult().GetUploadId();
-  multipart_upload_part_number_[path_c_str] = 0;
+  multipart_upload_part_number_[path_c_str] = 1;
+
   Aws::S3::Model::CompleteMultipartUploadRequest
       complete_multipart_upload_request;
   complete_multipart_upload_request.SetBucket(aws_uri.GetAuthority());
@@ -618,6 +652,8 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   Aws::S3::Model::CompletedMultipartUpload completed_multipart_upload;
   multipart_upload_[path_c_str] = completed_multipart_upload;
   multipart_upload_request_[path_c_str] = complete_multipart_upload_request;
+  multipart_upload_completed_parts_[path_c_str] =
+      std::map<int, Aws::S3::Model::CompletedPart>();
 
   return Status::Ok();
 }
@@ -680,8 +716,23 @@ bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
 }
 
 Status S3::write_multipart(
-    const URI& uri, const void* buffer, uint64_t length) {
-  // length should be larger than 5MB
+    const URI& uri, const void* buffer, uint64_t length, bool last_part) {
+  STATS_FUNC_IN(vfs_s3_write_multipart);
+
+  // Ensure that each thread is responsible for exactly multipart_part_size_
+  // bytes (except if this is the last write_multipart, in which case the final
+  // thread should write less), and cap the number of parallel operations at the
+  // thread pool size.
+  uint64_t num_ops = last_part ? utils::ceil(length, multipart_part_size_) :
+                                 (length / multipart_part_size_);
+  num_ops =
+      std::min(std::max(num_ops, uint64_t(1)), vfs_thread_pool_->num_threads());
+
+  if (!last_part && length % multipart_part_size_ != 0) {
+    return LOG_STATUS(
+        Status::S3Error("Length not evenly divisible by part length"));
+  }
+
   Aws::Http::URI aws_uri = uri.c_str();
   auto& path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
@@ -695,16 +746,60 @@ Status S3::write_multipart(
     }
   }
 
-  // upload a part of the file
-  multipart_upload_part_number_[path_c_str]++;
+  // Get the upload ID
+  auto upload_id = multipart_upload_IDs_[path_c_str];
+
+  // Assign the part number(s), and make the write request.
+  if (num_ops == 1) {
+    int part_num = multipart_upload_part_number_[path_c_str]++;
+    return make_upload_part_req(uri, buffer, length, upload_id, part_num);
+  } else {
+    STATS_COUNTER_ADD(vfs_s3_write_num_parallelized, 1);
+
+    std::vector<std::future<Status>> results;
+    uint64_t bytes_per_op = multipart_part_size_;
+    int part_num_base = multipart_upload_part_number_[path_c_str];
+    for (uint64_t i = 0; i < num_ops; i++) {
+      uint64_t begin = i * bytes_per_op,
+               end = std::min((i + 1) * bytes_per_op - 1, length - 1);
+      uint64_t thread_nbytes = end - begin + 1;
+      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
+      int part_num = static_cast<int>(part_num_base + i);
+      results.push_back(vfs_thread_pool_->enqueue(
+          [this, &uri, thread_buffer, thread_nbytes, &upload_id, part_num]() {
+            return make_upload_part_req(
+                uri, thread_buffer, thread_nbytes, upload_id, part_num);
+          }));
+    }
+    multipart_upload_part_number_[path_c_str] += num_ops;
+
+    bool all_ok = vfs_thread_pool_->wait_all(results);
+    return all_ok ?
+               Status::Ok() :
+               LOG_STATUS(Status::S3Error("S3 parallel write_multipart error"));
+  }
+
+  STATS_FUNC_OUT(vfs_s3_write_multipart);
+}
+
+Status S3::make_upload_part_req(
+    const URI& uri,
+    const void* buffer,
+    uint64_t length,
+    const Aws::String& upload_id,
+    int upload_part_num) {
+  Aws::Http::URI aws_uri = uri.c_str();
+  auto& path = aws_uri.GetPath();
+  std::string path_c_str = path.c_str();
+
   auto stream = std::shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   Aws::S3::Model::UploadPartRequest upload_part_request;
   upload_part_request.SetBucket(aws_uri.GetAuthority());
   upload_part_request.SetKey(path);
-  upload_part_request.SetPartNumber(multipart_upload_part_number_[path_c_str]);
-  upload_part_request.SetUploadId(multipart_upload_IDs_[path_c_str]);
+  upload_part_request.SetPartNumber(upload_part_num);
+  upload_part_request.SetUploadId(upload_id);
   upload_part_request.SetBody(stream);
   upload_part_request.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
       Aws::Utils::HashingUtils::CalculateMD5(*stream)));
@@ -721,10 +816,18 @@ Status S3::write_multipart(
         std::string("\nError message:  ") +
         upload_part_outcome.GetError().GetMessage().c_str()));
   }
+
   Aws::S3::Model::CompletedPart completed_part;
   completed_part.SetETag(upload_part_outcome.GetResult().GetETag());
-  completed_part.SetPartNumber(multipart_upload_part_number_[path_c_str]);
-  multipart_upload_[path_c_str].AddParts(completed_part);
+  completed_part.SetPartNumber(upload_part_num);
+
+  {
+    std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
+    multipart_upload_completed_parts_[path_c_str][upload_part_num] =
+        completed_part;
+  }
+
+  STATS_COUNTER_ADD(vfs_s3_num_parts_written, 1);
 
   return Status::Ok();
 }

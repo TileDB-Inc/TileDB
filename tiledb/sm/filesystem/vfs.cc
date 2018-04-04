@@ -498,6 +498,12 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 
   vfs_params_ = vfs_params;
 
+  thread_pool_ = std::unique_ptr<ThreadPool>(
+      new (std::nothrow) ThreadPool(vfs_params_.max_parallel_ops_));
+  if (thread_pool_.get() == nullptr) {
+    return LOG_STATUS(Status::VFSError("Could not create VFS thread pool"));
+  }
+
 #ifdef HAVE_HDFS
   RETURN_NOT_OK(hdfs::connect(hdfs_, vfs_params.hdfs_params_));
 #endif
@@ -508,17 +514,11 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   s3_config.endpoint_override_ = vfs_params.s3_params_.endpoint_override_;
   s3_config.use_virtual_addressing_ =
       vfs_params.s3_params_.use_virtual_addressing_;
-  s3_config.file_buffer_size_ = vfs_params.s3_params_.file_buffer_size_;
+  s3_config.multipart_part_size_ = vfs_params.s3_params_.multipart_part_size_;
   s3_config.connect_timeout_ms_ = vfs_params.s3_params_.connect_timeout_ms_;
   s3_config.request_timeout_ms_ = vfs_params.s3_params_.request_timeout_ms_;
-  RETURN_NOT_OK(s3_.connect(s3_config));
+  RETURN_NOT_OK(s3_.init(s3_config, thread_pool_.get()));
 #endif
-
-  thread_pool_ = std::unique_ptr<ThreadPool>(
-      new (std::nothrow) ThreadPool(vfs_params_.max_parallel_ops_));
-  if (thread_pool_.get() == nullptr) {
-    return LOG_STATUS(Status::VFSError("Could not create VFS thread pool"));
-  }
 
   return Status::Ok();
 

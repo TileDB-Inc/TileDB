@@ -38,7 +38,9 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/storage_manager/config.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
@@ -67,6 +69,7 @@
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/s3/model/UploadPartRequest.h>
 #include <sys/types.h>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -90,7 +93,7 @@ class S3 {
       scheme_ = constants::s3_scheme;
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
-      file_buffer_size_ = constants::s3_file_buffer_size;
+      multipart_part_size_ = constants::s3_multipart_part_size;
       request_timeout_ms_ = constants::s3_request_timeout_ms;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
       connect_max_tries_ = constants::s3_connect_max_tries;
@@ -101,7 +104,7 @@ class S3 {
     std::string scheme_;
     std::string endpoint_override_;
     bool use_virtual_addressing_;
-    uint64_t file_buffer_size_;
+    uint64_t multipart_part_size_;
     long request_timeout_ms_;
     long connect_timeout_ms_;
     long connect_max_tries_;
@@ -123,12 +126,13 @@ class S3 {
   /* ********************************* */
 
   /**
-   * Connects an S3 client.
+   * Initializes and connects an S3 client.
    *
    * @param s3_config The S3 configuration parameters.
+   * @param thread_pool The parent VFS thread pool.
    * @return Status
    */
-  Status connect(const S3Config& s3_config);
+  Status init(const S3Config& s3_config, ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.
@@ -356,8 +360,21 @@ class S3 {
   std::unordered_map<std::string, Aws::S3::Model::CompletedMultipartUpload>
       multipart_upload_;
 
+  /** Map of object path -> part number -> CompletedPart struct. */
+  std::unordered_map<std::string, std::map<int, Aws::S3::Model::CompletedPart>>
+      multipart_upload_completed_parts_;
+
+  /** Used for synchronization in async multi-part uploads. */
+  std::mutex multipart_upload_mtx_;
+
+  /** The length of a non-terminal multipart part. */
+  uint64_t multipart_part_size_;
+
   /** File buffers used in the multi-part uploads. */
   std::unordered_map<std::string, Buffer*> file_buffers_;
+
+  /** Pointer to thread pool owned by parent VFS instance. */
+  ThreadPool* vfs_thread_pool_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -408,9 +425,11 @@ class S3 {
    *
    * @param uri The S3 object to write to.
    * @param buff The input buffer to flust.
+   * @param last_part Should be true only when the flush corresponds to the last
+   * part(s) of a multi-part upload.
    * @return Status
    */
-  Status flush_file_buffer(const URI& uri, Buffer* buff);
+  Status flush_file_buffer(const URI& uri, Buffer* buff, bool last_part);
 
   /**
    * Gets the local file buffer of an S3 object with a given URI.
@@ -443,16 +462,36 @@ class S3 {
   bool wait_for_bucket_to_be_created(const URI& bucket_uri) const;
 
   /**
-   * Writes the input buffer to a file using a multipart upload. If the file
-   * does not exist, then it is created. If the file exists then it is appended
-   * to.
+   * Writes the input buffer to a file by issuing one or more multipart upload
+   * requests. If the file does not exist, then it is created. If the file
+   * exists then it is appended to.
    *
    * @param uri The URI of the S3 file to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
+   * @param last_part Should be true only when this is the last multipart write
+   * for an object.
    * @return Status
    */
-  Status write_multipart(const URI& uri, const void* buffer, uint64_t length);
+  Status write_multipart(
+      const URI& uri, const void* buffer, uint64_t length, bool last_part);
+
+  /**
+   * Issues a multipart upload request.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @param upload_id The ID of the upload.
+   * @param upload_part_num The part number of the upload.
+   * @return Status
+   */
+  Status make_upload_part_req(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      const Aws::String& upload_id,
+      int upload_part_num);
 };
 
 }  // namespace sm
