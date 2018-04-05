@@ -110,9 +110,6 @@ class TILEDB_EXPORT Query {
   /** Submits the query. Call will block until query is complete. */
   Status submit();
 
-  /** Submit an async query (non-blocking). */
-  void submit_async();
-
   /**
    * Submit an async query, with callback.
    *
@@ -129,6 +126,11 @@ class TILEDB_EXPORT Query {
         ctx, query_.get(), wrapper, nullptr));
   }
 
+  /** Submit an async query (non-blocking). */
+  void submit_async() {
+    submit_async([]() {});
+  }
+
   /**
    * Returns the number of elements in the result buffers. This is a map
    * from the attribute name to a pair of values.
@@ -136,6 +138,8 @@ class TILEDB_EXPORT Query {
    * The first is number of elements for var size attributes, and the second
    * is number of elements in the data buffer. For fixed sized attributes
    * (and coordinates), the first is always 0.
+   *
+   * If the query has not been submitted, an empty map is returned.
    */
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   result_buffer_elements() const;

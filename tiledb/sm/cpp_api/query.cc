@@ -84,13 +84,11 @@ Query::Status Query::attribute_status(const std::string& attr) const {
   return to_status(status);
 }
 
-void Query::submit_async() {
-  submit_async([]() {});
-}
-
 std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
 Query::result_buffer_elements() const {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
+  if (buff_sizes_.size() == 0)
+    return {};  // Query hasn't been submitted
   unsigned bid = 0;
   for (const auto& attr : attrs_) {
     auto var =

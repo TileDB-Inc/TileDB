@@ -48,9 +48,9 @@ VFS::VFS(const Context& ctx)
 
 VFS::VFS(const Context& ctx, const Config& config)
     : ctx_(ctx)
-    , config_(config.ptr())
+    , config_(config)
     , deleter_(ctx) {
-  create_vfs(config);
+  create_vfs(config.ptr().get());
 }
 
 /* ********************************* */
@@ -150,7 +150,7 @@ std::shared_ptr<tiledb_vfs_t> VFS::ptr() const {
   return vfs_;
 }
 
-std::shared_ptr<tiledb_config_t> VFS::config() const {
+Config VFS::config() const {
   return config_;
 }
 
