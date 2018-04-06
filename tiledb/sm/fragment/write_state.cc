@@ -38,13 +38,12 @@
 #include <iostream>
 
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/fragment/write_state.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/tile/tile.h"
-
-#include "tiledb/sm/fragment/write_state.h"
+#include "tiledb/sm/tile/tile_io.h"
 
 namespace tiledb {
 namespace sm {

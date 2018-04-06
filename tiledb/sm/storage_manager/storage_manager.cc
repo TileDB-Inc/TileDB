@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/tile_io.h"
 
 /* ****************************** */
 /*             MACROS             */

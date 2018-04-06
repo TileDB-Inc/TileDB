@@ -37,9 +37,8 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/array_ordered_read_state.h"
 #include "tiledb/sm/query/array_ordered_write_state.h"
-#include "tiledb/sm/query/array_read_state.h"
+#include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <functional>
@@ -50,7 +49,6 @@
 namespace tiledb {
 namespace sm {
 
-class ArrayReadState;
 class ArrayOrderedWriteState;
 class Fragment;
 class StorageManager;
@@ -85,10 +83,10 @@ class Query {
 
     /** Constructor. */
     OverlappingTile(
-        unsigned fragment_idx, uint64_t tile_idx, bool full_overlapp)
+        unsigned fragment_idx, uint64_t tile_idx, bool full_overlap = false)
         : fragment_idx_(fragment_idx)
         , tile_idx_(tile_idx)
-        , full_overlap_(full_overlapp) {
+        , full_overlap_(full_overlap) {
     }
   };
 
@@ -97,7 +95,11 @@ class Query {
 
   /** A cell range belonging to a particular overlapping tile. */
   struct OverlappingCellRange {
-    /** The tile the cell range belongs to. */
+    /**
+     * The tile the cell range belongs to. If `nullptr`, then this is
+     * an "empty" cell range, to be filled with the default empty
+     * values.
+     */
     std::shared_ptr<OverlappingTile> tile_;
     /** The starting cell in the range. */
     uint64_t start_;
@@ -138,6 +140,31 @@ class Query {
         : tile_(std::move(tile))
         , coords_(coords)
         , pos_(pos) {
+    }
+  };
+
+  /** A cell range produced by the dense read algorithm. */
+  template <class T>
+  struct DenseCellRange {
+    /**
+     * The fragment index. `-1` stands for no fragment, which means
+     * that the cell range must be filled with the fill value.
+     */
+    int fragment_idx_;
+    /** The tile coordinates of the range. */
+    const T* tile_coords_;
+    /** The starting cell in the range. */
+    uint64_t start_;
+    /** The ending cell in the range. */
+    uint64_t end_;
+
+    /** Constructor. */
+    DenseCellRange(
+        int fragment_idx, const T* tile_coords, uint64_t start, uint64_t end)
+        : fragment_idx_(fragment_idx)
+        , tile_coords_(tile_coords)
+        , start_(start)
+        , end_(end) {
     }
   };
 
@@ -475,23 +502,32 @@ class Query {
    */
   Status overflow(const char* attribute_name, unsigned int* overflow) const;
 
-  // TODO
+  /** Perform a dense read */
+  Status dense_read();
+
+  /**
+   * Perform a dense read.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status dense_read();
+
+  /** Perform a sparse read */
   Status sparse_read();
 
-  // TODO
+  /**
+   * Perform a sparse read.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
   template <class T>
   Status sparse_read();
 
   /** Executes a read query. */
   Status read();
-
-  /**
-   * Executes a read query, but the query retrieves cells in the global
-   * cell order, and also the results are written in the input buffers,
-   * not the internal buffers.
-   * DD
-   */
-  Status read(void** buffers, uint64_t* buffer_sizes);
 
   /** Sets the array schema. */
   void set_array_schema(const ArraySchema* array_schema);
@@ -592,19 +628,6 @@ class Query {
   const ArraySchema* array_schema_;
 
   /**
-   * The array read state. Handles reads in the presence of multiple
-   * fragments. It returns results ordered in the global cell order.
-   */
-  ArrayReadState* array_read_state_;
-
-  /**
-   * The array ordered read state. It handles read queries that must
-   * return the results ordered in a particular layout other than
-   * the global cell order.
-   */
-  ArrayOrderedReadState* array_ordered_read_state_;
-
-  /**
    * The araay ordered write state. It handles write queries that
    * must write cells provided in a layout that is different
    * than the global cell order.
@@ -699,12 +722,74 @@ class Query {
   template <class T>
   Status check_subarray(const T* subarray) const;
 
+  /**
+   * For the given cell range, it computes all the result dense cell ranges
+   * across fragments, given precedence to more recent fragments.
+   *
+   * @tparam T The domain type.
+   * @param tile_coords The tile coordinates in the array domain.
+   * @param frag_its The fragment dence cell range iterators.
+   * @param start The start position of the range this function focuses on.
+   * @param end The end position of the range this function focuses on.
+   * @param dense_cell_ranges The cell ranges where the results are appended to.
+   * @return Status
+   *
+   * @note The input dense cell range iterators will be appropriately
+   *     incremented.
+   */
+  template <class T>
+  Status compute_dense_cell_ranges(
+      const T* tile_coords,
+      std::vector<DenseCellRangeIter<T>>& frag_its,
+      uint64_t start,
+      uint64_t end,
+      std::list<DenseCellRange<T>>* dense_cell_ranges);
+
+  /**
+   * Computes the dense overlapping tiles and cell ranges based on the
+   * input dense cell ranges. Note that the function also computes
+   * the maximal ranges of contiguous cells for each fragment/tile pair.
+   *
+   * @tparam T The domain type.
+   * @param dense_cell_ranges The dense cell ranges the overlapping tiles
+   *     and cell ranges will be derived from.
+   * @param tiles The overlapping tiles to be computed.
+   * @param overlapping_cell_ranges The overlapping cell ranges to be
+   *     computed.
+   * @return Status
+   */
+  template <class T>
+  Status compute_dense_overlapping_tiles_and_cell_ranges(
+      const std::list<DenseCellRange<T>>& dense_cell_ranges,
+      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+      OverlappingTileVec* tiles,
+      OverlappingCellRangeList* overlapping_cell_ranges);
+
+  /** Returns the empty fill value based on the input datatype. */
+  const void* fill_value(Datatype type) const;
+
   /** Initializes the fragments (for a read query). */
   Status init_fragments(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
   /** Initializes the query states. */
   Status init_states();
+
+  /**
+   * Initializes the fragment dense cell range iterators. There is one vector
+   * per tile overlapping with the query subarray, which stores one cell range
+   * iterator per fragment.
+   *
+   * @tparam T The domain type.
+   * @param iters The iterators to be initialized.
+   * @param overlapping_tile_idx_coords A map from global tile index to a pair
+   *     (overlapping tile index, overlapping tile coords).
+   */
+  template <class T>
+  Status init_tile_fragment_dense_cell_range_iters(
+      std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
+      std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
+          overlapping_tile_idx_coords);
 
   /** Creates a new fragment (for a write query). */
   Status new_fragment();

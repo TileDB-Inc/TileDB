@@ -377,6 +377,27 @@ class GlobalCmp {
   const Domain* domain_;
 };
 
+/** Wrapper of comparison function for sorting dense cell ranges. */
+template <class T>
+class DenseCellRangeCmp {
+ public:
+  /**
+   * Comparison operator.
+   *
+   * @param a The first dense cell range.
+   * @param b The second dense cell range.
+   * @return `true` if `a` succeeds `b` and `false` otherwise.
+   */
+  bool operator()(
+      const Query::DenseCellRange<T>& a, const Query::DenseCellRange<T>& b) {
+    if (a.start_ < b.start_)
+      return false;
+    if (a.start_ > b.start_)
+      return true;
+    return a.fragment_idx_ < b.fragment_idx_;
+  }
+};
+
 }  // namespace sm
 }  // namespace tiledb
 

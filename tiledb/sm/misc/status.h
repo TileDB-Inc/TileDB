@@ -111,6 +111,7 @@ enum class StatusCode : char {
   FS_HDFS,
   Attribute,
   SparseReader,
+  DenseCellRangeIter,
 };
 
 class Status {
@@ -312,9 +313,15 @@ class Status {
     return Status(StatusCode::Attribute, msg, -1);
   }
 
-  /** Return a SparseReadwerError error class Status with a given message **/
+  /** Return a SparseReaderError error class Status with a given message **/
   static Status SparseReaderError(const std::string& msg) {
     return Status(StatusCode::SparseReader, msg, -1);
+  }
+
+  /** Return a DenseCellRangeIterError error class Status with a given message
+   * **/
+  static Status DenseCellRangeIterError(const std::string& msg) {
+    return Status(StatusCode::DenseCellRangeIter, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

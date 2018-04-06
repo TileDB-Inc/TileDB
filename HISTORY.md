@@ -13,6 +13,7 @@
 * Changed S3 default config so that AWS S3 just works (PR #455)
 * Got rid of special S3 "directory objects"
 * Refactored sparse reads, making them simpler and more amenable to parallelization.
+* Refactored dense reads, making them simpler and more amenable to parallelization.
 
 ## Bug Fixes
 

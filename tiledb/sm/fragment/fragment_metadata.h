@@ -229,6 +229,17 @@ class FragmentMetadata {
   const URI& fragment_uri() const;
 
   /**
+   * Given as input global tile coordinates, it retrieves the tile position
+   * within the fragment.
+   *
+   * @tparam T The domain type.
+   * @param tile_coords The global tile coordinates.
+   * @return The tile position in the fragment.
+   */
+  template <class T>
+  uint64_t get_tile_pos(const T* tile_coords) const;
+
+  /**
    * Initializes the fragment metadata structures.
    *
    * @param non_empty_domain The non-empty domain in which the array read/write

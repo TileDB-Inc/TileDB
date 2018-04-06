@@ -213,6 +213,12 @@ class Domain {
    */
   Status deserialize(ConstBuffer* buff);
 
+  /** Returns the cell order. */
+  Layout cell_order() const;
+
+  /** Returns the tile order. */
+  Layout tile_order() const;
+
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
 
@@ -269,6 +275,34 @@ class Domain {
   Status get_cell_pos(const T* coords, uint64_t* pos) const;
 
   /**
+   * Retrieves the tile coordinates of the input cell coordinates.
+   *
+   * @tparam T The domain type.
+   * @param coords The cell coordinates.
+   * @param tile_coords The tile coordinates of the cell coordinates to
+   *     be retrieved.
+   */
+  template <class T>
+  void get_tile_coords(const T* coords, T* tile_coords) const;
+
+  /**
+   * Retrieves the end of a cell slab starting at the `start` input
+   * coordinates. The cell slab is determined based on the domain
+   * tile/cell order and the input query `layout`. Essentially a
+   * cell slab is a contiguous (in the global cell order) range of
+   * cells that follow the query layout.
+   *
+   * @tparam T The domain type.
+   * @param subarray The subarray in which the end of the cell slab must
+   *     be contained.
+   * @param start The start coordinates.
+   * @param layout The query layout.
+   * @param end The cell slab end coordinates to be retrieved.
+   */
+  template <class T>
+  void get_end_of_cell_slab(T* subarray, T* start, Layout layout, T* end) const;
+
+  /**
    * Retrieves the next coordinates along the array cell order within a given
    * domain (desregarding whether the domain is split into tiles or not).
    * Applicable only to **dense** arrays.
@@ -286,6 +320,42 @@ class Domain {
       const T* domain, T* cell_coords, bool* coords_retrieved) const;
 
   /**
+   * Retrieves the next coordinates along the array cell order within a given
+   * domain (desregarding whether the domain is split into tiles or not).
+   * Applicable only to **dense** arrays, and focusing on **column-major**
+   * cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the next coordinates at termination.
+   * @param coords_retrieved Will store true if the retrieved coordinates are
+   *     inside the domain, and false otherwise.
+   * @return void
+   */
+  template <class T>
+  void get_next_cell_coords_col(
+      const T* domain, T* cell_coords, bool* coords_retrieved) const;
+
+  /**
+   * Retrieves the next coordinates along the array cell order within a given
+   * domain (desregarding whether the domain is split into tiles or not).
+   * Applicable only to **dense** arrays, and focusing on **row-major**
+   * cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the next coordinates at termination.
+   * @param coords_retrieved Will store true if the retrieved coordinates are
+   *     inside the domain, and false otherwise.
+   * @return void
+   */
+  template <class T>
+  void get_next_cell_coords_row(
+      const T* domain, T* cell_coords, bool* coords_retrieved) const;
+
+  /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays.
    *
@@ -297,6 +367,20 @@ class Domain {
    */
   template <class T>
   void get_next_tile_coords(const T* domain, T* tile_coords) const;
+
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @param in Set to `true` if the retrieve coords are inside the domain.
+   * @return void
+   */
+  template <class T>
+  void get_next_tile_coords(const T* domain, T* tile_coords, bool* in) const;
 
   /**
    * Retrieves the previous coordinates along the array cell order within a
@@ -315,7 +399,7 @@ class Domain {
   /**
    * Gets a subarray of tile coordinates for the input (cell) subarray
    * over the input array domain. Retrieves also the tile domain of
-   * the array..
+   * the array.
    *
    * @tparam T The domain type.
    * @param subarray The input (cell) subarray.
@@ -328,13 +412,24 @@ class Domain {
       const T* subarray, T* tile_domain, T* subarray_in_tile_domain) const;
 
   /**
+   * Gets the tile domain of the input cell `subarray`.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input (cell) subarray.
+   * @param tile_subarray The tile subarray in the tile domain to be retrieved.
+   * @return void
+   */
+  template <class T>
+  void get_tile_domain(const T* subarray, T* tile_subarray) const;
+
+  /**
    * Returns the tile position along the array tile order within the input
    * domain. Applicable only to **dense** arrays.
    *
    * @tparam T The domain type.
    * @param tile_coords The tile coordinates.
    * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain, or TILEDB_AS_ERR on error.
+   *     array inside the array domain.
    */
   template <class T>
   uint64_t get_tile_pos(const T* tile_coords) const;
@@ -347,9 +442,10 @@ class Domain {
    * @param domain The input domain, which is a cell domain partitioned into
    *     regular tiles in the same manner as that of the array domain (however
    *     *domain* may be a sub-domain of the array domain).
-   * @param tile_coords The tile coordinates.
+   * @param tile_coords The tile coordinates, normalized inside the tile
+   *     domain of cell `domain`.
    * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the input domain, or TILEDB_AS_ERR on error.
+   *     array inside the input domain.
    */
   template <class T>
   uint64_t get_tile_pos(const T* domain, const T* tile_coords) const;
@@ -440,6 +536,23 @@ class Domain {
       const T* subarray_a, const T* subarray_b, T* overlap_subarray) const;
 
   /**
+   * Returns the type of overlap of the input subarrays.
+   *
+   * @tparam T The types of the subarrays.
+   * @param subarray_a The first input subarray.
+   * @param subarray_b The second input subarray.
+   * @param overlap_subarray The overlap area between *subarray_a* and
+   *     *subarray_b*.
+   * @param overlap `true` if the tow subarrays overlap and `false` otherwise.
+   */
+  template <class T>
+  void subarray_overlap(
+      const T* subarray_a,
+      const T* subarray_b,
+      T* overlap_subarray,
+      bool* overlap) const;
+
+  /**
    * Checks the order of the input coordinates. First the tile order is checked
    * (which, in case of non-regular tiles, is always the same), breaking the
    * tie by checking the cell order.
@@ -503,15 +616,15 @@ class Domain {
   uint64_t tile_num(const void* range) const;
 
   /**
-   * Returns the number of tiles in the input domain (applicable only to dense
+   * Returns the number of tiles in the input subarray (applicable only to dense
    * arrays).
    *
    * @tparam T The coordinates type.
-   * @param domain The input domain.
+   * @param subarray The input subarray.
    * @return The number of tiles.
    */
   template <class T>
-  uint64_t tile_num(const T* domain) const;
+  uint64_t tile_num(const T* subarray) const;
 
   /**
    * Checks the tile order of the input coordinates.
@@ -688,42 +801,6 @@ class Domain {
   uint64_t get_cell_pos_row(const T* coords) const;
 
   /**
-   * Retrieves the next coordinates along the array cell order within a given
-   * domain (desregarding whether the domain is split into tiles or not).
-   * Applicable only to **dense** arrays, and focusing on **column-major**
-   * cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param cell_coords The input cell coordinates, which the function modifies
-   *     to store the next coordinates at termination.
-   * @param coords_retrieved Will store true if the retrieved coordinates are
-   *     inside the domain, and false otherwise.
-   * @return void
-   */
-  template <class T>
-  void get_next_cell_coords_col(
-      const T* domain, T* cell_coords, bool* coords_retrieved) const;
-
-  /**
-   * Retrieves the next coordinates along the array cell order within a given
-   * domain (desregarding whether the domain is split into tiles or not).
-   * Applicable only to **dense** arrays, and focusing on **row-major**
-   * cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param cell_coords The input cell coordinates, which the function modifies
-   *     to store the next coordinates at termination.
-   * @param coords_retrieved Will store true if the retrieved coordinates are
-   *     inside the domain, and false otherwise.
-   * @return void
-   */
-  template <class T>
-  void get_next_cell_coords_row(
-      const T* domain, T* cell_coords, bool* coords_retrieved) const;
-
-  /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays, and focusing on
    * the **column-major** tile order.
@@ -740,6 +817,22 @@ class Domain {
   /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays, and focusing on
+   * the **column-major** tile order.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @param in Set to `true` if the retrieved coords are inside the domain.
+   * @return void
+   */
+  template <class T>
+  void get_next_tile_coords_col(
+      const T* domain, T* tile_coords, bool* in) const;
+
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays, and focusing on
    * the **row-major** tile order.
    *
    * @tparam T The coordinates type.
@@ -750,6 +843,22 @@ class Domain {
    */
   template <class T>
   void get_next_tile_coords_row(const T* domain, T* tile_coords) const;
+
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays, and focusing on
+   * the **row-major** tile order.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @param in Set to `true` if the retrieved coords are inside the domain.
+   * @return void
+   */
+  template <class T>
+  void get_next_tile_coords_row(
+      const T* domain, T* tile_coords, bool* in) const;
 
   /**
    * Retrieves the previous coordinates along the array cell order within a

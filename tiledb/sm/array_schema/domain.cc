@@ -132,6 +132,14 @@ Domain::~Domain() {
 /*                API                */
 /* ********************************* */
 
+Layout Domain::cell_order() const {
+  return cell_order_;
+}
+
+Layout Domain::tile_order() const {
+  return tile_order_;
+}
+
 Status Domain::split_subarray(
     void* subarray, Layout layout, void** subarray_1, void** subarray_2) const {
   switch (type_) {
@@ -554,6 +562,14 @@ void Domain::expand_domain(T* domain) const {
 }
 
 template <class T>
+void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
+  auto domain = (T*)domain_;
+  auto tile_extents = (T*)tile_extents_;
+  for (unsigned i = 0; i < dim_num_; i++)
+    tile_coords[i] = (coords[i] - domain[2 * i]) / tile_extents[i];
+}
+
+template <class T>
 Status Domain::get_cell_pos(const T* coords, uint64_t* pos) const {
   // Invoke the proper function based on the cell order
   if (cell_order_ == Layout::ROW_MAJOR) {
@@ -567,6 +583,36 @@ Status Domain::get_cell_pos(const T* coords, uint64_t* pos) const {
 
   return LOG_STATUS(
       Status::DomainError("Cannot get cell position; Invalid cell order"));
+}
+
+template <class T>
+void Domain::get_end_of_cell_slab(
+    T* subarray, T* start, Layout layout, T* end) const {
+  if (layout == Layout::GLOBAL_ORDER || layout == cell_order_) {
+    auto domain = (T*)domain_;
+    auto tile_extents = (T*)tile_extents_;
+
+    if (cell_order_ == Layout::ROW_MAJOR) {
+      for (unsigned i = 0; i < dim_num_; ++i)
+        end[i] = start[i];
+      end[dim_num_ - 1] += tile_extents[dim_num_ - 1] -
+                           ((start[dim_num_ - 1] - domain[2 * (dim_num_ - 1)]) %
+                            tile_extents[dim_num_ - 1]) -
+                           1;
+      end[dim_num_ - 1] =
+          MIN(end[dim_num_ - 1], subarray[2 * (dim_num_ - 1) + 1]);
+    } else {
+      for (unsigned i = 0; i < dim_num_; ++i)
+        end[i] = start[i];
+      end[0] +=
+          tile_extents[0] - ((start[0] - domain[0]) % tile_extents[0]) - 1;
+      end[0] = MIN(end[0], subarray[1]);
+    }
+  } else {
+    for (unsigned i = 0; i < dim_num_; ++i)
+      end[i] = start[i];
+    (void)subarray;
+  }
 }
 
 template <class T>
@@ -588,6 +634,18 @@ void Domain::get_next_tile_coords(const T* domain, T* tile_coords) const {
     get_next_tile_coords_row(domain, tile_coords);
   else if (tile_order_ == Layout::COL_MAJOR)
     get_next_tile_coords_col(domain, tile_coords);
+  else  // Sanity check
+    assert(0);
+}
+
+template <class T>
+void Domain::get_next_tile_coords(
+    const T* domain, T* tile_coords, bool* in) const {
+  // Invoke the proper function based on the tile order
+  if (tile_order_ == Layout::ROW_MAJOR)
+    get_next_tile_coords_row(domain, tile_coords, in);
+  else if (tile_order_ == Layout::COL_MAJOR)
+    get_next_tile_coords_col(domain, tile_coords, in);
   else  // Sanity check
     assert(0);
 }
@@ -631,6 +689,18 @@ void Domain::get_subarray_tile_domain(
     subarray_tile_domain[2 * i + 1] =
         MIN((subarray[2 * i + 1] - domain[2 * i]) / tile_extents[i],
             tile_domain[2 * i + 1]);
+  }
+}
+
+template <class T>
+void Domain::get_tile_domain(const T* subarray, T* tile_subarray) const {
+  auto domain = static_cast<const T*>(domain_);
+  auto tile_extents = static_cast<const T*>(tile_extents_);
+
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    tile_subarray[2 * i] = (subarray[2 * i] - domain[2 * i]) / tile_extents[i];
+    tile_subarray[2 * i + 1] =
+        (subarray[2 * i + 1] - domain[2 * i]) / tile_extents[i];
   }
 }
 
@@ -832,6 +902,30 @@ Status Domain::serialize(Buffer* buff) {
     dim->serialize(buff);
 
   return Status::Ok();
+}
+
+template <class T>
+void Domain::subarray_overlap(
+    const T* subarray_a,
+    const T* subarray_b,
+    T* overlap_subarray,
+    bool* overlap) const {
+  // Get overlap range
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    overlap_subarray[2 * i] = MAX(subarray_a[2 * i], subarray_b[2 * i]);
+    overlap_subarray[2 * i + 1] =
+        MIN(subarray_a[2 * i + 1], subarray_b[2 * i + 1]);
+  }
+
+  // Check overlap
+  *overlap = true;
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    if (overlap_subarray[2 * i] > subarray_b[2 * i + 1] ||
+        overlap_subarray[2 * i + 1] < subarray_b[2 * i]) {
+      *overlap = false;
+      break;
+    }
+  }
 }
 
 template <class T>
@@ -1496,6 +1590,20 @@ void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
 }
 
 template <class T>
+void Domain::get_next_tile_coords_col(
+    const T* domain, T* tile_coords, bool* in) const {
+  unsigned int i = 0;
+  ++tile_coords[i];
+
+  while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
+    tile_coords[i] = domain[2 * i];
+    ++tile_coords[++i];
+  }
+
+  *in = !(i == dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]);
+}
+
+template <class T>
 void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
   unsigned int i = dim_num_ - 1;
   ++tile_coords[i];
@@ -1504,6 +1612,20 @@ void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
     tile_coords[i] = domain[2 * i];
     ++tile_coords[--i];
   }
+}
+
+template <class T>
+void Domain::get_next_tile_coords_row(
+    const T* domain, T* tile_coords, bool* in) const {
+  unsigned int i = dim_num_ - 1;
+  ++tile_coords[i];
+
+  while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
+    tile_coords[i] = domain[2 * i];
+    ++tile_coords[--i];
+  }
+
+  *in = !(i == 0 && tile_coords[i] > domain[2 * i + 1]);
 }
 
 template <class T>
@@ -1689,7 +1811,6 @@ template void Domain::get_next_cell_coords<float>(
     const float* domain, float* cell_coords, bool* coords_retrieved) const;
 template void Domain::get_next_cell_coords<double>(
     const double* domain, double* cell_coords, bool* coords_retrieved) const;
-
 template void Domain::get_next_cell_coords<int8_t>(
     const int8_t* domain, int8_t* cell_coords, bool* coords_retrieved) const;
 template void Domain::get_next_cell_coords<uint8_t>(
@@ -1705,6 +1826,52 @@ template void Domain::get_next_cell_coords<uint32_t>(
     uint32_t* cell_coords,
     bool* coords_retrieved) const;
 template void Domain::get_next_cell_coords<uint64_t>(
+    const uint64_t* domain,
+    uint64_t* cell_coords,
+    bool* coords_retrieved) const;
+
+template void Domain::get_next_cell_coords_row<int>(
+    const int* domain, int* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<int64_t>(
+    const int64_t* domain, int64_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<int8_t>(
+    const int8_t* domain, int8_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<uint8_t>(
+    const uint8_t* domain, uint8_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<int16_t>(
+    const int16_t* domain, int16_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<uint16_t>(
+    const uint16_t* domain,
+    uint16_t* cell_coords,
+    bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<uint32_t>(
+    const uint32_t* domain,
+    uint32_t* cell_coords,
+    bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_row<uint64_t>(
+    const uint64_t* domain,
+    uint64_t* cell_coords,
+    bool* coords_retrieved) const;
+
+template void Domain::get_next_cell_coords_col<int>(
+    const int* domain, int* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<int64_t>(
+    const int64_t* domain, int64_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<int8_t>(
+    const int8_t* domain, int8_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<uint8_t>(
+    const uint8_t* domain, uint8_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<int16_t>(
+    const int16_t* domain, int16_t* cell_coords, bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<uint16_t>(
+    const uint16_t* domain,
+    uint16_t* cell_coords,
+    bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<uint32_t>(
+    const uint32_t* domain,
+    uint32_t* cell_coords,
+    bool* coords_retrieved) const;
+template void Domain::get_next_cell_coords_col<uint64_t>(
     const uint64_t* domain,
     uint64_t* cell_coords,
     bool* coords_retrieved) const;
@@ -1729,6 +1896,27 @@ template void Domain::get_next_tile_coords<uint32_t>(
     const uint32_t* domain, uint32_t* tile_coords) const;
 template void Domain::get_next_tile_coords<uint64_t>(
     const uint64_t* domain, uint64_t* tile_coords) const;
+
+template void Domain::get_next_tile_coords<int>(
+    const int* domain, int* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<int64_t>(
+    const int64_t* domain, int64_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<float>(
+    const float* domain, float* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<double>(
+    const double* domain, double* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<int8_t>(
+    const int8_t* domain, int8_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<uint8_t>(
+    const uint8_t* domain, uint8_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<int16_t>(
+    const int16_t* domain, int16_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<uint16_t>(
+    const uint16_t* domain, uint16_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<uint32_t>(
+    const uint32_t* domain, uint32_t* tile_coords, bool* in) const;
+template void Domain::get_next_tile_coords<uint64_t>(
+    const uint64_t* domain, uint64_t* tile_coords, bool* in) const;
 
 template void Domain::get_previous_cell_coords<int>(
     const int* domain, int* cell_coords) const;
@@ -1901,6 +2089,57 @@ template unsigned int Domain::subarray_overlap<uint64_t>(
     const uint64_t* subarray_b,
     uint64_t* overlap_subarray) const;
 
+template void Domain::subarray_overlap<int>(
+    const int* subarray_a,
+    const int* subarray_b,
+    int* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<int64_t>(
+    const int64_t* subarray_a,
+    const int64_t* subarray_b,
+    int64_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<float>(
+    const float* subarray_a,
+    const float* subarray_b,
+    float* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<double>(
+    const double* subarray_a,
+    const double* subarray_b,
+    double* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<int8_t>(
+    const int8_t* subarray_a,
+    const int8_t* subarray_b,
+    int8_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<uint8_t>(
+    const uint8_t* subarray_a,
+    const uint8_t* subarray_b,
+    uint8_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<int16_t>(
+    const int16_t* subarray_a,
+    const int16_t* subarray_b,
+    int16_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<uint16_t>(
+    const uint16_t* subarray_a,
+    const uint16_t* subarray_b,
+    uint16_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<uint32_t>(
+    const uint32_t* subarray_a,
+    const uint32_t* subarray_b,
+    uint32_t* overlap_subarray,
+    bool* in) const;
+template void Domain::subarray_overlap<uint64_t>(
+    const uint64_t* subarray_a,
+    const uint64_t* subarray_b,
+    uint64_t* overlap_subarray,
+    bool* in) const;
+
 template int Domain::tile_cell_order_cmp<int>(
     const int* coords_a, const int* coords_b, int* tile_coords) const;
 template int Domain::tile_cell_order_cmp<int64_t>(
@@ -1975,6 +2214,81 @@ template uint64_t Domain::tile_id<uint32_t>(
     const uint32_t* cell_coords, uint32_t* tile_coords) const;
 template uint64_t Domain::tile_id<uint64_t>(
     const uint64_t* cell_coords, uint64_t* tile_coords) const;
+
+template void Domain::get_end_of_cell_slab<int8_t>(
+    int8_t* subarray, int8_t* start, Layout layout, int8_t* end) const;
+template void Domain::get_end_of_cell_slab<uint8_t>(
+    uint8_t* subarray, uint8_t* start, Layout layout, uint8_t* end) const;
+template void Domain::get_end_of_cell_slab<int16_t>(
+    int16_t* subarray, int16_t* start, Layout layout, int16_t* end) const;
+template void Domain::get_end_of_cell_slab<uint16_t>(
+    uint16_t* subarray, uint16_t* start, Layout layout, uint16_t* end) const;
+template void Domain::get_end_of_cell_slab<int>(
+    int* subarray, int* start, Layout layout, int* end) const;
+template void Domain::get_end_of_cell_slab<unsigned>(
+    unsigned* subarray, unsigned* start, Layout layout, unsigned* end) const;
+template void Domain::get_end_of_cell_slab<int64_t>(
+    int64_t* subarray, int64_t* start, Layout layout, int64_t* end) const;
+template void Domain::get_end_of_cell_slab<uint64_t>(
+    uint64_t* subarray, uint64_t* start, Layout layout, uint64_t* end) const;
+
+template void Domain::get_tile_coords<int8_t>(
+    const int8_t* coords, int8_t* tile_coords) const;
+template void Domain::get_tile_coords<uint8_t>(
+    const uint8_t* coords, uint8_t* tile_coords) const;
+template void Domain::get_tile_coords<int16_t>(
+    const int16_t* coords, int16_t* tile_coords) const;
+template void Domain::get_tile_coords<uint16_t>(
+    const uint16_t* coords, uint16_t* tile_coords) const;
+template void Domain::get_tile_coords<int>(
+    const int* coords, int* tile_coords) const;
+template void Domain::get_tile_coords<unsigned>(
+    const unsigned* coords, unsigned* tile_coords) const;
+template void Domain::get_tile_coords<int64_t>(
+    const int64_t* coords, int64_t* tile_coords) const;
+template void Domain::get_tile_coords<uint64_t>(
+    const uint64_t* coords, uint64_t* tile_coords) const;
+
+template void Domain::get_tile_domain<int8_t>(
+    const int8_t* subarray, int8_t* tile_subarray) const;
+template void Domain::get_tile_domain<uint8_t>(
+    const uint8_t* subarray, uint8_t* tile_subarray) const;
+template void Domain::get_tile_domain<int16_t>(
+    const int16_t* subarray, int16_t* tile_subarray) const;
+template void Domain::get_tile_domain<uint16_t>(
+    const uint16_t* subarray, uint16_t* tile_subarray) const;
+template void Domain::get_tile_domain<int>(
+    const int* subarray, int* tile_subarray) const;
+template void Domain::get_tile_domain<unsigned>(
+    const unsigned* subarray, unsigned* tile_subarray) const;
+template void Domain::get_tile_domain<int64_t>(
+    const int64_t* subarray, int64_t* tile_subarray) const;
+template void Domain::get_tile_domain<uint64_t>(
+    const uint64_t* subarray, uint64_t* tile_subarray) const;
+
+template uint64_t Domain::tile_num<int8_t>(const int8_t* range) const;
+template uint64_t Domain::tile_num<uint8_t>(const uint8_t* range) const;
+template uint64_t Domain::tile_num<int16_t>(const int16_t* range) const;
+template uint64_t Domain::tile_num<uint16_t>(const uint16_t* range) const;
+template uint64_t Domain::tile_num<int>(const int* range) const;
+template uint64_t Domain::tile_num<unsigned>(const unsigned* range) const;
+template uint64_t Domain::tile_num<int64_t>(const int64_t* range) const;
+template uint64_t Domain::tile_num<uint64_t>(const uint64_t* range) const;
+
+template uint64_t Domain::get_tile_pos<int8_t>(const int8_t* tile_coords) const;
+template uint64_t Domain::get_tile_pos<uint8_t>(
+    const uint8_t* tile_coords) const;
+template uint64_t Domain::get_tile_pos<int16_t>(
+    const int16_t* tile_coords) const;
+template uint64_t Domain::get_tile_pos<uint16_t>(
+    const uint16_t* tile_coords) const;
+template uint64_t Domain::get_tile_pos<int>(const int* tile_coords) const;
+template uint64_t Domain::get_tile_pos<unsigned>(
+    const unsigned* tile_coords) const;
+template uint64_t Domain::get_tile_pos<int64_t>(
+    const int64_t* tile_coords) const;
+template uint64_t Domain::get_tile_pos<uint64_t>(
+    const uint64_t* tile_coords) const;
 
 }  // namespace sm
 }  // namespace tiledb
