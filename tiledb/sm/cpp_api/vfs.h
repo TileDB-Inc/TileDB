@@ -131,7 +131,7 @@ class TILEDB_EXPORT VFS {
   std::shared_ptr<tiledb_vfs_t> ptr() const;
 
   /** Get the config **/
-  std::shared_ptr<tiledb_config_t> config() const;
+  Config config() const;
 
  private:
   /* ********************************* */
@@ -142,7 +142,7 @@ class TILEDB_EXPORT VFS {
   std::reference_wrapper<const Context> ctx_;
 
   /** Config **/
-  std::shared_ptr<tiledb_config_t> config_ = nullptr;
+  Config config_;
 
   /** A deleter wrapper. */
   impl::Deleter deleter_;

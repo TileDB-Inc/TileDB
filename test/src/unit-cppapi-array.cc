@@ -154,6 +154,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.set_layout(TILEDB_ROW_MAJOR);
       query.set_subarray(subarray);
 
+      // Make sure no segfault when called before submit
+      query.result_buffer_elements();
+
       REQUIRE(query.submit() == Query::Status::COMPLETE);
       auto ret = query.result_buffer_elements();
       REQUIRE(ret.size() == 5);
