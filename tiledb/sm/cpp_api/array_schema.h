@@ -205,7 +205,7 @@ class TILEDB_EXPORT ArraySchema : public Schema {
 /* ********************************* */
 
 /** Converts the array schema into a string representation. */
-std::ostream& operator<<(std::ostream& os, const ArraySchema& schema);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const ArraySchema& schema);
 
 }  // namespace tiledb
 

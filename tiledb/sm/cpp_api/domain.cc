@@ -123,16 +123,28 @@ unsigned Domain::rank() const {
   return n;
 }
 
+Dimension Domain::dimension(const std::string &name) const {
+  auto &ctx = ctx_.get();
+  tiledb_dimension_t* dimptr;
+  ctx.handle_error(tiledb_domain_get_dimension_from_name(ctx, domain_.get(), name.c_str(), &dimptr));
+  return Dimension{ctx, dimptr};
+}
+
+Dimension Domain::dimension(unsigned i) const {
+  auto& ctx = ctx_.get();
+  tiledb_dimension_t* dimptr;
+  ctx.handle_error(
+    tiledb_domain_get_dimension_from_index(ctx, domain_.get(), i, &dimptr));
+  return Dimension{ctx, dimptr};
+}
+
 const std::vector<tiledb::Dimension> Domain::dimensions() const {
   auto& ctx = ctx_.get();
   unsigned int ndim;
-  tiledb_dimension_t* dimptr;
   std::vector<Dimension> dims;
   ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &ndim));
   for (unsigned int i = 0; i < ndim; ++i) {
-    ctx.handle_error(
-        tiledb_domain_get_dimension_from_index(ctx, domain_.get(), i, &dimptr));
-    dims.emplace_back(Dimension(ctx, dimptr));
+    dims.emplace_back(dimension(i));
   }
   return dims;
 }

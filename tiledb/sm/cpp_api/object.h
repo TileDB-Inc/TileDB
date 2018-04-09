@@ -133,7 +133,7 @@ class TILEDB_EXPORT Object {
 /* ********************************* */
 
 /** Writes object in string format to an output stream. */
-std::ostream& operator<<(std::ostream& os, const Object& obj);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Object& obj);
 
 }  // namespace tiledb
 

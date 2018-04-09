@@ -210,7 +210,7 @@ class TILEDB_EXPORT Attribute {
 /* ********************************* */
 
 /** Gets a string representation of an attribute for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Attribute& a);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Attribute& a);
 
 }  // namespace tiledb
 

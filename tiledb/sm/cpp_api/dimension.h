@@ -194,7 +194,7 @@ class TILEDB_EXPORT Dimension {
 /* ********************************* */
 
 /** Get a string representation of a dimension for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Dimension& dim);
+TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Dimension& dim);
 
 }  // namespace tiledb
 

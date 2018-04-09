@@ -116,6 +116,12 @@ class TILEDB_EXPORT Domain {
   /** Get the rank (number of dimensions) **/
   unsigned rank() const;
 
+  /** Get a single dimension by name. **/
+  Dimension dimension(const std::string &name) const;
+
+  /** Get a single dimension from index. **/
+  Dimension dimension(unsigned i) const;
+
   /** Returns the current set of dimensions in domain. */
   const std::vector<Dimension> dimensions() const;
 

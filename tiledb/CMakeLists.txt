@@ -26,6 +26,8 @@
 # THE SOFTWARE.
 #
 
+add_subdirectory(cli)
+
 # Include main header directory.
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
 include_directories(BEFORE ${TILEDB_CORE_INCLUDE_DIR})
@@ -95,7 +97,7 @@ endif()
 # Install libraries.
 # Note on Windows, the DLL counts as "runtime" and should go into bin.
 install(
-    TARGETS tiledb_static tiledb_shared
+    TARGETS tiledb_static tiledb_shared ${CLI_TARGETS}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
