@@ -32,10 +32,10 @@
 
 #ifdef HAVE_S3
 
+#include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
 
-#include "boost/bufferstream.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"

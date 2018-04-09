@@ -34,6 +34,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/compressors/dd_compressor.h"
 
+#include <ctime>
 #include <iostream>
 
 TEST_CASE(

@@ -25,45 +25,34 @@
 # THE SOFTWARE.
 #
 
-set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+# Add custom target 'examples_coo'
+add_custom_target(examples_cpp DEPENDS tiledb_shared)
 
 # Function that builds an executable per example
 function(build_TileDB_example_cppapi TARGET)
   add_executable(${TARGET}_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
-  if (WIN32)
-    target_link_libraries(${TARGET}_cpp tiledb_shared)
-  else()
-    target_link_libraries(${TARGET}_cpp tiledb_shared -lpthread)
-  endif()
+  target_link_libraries(${TARGET}_cpp tiledb_shared)
+  target_include_directories(${TARGET}_cpp PUBLIC
+    "${CMAKE_BINARY_DIR}/examples/"
+  )
+  add_dependencies(examples_cpp ${TARGET}_cpp)
 endfunction()
 
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES_CPPAPI "*.cc")
 
-# Include TileDB C API headers
-include_directories(BEFORE 
-    "${CMAKE_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/"
-    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/"
-    "${CMAKE_BINARY_DIR}/examples/"
-)
-
-# Initialize name for example binaries
-set(EXAMPLE_CPP_BINS)
-
 # Iterate over all example sources and call the build function
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
   # Get the binary name
-  STRING(REGEX REPLACE "^${CMAKE_SOURCE_DIR}/examples/cpp_api/" ""
-          EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
-          )
-  STRING(REGEX REPLACE ".cc$" "" EXAMPLE_BIN ${EXAMPLE_STRIPPED})
-  set(EXAMPLE_CPP_BINS ${EXAMPLE_CPP_BINS} ${EXAMPLE_BIN}_cpp)
+  string(REGEX
+    REPLACE "^${CMAKE_SOURCE_DIR}/examples/cpp_api/" ""
+    EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
+  )
+  string(REGEX
+    REPLACE ".cc$" ""
+    EXAMPLE_BIN ${EXAMPLE_STRIPPED}
+  )
 
   # Build example executable
   build_TileDB_example_cppapi(${EXAMPLE_BIN})
 endforeach()
-
-# Add custom target 'examples'
-add_custom_target(examples_cpp DEPENDS tiledb_shared)
-add_dependencies(examples_cpp ${EXAMPLE_CPP_BINS} tiledb_shared)

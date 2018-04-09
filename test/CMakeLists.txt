@@ -26,85 +26,92 @@
 # THE SOFTWARE.
 #
 
+find_package(Catch_EP REQUIRED)
+
+# This option not exposed in bootstrap script.
+option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
+
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
 # Include the C API directory so that the C++ 'tiledb' file can directly
 # include "tiledb.h".
 list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api")
 
-# catch unit-test library
-add_library(
-  catch_main EXCLUDE_FROM_ALL
-  OBJECT "src/unit.cc"
-)
-
-set_target_properties(catch_main PROPERTIES
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED ON
-)
-
-target_include_directories(
-  catch_main PRIVATE
-  ${CMAKE_SOURCE_DIR}/external/include/catch
-)
-
 # Gather the test source files
-file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
+set(TILEDB_TEST_SOURCES
+  src/unit-buffer.cc
+  src/unit-capi-any.cc
+  src/unit-capi-array_schema.cc
+  src/unit-capi-config.cc
+  src/unit-capi-dense_array.cc
+  src/unit-capi-dense_vector.cc
+  src/unit-capi-error.cc
+  src/unit-capi-kv.cc
+  src/unit-capi-object_mgmt.cc
+  src/unit-capi-sparse_array.cc
+  src/unit-capi-string.cc
+  src/unit-capi-uri.cc
+  src/unit-capi-version.cc
+  src/unit-capi-vfs.cc
+  src/unit-compression-dd.cc
+  src/unit-compression-rle.cc
+  src/unit-hdfs-filesystem.cc
+  src/unit-lru_cache.cc
+  src/unit-s3.cc
+  src/unit-status.cc
+  src/unit-threadpool.cc
+  src/unit-uri.cc
+  src/unit-win-filesystem.cc
+  src/unit.cc
+)
+
+if (TILEDB_CPP_API)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-cppapi-array.cc
+    src/unit-cppapi-config.cc
+    src/unit-cppapi-map.cc
+    src/unit-cppapi-schema.cc
+    src/unit-cppapi-type.cc
+    src/unit-cppapi-util.cc
+  )
+endif()
 
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-  $<TARGET_OBJECTS:catch_main>
   ${TILEDB_TEST_SOURCES}
 )
 
-set_target_properties(
-  tiledb_unit PROPERTIES
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED ON
+target_link_libraries(tiledb_unit
+  PUBLIC
+    tiledb_shared
+    Catch::Catch
 )
-
-if (WIN32)
-  target_link_libraries(
-    tiledb_unit
-    ${TILEDB_LIB_DEPENDENCIES} tiledb_shared ${S3_LIB_DEPENDENCIES}
-  )
-else()
-  target_link_libraries(
-    tiledb_unit
-    ${TILEDB_LIB_DEPENDENCIES} -lpthread tiledb_shared ${S3_LIB_DEPENDENCIES}
-  )
-endif()
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
-  ${TILEDB_CORE_INCLUDE_DIR}
-  ${CMAKE_SOURCE_DIR}/external/include/catch
+    ${TILEDB_CORE_INCLUDE_DIR}
+    ${TILEDB_EXPORT_HEADER_DIR}
+)
+
+if (TILEDB_TESTS_AWS_S3_CONFIG)
+  message(STATUS "Tests built with AWS S3 config")
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+# This is necessary only because we are linking directly to the core objects.
+# Other users (e.g. the examples) do not need this flag.
+target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+
+add_test(
+  NAME "tiledb_unit"
+  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
 )
 
 if (APPLE)
-  add_test(
-    NAME "tiledb_unit"
-    COMMAND env DYLD_FORCE_FLAT_NAMESPACE=1 $<TARGET_FILE:tiledb_unit> --durations=yes
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
-  )
-else()
-   add_test(
-    NAME "tiledb_unit"
-    COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
-  )
-endif()
-
-# Set PATH so the dependency .DLLs can be located.
-if (WIN32)
-  # Handle escaped semicolons. See
-  # https://cmake.org/pipermail/cmake/2010-December/041176.html
-  set(PATH_STRING "$ENV{PATH};${TILEDB_DEPENDENCY_INSTALL_DIR}/bin")
-  string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
-  string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
-  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
+  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
 endif()
 
 # Add custom target 'check'

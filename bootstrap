@@ -36,6 +36,10 @@ Configuration:
                                     ['"${default_prefix}"']
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon 
                                     ['"${default_dependency}"']
+    --force-build-all-deps          force building of all dependencies, even those
+                                    already installed at system-level
+    --disable-werror                disables use of -Werror during build
+    --disable-cpp-api               disables building of the TileDB C++ API
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|thread|undefined)
     --enable-debug                  enable debug build
@@ -69,6 +73,9 @@ build_type="Release"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
+tiledb_werror="ON"
+tiledb_cpp_api="ON"
+tiledb_force_all_deps="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -76,6 +83,9 @@ while test $# != 0; do
                 prefix_dirs="$dir";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
+    --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --disable-werror) tiledb_werror="OFF";;
+    --disable-cpp-api) tiledb_cpp_api="OFF";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-debug) build_type="Debug";;
@@ -140,9 +150,12 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_CXX_COMPILER=${cxx_compiler} \
     -DCMAKE_PREFIX_PATH=${dependency_dir} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
-    -DUSE_HDFS=${tiledb_hdfs} \
-    -DUSE_S3=${tiledb_s3} \
+    -DTILEDB_HDFS=${tiledb_hdfs} \
+    -DTILEDB_S3=${tiledb_s3} \
+    -DTILEDB_WERROR=${tiledb_werror} \
+    -DTILEDB_CPP_API=${tiledb_cpp_api} \
+    -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER=${sanitizer} \
     ${source_dir} || die "failed to configure the project"
 
-echo 'bootstrap success. Run "make" to build, "make check" to test.'
+echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'

@@ -35,8 +35,9 @@
 #ifndef TILEDB_LOGGER_H
 #define TILEDB_LOGGER_H
 
-#include "spdlog/fmt/ostr.h"
-#include "spdlog/spdlog.h"
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
+
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
