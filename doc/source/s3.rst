@@ -25,22 +25,33 @@ First, we need to set up an AWS account and generate access keys.
 
 7. Upon successful creation, the next page will show the user along with two keys: ``Access key ID`` and ``Secret access key``. Write down both these keys.
 
-8. Export these keys to your environment from a console.
+8. Export these keys to your environment from a console:
 
-Linux / macOS::
+.. content-tabs::
 
-    export AWS_ACCESS_KEY_ID=<your-access-key-id>
-    export AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
+   .. tab-container:: linux-macos
+      :title: Linux / macOS
 
-Windows::
+      .. code-block:: none
 
-    # Powershell
-    $env:AWS_ACCESS_KEY_ID = "<your-access-key-id>"
-    $env:AWS_SECRET_ACCESS_KEY = "<your-secret-access-key>"
+         export AWS_ACCESS_KEY_ID=<your-access-key-id>
+         export AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
 
-    # cmd.exe
-    set AWS_ACCESS_KEY_ID=<your-access-key-id>
-    set AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
+   .. tab-container:: windows-ps
+      :title: Windows (PS)
+
+      .. code-block:: none
+
+         $env:AWS_ACCESS_KEY_ID = "<your-access-key-id>"
+         $env:AWS_SECRET_ACCESS_KEY = "<your-secret-access-key>"
+
+   .. tab-container:: windows-cmd
+      :title: Windows (cmd.exe)
+
+      .. code-block:: none
+
+         set AWS_ACCESS_KEY_ID=<your-access-key-id>
+         set AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
 
 Now you are ready to start writing TileDB programs! When creating a TileDB
 context or a VFS object, you need to set up a configuration object with the
@@ -51,8 +62,8 @@ following parameters for AWS S3 (supposing that your S3 buckets are on region
     :widths: auto
 
     ===============================   ===========
-    Parameter                         Value
-    ===============================   ===========
+    **Parameter**                     **Value**
+    -------------------------------   -----------
     "vfs.s3.scheme"                   "https"
     "vfs.s3.region"                   "us-east-1"
     "vfs.s3.endpoint_override"        ""
@@ -80,8 +91,8 @@ as follows (below, ``<port>`` stands for the port on which you are running the m
     :widths: auto
 
     ===============================   ==================
-    Parameter                         Value
-    ===============================   ==================
+    **Parameter**                     **Value**
+    -------------------------------   ------------------
     "vfs.s3.scheme"                   "http"
     "vfs.s3.region"                   ""
     "vfs.s3.endpoint_override"        "localhost:<port>"

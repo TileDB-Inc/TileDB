@@ -76,7 +76,7 @@ std::vector<E> group_by_cell(
 }
 
 /**
- * Covert an (offset, data) vector pair into a single vector of vectors.
+ * Convert an (offset, data) vector pair into a single vector of vectors.
  * Uses whole vectors.
  *
  * @tparam T underlying attribute datatype
@@ -84,8 +84,6 @@ std::vector<E> group_by_cell(
  *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param offsets Offsets vector
  * @param data Data vector
- * @param num_offsets Number of offset elements populated by query
- * @param num_data Number of data elements populated by query.
  * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
@@ -95,7 +93,7 @@ std::vector<E> group_by_cell(
 }
 
 /**
- * Covert an (offset, data) vector pair into a single vector of vectors.
+ * Convert an (offset, data) vector pair into a single vector of vectors.
  *
  * @tparam T underlying attribute datatype
  * @tparam E Cell type. usually std::vector<T> or std::string. Must be
@@ -123,6 +121,7 @@ std::vector<E> group_by_cell(
  * @param el_per_cell Number of elements per cell to group together
  * @param num_buff Number of elements populated by query. To group whole buffer,
  *     use buff.size()
+ * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
@@ -147,8 +146,7 @@ std::vector<E> group_by_cell(
  *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
  * @param buff data buffer
  * @param el_per_cell Number of elements per cell to group together
- * @param num_buff Number of elements populated by query. To group whole buffer,
- *     use buff.size()
+ * @return std::vector<E>
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(const std::vector<T>& buff, uint64_t el_per_cell) {
@@ -190,7 +188,6 @@ std::vector<std::array<T, N>> group_by_cell(
  * @tparam N Elements per cell
  * @tparam T Array element type
  * @param buff data buff to group
- * @param num_buff Number of elements in buff that were populated by the query.
  * @return std::vector<std::array<T,N>>
  */
 template <uint64_t N, typename T>

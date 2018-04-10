@@ -105,21 +105,7 @@ VFS
 
 Utils
 -----
-.. doxygenfunction:: tiledb::group_by_cell(const std::pair<std::vector<uint64_t>, std::vector<T>>&, uint64_t, uint64_t)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::group_by_cell(const std::vector<T>&, uint64_t)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::group_by_cell(const std::vector<T>&, uint64_t, uint64_t)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::group_by_cell(const std::vector<uint64_t>&, const std::vector<T>&)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::group_by_cell(const std::vector<uint64_t>&, const std::vector<T>&, uint64_t, uint64_t)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::group_by_cell(const std::vector<T>&)
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::ungroup_var_buffer
-    :project: TileDB-C++
-.. doxygenfunction:: tiledb::flatten
+.. doxygenfile:: tiledb/sm/cpp_api/utils.h
     :project: TileDB-C++
 
 Version
