@@ -496,3 +496,22 @@ TEST_CASE("C API: Test config from file", "[capi], [config]") {
   check_load_incorrect_file_extra_word();
   check_save_to_file();
 }
+
+TEST_CASE(
+    "C API: Test boolean config values are normalized", "[capi][config]") {
+  tiledb_error_t* err;
+  tiledb_config_t* config = nullptr;
+  int rc = tiledb_config_create(&config, &err);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "TRUE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "True", &err);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "FALSE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "False", &err);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
+}
