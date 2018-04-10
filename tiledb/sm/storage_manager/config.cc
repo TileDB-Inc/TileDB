@@ -393,6 +393,19 @@ void Config::set_default_param_values() {
   value.str(std::string());
 }
 
+Status Config::parse_bool(const std::string& value, bool* result) {
+  std::string lvalue = value;
+  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
+  if (lvalue == "true") {
+    *result = true;
+  } else if (lvalue == "false") {
+    *result = false;
+  } else {
+    return Status::ConfigError("cannot parse boolean value: " + value);
+  }
+  return Status::Ok();
+}
+
 Status Config::set_sm_array_schema_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
@@ -452,11 +465,12 @@ Status Config::set_vfs_s3_endpoint_override(const std::string& value) {
 }
 
 Status Config::set_vfs_s3_use_virtual_addressing(const std::string& value) {
-  if (value != "true" && value != "false")
+  bool v = false;
+  if (!parse_bool(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
-        "Cannot set parameter; Invalid S3 use virtual addressing"));
-
-  vfs_params_.s3_params_.use_virtual_addressing_ = (value == "true");
+        "Cannot set parameter; Invalid S3 virtual addressing value"));
+  }
+  vfs_params_.s3_params_.use_virtual_addressing_ = v;
   return Status::Ok();
 }
 
