@@ -30,11 +30,10 @@
  * This file defines the S3 class.
  */
 
-#ifdef HAVE_S3
-
 #ifndef TILEDB_S3_H
 #define TILEDB_S3_H
 
+#ifdef HAVE_S3
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
@@ -497,6 +496,5 @@ class S3 {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_S3_H
-
 #endif  // HAVE_S3
+#endif  // TILEDB_S3_H

@@ -28,9 +28,10 @@
 # See https://cmake.org/licensing for details.
 #
 # Finds and links the libjsig and libjvm shared libraries: This module defines:
-#  - LIBJVM_INCLUDE_DIRS, directory containing the jni.h header
 #  - LIBJVM_LIBRARIES the library path
-# 
+#  - LIBJVM_FOUND if the libjvm and libjsig libraries were found
+#  - LibJVM::libjvm  import target
+#  - LibJVM::libjsig import target
 
 # Expand {libarch} occurences to java_libarch subdirectory(-ies) and set ${_var}
 if(NOT LIBHDFS_FOUND)
@@ -236,9 +237,7 @@ if(NOT LIBHDFS_FOUND)
   
   foreach(search ${_JNI_SEARCHES})
     find_library(JAVA_JVM_LIBRARY ${_JNI_${search}_JVM})
-    message(STATUS "Found libjvm: ${JAVA_JVM_LIBRARY}")
     find_library(JAVA_JSIG_LIBRARY ${_JNI_${search}_JSIG})
-    message(STATUS "Found libjsig: ${JAVA_JSIG_LIBRARY}")
     if(JAVA_JVM_LIBRARY)
       break()
     endif()
@@ -256,9 +255,6 @@ if(NOT LIBHDFS_FOUND)
     set(CMAKE_FIND_FRAMEWORK NEVER)
   endif()
   
-  # add in the include path
-  find_path(JAVA_INCLUDE_PATH jni.h)
-  
   # Restore CMAKE_FIND_FRAMEWORK
   if(DEFINED _JNI_CMAKE_FIND_FRAMEWORK)
     set(CMAKE_FIND_FRAMEWORK ${_JNI_CMAKE_FIND_FRAMEWORK})
@@ -267,26 +263,10 @@ if(NOT LIBHDFS_FOUND)
     unset(CMAKE_FIND_FRAMEWORK)
   endif()
   
-  mark_as_advanced(JAVA_JVM_LIBRARY 
-		   JAVA_JSIG_LIBRARY
-	           JAVA_INCLUDE_PATH)
-  
+  mark_as_advanced(JAVA_JVM_LIBRARY JAVA_JSIG_LIBRARY)
+
   set(LIBJVM_LIBRARIES ${JAVA_JSIG_LIBRARY} ${JAVA_JVM_LIBRARY})
-  set(LIBJVM_INCLUDE_DIRS ${JAVA_INCLUDE_PATH})
-  
-  if(LIBJVM_INCLUDE_DIRS)
-    message(STATUS "Found jni.h header file: ${JAVA_INCLUDE_PATH}")
-  else()
-    message(STATUS "jni.h header file not found")
-  endif()
-  
-  if(LIBJVM_LIBRARIES)
-    message(STATUS "Found libjsig library: ${JAVA_JSIG_LIBRARY}")
-    message(STATUS "Found libjvm library: ${JAVA_JVM_LIBRARY}")
-  else()
-    message(STATUS "libjsig, libjvm shared libraries not found")
-  endif()
-  
+
   if(JAVA_JSIG_LIBRARY AND JAVA_JVM_LIBRARY)
     set(LIBJVM_FOUND TRUE)
   else()
@@ -294,6 +274,16 @@ if(NOT LIBHDFS_FOUND)
   endif()
 endif()
 
-if(LIBJVM_FIND_REQUIRED AND NOT LIBJVM_FOUND)
-  message(FATAL_ERROR "Could not find the JVM libraries.")
+if (LIBJVM_FOUND AND NOT TARGET LibJVM::libjsig)
+  message(STATUS "Found libjsig library: ${JAVA_JSIG_LIBRARY}")
+  add_library(LibJVM::libjsig UNKNOWN IMPORTED)
+  set_target_properties(LibJVM::libjsig PROPERTIES
+    IMPORTED_LOCATION "${JAVA_JSIG_LIBRARY}")
+endif()
+
+if (LIBJVM_FOUND AND NOT TARGET LibJVM::libjvm)
+  message(STATUS "Found libjvm library: ${JAVA_JVM_LIBRARY}")
+  add_library(LibJVM::libjvm UNKNOWN IMPORTED)
+  set_target_properties(LibJVM::libjvm PROPERTIES
+    IMPORTED_LOCATION "${JAVA_JVM_LIBRARY}")
 endif()

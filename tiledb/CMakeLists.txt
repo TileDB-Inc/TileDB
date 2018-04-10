@@ -254,20 +254,12 @@ endif()
 
 # HDFS dependencies
 if (TILEDB_HDFS)
-  message(STATUS "The TileDB library is compiled with HDFS support.")
-  # TODO: Modify these find modules to use import targets
-  find_package(LIBJVM REQUIRED)
-  find_package(LIBHDFS REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      ${LIBJVM_LIBRARIES}
-      ${LIBHDFS_LIBRARY}
-  )
-  target_include_directories(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      ${LIBHDFS_INCLUDE_DIR}
-  )
-  add_definitions(-DHAVE_HDFS)
+  if(WIN32)
+    message(FATAL_ERROR "TileDB HDFS backend is not supported for Windows builds currently")
+  else()
+    message(STATUS "The TileDB library is compiled with HDFS support.")
+    add_definitions(-DHAVE_HDFS)
+  endif()
 endif()
 
 # Sanitizer linker flags
