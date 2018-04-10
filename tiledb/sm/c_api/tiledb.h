@@ -346,11 +346,11 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  *    acceptable. <br>
  *    **Default**: 10,000,000
  * - `vfs.max_parallel_ops` <br>
- *    The maximum number of VFS parallel operations.<br>
+ *    The maximum number of VFS parallel operations. <br>
  *    **Default**: number of cores
  * - `vfs.min_parallel_size` <br>
  *    The minimum number of bytes in a parallel VFS operation. (Does not
- *    affect parallel S3 writes.)<br>
+ *    affect parallel S3 writes.) <br>
  *    **Default**: 10MB
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
