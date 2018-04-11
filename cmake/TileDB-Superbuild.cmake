@@ -64,7 +64,6 @@ if (TILEDB_S3)
     include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
     include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
   endif()
-
   include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
 endif()
 

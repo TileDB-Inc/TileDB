@@ -42,12 +42,12 @@
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/config.h"
 
-#ifdef HAVE_HDFS
-#include "hdfs.h"
-#endif
-
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
+#endif
+
+#ifdef HAVE_HDFS
+#include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #endif
 
 #include <set>
@@ -71,7 +71,7 @@ class VFS {
   VFS();
 
   /** Destructor. */
-  ~VFS();
+  ~VFS() = default;
 
   /* ********************************* */
   /*               API                 */
@@ -317,12 +317,12 @@ class VFS {
 /* ********************************* */
 /*         PRIVATE ATTRIBUTES        */
 /* ********************************* */
-#ifdef HAVE_HDFS
-  hdfsFS hdfs_;
-#endif
-
 #ifdef HAVE_S3
   S3 s3_;
+#endif
+
+#ifdef HAVE_HDFS
+  std::unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** VFS parameters. */

@@ -83,17 +83,28 @@ add_executable(
   ${TILEDB_TEST_SOURCES}
 )
 
+target_include_directories(
+  tiledb_unit BEFORE PRIVATE
+    ${TILEDB_CORE_INCLUDE_DIR}
+    ${TILEDB_EXPORT_HEADER_DIR}
+)
+
 target_link_libraries(tiledb_unit
   PUBLIC
     tiledb_shared
     Catch::Catch
 )
 
-target_include_directories(
-  tiledb_unit BEFORE PRIVATE
-    ${TILEDB_CORE_INCLUDE_DIR}
-    ${TILEDB_EXPORT_HEADER_DIR}
-)
+# need to properly link the signal chaining library for catch to work with the jni hdfs interface
+# see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
+if (TILEDB_HDFS)
+  find_package(LIBJVM REQUIRED)
+  target_link_libraries(tiledb_unit
+    PUBLIC
+      LibJVM::libjvm
+      LibJVM::libjsig
+  )
+endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
@@ -110,8 +121,11 @@ add_test(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
 )
 
-if (APPLE)
-  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
+if(TILEDB_HDFS)
+  # need to force flat namespace for the signal chaining to work on macOS
+  if (APPLE)
+    set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
+  endif()
 endif()
 
 # Add custom target 'check'
