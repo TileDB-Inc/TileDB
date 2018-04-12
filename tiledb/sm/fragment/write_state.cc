@@ -631,15 +631,17 @@ Status WriteState::write_attr_var(
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written = 0;
   uint64_t bytes_written_var = 0;
+  auto current_var_offset = buffer_var_offset;
   do {
     RETURN_NOT_OK(tile->write_with_shift(buf, buffer_var_offset));
     uint64_t bytes_to_write_var =
         (buf->end()) ?
-            buffer_var_offset + buffer_var_size - tile->value<uint64_t>(0) :
-            buffer_var_offset + buf->value<uint64_t>() -
-                tile->value<uint64_t>(0);
+            buffer_var_offset + buffer_var_size - current_var_offset :
+            buffer_var_offset + buf->value<uint64_t>() - current_var_offset;
 
     RETURN_NOT_OK(tile_var->write(buf_var, bytes_to_write_var));
+
+    current_var_offset += bytes_to_write_var;
 
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));

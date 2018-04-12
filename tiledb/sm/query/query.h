@@ -51,7 +51,6 @@ namespace tiledb {
 namespace sm {
 
 class ArrayReadState;
-class ArrayOrderedReadState;
 class ArrayOrderedWriteState;
 class Fragment;
 class StorageManager;
