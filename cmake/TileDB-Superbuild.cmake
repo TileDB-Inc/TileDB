@@ -55,6 +55,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindBzip2_EP.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindTBB_EP.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 
