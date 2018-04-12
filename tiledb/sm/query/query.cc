@@ -698,10 +698,12 @@ Status Query::dedup_coords(
         !std::memcmp(
             it->get()->coords_, next_it->get()->coords_, coords_size)) {
       if (it->get()->tile_.get()->fragment_idx_ <
-          next_it->get()->tile_.get()->fragment_idx_)
+          next_it->get()->tile_.get()->fragment_idx_) {
         it = coords->erase(it);
-      else
+      } else {
         coords->erase(next_it);
+        continue;
+      }
     }
     ++it;
   }

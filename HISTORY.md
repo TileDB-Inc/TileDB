@@ -19,6 +19,7 @@
 * Memory overflow error handling (moved from constructors to init functions)
 * Memory leaks with realloc in case of error
 * Handle non-existent config param in C++ API.
+* Fixed bugs with reads/writes of variable-sized attributes.
 
 ## API additions
 

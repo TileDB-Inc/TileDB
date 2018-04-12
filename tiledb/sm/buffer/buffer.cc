@@ -236,8 +236,9 @@ Status Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
   uint64_t bytes_left_to_write = alloced_size_ - offset_;
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
+  buff->read_with_shift(
+      (uint64_t*)(((char*)data_ + offset_)), bytes_to_copy, offset);
 
-  buff->read_with_shift(static_cast<uint64_t*>(data_), bytes_to_copy, offset);
   offset_ += bytes_to_copy;
   size_ = offset_;
 

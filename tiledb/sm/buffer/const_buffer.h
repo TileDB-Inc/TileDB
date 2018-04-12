@@ -41,8 +41,6 @@
 namespace tiledb {
 namespace sm {
 
-class Buffer;
-
 /** Enables reading from a constant buffer. */
 class ConstBuffer {
  public:
