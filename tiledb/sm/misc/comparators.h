@@ -369,7 +369,7 @@ class GlobalCmp {
 
     // Compare cell order
     auto cell_cmp = domain_->cell_order_cmp(a->coords_, b->coords_);
-    return (cell_cmp == -1 || cell_cmp == 0);
+    return cell_cmp == -1;
   }
 
  private:
