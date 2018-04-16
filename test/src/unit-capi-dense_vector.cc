@@ -76,6 +76,7 @@ struct DenseVectorFx {
   void create_dense_vector(const std::string& path);
   void check_read(const std::string& path, tiledb_layout_t layout);
   void check_update(const std::string& path);
+  void check_duplicate_coords(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
@@ -324,6 +325,62 @@ void DenseVectorFx::check_update(const std::string& path) {
   CHECK((buffer[0] == 9 && buffer[1] == 8 && buffer[2] == 7));
 }
 
+void DenseVectorFx::check_duplicate_coords(const std::string& path) {
+  const int64_t num_writes = 5;
+  for (int64_t write_num = 0; write_num < num_writes; write_num++) {
+    const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
+    int64_t update_buffer[] = {write_num, write_num, write_num};
+    int64_t coords_buffer[] = {7, 8, 9};
+    void* update_buffers[] = {update_buffer, coords_buffer};
+    uint64_t update_buffer_sizes[] = {sizeof(update_buffer),
+                                      sizeof(coords_buffer)};
+
+    // Update
+    tiledb_query_t* update_query;
+    int rc =
+        tiledb_query_create(ctx_, &update_query, path.c_str(), TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffers(
+        ctx_, update_query, attributes, 2, update_buffers, update_buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_UNORDERED);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_submit(ctx_, update_query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, update_query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_free(ctx_, &update_query);
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  // Read
+  uint64_t subarray[] = {7, 9};
+  const char* attributes[] = {ATTR_NAME};
+  int64_t buffer[3] = {0};
+  void* read_buffers[] = {buffer};
+  uint64_t read_buffer_sizes[] = {sizeof(buffer)};
+  tiledb_query_t* read_query = nullptr;
+  int rc = tiledb_query_create(ctx_, &read_query, path.c_str(), TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, read_query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, read_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, read_query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_free(ctx_, &read_query);
+  REQUIRE(rc == TILEDB_OK);
+
+  CHECK(
+      (buffer[0] == num_writes - 1 && buffer[1] == num_writes - 1 &&
+       buffer[2] == num_writes - 1));
+}
+
 TEST_CASE_METHOD(
     DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
   std::string vector_name;
@@ -336,6 +393,7 @@ TEST_CASE_METHOD(
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
+    check_duplicate_coords(vector_name);
     remove_temp_dir(S3_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
@@ -345,6 +403,7 @@ TEST_CASE_METHOD(
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
+    check_duplicate_coords(vector_name);
     remove_temp_dir(HDFS_TEMP_DIR);
   } else {
     // File
@@ -354,6 +413,7 @@ TEST_CASE_METHOD(
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
+    check_duplicate_coords(vector_name);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
 }
