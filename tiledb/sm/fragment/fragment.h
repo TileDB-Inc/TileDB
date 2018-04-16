@@ -36,7 +36,6 @@
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/fragment/read_state.h"
 #include "tiledb/sm/fragment/write_state.h"
 
 #include <vector>
@@ -128,9 +127,6 @@ class Fragment {
   /** Returns the query that this fragment belongs to. */
   Query* query() const;
 
-  /** Returns the read state of the fragment. */
-  ReadState* read_state() const;
-
   /** Returns the tile size for a given attribute. */
   uint64_t tile_size(unsigned int attribute_id) const;
 
@@ -167,9 +163,6 @@ class Fragment {
 
   /** The query this fragment belongs to. */
   Query* query_;
-
-  /** The fragment read state. */
-  ReadState* read_state_;
 
   /** The fragment write state. */
   WriteState* write_state_;

@@ -192,6 +192,9 @@ std::string Status::code_to_string() const {
     case StatusCode::SparseReader:
       type = "[TileDB::SparseReader] Error";
       break;
+    case StatusCode::DenseCellRangeIter:
+      type = "[TileDB::DenseCellRangeIter] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

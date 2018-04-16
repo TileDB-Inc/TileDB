@@ -306,6 +306,27 @@ const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
 }
 
+template <class T>
+uint64_t FragmentMetadata::get_tile_pos(const T* tile_coords) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+
+  // Get tile subarray of the expanded non-empty domain
+  std::vector<T> tile_subarray;
+  tile_subarray.resize(2 * dim_num);
+  array_schema_->domain()->get_tile_domain((T*)domain_, &tile_subarray[0]);
+
+  // Normalize tile coords such in tile subarray
+  std::vector<T> norm_tile_coords;
+  norm_tile_coords.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i)
+    norm_tile_coords[i] = tile_coords[i] - tile_subarray[2 * i];
+
+  // Return tile pos in tile subarray
+  return array_schema_->domain()->get_tile_pos(
+      (T*)domain_, &norm_tile_coords[0]);
+}
+
 Status FragmentMetadata::init(const void* non_empty_domain) {
   // For easy reference
   unsigned int attribute_num = array_schema_->attribute_num();
@@ -1148,6 +1169,23 @@ template Status FragmentMetadata::compute_max_read_buffer_sizes<double>(
     const std::vector<unsigned>& attribute_ids,
     unsigned buffer_num,
     uint64_t* buffer_sizes) const;
+
+template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
+    const int8_t* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<uint8_t>(
+    const uint8_t* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<int16_t>(
+    const int16_t* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<uint16_t>(
+    const uint16_t* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<int>(
+    const int* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<unsigned>(
+    const unsigned* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<int64_t>(
+    const int64_t* tile_coords) const;
+template uint64_t FragmentMetadata::get_tile_pos<uint64_t>(
+    const uint64_t* tile_coords) const;
 
 }  // namespace sm
 }  // namespace tiledb

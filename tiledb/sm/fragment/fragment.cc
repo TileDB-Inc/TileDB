@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/fragment/fragment.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/query/query.h"
 
 #include <iostream>
 
@@ -49,7 +50,6 @@ namespace sm {
 
 Fragment::Fragment(Query* query)
     : query_(query) {
-  read_state_ = nullptr;
   write_state_ = nullptr;
   metadata_ = nullptr;
   consolidation_ = false;
@@ -60,8 +60,6 @@ Fragment::~Fragment() {
     delete write_state_;
     delete metadata_;
   }
-
-  delete read_state_;
 }
 
 /* ****************************** */
@@ -147,7 +145,6 @@ Status Fragment::init(
 
   // Initialize metadata and read/write state
   metadata_ = new FragmentMetadata(query_->array_schema(), dense_, uri);
-  read_state_ = nullptr;
   Status st = metadata_->init(subarray);
   if (!st.ok()) {
     delete metadata_;
@@ -174,9 +171,6 @@ Status Fragment::init(const URI& uri, FragmentMetadata* metadata) {
   metadata_ = metadata;
   dense_ = metadata_->dense();
 
-  read_state_ = new ReadState();
-  RETURN_NOT_OK(read_state_->init(this, query_, metadata_));
-
   return Status::Ok();
 }
 
@@ -186,10 +180,6 @@ FragmentMetadata* Fragment::metadata() const {
 
 Query* Fragment::query() const {
   return query_;
-}
-
-ReadState* Fragment::read_state() const {
-  return read_state_;
 }
 
 uint64_t Fragment::tile_size(unsigned int attribute_id) const {

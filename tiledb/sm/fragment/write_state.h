@@ -34,16 +34,17 @@
 #ifndef TILEDB_WRITE_STATE_H
 #define TILEDB_WRITE_STATE_H
 
-#include "tiledb/sm/fragment/fragment.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/sm/tile/tile_io.h"
 
 #include <iostream>
 #include <vector>
 
 namespace tiledb {
 namespace sm {
+
+class Fragment;
+class TileIO;
 
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {

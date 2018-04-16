@@ -34,10 +34,20 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/tile/tile_io.h"
 
+#include <array>
 #include <cassert>
+#include <queue>
 #include <set>
 #include <sstream>
+
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -49,8 +59,6 @@ namespace sm {
 Query::Query() {
   common_query_ = nullptr;
   subarray_ = nullptr;
-  array_read_state_ = nullptr;
-  array_ordered_read_state_ = nullptr;
   array_ordered_write_state_ = nullptr;
   array_schema_ = nullptr;
   buffers_ = nullptr;
@@ -69,8 +77,6 @@ Query::Query() {
 Query::Query(Query* common_query) {
   common_query_ = common_query;
   subarray_ = nullptr;
-  array_read_state_ = nullptr;
-  array_ordered_read_state_ = nullptr;
   array_ordered_write_state_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
@@ -89,8 +95,6 @@ Query::~Query() {
   if (subarray_ != nullptr)
     std::free(subarray_);
 
-  delete array_read_state_;
-  delete array_ordered_read_state_;
   delete array_ordered_write_state_;
 
   clear_fragments();
@@ -105,6 +109,8 @@ const ArraySchema* Query::array_schema() const {
 }
 
 Status Query::async_process() {
+  // TODO (sp)
+
   // In case this query follows another one (the common query)
   if (common_query_ != nullptr) {
     fragment_metadata_ = common_query_->fragment_metadata();
@@ -126,16 +132,7 @@ Status Query::async_process() {
     st = write();
 
   if (st.ok()) {  // Success
-    // Check for overflow (applicable only to reads)
-    if (type_ == QueryType::READ &&
-        ((layout_ == Layout::GLOBAL_ORDER && array_read_state_->overflow()) ||
-         ((layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) &&
-          array_ordered_read_state_->overflow())))
-      set_status(QueryStatus::INCOMPLETE);
-    else  // Completion
-      set_status(QueryStatus::COMPLETED);
-
-    // Invoke the callback
+    set_status(QueryStatus::COMPLETED);
     if (callback_ != nullptr)
       callback_(callback_data_);
   } else {  // Error
@@ -277,12 +274,6 @@ Status Query::compute_subarrays(
 }
 
 Status Query::finalize() {
-  // Clear sorted read state
-  if (array_ordered_read_state_ != nullptr)
-    RETURN_NOT_OK(array_ordered_read_state_->finalize());
-  delete array_ordered_read_state_;
-  array_ordered_read_state_ = nullptr;
-
   // Clear sorted write state
   if (array_ordered_write_state_ != nullptr)
     RETURN_NOT_OK(array_ordered_write_state_->finalize());
@@ -413,29 +404,14 @@ Layout Query::layout() const {
 }
 
 bool Query::overflow() const {
-  // Not applicable to writes
-  if (type_ != QueryType::READ)
-    return false;
-
-  // Check overflow
-  if (array_ordered_read_state_ != nullptr)
-    return array_ordered_read_state_->overflow();
-
-  return array_read_state_->overflow();
+  // TODO (sp)
+  return false;
 }
 
 bool Query::overflow(unsigned int attribute_id) const {
-  assert(type_ == QueryType::READ);
-
-  // Trivial case
-  if (fragments_.empty())
-    return false;
-
-  // Check overflow
-  if (array_ordered_read_state_ != nullptr)
-    return array_ordered_read_state_->overflow(attribute_id);
-
-  return array_read_state_->overflow(attribute_id);
+  (void)attribute_id;
+  // TODO (sp)
+  return false;
 }
 
 Status Query::overflow(
@@ -451,6 +427,113 @@ Status Query::overflow(
     }
   }
 
+  return Status::Ok();
+}
+
+Status Query::dense_read() {
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return dense_read<int8_t>();
+    case Datatype::UINT8:
+      return dense_read<uint8_t>();
+    case Datatype::INT16:
+      return dense_read<int16_t>();
+    case Datatype::UINT16:
+      return dense_read<uint16_t>();
+    case Datatype::INT32:
+      return dense_read<int>();
+    case Datatype::UINT32:
+      return dense_read<unsigned>();
+    case Datatype::INT64:
+      return dense_read<int64_t>();
+    case Datatype::UINT64:
+      return dense_read<uint64_t>();
+    default:
+      return LOG_STATUS(
+          Status::SparseReaderError("Cannot read; Unsupported domain type"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::dense_read() {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto subarray_len = 2 * array_schema_->dim_num();
+  std::vector<T> subarray;
+  subarray.resize(subarray_len);
+  for (size_t i = 0; i < subarray_len; ++i)
+    subarray[i] = ((T*)subarray_)[i];
+
+  // Get overlapping sparse tile indexes
+  OverlappingTileVec sparse_tiles;
+  RETURN_NOT_OK(compute_overlapping_tiles<T>(&sparse_tiles));
+
+  // Read sparse tiles
+  RETURN_NOT_OK(read_tiles(constants::coords, &sparse_tiles));
+  for (const auto& attr : attributes_) {
+    if (attr != constants::coords)
+      RETURN_NOT_OK(read_tiles(attr, &sparse_tiles));
+  }
+
+  // Compute the read coordinates for all sparse fragments
+  std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
+  RETURN_NOT_OK(compute_overlapping_coords<T>(sparse_tiles, &coords));
+
+  // Sort and dedup the coordinates (not applicable to the global order
+  // layout for a single fragment)
+  if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
+    RETURN_NOT_OK(sort_coords<T>(&coords));
+    RETURN_NOT_OK(dedup_coords<T>(&coords));
+  }
+
+  // For each tile, initialize a dense cell range iterator per
+  // (dense) fragment
+  std::vector<std::vector<DenseCellRangeIter<T>>> dense_frag_its;
+  std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>
+      overlapping_tile_idx_coords;
+  RETURN_NOT_OK(init_tile_fragment_dense_cell_range_iters(
+      &dense_frag_its, &overlapping_tile_idx_coords));
+
+  // TODO: pass coords (or an iterator and its tile index and cell pos)
+  // TODO: in compute_dense_cell_ranges
+
+  // Get the cell ranges
+  std::list<DenseCellRange<T>> dense_cell_ranges;
+  DenseCellRangeIter<T> it(domain, subarray, layout_);
+  RETURN_NOT_OK(it.begin());
+  while (!it.end()) {
+    auto o_it = overlapping_tile_idx_coords.find(it.tile_idx());
+    assert(o_it != overlapping_tile_idx_coords.end());
+    RETURN_NOT_OK(compute_dense_cell_ranges<T>(
+        &(o_it->second.second)[0],
+        dense_frag_its[o_it->second.first],
+        it.range_start(),
+        it.range_end(),
+        &dense_cell_ranges));
+    ++it;
+  }
+
+  // Compute overlapping dense tile indexes
+  OverlappingTileVec dense_tiles;
+  OverlappingCellRangeList overlapping_cell_ranges;
+  RETURN_NOT_OK(compute_dense_overlapping_tiles_and_cell_ranges<T>(
+      dense_cell_ranges, coords, &dense_tiles, &overlapping_cell_ranges));
+  coords.clear();
+  dense_cell_ranges.clear();
+  overlapping_tile_idx_coords.clear();
+
+  // Read dense tiles
+  for (const auto& attr : attributes_)
+    RETURN_NOT_OK(read_tiles(attr, &dense_tiles));
+
+  // Copy cells
+  for (const auto& attr : attributes_)
+    RETURN_NOT_OK(copy_cells(attr, overlapping_cell_ranges));
+
+  status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
 
@@ -487,8 +570,6 @@ Status Query::sparse_read() {
 
 template <class T>
 Status Query::sparse_read() {
-  status_ = QueryStatus::INPROGRESS;
-
   // Get overlapping tile indexes
   OverlappingTileVec tiles;
   RETURN_NOT_OK(compute_overlapping_tiles<T>(&tiles));
@@ -535,6 +616,10 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
   // Find overlapping tile indexes for each fragment
   tiles->clear();
   for (unsigned i = 0; i < fragment_num; ++i) {
+    // Applicable only to sparse fragments
+    if (fragment_metadata_[i]->dense())
+      continue;
+
     auto mbrs = fragment_metadata_[i]->mbrs();
     auto mbr_num = (uint64_t)mbrs.size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
@@ -544,6 +629,190 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
       }
     }
   }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
+    const std::list<DenseCellRange<T>>& dense_cell_ranges,
+    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+    OverlappingTileVec* tiles,
+    OverlappingCellRangeList* overlapping_cell_ranges) {
+  // Trivial case = no dense cell ranges
+  if (dense_cell_ranges.empty())
+    return Status::Ok();
+
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto dim_num = array_schema_->dim_num();
+  auto coords_size = array_schema_->coords_size();
+
+  // This maps a (fragment, tile coords) pair to an overlapping tile position
+  std::map<std::pair<unsigned, const T*>, uint64_t> tile_coords_map;
+
+  // Prepare first range
+  auto cr_it = dense_cell_ranges.begin();
+  std::shared_ptr<OverlappingTile> cur_tile = nullptr;
+  const T* cur_tile_coords = nullptr;
+  if (cr_it->fragment_idx_ != -1) {
+    auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
+        cr_it->tile_coords_);
+    cur_tile = std::make_shared<OverlappingTile>(
+        (unsigned)cr_it->fragment_idx_, tile_idx);
+    tile_coords_map[std::pair<unsigned, const T*>(
+        (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
+        (uint64_t)tiles->size();
+    tiles->push_back(cur_tile);
+    cur_tile_coords = cr_it->tile_coords_;
+  }
+  auto start = cr_it->start_;
+  auto end = cr_it->end_;
+
+  // Initialize coords info
+  auto coords_it = coords.begin();
+  std::vector<T> coords_tile_coords;
+  coords_tile_coords.resize(dim_num);
+  uint64_t coords_pos = 0;
+  unsigned coords_fidx = 0;
+  std::shared_ptr<OverlappingTile> coords_tile = nullptr;
+  if (coords_it != coords.end()) {
+    domain->get_tile_coords(coords_it->get()->coords_, &coords_tile_coords[0]);
+    RETURN_NOT_OK(
+        domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
+    coords_fidx = coords_it->get()->tile_->fragment_idx_;
+    coords_tile = coords_it->get()->tile_;
+  }
+
+  // Compute overlapping tiles and cell ranges
+  for (++cr_it; cr_it != dense_cell_ranges.end(); ++cr_it) {
+    // Find tile
+    std::shared_ptr<OverlappingTile> tile = nullptr;
+    if (cr_it->fragment_idx_ != -1) {  // Non-empty
+      auto tile_coords_map_it =
+          tile_coords_map.find(std::pair<unsigned, const T*>(
+              (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_));
+      if (tile_coords_map_it != tile_coords_map.end()) {
+        tile = (*tiles)[tile_coords_map_it->second];
+      } else {
+        auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
+            cr_it->tile_coords_);
+        tile = std::make_shared<OverlappingTile>(
+            (unsigned)cr_it->fragment_idx_, tile_idx);
+        tile_coords_map[std::pair<unsigned, const T*>(
+            (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
+            (uint64_t)tiles->size();
+        tiles->push_back(tile);
+      }
+    }
+
+    // Check if the range must be appended to the current one
+    if (tile.get() == cur_tile.get() && cr_it->start_ == end + 1) {
+      end = cr_it->end_;
+      continue;
+    }
+
+    // While the coords are within the same dense cell range
+    while (coords_it != coords.end() &&
+           !memcmp(&coords_tile_coords[0], cur_tile_coords, coords_size) &&
+           coords_pos >= start && coords_pos <= end) {
+      if (coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
+        ++coords_it;
+        if (coords_it != coords.end()) {
+          domain->get_tile_coords(
+              coords_it->get()->coords_, &coords_tile_coords[0]);
+          RETURN_NOT_OK(
+              domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
+          coords_fidx = coords_it->get()->tile_->fragment_idx_;
+          coords_tile = coords_it->get()->tile_;
+        }
+        continue;
+      } else {  // Break dense range
+        // Left range
+        if (coords_pos > start) {
+          overlapping_cell_ranges->emplace_back(
+              std::make_shared<OverlappingCellRange>(
+                  cur_tile, start, coords_pos - 1));
+        }
+        // Coords unary range
+        overlapping_cell_ranges->emplace_back(
+            std::make_shared<OverlappingCellRange>(
+                coords_tile, coords_it->get()->pos_, coords_it->get()->pos_));
+        // Update start
+        start = coords_pos + 1;
+
+        // Advance coords
+        ++coords_it;
+        if (coords_it != coords.end()) {
+          domain->get_tile_coords(
+              coords_it->get()->coords_, &coords_tile_coords[0]);
+          RETURN_NOT_OK(
+              domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
+          coords_fidx = coords_it->get()->tile_->fragment_idx_;
+          coords_tile = coords_it->get()->tile_;
+        }
+      }
+    }
+
+    // Push remaining range to the result
+    if (start <= end)
+      overlapping_cell_ranges->emplace_back(
+          std::make_shared<OverlappingCellRange>(cur_tile, start, end));
+
+    // Update state
+    cur_tile = tile;
+    start = cr_it->start_;
+    end = cr_it->end_;
+    cur_tile_coords = cr_it->tile_coords_;
+  }
+
+  // Handle last range
+  // While the coords are within the same dense cell range
+  while (coords_it != coords.end() &&
+         !memcmp(&coords_tile_coords[0], cur_tile_coords, coords_size) &&
+         coords_pos >= start && coords_pos <= end) {
+    if (coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
+      ++coords_it;
+      if (coords_it != coords.end()) {
+        domain->get_tile_coords(
+            coords_it->get()->coords_, &coords_tile_coords[0]);
+        RETURN_NOT_OK(
+            domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
+        coords_fidx = coords_it->get()->tile_->fragment_idx_;
+        coords_tile = coords_it->get()->tile_;
+      }
+      continue;
+    } else {  // Break dense range
+      // Left range
+      if (coords_pos > start) {
+        overlapping_cell_ranges->emplace_back(
+            std::make_shared<OverlappingCellRange>(
+                cur_tile, start, coords_pos - 1));
+      }
+      // Coords unary range
+      overlapping_cell_ranges->emplace_back(
+          std::make_shared<OverlappingCellRange>(
+              coords_tile, coords_it->get()->pos_, coords_it->get()->pos_));
+      // Update start
+      start = coords_pos + 1;
+
+      // Advance coords
+      ++coords_it;
+      if (coords_it != coords.end()) {
+        domain->get_tile_coords(
+            coords_it->get()->coords_, &coords_tile_coords[0]);
+        RETURN_NOT_OK(
+            domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
+        coords_fidx = coords_it->get()->tile_->fragment_idx_;
+        coords_tile = coords_it->get()->tile_;
+      }
+    }
+  }
+
+  // Push remaining range to the result
+  if (start <= end)
+    overlapping_cell_ranges->emplace_back(
+        std::make_shared<OverlappingCellRange>(cur_tile, start, end));
 
   return Status::Ok();
 }
@@ -802,21 +1071,34 @@ Status Query::copy_fixed_cells(
   auto buffer = (unsigned char*)buffers_[bid];
   uint64_t buffer_offset = 0;
   auto cell_size = array_schema_->cell_size(attr_id);
+  auto type = array_schema_->type(attr_id);
+  auto fill_size = datatype_size(type);
+  auto fill_value = this->fill_value(type);
+  assert(fill_value != nullptr);
 
   // Copy cells
   for (const auto& cr : cell_ranges) {
-    const auto& tile = cr->tile_->attr_tiles_.find(attribute)->second.first;
-    auto data = (unsigned char*)tile->data();
+    // Check for overflow
     auto bytes_to_copy = (cr->end_ - cr->start_ + 1) * cell_size;
     if (buffer_offset + bytes_to_copy > buffer_sizes_[bid])
       return LOG_STATUS(Status::QueryError(
           std::string("Cannot copy cells for attribute '") + attribute +
           "'; Result buffer overflowed"));
-    std::memcpy(
-        buffer + buffer_offset,
-        data + cr.get()->start_ * cell_size,
-        bytes_to_copy);
-    buffer_offset += bytes_to_copy;
+
+    // Copy
+    if (cr->tile_ == nullptr) {  // Empty range
+      auto fill_num = bytes_to_copy / fill_size;
+      for (uint64_t i = 0; i < fill_num; ++i) {
+        std::memcpy(buffer + buffer_offset, fill_value, fill_size);
+        buffer_offset += fill_size;
+      }
+    } else {  // Non-empty range
+      const auto& tile = cr->tile_->attr_tiles_.find(attribute)->second.first;
+      auto data = (unsigned char*)tile->data();
+      std::memcpy(
+          buffer + buffer_offset, data + cr->start_ * cell_size, bytes_to_copy);
+      buffer_offset += bytes_to_copy;
+    }
   }
 
   // Update buffer sizes
@@ -838,9 +1120,44 @@ Status Query::copy_var_cells(
   uint64_t buffer_var_offset = 0;
   uint64_t offset_size = constants::cell_var_offset_size;
   uint64_t cell_var_size;
+  auto type = array_schema_->type(attr_id);
+  auto fill_size = datatype_size(type);
+  auto fill_value = this->fill_value(type);
+  assert(fill_value != nullptr);
 
   // Copy cells
   for (const auto& cr : cell_ranges) {
+    auto cell_num_in_range = cr->end_ - cr->start_ + 1;
+    // Check if offset buffers can fit the result
+    if (buffer_offset + cell_num_in_range * offset_size > buffer_sizes_[bid])
+      return LOG_STATUS(Status::QueryError(
+          std::string("Cannot copy cell offsets for var-sized attribute '") +
+          attribute + "'; Result buffer overflow"));
+
+    // Handle empty range
+    if (cr->tile_ == nullptr) {
+      // Check if result can fit in the buffer
+      if (buffer_var_offset + cell_num_in_range * fill_size >
+          buffer_sizes_[bid + 1])
+        return LOG_STATUS(Status::QueryError(
+            std::string("Cannot copy cell data for var-sized attribute '") +
+            attribute + "'; Result buffer overflowed"));
+
+      // Fill with empty
+      for (auto i = cr->start_; i <= cr->end_; ++i) {
+        // Offsets
+        std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
+        buffer_offset += offset_size;
+
+        // Values
+        std::memcpy(buffer_var + buffer_var_offset, fill_value, fill_size);
+        buffer_var_offset += fill_size;
+      }
+
+      continue;
+    }
+
+    // Non-empty range
     const auto& tile_pair = cr->tile_->attr_tiles_.find(attribute)->second;
     const auto& tile = tile_pair.first;
     const auto& tile_var = tile_pair.second;
@@ -849,16 +1166,12 @@ Status Query::copy_var_cells(
     auto cell_num = tile->cell_num();
     auto tile_var_size = tile_var->size();
 
-    for (uint64_t i = cr->start_; i <= cr->end_; ++i) {
+    for (auto i = cr->start_; i <= cr->end_; ++i) {
       // Copy offsets
-      if (buffer_offset + offset_size > buffer_sizes_[bid])
-        return LOG_STATUS(Status::QueryError(
-            std::string("Cannot copy cell offsets for var-sized attribute '") +
-            attribute + "'; Result buffer overflowed"));
       std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
       buffer_offset += offset_size;
 
-      // Copy values
+      // Check if next variable-sized cell fits in the result buffer
       cell_var_size = (i != cell_num - 1) ?
                           offsets[i + 1] - offsets[i] :
                           tile_var_size - (offsets[i] - offsets[0]);
@@ -868,6 +1181,7 @@ Status Query::copy_var_cells(
             std::string("Cannot copy cell data for var-sized attribute '") +
             attribute + "'; Result buffer overflowed"));
 
+      // Copy variable-sized values
       std::memcpy(
           buffer_var + buffer_var_offset,
           &data[offsets[i] - offsets[0]],
@@ -884,9 +1198,6 @@ Status Query::copy_var_cells(
 }
 
 Status Query::read() {
-  if (!array_schema_->dense())
-    return sparse_read();
-
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
@@ -902,34 +1213,10 @@ Status Query::read() {
 
   status_ = QueryStatus::INPROGRESS;
 
-  // Perform query
-  Status st;
-  if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)
-    st = array_ordered_read_state_->read(buffers_, buffer_sizes_);
-  else  // layout = Layout::GLOBAL_ORDER
-    st = array_read_state_->read(buffers_, buffer_sizes_);
-
-  // Set query status
-  if (st.ok()) {
-    if (overflow())
-      status_ = QueryStatus::INCOMPLETE;
-    else
-      status_ = QueryStatus::COMPLETED;
-  } else {
-    status_ = QueryStatus::FAILED;
-  }
-
-  return st;
-}
-
-Status Query::read(void** buffers, uint64_t* buffer_sizes) {
-  // Handle case of no fragments
-  if (fragments_.empty()) {
-    zero_out_buffer_sizes(buffer_sizes_);
-    return Status::Ok();
-  }
-
-  return array_read_state_->read(buffers, buffer_sizes);
+  // Perform dense or sparse read
+  if (array_schema_->dense())
+    return dense_read();
+  return sparse_read();
 }
 
 void Query::set_array_schema(const ArraySchema* array_schema) {
@@ -1249,6 +1536,135 @@ Status Query::check_subarray(const T* subarray) const {
   return Status::Ok();
 }
 
+template <class T>
+Status Query::compute_dense_cell_ranges(
+    const T* tile_coords,
+    std::vector<DenseCellRangeIter<T>>& frag_its,
+    uint64_t start,
+    uint64_t end,
+    std::list<DenseCellRange<T>>* dense_cell_ranges) {
+  // NOTE: `start` will always get updated as results are inserted
+  // in `dense_cell_ranges`.
+
+  // For easy reference
+  auto fragment_num = fragment_metadata_.size();
+
+  // Populate queue - stores pairs of (start, fragment_num-fragment_id)
+  std::priority_queue<
+      DenseCellRange<T>,
+      std::vector<DenseCellRange<T>>,
+      DenseCellRangeCmp<T>>
+      pq;
+  for (unsigned i = 0; i < fragment_num; ++i) {
+    if (!frag_its[i].end())
+      pq.emplace(
+          i, tile_coords, frag_its[i].range_start(), frag_its[i].range_end());
+  }
+
+  // Iterate over the queue and create dense cell ranges
+  while (!pq.empty()) {
+    // Get top range
+    const auto& top = pq.top();
+
+    // Top must be ignored and a new range must be fetched
+    if (top.end_ < start) {
+      auto fidx = top.fragment_idx_;
+      ++frag_its[fidx];
+      pq.pop();
+      if (!frag_its[fidx].end())
+        pq.emplace(
+            fidx,
+            tile_coords,
+            frag_its[fidx].range_start(),
+            frag_its[fidx].range_end());
+      continue;
+    }
+
+    // The search needs to stop - add current range to result
+    if (top.start_ > end) {
+      dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
+      break;
+    }
+
+    // At this point, there is intersection between the top of the
+    // queue and the input range. We need to create dense range results.
+    if (top.start_ <= start) {
+      auto new_end = MIN(end, top.end_);
+      dense_cell_ranges->emplace_back(
+          top.fragment_idx_, tile_coords, start, new_end);
+      start = new_end + 1;
+      if (new_end == top.end_) {
+        auto fidx = top.fragment_idx_;
+        ++frag_its[fidx];
+        pq.pop();
+        if (!frag_its[fidx].end())
+          pq.emplace(
+              fidx,
+              tile_coords,
+              frag_its[fidx].range_start(),
+              frag_its[fidx].range_end());
+      }
+    } else {  // top.start_ > start
+      auto new_end = MIN(end, top.start_ - 1);
+      dense_cell_ranges->emplace_back(-1, tile_coords, start, new_end);
+      start = new_end + 1;
+    }
+
+    // Terminating condition
+    if (start > end)
+      break;
+  }
+
+  // Insert an empty cell range if the input range has not been filled
+  if (start <= end)
+    dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
+
+  return Status::Ok();
+}
+
+const void* Query::fill_value(Datatype type) const {
+  switch (type) {
+    case Datatype::INT8:
+      return &constants::empty_int8;
+    case Datatype::UINT8:
+      return &constants::empty_uint8;
+    case Datatype::INT16:
+      return &constants::empty_int16;
+    case Datatype::UINT16:
+      return &constants::empty_uint16;
+    case Datatype::INT32:
+      return &constants::empty_int32;
+    case Datatype::UINT32:
+      return &constants::empty_uint32;
+    case Datatype::INT64:
+      return &constants::empty_int64;
+    case Datatype::UINT64:
+      return &constants::empty_uint64;
+    case Datatype::FLOAT32:
+      return &constants::empty_float32;
+    case Datatype::FLOAT64:
+      return &constants::empty_float64;
+    case Datatype::CHAR:
+      return &constants::empty_char;
+    case Datatype::ANY:
+      return &constants::empty_any;
+    case Datatype::STRING_ASCII:
+      return &constants::empty_ascii;
+    case Datatype::STRING_UTF8:
+      return &constants::empty_utf8;
+    case Datatype::STRING_UTF16:
+      return &constants::empty_utf16;
+    case Datatype::STRING_UTF32:
+      return &constants::empty_utf32;
+    case Datatype::STRING_UCS2:
+      return &constants::empty_ucs2;
+    case Datatype::STRING_UCS4:
+      return &constants::empty_ucs4;
+  }
+
+  return nullptr;
+}
+
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
   // Do nothing if the fragments are already initialized
@@ -1277,19 +1693,83 @@ Status Query::init_states() {
       array_ordered_write_state_ = nullptr;
       return st;
     }
-  } else if (type_ == QueryType::READ && layout_ == Layout::GLOBAL_ORDER) {
-    array_read_state_ = new ArrayReadState(this);
-  } else if (
-      type_ == QueryType::READ &&
-      (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
-    array_read_state_ = new ArrayReadState(this);
-    array_ordered_read_state_ = new ArrayOrderedReadState(this);
-    Status st = array_ordered_read_state_->init();
-    if (!st.ok()) {
-      delete array_ordered_read_state_;
-      array_ordered_read_state_ = nullptr;
-      return st;
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::init_tile_fragment_dense_cell_range_iters(
+    std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
+    std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
+        overlapping_tile_idx_coords) {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto dim_num = domain->dim_num();
+  auto fragment_num = fragment_metadata_.size();
+  std::vector<T> subarray;
+  subarray.resize(2 * dim_num);
+  for (unsigned i = 0; i < 2 * dim_num; ++i)
+    subarray[i] = ((T*)subarray_)[i];
+
+  // Compute tile domain and current tile coords
+  std::vector<T> tile_domain, tile_coords;
+  tile_domain.resize(2 * dim_num);
+  tile_coords.resize(dim_num);
+  domain->get_tile_domain(&subarray[0], &tile_domain[0]);
+  for (unsigned i = 0; i < dim_num; ++i)
+    tile_coords[i] = tile_domain[2 * i];
+  auto tile_num = domain->tile_num<T>(&subarray[0]);
+
+  // Iterate over all tiles in the tile domain
+  iters->clear();
+  overlapping_tile_idx_coords->clear();
+  std::vector<T> tile_subarray, subarray_in_tile;
+  std::vector<T> frag_subarray, frag_subarray_in_tile;
+  tile_subarray.resize(2 * dim_num);
+  subarray_in_tile.resize(2 * dim_num);
+  frag_subarray_in_tile.resize(2 * dim_num);
+  frag_subarray.resize(2 * dim_num);
+  bool tile_overlap, in;
+  uint64_t tile_idx;
+  for (uint64_t i = 0; i < tile_num; ++i) {
+    // Compute subarray overlap with tile
+    domain->get_tile_subarray(&tile_coords[0], &tile_subarray[0]);
+    domain->subarray_overlap(
+        &subarray[0], &tile_subarray[0], &subarray_in_tile[0], &tile_overlap);
+    tile_idx = domain->get_tile_pos(&tile_coords[0]);
+    (*overlapping_tile_idx_coords)[tile_idx] =
+        std::pair<uint64_t, std::vector<T>>(i, tile_coords);
+
+    // Initialize fragment iterators. For sparse fragments, the constructed
+    // iterator will always be at its end.
+    std::vector<DenseCellRangeIter<T>> frag_iters;
+    for (unsigned j = 0; j < fragment_num; ++j) {
+      if (!fragment_metadata_[j]->dense()) {  // Sparse fragment
+        frag_iters.emplace_back();
+      } else {  // Dense fragment
+        auto frag_domain = (T*)fragment_metadata_[j]->non_empty_domain();
+        for (unsigned k = 0; k < 2 * dim_num; ++k)
+          frag_subarray[k] = frag_domain[k];
+        domain->subarray_overlap(
+            &subarray_in_tile[0],
+            &frag_subarray[0],
+            &frag_subarray_in_tile[0],
+            &tile_overlap);
+
+        if (tile_overlap) {
+          frag_iters.emplace_back(domain, frag_subarray_in_tile, layout_);
+          RETURN_NOT_OK(frag_iters.back().begin());
+        } else {
+          frag_iters.emplace_back();
+        }
+      }
     }
+    iters->push_back(std::move(frag_iters));
+
+    // Get next tile coordinates
+    domain->get_next_tile_coords(&tile_domain[0], &tile_coords[0], &in);
+    assert((i != tile_num - 1 && in) || (i == tile_num - 1 && !in));
   }
 
   return Status::Ok();
