@@ -971,10 +971,10 @@ Status Query::dedup_coords(
         it = coords->erase(it);
       } else {
         coords->erase(next_it);
-        continue;
       }
+    } else {
+      ++it;
     }
-    ++it;
   }
   return Status::Ok();
 }
