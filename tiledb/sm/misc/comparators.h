@@ -273,7 +273,7 @@ class RowCmp {
    */
   bool operator()(
       const std::shared_ptr<Query::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) const {
     for (unsigned int i = 0; i < dim_num_; ++i) {
       if (a->coords_[i] < b->coords_[i])
         return true;
@@ -312,7 +312,7 @@ class ColCmp {
    */
   bool operator()(
       const std::shared_ptr<Query::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) const {
     for (unsigned int i = dim_num_ - 1;; --i) {
       if (a->coords_[i] < b->coords_[i])
         return true;
@@ -357,7 +357,7 @@ class GlobalCmp {
    */
   bool operator()(
       const std::shared_ptr<Query::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Query::OverlappingCoords<T>>& b) {
+      const std::shared_ptr<Query::OverlappingCoords<T>>& b) const {
     // Compare tile order first
     auto tile_cmp = domain_->tile_order_cmp<T>(a->coords_, b->coords_);
 
