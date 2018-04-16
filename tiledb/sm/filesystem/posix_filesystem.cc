@@ -222,8 +222,8 @@ Status remove_file(const std::string& path) {
 Status file_size(const std::string& path, uint64_t* size) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(
-        Status::IOError("Cannot get file size; File opening error"));
+    return LOG_STATUS(Status::IOError(
+        "Cannot get file size of '" + path + "'; " + strerror(errno)));
   }
 
   struct stat st;
@@ -251,12 +251,13 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   *fd = ::open(filename.c_str(), O_RDWR);
   if (*fd == -1) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot open filelock '") + filename));
+        "Cannot open filelock '" + filename + "'; " + strerror(errno)));
   }
   // Acquire the lock
   if (fcntl(*fd, F_SETLKW, &fl) == -1) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot lock consolidation filelock '") + filename));
+        "Cannot lock consolidation filelock '" + filename + "'; " +
+        strerror(errno)));
   }
   return Status::Ok();
 }
@@ -264,7 +265,9 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
 Status filelock_unlock(filelock_t fd) {
   if (::close(fd) == -1)
     return LOG_STATUS(Status::IOError(
-        "Cannot unlock consolidation filelock: Cannot close filelock"));
+        std::string(
+            "Cannot unlock consolidation filelock: Cannot close filelock: ") +
+        strerror(errno)));
   return Status::Ok();
 }
 
@@ -407,19 +410,21 @@ Status sync(const std::string& path) {
   // Handle error
   if (fd == -1) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot sync file '") + path + "'; File opening error"));
+        std::string("Cannot open file '") + path + "' for syncing; " +
+        strerror(errno)));
   }
 
   // Sync
   if (fsync(fd) != 0) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot sync file '") + path + "'; File syncing error"));
+        std::string("Cannot sync file '") + path + "'; " + strerror(errno)));
   }
 
   // Close file
   if (close(fd) != 0) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot sync file '") + path + "'; File closing error"));
+        std::string("Cannot close synced file '") + path + "'; " +
+        strerror(errno)));
   }
 
   // Success
