@@ -39,6 +39,7 @@
 #include "tiledb/sm/compressors/rle_compressor.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -92,6 +93,8 @@ Status TileIO::read(
     uint64_t file_offset,
     uint64_t compressed_size,
     uint64_t tile_size) {
+  STATS_FUNC_IN(tile_io_read);
+
   // Try to read from cache
   bool in_cache;
   RETURN_NOT_OK(storage_manager_->read_from_cache(
@@ -118,6 +121,8 @@ Status TileIO::read(
 
   // Store tile in cache
   return (storage_manager_->write_to_cache(uri_, file_offset, tile->buffer()));
+
+  STATS_FUNC_OUT(tile_io_read);
 }
 
 Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
@@ -425,6 +430,8 @@ Status TileIO::compute_chunking_info(
 }
 
 Status TileIO::decompress_tile(Tile* tile) {
+  STATS_FUNC_IN(tile_io_decompress_tile);
+
   // Simple case - No coordinates
   if (!tile->stores_coords())
     return decompress_one_tile(tile);
@@ -438,6 +445,8 @@ Status TileIO::decompress_tile(Tile* tile) {
   tile->zip_coordinates();
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tile_io_decompress_tile);
 }
 
 Status TileIO::decompress_one_tile(Tile* tile) {

@@ -31,6 +31,19 @@
  */
 
 #ifdef STATS_DEFINE_FUNC_STAT
+// Tile IO
+STATS_DEFINE_FUNC_STAT(tile_io_read)
+STATS_DEFINE_FUNC_STAT(tile_io_decompress_tile)
+// Query
+STATS_DEFINE_FUNC_STAT(query_compute_cell_ranges)
+STATS_DEFINE_FUNC_STAT(query_compute_overlapping_coords)
+STATS_DEFINE_FUNC_STAT(query_compute_overlapping_tiles)
+STATS_DEFINE_FUNC_STAT(query_copy_cells)
+STATS_DEFINE_FUNC_STAT(query_dedup_coords)
+STATS_DEFINE_FUNC_STAT(query_read)
+STATS_DEFINE_FUNC_STAT(query_read_tiles)
+STATS_DEFINE_FUNC_STAT(query_sort_coords)
+STATS_DEFINE_FUNC_STAT(query_zero_out_buffers)
 // VFS
 STATS_DEFINE_FUNC_STAT(vfs_abs_path)
 STATS_DEFINE_FUNC_STAT(vfs_close_file)
@@ -64,6 +77,19 @@ STATS_DEFINE_FUNC_STAT(vfs_s3_write_multipart)
 #endif
 
 #ifdef STATS_INIT_FUNC_STAT
+// Tile IO
+STATS_INIT_FUNC_STAT(tile_io_read)
+STATS_INIT_FUNC_STAT(tile_io_decompress_tile)
+// Query
+STATS_INIT_FUNC_STAT(query_compute_cell_ranges)
+STATS_INIT_FUNC_STAT(query_compute_overlapping_coords)
+STATS_INIT_FUNC_STAT(query_compute_overlapping_tiles)
+STATS_INIT_FUNC_STAT(query_copy_cells)
+STATS_INIT_FUNC_STAT(query_dedup_coords)
+STATS_INIT_FUNC_STAT(query_read)
+STATS_INIT_FUNC_STAT(query_read_tiles)
+STATS_INIT_FUNC_STAT(query_sort_coords)
+STATS_INIT_FUNC_STAT(query_zero_out_buffers)
 // VFS
 STATS_INIT_FUNC_STAT(vfs_abs_path)
 STATS_INIT_FUNC_STAT(vfs_close_file)
@@ -98,6 +124,19 @@ STATS_INIT_FUNC_STAT(vfs_s3_write_multipart)
 #endif
 
 #ifdef STATS_REPORT_FUNC_STAT
+// Tile IO
+STATS_REPORT_FUNC_STAT(tile_io_read)
+STATS_REPORT_FUNC_STAT(tile_io_decompress_tile)
+// Query
+STATS_REPORT_FUNC_STAT(query_compute_cell_ranges)
+STATS_REPORT_FUNC_STAT(query_compute_overlapping_coords)
+STATS_REPORT_FUNC_STAT(query_compute_overlapping_tiles)
+STATS_REPORT_FUNC_STAT(query_copy_cells)
+STATS_REPORT_FUNC_STAT(query_dedup_coords)
+STATS_REPORT_FUNC_STAT(query_read)
+STATS_REPORT_FUNC_STAT(query_read_tiles)
+STATS_REPORT_FUNC_STAT(query_sort_coords)
+STATS_REPORT_FUNC_STAT(query_zero_out_buffers)
 // VFS
 STATS_REPORT_FUNC_STAT(vfs_abs_path)
 STATS_REPORT_FUNC_STAT(vfs_close_file)

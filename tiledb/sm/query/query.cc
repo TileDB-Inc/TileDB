@@ -43,6 +43,7 @@
 #include <queue>
 #include <set>
 #include <sstream>
+#include <tiledb/sm/misc/stats.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -659,6 +660,8 @@ Status Query::sparse_read() {
 
 template <class T>
 Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
+  STATS_FUNC_IN(query_compute_overlapping_tiles);
+
   // For easy reference
   auto subarray = (T*)subarray_;
   auto dim_num = array_schema_->dim_num();
@@ -684,6 +687,8 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_compute_overlapping_tiles);
 }
 
 template <class T>
@@ -873,6 +878,8 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
 
 Status Query::read_tiles(
     const std::string& attr_name, OverlappingTileVec* tiles) const {
+  STATS_FUNC_IN(query_read_tiles);
+
   // Prepare tile IO
   unsigned attr_id;
   RETURN_NOT_OK(array_schema_->attribute_id(attr_name, &attr_id));
@@ -942,11 +949,15 @@ Status Query::read_tiles(
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_read_tiles);
 }
 
 template <class T>
 Status Query::compute_overlapping_coords(
     const OverlappingTileVec& tiles, OverlappingCoordsVec<T>* coords) const {
+  STATS_FUNC_IN(query_compute_overlapping_coords);
+
   for (const auto& tile : tiles) {
     if (tile.get()->full_overlap_) {
       RETURN_NOT_OK(get_all_coords<T>(tile, coords));
@@ -956,6 +967,8 @@ Status Query::compute_overlapping_coords(
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_compute_overlapping_coords);
 }
 
 template <class T>
@@ -997,6 +1010,8 @@ Status Query::get_all_coords(
 
 template <class T>
 Status Query::sort_coords(OverlappingCoordsVec<T>* coords) const {
+  STATS_FUNC_IN(query_sort_coords);
+
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto domain = array_schema_->domain();
     tbb::parallel_sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
@@ -1009,10 +1024,14 @@ Status Query::sort_coords(OverlappingCoordsVec<T>* coords) const {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_sort_coords);
 }
 
 template <class T>
 Status Query::dedup_coords(OverlappingCoordsVec<T>* coords) const {
+  STATS_FUNC_IN(query_dedup_coords);
+
   auto coords_size = array_schema_->coords_size();
   auto end = coords->end();
   auto it = skip_null_it_elements(coords->begin(), end);
@@ -1033,12 +1052,16 @@ Status Query::dedup_coords(OverlappingCoordsVec<T>* coords) const {
     }
   }
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_dedup_coords);
 }
 
 template <class T>
 Status Query::compute_cell_ranges(
     const OverlappingCoordsVec<T>& coords,
     OverlappingCellRangeList* cell_ranges) const {
+  STATS_FUNC_IN(query_compute_cell_ranges);
+
   // Trivial case
   auto coords_num = (uint64_t)coords.size();
   if (coords_num == 0)
@@ -1078,6 +1101,8 @@ Status Query::compute_cell_ranges(
       std::make_shared<OverlappingCellRange>(tile, start_pos, end_pos));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(query_compute_cell_ranges);
 }
 
 template <class T>
@@ -1102,11 +1127,15 @@ bool Query::overlap(
 Status Query::copy_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
+  STATS_FUNC_IN(query_copy_cells);
+
   unsigned attr_id;
   RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
   if (array_schema_->var_size(attr_id))
     return copy_var_cells(attribute, cell_ranges);
   return copy_fixed_cells(attribute, cell_ranges);
+
+  STATS_FUNC_OUT(query_copy_cells);
 }
 
 Status Query::buffer_idx(const std::string& attribute, unsigned* bid) const {
@@ -1261,6 +1290,8 @@ Status Query::copy_var_cells(
 }
 
 Status Query::read() {
+  STATS_FUNC_IN(query_read);
+
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
@@ -1280,6 +1311,8 @@ Status Query::read() {
   if (array_schema_->dense())
     return dense_read();
   return sparse_read();
+
+  STATS_FUNC_OUT(query_read);
 }
 
 void Query::set_array_schema(const ArraySchema* array_schema) {
@@ -1929,6 +1962,8 @@ void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
 }
 
 void Query::zero_out_buffers() {
+  STATS_FUNC_VOID_IN(query_zero_out_buffers);
+
   unsigned int buffer_i = 0;
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
@@ -1939,6 +1974,8 @@ void Query::zero_out_buffers() {
       ++buffer_i;
     }
   }
+
+  STATS_FUNC_VOID_OUT(query_zero_out_buffers);
 }
 
 }  // namespace sm
