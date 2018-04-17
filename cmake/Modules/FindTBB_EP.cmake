@@ -57,40 +57,53 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(TBB
 if (NOT TBB_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding TBB as an external project")
+    set(TBB_URL)
+    set(TBB_SHA1SUM)
+
     if (APPLE)
-      ExternalProject_Add(ep_tbb
-        PREFIX "externals"
-        URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_mac.tgz"
-        URL_HASH SHA1=6e0229e5bd7d457c756ec6b31ab39cceb7f109a1
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        UPDATE_COMMAND ""
-        INSTALL_COMMAND ""
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-        LOG_INSTALL TRUE
-      )
-      # Simple install step by copying the binaries.
-      ExternalProject_Add_step(ep_tbb copy_install
-        DEPENDEES download
-        COMMAND
-          ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/lib" &&
-          ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/include" &&
-          ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_SOURCE_DIR}/ep_tbb/lib/libtbb${CMAKE_SHARED_LIBRARY_SUFFIX}
-            ${TILEDB_EP_INSTALL_PREFIX}/lib &&
-          ${CMAKE_COMMAND} -E remove_directory
-            ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include/serial &&
-          ${CMAKE_COMMAND} -E remove
-            ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include/index.html &&
-          ${CMAKE_COMMAND} -E copy_directory
-            ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include
-            ${TILEDB_EP_INSTALL_PREFIX}/include
-      )
+      # macOS
+      set(TBB_URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_mac.tgz")
+      set(TBB_SHA1SUM 6e0229e5bd7d457c756ec6b31ab39cceb7f109a1)
+    elseif(NOT WIN32)
+      # Linux
+      set(TBB_URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_lin.tgz")
+      set(TBB_SHA1SUM 00bcc86c8d64c5a186f0411fa8ddfc6cb28ba516)
     else()
+      # Win32
       message(FATAL_ERROR "Not yet implemented.")
     endif()
+
+    ExternalProject_Add(ep_tbb
+      PREFIX "externals"
+      URL "${TBB_URL}"
+      URL_HASH SHA1=${TBB_SHA1SUM}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      UPDATE_COMMAND ""
+      INSTALL_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+    )
+
+    # Simple install step by copying the binaries.
+    ExternalProject_Add_step(ep_tbb copy_install
+      DEPENDEES download
+      COMMAND
+        ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/lib" &&
+        ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/include" &&
+        ${CMAKE_COMMAND} -E copy_if_different
+          ${TILEDB_EP_SOURCE_DIR}/ep_tbb/lib/libtbb${CMAKE_SHARED_LIBRARY_SUFFIX}
+          ${TILEDB_EP_INSTALL_PREFIX}/lib &&
+        ${CMAKE_COMMAND} -E remove_directory
+          ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include/serial &&
+        ${CMAKE_COMMAND} -E remove
+          ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include/index.html &&
+        ${CMAKE_COMMAND} -E copy_directory
+          ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include
+          ${TILEDB_EP_INSTALL_PREFIX}/include
+    )
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_tbb)
   else()
