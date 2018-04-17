@@ -662,10 +662,8 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     auto mbr_num = (uint64_t)mbrs.size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
-        auto tile = std::make_shared<OverlappingTile>(i, j, full_overlap);
-        for (const auto& attr : attributes_) {
-          tile->attr_tiles_[attr] = std::make_pair(nullptr, nullptr);
-        }
+        auto tile =
+            std::make_shared<OverlappingTile>(i, j, attributes_, full_overlap);
         tiles->emplace_back(tile);
       }
     }
@@ -700,7 +698,7 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
     auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
         cr_it->tile_coords_);
     cur_tile = std::make_shared<OverlappingTile>(
-        (unsigned)cr_it->fragment_idx_, tile_idx);
+        (unsigned)cr_it->fragment_idx_, tile_idx, attributes_);
     tile_coords_map[std::pair<unsigned, const T*>(
         (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
         (uint64_t)tiles->size();
@@ -740,7 +738,7 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
         auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
             cr_it->tile_coords_);
         tile = std::make_shared<OverlappingTile>(
-            (unsigned)cr_it->fragment_idx_, tile_idx);
+            (unsigned)cr_it->fragment_idx_, tile_idx, attributes_);
         tile_coords_map[std::pair<unsigned, const T*>(
             (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
             (uint64_t)tiles->size();
@@ -884,8 +882,8 @@ Status Query::read_tiles(
   for (auto& tile : *tiles) {
     auto attr_tiles_it = tile->attr_tiles_.find(attr_name);
     if (attr_tiles_it == tile->attr_tiles_.end()) {
-      return LOG_STATUS(
-          Status::QueryError("Invalid attr_tiles entry for attribute"));
+      return LOG_STATUS(Status::QueryError(
+          "Invalid attr_tiles entry for attribute " + attr_name));
     }
     auto& tile_pair = attr_tiles_it->second;
 

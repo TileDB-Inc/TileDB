@@ -84,10 +84,19 @@ class Query {
 
     /** Constructor. */
     OverlappingTile(
-        unsigned fragment_idx, uint64_t tile_idx, bool full_overlap = false)
+        unsigned fragment_idx,
+        uint64_t tile_idx,
+        const std::vector<std::string>& attributes,
+        bool full_overlap = false)
         : fragment_idx_(fragment_idx)
         , tile_idx_(tile_idx)
         , full_overlap_(full_overlap) {
+      attr_tiles_[constants::coords] = std::make_pair(nullptr, nullptr);
+      for (const auto& attr : attributes) {
+        if (attr != constants::coords) {
+          attr_tiles_[attr] = std::make_pair(nullptr, nullptr);
+        }
+      }
     }
   };
 
