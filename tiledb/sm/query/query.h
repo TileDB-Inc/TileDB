@@ -41,11 +41,11 @@
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
+#include <tbb/task_scheduler_init.h>
 #include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <tbb/task_scheduler_init.h>
 
 namespace tiledb {
 namespace sm {

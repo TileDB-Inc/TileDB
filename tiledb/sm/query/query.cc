@@ -36,6 +36,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile_io.h"
 
+#include <tbb/parallel_for.h>
 #include <tbb/parallel_sort.h>
 #include <array>
 #include <cassert>
@@ -613,10 +614,23 @@ Status Query::sparse_read() {
   RETURN_NOT_OK(compute_overlapping_tiles<T>(&tiles));
 
   // Read tiles
-  RETURN_NOT_OK(read_tiles(constants::coords, &tiles));
-  for (const auto& attr : attributes_) {
-    if (attr != constants::coords)
-      RETURN_NOT_OK(read_tiles(attr, &tiles));
+  std::set<std::string> all_attributes(attributes_.begin(), attributes_.end());
+  all_attributes.insert(constants::coords);
+  std::vector<Status> read_statuses(all_attributes.size());
+  tbb::parallel_for(
+      0ul,
+      all_attributes.size(),
+      1ul,
+      [this, &all_attributes, &read_statuses, &tiles](unsigned long idx) {
+        auto attr_it = std::next(all_attributes.begin(), idx);
+        const auto& attr = *attr_it;
+        read_statuses[idx] = read_tiles(attr, &tiles);
+      });
+
+  for (const auto& st : read_statuses) {
+    if (!st.ok()) {
+      return LOG_STATUS(st);
+    }
   }
 
   // Compute the read coordinates for all fragments
