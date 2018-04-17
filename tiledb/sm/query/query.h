@@ -144,13 +144,13 @@ class Query {
   };
 
   /**
-   * Type alias for a list of OverlappingCoords.
+   * Type alias for a vector of OverlappingCoords.
    *
    * @tparam T The coords type
    */
   template <typename T>
-  using OverlappingCoordsList =
-      std::list<std::shared_ptr<OverlappingCoords<T>>>;
+  using OverlappingCoordsVec =
+      std::vector<std::shared_ptr<OverlappingCoords<T>>>;
 
   /** A cell range produced by the dense read algorithm. */
   template <class T>
@@ -231,7 +231,7 @@ class Query {
    */
   template <class T>
   Status compute_overlapping_coords(
-      const OverlappingTileVec& tiles, OverlappingCoordsList<T>* coords) const;
+      const OverlappingTileVec& tiles, OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Retrieves the coordinates that overlap the subarray from the input
@@ -245,7 +245,7 @@ class Query {
   template <class T>
   Status compute_overlapping_coords(
       const std::shared_ptr<OverlappingTile>& tile,
-      OverlappingCoordsList<T>* coords) const;
+      OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Gets all the coordinates of the input tile into `coords`.
@@ -258,7 +258,7 @@ class Query {
   template <class T>
   Status get_all_coords(
       const std::shared_ptr<OverlappingTile>& tile,
-      OverlappingCoordsList<T>* coords) const;
+      OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Sorts the input coordinates according to the input layout.
@@ -268,18 +268,19 @@ class Query {
    * @return Status
    */
   template <class T>
-  Status sort_coords(OverlappingCoordsList<T>* coords) const;
+  Status sort_coords(OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Deduplicates the input coordinates, breaking ties giving preference
    * to the largest fragment index (i.e., it prefers more recent fragments).
+   * Duplicate elements are set to `nullptr` (not removed from the vector).
    *
    * @tparam T The coords type.
    * @param coords The coordinates to dedup.
    * @return Status
    */
   template <class T>
-  Status dedup_coords(OverlappingCoordsList<T>* coords) const;
+  Status dedup_coords(OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Compute the maximal cell ranges of contiguous cell positions.
@@ -291,7 +292,7 @@ class Query {
    */
   template <class T>
   Status compute_cell_ranges(
-      const OverlappingCoordsList<T>& coords,
+      const OverlappingCoordsVec<T>& coords,
       OverlappingCellRangeList* cell_ranges) const;
 
   /**
@@ -767,7 +768,7 @@ class Query {
   template <class T>
   Status compute_dense_overlapping_tiles_and_cell_ranges(
       const std::list<DenseCellRange<T>>& dense_cell_ranges,
-      const OverlappingCoordsList<T>& coords,
+      const OverlappingCoordsVec<T>& coords,
       OverlappingTileVec* tiles,
       OverlappingCellRangeList* overlapping_cell_ranges);
 
