@@ -38,12 +38,12 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_sort.h>
+#include <tiledb/sm/misc/stats.h>
 #include <array>
 #include <cassert>
 #include <queue>
 #include <set>
 #include <sstream>
-#include <tiledb/sm/misc/stats.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -958,13 +958,46 @@ Status Query::compute_overlapping_coords(
     const OverlappingTileVec& tiles, OverlappingCoordsVec<T>* coords) const {
   STATS_FUNC_IN(query_compute_overlapping_coords);
 
-  for (const auto& tile : tiles) {
+  std::vector<OverlappingCoordsVec<T>> all_tile_coords(tiles.size());
+  std::vector<Status> statuses(tiles.size());
+
+  tbb::parallel_for(0ul, tiles.size(), 1ul, [this, &tiles, &all_tile_coords, &statuses](unsigned long idx) {
+    const auto& tile = tiles[idx];
+    OverlappingCoordsVec<T>* tile_coords = &all_tile_coords[idx];
     if (tile.get()->full_overlap_) {
-      RETURN_NOT_OK(get_all_coords<T>(tile, coords));
+      statuses[idx] = get_all_coords<T>(tile, tile_coords);
     } else {
-      RETURN_NOT_OK(compute_overlapping_coords<T>(tile, coords));
+      statuses[idx] = compute_overlapping_coords<T>(tile, tile_coords);
+    }
+  });
+
+  // Check statuses
+  for (const auto& st : statuses) {
+    if (!st.ok()) {
+      return LOG_STATUS(st);
     }
   }
+
+  // Compute element indices in the result vector for parallel copy
+  uint64_t num_coords = 0;
+  std::vector<uint64_t> coord_offsets;
+  for (const auto &vec : all_tile_coords) {
+    coord_offsets.push_back(num_coords);
+    num_coords += vec.size();
+  }
+
+  coords->resize(num_coords);
+
+  // Parallel copy
+  tbb::parallel_for(0ul, all_tile_coords.size(), 1ul,
+   [&coords, &coord_offsets, &all_tile_coords](unsigned long idx) {
+     auto src_vec = all_tile_coords[idx];
+     auto dest_off = coord_offsets[idx];
+     for (uint64_t i = 0; i < src_vec.size(); i++) {
+       (*coords)[dest_off + i].swap(src_vec[i]);
+     }
+   }
+  );
 
   return Status::Ok();
 
