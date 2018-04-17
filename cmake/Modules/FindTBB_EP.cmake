@@ -59,15 +59,18 @@ if (NOT TBB_FOUND)
     message(STATUS "Adding TBB as an external project")
     set(TBB_URL)
     set(TBB_SHA1SUM)
+    set(TBB_LIB)
 
     if (APPLE)
       # macOS
       set(TBB_URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_mac.tgz")
       set(TBB_SHA1SUM 6e0229e5bd7d457c756ec6b31ab39cceb7f109a1)
+      set(TBB_LIB "${TILEDB_EP_SOURCE_DIR}/ep_tbb/lib/libtbb.dylib")
     elseif(NOT WIN32)
       # Linux
       set(TBB_URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_lin.tgz")
       set(TBB_SHA1SUM 00bcc86c8d64c5a186f0411fa8ddfc6cb28ba516)
+      set(TBB_LIB "${TILEDB_EP_SOURCE_DIR}/ep_tbb/lib/intel64/gcc4.7/libtbb.so.2")
     else()
       # Win32
       message(FATAL_ERROR "Not yet implemented.")
@@ -94,7 +97,7 @@ if (NOT TBB_FOUND)
         ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/lib" &&
         ${CMAKE_COMMAND} -E make_directory "${TILEDB_EP_INSTALL_PREFIX}/include" &&
         ${CMAKE_COMMAND} -E copy_if_different
-          ${TILEDB_EP_SOURCE_DIR}/ep_tbb/lib/libtbb${CMAKE_SHARED_LIBRARY_SUFFIX}
+          ${TBB_LIB}
           ${TILEDB_EP_INSTALL_PREFIX}/lib &&
         ${CMAKE_COMMAND} -E remove_directory
           ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include/serial &&
@@ -104,6 +107,17 @@ if (NOT TBB_FOUND)
           ${TILEDB_EP_SOURCE_DIR}/ep_tbb/include
           ${TILEDB_EP_INSTALL_PREFIX}/include
     )
+
+    # Need to create a .so version symlink on Linux.
+    if (NOT APPLE AND NOT WIN32)
+      ExternalProject_Add_step(ep_tbb symlink_so
+        DEPENDEES copy_install
+        COMMAND
+          ${CMAKE_COMMAND} -E create_symlink
+            ${TILEDB_EP_INSTALL_PREFIX}/lib/libtbb.so.2
+            ${TILEDB_EP_INSTALL_PREFIX}/lib/libtbb.so
+      )
+    endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_tbb)
   else()
