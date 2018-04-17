@@ -106,8 +106,8 @@ Query::Query() {
 
   const char* nthreads_str = std::getenv("TILEDB_NUM_TBB_THREADS");
   unsigned long nthreads = nthreads_str == nullptr ?
-                           tbb::task_scheduler_init::default_num_threads() :
-                           std::strtoul(nthreads_str, nullptr, 10);
+                               tbb::task_scheduler_init::default_num_threads() :
+                               std::strtoul(nthreads_str, nullptr, 10);
   tbb_sched_ = std::unique_ptr<tbb::task_scheduler_init>(
       new tbb::task_scheduler_init(nthreads));
 }
@@ -663,6 +663,9 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
         auto tile = std::make_shared<OverlappingTile>(i, j, full_overlap);
+        for (const auto& attr : attributes_) {
+          tile->attr_tiles_[attr] = std::make_pair(nullptr, nullptr);
+        }
         tiles->emplace_back(tile);
       }
     }
@@ -879,7 +882,12 @@ Status Query::read_tiles(
 
   // For each fragment, read the tiles
   for (auto& tile : *tiles) {
-    auto& tile_pair = tile->attr_tiles_[attr_name];
+    auto attr_tiles_it = tile->attr_tiles_.find(attr_name);
+    if (attr_tiles_it == tile->attr_tiles_.end()) {
+      return LOG_STATUS(
+          Status::QueryError("Invalid attr_tiles entry for attribute"));
+    }
+    auto& tile_pair = attr_tiles_it->second;
 
     // Fixed-sized or offsets tile
     auto t = std::make_shared<Tile>();
