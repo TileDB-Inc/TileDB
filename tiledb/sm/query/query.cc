@@ -41,13 +41,19 @@
 #include <queue>
 #include <set>
 #include <sstream>
+#include <tbb/parallel_sort.h>
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
 
+#ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 /* ****************************** */
 /*        HELPER FUNCTIONS        */
@@ -966,13 +972,13 @@ template <class T>
 Status Query::sort_coords(OverlappingCoordsVec<T>* coords) const {
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto domain = array_schema_->domain();
-    std::sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
+    tbb::parallel_sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
   } else {
     auto dim_num = array_schema_->dim_num();
     if (layout_ == Layout::ROW_MAJOR)
-      std::sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
+      tbb::parallel_sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
     else if (layout_ == Layout::COL_MAJOR)
-      std::sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
+      tbb::parallel_sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
   }
 
   return Status::Ok();
