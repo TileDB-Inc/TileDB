@@ -36,12 +36,12 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile_io.h"
 
+#include <tbb/parallel_sort.h>
 #include <array>
 #include <cassert>
 #include <queue>
 #include <set>
 #include <sstream>
-#include <tbb/parallel_sort.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -103,6 +103,13 @@ Query::Query() {
   status_ = QueryStatus::INPROGRESS;
   layout_ = Layout::ROW_MAJOR;
   buffer_num_ = 0;
+
+  const char* nthreads_str = std::getenv("TILEDB_NUM_TBB_THREADS");
+  unsigned long nthreads = nthreads_str == nullptr ?
+                           tbb::task_scheduler_init::default_num_threads() :
+                           std::strtoul(nthreads_str, nullptr, 10);
+  tbb_sched_ = std::unique_ptr<tbb::task_scheduler_init>(
+      new tbb::task_scheduler_init(nthreads));
 }
 
 Query::Query(Query* common_query) {

@@ -45,6 +45,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <tbb/task_scheduler_init.h>
 
 namespace tiledb {
 namespace sm {
@@ -676,6 +677,9 @@ class Query {
 
   /** The query status. */
   QueryStatus status_;
+
+  /** The TBB thread scheduler. */
+  std::unique_ptr<tbb::task_scheduler_init> tbb_sched_;
 
   /** The fragments involved in the query. */
   std::vector<Fragment*> fragments_;
