@@ -6,17 +6,33 @@ services: docker
 
 matrix:
   include:
+    # use gcc / g++ version 4.8
     - os: linux
 
+    # add a later version of gcc / g++
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+    # build HDFS backend
     - os: linux
       env: TILEDB_HDFS="ON"
 
+    # build S3 backend
     - os: linux
       env: TILEDB_S3="ON"
 
     - os: osx
 
 install:
+    - eval "${MATRIX_EVAL}"
+
     # Install clangformat (v5.0)
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         sudo scripts/install-clangformat.sh;
