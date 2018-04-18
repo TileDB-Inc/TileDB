@@ -367,6 +367,13 @@ void purge_dots_from_path(std::string* path) {
 
 Status read(
     const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes) {
+  // Checks
+  uint64_t file_size;
+  RETURN_NOT_OK(posix::file_size(path, &file_size));
+  if (offset + nbytes > file_size)
+    return LOG_STATUS(
+        Status::IOError("Cannot read from file; Read exceeds file size"));
+
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {

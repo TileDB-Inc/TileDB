@@ -84,6 +84,9 @@ class ConstBuffer {
   /** Returns the number of bytes left for reading. */
   uint64_t nbytes_left_to_read() const;
 
+  /** Sets the buffer offset. */
+  void set_offset(uint64_t offset);
+
   /** Returns the buffer offset. */
   uint64_t offset() const;
 

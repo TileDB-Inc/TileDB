@@ -1493,6 +1493,26 @@ uint64_t Domain::get_cell_pos_col(const T* coords) const {
 }
 
 template <class T>
+uint64_t Domain::get_cell_pos_col(const T* subarray, const T* coords) const {
+  // Calculate cell offsets
+  std::vector<uint64_t> cell_offsets;
+  cell_offsets.push_back(1);
+  for (unsigned int i = 1; i < dim_num_; ++i) {
+    // Per dimension
+    uint64_t cell_num = subarray[2 * (i - 1) + 1] - subarray[2 * (i - 1)] + 1;
+    cell_offsets.push_back(cell_offsets.back() * cell_num);
+  }
+
+  // Calculate position
+  uint64_t pos = 0;
+  for (unsigned int i = 0; i < dim_num_; ++i)
+    pos += (coords[i] - subarray[2 * i]) * cell_offsets[i];
+
+  // Return
+  return pos;
+}
+
+template <class T>
 uint64_t Domain::get_cell_pos_row(const T* coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
@@ -1520,6 +1540,31 @@ uint64_t Domain::get_cell_pos_row(const T* coords) const {
     coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
     pos += coords_norm * cell_offsets[i];
   }
+
+  // Return
+  return pos;
+}
+
+template <class T>
+uint64_t Domain::get_cell_pos_row(const T* subarray, const T* coords) const {
+  // Calculate cell offsets
+  std::vector<uint64_t> cell_offsets;
+  cell_offsets.push_back(1);
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
+      // Per dimension
+      uint64_t cell_num = subarray[2 * (i + 1) + 1] - subarray[2 * (i + 1)] + 1;
+      cell_offsets.push_back(cell_offsets.back() * cell_num);
+      if (i == 0)
+        break;
+    }
+  }
+  std::reverse(cell_offsets.begin(), cell_offsets.end());
+
+  // Calculate position
+  uint64_t pos = 0;
+  for (unsigned int i = 0; i < dim_num_; ++i)
+    pos += (coords[i] - subarray[2 * i]) * cell_offsets[i];
 
   // Return
   return pos;
@@ -2289,6 +2334,40 @@ template uint64_t Domain::get_tile_pos<int64_t>(
     const int64_t* tile_coords) const;
 template uint64_t Domain::get_tile_pos<uint64_t>(
     const uint64_t* tile_coords) const;
+
+template uint64_t Domain::get_cell_pos_col<int8_t>(
+    const int8_t* subarray, const int8_t* coords) const;
+template uint64_t Domain::get_cell_pos_col<uint8_t>(
+    const uint8_t* subarray, const uint8_t* coords) const;
+template uint64_t Domain::get_cell_pos_col<int16_t>(
+    const int16_t* subarray, const int16_t* coords) const;
+template uint64_t Domain::get_cell_pos_col<uint16_t>(
+    const uint16_t* subarray, const uint16_t* coords) const;
+template uint64_t Domain::get_cell_pos_col<int>(
+    const int* subarray, const int* coords) const;
+template uint64_t Domain::get_cell_pos_col<unsigned>(
+    const unsigned* subarray, const unsigned* coords) const;
+template uint64_t Domain::get_cell_pos_col<int64_t>(
+    const int64_t* subarray, const int64_t* coords) const;
+template uint64_t Domain::get_cell_pos_col<uint64_t>(
+    const uint64_t* subarray, const uint64_t* coords) const;
+
+template uint64_t Domain::get_cell_pos_row<int8_t>(
+    const int8_t* subarray, const int8_t* coords) const;
+template uint64_t Domain::get_cell_pos_row<uint8_t>(
+    const uint8_t* subarray, const uint8_t* coords) const;
+template uint64_t Domain::get_cell_pos_row<int16_t>(
+    const int16_t* subarray, const int16_t* coords) const;
+template uint64_t Domain::get_cell_pos_row<uint16_t>(
+    const uint16_t* subarray, const uint16_t* coords) const;
+template uint64_t Domain::get_cell_pos_row<int>(
+    const int* subarray, const int* coords) const;
+template uint64_t Domain::get_cell_pos_row<unsigned>(
+    const unsigned* subarray, const unsigned* coords) const;
+template uint64_t Domain::get_cell_pos_row<int64_t>(
+    const int64_t* subarray, const int64_t* coords) const;
+template uint64_t Domain::get_cell_pos_row<uint64_t>(
+    const uint64_t* subarray, const uint64_t* coords) const;
 
 }  // namespace sm
 }  // namespace tiledb

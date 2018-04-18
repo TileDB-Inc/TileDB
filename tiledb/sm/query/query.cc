@@ -97,7 +97,9 @@ Query::~Query() {
 
   delete array_ordered_write_state_;
 
-  clear_fragments();
+  if (!(type_ == QueryType ::WRITE &&
+        (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)))
+    clear_fragments();
 }
 
 /* ****************************** */
@@ -281,7 +283,11 @@ Status Query::finalize() {
   array_ordered_write_state_ = nullptr;
 
   // Clear fragments
-  return clear_fragments();
+  if (!(type_ == QueryType ::WRITE &&
+        (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)))
+    RETURN_NOT_OK(clear_fragments());
+
+  return Status::Ok();
 }
 
 const std::vector<Fragment*>& Query::fragments() const {
@@ -451,7 +457,7 @@ Status Query::dense_read() {
       return dense_read<uint64_t>();
     default:
       return LOG_STATUS(
-          Status::SparseReaderError("Cannot read; Unsupported domain type"));
+          Status::QueryError("Cannot read; Unsupported domain type"));
   }
 
   return Status::Ok();
@@ -496,9 +502,6 @@ Status Query::dense_read() {
       overlapping_tile_idx_coords;
   RETURN_NOT_OK(init_tile_fragment_dense_cell_range_iters(
       &dense_frag_its, &overlapping_tile_idx_coords));
-
-  // TODO: pass coords (or an iterator and its tile index and cell pos)
-  // TODO: in compute_dense_cell_ranges
 
   // Get the cell ranges
   std::list<DenseCellRange<T>> dense_cell_ranges;
@@ -562,7 +565,7 @@ Status Query::sparse_read() {
       return sparse_read<double>();
     default:
       return LOG_STATUS(
-          Status::SparseReaderError("Cannot read; Unsupported domain type"));
+          Status::QueryError("Cannot read; Unsupported domain type"));
   }
 
   return Status::Ok();
@@ -852,6 +855,7 @@ Status Query::read_tiles(
         (var_size) ? constants::cell_var_offset_size :
                      array_schema_->cell_size(attr_id),
         (is_coords) ? array_schema_->dim_num() : 0));
+
     RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
         t.get(),
         fragment_metadata_[tile->fragment_idx_]->file_offset(
@@ -1367,15 +1371,15 @@ Status Query::write() {
 
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
-    RETURN_NOT_OK(array_ordered_write_state_->write(buffers_, buffer_sizes_));
+    RETURN_NOT_OK(dense_write());
   } else if (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) {
     RETURN_NOT_OK(write(buffers_, buffer_sizes_));
   } else {
-    assert(0);
+    assert(false);
   }
 
-  // In all types except WRITE with GLOBAL ORDER, the fragment must be finalized
-  if (!(type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER))
+  // In case of unordered writes, the fragments must be finalized
+  if (type_ == QueryType::WRITE && layout_ == Layout::UNORDERED)
     clear_fragments();
 
   status_ = QueryStatus::COMPLETED;
@@ -1876,6 +1880,404 @@ void Query::zero_out_buffers() {
       ++buffer_i;
     }
   }
+}
+
+Status Query::dense_write() {
+  // Applicable only to ordered write on dense arrays
+  assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+  assert(array_schema_->dense());
+
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return dense_write<int8_t>();
+    case Datatype::UINT8:
+      return dense_write<uint8_t>();
+    case Datatype::INT16:
+      return dense_write<int16_t>();
+    case Datatype::UINT16:
+      return dense_write<uint16_t>();
+    case Datatype::INT32:
+      return dense_write<int>();
+    case Datatype::UINT32:
+      return dense_write<unsigned>();
+    case Datatype::INT64:
+      return dense_write<int64_t>();
+    case Datatype::UINT64:
+      return dense_write<uint64_t>();
+    default:
+      return LOG_STATUS(
+          Status::QueryError("Cannot write; Unsupported domain type"));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::create_fragment(
+    bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
+  auto uri = URI(this->new_fragment_name());
+  *frag_meta = std::make_shared<FragmentMetadata>(array_schema_, dense, uri);
+  RETURN_NOT_OK((*frag_meta)->init(subarray_));
+  return storage_manager_->create_dir(uri);
+}
+
+template <class T>
+Status Query::dense_write() {
+  // Create new dense fragment
+  std::shared_ptr<FragmentMetadata> frag_meta;
+  RETURN_NOT_OK(create_fragment(true, &frag_meta));
+  auto uri = frag_meta->fragment_uri();
+
+  // Initialize dense cell range iterators for each tile in global order
+  std::vector<DenseCellRangeIter<T>> dense_cell_range_its;
+  RETURN_NOT_OK_ELSE(
+      init_tile_dense_cell_range_iters<T>(&dense_cell_range_its),
+      storage_manager_->delete_fragment(uri));
+  auto tile_num = dense_cell_range_its.size();
+  if (tile_num == 0)  // Nothing to write
+    return Status::Ok();
+
+  // Compute write cell ranges, one vector per overlapping tile
+  std::vector<WriteCellRangeVec> write_cell_ranges;
+  write_cell_ranges.resize(tile_num);
+  for (size_t i = 0; i < tile_num; ++i)
+    RETURN_NOT_OK_ELSE(
+        compute_write_cell_ranges<T>(
+            &dense_cell_range_its[i], &write_cell_ranges[i]),
+        storage_manager_->delete_fragment(uri));
+  dense_cell_range_its.clear();
+
+  // Prepare tiles for all attributes and write
+  for (const auto& attr : attributes_) {
+    std::vector<Tile> tiles;
+    RETURN_NOT_OK_ELSE(
+        prepare_tiles(attr, write_cell_ranges, &tiles),
+        storage_manager_->delete_fragment(uri));
+    RETURN_NOT_OK_ELSE(
+        write_tiles(attr, frag_meta.get(), tiles),
+        storage_manager_->delete_fragment(uri));
+  }
+
+  // Write the fragment metadata
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->store_fragment_metadata(frag_meta.get()),
+      storage_manager_->delete_fragment(uri));
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::init_tile_dense_cell_range_iters(
+    std::vector<DenseCellRangeIter<T>>* iters) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto dim_num = domain->dim_num();
+  std::vector<T> subarray;
+  subarray.resize(2 * dim_num);
+  for (unsigned i = 0; i < 2 * dim_num; ++i)
+    subarray[i] = ((T*)subarray_)[i];
+  auto cell_order = domain->cell_order();
+
+  // Compute tile domain and current tile coords
+  std::vector<T> tile_domain, tile_coords;
+  tile_domain.resize(2 * dim_num);
+  tile_coords.resize(dim_num);
+  domain->get_tile_domain(&subarray[0], &tile_domain[0]);
+  for (unsigned i = 0; i < dim_num; ++i)
+    tile_coords[i] = tile_domain[2 * i];
+  auto tile_num = domain->tile_num<T>(&subarray[0]);
+
+  // Iterate over all tiles in the tile domain
+  iters->clear();
+  std::vector<T> tile_subarray, subarray_in_tile;
+  std::vector<T> frag_subarray, frag_subarray_in_tile;
+  tile_subarray.resize(2 * dim_num);
+  subarray_in_tile.resize(2 * dim_num);
+  bool tile_overlap, in;
+  for (uint64_t i = 0; i < tile_num; ++i) {
+    // Compute subarray overlap with tile
+    domain->get_tile_subarray(&tile_coords[0], &tile_subarray[0]);
+    domain->subarray_overlap(
+        &subarray[0], &tile_subarray[0], &subarray_in_tile[0], &tile_overlap);
+
+    // Create a new iter
+    iters->emplace_back(domain, subarray_in_tile, cell_order);
+
+    // Get next tile coordinates
+    domain->get_next_tile_coords(&tile_domain[0], &tile_coords[0], &in);
+    assert((i != tile_num - 1 && in) || (i == tile_num - 1 && !in));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::compute_write_cell_ranges(
+    DenseCellRangeIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
+  auto domain = array_schema_->domain();
+  auto dim_num = array_schema_->dim_num();
+  auto subarray = (const T*)subarray_;
+  auto cell_order = array_schema_->cell_order();
+  bool same_layout = (cell_order == layout_);
+  uint64_t start, end, start_in_sub, end_in_sub;
+  const T* coords_start;
+
+  // Compute the offset needed in case there is a layout mismatch
+  uint64_t offset = 1;
+  if (!same_layout) {
+    if (layout_ == Layout::COL_MAJOR) {  // Subarray layout is col-major
+      for (unsigned i = 0; i < dim_num - 1; ++i)
+        offset *= subarray[2 * i + 1] - subarray[2 * i] + 1;
+    } else {  // Array layout is col-major, subarray layout is row-major
+      if (dim_num > 1) {
+        for (unsigned i = 1; i < dim_num; ++i)
+          offset *= subarray[2 * i + 1] - subarray[2 * i] + 1;
+      }
+    }
+  }
+
+  RETURN_NOT_OK(iter->begin());
+  while (!iter->end()) {
+    start = iter->range_start();
+    end = iter->range_end();
+    coords_start = iter->coords_start();
+
+    if (same_layout) {
+      start_in_sub = (layout_ == Layout::ROW_MAJOR) ?
+                         domain->get_cell_pos_row<T>(subarray, coords_start) :
+                         domain->get_cell_pos_col<T>(subarray, coords_start);
+      end_in_sub = start_in_sub + end - start;
+      write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
+    } else {
+      start_in_sub = (layout_ == Layout::ROW_MAJOR) ?
+                         domain->get_cell_pos_row<T>(subarray, coords_start) :
+                         domain->get_cell_pos_col<T>(subarray, coords_start);
+      end_in_sub = start_in_sub;
+      write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
+      for (++start; start <= end; ++start) {
+        start_in_sub += offset;
+        end_in_sub = start_in_sub;
+        write_cell_ranges->emplace_back(start, start_in_sub, end_in_sub);
+      }
+    }
+    ++(*iter);
+  }
+
+  return Status::Ok();
+}
+
+Status Query::prepare_tiles(
+    const std::string& attribute,
+    const std::vector<WriteCellRangeVec>& write_cell_ranges,
+    std::vector<Tile>* tiles) const {
+  // Trivial case
+  auto tile_num = write_cell_ranges.size();
+  if (tile_num == 0)
+    return Status::Ok();
+
+  // For easy reference
+  unsigned attr_id;
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  auto var_size = array_schema_->var_size(attr_id);
+  unsigned bid;
+  RETURN_NOT_OK(buffer_idx(attribute, &bid));
+  auto cell_val_num = array_schema_->cell_val_num(attr_id);
+
+  // Initialize tiles and buffer
+  RETURN_NOT_OK(init_tiles(attr_id, tile_num, tiles));
+  auto buff = std::make_shared<ConstBuffer>(buffers_[bid], buffer_sizes_[bid]);
+  auto buff_var = (!var_size) ? nullptr :
+                                std::make_shared<ConstBuffer>(
+                                    buffers_[bid + 1], buffer_sizes_[bid + 1]);
+
+  // Populate each tile with the write cell ranges
+  uint64_t end_pos = array_schema_->domain()->cell_num_per_tile() - 1;
+  for (size_t i = 0, t = 0; i < tile_num; ++i, t += (var_size) ? 2 : 1) {
+    uint64_t pos = 0;
+    for (const auto& wcr : write_cell_ranges[i]) {
+      // Write empty range
+      if (wcr.pos_ > pos) {
+        if (var_size)
+          write_empty_cell_range_to_tile_var(
+              wcr.pos_ - pos, &(*tiles)[t], &(*tiles)[t + 1]);
+        else
+          write_empty_cell_range_to_tile(
+              (wcr.pos_ - pos) * cell_val_num, &(*tiles)[t]);
+        pos = wcr.pos_;
+      }
+
+      // Write (non-empty) range
+      if (var_size)
+        write_cell_range_to_tile_var(
+            buff.get(),
+            buff_var.get(),
+            wcr.start_,
+            wcr.end_,
+            &(*tiles)[t],
+            &(*tiles)[t + 1]);
+      else
+        write_cell_range_to_tile(
+            buff.get(), wcr.start_, wcr.end_, &(*tiles)[t]);
+      pos += wcr.end_ - wcr.start_ + 1;
+    }
+
+    // Write empty range
+    if (pos <= end_pos) {
+      if (var_size)
+        write_empty_cell_range_to_tile_var(
+            end_pos - pos + 1, &(*tiles)[t], &(*tiles)[t + 1]);
+      else
+        write_empty_cell_range_to_tile(
+            (end_pos - pos + 1) * cell_val_num, &(*tiles)[t]);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Query::write_cell_range_to_tile(
+    ConstBuffer* buff, uint64_t start, uint64_t end, Tile* tile) const {
+  auto cell_size = tile->cell_size();
+  buff->set_offset(start * cell_size);
+  return tile->write(buff, (end - start + 1) * cell_size);
+}
+
+Status Query::write_cell_range_to_tile_var(
+    ConstBuffer* buff,
+    ConstBuffer* buff_var,
+    uint64_t start,
+    uint64_t end,
+    Tile* tile,
+    Tile* tile_var) const {
+  auto buff_cell_num = buff->size() / sizeof(uint64_t);
+  for (auto i = start; i <= end; ++i) {
+    // Write next offset
+    uint64_t next_offset = tile_var->size();
+    RETURN_NOT_OK(tile->write(&next_offset, sizeof(uint64_t)));
+
+    // Write variable-sized value
+    auto last_cell = (i == buff_cell_num - 1);
+    auto start_offset = buff->value<uint64_t>(i * sizeof(uint64_t));
+    auto end_offset = last_cell ?
+                          buff_var->size() :
+                          buff->value<uint64_t>((i + 1) * sizeof(uint64_t));
+    auto cell_var_size = end_offset - start_offset;
+    buff_var->set_offset(start_offset);
+    RETURN_NOT_OK(tile_var->write(buff_var, cell_var_size));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const {
+  auto type = tile->type();
+  auto fill_size = datatype_size(type);
+  auto fill_value = this->fill_value(type);
+  assert(fill_value != nullptr);
+
+  for (uint64_t i = 0; i < num; ++i)
+    RETURN_NOT_OK(tile->write(fill_value, fill_size));
+
+  return Status::Ok();
+}
+
+Status Query::write_empty_cell_range_to_tile_var(
+    uint64_t num, Tile* tile, Tile* tile_var) const {
+  auto type = tile_var->type();
+  auto fill_size = datatype_size(type);
+  auto fill_value = this->fill_value(type);
+  assert(fill_value != nullptr);
+
+  for (uint64_t i = 0; i < num; ++i) {
+    // Write next offset
+    uint64_t next_offset = tile_var->size();
+    RETURN_NOT_OK(tile->write(&next_offset, sizeof(uint64_t)));
+
+    // Write variable-sized empty value
+    RETURN_NOT_OK(tile_var->write(fill_value, fill_size));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::init_tiles(
+    unsigned attr_id, uint64_t tile_num, std::vector<Tile>* tiles) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  bool var_size = array_schema_->var_size(attr_id);
+  auto attr = array_schema_->attribute(attr_id);
+  auto cell_size = array_schema_->cell_size(attr_id);
+  auto cell_num = domain->cell_num_per_tile();
+  uint64_t tile_size =
+      cell_num * ((var_size) ? constants::cell_var_offset_size : cell_size);
+
+  // Initialize tiles
+  auto tiles_len = (var_size) ? 2 * tile_num : tile_num;
+  tiles->resize(tiles_len);
+  for (size_t i = 0; i < tiles_len; ++i) {
+    RETURN_NOT_OK((*tiles)[i].init(
+        (var_size) ? constants::cell_var_offset_type : attr->type(),
+        (var_size) ? array_schema_->cell_var_offsets_compression() :
+                     attr->compressor(),
+        (var_size) ? array_schema_->cell_var_offsets_compression_level() :
+                     attr->compression_level(),
+        tile_size,
+        (var_size) ? constants::cell_var_offset_size : cell_size,
+        0));
+
+    if (var_size) {
+      RETURN_NOT_OK((*tiles)[++i].init(
+          attr->type(),
+          attr->compressor(),
+          attr->compression_level(),
+          tile_size,
+          datatype_size(attr->type()),
+          0));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Query::write_tiles(
+    const std::string& attribute,
+    FragmentMetadata* frag_meta,
+    std::vector<Tile>& tiles) const {
+  // For easy reference
+  unsigned attr_id;
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  auto var_size = array_schema_->var_size(attr_id);
+
+  // Prepare TileIO
+  auto tile_io =
+      std::make_shared<TileIO>(storage_manager_, frag_meta->attr_uri(attr_id));
+  auto tile_io_var =
+      (!var_size) ? nullptr :
+                    std::make_shared<TileIO>(
+                        storage_manager_, frag_meta->attr_var_uri(attr_id));
+
+  // Write tiles
+  auto tile_num = tiles.size();
+  uint64_t bytes_written, bytes_written_var;
+  for (size_t i = 0; i < tile_num; ++i) {
+    RETURN_NOT_OK(tile_io->write(&(tiles[i]), &bytes_written));
+    frag_meta->append_tile_offset(attr_id, bytes_written);
+
+    if (var_size) {
+      ++i;
+      RETURN_NOT_OK(tile_io_var->write(&(tiles[i]), &bytes_written_var));
+      frag_meta->append_tile_var_offset(attr_id, bytes_written_var);
+      frag_meta->append_tile_var_size(attr_id, tiles[i].size());
+    }
+  }
+
+  // Close files
+  RETURN_NOT_OK(storage_manager_->close_file(frag_meta->attr_uri(attr_id)));
+  if (var_size)
+    RETURN_NOT_OK(
+        storage_manager_->close_file(frag_meta->attr_var_uri(attr_id)));
+
+  return Status::Ok();
 }
 
 }  // namespace sm

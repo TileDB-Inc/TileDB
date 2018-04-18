@@ -469,6 +469,17 @@ bool ArraySchema::var_size(unsigned int attribute_id) const {
   return false;
 }
 
+bool ArraySchema::var_size(const std::string& attribute) const {
+  unsigned attribute_id;
+  auto st = this->attribute_id(attribute, &attribute_id);
+  assert(st.ok());
+  (void)st;
+  assert(attribute_id <= attribute_num_);
+  if (attribute_id < attribute_num_)
+    return attributes_[attribute_id]->cell_val_num() == constants::var_num;
+  return false;
+}
+
 Status ArraySchema::add_attribute(const Attribute* attr) {
   // Sanity check
   if (attr == nullptr)

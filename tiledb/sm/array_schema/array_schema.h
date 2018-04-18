@@ -234,6 +234,9 @@ class ArraySchema {
   /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(unsigned int attribute_id) const;
 
+  /** Returns *true* if the indicated attribute has variable-sized values. */
+  bool var_size(const std::string& attribute) const;
+
   /** Adds an attribute, copying the input. */
   Status add_attribute(const Attribute* attr);
 

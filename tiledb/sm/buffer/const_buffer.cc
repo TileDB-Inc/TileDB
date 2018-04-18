@@ -71,6 +71,10 @@ uint64_t ConstBuffer::nbytes_left_to_read() const {
   return size_ - offset_;
 }
 
+void ConstBuffer::set_offset(uint64_t offset) {
+  offset_ = offset;
+}
+
 uint64_t ConstBuffer::offset() const {
   return offset_;
 }
