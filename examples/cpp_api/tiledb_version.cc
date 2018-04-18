@@ -33,12 +33,10 @@
 #include <tiledb/tiledb>
 
 int main() {
+  // The following should print out a string with the format
+  // "TileDB vMAJOR.MINOR.PATCH".
   auto version = tiledb::Version::version();
-  std::cout << "TileDB v" << version.major() << "." << version.minor() << "."
-            << version.patch() << '\n';
-
-  // The following would print the same as above
-  // std::cout << version << '\n';
+  std::cout << version << '\n';
 
   return 0;
 }

@@ -46,21 +46,6 @@ class TILEDB_EXPORT Version {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the major number. */
-  inline int major() const {
-    return major_;
-  }
-
-  /** Returns the minor number. */
-  inline int minor() const {
-    return minor_;
-  }
-
-  /** Returns the patch number. */
-  inline int patch() const {
-    return patch_;
-  }
-
   /**
    * @return TileDB library version object
    */
@@ -71,6 +56,8 @@ class TILEDB_EXPORT Version {
   }
 
  private:
+  friend std::ostream& operator<<(std::ostream& os, const Version& v);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -88,7 +75,7 @@ class TILEDB_EXPORT Version {
 /** Prints to an output stream. */
 TILEDB_EXPORT inline std::ostream& operator<<(
     std::ostream& os, const Version& v) {
-  os << "TileDB v" << v.major() << '.' << v.minor() << '.' << v.patch();
+  os << "TileDB v" << v.major_ << '.' << v.minor_ << '.' << v.patch_;
   return os;
 }
 
