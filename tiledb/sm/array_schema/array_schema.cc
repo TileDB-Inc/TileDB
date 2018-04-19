@@ -313,7 +313,7 @@ Compressor ArraySchema::compression(unsigned int attr_id) const {
 int ArraySchema::compression_level(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 
-  if (attr_id == attribute_num_ + 1)
+  if (attr_id == attribute_num_ || attr_id == attribute_num_ + 1)
     return coords_compression_level_;
 
   return attributes_[attr_id]->compression_level();

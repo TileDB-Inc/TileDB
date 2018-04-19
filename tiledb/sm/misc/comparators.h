@@ -43,214 +43,6 @@
 namespace tiledb {
 namespace sm {
 
-/**
- * Wrapper of comparison function for sorting cells; first by the smallest id,
- * and then by column-major order of coordinates.
- */
-template <class T>
-class SmallerIdCol {
- public:
-  /**
-   * Constructor.
-   *
-   * @param buffer The buffer containing the cells to be sorted.
-   * @param dim_num The number of dimensions of the cells.
-   * @param ids The ids of the cells in the buffer.
-   */
-  SmallerIdCol(
-      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
-      : buffer_(buffer)
-      , dim_num_(dim_num)
-      , ids_(ids) {
-  }
-
-  /**
-   * Comparison operator.
-   *
-   * @param a The first cell position in the cell buffer.
-   * @param b The second cell position in the cell buffer.
-   */
-  bool operator()(uint64_t a, uint64_t b) {
-    if (ids_[a] < ids_[b])
-      return true;
-
-    if (ids_[a] > ids_[b])
-      return false;
-
-    // a.id_ == b.id_ --> check coordinates
-    const T* coords_a = &buffer_[a * dim_num_];
-    const T* coords_b = &buffer_[b * dim_num_];
-
-    for (unsigned int i = dim_num_ - 1;; --i) {
-      if (coords_a[i] < coords_b[i])
-        return true;
-      if (coords_a[i] > coords_b[i])
-        return false;
-      // else coords_a[i] == coords_b[i] --> continue
-
-      if (i == 0)
-        break;
-    }
-
-    return false;
-  }
-
- private:
-  /** Cell buffer. */
-  const T* buffer_;
-  /** Number of dimensions. */
-  unsigned int dim_num_;
-  /** The cell ids. */
-  const std::vector<uint64_t>& ids_;
-};
-
-/**
- * Wrapper of comparison function for sorting cells; first by the smallest id,
- * and then by row-major order of coordinates.
- */
-template <class T>
-class SmallerIdRow {
- public:
-  /**
-   * Constructor.
-   *
-   * @param buffer The buffer containing the cells to be sorted.
-   * @param dim_num The number of dimensions of the cells.
-   * @param ids The ids of the cells in the buffer.
-   */
-  SmallerIdRow(
-      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
-      : buffer_(buffer)
-      , dim_num_(dim_num)
-      , ids_(ids) {
-  }
-
-  /**
-   * Comparison operator.
-   *
-   * @param a The first cell position in the cell buffer.
-   * @param b The second cell position in the cell buffer.
-   */
-  bool operator()(uint64_t a, uint64_t b) {
-    if (ids_[a] < ids_[b])
-      return true;
-
-    if (ids_[a] > ids_[b])
-      return false;
-
-    // a.id_ == b.id_ --> check coordinates
-    const T* coords_a = &buffer_[a * dim_num_];
-    const T* coords_b = &buffer_[b * dim_num_];
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (coords_a[i] < coords_b[i])
-        return true;
-      if (coords_a[i] > coords_b[i])
-        return false;
-      // else coords_a[i] == coords_b[i] --> continue
-    }
-
-    return false;
-  }
-
- private:
-  /** Cell buffer. */
-  const T* buffer_;
-  /** Number of dimensions. */
-  unsigned int dim_num_;
-  /** The cell ids. */
-  const std::vector<uint64_t>& ids_;
-};
-
-/** Wrapper of comparison function for sorting cells on column-major order. */
-template <class T>
-class SmallerCol {
- public:
-  /**
-   * Constructor.
-   *
-   * @param buffer The buffer containing the cells to be sorted.
-   * @param dim_num The number of dimensions of the cells.
-   */
-  SmallerCol(const T* buffer, unsigned int dim_num)
-      : buffer_(buffer)
-      , dim_num_(dim_num) {
-  }
-
-  /**
-   * Comparison operator.
-   *
-   * @param a The first cell position in the cell buffer.
-   * @param b The second cell position in the cell buffer.
-   */
-  bool operator()(uint64_t a, uint64_t b) {
-    const T* coords_a = &buffer_[a * dim_num_];
-    const T* coords_b = &buffer_[b * dim_num_];
-
-    for (unsigned int i = dim_num_ - 1;; --i) {
-      if (coords_a[i] < coords_b[i])
-        return true;
-      if (coords_a[i] > coords_b[i])
-        return false;
-      // else coords_a[i] == coords_b[i] --> continue
-
-      if (i == 0)
-        break;
-    }
-
-    return false;
-  }
-
- private:
-  /** Cell buffer. */
-  const T* buffer_;
-  /** Number of dimensions. */
-  unsigned int dim_num_;
-};
-
-/** Wrapper of comparison function for sorting cells on row-major order. */
-template <class T>
-class SmallerRow {
- public:
-  /**
-   * Constructor.
-   *
-   * @param buffer The buffer containing the cells to be sorted.
-   * @param dim_num The number of dimensions of the cells.
-   */
-  SmallerRow(const T* buffer, unsigned int dim_num)
-      : buffer_(buffer)
-      , dim_num_(dim_num) {
-  }
-
-  /**
-   * Comparison operator.
-   *
-   * @param a The first cell position in the cell buffer.
-   * @param b The second cell position in the cell buffer.
-   */
-  bool operator()(uint64_t a, uint64_t b) {
-    const T* coords_a = &buffer_[a * dim_num_];
-    const T* coords_b = &buffer_[b * dim_num_];
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (coords_a[i] < coords_b[i])
-        return true;
-      if (coords_a[i] > coords_b[i])
-        return false;
-      // else coords_a[i] == coords_b[i] --> continue
-    }
-
-    return false;
-  }
-
- private:
-  /** Cell buffer. */
-  const T* buffer_;
-  /** Number of dimensions. */
-  unsigned int dim_num_;
-};
-
 /** Wrapper of comparison function for sorting coords on row-major order. */
 template <class T>
 class RowCmp {
@@ -344,12 +136,14 @@ class GlobalCmp {
    *
    * @param dim_num The number of dimensions of the coords.
    */
-  GlobalCmp(const Domain* domain)
-      : domain_(domain) {
+  GlobalCmp(const Domain* domain, const T* buff = nullptr)
+      : domain_(domain)
+      , buff_(buff) {
+    dim_num_ = domain->dim_num();
   }
 
   /**
-   * Comparison operator.
+   * Comparison operator for a vector of `OverlappingCoords`.
    *
    * @param a The first coordinate.
    * @param b The second coordinate.
@@ -372,9 +166,41 @@ class GlobalCmp {
     return cell_cmp == -1;
   }
 
+  /**
+   * Comparison operator for a vector of integer positions.
+   * Here `buff_` is **not** `nullptr` and a position corresponds to
+   * coordinates in `buff_`.
+   *
+   * @param a The first coordinate position.
+   * @param b The second coordinate position.
+   * @return `true` if coordinates at `a` precedes coordinates at `b`,
+   *     and `false` otherwise.
+   */
+  bool operator()(uint64_t a, uint64_t b) {
+    // Get coordinates
+    const T* coords_a = &buff_[a * dim_num_];
+    const T* coords_b = &buff_[b * dim_num_];
+    // Compare tile order first
+    auto tile_cmp = domain_->tile_order_cmp<T>(coords_a, coords_b);
+
+    if (tile_cmp == -1)
+      return true;
+    if (tile_cmp == 1)
+      return false;
+    // else tile_cmp == 0 --> continue
+
+    // Compare cell order
+    auto cell_cmp = domain_->cell_order_cmp(coords_a, coords_b);
+    return cell_cmp == -1;
+  }
+
  private:
   /** The domain. */
   const Domain* domain_;
+  /** A buffer - not applicable to sorting `OverlappingCoords`. */
+  const T* buff_;
+  /** The number of dimensions. */
+  unsigned dim_num_;
 };
 
 /** Wrapper of comparison function for sorting dense cell ranges. */

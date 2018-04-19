@@ -150,11 +150,6 @@ Status Consolidator::copy_array(
   std::vector<void*> subarrays;
   RETURN_NOT_OK(query_r->compute_subarrays(read_subarray, &subarrays));
 
-  for (auto subarray : subarrays) {
-    auto s = (uint64_t*)subarray;
-    std::cout << s[0] << " " << s[1] << " " << s[2] << " " << s[3] << "\n";
-  }
-
   // Perform a potentilly step-wise copy in a loop
   Status st = Status::Ok();
   for (const auto& s : subarrays) {

@@ -37,7 +37,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/array_ordered_write_state.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -534,22 +533,41 @@ class Query {
   template <class T>
   Status dense_read();
 
-  /** Writes to a dense array in an ordered layout (col- or row-major order). */
-  Status dense_write();
+  /**
+   * Writes in an ordered layout (col- or row-major order). Applicable only
+   * to dense arrays.
+   */
+  Status ordered_write();
 
   /**
-   * Writes to a dense array in an ordered layout (col- or row-major order).
+   * Writes in an ordered layout (col- or row-major order). Applicable only
+   * to dense arrays.
    *
    * @tparam T The domain type.
    */
   template <class T>
-  Status dense_write();
+  Status ordered_write();
 
-  /** Perform a sparse read */
+  /**
+   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
+   * Explicit coordinates must be provided for this write.
+   */
+  Status unordered_write();
+
+  /**
+   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
+   * Explicit coordinates must be provided for this write.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status unordered_write();
+
+  /** Performs a read on a sparse array. */
   Status sparse_read();
 
   /**
-   * Perform a sparse read.
+   * Performs a read on a sparse array.
    *
    * @tparam The domain type.
    * @return Status
@@ -657,13 +675,6 @@ class Query {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
-
-  /**
-   * The araay ordered write state. It handles write queries that
-   * must write cells provided in a layout that is different
-   * than the global cell order.
-   */
-  ArrayOrderedWriteState* array_ordered_write_state_;
 
   /** The ids of the attributes involved in the query. */
   std::vector<unsigned int> attribute_ids_;
@@ -803,9 +814,6 @@ class Query {
   Status init_fragments(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
-  /** Initializes the query states. */
-  Status init_states();
-
   /**
    * Initializes the fragment dense cell range iterators. There is one vector
    * per tile overlapping with the query subarray, which stores one cell range
@@ -886,6 +894,17 @@ class Query {
       DenseCellRangeIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
 
   /**
+   * Sorts the coordinates of the user buffers, creating a vector with
+   * the sorted positions.
+   *
+   * @tparam T The domain type.
+   * @param cell_pos The sorted cell positions to be created.
+   * @return Status
+   */
+  template <class T>
+  Status sort_coords(std::vector<uint64_t>* cell_pos) const;
+
+  /**
    * It prepares the tiles, copying from the user buffers into the tiles
    * the values based on the input write cell ranges, focusing on the
    * input attribute.
@@ -899,6 +918,65 @@ class Query {
       const std::string& attribute,
       const std::vector<WriteCellRangeVec>& write_cell_ranges,
       std::vector<Tile>* tiles) const;
+
+  /**
+   * It prepares the tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_tiles(
+      const std::string& attribute,
+      const std::vector<uint64_t>& cell_pos,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * It prepares the tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions. Applicable only
+   * to fixed-sized attributes.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_tiles_fixed(
+      const std::string& attribute,
+      const std::vector<uint64_t>& cell_pos,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * It prepares the tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions. Applicable only
+   * to var-sized attributes.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_tiles_var(
+      const std::string& attribute,
+      const std::vector<uint64_t>& cell_pos,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * Computes the coordinates metadata (e.g., MBRs).
+   *
+   * @tparam T The domain type.
+   * @param tiles The tiles to calculate the coords metadata from.
+   * @param meta The fragment metadata that will store the coords metadata.
+   * @return Status
+   */
+  template <class T>
+  Status compute_coords_metadata(
+      const std::vector<Tile>& tiles, FragmentMetadata* meta) const;
 
   /**
    * Writes the input tiles for the input attribute to storage.

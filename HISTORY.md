@@ -15,6 +15,7 @@
 * Refactored sparse reads, making them simpler and more amenable to parallelization.
 * Refactored dense reads, making them simpler and more amenable to parallelization.
 * Refactored dense ordered writes, making them simpler and more amenable to parallelization.
+* Refactored unordered writes, making them simpler and more amenable to parallelization.
 
 ## Bug Fixes
 

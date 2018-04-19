@@ -520,6 +520,9 @@ uint64_t timestamp_ms() {
 }
 
 uint64_t ceil(uint64_t x, uint64_t y) {
+  if (y == 0)
+    return 0;
+
   return x / y + (x % y != 0);
 }
 
