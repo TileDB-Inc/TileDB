@@ -59,7 +59,6 @@ namespace sm {
 Query::Query() {
   common_query_ = nullptr;
   subarray_ = nullptr;
-  array_ordered_write_state_ = nullptr;
   array_schema_ = nullptr;
   buffers_ = nullptr;
   buffer_sizes_ = nullptr;
@@ -77,7 +76,6 @@ Query::Query() {
 Query::Query(Query* common_query) {
   common_query_ = common_query;
   subarray_ = nullptr;
-  array_ordered_write_state_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   fragments_init_ = false;
@@ -95,10 +93,7 @@ Query::~Query() {
   if (subarray_ != nullptr)
     std::free(subarray_);
 
-  delete array_ordered_write_state_;
-
-  if (!(type_ == QueryType ::WRITE &&
-        (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)))
+  if (type_ == QueryType ::WRITE && layout_ == Layout::GLOBAL_ORDER)
     clear_fragments();
 }
 
@@ -124,7 +119,6 @@ Status Query::async_process() {
   // Initialize fragments
   if (!fragments_init_) {
     RETURN_NOT_OK(init_fragments(fragment_metadata_));
-    RETURN_NOT_OK(init_states());
   }
 
   Status st;
@@ -276,15 +270,8 @@ Status Query::compute_subarrays(
 }
 
 Status Query::finalize() {
-  // Clear sorted write state
-  if (array_ordered_write_state_ != nullptr)
-    RETURN_NOT_OK(array_ordered_write_state_->finalize());
-  delete array_ordered_write_state_;
-  array_ordered_write_state_ = nullptr;
-
   // Clear fragments
-  if (!(type_ == QueryType ::WRITE &&
-        (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)))
+  if (type_ == QueryType ::WRITE && layout_ == Layout::GLOBAL_ORDER)
     RETURN_NOT_OK(clear_fragments());
 
   return Status::Ok();
@@ -333,7 +320,6 @@ Status Query::init() {
   RETURN_NOT_OK(check_buffer_sizes_ordered());
 
   RETURN_NOT_OK(init_fragments(fragment_metadata_));
-  RETURN_NOT_OK(init_states());
 
   return Status::Ok();
 }
@@ -1371,16 +1357,14 @@ Status Query::write() {
 
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
-    RETURN_NOT_OK(dense_write());
-  } else if (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) {
+    RETURN_NOT_OK(ordered_write());
+  } else if (layout_ == Layout::UNORDERED) {
+    RETURN_NOT_OK(unordered_write());
+  } else if (layout_ == Layout::GLOBAL_ORDER) {
     RETURN_NOT_OK(write(buffers_, buffer_sizes_));
   } else {
     assert(false);
   }
-
-  // In case of unordered writes, the fragments must be finalized
-  if (type_ == QueryType::WRITE && layout_ == Layout::UNORDERED)
-    clear_fragments();
 
   status_ = QueryStatus::COMPLETED;
 
@@ -1686,22 +1670,6 @@ Status Query::init_fragments(
   return Status::Ok();
 }
 
-Status Query::init_states() {
-  // Initialize new fragment if needed
-  if (type_ == QueryType::WRITE &&
-      (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
-    array_ordered_write_state_ = new ArrayOrderedWriteState(this);
-    Status st = array_ordered_write_state_->init();
-    if (!st.ok()) {
-      delete array_ordered_write_state_;
-      array_ordered_write_state_ = nullptr;
-      return st;
-    }
-  }
-
-  return Status::Ok();
-}
-
 template <class T>
 Status Query::init_tile_fragment_dense_cell_range_iters(
     std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
@@ -1882,32 +1850,120 @@ void Query::zero_out_buffers() {
   }
 }
 
-Status Query::dense_write() {
+Status Query::unordered_write() {
   // Applicable only to ordered write on dense arrays
-  assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-  assert(array_schema_->dense());
+  assert(layout_ == Layout::UNORDERED);
 
   auto coords_type = array_schema_->coords_type();
   switch (coords_type) {
     case Datatype::INT8:
-      return dense_write<int8_t>();
+      return unordered_write<int8_t>();
     case Datatype::UINT8:
-      return dense_write<uint8_t>();
+      return unordered_write<uint8_t>();
     case Datatype::INT16:
-      return dense_write<int16_t>();
+      return unordered_write<int16_t>();
     case Datatype::UINT16:
-      return dense_write<uint16_t>();
+      return unordered_write<uint16_t>();
     case Datatype::INT32:
-      return dense_write<int>();
+      return unordered_write<int>();
     case Datatype::UINT32:
-      return dense_write<unsigned>();
+      return unordered_write<unsigned>();
     case Datatype::INT64:
-      return dense_write<int64_t>();
+      return unordered_write<int64_t>();
     case Datatype::UINT64:
-      return dense_write<uint64_t>();
+      return unordered_write<uint64_t>();
     default:
-      return LOG_STATUS(
-          Status::QueryError("Cannot write; Unsupported domain type"));
+      return LOG_STATUS(Status::QueryError(
+          "Cannot write in unordered layout; Unsupported domain type"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::sort_coords(std::vector<uint64_t>* cell_pos) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  uint64_t coords_size = array_schema_->coords_size();
+  int coords_buff_i = -1;
+  RETURN_NOT_OK(coords_buffer_i(&coords_buff_i));
+  auto buff = (T*)buffers_[coords_buff_i];
+  uint64_t coords_num = buffer_sizes_[coords_buff_i] / coords_size;
+
+  // Populate cell_pos
+  cell_pos->resize(coords_num);
+  for (uint64_t i = 0; i < coords_num; ++i)
+    (*cell_pos)[i] = i;
+
+  // Sort the coordinates in global order
+  std::sort(cell_pos->begin(), cell_pos->end(), GlobalCmp<T>(domain, buff));
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::unordered_write() {
+  // Sort coordinates first
+  std::vector<uint64_t> cell_pos;
+  RETURN_NOT_OK(sort_coords<T>(&cell_pos));
+
+  // Create new dense fragment
+  std::shared_ptr<FragmentMetadata> frag_meta;
+  RETURN_NOT_OK(create_fragment(true, &frag_meta));
+  auto uri = frag_meta->fragment_uri();
+
+  // Prepare tiles for all attributes and write
+  for (const auto& attr : attributes_) {
+    std::vector<Tile> tiles;
+    RETURN_NOT_OK_ELSE(
+        prepare_tiles(attr, cell_pos, &tiles),
+        storage_manager_->delete_fragment(uri));
+    if (attr == constants::coords)
+      RETURN_NOT_OK_ELSE(
+          compute_coords_metadata<T>(tiles, frag_meta.get()),
+          storage_manager_->delete_fragment(uri));
+    RETURN_NOT_OK_ELSE(
+        write_tiles(attr, frag_meta.get(), tiles),
+        storage_manager_->delete_fragment(uri));
+  }
+
+  // Write the fragment metadata
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->store_fragment_metadata(frag_meta.get()),
+      storage_manager_->delete_fragment(uri));
+
+  return Status::Ok();
+}
+
+Status Query::ordered_write() {
+  // Applicable only to ordered write on dense arrays
+  assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+
+  if (!array_schema_->dense())
+    return LOG_STATUS(Status::QueryError(
+        "Ordered writes are not applicable to sparse arrays"));
+
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return ordered_write<int8_t>();
+    case Datatype::UINT8:
+      return ordered_write<uint8_t>();
+    case Datatype::INT16:
+      return ordered_write<int16_t>();
+    case Datatype::UINT16:
+      return ordered_write<uint16_t>();
+    case Datatype::INT32:
+      return ordered_write<int>();
+    case Datatype::UINT32:
+      return ordered_write<unsigned>();
+    case Datatype::INT64:
+      return ordered_write<int64_t>();
+    case Datatype::UINT64:
+      return ordered_write<uint64_t>();
+    default:
+      return LOG_STATUS(Status::QueryError(
+          "Cannot write in ordered layout; Unsupported domain type"));
   }
 
   return Status::Ok();
@@ -1922,7 +1978,7 @@ Status Query::create_fragment(
 }
 
 template <class T>
-Status Query::dense_write() {
+Status Query::ordered_write() {
   // Create new dense fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
   RETURN_NOT_OK(create_fragment(true, &frag_meta));
@@ -2061,6 +2117,166 @@ Status Query::compute_write_cell_ranges(
       }
     }
     ++(*iter);
+  }
+
+  return Status::Ok();
+}
+
+Status Query::prepare_tiles(
+    const std::string& attribute,
+    const std::vector<uint64_t>& cell_pos,
+    std::vector<Tile>* tiles) const {
+  return array_schema_->var_size(attribute) ?
+             prepare_tiles_var(attribute, cell_pos, tiles) :
+             prepare_tiles_fixed(attribute, cell_pos, tiles);
+}
+
+template <class T>
+Status Query::compute_coords_metadata(
+    const std::vector<Tile>& tiles, FragmentMetadata* meta) const {
+  // For easy reference
+  auto coords_size = array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  std::vector<T> mbr;
+  mbr.resize(2 * dim_num);
+
+  // Compute MBRs
+  for (const auto& tile : tiles) {
+    // Initialize MBR with the first coords
+    auto data = (T*)tile.data();
+    auto cell_num = tile.size() / coords_size;
+    assert(cell_num > 0);
+    for (unsigned i = 0; i < dim_num; ++i) {
+      mbr[2 * i] = data[i];
+      mbr[2 * i + 1] = data[i];
+    }
+
+    // Expand the MBR with the rest coords
+    for (uint64_t i = 1; i < cell_num; ++i)
+      utils::expand_mbr(&mbr[0], &data[i * dim_num], dim_num);
+
+    meta->append_mbr(&mbr[0]);
+  }
+
+  // Compute bounding coordinates
+  std::vector<T> bcoords;
+  bcoords.resize(2 * dim_num);
+  for (const auto& tile : tiles) {
+    auto data = (T*)tile.data();
+    auto cell_num = tile.size() / coords_size;
+    assert(cell_num > 0);
+
+    std::memcpy(&bcoords[0], data, coords_size);
+    std::memcpy(
+        &bcoords[dim_num], &data[(cell_num - 1) * dim_num], coords_size);
+    meta->append_bounding_coords(&bcoords[0]);
+  }
+
+  // Set last tile number
+  meta->set_last_tile_cell_num(tiles.back().size() / coords_size);
+
+  return Status::Ok();
+}
+
+Status Query::prepare_tiles_fixed(
+    const std::string& attribute,
+    const std::vector<uint64_t>& cell_pos,
+    std::vector<Tile>* tiles) const {
+  // Trivial case
+  if (cell_pos.empty())
+    return Status::Ok();
+
+  // For easy reference
+  unsigned bid, attr_id;
+  auto is_coords = (attribute == constants::coords);
+  RETURN_NOT_OK(buffer_idx(attribute, &bid));
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  auto buff = (unsigned char*)buffers_[bid];
+  auto cell_num = (uint64_t)cell_pos.size();
+  auto capacity = array_schema_->capacity();
+  auto tile_num = utils::ceil(cell_num, capacity);
+  auto type = array_schema_->type(attr_id);
+  auto cell_size = array_schema_->cell_size(attr_id);
+  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+  auto compressor = array_schema_->compression(attr_id);
+  auto compression_level = array_schema_->compression_level(attr_id);
+  auto tile_size = capacity * cell_size;
+
+  // Initialize tiles
+  tiles->resize(tile_num);
+  for (auto& tile : (*tiles)) {
+    RETURN_NOT_OK(tile.init(
+        type, compressor, compression_level, tile_size, cell_size, dim_num));
+  }
+
+  // Write all cells one by one
+  for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+    if ((*tiles)[tile_idx].full())
+      ++tile_idx;
+
+    RETURN_NOT_OK(
+        (*tiles)[tile_idx].write(buff + cell_pos[i] * cell_size, cell_size));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::prepare_tiles_var(
+    const std::string& attribute,
+    const std::vector<uint64_t>& cell_pos,
+    std::vector<Tile>* tiles) const {
+  // For easy reference
+  unsigned bid, attr_id;
+  RETURN_NOT_OK(buffer_idx(attribute, &bid));
+  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  auto cell_num = (uint64_t)cell_pos.size();
+  auto capacity = array_schema_->capacity();
+  auto tile_num = utils::ceil(cell_num, capacity);
+  auto tile_size = capacity * constants::cell_var_offset_size;
+  auto type = array_schema_->type(attr_id);
+  auto compressor = array_schema_->compression(attr_id);
+  auto compression_level = array_schema_->compression_level(attr_id);
+  auto buff = (uint64_t*)buffers_[bid];
+  auto buff_var = (unsigned char*)buffers_[bid + 1];
+  auto buff_var_size = buffer_sizes_[bid + 1];
+  uint64_t offset;
+  uint64_t var_size;
+
+  // Initialize tiles
+  tiles->resize(2 * tile_num);
+  for (uint64_t i = 0; i < 2 * tile_num; i += 2) {
+    RETURN_NOT_OK((*tiles)[i].init(
+        constants::cell_var_offset_type,
+        array_schema_->cell_var_offsets_compression(),
+        array_schema_->cell_var_offsets_compression_level(),
+        tile_size,
+        constants::cell_var_offset_size,
+        0));
+
+    RETURN_NOT_OK((*tiles)[i + 1].init(
+        type,
+        compressor,
+        compression_level,
+        tile_size,
+        datatype_size(type),
+        0));
+  }
+
+  // Write all cells one by one
+  for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+    if ((*tiles)[tile_idx].full())
+      tile_idx += 2;
+
+    // Write offset
+    offset = (*tiles)[tile_idx + 1].size();
+    RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+
+    // Write var-sized value
+    var_size = (cell_pos[i] == cell_num - 1) ?
+                   buff_var_size - buff[cell_pos[i]] :
+                   buff[cell_pos[i] + 1] - buff[cell_pos[i]];
+    RETURN_NOT_OK(
+        (*tiles)[tile_idx + 1].write(&buff_var[buff[cell_pos[i]]], var_size));
   }
 
   return Status::Ok();

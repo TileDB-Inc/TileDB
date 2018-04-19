@@ -168,38 +168,6 @@ class WriteState {
   Status init_tile_io();
 
   /**
-   * Sorts the input cell coordinates according to the order specified in the
-   * array schema. This is not done in place; the sorted positions are stored
-   * in a separate vector.
-   *
-   * @param buffer The buffer holding the cell coordinates.
-   * @param buffer_size The size (in bytes) of *buffer*.
-   * @param cell_pos The sorted cell positions.
-   * @return void
-   */
-  void sort_cell_pos(
-      const void* buffer,
-      uint64_t buffer_size,
-      std::vector<uint64_t>* cell_pos) const;
-
-  /**
-   * Sorts the input cell coordinates according to the order specified in the
-   * array schema. This is not done in place; the sorted positions are stored
-   * in a separate vector.
-   *
-   * @tparam T The type of coordinates stored in *buffer*.
-   * @param buffer The buffer holding the cell coordinates.
-   * @param buffer_size The size (in bytes) of *buffer*.
-   * @param cell_pos The sorted cell positions.
-   * @return void
-   */
-  template <class T>
-  void sort_cell_pos(
-      const void* buffer,
-      uint64_t buffer_size,
-      std::vector<uint64_t>* cell_pos) const;
-
-  /**
    * Updates the metadata structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
@@ -274,52 +242,6 @@ class WriteState {
    * @return Status
    */
   Status write_last_tile();
-
-  /**
-   * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unordered.
-   *
-   * @param buffers See write().
-   * @param buffer_sizes See write().
-   * @return Status
-   */
-  Status write_sparse_unordered(void** buffers, uint64_t* buffer_sizes);
-
-  /**
-   * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unordered, focusing on a single fixed-sized attribute.
-   *
-   * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer The buffer to write.
-   * @param buffer_size The buffer size.
-   * @param cell_pos The sorted positions of the cells.
-   * @return Status
-   */
-  Status write_sparse_unordered_attr(
-      unsigned int attribute_id,
-      void* buffer,
-      uint64_t buffer_size,
-      const std::vector<uint64_t>& cell_pos);
-
-  /**
-   * Performs the write operation for the case of a sparse fragment when the
-   * coordinates are unordered, focusing on a single variable-sized attribute.
-   *
-   * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer The buffer storing the offsets of the variable-sized cells.
-   * @param buffer_size The buffer size.
-   * @param buffer_var The buffer storing the variable-sized cells.
-   * @param buffer_var_size The size of *buffer_var*.
-   * @param cell_pos The sorted positions of the cells.
-   * @return Status
-   */
-  Status write_sparse_unordered_attr_var(
-      unsigned int attribute_id,
-      void* buffer,
-      uint64_t buffer_size,
-      void* buffer_var,
-      uint64_t buffer_var_size,
-      const std::vector<uint64_t>& cell_pos);
 };
 
 }  // namespace sm
