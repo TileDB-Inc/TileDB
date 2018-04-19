@@ -86,7 +86,7 @@ struct DenseArrayFx {
   void remove_temp_dir(const std::string& path);
   void check_sorted_reads(const std::string& path);
   void check_sorted_writes(const std::string& path);
-  void check_invalid_global_writes(const std::string& path);
+  void check_invalid_cell_num_in_dense_writes(const std::string& path);
   void check_sparse_writes(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
 
@@ -855,7 +855,8 @@ void DenseArrayFx::check_sorted_writes(const std::string& path) {
   }
 }
 
-void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
+void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
+    const std::string& path) {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -868,7 +869,7 @@ void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = path + "invalid_writes_array";
+  std::string array_name = path + "invalid_cell_num_dense_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -888,7 +889,7 @@ void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
   void* buffers[] = {buffer};
   uint64_t buffer_sizes[] = {sizeof(buffer)};
 
-  // Create query
+  // Global order
   tiledb_query_t* query;
   int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -897,14 +898,25 @@ void DenseArrayFx::check_invalid_global_writes(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-
-  // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_free(ctx_, &query);
+  REQUIRE(rc == TILEDB_OK);
 
-  // Free query
+  // Ordered layout
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 1, buffers, buffer_sizes);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_free(ctx_, &query);
   REQUIRE(rc == TILEDB_OK);
 }
@@ -1029,22 +1041,22 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DenseArrayFx,
-    "C API: Test dense array, invalid global writes",
+    "C API: Test dense array, invalid number of cells in dense writes",
     "[capi], [dense]") {
   if (supports_s3_) {
     // S3
     create_temp_dir(S3_TEMP_DIR);
-    check_invalid_global_writes(S3_TEMP_DIR);
+    check_invalid_cell_num_in_dense_writes(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
-    check_invalid_global_writes(HDFS_TEMP_DIR);
+    check_invalid_cell_num_in_dense_writes(HDFS_TEMP_DIR);
     remove_temp_dir(HDFS_TEMP_DIR);
   } else {
     // File
     create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-    check_invalid_global_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_invalid_cell_num_in_dense_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
 }

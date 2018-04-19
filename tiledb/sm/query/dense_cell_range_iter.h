@@ -77,6 +77,12 @@ class DenseCellRangeIter {
   /** Initializes the iterator, computing the very first cell range. */
   Status begin();
 
+  /** Returns the coordinates of the start of the range. */
+  const T* coords_start() const;
+
+  /** Returns the coordinates of the end of the range. */
+  const T* coords_end() const;
+
   /** Checks if the iterator has reached the end. */
   bool end() const;
 

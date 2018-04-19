@@ -258,6 +258,10 @@ Status Tile::write(ConstBuffer* buf, uint64_t nbytes) {
   return Status::Ok();
 }
 
+Status Tile::write(const void* data, uint64_t nbytes) {
+  return buffer_->write(data, nbytes);
+}
+
 Status Tile::write_with_shift(ConstBuffer* buf, uint64_t offset) {
   buffer_->write_with_shift(buf, offset);
 

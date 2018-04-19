@@ -97,6 +97,16 @@ Status DenseCellRangeIter<T>::begin() {
 }
 
 template <class T>
+const T* DenseCellRangeIter<T>::coords_start() const {
+  return &coords_start_[0];
+}
+
+template <class T>
+const T* DenseCellRangeIter<T>::coords_end() const {
+  return &coords_end_[0];
+}
+
+template <class T>
 bool DenseCellRangeIter<T>::end() const {
   return end_;
 }

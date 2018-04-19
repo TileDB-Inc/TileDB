@@ -225,10 +225,13 @@ class Tile {
   Status write(ConstBuffer* buf);
 
   /**
-   * Writes exactly *nbytes* from the input buffer to the local buffer.
+   * Writes exactly `nbytes` from the input buffer to the local buffer.
    * The local buffer can be potentially expanded to fit these bytes.
    */
   Status write(ConstBuffer* buf, uint64_t nbytes);
+
+  /** Writes `nbytes` from `data` to the tile. */
+  Status write(const void* data, uint64_t nbytes);
 
   /**
    * Writes as much data as possibly can be read from the input buffer.

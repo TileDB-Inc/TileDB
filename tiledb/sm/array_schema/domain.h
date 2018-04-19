@@ -668,6 +668,60 @@ class Domain {
   /** Returns the dimensions type. */
   Datatype type() const;
 
+  /**
+   * Returns the position of the input coordinates inside its corresponding
+   * tile, based on the array cell order. Applicable only to **dense** arrays,
+   * and focusing on the **column-major** cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param coords The input coordindates, which are expressed as global
+   *     coordinates in the array domain.
+   * @return The position of the cell coordinates in the array cell order
+   *     within its corresponding tile.
+   */
+  template <class T>
+  uint64_t get_cell_pos_col(const T* coords) const;
+
+  /**
+   * Returns the position of the input coordinates inside the input subarray.
+   * Applicable only to **dense** arrays,
+   * and focusing on the **column-major** cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The input subarray, expressed in global coordinates.
+   * @param coords The input coordindates, expressed in global coordinates.
+   * @return The position of the cell coordinates in the subarray.
+   */
+  template <class T>
+  uint64_t get_cell_pos_col(const T* subarray, const T* coords) const;
+
+  /**
+   * Returns the position of the input coordinates inside its corresponding
+   * tile, based on the array cell order. Applicable only to **dense** arrays,
+   * and focusing on the **row-major** cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param coords The input coordindates, which are expressed as global
+   *     coordinates in the array domain.
+   * @return The position of the cell coordinates in the array cell order
+   *     within its corresponding tile.
+   */
+  template <class T>
+  uint64_t get_cell_pos_row(const T* coords) const;
+
+  /**
+   * Returns the position of the input coordinates inside the input subarray.
+   * Applicable only to **dense** arrays,
+   * and focusing on the **row-major** cell order.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The input subarray, expressed in global coordinates.
+   * @param coords The input coordindates, expressed in global coordinates.
+   * @return The position of the cell coordinates in the subarray.
+   */
+  template <class T>
+  uint64_t get_cell_pos_row(const T* subarray, const T* coords) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -771,34 +825,6 @@ class Domain {
 
   /** Returns the default name constructed for the i-th dimension. */
   std::string default_dimension_name(unsigned int i) const;
-
-  /**
-   * Returns the position of the input coordinates inside its corresponding
-   * tile, based on the array cell order. Applicable only to **dense** arrays,
-   * and focusing on the **column-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param coords The input coordindates, which are expressed as global
-   *     coordinates in the array domain.
-   * @return The position of the cell coordinates in the array cell order
-   *     within its corresponding tile.
-   */
-  template <class T>
-  uint64_t get_cell_pos_col(const T* coords) const;
-
-  /**
-   * Returns the position of the input coordinates inside its corresponding
-   * tile, based on the array cell order. Applicable only to **dense** arrays,
-   * and focusing on the **row-major** cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param coords The input coordindates, which are expressed as global
-   *     coordinates in the array domain.
-   * @return The position of the cell coordinates in the array cell order
-   *     within its corresponding tile.
-   */
-  template <class T>
-  uint64_t get_cell_pos_row(const T* coords) const;
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a

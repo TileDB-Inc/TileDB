@@ -168,6 +168,26 @@ class Query {
     }
   };
 
+  /** Cell range to be written. */
+  struct WriteCellRange {
+    /** The position in the tile where the range will be copied. */
+    uint64_t pos_;
+    /** The starting cell in the user buffers. */
+    uint64_t start_;
+    /** The ending cell in the user buffers. */
+    uint64_t end_;
+
+    /** Constructor. */
+    WriteCellRange(uint64_t pos, uint64_t start, uint64_t end)
+        : pos_(pos)
+        , start_(start)
+        , end_(end) {
+    }
+  };
+
+  /** A vector of write cell ranges. */
+  typedef std::vector<WriteCellRange> WriteCellRangeVec;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -514,6 +534,17 @@ class Query {
   template <class T>
   Status dense_read();
 
+  /** Writes to a dense array in an ordered layout (col- or row-major order). */
+  Status dense_write();
+
+  /**
+   * Writes to a dense array in an ordered layout (col- or row-major order).
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status dense_write();
+
   /** Perform a sparse read */
   Status sparse_read();
 
@@ -827,6 +858,137 @@ class Query {
 
   /** Memsets all set buffers to zero. Used only in read queries. */
   void zero_out_buffers();
+
+  /**
+   * Initializes dense cell range iterators for the subarray to be writte,
+   * one per overlapping tile.
+   *
+   * @tparam T The domain type.
+   * @param iters The dense cell range iterators to be created.
+   * @return Status
+   */
+  template <class T>
+  Status init_tile_dense_cell_range_iters(
+      std::vector<DenseCellRangeIter<T>>* iters) const;
+
+  /**
+   * Computes the cell ranges to be written, derived from a
+   * dense cell range iterator for a specific tile.
+   *
+   * @tparam T The domain type.
+   * @param iter The dense cell range iterator for one
+   *     tile overlapping with the write subarray.
+   * @param write_cell_ranges The write cell ranges to be created.
+   * @return Status
+   */
+  template <class T>
+  Status compute_write_cell_ranges(
+      DenseCellRangeIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
+
+  /**
+   * It prepares the tiles, copying from the user buffers into the tiles
+   * the values based on the input write cell ranges, focusing on the
+   * input attribute.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param write_cell_ranges The write cell ranges.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_tiles(
+      const std::string& attribute,
+      const std::vector<WriteCellRangeVec>& write_cell_ranges,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * Writes the input tiles for the input attribute to storage.
+   *
+   * @param attribute The attribute the tiles belong to.
+   * @param frag_meta The fragment metadata.
+   * @param tiles The tiles to be written.
+   * @return Status
+   */
+  Status write_tiles(
+      const std::string& attribute,
+      FragmentMetadata* frag_meta,
+      std::vector<Tile>& tiles) const;
+
+  /**
+   * Initializes the tiles for writing for the input attribute.
+   *
+   * @param attribute_id The id of the attribute the tiles belong to.
+   * @param tile_num The number of tiles.
+   * @param tiles The tiles to be initialized. Note that the vector
+   *     has been already preallocated.
+   * @return Status
+   */
+  Status init_tiles(
+      unsigned attribute_id, uint64_t tile_num, std::vector<Tile>* tiles) const;
+
+  /**
+   * Writes the input cell range to the input tile, for a particular
+   * buffer. Applicable to **fixed-sized** attributes.
+   *
+   * @param buff The write buffer where the cells will be copied from.
+   * @param start The start element in the write buffer.
+   * @param end The end element in the write buffer.
+   * @param tile The tile to write to.
+   * @return Status
+   */
+  Status write_cell_range_to_tile(
+      ConstBuffer* buff, uint64_t start, uint64_t end, Tile* tile) const;
+
+  /**
+   * Writes the input cell range to the input tile, for a particular
+   * buffer. Applicable to **variable-sized** attributes.
+   *
+   * @param buff The write buffer where the cell offsets will be copied from.
+   * @param buff_var The write buffer where the cell values will be copied from.
+   * @param start The start element in the write buffer.
+   * @param end The end element in the write buffer.
+   * @param tile The tile offsets to write to.
+   * @param tile_var The tile with the var-sized cells to write to.
+   * @return Status
+   */
+  Status write_cell_range_to_tile_var(
+      ConstBuffer* buff,
+      ConstBuffer* buff_var,
+      uint64_t start,
+      uint64_t end,
+      Tile* tile,
+      Tile* tile_var) const;
+
+  /**
+   * Writes an empty cell range to the input tile.
+   * Applicable to **fixed-sized** attributes.
+   *
+   * @param num Number of empty values to write.
+   * @param tile The tile to write to.
+   * @return Status
+   */
+  Status write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const;
+
+  /**
+   * Writes an empty cell range to the input tile.
+   * Applicable to **variable-sized** attributes.
+   *
+   * @param num Number of empty values to write.
+   * @param tile The tile offsets to write to.
+   * @param tile_var The tile with the var-sized cells to write to.
+   * @return Status
+   */
+  Status write_empty_cell_range_to_tile_var(
+      uint64_t num, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Creates a new fragment.
+   *
+   * @param dense Whether the fragment is dense or not.
+   * @param frag_meta The fragment metadata to be generated.
+   * @return Status
+   */
+  Status create_fragment(
+      bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
 };
 
 }  // namespace sm
