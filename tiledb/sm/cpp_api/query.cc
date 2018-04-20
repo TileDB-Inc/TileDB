@@ -84,6 +84,11 @@ Query::Status Query::attribute_status(const std::string& attr) const {
   return to_status(status);
 }
 
+void Query::finalize() {
+  auto& ctx = ctx_.get();
+  ctx.handle_error(tiledb_query_finalize(ctx, query_.get()));
+}
+
 std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
 Query::result_buffer_elements() const {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;

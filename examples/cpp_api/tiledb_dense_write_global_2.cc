@@ -58,6 +58,7 @@ int main() {
 
   // Submit query - #1
   query.submit();
+  // Don't finalize the query yet -- we wish to append to the same fragment.
 
   // Prepare cell buffers - #2
   // clang-format off
@@ -80,6 +81,9 @@ int main() {
 
   // Submit query - #2
   query.submit();
+
+  // Finalize query only after the second write.
+  query.finalize();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

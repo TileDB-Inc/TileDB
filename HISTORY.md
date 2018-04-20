@@ -38,13 +38,14 @@
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
   objects such as a simple data struct.
 * Added a `Dimension::create` factory function that does not take tile extent,
-  which sets the tile extent to `NULL`. 
+  which sets the tile extent to `NULL`.
+* Added `Query::finalize()` function.
 
 ## Breaking changes
 
 ### C API
 
-* `tiledb_query_finalize` must **always** be called before `tiledb_query_free`.
+* `tiledb_query_finalize` must **always** be called before `tiledb_query_free` after global-order writes.
 * Removed `tiledb_vfs_move` and added `tiledb_vfs_move_file` and `tiledb_vfs_move_dir` instead.
 * Removed `force` argument from `tiledb_vfs_move_*` and `tiledb_object_move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
@@ -57,6 +58,7 @@
 * Removed `VFS::move` and added `VFS::move_file` and `VFS::move_dir` instead.
 * Removed `force` argument from `VFS::move_*` and `Object::move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
+* `Query::finalize` must **always** be called before going out of scope after global-order writes.
 
 # TileDB v1.2.1 Release Notes
 

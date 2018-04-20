@@ -79,6 +79,8 @@ int main() {
 
   // Submit query
   std::cout << "\nQuery submitted: " << query.submit() << "\n\n";
+  // Finalize query
+  query.finalize();
 
   // Print cell values (assumes all attributes are read)
   auto result_el = query.result_buffer_elements();

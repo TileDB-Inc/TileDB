@@ -50,7 +50,16 @@ namespace tiledb {
  */
 class TILEDB_EXPORT Array {
  public:
-  /** Consolidates the fragments of an array. **/
+  /**
+   * Consolidates the fragments of an array into a single fragment.
+   *
+   * You must first finalize all queries to the array before consolidation can
+   * begin (as consolidation temporarily acquires an exclusive lock on the
+   * array).
+   *
+   * @param ctx TileDB context
+   * @param uri Array URI
+   */
   static void consolidate(const Context& ctx, const std::string& uri);
 
   /** Creates an array on persistent storage from a schema definition. **/

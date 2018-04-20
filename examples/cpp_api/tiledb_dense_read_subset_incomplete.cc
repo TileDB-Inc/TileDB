@@ -68,6 +68,9 @@ int main() {
     }
   } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);
 
+  // Finalize after we're done re-submitting the query.
+  query.finalize();
+
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;
