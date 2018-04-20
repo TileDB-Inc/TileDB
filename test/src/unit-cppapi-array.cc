@@ -41,6 +41,9 @@ struct Point {
 };
 
 struct CPPArrayFx {
+  static const unsigned d1_tile = 10;
+  static const unsigned d2_tile = 5;
+
   CPPArrayFx()
       : vfs(ctx) {
     using namespace tiledb;
@@ -49,8 +52,8 @@ struct CPPArrayFx {
       vfs.remove_dir("cpp_unit_array");
 
     Domain domain(ctx);
-    auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
-    auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+    auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, d1_tile);
+    auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, d2_tile);
     domain.add_dimensions(d1, d2);
 
     auto a1 = Attribute::create<int>(ctx, "a1");          // (int, 1)
@@ -85,6 +88,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
     std::vector<int> subarray = {0, 5, 0, 5};
     query.set_subarray(subarray);
+    // TODO: This is only required because the array is currently locked
+    // on query creation. If we don't finalize, the file won't be unlocked
+    // and we won't be able to delete the array in between tests on Windows
+    // (which has stricter file removal rules).
+    query.finalize();
   }
 
   SECTION("Read/Write") {
@@ -111,6 +119,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.set_layout(TILEDB_ROW_MAJOR);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+      query.finalize();
     } catch (std::exception& e) {
       std::cout << e.what() << std::endl;
     }
@@ -158,6 +168,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.result_buffer_elements();
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+      query.finalize();
+
       auto ret = query.result_buffer_elements();
       REQUIRE(ret.size() == 5);
       CHECK(ret["a1"].first == 0);
@@ -201,5 +214,41 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(reada4[1][0].coords[2] == 7);
       CHECK(reada4[1][0].value == 8.3);
     }
+  }
+
+  SECTION("Global order write") {
+    std::vector<int> subarray = {0, d1_tile - 1, 0, d2_tile - 1};
+    std::vector<int> a1 = {1, 2};
+    // Pad out to tile multiple
+    size_t num_dummies = d1_tile * d2_tile - a1.size();
+    for (size_t i = 0; i < num_dummies; i++) {
+      a1.push_back(0);
+    }
+
+    Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+    query.set_subarray(subarray);
+    query.set_buffer("a1", a1);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
+    REQUIRE_NOTHROW(query.finalize());
+
+    auto non_empty =
+        tiledb::Array::non_empty_domain<int>(ctx, "cpp_unit_array");
+    CHECK(non_empty[0].second.first == 0);
+    CHECK(non_empty[0].second.second == d1_tile - 1);
+    CHECK(non_empty[1].second.first == 0);
+    CHECK(non_empty[1].second.second == d2_tile - 1);
+  }
+
+  SECTION("Global order write - no dummy values") {
+    std::vector<int> a1 = {1, 2};
+    std::vector<int> subarray = {0, 1, 0, 0};
+    Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+    query.set_subarray(subarray);
+    query.set_buffer("a1", a1);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
+    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
+    // Incorrect # of cells in subarray
+    REQUIRE_THROWS(query.finalize());
   }
 }

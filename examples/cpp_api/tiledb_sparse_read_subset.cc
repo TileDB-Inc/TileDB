@@ -55,6 +55,7 @@ int main() {
   query.set_subarray<uint64_t>({3, 4, 2, 4});
   query.set_buffer("a1", a1_data);
   query.submit();
+  query.finalize();
 
   // Print the results
   std::cout << "a1\n---\n";

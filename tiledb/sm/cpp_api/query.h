@@ -85,10 +85,31 @@ class TILEDB_EXPORT Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Creates a TileDB query object.
+   *
+   * When creating a query, the storage manager "opens" the array in read or
+   * write mode based on the query type, incrementing the array's reference
+   * count and loading the array metadata (schema and fragment metadata) into
+   * its main-memory cache.
+   *
+   * The storage manager also acquires a **shared lock** on the array. This
+   * means multiple read and write queries to the same array can be made
+   * concurrently (in TileDB, only consolidation requires an exclusive lock for
+   * a short period of time).
+   *
+   * To "close" an array, the user should call `Query::finalize()` (see the
+   * documentation of that function for more details).
+   *
+   * @param ctx TileDB context
+   * @param array_uri Array URI
+   * @param type Query type
+   */
   Query(
       const Context& ctx,
       const std::string& array_uri,
       tiledb_query_type_t type);
+
   Query(const Query&) = default;
   Query(Query&& o) = default;
   Query& operator=(const Query&) = default;
@@ -130,6 +151,25 @@ class TILEDB_EXPORT Query {
   void submit_async() {
     submit_async([]() {});
   }
+
+  /**
+   * Finalizes a TileDB query object, flushing all internal state.
+   *
+   * This function has two effects.
+   *
+   * (i) If the query was writing in global order, it flushes the internal
+   * state. It is **required** to finalize global-order write query objects in
+   * order to ensure correct execution.
+   *
+   * (ii) For any query, it "closes" the corresponding array. This causes the
+   * storage manager to decrement the reference count of the array. When the
+   * reference count reaches 0, the storage manager evicts the array metadata
+   * (schema and fragment metadata) from its in-memory cache, and releases all
+   * related locks. Therefore, it is advantageous to wait to finalize query
+   * objects on the same array until you are done issuing queries to that array
+   * or consolidation is needed.
+   */
+  void finalize();
 
   /**
    * Returns the number of elements in the result buffers. This is a map

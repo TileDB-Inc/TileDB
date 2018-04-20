@@ -75,6 +75,8 @@ int main() {
 
   // Submit query
   query.submit();
+  // Finalize query
+  query.finalize();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

@@ -82,6 +82,9 @@ int main() {
             << "\n\ta2: " << query.attribute_status("a2")
             << "\n\ta3: " << query.attribute_status("a3");
 
+  // Finalize query
+  query.finalize();
+
   // Print cell values (assumes all attributes are read)
   auto result_el = query.result_buffer_elements();
   auto a2_buff =
