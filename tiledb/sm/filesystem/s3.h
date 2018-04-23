@@ -363,7 +363,7 @@ class S3 {
   std::unordered_map<std::string, std::map<int, Aws::S3::Model::CompletedPart>>
       multipart_upload_completed_parts_;
 
-  /** Used for synchronization in async multi-part uploads. */
+  /** Protects multi-part upload data structures. */
   std::mutex multipart_upload_mtx_;
 
   /** The length of a non-terminal multipart part. */
@@ -439,7 +439,10 @@ class S3 {
    */
   Status get_file_buffer(const URI& uri, Buffer** buff);
 
-  /** Initiates a new multipart upload request for the input URI. */
+  /**
+   * Initiates a new multipart upload request for the input URI. Note: the
+   * caller must hold the multipart data structure mutex.
+   */
   Status initiate_multipart_request(Aws::Http::URI aws_uri);
 
   /**

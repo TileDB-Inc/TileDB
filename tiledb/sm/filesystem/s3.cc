@@ -50,6 +50,13 @@ namespace tiledb {
 namespace sm {
 
 /* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+/** Ensures that the AWS library is only initialized once per process. */
+static std::once_flag aws_lib_initialized;
+
+/* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
@@ -73,7 +80,8 @@ Status S3::init(const S3Config& s3_config, ThreadPool* thread_pool) {
         Status::S3Error("Can't initialize with null thread pool."));
   }
 
-  Aws::InitAPI(options_);
+  // Initialize the library once per process.
+  std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
   vfs_thread_pool_ = thread_pool;
   multipart_part_size_ = s3_config.multipart_part_size_;
@@ -191,11 +199,12 @@ Status S3::flush_object(const URI& uri) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
   RETURN_NOT_OK(flush_file_buffer(uri, buff, true));
-  delete buff;
-  file_buffers_.erase(uri.to_string());
 
   Aws::Http::URI aws_uri = uri.c_str();
   std::string path_c_str = aws_uri.GetPath().c_str();
+
+  // Take a lock protecting the shared multipart data structures
+  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
 
   // Do nothing - empty object
   auto multipart_upload_it = multipart_upload_.find(path_c_str);
@@ -224,14 +233,22 @@ Status S3::flush_object(const URI& uri) {
   auto complete_multipart_upload_outcome =
       client_->CompleteMultipartUpload(complete_multipart_upload_request);
 
+  // Release lock while we wait for the file to flush.
+  multipart_lck.unlock();
+
   wait_for_object_to_propagate(
       complete_multipart_upload_request.GetBucket(),
       complete_multipart_upload_request.GetKey());
+
+  multipart_lck.lock();
+
   multipart_upload_IDs_.erase(path_c_str);
   multipart_upload_part_number_.erase(path_c_str);
   multipart_upload_request_.erase(multipart_upload_request_it);
   multipart_upload_.erase(multipart_upload_it);
   multipart_upload_completed_parts_.erase(path_c_str);
+  file_buffers_.erase(uri.to_string());
+  delete buff;
 
   //  fails when flushing directories or removed files
   if (!complete_multipart_upload_outcome.IsSuccess()) {
@@ -606,6 +623,8 @@ Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
 }
 
 Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
+  std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
+
   auto uri_str = uri.to_string();
   auto it = file_buffers_.find(uri_str);
   if (it == file_buffers_.end()) {
@@ -736,6 +755,10 @@ Status S3::write_multipart(
   Aws::Http::URI aws_uri = uri.c_str();
   auto& path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
+
+  // Take a lock protecting the shared multipart data structures
+  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+
   if (multipart_upload_IDs_.find(path_c_str) == multipart_upload_IDs_.end()) {
     // Delete file if it exists (overwrite) and initiate multipart request
     if (is_object(uri))
@@ -752,6 +775,10 @@ Status S3::write_multipart(
   // Assign the part number(s), and make the write request.
   if (num_ops == 1) {
     int part_num = multipart_upload_part_number_[path_c_str]++;
+
+    // Unlock, as make_upload_part_req will reaquire as necessary.
+    multipart_lck.unlock();
+
     return make_upload_part_req(uri, buffer, length, upload_id, part_num);
   } else {
     STATS_COUNTER_ADD(vfs_s3_write_num_parallelized, 1);
@@ -772,6 +799,9 @@ Status S3::write_multipart(
           }));
     }
     multipart_upload_part_number_[path_c_str] += num_ops;
+
+    // Unlock, so the threads can take the lock as necessary.
+    multipart_lck.unlock();
 
     bool all_ok = vfs_thread_pool_->wait_all(results);
     return all_ok ?
