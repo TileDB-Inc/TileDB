@@ -45,7 +45,7 @@ file(GLOB TILEDB_EXAMPLE_SOURCES_CPPAPI "*.cc")
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
   # Get the binary name
   string(REGEX
-    REPLACE "^${CMAKE_SOURCE_DIR}/examples/cpp_api/" ""
+    REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/" ""
     EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
   )
   string(REGEX

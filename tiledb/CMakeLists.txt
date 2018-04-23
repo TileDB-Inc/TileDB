@@ -38,7 +38,7 @@ cmake_policy(SET CMP0063 NEW)
 ############################################################
 
 # The core header directory.
-set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # List of API headers (to be installed)
 set(TILEDB_PUBLIC_HEADERS
@@ -128,9 +128,9 @@ set(TILEDB_CORE_SOURCES
 )
 
 # 'External' source files included in the source tree.
-set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/include")
+set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/include")
 set(TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_SOURCE_DIR}/external/src/md5/md5.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
 )
 
 ############################################################

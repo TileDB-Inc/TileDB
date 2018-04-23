@@ -50,12 +50,12 @@ add_custom_target(tiledb-header-dir
 ############################################################
 
 # Get TileDB C API headers
-file(GLOB TILEDB_C_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/*.h")
+file(GLOB TILEDB_C_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api/*.h")
 
 # Copy the headers to the 'tiledb/' directory
 foreach(HEADER ${TILEDB_C_HEADERS})
   string(REGEX
-    REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/" ""
+    REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api/" ""
     HEADER_STRIPPED ${HEADER}
   )
   configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)
@@ -73,13 +73,13 @@ add_subdirectory(c_api)
 
 if (TILEDB_CPP_API)
   file(GLOB TILEDB_CPP_HEADERS
-    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/tiledb"
   )
 
   foreach(HEADER ${TILEDB_CPP_HEADERS})
     string(REGEX
-      REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
+      REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/cpp_api/" ""
       HEADER_STRIPPED ${HEADER}
     )
     configure_file(${HEADER} ${CMAKE_CURRENT_BINARY_DIR}/tiledb/${HEADER_STRIPPED} COPYONLY)

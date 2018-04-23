@@ -32,10 +32,10 @@ find_package(Catch_EP REQUIRED)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 
 # Include TileDB core header directories
-set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # Include the C API directory so that the C++ 'tiledb' file can directly
 # include "tiledb.h".
-list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api")
+list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api")
 
 # Gather the test source files
 set(TILEDB_TEST_SOURCES
@@ -121,7 +121,7 @@ target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
 add_test(
   NAME "tiledb_unit"
   COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 if(TILEDB_HDFS)
