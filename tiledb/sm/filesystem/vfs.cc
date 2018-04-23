@@ -40,9 +40,23 @@
 #include "tiledb/sm/storage_manager/config.h"
 
 #include <iostream>
+#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+/**
+ * Map of file URI -> number of current locks. This is shared across the entire
+ * process.
+ */
+static std::unordered_map<std::string, uint64_t> filelock_counts_;
+
+/** Mutex protecting the filelock process and the filelock counts map. */
+static std::mutex filelock_mtx_;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -298,6 +312,14 @@ Status VFS::remove_file(const URI& uri) const {
 Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   STATS_FUNC_IN(vfs_filelock_lock);
 
+  // Hold the lock while updating counts and performing the lock.
+  std::unique_lock<std::mutex> lck(filelock_mtx_);
+
+  // Only need to actually lock the file if this is the first one on the URI.
+  if (incr_lock_count(uri)) {
+    return Status::Ok();
+  }
+
   if (uri.is_file())
 #ifdef _WIN32
     return win::filelock_lock(uri.to_path(), fd, shared);
@@ -329,6 +351,16 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
 Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   STATS_FUNC_IN(vfs_filelock_unlock);
 
+  // Hold the lock while updating counts and performing the unlock.
+  std::unique_lock<std::mutex> lck(filelock_mtx_);
+
+  // Decrement the lock counter and return if the counter is still > 0.
+  bool should_unlock = false;
+  Status st = decr_lock_count(uri, &should_unlock);
+  if (!st.ok() || !should_unlock) {
+    return st;
+  }
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win::filelock_unlock(fd);
@@ -355,6 +387,38 @@ Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_filelock_unlock);
+}
+
+bool VFS::incr_lock_count(const URI& uri) const {
+  auto it = filelock_counts_.find(uri.to_string());
+  if (it == filelock_counts_.end()) {
+    filelock_counts_[uri.to_string()] = 1;
+    return false;
+  } else {
+    it->second++;
+    return true;
+  }
+}
+
+Status VFS::decr_lock_count(const URI& uri, bool* is_zero) const {
+  auto it = filelock_counts_.find(uri.to_string());
+  if (it == filelock_counts_.end()) {
+    return LOG_STATUS(
+        Status::VFSError("No lock counter for URI " + uri.to_string()));
+  } else if (it->second == 0) {
+    return LOG_STATUS(
+        Status::VFSError("Invalid lock count for URI " + uri.to_string()));
+  }
+
+  it->second--;
+
+  if (it->second == 0) {
+    *is_zero = true;
+    filelock_counts_.erase(it);
+  } else {
+    *is_zero = false;
+  }
+  return Status::Ok();
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {

@@ -345,6 +345,23 @@ class VFS {
    */
   Status read_impl(
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+
+  /**
+   * Increment the lock count of the given URI.
+   *
+   * @param uri The URI
+   * @return True if the new lock count is > 1.
+   */
+  bool incr_lock_count(const URI& uri) const;
+
+  /**
+   * Decrement the lock count of the given URI.
+   *
+   * @param uri The URI
+   * @param is_zero Set to true if the new lock count is 0.
+   * @return Status
+   */
+  Status decr_lock_count(const URI& uri, bool* is_zero) const;
 };
 
 }  // namespace sm

@@ -40,6 +40,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <ctime>
@@ -88,6 +89,7 @@ struct DenseArrayFx {
   void check_sorted_writes(const std::string& path);
   void check_invalid_cell_num_in_dense_writes(const std::string& path);
   void check_sparse_writes(const std::string& path);
+  void check_simultaneous_writes(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
 
   /**
@@ -1012,6 +1014,75 @@ void DenseArrayFx::check_sparse_writes(const std::string& path) {
   delete[] buffer_coords;
 }
 
+void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
+  // Parameters used in this test
+  int64_t domain_size_0 = 100;
+  int64_t domain_size_1 = 100;
+  int64_t tile_extent_0 = 10;
+  int64_t tile_extent_1 = 10;
+  int64_t domain_0_lo = 0;
+  int64_t domain_0_hi = domain_size_0 - 1;
+  int64_t domain_1_lo = 0;
+  int64_t domain_1_hi = domain_size_1 - 1;
+  uint64_t capacity = 1000;
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  std::string array_name = path + "simultaneous_writes_array";
+
+  // Create a dense integer array
+  create_dense_array_2D(
+      array_name,
+      tile_extent_0,
+      tile_extent_1,
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      capacity,
+      cell_order,
+      tile_order);
+
+  int nthreads = std::thread::hardware_concurrency();
+  std::vector<int*> buffers;
+  std::vector<std::array<uint64_t, 1>> buffer_sizes;
+  std::vector<std::array<int64_t, 4>> subarrays;
+  std::vector<std::thread> threads;
+
+  // Pre-generate buffers to write
+  for (int i = 0; i < nthreads; i++) {
+    subarrays.push_back({{domain_0_lo,
+                          domain_0_lo + tile_extent_0 - 1,
+                          domain_1_lo,
+                          domain_1_lo + tile_extent_1 - 1}});
+    buffer_sizes.push_back({{tile_extent_0 * tile_extent_1 * sizeof(int)}});
+    buffers.push_back(new int[buffer_sizes.back()[0] / sizeof(int)]);
+  }
+
+  // Write multiple subarrays in parallel with a shared context.
+  for (int i = 0; i < nthreads; i++) {
+    threads.emplace_back([&, i]() {
+      const int writes_per_thread = 5;
+      for (int j = 0; j < writes_per_thread; j++) {
+        write_dense_subarray_2D(
+            array_name,
+            subarrays[i].data(),
+            TILEDB_WRITE,
+            TILEDB_GLOBAL_ORDER,
+            buffers[i],
+            buffer_sizes[i].data());
+      }
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  for (int* buffer : buffers) {
+    delete[] buffer;
+  }
+}
+
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -1099,4 +1170,21 @@ TEST_CASE_METHOD(
     check_sparse_writes(FILE_URI_PREFIX + FILE_TEMP_DIR);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, simultaneous writes",
+    "[capi], [dense]") {
+  std::string temp_dir;
+  if (supports_s3_) {
+    temp_dir = S3_TEMP_DIR;
+  } else if (supports_hdfs_) {
+    temp_dir = HDFS_TEMP_DIR;
+  } else {
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  }
+  create_temp_dir(temp_dir);
+  check_simultaneous_writes(temp_dir);
+  remove_temp_dir(temp_dir);
 }
