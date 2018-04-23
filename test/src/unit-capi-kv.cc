@@ -309,6 +309,7 @@ void KVFx::check_write(const std::string& path) {
   tiledb_kv_item_t* kv_item1;
   rc = tiledb_kv_item_create(ctx_, &kv_item1);
   REQUIRE(rc == TILEDB_OK);
+
   rc =
       tiledb_kv_item_set_key(ctx_, kv_item1, &KEY1, TILEDB_INT32, sizeof(KEY1));
   CHECK(rc == TILEDB_OK);

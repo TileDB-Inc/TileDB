@@ -31,8 +31,10 @@
  * Tests the `Buffer` class.
  */
 
-#include <catch.hpp>
 #include "tiledb/sm/buffer/buffer.h"
+
+#include <catch.hpp>
+#include <iostream>
 
 using namespace tiledb::sm;
 
@@ -42,6 +44,7 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   char data[3] = {1, 2, 3};
   auto buff = new Buffer();
   CHECK(buff->size() == 0);
+
   st = buff->write(data, sizeof(data));
   REQUIRE(st.ok());
   CHECK(buff->offset() == 3);
@@ -71,6 +74,25 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
   CHECK(buff->size() == 3);
   CHECK(buff->alloced_size() == 10);
   CHECK(buff->offset() == 3);
+
+  // Test copy constructor
+  Buffer buff2 = *buff;
+  CHECK(buff->size() == buff2.size());
+  CHECK(buff->alloced_size() == buff2.alloced_size());
+  CHECK(buff->offset() == buff2.offset());
+  CHECK(buff->owns_data() == buff2.owns_data());
+  if (buff->data() != nullptr)
+    CHECK(!std::memcmp(buff->data(), buff2.data(), buff->alloced_size()));
+
+  // Test copy assignment
+  Buffer buff3;
+  buff3 = *buff;
+  CHECK(buff->size() == buff3.size());
+  CHECK(buff->alloced_size() == buff3.alloced_size());
+  CHECK(buff->offset() == buff3.offset());
+  CHECK(buff->owns_data() == buff3.owns_data());
+  if (buff->data() != nullptr)
+    CHECK(!std::memcmp(buff->data(), buff3.data(), buff->alloced_size()));
 
   delete buff;
 }

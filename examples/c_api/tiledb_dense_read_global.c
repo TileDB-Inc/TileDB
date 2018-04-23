@@ -117,6 +117,7 @@ int main() {
   // We create a read query, specifying the layout of the results as
   // `TILEDB_GLOBAL_ORDER`. Notice also that we have not set the `subarray`
   // for the query, which means that we wish to get all the array cells.
+
   tiledb_query_t* query;
   tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);

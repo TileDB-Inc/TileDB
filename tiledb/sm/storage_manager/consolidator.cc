@@ -261,8 +261,7 @@ Status Consolidator::create_queries(
       nullptr,
       0,
       buffers,
-      buffer_sizes,
-      new_fragment_uri));
+      buffer_sizes));
 
   return Status::Ok();
 }
@@ -299,7 +298,6 @@ Status Consolidator::delete_old_fragments(const std::vector<URI>& uris) {
 Status Consolidator::finalize_queries(Query* query_r, Query* query_w) {
   RETURN_NOT_OK(storage_manager_->query_finalize(query_r));
   RETURN_NOT_OK(storage_manager_->query_finalize(query_w));
-
   return Status::Ok();
 }
 

@@ -256,8 +256,7 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
   // Acquire the lock
   if (fcntl(*fd, F_SETLKW, &fl) == -1) {
     return LOG_STATUS(Status::IOError(
-        "Cannot lock consolidation filelock '" + filename + "'; " +
-        strerror(errno)));
+        "Cannot lock filelock '" + filename + "'; " + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -265,9 +264,7 @@ Status filelock_lock(const std::string& filename, filelock_t* fd, bool shared) {
 Status filelock_unlock(filelock_t fd) {
   if (::close(fd) == -1)
     return LOG_STATUS(Status::IOError(
-        std::string(
-            "Cannot unlock consolidation filelock: Cannot close filelock: ") +
-        strerror(errno)));
+        std::string("Cannot unlock filelock: ") + strerror(errno)));
   return Status::Ok();
 }
 
