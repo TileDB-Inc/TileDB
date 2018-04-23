@@ -66,6 +66,15 @@ Buffer::Buffer(void* data, uint64_t size, bool owns_data)
   owns_data_ = false;
 }
 
+Buffer::Buffer(const Buffer& buff) {
+  alloced_size_ = 0;
+  data_ = nullptr;
+  size_ = 0;
+  offset_ = 0;
+  owns_data_ = true;
+  *this = buff;
+}
+
 Buffer::~Buffer() {
   clear();
 }
@@ -97,6 +106,8 @@ void Buffer::clear() {
 }
 
 void* Buffer::cur_data() const {
+  if (data_ == nullptr)
+    return nullptr;
   return (char*)data_ + offset_;
 }
 
@@ -105,6 +116,8 @@ void* Buffer::data() const {
 }
 
 void* Buffer::data(uint64_t offset) const {
+  if (data_ == nullptr)
+    return nullptr;
   return (char*)data_ + offset;
 }
 
@@ -119,6 +132,10 @@ uint64_t Buffer::free_space() const {
 
 uint64_t Buffer::offset() const {
   return offset_;
+}
+
+bool Buffer::owns_data() const {
+  return owns_data_;
 }
 
 Status Buffer::read(void* buffer, uint64_t nbytes) {
@@ -245,8 +262,34 @@ Status Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
   return Status::Ok();
 }
 
+Buffer& Buffer::operator=(const Buffer& buff) {
+  clear();
+
+  owns_data_ = buff.owns_data_;
+
+  if (!buff.owns_data_) {
+    data_ = buff.data_;
+  } else {
+    if (buff.data() != nullptr)
+      data_ = std::malloc(buff.alloced_size_);
+    if (data_ != nullptr) {
+      std::memcpy(data_, buff.data_, buff.alloced_size_);
+      alloced_size_ = buff.alloced_size_;
+      size_ = buff.size_;
+      offset_ = buff.offset_;
+    } else {
+      alloced_size_ = 0;
+      size_ = 0;
+      offset_ = 0;
+    }
+  }
+
+  return *this;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
 }  // namespace sm
 }  // namespace tiledb

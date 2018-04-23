@@ -90,6 +90,9 @@ class Tile {
       Buffer* buff,
       bool owns_buff);
 
+  /** Copy constructor. */
+  Tile(const Tile& tile);
+
   /** Destructor. */
   ~Tile();
 
@@ -182,6 +185,9 @@ class Tile {
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 
+  /** Resets the size and offset of the tile. */
+  void reset();
+
   /** Resets the tile offset. */
   void reset_offset();
 
@@ -247,13 +253,16 @@ class Tile {
    */
   void zip_coordinates();
 
+  /** Copy operator. */
+  Tile& operator=(const Tile& tile);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
   /** Local buffer that stores the tile data. */
-  Buffer* buffer_;
+  Buffer* buffer_ = nullptr;
 
   /** The cell size. */
   uint64_t cell_size_;

@@ -63,6 +63,9 @@ class Buffer {
    */
   Buffer(void* data, uint64_t size, bool owns_data);
 
+  /** Copy constructor. */
+  Buffer(const Buffer& buff);
+
   /** Destructor. */
   ~Buffer();
 
@@ -102,6 +105,9 @@ class Buffer {
 
   /** Returns the current offset in the buffer. */
   uint64_t offset() const;
+
+  /** Returns `true` if the buffer owns its data buffer. */
+  bool owns_data() const;
 
   /**
    * Reads from the local data into the input buffer.
@@ -203,6 +209,9 @@ class Buffer {
    * @return Status
    */
   Status write_with_shift(ConstBuffer* buff, uint64_t offset);
+
+  /** Copy operator. */
+  Buffer& operator=(const Buffer& buff);
 
  private:
   /* ********************************* */

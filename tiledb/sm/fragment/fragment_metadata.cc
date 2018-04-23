@@ -139,9 +139,9 @@ Status FragmentMetadata::append_mbr(const void* mbr) {
 }
 
 void FragmentMetadata::append_tile_offset(
-    unsigned int attribute_id, uint64_t step) {
+    unsigned int attribute_id, uint64_t tile_size) {
   tile_offsets_[attribute_id].push_back(next_tile_offsets_[attribute_id]);
-  uint64_t new_offset = tile_offsets_[attribute_id].back() + step;
+  uint64_t new_offset = tile_offsets_[attribute_id].back() + tile_size;
   next_tile_offsets_[attribute_id] = new_offset;
 }
 
@@ -924,9 +924,11 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   uint64_t cell_num_per_tile =
       dense_ ? array_schema_->domain()->cell_num_per_tile() :
                array_schema_->capacity();
+
   // Handle the case of zero
   uint64_t last_tile_cell_num =
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
+
   Status st = buff->write(&last_tile_cell_num, sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(

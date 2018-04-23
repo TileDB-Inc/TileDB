@@ -104,9 +104,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win_filesystem.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/write_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_item.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_iter.cc

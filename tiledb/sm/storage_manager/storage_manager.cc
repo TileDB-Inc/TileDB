@@ -914,8 +914,7 @@ Status StorageManager::query_init(
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
-    uint64_t* buffer_sizes,
-    const URI& consolidation_fragment_uri) {
+    uint64_t* buffer_sizes) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_schema = (const ArraySchema*)nullptr;
@@ -933,8 +932,7 @@ Status StorageManager::query_init(
       attributes,
       attribute_num,
       buffers,
-      buffer_sizes,
-      consolidation_fragment_uri);
+      buffer_sizes);
 }
 
 Status StorageManager::query_submit(Query* query) {
@@ -1205,7 +1203,6 @@ void StorageManager::array_get_non_empty_domain(
     unsigned dim_num,
     T* domain) {
   assert(!metadata.empty());
-
   uint64_t domain_size = 2 * sizeof(T) * dim_num;
   auto non_empty_domain =
       static_cast<const T*>(metadata[0]->non_empty_domain());

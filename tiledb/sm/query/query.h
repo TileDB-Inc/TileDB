@@ -35,10 +35,11 @@
 
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/fragment/fragment.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <functional>
 #include <memory>
@@ -48,8 +49,6 @@
 namespace tiledb {
 namespace sm {
 
-class ArrayOrderedWriteState;
-class Fragment;
 class StorageManager;
 
 /** Processes a (read/write) query. */
@@ -58,6 +57,25 @@ class Query {
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
+
+  struct GlobalWriteState {
+    /**
+     * Stores the last tile of each attribute for each write operation.
+     * For fixed-sized attributes, the second tile is ignored. For
+     * var-sized attributes, the first tile is the offsets tile, whereas
+     * the second tile is the values tile.
+     */
+    std::unordered_map<std::string, std::pair<Tile, Tile>> last_tiles_;
+
+    /**
+     * Stores the number of cells written for each attribute across the
+     * write operations.
+     */
+    std::unordered_map<std::string, uint64_t> cell_written_;
+
+    /** The fragment metadata. */
+    std::shared_ptr<FragmentMetadata> frag_meta_;
+  };
 
   /**
    * For each fixed-sized attributes, the second tile in the pair is
@@ -193,14 +211,6 @@ class Query {
 
   /** Constructor. */
   Query();
-
-  /**
-   * Constructor called when the query to be created continues to write/append
-   * to the fragment that was created by the *common_query*.
-   *
-   * @param common_query The query into whose fragment to append.
-   */
-  Query(Query* common_query);
 
   /** Destructor. */
   ~Query();
@@ -371,9 +381,6 @@ class Query {
   /** Retrieves the index of the buffer corresponding to the input attribute. */
   Status buffer_idx(const std::string& attribute, unsigned* bid) const;
 
-  /** Finalizes and deletes the created fragments. */
-  Status clear_fragments();
-
   /**
    * Retrieves the index of the coordinates buffer in the specified query
    * buffers.
@@ -399,9 +406,6 @@ class Query {
    * fragments.
    */
   Status finalize();
-
-  /** Returns the fragments involved in the query. */
-  const std::vector<Fragment*>& fragments() const;
 
   /** Returns the metadata of the fragments involved in the query. */
   const std::vector<FragmentMetadata*>& fragment_metadata() const;
@@ -435,9 +439,6 @@ class Query {
    *     populated with the query results. In a write query, the buffer
    *     contents will be appropriately written in a new fragment.
    * @param buffer_sizes The corresponding buffer sizes.
-   * @param consolidation_fragment_uri This is used only in write queries.
-   *     If it is different than empty, then it indicates that the query will
-   *     be writing into a consolidation fragment with the input name.
    * @return Status
    */
   Status init(
@@ -450,48 +451,7 @@ class Query {
       const char** attributes,
       unsigned int attribute_num,
       void** buffers,
-      uint64_t* buffer_sizes,
-      const URI& consolidation_fragment_uri = URI(""));
-
-  /**
-   * Initializes the query. This is invoked for an internal async query.
-   * The fragments and states are not immediately intialized. They
-   * are instead initialized when the query is processed. This is
-   * because the thread that initializes is different from that that
-   * processes the query. The thread that processes the query must
-   * initialize the fragments in the case of write queries, so that
-   * the new fragment is named using the appropriate thread id.
-   *
-   * @param storage_manager The storage manager.
-   * @param array_schema The array schema.
-   * @param fragment_metadata The metadata of the involved fragments.
-   * @param type The query type.
-   * @param layout The cell layout.
-   * @param subarray The subarray the query is constrained on. A nuullptr
-   *     indicates the full domain.
-   * @param attributes_ids The ids of the attributes involved in the query.
-   * @param buffers The query buffers with a one-to-one correspondences with
-   *     the specified attributes. In a read query, the buffers will be
-   *     populated with the query results. In a write query, the buffer
-   *     contents will be appropriately written in a new fragment.
-   * @param buffer_sizes The corresponding buffer sizes.
-   * @param add_coords If *true*, the coordinates attribute will be added
-   *     to the provided *attribute_ids*. This is important for internal async
-   *     read queries on sparse arrays, where the user had not specified
-   *     the retrieval of the coordinates.
-   * @return Status
-   */
-  Status init(
-      StorageManager* storage_manager,
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      QueryType type,
-      Layout layoyt,
-      const void* subarray,
-      const std::vector<unsigned int>& attribute_ids,
-      void** buffers,
-      uint64_t* buffer_sizes,
-      bool add_coords = false);
+      uint64_t* buffer_sizes);
 
   /** Returns the lastly created fragment uri. */
   URI last_fragment_uri() const;
@@ -532,6 +492,21 @@ class Query {
    */
   template <class T>
   Status dense_read();
+
+  /**
+   * Writes in the global layout. Applicable to both dense and sparse
+   * arrays.
+   */
+  Status global_write();
+
+  /**
+   * Writes in the global layout. Applicable to both dense and sparse
+   * arrays.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status global_write();
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
@@ -658,17 +633,13 @@ class Query {
   /** Executes a write query. */
   Status write();
 
-  /**
-   * Executes a write query, but the query writes the cells in the global
-   * cell order, and also the cells are read from the input buffers,
-   * not the internal buffers.
-   */
-  Status write(void** buffers, uint64_t* buffer_sizes);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The state associated with global writes. */
+  std::unique_ptr<GlobalWriteState> global_write_state_;
 
   /** The names of the attributes involved in the query. */
   std::vector<std::string> attributes_;
@@ -697,29 +668,8 @@ class Query {
   /** The data input to the callback function. */
   void* callback_data_;
 
-  /**
-   * This is not *nullptr* in case of async write where the current query object
-   * continues to write/append to the *common_query_*'s new fragment.
-   */
-  Query* common_query_;
-
-  /**
-   * If non-empty, then this holds the name of the consolidation fragment to be
-   * created by this query. This also implies that the query type is WRITE.
-   */
-  URI consolidation_fragment_uri_;
-
   /** The query status. */
   QueryStatus status_;
-
-  /** The fragments involved in the query. */
-  std::vector<Fragment*> fragments_;
-
-  /** Indicates whether the fragments have been initialized. */
-  bool fragments_init_;
-
-  /** Indicates if the stored fragments belong to the query object or not. */
-  bool fragments_borrowed_;
 
   /** The metadata of the fragments involved in the query. */
   std::vector<FragmentMetadata*> fragment_metadata_;
@@ -810,10 +760,6 @@ class Query {
   /** Returns the empty fill value based on the input datatype. */
   const void* fill_value(Datatype type) const;
 
-  /** Initializes the fragments (for a read query). */
-  Status init_fragments(
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
   /**
    * Initializes the fragment dense cell range iterators. There is one vector
    * per tile overlapping with the query subarray, which stores one cell range
@@ -830,9 +776,6 @@ class Query {
       std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
           overlapping_tile_idx_coords);
 
-  /** Creates a new fragment (for a write query). */
-  Status new_fragment();
-
   /**
    * Returns a new fragment name, which is in the form: <br>
    * .__thread-id_timestamp. For instance,
@@ -846,14 +789,6 @@ class Query {
    *     error.
    */
   std::string new_fragment_name() const;
-
-  /**
-   * Opens the existing fragments.
-   *
-   * @param metadata The metadata of the array fragments.
-   * @return Status
-   */
-  Status open_fragments(const std::vector<FragmentMetadata*>& metadata);
 
   /** Sets the query attributes. */
   Status set_attributes(const char** attributes, unsigned int attribute_num);
@@ -903,6 +838,69 @@ class Query {
    */
   template <class T>
   Status sort_coords(std::vector<uint64_t>* cell_pos) const;
+
+  /** Initializes the global write state. */
+  Status init_global_write_state();
+
+  /** Finalizes the global write state. */
+  Status finalize_global_write_state();
+
+  /**
+   * Finalizes the global write state.
+   *
+   * @tparam T The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status finalize_global_write_state();
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * tiles, storing the last potentially non-full tile in
+   * `last_tiles_` as part of the state to be used in the next
+   * write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_tiles(
+      const std::string& attribute, std::vector<Tile>* tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * tiles, storing the last potentially non-full tile in
+   * `last_tiles_` as part of the state to be used in the next
+   * write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation. Applicable only to fixed-sized attributes.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_tiles_fixed(
+      const std::string& attribute, std::vector<Tile>* tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * tiles, storing the last potentially non-full tile in
+   * `last_tiles_` as part of the state to be used in the next
+   * write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation. Applicable only to var-sized attributes.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_tiles_var(
+      const std::string& attribute, std::vector<Tile>* tiles) const;
 
   /**
    * It prepares the tiles, copying from the user buffers into the tiles
@@ -1037,6 +1035,17 @@ class Query {
       Tile* tile_var) const;
 
   /**
+   * Applicable only to global writes. Writes the last tiles for each
+   * attribute remaining in the state, and records the metadata for
+   * the coordinates attribute (if present).
+   *
+   * @tparam T The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status global_write_handle_last_tile();
+
+  /**
    * Writes an empty cell range to the input tile.
    * Applicable to **fixed-sized** attributes.
    *
@@ -1067,6 +1076,12 @@ class Query {
    */
   Status create_fragment(
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
+
+  /** Returns `true` if the coordinates are included in the attributes. */
+  bool has_coords() const;
+
+  /** Closes all attribute files, flushing their state to storage. */
+  Status close_files(FragmentMetadata* meta) const;
 };
 
 }  // namespace sm

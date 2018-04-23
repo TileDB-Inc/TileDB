@@ -462,9 +462,6 @@ class StorageManager {
    * @param buffers The buffers that will hold the cells to write, or will
    *     hold the cells that will be read.
    * @param buffer_sizes The corresponding buffer sizes.
-   * @param consolidation_fragment_uri This is used only in write queries.
-   *     If it is different than empty, then it indicates that the query will
-   *     be writing into a consolidation fragment with the input name.
    * @return Status
    */
   Status query_init(
@@ -476,8 +473,7 @@ class StorageManager {
       const char** attributes,
       unsigned int attribute_num,
       void** buffers,
-      uint64_t* buffer_sizes,
-      const URI& consolidation_fragment_uri = URI(""));
+      uint64_t* buffer_sizes);
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);

@@ -79,6 +79,10 @@ Tile::Tile(
     , type_(type) {
 }
 
+Tile::Tile(const Tile& tile) {
+  *this = tile;
+}
+
 Tile::~Tile() {
   if (owns_buff_)
     delete buffer_;
@@ -169,7 +173,7 @@ void Tile::disown_buff() {
 }
 
 bool Tile::empty() const {
-  return buffer_->size() == 0;
+  return (buffer_ == nullptr) || (buffer_->size() == 0);
 }
 
 bool Tile::full() const {
@@ -189,6 +193,11 @@ Status Tile::read(void* buffer, uint64_t nbytes) {
   RETURN_NOT_OK(buffer_->read(buffer, nbytes));
 
   return Status::Ok();
+}
+
+void Tile::reset() {
+  reset_offset();
+  reset_size();
 }
 
 void Tile::reset_offset() {
@@ -294,6 +303,34 @@ void Tile::zip_coordinates() {
 
   // Clean up
   std::free((void*)tile_tmp);
+}
+
+Tile& Tile::operator=(const Tile& tile) {
+  if (owns_buff_) {
+    delete buffer_;
+    buffer_ = nullptr;
+  }
+
+  cell_size_ = tile.cell_size_;
+  compressor_ = tile.compressor_;
+  compression_level_ = tile.compression_level_;
+  dim_num_ = tile.dim_num_;
+  owns_buff_ = tile.owns_buff_;
+  type_ = tile.type_;
+
+  if (!tile.owns_buff_) {
+    buffer_ = tile.buffer_;
+  } else {
+    if (tile.buffer_ == nullptr)
+      buffer_ = nullptr;
+    else {
+      if (buffer_ == nullptr)
+        buffer_ = new Buffer();
+      *buffer_ = *tile.buffer_;
+    }
+  }
+
+  return *this;
 }
 
 /* ****************************** */

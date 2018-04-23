@@ -247,8 +247,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-    // Incorrect # of cells in subarray
-    REQUIRE_THROWS(query.finalize());
+    // Incorrect subarray for global order
+    REQUIRE_THROWS(query.submit());
+    query.finalize();
   }
 }
