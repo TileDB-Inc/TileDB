@@ -31,9 +31,9 @@
 ############################################################
 
 cmake_minimum_required(VERSION 3.3)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
-set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_SOURCE_DIR}/cmake/inputs")
+set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -87,7 +87,7 @@ endif()
 # it is for better CLion support of this superbuild architecture.
 if (TILEDB_CMAKE_IDE)
   set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
+  set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
 
 # Perform superbuild config and exit.

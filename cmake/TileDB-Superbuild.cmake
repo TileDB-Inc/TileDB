@@ -5,7 +5,7 @@ include (ExternalProject)
 ############################################################
 
 # Build paths for external projects
-set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
+set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
@@ -51,21 +51,21 @@ endif()
 # These includes modify the TILEDB_EXTERNAL_PROJECTS and FORWARD_EP_CMAKE_ARGS
 # variables.
 
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindBlosc_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindBzip2_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBlosc_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBzip2_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 
 if (TILEDB_S3)
   if (NOT WIN32)
     # AWS SDK uses builtin WinHTTP and BCrypt instead of these.
-    include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
-    include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
   endif()
-  include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
 endif()
 
 if (TILEDB_TBB)
@@ -93,7 +93,7 @@ ExternalProject_Add(tiledb
 
 add_custom_target(check
   COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tiledb
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 ############################################################
@@ -102,14 +102,14 @@ add_custom_target(check
 
 add_custom_target(examples
   COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tiledb
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 ############################################################
 # "make format" and "make check-format" targets
 ############################################################
 
-set(SCRIPTS_DIR "${CMAKE_SOURCE_DIR}/scripts")
+set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 
 find_package(ClangTools)
 if (${CLANG_FORMAT_FOUND})
@@ -134,19 +134,19 @@ endif()
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  set(TILEDB_C_API_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h")
-  file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
+  set(TILEDB_C_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h")
+  file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
   set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
-  add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/doxyfile.in
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMAND mkdir -p doxygen
-    COMMAND echo INPUT = ${CMAKE_SOURCE_DIR}/doc/mainpage.dox
-      ${TILEDB_API_HEADERS} > ${CMAKE_BINARY_DIR}/doxyfile.in
+    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/doc/mainpage.dox
+      ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMENT "Preparing for Doxygen documentation" VERBATIM
   )
   add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/Doxyfile.mk >
-      ${CMAKE_BINARY_DIR}/Doxyfile.log 2>&1
+    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.mk >
+      ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
     COMMENT "Generating API documentation with Doxygen" VERBATIM
-    DEPENDS ${CMAKE_BINARY_DIR}/doxyfile.in
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
   )
 endif(DOXYGEN_FOUND)
