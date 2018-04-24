@@ -372,8 +372,8 @@ class Query {
   /** Returns the array schema.*/
   const ArraySchema* array_schema() const;
 
-  /** Processes asynchronously the query. */
-  Status async_process();
+  /** Processes a query. */
+  Status process();
 
   /** Returns the list of ids of attributes involved in the query. */
   const std::vector<unsigned int>& attribute_ids() const;
@@ -481,78 +481,6 @@ class Query {
    */
   Status overflow(const char* attribute_name, unsigned int* overflow) const;
 
-  /** Perform a dense read */
-  Status dense_read();
-
-  /**
-   * Perform a dense read.
-   *
-   * @tparam The domain type.
-   * @return Status
-   */
-  template <class T>
-  Status dense_read();
-
-  /**
-   * Writes in the global layout. Applicable to both dense and sparse
-   * arrays.
-   */
-  Status global_write();
-
-  /**
-   * Writes in the global layout. Applicable to both dense and sparse
-   * arrays.
-   *
-   * @tparam T The domain type.
-   */
-  template <class T>
-  Status global_write();
-
-  /**
-   * Writes in an ordered layout (col- or row-major order). Applicable only
-   * to dense arrays.
-   */
-  Status ordered_write();
-
-  /**
-   * Writes in an ordered layout (col- or row-major order). Applicable only
-   * to dense arrays.
-   *
-   * @tparam T The domain type.
-   */
-  template <class T>
-  Status ordered_write();
-
-  /**
-   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
-   * Explicit coordinates must be provided for this write.
-   */
-  Status unordered_write();
-
-  /**
-   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
-   * Explicit coordinates must be provided for this write.
-   *
-   * @tparam T The domain type.
-   */
-  template <class T>
-  Status unordered_write();
-
-  /** Performs a read on a sparse array. */
-  Status sparse_read();
-
-  /**
-   * Performs a read on a sparse array.
-   *
-   * @tparam The domain type.
-   * @return Status
-   */
-  template <class T>
-  Status sparse_read();
-
-  /** Executes a read query. */
-  Status read();
-
   /** Sets the array schema. */
   void set_array_schema(const ArraySchema* array_schema);
 
@@ -600,9 +528,6 @@ class Query {
    */
   Status set_layout(Layout layout);
 
-  /** Sets the query status. */
-  void set_status(QueryStatus status);
-
   /** Sets the storage manager. */
   void set_storage_manager(StorageManager* storage_manager);
 
@@ -629,9 +554,6 @@ class Query {
 
   /** Returns the query type. */
   QueryType type() const;
-
-  /** Executes a write query. */
-  Status write();
 
  private:
   /* ********************************* */
@@ -1082,6 +1004,81 @@ class Query {
 
   /** Closes all attribute files, flushing their state to storage. */
   Status close_files(FragmentMetadata* meta) const;
+
+  /** Perform a dense read */
+  Status dense_read();
+
+  /**
+   * Perform a dense read.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status dense_read();
+
+  /**
+   * Writes in the global layout. Applicable to both dense and sparse
+   * arrays.
+   */
+  Status global_write();
+
+  /**
+   * Writes in the global layout. Applicable to both dense and sparse
+   * arrays.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status global_write();
+
+  /**
+   * Writes in an ordered layout (col- or row-major order). Applicable only
+   * to dense arrays.
+   */
+  Status ordered_write();
+
+  /**
+   * Writes in an ordered layout (col- or row-major order). Applicable only
+   * to dense arrays.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status ordered_write();
+
+  /**
+   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
+   * Explicit coordinates must be provided for this write.
+   */
+  Status unordered_write();
+
+  /**
+   * Writes in an unordered layout. Applicable to both dense and sparse arrays.
+   * Explicit coordinates must be provided for this write.
+   *
+   * @tparam T The domain type.
+   */
+  template <class T>
+  Status unordered_write();
+
+  /** Performs a read on a sparse array. */
+  Status sparse_read();
+
+  /**
+   * Performs a read on a sparse array.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status sparse_read();
+
+  /** Executes a read query. */
+  Status read();
+
+  /** Executes a write query. */
+  Status write();
 };
 
 }  // namespace sm

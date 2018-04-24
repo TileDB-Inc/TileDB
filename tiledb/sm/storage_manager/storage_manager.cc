@@ -54,8 +54,7 @@ namespace sm {
 
 StorageManager::StorageManager() {
   async_done_ = false;
-  async_thread_[0] = nullptr;
-  async_thread_[1] = nullptr;
+  async_thread_ = nullptr;
   consolidator_ = nullptr;
   array_schema_cache_ = nullptr;
   fragment_metadata_cache_ = nullptr;
@@ -65,8 +64,7 @@ StorageManager::StorageManager() {
 
 StorageManager::~StorageManager() {
   async_stop();
-  delete async_thread_[0];
-  delete async_thread_[1];
+  delete async_thread_;
   delete array_schema_cache_;
   delete consolidator_;
   delete fragment_metadata_cache_;
@@ -427,18 +425,15 @@ Status StorageManager::object_unlock(const URI& uri, LockType lock_type) {
   return st;
 }
 
-Status StorageManager::async_push_query(Query* query, int i) {
-  // Set the request status
-  query->set_status(QueryStatus::INPROGRESS);
-
+Status StorageManager::async_push_query(Query* query) {
   // Push request
   {
-    std::lock_guard<std::mutex> lock(async_mtx_[i]);
-    async_queue_[i].emplace(query);
+    std::lock_guard<std::mutex> lock(async_mtx_);
+    async_queue_.emplace(query);
   }
 
   // Signal AIO thread
-  async_cv_[i].notify_one();
+  async_cv_.notify_one();
 
   return Status::Ok();
 }
@@ -547,8 +542,7 @@ Status StorageManager::init(Config* config) {
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
-  async_thread_[0] = new std::thread(async_start, this, 0);
-  async_thread_[1] = new std::thread(async_start, this, 1);
+  async_thread_ = new std::thread(async_start, this);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
   return Status::Ok();
@@ -940,23 +934,22 @@ Status StorageManager::query_submit(Query* query) {
   if (query->status() != QueryStatus::INCOMPLETE)
     RETURN_NOT_OK(query->init());
 
-  // Based on the query type, invoke the appropriate call
-  QueryType query_type = query->type();
-  if (query_type == QueryType::READ)
-    return query->read();
-
-  return query->write();
+  // Process the query
+  return query->process();
 }
 
 Status StorageManager::query_submit_async(
     Query* query, std::function<void(void*)> callback, void* callback_data) {
+  // Do nothing if the query is completed
+  if (query->status() == QueryStatus::COMPLETED)
+    return Status::Ok();
+
   // Initialize query
-  if (query->status() != QueryStatus::INCOMPLETE)
-    RETURN_NOT_OK(query->init());
+  RETURN_NOT_OK(query->init());
 
   // Push the query into the async queue
   query->set_callback(callback, callback_data);
-  return async_push_query(query, 0);
+  return async_push_query(query);
 }
 
 Status StorageManager::read_from_cache(
@@ -1288,39 +1281,36 @@ Status StorageManager::array_open_error(OpenArray* open_array) {
 
 void StorageManager::async_process_query(Query* query) {
   // For easy reference
-  Status st = query->async_process();
+  Status st = query->process();
   if (!st.ok())
     LOG_STATUS(st);
 }
 
-void StorageManager::async_process_queries(int i) {
+void StorageManager::async_process_queries() {
   while (!async_done_) {
-    std::unique_lock<std::mutex> lock(async_mtx_[i]);
-    async_cv_[i].wait(
-        lock, [this, i] { return !async_queue_[i].empty() || async_done_; });
+    std::unique_lock<std::mutex> lock(async_mtx_);
+    async_cv_.wait(
+        lock, [this] { return !async_queue_.empty() || async_done_; });
     if (async_done_)
       break;
-    auto query = async_queue_[i].front();
-    async_queue_[i].pop();
+    auto query = async_queue_.front();
+    async_queue_.pop();
     lock.unlock();
     async_process_query(query);
   }
 }
 
-void StorageManager::async_start(StorageManager* storage_manager, int i) {
-  storage_manager->async_process_queries(i);
+void StorageManager::async_start(StorageManager* storage_manager) {
+  storage_manager->async_process_queries();
 }
 
 void StorageManager::async_stop() {
-  // Check if async was never started
-  if (async_thread_[0] == nullptr)
+  if (async_thread_ == nullptr)
     return;
 
   async_done_ = true;
-  async_cv_[0].notify_one();
-  async_cv_[1].notify_one();
-  async_thread_[0]->join();
-  async_thread_[1]->join();
+  async_cv_.notify_one();
+  async_thread_->join();
 }
 
 Status StorageManager::get_fragment_uris(
