@@ -24,6 +24,8 @@
 * Memory leaks with realloc in case of error
 * Handle non-existent config param in C++ API.
 * Fixed bugs with reads/writes of variable-sized attributes.
+* Fixed file locking issue with simultaneous queries.
+* Fixed S3 issues with simultaneous queries within the same context.
 
 ## API additions
 
