@@ -230,12 +230,9 @@ class StorageManager {
    * Pushes an async query to the queue.
    *
    * @param query The async query.
-   * @param i The index of the thread that executes the function. If it is
-   *    equal to 0, it means a user query, whereas if it is 1 it means an
-   *    internal query.
    * @return Status
    */
-  Status async_push_query(Query* query, int i);
+  Status async_push_query(Query* query);
 
   /** Returns the configuration parameters. */
   Config config() const;
@@ -584,32 +581,20 @@ class StorageManager {
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
 
-  /**
-   * Async condition variable. The first is for user async queries, the second
-   * for internal async queries.
-   * */
-  std::condition_variable async_cv_[2];
+  /** Async condition variable. */
+  std::condition_variable async_cv_;
 
   /** If true, the async thread will be eventually terminated. */
   bool async_done_;
 
-  /**
-   * Async query queue. The first is for user queries, the second for
-   * internal queries. The queries are processed in a FIFO manner.
-   */
-  std::queue<Query*> async_queue_[2];
+  /** Async query queue. The queries are processed in a FIFO manner. */
+  std::queue<Query*> async_queue_;
 
-  /**
-   * Async mutex. The first is for the user queries thread, the second for
-   * the internal queries thread.
-   */
-  std::mutex async_mtx_[2];
+  /** Async mutex. */
+  std::mutex async_mtx_;
 
-  /**
-   * Threads that handle all async queries. The first is for user queries,
-   * the second for internal queries.
-   */
-  std::thread* async_thread_[2];
+  /** Thread that handles all async queries. */
+  std::thread* async_thread_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
@@ -694,11 +679,8 @@ class StorageManager {
    *
    * @param storage_manager The storage manager object that handles the
    *     async query threads.
-   * @param i The index of the thread to execute the function. If it is
-   *     equal to 0, it means a user query, whereas if it is 1 it means an
-   *     internal query.
    */
-  static void async_start(StorageManager* storage_manager, int i = 0);
+  static void async_start(StorageManager* storage_manager);
 
   /** Stops listening to async queries. */
   void async_stop();
@@ -706,14 +688,8 @@ class StorageManager {
   /** Handles a single async query. */
   void async_process_query(Query* query);
 
-  /**
-   * Starts handling async queries.
-   *
-   * @param i The index of the thread that executes the function. If it is
-   * equal to 0, it means a user query, whereas if it is 1 it means an
-   * internal query.
-   */
-  void async_process_queries(int i);
+  /** Starts handling async queries. */
+  void async_process_queries();
 
   /** Retrieves all the fragment URI's of an array. */
   Status get_fragment_uris(

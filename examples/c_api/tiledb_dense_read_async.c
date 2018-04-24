@@ -103,7 +103,7 @@ int main() {
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
 
-  // Submit query wit callback
+  // Submit query with callback
   char s[100] = "Callback: Query completed";
   tiledb_query_submit_async(ctx, query, print_upon_completion, s);
 

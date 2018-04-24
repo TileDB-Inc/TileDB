@@ -84,21 +84,21 @@ const ArraySchema* Query::array_schema() const {
   return array_schema_;
 }
 
-Status Query::async_process() {
-  // TODO (sp)
+Status Query::process() {
+  status_ = QueryStatus::INPROGRESS;
 
-  Status st;
+  Status st = Status::Ok();
   if (type_ == QueryType::READ)
     st = read();
   else  // WRITE MODE
     st = write();
 
   if (st.ok()) {  // Success
-    set_status(QueryStatus::COMPLETED);
+    status_ = QueryStatus::COMPLETED;
     if (callback_ != nullptr)
       callback_(callback_data_);
   } else {  // Error
-    set_status(QueryStatus::FAILED);
+    status_ = QueryStatus::FAILED;
   }
 
   return st;
@@ -551,7 +551,6 @@ Status Query::dense_read() {
   for (const auto& attr : attributes_)
     RETURN_NOT_OK(copy_cells(attr, overlapping_cell_ranges));
 
-  status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
 
@@ -619,7 +618,6 @@ Status Query::sparse_read() {
   for (const auto& attr : attributes_)
     RETURN_NOT_OK(copy_cells(attr, cell_ranges));
 
-  status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
 
@@ -1226,11 +1224,8 @@ Status Query::read() {
   // Handle case of no fragments
   if (fragment_metadata_.empty()) {
     zero_out_buffer_sizes(buffer_sizes_);
-    status_ = QueryStatus::COMPLETED;
     return Status::Ok();
   }
-
-  status_ = QueryStatus::INPROGRESS;
 
   // Perform dense or sparse read
   if (array_schema_->dense())
@@ -1329,10 +1324,6 @@ Status Query::set_layout(Layout layout) {
   return Status::Ok();
 }
 
-void Query::set_status(QueryStatus status) {
-  status_ = status;
-}
-
 void Query::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
@@ -1381,9 +1372,6 @@ Status Query::write() {
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
-  // Set query status
-  status_ = QueryStatus::INPROGRESS;
-
   // Write based on mode
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(ordered_write());
@@ -1394,8 +1382,6 @@ Status Query::write() {
   } else {
     assert(false);
   }
-
-  status_ = QueryStatus::COMPLETED;
 
   return Status::Ok();
 }

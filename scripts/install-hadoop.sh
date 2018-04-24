@@ -25,16 +25,16 @@ function install_hadoop {
     sudo chown -R $(whoami) /usr/local/hadoop || die "could not create local hadoop directory"
   pushd /usr/local/hadoop
   # download from closest mirror
-  sudo curl -G -L -d "action=download" -d "filename=hadoop/common/hadoop-3.0.1/hadoop-3.0.1.tar.gz" \
-	  https://www.apache.org/dyn/mirrors/mirrors.cgi -o hadoop-3.0.1.tar.gz
+  sudo curl -G -L -d "action=download" -d "filename=hadoop/common/hadoop-3.0.2/hadoop-3.0.2.tar.gz" \
+	  https://www.apache.org/dyn/mirrors/mirrors.cgi -o hadoop-3.0.2.tar.gz
   if [ $? -ne 0 ]; then
     die "error downloading hadoop from apache mirror"
   fi;
-  sudo tar xzf hadoop-3.0.1.tar.gz || die "error extracting hadoop download"
-  if [ -d ./home/hadoop-3.0.1 ]; then
-     sudo rm -rf ./home/hadoop-3.0.1
+  sudo tar xzf hadoop-3.0.2.tar.gz || die "error extracting hadoop download"
+  if [ -d ./home/hadoop-3.0.2 ]; then
+     sudo rm -rf ./home/hadoop-3.0.2
   fi
-  sudo mv hadoop-3.0.1 home && sudo chown -R $(whoami) /usr/local/hadoop
+  sudo mv hadoop-3.0.2 home && sudo chown -R $(whoami) /usr/local/hadoop
   popd
 }
 
