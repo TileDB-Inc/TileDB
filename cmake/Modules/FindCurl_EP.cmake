@@ -72,17 +72,26 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     set(DEPENDS ep_openssl)
   endif()
 
+  set(TILEDB_CURL_LIBS "-ldl -lpthread")
+  configure_file(
+    "${TILEDB_CMAKE_INPUTS_DIR}/configure-curl.sh.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/configure-curl.sh"
+    @ONLY
+  )
+
   ExternalProject_Add(ep_curl
     PREFIX "externals"
     URL "https://curl.haxx.se/download/curl-7.59.0.zip"
     URL_HASH SHA1=4558ff1b78396c57cf176e03f702ae87378fd776
     CONFIGURE_COMMAND
+      ${CMAKE_CURRENT_BINARY_DIR}/configure-curl.sh
       ${TILEDB_EP_BASE}/src/ep_curl/configure
         --prefix=${TILEDB_EP_INSTALL_PREFIX}
         --enable-optimize
         --enable-shared=no
         --disable-ldap
         --with-pic=yes
+        --with-ssl=${TILEDB_EP_INSTALL_PREFIX}
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND $(MAKE)
     INSTALL_COMMAND $(MAKE) install

@@ -33,6 +33,8 @@
 cmake_minimum_required(VERSION 3.3)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_SOURCE_DIR}/cmake/inputs")
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
