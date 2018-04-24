@@ -65,45 +65,39 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Blosc
   REQUIRED_VARS BLOSC_LIBRARIES BLOSC_INCLUDE_DIR
 )
 
-if (NOT BLOSC_FOUND)
-  if (TILEDB_SUPERBUILD)
-    message(STATUS "Adding BLOSC as an external project")
-    ExternalProject_Add(ep_blosc
-      PREFIX "externals"
-      URL "https://github.com/Blosc/c-blosc/archive/v1.14.2.zip"
-      URL_HASH SHA1=15a2791d36da7d84ed10816db28ebf5028235543
-      CMAKE_ARGS
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_CXX_FLAGS=-fPIC
-        -DCMAKE_C_FLAGS=-fPIC
-      UPDATE_COMMAND ""
-      LOG_DOWNLOAD TRUE
-      LOG_CONFIGURE TRUE
-      LOG_BUILD TRUE
-      LOG_INSTALL TRUE
-    )
+if (NOT BLOSC_FOUND OR TILEDB_FORCE_ALL_DEPS)
+  message(STATUS "Adding BLOSC as an external project")
+  ExternalProject_Add(ep_blosc
+    PREFIX "externals"
+    URL "https://github.com/Blosc/c-blosc/archive/v1.14.2.zip"
+    URL_HASH SHA1=15a2791d36da7d84ed10816db28ebf5028235543
+    CMAKE_ARGS
+      -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+      -DCMAKE_CXX_FLAGS=-fPIC
+      -DCMAKE_C_FLAGS=-fPIC
+    UPDATE_COMMAND ""
+    LOG_DOWNLOAD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_BUILD TRUE
+    LOG_INSTALL TRUE
+  )
 
-    if (WIN32)
-      # blosc.{dll,lib} gets installed in lib dir; move it to bin.
-      ExternalProject_Add_Step(ep_blosc move_dll
-        DEPENDEES INSTALL
-        COMMAND
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/blosc.dll
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/blosc.dll &&
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/blosc.lib
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/blosc.lib
-      )
-    endif()
-
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_blosc)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_BLOSC=TRUE
+  if (WIN32)
+    # blosc.{dll,lib} gets installed in lib dir; move it to bin.
+    ExternalProject_Add_Step(ep_blosc move_dll
+      DEPENDEES INSTALL
+      COMMAND
+        ${CMAKE_COMMAND} -E rename
+          ${TILEDB_EP_INSTALL_PREFIX}/lib/blosc.dll
+          ${TILEDB_EP_INSTALL_PREFIX}/bin/blosc.dll &&
+        ${CMAKE_COMMAND} -E rename
+          ${TILEDB_EP_INSTALL_PREFIX}/lib/blosc.lib
+          ${TILEDB_EP_INSTALL_PREFIX}/bin/blosc.lib
     )
-  else()
-    message(FATAL_ERROR "Unable to find Blosc")
   endif()
+
+  list(APPEND TILEDB_EXTERNAL_PROJECTS ep_blosc)
+  SET(TILEDB_USE_STATIC_BLOSC TRUE CACHE INTERNAL "")
 endif()
 
 if (BLOSC_FOUND AND NOT TARGET Blosc::Blosc)

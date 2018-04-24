@@ -5,39 +5,10 @@ include (ExternalProject)
 ############################################################
 
 # Build paths for external projects
-set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
+set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
-# A variable that will hold the paths to all the dependencies that are built
-# during the superbuild. These paths are passed to the regular non-superbuild
-# build process as CMake arguments.
-set(FORWARD_EP_CMAKE_ARGS)
-
-# Variable that will hold a list of all the external projects added
-# as a part of the superbuild.
-set(TILEDB_EXTERNAL_PROJECTS)
-
-# Forward any additional CMake args to the non-superbuild.
-set(INHERITED_CMAKE_ARGS
-  -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
-  -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-  -DTILEDB_VERBOSE=${TILEDB_VERBOSE}
-  -DTILEDB_S3=${TILEDB_S3}
-  -DTILEDB_HDFS=${TILEDB_HDFS}
-  -DTILEDB_WERROR=${TILEDB_WERROR}
-  -DTILEDB_CPP_API=${TILEDB_CPP_API}
-  -DTILEDB_FORCE_ALL_DEPS=${TILEDB_FORCE_ALL_DEPS}
-  -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
-  -DSANITIZER=${SANITIZER}
-  -DTILEDB_EP_BASE=${TILEDB_EP_BASE}
-)
-
-if (WIN32)
-  list(APPEND INHERITED_CMAKE_ARGS
-    -DMSVC_MP_FLAG=${MSVC_MP_FLAG}
-  )
-endif()
 
 ############################################################
 # Set up external projects for dependencies
@@ -46,17 +17,6 @@ endif()
 if (TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Forcing superbuild to build all dependencies as ExternalProjects.")
 endif()
-
-# These includes modify the TILEDB_EXTERNAL_PROJECTS and FORWARD_EP_CMAKE_ARGS
-# variables.
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBlosc_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBzip2_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 
 if (TILEDB_S3)
   if (NOT WIN32)
@@ -70,35 +30,34 @@ endif()
 ############################################################
 # Set up the regular build (i.e. non-superbuild).
 ############################################################
-
-ExternalProject_Add(tiledb
-  SOURCE_DIR ${PROJECT_SOURCE_DIR}
-  CMAKE_ARGS
-    -DTILEDB_SUPERBUILD=OFF
-    ${INHERITED_CMAKE_ARGS}
-    ${FORWARD_EP_CMAKE_ARGS}
-  INSTALL_COMMAND ""
-  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/tiledb
-  DEPENDS ${TILEDB_EXTERNAL_PROJECTS}
-)
+#ExternalProject_Add(tiledb
+#  SOURCE_DIR ${PROJECT_SOURCE_DIR}
+#  CMAKE_ARGS
+#    -DTILEDB_SUPERBUILD=OFF
+#    ${INHERITED_CMAKE_ARGS}
+#    ${FORWARD_EP_CMAKE_ARGS}
+#  INSTALL_COMMAND ""
+#  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+#  DEPENDS ${TILEDB_EXTERNAL_PROJECTS}
+#)
 
 ############################################################
 # "make check" target
 ############################################################
 
-add_custom_target(check
-  COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tiledb
-)
+#add_custom_target(check
+#  COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
+#  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+#)
 
 ############################################################
 # "make examples" target
 ############################################################
 
-add_custom_target(examples
-  COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tiledb
-)
+#add_custom_target(examples
+#  COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
+#  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+#)
 
 ############################################################
 # "make format" and "make check-format" targets
@@ -132,16 +91,16 @@ if(DOXYGEN_FOUND)
   set(TILEDB_C_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h")
   file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
   set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
-  add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/doxyfile.in
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMAND mkdir -p doxygen
     COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/doc/mainpage.dox
-      ${TILEDB_API_HEADERS} > ${CMAKE_BINARY_DIR}/doxyfile.in
+      ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMENT "Preparing for Doxygen documentation" VERBATIM
   )
   add_custom_target(doc
     ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.mk >
-      ${CMAKE_BINARY_DIR}/Doxyfile.log 2>&1
+      ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
     COMMENT "Generating API documentation with Doxygen" VERBATIM
-    DEPENDS ${CMAKE_BINARY_DIR}/doxyfile.in
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
   )
 endif(DOXYGEN_FOUND)

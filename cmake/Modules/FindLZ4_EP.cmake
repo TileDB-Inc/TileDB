@@ -67,63 +67,59 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(LZ4
   REQUIRED_VARS LZ4_LIBRARIES LZ4_INCLUDE_DIR
 )
 
-if (NOT LZ4_FOUND)
-  if (TILEDB_SUPERBUILD)
-    message(STATUS "Adding LZ4 as an external project")
-    if (WIN32)
-      ExternalProject_Add(ep_lz4
-        PREFIX "externals"
-        URL "https://github.com/lz4/lz4/releases/download/v1.8.1.2/lz4_v1_8_1_win64.zip"
-        URL_HASH SHA1=c0f50f59f4cf4ff861d9dffc64c735032e7778f9
-        CONFIGURE_COMMAND ""
-        BUILD_IN_SOURCE TRUE
-        BUILD_COMMAND ""
-        INSTALL_COMMAND
-          ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/bin &&
-          ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/lib &&
-          ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/include &&
-          ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.def
-            ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.lib
-            ${TILEDB_EP_INSTALL_PREFIX}/bin &&
-          ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.so.1.8.1.dll
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/liblz4.dll &&
-          ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_BASE}/src/ep_lz4/static/liblz4_static.lib
-            ${TILEDB_EP_INSTALL_PREFIX}/lib &&
-          ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4.h
-            ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4frame.h
-            ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4hc.h
-            ${TILEDB_EP_INSTALL_PREFIX}/include
-        UPDATE_COMMAND ""
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-      )
-    else()
-      ExternalProject_Add(ep_lz4
-        PREFIX "externals"
-        URL "https://github.com/lz4/lz4/archive/v1.8.1.2.zip"
-        URL_HASH SHA1=6d89d448f976188b44abcdb9083cac4ebcfbb46c
-        CONFIGURE_COMMAND ""
-        BUILD_IN_SOURCE TRUE
-        INSTALL_COMMAND $(MAKE) PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
-        UPDATE_COMMAND ""
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-        LOG_INSTALL TRUE
-      )
-    endif()
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_LZ4=TRUE
+if (NOT LZ4_FOUND OR TILEDB_FORCE_ALL_DEPS)
+  message(STATUS "Adding LZ4 as an external project")
+  if (WIN32)
+    ExternalProject_Add(ep_lz4
+      PREFIX "externals"
+      URL "https://github.com/lz4/lz4/releases/download/v1.8.1.2/lz4_v1_8_1_win64.zip"
+      URL_HASH SHA1=c0f50f59f4cf4ff861d9dffc64c735032e7778f9
+      CONFIGURE_COMMAND ""
+      BUILD_IN_SOURCE TRUE
+      BUILD_COMMAND ""
+      INSTALL_COMMAND
+        ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/bin &&
+        ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/lib &&
+        ${CMAKE_COMMAND} -E make_directory ${TILEDB_EP_INSTALL_PREFIX}/include &&
+        ${CMAKE_COMMAND} -E copy_if_different
+          ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.def
+          ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.lib
+          ${TILEDB_EP_INSTALL_PREFIX}/bin &&
+        ${CMAKE_COMMAND} -E copy_if_different
+          ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.so.1.8.1.dll
+          ${TILEDB_EP_INSTALL_PREFIX}/bin/liblz4.dll &&
+        ${CMAKE_COMMAND} -E copy_if_different
+          ${TILEDB_EP_BASE}/src/ep_lz4/static/liblz4_static.lib
+          ${TILEDB_EP_INSTALL_PREFIX}/lib &&
+        ${CMAKE_COMMAND} -E copy_if_different
+          ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4.h
+          ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4frame.h
+          ${TILEDB_EP_BASE}/src/ep_lz4/include/lz4hc.h
+          ${TILEDB_EP_INSTALL_PREFIX}/include
+      UPDATE_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
     )
   else()
-    message(FATAL_ERROR "Unable to find LZ4")
+    ExternalProject_Add(ep_lz4
+      PREFIX "externals"
+      URL "https://github.com/lz4/lz4/archive/v1.8.1.2.zip"
+      URL_HASH SHA1=6d89d448f976188b44abcdb9083cac4ebcfbb46c
+      CONFIGURE_COMMAND ""
+      BUILD_IN_SOURCE TRUE
+      INSTALL_COMMAND $(MAKE) PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
+      UPDATE_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+    )
   endif()
+  list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
+  list(APPEND FORWARD_EP_CMAKE_ARGS
+    -DTILEDB_USE_STATIC_LZ4=TRUE
+  )
 endif()
 
 if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)

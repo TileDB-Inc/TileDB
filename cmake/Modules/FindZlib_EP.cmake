@@ -63,25 +63,21 @@ if (NOT ZLIB_FOUND)
 endif()
 
 # If not found, add it as an external project
-if (NOT ZLIB_FOUND)
-  if (TILEDB_SUPERBUILD)
-    message(STATUS "Adding Zlib as an external project")
-    ExternalProject_Add(ep_zlib
-      PREFIX "externals"
-      URL "http://prdownloads.sourceforge.net/libpng/zlib1211.zip?download"
-      URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
-      DOWNLOAD_NAME "zlib1211.zip"
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-      UPDATE_COMMAND ""
-      LOG_DOWNLOAD TRUE
-      LOG_CONFIGURE TRUE
-      LOG_BUILD TRUE
-      LOG_INSTALL TRUE
-    )
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zlib)
-  else()
-    message(FATAL_ERROR "Unable to find Zlib")
-  endif()
+if (NOT ZLIB_FOUND OR TILEDB_FORCE_ALL_DEPS)
+  message(STATUS "Adding Zlib as an external project")
+  ExternalProject_Add(ep_zlib
+    PREFIX "externals"
+    URL "http://prdownloads.sourceforge.net/libpng/zlib1211.zip?download"
+    URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
+    DOWNLOAD_NAME "zlib1211.zip"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+    UPDATE_COMMAND ""
+    LOG_DOWNLOAD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_BUILD TRUE
+    LOG_INSTALL TRUE
+  )
+  list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zlib)
 endif()
 
 if (ZLIB_FOUND AND NOT TARGET Zlib::Zlib)

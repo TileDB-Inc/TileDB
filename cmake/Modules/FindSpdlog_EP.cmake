@@ -44,7 +44,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Spdlog
   REQUIRED_VARS SPDLOG_INCLUDE_DIR
 )
 
-if (NOT SPDLOG_FOUND AND TILEDB_SUPERBUILD)
+if (NOT SPDLOG_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Adding Spdlog as an external project")
   ExternalProject_Add(ep_spdlog
     PREFIX "externals"

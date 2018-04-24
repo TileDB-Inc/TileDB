@@ -61,7 +61,7 @@ if (NOT CURL_FOUND)
   )
 endif()
 
-if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
+if (NOT CURL_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Adding Curl as an external project")
 
   if (WIN32)

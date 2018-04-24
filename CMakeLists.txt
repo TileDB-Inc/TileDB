@@ -81,26 +81,32 @@ else()
   set(TILEDB_DEPS_NO_DEFAULT_PATH)
 endif()
 
+# Variable that will hold a list of all the external projects added
+# as a part of the superbuild.
+set(TILEDB_EXTERNAL_PROJECTS CACHE INTERNAL "")
+
 # If this is an in-IDE build, we need to disable the superbuild and explicitly
 # set the EP base dir. The normal 'cmake && make' process won't need this step,
 # it is for better CLion support of this superbuild architecture.
 if (TILEDB_CMAKE_IDE)
   set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
+  set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
 
 # Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-  message(STATUS "Starting TileDB superbuild.")
+#if (TILEDB_SUPERBUILD)
+#  project(TileDB-Superbuild)
+#  message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
   # Stop processing this file here.
-  return()
-endif()
+#    set(TILEDB_SUPERBUILD OFF)
+ #return()
+#endif()
 
 project(TileDB)
-message(STATUS "Starting TileDB regular build.")
+
+#message(STATUS "Starting TileDB regular build.")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")

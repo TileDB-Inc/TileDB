@@ -45,7 +45,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Catch
   REQUIRED_VARS CATCH_INCLUDE_DIR
 )
 
-if (NOT CATCH_FOUND AND TILEDB_SUPERBUILD)
+if (NOT CATCH_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Adding Catch as an external project")
   ExternalProject_Add(ep_catch
     PREFIX "externals"
