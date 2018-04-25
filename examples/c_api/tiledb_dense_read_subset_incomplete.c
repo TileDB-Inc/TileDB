@@ -108,7 +108,7 @@ int main() {
       printf("%d\n", buffer_a1[i]);
 
     // Get status
-    tiledb_query_get_attribute_status(ctx, query, "a1", &status);
+    tiledb_query_get_status(ctx, query, &status);
   } while (status == TILEDB_INCOMPLETE);
 
   // Finalize query

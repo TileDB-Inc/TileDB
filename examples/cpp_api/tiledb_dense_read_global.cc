@@ -78,9 +78,6 @@ int main() {
 
   // Submit query
   std::cout << "\nQuery submitted: " << query.submit();
-  std::cout << "\n\ta1: " << query.attribute_status("a1")
-            << "\n\ta2: " << query.attribute_status("a2")
-            << "\n\ta3: " << query.attribute_status("a3");
 
   // Finalize query
   query.finalize();

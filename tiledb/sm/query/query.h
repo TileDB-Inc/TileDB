@@ -58,6 +58,35 @@ class Query {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  struct AttributeBuffer {
+    /**
+     * The attribute buffer. In case the attribute is var-sized, this is
+     * the offsets buffer.
+     */
+    void* buffer_;
+    /**
+     * For a var-sized attribute, this is the data buffer. It is `nullptr`
+     * for fixed-sized attributes.
+     */
+    void* buffer_var_;
+    /** The size (in bytes) of `buffer_`. */
+    uint64_t* buffer_size_;
+    /** The size (in bytes) of `buffer_var_`. */
+    uint64_t* buffer_var_size_;
+
+    /** Constructor. */
+    AttributeBuffer(
+        void* buffer,
+        void* buffer_var,
+        uint64_t* buffer_size,
+        uint64_t* buffer_var_size)
+        : buffer_(buffer)
+        , buffer_var_(buffer_var)
+        , buffer_size_(buffer_size)
+        , buffer_var_size_(buffer_var_size) {
+    }
+  };
+
   struct GlobalWriteState {
     /**
      * Stores the last tile of each attribute for each write operation.
@@ -71,7 +100,7 @@ class Query {
      * Stores the number of cells written for each attribute across the
      * write operations.
      */
-    std::unordered_map<std::string, uint64_t> cell_written_;
+    std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata. */
     std::shared_ptr<FragmentMetadata> frag_meta_;
@@ -234,12 +263,12 @@ class Query {
    * Retrieves the tiles on a particular attribute from all input fragments
    * based on the tile info in `tiles`.
    *
-   * @param attr_name The attribute name.
+   * @param attribute The attribute name.
    * @param tiles The retrieved tiles will be stored in `tiles`.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attr_name, OverlappingTileVec* tiles) const;
+      const std::string& attribute, OverlappingTileVec* tiles) const;
 
   /**
    * Computes the overlapping coordinates for a given subarray.
@@ -375,21 +404,6 @@ class Query {
   /** Processes a query. */
   Status process();
 
-  /** Returns the list of ids of attributes involved in the query. */
-  const std::vector<unsigned int>& attribute_ids() const;
-
-  /** Retrieves the index of the buffer corresponding to the input attribute. */
-  Status buffer_idx(const std::string& attribute, unsigned* bid) const;
-
-  /**
-   * Retrieves the index of the coordinates buffer in the specified query
-   * buffers.
-   *
-   * @param coords_buffer_i The index of the coordinates buffer to be retrieved.
-   * @return Status
-   */
-  Status coords_buffer_i(int* coords_buffer_i) const;
-
   /**
    * Computes a vector of `subarrays` into which `subarray` must be partitioned,
    * such that each subarray in `subarrays` can be saferly answered by the
@@ -407,9 +421,6 @@ class Query {
    */
   Status finalize();
 
-  /** Returns the metadata of the fragments involved in the query. */
-  const std::vector<FragmentMetadata*>& fragment_metadata() const;
-
   /** Returns a vector with the fragment URIs. */
   std::vector<URI> fragment_uris() const;
 
@@ -422,64 +433,11 @@ class Query {
    */
   Status init();
 
-  /**
-   * Initializes the query.
-   *
-   * @param storage_manager The storage manager.
-   * @param array_schema The array schema.
-   * @param fragment_metadata The metadata of the involved fragments.
-   * @param type The query type.
-   * @param layout The cell layout.
-   * @param subarray The subarray the query is constrained on. A nuullptr
-   *     indicates the full domain.
-   * @param attributes The names of the attributes involved in the query.
-   * @param attribute_num The number of attributes.
-   * @param buffers The query buffers with a one-to-one correspondences with
-   *     the specified attributes. In a read query, the buffers will be
-   *     populated with the query results. In a write query, the buffer
-   *     contents will be appropriately written in a new fragment.
-   * @param buffer_sizes The corresponding buffer sizes.
-   * @return Status
-   */
-  Status init(
-      StorageManager* storage_manager,
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      QueryType type,
-      Layout layout,
-      const void* subarray,
-      const char** attributes,
-      unsigned int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes);
-
   /** Returns the lastly created fragment uri. */
   URI last_fragment_uri() const;
 
   /** Returns the cell layout. */
   Layout layout() const;
-
-  /**
-   * Returns true if the query cannot write to some buffer due to
-   * an overflow.
-   */
-  bool overflow() const;
-
-  /**
-   * Checks if a particular query buffer (corresponding to some attribute)
-   * led to an overflow based on an attribute id.
-   */
-  bool overflow(unsigned int attribute_id) const;
-
-  /**
-   * Checks if a particular query buffer (corresponding to some attribute)
-   * led to an overflow based on an attribute name.
-   *
-   * @param attribute_name The attribute whose overflow to retrieve.
-   * @param overflow The overflow status to be retieved.
-   * @return Status (error is attribute is not involved in the query).
-   */
-  Status overflow(const char* attribute_name, unsigned int* overflow) const;
 
   /** Sets the array schema. */
   void set_array_schema(const ArraySchema* array_schema);
@@ -569,20 +527,8 @@ class Query {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  /** The ids of the attributes involved in the query. */
-  std::vector<unsigned int> attribute_ids_;
-
-  /**
-   * The query buffers (one per involved attribute, two per variable-sized
-   * attribute.
-   */
-  void** buffers_;
-
-  /** The corresponding buffer sizes. */
-  uint64_t* buffer_sizes_;
-
-  /** Number of buffers. */
-  unsigned buffer_num_;
+  /** Maps attribute names to their buffers. */
+  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
 
   /** A function that will be called upon the completion of an async query. */
   std::function<void(void*)> callback_;
@@ -614,9 +560,6 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /** Adds the coordinates attribute if it does not exist. */
-  void add_coords();
 
   /** Checks if attributes has been appropriately set for a query. */
   Status check_attributes();
@@ -715,14 +658,8 @@ class Query {
   /** Sets the query attributes. */
   Status set_attributes(const char** attributes, unsigned int attribute_num);
 
-  /**
-   * Sets the input buffer sizes to zero. The function assumes that the buffer
-   * sizes correspond to the attribute buffers specified upon query creation.
-   */
-  void zero_out_buffer_sizes(uint64_t* buffer_sizes) const;
-
-  /** Memsets all set buffers to zero. Used only in read queries. */
-  void zero_out_buffers();
+  /** Sets the buffer sizes to zero. */
+  void zero_out_buffer_sizes();
 
   /**
    * Initializes dense cell range iterators for the subarray to be writte,
@@ -914,14 +851,16 @@ class Query {
   /**
    * Initializes the tiles for writing for the input attribute.
    *
-   * @param attribute_id The id of the attribute the tiles belong to.
+   * @param attribute The attribute the tiles belong to.
    * @param tile_num The number of tiles.
    * @param tiles The tiles to be initialized. Note that the vector
    *     has been already preallocated.
    * @return Status
    */
   Status init_tiles(
-      unsigned attribute_id, uint64_t tile_num, std::vector<Tile>* tiles) const;
+      const std::string& attribute,
+      uint64_t tile_num,
+      std::vector<Tile>* tiles) const;
 
   /**
    * Writes the input cell range to the input tile, for a particular
@@ -1079,6 +1018,66 @@ class Query {
 
   /** Executes a write query. */
   Status write();
+
+  /**
+   * Initializes a fixed-sized tile.
+   *
+   * @param attribute The attribute the tile belongs to.
+   * @param tile The tile to be initialized.
+   * @return Status
+   */
+  Status init_tile(const std::string& attribute, Tile* tile) const;
+
+  /**
+   * Initializes a var-sized tile.
+   *
+   * @param attribute The attribute the tile belongs to.
+   * @param tile The offsets tile to be initialized.
+   * @param tile_var The var-sized data tile to be initialized.
+   * @return Status
+   */
+  Status init_tile(
+      const std::string& attribute, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Handles the coordinates that fall between `start` and `end`.
+   * This function will either skip the coordinates if they belong to an
+   * older fragment than that of the current dense cell range, or include them
+   * as results and split the dense cell range.
+   *
+   * @tparam T The domain type
+   * @param cur_tile The current tile.
+   * @param cur_tile_coords The current tile coordinates.
+   * @param start The start of the dense cell range.
+   * @param end The end of the dense cell range.
+   * @param coords_size The coordintes size.
+   * @param coords The list of coordinates.
+   * @param coords_it The iterator pointing at the current coordinates.
+   * @param coords_tile The tile where the current coordinates belong to.
+   * @param coords_pos The position of the current coordinates in their tile.
+   * @param coords_fidx The fragment index of the current coordinates.
+   * @param coords_tile_coords The global tile coordinates of the tile the
+   *     current cell coordinates belong to
+   * @param overlapping_cell_ranges The result cell ranges (to be updated
+   *     by inserting a dense cell range for a coordinate result, or by
+   *     splitting the current dense cell range).
+   * @return Status
+   */
+  template <class T>
+  Status handle_coords_in_dense_cell_range(
+      const std::shared_ptr<OverlappingTile>& cur_tile,
+      const T* cur_tile_coords,
+      uint64_t* start,
+      uint64_t end,
+      uint64_t coords_size,
+      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+      typename std::list<std::shared_ptr<OverlappingCoords<T>>>::const_iterator*
+          coords_it,
+      std::shared_ptr<OverlappingTile>* coords_tile,
+      uint64_t* coords_pos,
+      unsigned* coords_fidx,
+      std::vector<T>* coords_tile_coords,
+      OverlappingCellRangeList* overlapping_cell_ranges) const;
 };
 
 }  // namespace sm

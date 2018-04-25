@@ -125,9 +125,6 @@ class TILEDB_EXPORT Query {
   /** Returns the query status. */
   Status query_status() const;
 
-  /** Returns the query status for a particular attribute. */
-  Status attribute_status(const std::string& attr) const;
-
   /** Submits the query. Call will block until query is complete. */
   Status submit();
 
