@@ -50,15 +50,27 @@ namespace sm {
  */
 class ThreadPool {
  public:
-  /**
-   * Constructor.
-   *
-   * @param num_threads Number of threads to create (default 1).
-   */
-  explicit ThreadPool(uint64_t num_threads = 1);
+  /** Constructor. */
+  ThreadPool();
 
   /** Destructor. */
   ~ThreadPool();
+
+  /**
+   * Initialize the thread pool.
+   *
+   * @param num_threads Number of threads to create (default 1).
+   * @return Status
+   */
+  Status init(uint64_t num_threads = 1);
+
+  /**
+   * Cancel all queued tasks, causing them to return error statuses.
+   * This does not terminate the threads. Cancelled tasks are guaranteed not to
+   * begin execution of their tasks, as currently running tasks are not able to
+   * be cancelled (only queued tasks).
+   */
+  void cancel_all_tasks();
 
   /**
    * Enqueue a new task to be executed by a thread.
@@ -67,6 +79,20 @@ class ThreadPool {
    * @return Future for the return value of the task.
    */
   std::future<Status> enqueue(const std::function<Status()>& function);
+
+  /**
+   * Enqueue a new task to be executed by a thread with a custom callback
+   * made if the task is cancelled before it can execute.
+   *
+   * Note: the on_cancel callback is made from a thread in the pool.
+   *
+   * @param function Task function to execute.
+   * @param on_cancel Cancellation callback function to make on cancel.
+   * @return Future for the return value of the task.
+   */
+  std::future<Status> enqueue(
+      const std::function<Status()>& function,
+      const std::function<void()>& on_cancel);
 
   /** Return the number of threads in this pool. */
   uint64_t num_threads() const;
@@ -79,16 +105,30 @@ class ThreadPool {
    */
   bool wait_all(std::vector<std::future<Status>>& tasks);
 
+  /**
+   * Wait on all the given tasks to complete, return a vector of their return
+   * Status.
+   *
+   * @param tasks Task list to wait on
+   * @return Vector of each task's Status.
+   */
+  std::vector<Status> wait_all_status(std::vector<std::future<Status>>& tasks);
+
  private:
   std::mutex queue_mutex_;
 
   std::condition_variable queue_cv_;
 
+  bool should_cancel_;
+
   bool should_terminate_;
 
-  std::queue<std::packaged_task<Status()>> task_queue_;
+  std::queue<std::packaged_task<Status(bool)>> task_queue_;
 
   std::vector<std::thread> threads_;
+
+  /** Terminate the threads in the thread pool. */
+  void terminate();
 
   static void worker(ThreadPool& pool);
 };

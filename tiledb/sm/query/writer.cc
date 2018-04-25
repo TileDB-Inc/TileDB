@@ -34,17 +34,11 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
 #include <sstream>
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -594,7 +588,7 @@ template <class T>
 Status Writer::global_write() {
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_)
-    RETURN_NOT_OK(init_global_write_state());
+    RETURN_CANCEL_OR_ERROR(init_global_write_state());
   auto frag_meta = global_write_state_->frag_meta_.get();
   auto uri = frag_meta->fragment_uri();
 
@@ -602,19 +596,14 @@ Status Writer::global_write() {
   auto st = Status::Ok();
   for (const auto& attr : attributes_) {
     std::vector<Tile> full_tiles;
-    st = prepare_full_tiles(attr, &full_tiles);
-    if (!st.ok())
-      break;
+    BREAK_CANCEL_OR_ERROR(st, prepare_full_tiles(attr, &full_tiles));
 
     if (attr == constants::coords) {
-      st = compute_coords_metadata<T>(full_tiles, frag_meta);
-      if (!st.ok())
-        break;
+      BREAK_CANCEL_OR_ERROR(
+          st, compute_coords_metadata<T>(full_tiles, frag_meta));
     }
 
-    st = write_tiles(attr, frag_meta, full_tiles);
-    if (!st.ok())
-      break;
+    BREAK_CANCEL_OR_ERROR(st, write_tiles(attr, frag_meta, full_tiles));
   }
 
   if (!st.ok()) {
@@ -847,12 +836,12 @@ template <class T>
 Status Writer::ordered_write() {
   // Create new fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
-  RETURN_NOT_OK(create_fragment(true, &frag_meta));
+  RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
   // Initialize dense cell range iterators for each tile in global order
   std::vector<DenseCellRangeIter<T>> dense_cell_range_its;
-  RETURN_NOT_OK_ELSE(
+  RETURN_CANCEL_OR_ERROR_ELSE(
       init_tile_dense_cell_range_iters<T>(&dense_cell_range_its),
       storage_manager_->vfs()->remove_dir(uri));
   auto tile_num = dense_cell_range_its.size();
@@ -863,7 +852,7 @@ Status Writer::ordered_write() {
   std::vector<WriteCellRangeVec> write_cell_ranges;
   write_cell_ranges.resize(tile_num);
   for (size_t i = 0; i < tile_num; ++i)
-    RETURN_NOT_OK_ELSE(
+    RETURN_CANCEL_OR_ERROR_ELSE(
         compute_write_cell_ranges<T>(
             &dense_cell_range_its[i], &write_cell_ranges[i]),
         storage_manager_->vfs()->remove_dir(uri));
@@ -872,16 +861,16 @@ Status Writer::ordered_write() {
   // Prepare tiles for all attributes and write
   for (const auto& attr : attributes_) {
     std::vector<Tile> tiles;
-    RETURN_NOT_OK_ELSE(
+    RETURN_CANCEL_OR_ERROR_ELSE(
         prepare_tiles(attr, write_cell_ranges, &tiles),
         storage_manager_->vfs()->remove_dir(uri));
-    RETURN_NOT_OK_ELSE(
+    RETURN_CANCEL_OR_ERROR_ELSE(
         write_tiles(attr, frag_meta.get(), tiles),
         storage_manager_->vfs()->remove_dir(uri));
   }
 
   // Write the fragment metadata
-  RETURN_NOT_OK_ELSE(
+  RETURN_CANCEL_OR_ERROR_ELSE(
       storage_manager_->store_fragment_metadata(frag_meta.get()),
       storage_manager_->vfs()->remove_dir(uri));
 
@@ -1308,30 +1297,30 @@ template <class T>
 Status Writer::unordered_write() {
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;
-  RETURN_NOT_OK(sort_coords<T>(&cell_pos));
+  RETURN_CANCEL_OR_ERROR(sort_coords<T>(&cell_pos));
 
   // Create new fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
-  RETURN_NOT_OK(create_fragment(false, &frag_meta));
+  RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
   // Prepare tiles for all attributes and write
   for (const auto& attr : attributes_) {
     std::vector<Tile> tiles;
-    RETURN_NOT_OK_ELSE(
+    RETURN_CANCEL_OR_ERROR_ELSE(
         prepare_tiles(attr, cell_pos, &tiles),
         storage_manager_->vfs()->remove_dir(uri));
     if (attr == constants::coords)
-      RETURN_NOT_OK_ELSE(
+      RETURN_CANCEL_OR_ERROR_ELSE(
           compute_coords_metadata<T>(tiles, frag_meta.get()),
           storage_manager_->vfs()->remove_dir(uri));
-    RETURN_NOT_OK_ELSE(
+    RETURN_CANCEL_OR_ERROR_ELSE(
         write_tiles(attr, frag_meta.get(), tiles),
         storage_manager_->vfs()->remove_dir(uri));
   }
 
   // Write the fragment metadata
-  RETURN_NOT_OK_ELSE(
+  RETURN_CANCEL_OR_ERROR_ELSE(
       storage_manager_->store_fragment_metadata(frag_meta.get()),
       storage_manager_->vfs()->remove_dir(uri));
 

@@ -208,6 +208,12 @@ const uint64_t array_schema_cache_size = 10000000;
 /** The fragment metadata cache size. */
 const uint64_t fragment_metadata_cache_size = 10000000;
 
+/** Whether or not the signal handlers are installed. */
+const bool enable_signal_handlers = true;
+
+/** The number of threads allocated per StorageManager. */
+const uint64_t number_of_threads = std::thread::hardware_concurrency();
+
 /** The tile cache size. */
 const uint64_t tile_cache_size = 10000000;
 
@@ -417,6 +423,9 @@ const char* hdfs_username = "";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const char* special_name_prefix = "__";
+
+/** Number of milliseconds between watchdog thread wakeups. */
+const unsigned watchdog_thread_sleep_ms = 1000;
 
 }  // namespace constants
 

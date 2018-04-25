@@ -36,31 +36,71 @@
 namespace tiledb {
 namespace sm {
 
-ThreadPool::ThreadPool(uint64_t num_threads) {
+ThreadPool::ThreadPool() {
+  should_cancel_ = false;
   should_terminate_ = false;
-  for (uint64_t i = 0; i < num_threads; i++) {
-    threads_.emplace_back([this]() { worker(*this); });
-  }
 }
 
 ThreadPool::~ThreadPool() {
+  terminate();
+}
+
+Status ThreadPool::init(uint64_t num_threads) {
+  Status st = Status::Ok();
+
+  for (uint64_t i = 0; i < num_threads; i++) {
+    try {
+      threads_.emplace_back([this]() { worker(*this); });
+    } catch (const std::exception& e) {
+      st = Status::Error(
+          "Error allocating thread pool of " + std::to_string(num_threads) +
+          " threads; " + e.what());
+      LOG_STATUS(st);
+      break;
+    }
+  }
+
+  // Join any created threads on error.
+  if (!st.ok()) {
+    terminate();
+  }
+
+  return st;
+}
+
+void ThreadPool::cancel_all_tasks() {
+  // Notify workers to dequeue and cancel all tasks.
   {
     std::unique_lock<std::mutex> lck(queue_mutex_);
-    if (!task_queue_.empty()) {
-      LOG_ERROR("Destroying ThreadPool with outstanding tasks.");
-    }
-    should_terminate_ = true;
+    should_cancel_ = true;
     queue_cv_.notify_all();
   }
 
-  for (auto& t : threads_) {
-    t.join();
+  // Wait for the queue to empty and reset the flag.
+  {
+    std::unique_lock<std::mutex> lck(queue_mutex_);
+    queue_cv_.wait(lck, [this]() { return task_queue_.empty(); });
+    should_cancel_ = false;
   }
 }
 
 std::future<Status> ThreadPool::enqueue(
     const std::function<Status()>& function) {
-  std::packaged_task<Status()> task(function);
+  return enqueue(function, []() {});
+}
+
+std::future<Status> ThreadPool::enqueue(
+    const std::function<Status()>& function,
+    const std::function<void()>& on_cancel) {
+  std::packaged_task<Status(bool)> task(
+      [function, on_cancel](bool should_cancel) {
+        if (should_cancel) {
+          on_cancel();
+          return Status::Error("Task cancelled before execution.");
+        } else {
+          return function();
+        }
+      });
   auto future = task.get_future();
 
   {
@@ -78,39 +118,81 @@ uint64_t ThreadPool::num_threads() const {
 
 bool ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
   bool all_ok = true;
-  for (auto& future : tasks) {
-    if (!future.valid()) {
-      LOG_ERROR("Waiting on invalid future.");
-      all_ok = false;
-    } else {
-      Status status = future.get();
-      all_ok &= status.ok();
-      if (!status.ok()) {
-        LOG_STATUS(status);
-      }
-    }
+  auto statuses = wait_all_status(tasks);
+  for (auto& st : statuses) {
+    all_ok &= st.ok();
   }
   return all_ok;
 }
 
+std::vector<Status> ThreadPool::wait_all_status(
+    std::vector<std::future<Status>>& tasks) {
+  std::vector<Status> statuses;
+  for (auto& future : tasks) {
+    if (!future.valid()) {
+      LOG_ERROR("Waiting on invalid future.");
+      statuses.push_back(Status::Error("Invalid future"));
+    } else {
+      Status status = future.get();
+      if (!status.ok()) {
+        LOG_STATUS(status);
+      }
+      statuses.push_back(status);
+    }
+  }
+  return statuses;
+}
+
+void ThreadPool::terminate() {
+  {
+    std::unique_lock<std::mutex> lck(queue_mutex_);
+    if (!task_queue_.empty()) {
+      LOG_ERROR("Destroying ThreadPool with outstanding tasks.");
+    }
+    should_terminate_ = true;
+    queue_cv_.notify_all();
+  }
+
+  for (auto& t : threads_) {
+    t.join();
+  }
+
+  threads_.clear();
+}
+
 void ThreadPool::worker(ThreadPool& pool) {
   while (true) {
-    std::packaged_task<Status()> task;
+    std::packaged_task<Status(bool)> task;
+    bool should_cancel = false;
+
     {
+      // Wait until there's work to do or a message is received.
       std::unique_lock<std::mutex> lck(pool.queue_mutex_);
       pool.queue_cv_.wait(lck, [&pool]() {
-        return pool.should_terminate_ || !pool.task_queue_.empty();
+        return pool.should_terminate_ || pool.should_cancel_ ||
+               !pool.task_queue_.empty();
       });
 
       if (pool.should_terminate_) {
         break;
-      } else {
+      } else if (!pool.task_queue_.empty()) {
         task = std::move(pool.task_queue_.front());
         pool.task_queue_.pop();
       }
+
+      // Keep waking up threads until the cancel flag is reset. This also wakes
+      // up the thread that will reset the cancel flag when appropriate.
+      if (pool.should_cancel_) {
+        pool.queue_cv_.notify_all();
+      }
+
+      // Save the cancellation flag.
+      should_cancel = pool.should_cancel_;
     }
 
-    task();
+    if (task.valid()) {
+      task(should_cancel);
+    }
   }
 }
 

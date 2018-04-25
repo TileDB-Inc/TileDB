@@ -196,6 +196,12 @@ extern const uint64_t array_schema_cache_size;
 /** The fragment metadata cache size. */
 extern const uint64_t fragment_metadata_cache_size;
 
+/** Whether or not the signal handlers are installed. */
+extern const bool enable_signal_handlers;
+
+/** The number of threads allocated per StorageManager. */
+extern const uint64_t number_of_threads;
+
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
@@ -404,6 +410,9 @@ extern const char* hdfs_username;
 
 /** Prefix indicating a special name reserved by TileDB. */
 extern const char* special_name_prefix;
+
+/** Number of milliseconds between watchdog thread wakeups. */
+extern const unsigned watchdog_thread_sleep_ms;
 
 }  // namespace constants
 

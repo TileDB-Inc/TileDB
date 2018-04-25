@@ -34,15 +34,9 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -894,24 +888,24 @@ Status Reader::dense_read() {
 
   // Get overlapping sparse tile indexes
   OverlappingTileVec sparse_tiles;
-  RETURN_NOT_OK(compute_overlapping_tiles<T>(&sparse_tiles));
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&sparse_tiles));
 
   // Read sparse tiles
-  RETURN_NOT_OK(read_tiles(constants::coords, &sparse_tiles));
+  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, &sparse_tiles));
   for (const auto& attr : attributes_) {
     if (attr != constants::coords)
-      RETURN_NOT_OK(read_tiles(attr, &sparse_tiles));
+      RETURN_CANCEL_OR_ERROR(read_tiles(attr, &sparse_tiles));
   }
 
   // Compute the read coordinates for all sparse fragments
   std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
-  RETURN_NOT_OK(compute_overlapping_coords<T>(sparse_tiles, &coords));
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(sparse_tiles, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
   if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
-    RETURN_NOT_OK(sort_coords<T>(&coords));
-    RETURN_NOT_OK(dedup_coords<T>(&coords));
+    RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
+    RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
   }
 
   // For each tile, initialize a dense cell range iterator per
@@ -919,17 +913,17 @@ Status Reader::dense_read() {
   std::vector<std::vector<DenseCellRangeIter<T>>> dense_frag_its;
   std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>
       overlapping_tile_idx_coords;
-  RETURN_NOT_OK(init_tile_fragment_dense_cell_range_iters(
+  RETURN_CANCEL_OR_ERROR(init_tile_fragment_dense_cell_range_iters(
       &dense_frag_its, &overlapping_tile_idx_coords));
 
   // Get the cell ranges
   std::list<DenseCellRange<T>> dense_cell_ranges;
   DenseCellRangeIter<T> it(domain, subarray, layout_);
-  RETURN_NOT_OK(it.begin());
+  RETURN_CANCEL_OR_ERROR(it.begin());
   while (!it.end()) {
     auto o_it = overlapping_tile_idx_coords.find(it.tile_idx());
     assert(o_it != overlapping_tile_idx_coords.end());
-    RETURN_NOT_OK(compute_dense_cell_ranges<T>(
+    RETURN_CANCEL_OR_ERROR(compute_dense_cell_ranges<T>(
         &(o_it->second.second)[0],
         dense_frag_its[o_it->second.first],
         it.range_start(),
@@ -941,7 +935,7 @@ Status Reader::dense_read() {
   // Compute overlapping dense tile indexes
   OverlappingTileVec dense_tiles;
   OverlappingCellRangeList overlapping_cell_ranges;
-  RETURN_NOT_OK(compute_dense_overlapping_tiles_and_cell_ranges<T>(
+  RETURN_CANCEL_OR_ERROR(compute_dense_overlapping_tiles_and_cell_ranges<T>(
       dense_cell_ranges, coords, &dense_tiles, &overlapping_cell_ranges));
   coords.clear();
   dense_cell_ranges.clear();
@@ -949,11 +943,11 @@ Status Reader::dense_read() {
 
   // Read dense tiles
   for (const auto& attr : attributes_)
-    RETURN_NOT_OK(read_tiles(attr, &dense_tiles));
+    RETURN_CANCEL_OR_ERROR(read_tiles(attr, &dense_tiles));
 
   // Copy cells
   for (const auto& attr : attributes_)
-    RETURN_NOT_OK(copy_cells(attr, overlapping_cell_ranges));
+    RETURN_CANCEL_OR_ERROR(copy_cells(attr, overlapping_cell_ranges));
 
   return Status::Ok();
 }
@@ -1325,34 +1319,34 @@ template <class T>
 Status Reader::sparse_read() {
   // Get overlapping tile indexes
   OverlappingTileVec tiles;
-  RETURN_NOT_OK(compute_overlapping_tiles<T>(&tiles));
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&tiles));
 
   // Read tiles
-  RETURN_NOT_OK(read_tiles(constants::coords, &tiles));
+  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, &tiles));
   for (const auto& attr : attributes_) {
     if (attr != constants::coords)
-      RETURN_NOT_OK(read_tiles(attr, &tiles));
+      RETURN_CANCEL_OR_ERROR(read_tiles(attr, &tiles));
   }
 
   // Compute the read coordinates for all fragments
   std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
-  RETURN_NOT_OK(compute_overlapping_coords<T>(tiles, &coords));
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(tiles, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
   if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
-    RETURN_NOT_OK(sort_coords<T>(&coords));
-    RETURN_NOT_OK(dedup_coords<T>(&coords));
+    RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
+    RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
   }
 
   // Compute the maximal cell ranges
   OverlappingCellRangeList cell_ranges;
-  RETURN_NOT_OK(compute_cell_ranges(coords, &cell_ranges));
+  RETURN_CANCEL_OR_ERROR(compute_cell_ranges(coords, &cell_ranges));
   coords.clear();
 
   // Copy cells
   for (const auto& attr : attributes_)
-    RETURN_NOT_OK(copy_cells(attr, cell_ranges));
+    RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
 
   return Status::Ok();
 }

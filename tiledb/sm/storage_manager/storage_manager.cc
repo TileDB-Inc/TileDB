@@ -35,6 +35,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -54,18 +55,19 @@ namespace sm {
 /* ****************************** */
 
 StorageManager::StorageManager() {
-  async_done_ = false;
-  async_thread_ = nullptr;
   consolidator_ = nullptr;
   array_schema_cache_ = nullptr;
   fragment_metadata_cache_ = nullptr;
   tile_cache_ = nullptr;
   vfs_ = nullptr;
+  cancellation_in_progress_ = false;
+  queries_in_progress_ = 0;
 }
 
 StorageManager::~StorageManager() {
-  async_stop();
-  delete async_thread_;
+  global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
+  cancel_all_tasks();
+
   delete array_schema_cache_;
   delete consolidator_;
   delete fragment_metadata_cache_;
@@ -400,16 +402,57 @@ Status StorageManager::object_unlock(const URI& uri, LockType lock_type) {
 }
 
 Status StorageManager::async_push_query(Query* query) {
-  // Push request
-  {
-    std::lock_guard<std::mutex> lock(async_mtx_);
-    async_queue_.emplace(query);
-  }
-
-  // Signal AIO thread
-  async_cv_.notify_one();
+  thread_pool_->enqueue(
+      [this, query]() {
+        // Process query.
+        increment_in_progress();
+        Status st = query->process();
+        decrement_in_progress();
+        if (!st.ok())
+          LOG_STATUS(st);
+        return st;
+      },
+      [query]() {
+        // Task was cancelled. This is safe to perform in a separate thread,
+        // as we are guaranteed by the thread pool not to have entered
+        // query->process() yet.
+        query->cancel();
+      });
 
   return Status::Ok();
+}
+
+Status StorageManager::cancel_all_tasks() {
+  // Check if there is already a "cancellation" in progress.
+  bool handle_cancel = false;
+  {
+    std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
+    if (!cancellation_in_progress_) {
+      cancellation_in_progress_ = true;
+      handle_cancel = true;
+    }
+  }
+
+  // Handle the cancellation.
+  if (handle_cancel) {
+    // Cancel any queued tasks.
+    thread_pool_->cancel_all_tasks();
+    vfs_->cancel_all_tasks();
+
+    // Wait for in-progress queries to finish.
+    wait_for_zero_in_progress();
+
+    // Reset the cancellation flag.
+    std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
+    cancellation_in_progress_ = false;
+  }
+
+  return Status::Ok();
+}
+
+bool StorageManager::cancellation_in_progress() {
+  std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
+  return cancellation_in_progress_;
 }
 
 Config StorageManager::config() const {
@@ -422,6 +465,12 @@ Status StorageManager::create_dir(const URI& uri) {
 
 Status StorageManager::touch(const URI& uri) {
   return vfs_->touch(uri);
+}
+
+void StorageManager::decrement_in_progress() {
+  std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
+  queries_in_progress_--;
+  queries_in_progress_cv_.notify_all();
 }
 
 Status StorageManager::delete_fragment(const URI& uri) const {
@@ -515,11 +564,23 @@ Status StorageManager::init(Config* config) {
   array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
+  thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
+  RETURN_NOT_OK(thread_pool_->init(sm_params.number_of_threads_));
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
-  async_thread_ = new std::thread(async_start, this);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
+
+  auto& global_state = global_state::GlobalState::GetGlobalState();
+  RETURN_NOT_OK(global_state.initialize(config));
+  global_state.register_storage_manager(this);
+
   return Status::Ok();
+}
+
+void StorageManager::increment_in_progress() {
+  std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
+  queries_in_progress_++;
+  queries_in_progress_cv_.notify_all();
 }
 
 Status StorageManager::is_array(const URI& uri, bool* is_array) const {
@@ -920,7 +981,10 @@ Status StorageManager::query_submit(Query* query) {
     RETURN_NOT_OK(query->init());
 
   // Process the query
-  return query->process();
+  increment_in_progress();
+  auto st = query->process();
+  decrement_in_progress();
+  return st;
 }
 
 Status StorageManager::query_submit_async(
@@ -1050,6 +1114,12 @@ Status StorageManager::sync(const URI& uri) {
 
 VFS* StorageManager::vfs() const {
   return vfs_;
+}
+
+void StorageManager::wait_for_zero_in_progress() {
+  std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
+  queries_in_progress_cv_.wait(
+      lck, [this]() { return queries_in_progress_ == 0; });
 }
 
 Status StorageManager::write_to_cache(
@@ -1252,40 +1322,6 @@ Status StorageManager::array_open(
 Status StorageManager::array_open_error(OpenArray* open_array) {
   open_array->mtx_unlock();
   return array_close(open_array->array_uri());
-}
-
-void StorageManager::async_process_query(Query* query) {
-  // For easy reference
-  Status st = query->process();
-  if (!st.ok())
-    LOG_STATUS(st);
-}
-
-void StorageManager::async_process_queries() {
-  while (!async_done_) {
-    std::unique_lock<std::mutex> lock(async_mtx_);
-    async_cv_.wait(
-        lock, [this] { return !async_queue_.empty() || async_done_; });
-    if (async_done_)
-      break;
-    auto query = async_queue_.front();
-    async_queue_.pop();
-    lock.unlock();
-    async_process_query(query);
-  }
-}
-
-void StorageManager::async_start(StorageManager* storage_manager) {
-  storage_manager->async_process_queries();
-}
-
-void StorageManager::async_stop() {
-  if (async_thread_ == nullptr)
-    return;
-
-  async_done_ = true;
-  async_cv_.notify_one();
-  async_thread_->join();
 }
 
 Status StorageManager::get_fragment_uris(

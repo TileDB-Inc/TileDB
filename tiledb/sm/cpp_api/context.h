@@ -120,6 +120,13 @@ class TILEDB_EXPORT Context {
     return ret != 0;
   }
 
+  /**
+   * Cancels all background or async tasks associated with this context.
+   */
+  void cancel_tasks() const {
+    handle_error(tiledb_ctx_cancel_tasks(ctx_.get()));
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

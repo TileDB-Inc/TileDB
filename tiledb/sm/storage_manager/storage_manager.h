@@ -49,6 +49,7 @@
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/config.h"
@@ -203,6 +204,12 @@ class StorageManager {
    */
   Status async_push_query(Query* query);
 
+  /** Cancels all background tasks. */
+  Status cancel_all_tasks();
+
+  /** Returns true while all tasks are being cancelled. */
+  bool cancellation_in_progress();
+
   /** Returns the configuration parameters. */
   Config config() const;
 
@@ -224,10 +231,7 @@ class StorageManager {
   Status group_create(const std::string& group);
 
   /**
-   * Initializes the storage manager. It spawns two threads. The first is for
-   * handling user asynchronous queries (submitted via the *query_submit_async*
-   * function). The second handles internal asynchronous queries as part of some
-   * either sync or async query.
+   * Initializes the storage manager.
    *
    * @param config The configuration parameters.
    * @return Status
@@ -553,23 +557,14 @@ class StorageManager {
   /** An array schema cache. */
   LRUCache* array_schema_cache_;
 
+  /** Set to true when tasks are being cancelled. */
+  bool cancellation_in_progress_;
+
+  /** Mutex protecting cancellation_in_progress_. */
+  std::mutex cancellation_in_progress_mtx_;
+
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
-
-  /** Async condition variable. */
-  std::condition_variable async_cv_;
-
-  /** If true, the async thread will be eventually terminated. */
-  bool async_done_;
-
-  /** Async query queue. The queries are processed in a FIFO manner. */
-  std::queue<Query*> async_queue_;
-
-  /** Async mutex. */
-  std::mutex async_mtx_;
-
-  /** Thread that handles all async queries. */
-  std::thread* async_thread_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
@@ -597,6 +592,18 @@ class StorageManager {
    * initialized via *query_init* for a particular array.
    */
   std::map<std::string, OpenArray*> open_arrays_;
+
+  /** Count of the number of queries currently in progress. */
+  uint64_t queries_in_progress_;
+
+  /** Guards queries_in_progress_ counter. */
+  std::mutex queries_in_progress_mtx_;
+
+  /** Guards queries_in_progress_ counter. */
+  std::condition_variable queries_in_progress_cv_;
+
+  /** The storage manager's thread pool. */
+  std::unique_ptr<ThreadPool> thread_pool_;
 
   /** A tile cache. */
   LRUCache* tile_cache_;
@@ -649,26 +656,15 @@ class StorageManager {
    */
   Status array_open_error(OpenArray* open_array);
 
-  /**
-   * Starts listening to async queries.
-   *
-   * @param storage_manager The storage manager object that handles the
-   *     async query threads.
-   */
-  static void async_start(StorageManager* storage_manager);
-
-  /** Stops listening to async queries. */
-  void async_stop();
-
-  /** Handles a single async query. */
-  void async_process_query(Query* query);
-
-  /** Starts handling async queries. */
-  void async_process_queries();
+  /** Decrement the count of in-progress queries. */
+  void decrement_in_progress();
 
   /** Retrieves all the fragment URI's of an array. */
   Status get_fragment_uris(
       const URI& array_uri, std::vector<URI>* fragment_uris) const;
+
+  /** Increment the count of in-progress queries. */
+  void increment_in_progress();
 
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
@@ -709,6 +705,9 @@ class StorageManager {
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
+
+  /** Block until there are zero in-progress queries. */
+  void wait_for_zero_in_progress();
 };
 
 }  // namespace sm

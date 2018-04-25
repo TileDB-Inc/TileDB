@@ -90,6 +90,7 @@ struct DenseArrayFx {
   void check_invalid_cell_num_in_dense_writes(const std::string& path);
   void check_sparse_writes(const std::string& path);
   void check_simultaneous_writes(const std::string& path);
+  void check_cancel_and_retry_writes(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
 
   /**
@@ -226,6 +227,18 @@ struct DenseArrayFx {
    * @param buffer_sizes The buffer sizes to be dispatched to the write command.
    */
   void write_dense_subarray_2D(
+      const std::string& array_name,
+      int64_t* subarray,
+      tiledb_query_type_t query_type,
+      tiledb_layout_t query_layout,
+      int* buffer,
+      uint64_t* buffer_sizes);
+
+  /**
+   * Writes a 2D dense subarray by cancelling and re-issuing the query several
+   * times.
+   */
+  void write_dense_subarray_2D_with_cancel(
       const std::string& array_name,
       int64_t* subarray,
       tiledb_query_type_t query_type,
@@ -672,6 +685,69 @@ void DenseArrayFx::write_dense_subarray_2D(
   REQUIRE(rc == TILEDB_OK);
 }
 
+void DenseArrayFx::write_dense_subarray_2D_with_cancel(
+    const std::string& array_name,
+    int64_t* subarray,
+    tiledb_query_type_t query_type,
+    tiledb_layout_t query_layout,
+    int* buffer,
+    uint64_t* buffer_sizes) {
+  // Attribute to focus on and buffers
+  const char* attributes[] = {ATTR_NAME};
+  void* buffers[] = {buffer};
+  const unsigned num_writes = 10;
+
+  // Create query
+  tiledb_query_t* query;
+  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), query_type);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 1, buffers, buffer_sizes);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, query_layout);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit the same query several times, some may be duplicates, some may
+  // be cancelled, it doesn't matter since it's all the same data being written.
+  // TODO: this doesn't trigger the cancelled path very often.
+  for (unsigned i = 0; i < num_writes; i++) {
+    rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
+    REQUIRE(rc == TILEDB_OK);
+    // Cancel it immediately.
+    if (i < num_writes - 1) {
+      rc = tiledb_ctx_cancel_tasks(ctx_);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
+    tiledb_query_status_t status;
+    do {
+      rc = tiledb_query_get_status(ctx_, query, &status);
+      CHECK(rc == TILEDB_OK);
+    } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
+    CHECK((status == TILEDB_COMPLETED || status == TILEDB_FAILED));
+
+    // If it failed, run it again.
+    if (status == TILEDB_FAILED) {
+      rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
+      CHECK(rc == TILEDB_OK);
+      do {
+        rc = tiledb_query_get_status(ctx_, query, &status);
+        CHECK(rc == TILEDB_OK);
+      } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
+    }
+    REQUIRE(status == TILEDB_COMPLETED);
+  }
+
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Free/finalize query
+  rc = tiledb_query_free(ctx_, &query);
+  REQUIRE(rc == TILEDB_OK);
+}
+
 void DenseArrayFx::check_sorted_reads(const std::string& path) {
   // Parameters used in this test
   int64_t domain_size_0 = 5000;
@@ -1083,6 +1159,84 @@ void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
   }
 }
 
+void DenseArrayFx::check_cancel_and_retry_writes(const std::string& path) {
+  // Parameters used in this test
+  int64_t domain_size_0 = 100;
+  int64_t domain_size_1 = 100;
+  int64_t tile_extent_0 = 10;
+  int64_t tile_extent_1 = 10;
+  int64_t domain_0_lo = 0;
+  int64_t domain_0_hi = domain_size_0 - 1;
+  int64_t domain_1_lo = 0;
+  int64_t domain_1_hi = domain_size_1 - 1;
+  uint64_t capacity = 1000;
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  std::string array_name = path + "cancel_and_retry_writes_array";
+
+  // Create a dense integer array
+  create_dense_array_2D(
+      array_name,
+      tile_extent_0,
+      tile_extent_1,
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      capacity,
+      cell_order,
+      tile_order);
+
+  int64_t subarray[] = {domain_0_lo,
+                        domain_0_lo + tile_extent_0 - 1,
+                        domain_1_lo,
+                        domain_1_lo + tile_extent_1 - 1};
+  uint64_t buffer_sizes[] = {tile_extent_0 * tile_extent_1 * sizeof(int)};
+  auto buffer = new int[buffer_sizes[0] / sizeof(int)];
+
+  // Prepare buffer
+  int64_t subarray_length[2] = {subarray[1] - subarray[0] + 1,
+                                subarray[3] - subarray[2] + 1};
+  int64_t cell_num_in_subarray = subarray_length[0] * subarray_length[1];
+  int64_t index = 0;
+  for (int64_t r = 0; r < subarray_length[0]; ++r)
+    for (int64_t c = 0; c < subarray_length[1]; ++c)
+      buffer[index++] = -(std::rand() % 999999);
+
+  write_dense_subarray_2D_with_cancel(
+      array_name,
+      subarray,
+      TILEDB_WRITE,
+      TILEDB_ROW_MAJOR,
+      buffer,
+      buffer_sizes);
+
+  // Read back the same subarray
+  int* read_buffer = read_dense_array_2D(
+      array_name,
+      subarray[0],
+      subarray[1],
+      subarray[2],
+      subarray[3],
+      TILEDB_READ,
+      TILEDB_ROW_MAJOR);
+  REQUIRE(read_buffer != NULL);
+
+  // Check the two buffers
+  bool allok = true;
+  for (index = 0; index < cell_num_in_subarray; ++index) {
+    if (buffer[index] != read_buffer[index]) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Clean up
+  delete[] buffer;
+  delete[] read_buffer;
+}
+
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -1186,5 +1340,22 @@ TEST_CASE_METHOD(
   }
   create_temp_dir(temp_dir);
   check_simultaneous_writes(temp_dir);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, cancel and retry writes",
+    "[capi], [dense], [async], [cancel]") {
+  std::string temp_dir;
+  if (supports_s3_) {
+    temp_dir = S3_TEMP_DIR;
+  } else if (supports_hdfs_) {
+    temp_dir = HDFS_TEMP_DIR;
+  } else {
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  }
+  create_temp_dir(temp_dir);
+  check_cancel_and_retry_writes(temp_dir);
   remove_temp_dir(temp_dir);
 }

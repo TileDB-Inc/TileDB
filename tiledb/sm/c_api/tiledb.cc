@@ -728,6 +728,16 @@ int tiledb_ctx_is_supported_fs(
   return TILEDB_OK;
 }
 
+int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, ctx->storage_manager_->cancel_all_tasks()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              GROUP             */
 /* ****************************** */

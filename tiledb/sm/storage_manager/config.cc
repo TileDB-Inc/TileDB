@@ -158,6 +158,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_array_schema_cache_size(value));
   } else if (param == "sm.fragment_metadata_cache_size") {
     RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(value));
+  } else if (param == "sm.enable_signal_handlers") {
+    RETURN_NOT_OK(set_sm_enable_signal_handlers(value));
+  } else if (param == "sm.number_of_threads") {
+    RETURN_NOT_OK(set_sm_number_of_threads(value));
   } else if (param == "vfs.max_parallel_ops") {
     RETURN_NOT_OK(set_vfs_max_parallel_ops(value));
   } else if (param == "vfs.min_parallel_size") {
@@ -232,6 +236,16 @@ Status Config::unset(const std::string& param) {
         constants::fragment_metadata_cache_size;
     value << sm_params_.fragment_metadata_cache_size_;
     param_values_["sm.fragment_metadata_cache_size"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.enable_signal_handlers") {
+    sm_params_.enable_signal_handlers_ = constants::enable_signal_handlers;
+    value << (sm_params_.enable_signal_handlers_ ? "true" : "false");
+    param_values_["sm.enable_signal_handlers"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.number_of_threads") {
+    sm_params_.number_of_threads_ = constants::number_of_threads;
+    value << sm_params_.number_of_threads_;
+    param_values_["sm.number_of_threads"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.max_parallel_ops") {
     vfs_params_.max_parallel_ops_ = constants::vfs_max_parallel_ops;
@@ -335,6 +349,14 @@ void Config::set_default_param_values() {
   param_values_["sm.fragment_metadata_cache_size"] = value.str();
   value.str(std::string());
 
+  value << (sm_params_.enable_signal_handlers_ ? "true" : "false");
+  param_values_["sm.enable_signal_handlers"] = value.str();
+  value.str(std::string());
+
+  value << sm_params_.number_of_threads_;
+  param_values_["sm.number_of_threads"] = value.str();
+  value.str(std::string());
+
   value << vfs_params_.max_parallel_ops_;
   param_values_["vfs.max_parallel_ops"] = value.str();
   value.str(std::string());
@@ -418,6 +440,22 @@ Status Config::set_sm_fragment_metadata_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.fragment_metadata_cache_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_enable_signal_handlers(const std::string& value) {
+  bool v;
+  RETURN_NOT_OK(parse_bool(value, &v));
+  sm_params_.enable_signal_handlers_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_number_of_threads(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.number_of_threads_ = v;
 
   return Status::Ok();
 }
