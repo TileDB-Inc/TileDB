@@ -32,6 +32,7 @@
  */
 
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 
 #include "tiledb/sm/misc/logger.h"
@@ -90,35 +91,29 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
 
-  // Zero out all buffer sizes
-  unsigned buffer_num;
-  RETURN_NOT_OK_ELSE(
-      array_schema->buffer_num(attributes, attribute_num, &buffer_num),
-      array_close(uri));
-  for (unsigned i = 0; i < buffer_num; ++i)
-    buffer_sizes[i] = 0;
-
-  // Return if there are no metadata
-  if (metadata.empty())
-    return Status::Ok();
-
   // Compute buffer sizes
-  std::vector<std::string> attributes_vec;
-  std::vector<unsigned> attribute_ids;
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      buffer_sizes_tmp;
   for (unsigned i = 0; i < attribute_num; ++i)
-    attributes_vec.emplace_back(attributes[i]);
-  RETURN_NOT_OK_ELSE(
-      array_schema->get_attribute_ids(attributes_vec, attribute_ids),
-      array_close(uri));
+    buffer_sizes_tmp[attributes[i]] = std::pair<uint64_t, uint64_t>(0, 0);
   RETURN_NOT_OK_ELSE(
       array_compute_max_read_buffer_sizes(
-          array_schema,
-          metadata,
-          subarray,
-          attribute_ids,
-          buffer_sizes,
-          buffer_num),
+          array_schema, metadata, subarray, &buffer_sizes_tmp),
       array_close(uri));
+
+  // Copy to input buffer sizes
+  unsigned bid = 0;
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    auto it = buffer_sizes_tmp.find(attributes[i]);
+    if (!array_schema->var_size(attributes[i])) {
+      buffer_sizes[bid] = it->second.first;
+      ++bid;
+    } else {
+      buffer_sizes[bid] = it->second.first;
+      buffer_sizes[bid + 1] = it->second.second;
+      bid += 2;
+    }
+  }
 
   // Close array
   return array_close(uri);
@@ -128,12 +123,11 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     const void* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    uint64_t* buffer_sizes,
-    unsigned buffer_num) {
-  // Zero out buffer sizes
-  for (unsigned i = 0; i < buffer_num; ++i)
-    buffer_sizes[i] = 0;
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) {
+  // Return if there are no metadata
+  if (fragment_metadata.empty())
+    return Status::Ok();
 
   // Compute buffer sizes
   switch (array_schema->coords_type()) {
@@ -142,81 +136,61 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
           array_schema,
           fragment_metadata,
           static_cast<const int*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::INT64:
       return array_compute_max_read_buffer_sizes<int64_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int64_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::FLOAT32:
       return array_compute_max_read_buffer_sizes<float>(
           array_schema,
           fragment_metadata,
           static_cast<const float*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::FLOAT64:
       return array_compute_max_read_buffer_sizes<double>(
           array_schema,
           fragment_metadata,
           static_cast<const double*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::INT8:
       return array_compute_max_read_buffer_sizes<int8_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int8_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::UINT8:
       return array_compute_max_read_buffer_sizes<uint8_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint8_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::INT16:
       return array_compute_max_read_buffer_sizes<int16_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int16_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::UINT16:
       return array_compute_max_read_buffer_sizes<uint16_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint16_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::UINT32:
       return array_compute_max_read_buffer_sizes<uint32_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint32_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     case Datatype::UINT64:
       return array_compute_max_read_buffer_sizes<uint64_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint64_t*>(subarray),
-          attribute_ids,
-          buffer_sizes,
-          buffer_num);
+          buffer_sizes);
     default:
       return LOG_STATUS(Status::StorageManagerError(
           "Cannot compute max read buffer sizes; Invalid coordinates type"));
@@ -915,18 +889,17 @@ Status StorageManager::query_init(
   RETURN_NOT_OK(
       array_open(URI(array_name), type, &array_schema, &fragment_metadata));
 
-  // Initialize query
-  return query->init(
-      this,
-      array_schema,
-      fragment_metadata,
-      type,
-      layout,
-      subarray,
-      attributes,
-      attribute_num,
-      buffers,
-      buffer_sizes);
+  // Set basic query members
+  query->set_array_schema(array_schema);
+  query->set_storage_manager(this);
+  query->set_type(type);
+  query->set_layout(layout);
+  query->set_fragment_metadata(fragment_metadata);
+  RETURN_NOT_OK(query->set_subarray(subarray));
+  RETURN_NOT_OK(
+      query->set_buffers(attributes, attribute_num, buffers, buffer_sizes));
+
+  return Status::Ok();
 }
 
 Status StorageManager::query_submit(Query* query) {
@@ -1152,37 +1125,27 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
     const T* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    uint64_t* buffer_sizes,
-    unsigned buffer_num) {
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) {
   // Sanity check
   assert(!metadata.empty());
 
   // First we calculate a rough upper bound. Especially for dense
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
-  auto meta_buffer_sizes = new uint64_t[buffer_num];
-  for (auto& meta : metadata) {
-    RETURN_NOT_OK_ELSE(
-        meta->compute_max_read_buffer_sizes(
-            subarray, attribute_ids, buffer_num, meta_buffer_sizes),
-        delete[] meta_buffer_sizes);
-    for (unsigned i = 0; i < buffer_num; ++i)
-      buffer_sizes[i] += meta_buffer_sizes[i];
-  }
-  delete[] meta_buffer_sizes;
+  for (auto& meta : metadata)
+    RETURN_NOT_OK(meta->add_max_read_buffer_sizes(subarray, buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema->dense()) {
-    unsigned bid = 0;
     auto cell_num = array_schema->domain()->cell_num(subarray);
-    for (auto aid : attribute_ids) {
-      if (array_schema->var_size(aid)) {
-        buffer_sizes[bid++] = cell_num * constants::cell_var_offset_size;
-        buffer_sizes[bid++] +=
-            cell_num * datatype_size(array_schema->type(aid));
+    for (auto& it : *buffer_sizes) {
+      if (array_schema->var_size(it.first)) {
+        it.second.first = cell_num * constants::cell_var_offset_size;
+        it.second.second +=
+            cell_num * datatype_size(array_schema->type(it.first));
       } else {
-        buffer_sizes[bid++] = cell_num * array_schema->cell_size(aid);
+        it.second.first = cell_num * array_schema->cell_size(it.first);
       }
     }
   }

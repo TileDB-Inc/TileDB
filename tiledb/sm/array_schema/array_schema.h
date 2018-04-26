@@ -36,6 +36,7 @@
 
 #include <string>
 #include <typeinfo>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/sm/array_schema/attribute.h"
@@ -133,16 +134,16 @@ class ArraySchema {
       unsigned int* buffer_num) const;
 
   /**
-   * Retrieves the number of buffers that correspond to the input attribute
-   * ids.The function counts one buffer per fixed-sized attribute and two
+   * Retrieves the number of buffers that correspond to the input attributes
+   * The function counts one buffer per fixed-sized attribute and two
    * buffersper variable-sized attribute.
    *
-   * @param attribute_ids The input attribute ids.
+   * @param attributes The input attributes.
    * @param buffer_num The number of buffers to be retrieved.
    * @return Status
    */
   Status buffer_num(
-      const std::vector<unsigned>& attribute_ids,
+      const std::vector<std::string>& attributes,
       unsigned int* buffer_num) const;
 
   /** Returns the capacity. */
@@ -154,8 +155,14 @@ class ArraySchema {
   /** Returns the size of cell on the input attribute. */
   uint64_t cell_size(unsigned int attribute_id) const;
 
+  /** Returns the size of cell on the input attribute. */
+  uint64_t cell_size(const std::string& attribute) const;
+
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(unsigned int attribute_id) const;
+
+  /** Returns the number of values per cell of the input attribute. */
+  unsigned int cell_val_num(const std::string& attribute) const;
 
   /** Returns the number of values per cell for all attributes. */
   std::vector<unsigned int> cell_val_nums() const;
@@ -176,8 +183,14 @@ class ArraySchema {
   /** Returns the compression type of the attribute with the input id. */
   Compressor compression(unsigned int attribute_id) const;
 
+  /** Returns the compression type of the input attribute. */
+  Compressor compression(const std::string& compression) const;
+
   /** Return the compression level of the attribute with the input id. */
   int compression_level(unsigned int attribute_id) const;
+
+  /** Return the compression level of the input attribute. */
+  int compression_level(const std::string& attribute) const;
 
   /** Returns the compressor of the coordinates. */
   Compressor coords_compression() const;
@@ -228,8 +241,11 @@ class ArraySchema {
   /** Returns the tile order. */
   Layout tile_order() const;
 
-  /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
+  /** Returns the type of the i-th attribute. */
   Datatype type(unsigned int i) const;
+
+  /** Returns the type of the input attribute (could be coordinates). */
+  Datatype type(const std::string& attribute) const;
 
   /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(unsigned int attribute_id) const;
@@ -322,6 +338,9 @@ class ArraySchema {
 
   /** The array type. */
   ArrayType array_type_;
+
+  /** It maps each attribute name to the corresponding attribute object. */
+  std::unordered_map<std::string, Attribute*> attribute_map_;
 
   /** The number of attributes. */
   unsigned int attribute_num_;

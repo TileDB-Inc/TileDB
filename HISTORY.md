@@ -52,6 +52,7 @@
 * Removed `tiledb_vfs_move` and added `tiledb_vfs_move_file` and `tiledb_vfs_move_dir` instead.
 * Removed `force` argument from `tiledb_vfs_move_*` and `tiledb_object_move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
+* Removed `tiledb_query_get_attribute_status`.
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
@@ -62,6 +63,7 @@
 * Removed `force` argument from `VFS::move_*` and `Object::move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
 * `Query::finalize` must **always** be called before going out of scope after global-order writes.
+* Removed `Query::attribute_status`.
 
 # TileDB v1.2.1 Release Notes
 

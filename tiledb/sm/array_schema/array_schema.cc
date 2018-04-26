@@ -207,16 +207,20 @@ Status ArraySchema::buffer_num(
 }
 
 Status ArraySchema::buffer_num(
-    const std::vector<unsigned>& attribute_ids,
+    const std::vector<std::string>& attributes,
     unsigned int* buffer_num) const {
   *buffer_num = 0;
-  for (auto id : attribute_ids) {
-    if (id == attribute_num_ + 1)
-      id = attribute_num_;
-    if (id > attribute_num_)
+  for (const auto& attr : attributes) {
+    auto it = attribute_map_.find(attr);
+    if (it == attribute_map_.end()) {
+      if (attr == constants::coords) {
+        ++(*buffer_num);
+        continue;
+      }
       return LOG_STATUS(Status::ArraySchemaError(
-          "Cannot compute number of buffers; Invalid attribute id"));
-    if (var_size(id))
+          "Cannot compute number of buffers; Invalid attribute"));
+    }
+    if (it->second->var_size())
       (*buffer_num) += 2;
     else
       ++(*buffer_num);
@@ -241,8 +245,20 @@ uint64_t ArraySchema::cell_size(unsigned int attribute_id) const {
   return cell_sizes_[attribute_id];
 }
 
+uint64_t ArraySchema::cell_size(const std::string& attribute) const {
+  unsigned attribute_id = 0;
+  this->attribute_id(attribute, &attribute_id);
+  return cell_sizes_[attribute_id];
+}
+
 unsigned int ArraySchema::cell_val_num(unsigned int attribute_id) const {
   return attributes_[attribute_id]->cell_val_num();
+}
+
+unsigned int ArraySchema::cell_val_num(const std::string& attribute) const {
+  auto it = attribute_map_.find(attribute);
+  assert(it != attribute_map_.end());
+  return it->second->cell_val_num();
 }
 
 std::vector<unsigned int> ArraySchema::cell_val_nums() const {
@@ -310,6 +326,18 @@ Compressor ArraySchema::compression(unsigned int attr_id) const {
   return attributes_[attr_id]->compressor();
 }
 
+Compressor ArraySchema::compression(const std::string& attribute) const {
+  auto it = attribute_map_.find(attribute);
+  if (it == attribute_map_.end()) {
+    if (attribute == constants::coords)
+      return coords_compression_;
+    assert(false);                      // This should never happen
+    return Compressor::NO_COMPRESSION;  // Return something ad hoc
+  }
+
+  return it->second->compressor();
+}
+
 int ArraySchema::compression_level(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 
@@ -317,6 +345,18 @@ int ArraySchema::compression_level(unsigned int attr_id) const {
     return coords_compression_level_;
 
   return attributes_[attr_id]->compression_level();
+}
+
+int ArraySchema::compression_level(const std::string& attribute) const {
+  auto it = attribute_map_.find(attribute);
+  if (it == attribute_map_.end()) {
+    if (attribute == constants::coords)
+      return coords_compression_level_;
+    assert(false);  // This should never happen
+    return -1;      // Return something ad hoc
+  }
+
+  return it->second->compression_level();
 }
 
 Compressor ArraySchema::coords_compression() const {
@@ -462,6 +502,17 @@ Datatype ArraySchema::type(unsigned int i) const {
   return domain_->type();
 }
 
+Datatype ArraySchema::type(const std::string& attribute) const {
+  auto it = attribute_map_.find(attribute);
+  if (it == attribute_map_.end()) {
+    if (attribute == constants::coords)
+      return domain_->type();
+    assert(false);          // This should never happen
+    return Datatype::INT8;  // Return something ad hoc
+  }
+  return it->second->type();
+}
+
 bool ArraySchema::var_size(unsigned int attribute_id) const {
   assert(attribute_id <= attribute_num_);
   if (attribute_id < attribute_num_)
@@ -470,14 +521,10 @@ bool ArraySchema::var_size(unsigned int attribute_id) const {
 }
 
 bool ArraySchema::var_size(const std::string& attribute) const {
-  unsigned attribute_id;
-  auto st = this->attribute_id(attribute, &attribute_id);
-  assert(st.ok());
-  (void)st;
-  assert(attribute_id <= attribute_num_);
-  if (attribute_id < attribute_num_)
-    return attributes_[attribute_id]->cell_val_num() == constants::var_num;
-  return false;
+  auto it = attribute_map_.find(attribute);
+  if (it == attribute_map_.end())
+    return false;
+  return it->second->var_size();
 }
 
 Status ArraySchema::add_attribute(const Attribute* attr) {
@@ -494,7 +541,7 @@ Status ArraySchema::add_attribute(const Attribute* attr) {
   }
 
   // Create new attribute and potentially set a default name
-  Attribute* new_attr = nullptr;
+  auto new_attr = (Attribute*)nullptr;
   if (attr->is_anonymous()) {
     // Check if any other attributes are anonymous
     for (auto& a : attributes_) {
@@ -602,6 +649,10 @@ Status ArraySchema::init() {
 
   auto dim_num = domain_->dim_num();
   coords_size_ = dim_num * datatype_size(coords_type());
+
+  attribute_map_.clear();
+  for (const auto& attr : attributes_)
+    attribute_map_[attr->name()] = attr;
 
   // Success
   return Status::Ok();

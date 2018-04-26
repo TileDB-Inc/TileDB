@@ -59,10 +59,14 @@ FragmentMetadata::FragmentMetadata(
     : array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri) {
-  cell_num_in_domain_ = 0;
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
   std::memcpy(version_, constants::version, sizeof(version_));
+
+  auto attributes = array_schema_->attributes();
+  for (unsigned i = 0; i < attributes.size(); ++i)
+    attribute_idx_map_[attributes[i]->name()] = i;
+  attribute_idx_map_[constants::coords] = array_schema_->attribute_num();
 }
 
 FragmentMetadata::~FragmentMetadata() {
@@ -139,14 +143,16 @@ Status FragmentMetadata::append_mbr(const void* mbr) {
 }
 
 void FragmentMetadata::append_tile_offset(
-    unsigned int attribute_id, uint64_t tile_size) {
+    const std::string& attribute, uint64_t tile_size) {
+  auto attribute_id = attribute_idx_map_[attribute];
   tile_offsets_[attribute_id].push_back(next_tile_offsets_[attribute_id]);
   uint64_t new_offset = tile_offsets_[attribute_id].back() + tile_size;
   next_tile_offsets_[attribute_id] = new_offset;
 }
 
 void FragmentMetadata::append_tile_var_offset(
-    unsigned int attribute_id, uint64_t step) {
+    const std::string& attribute, uint64_t step) {
+  auto attribute_id = attribute_idx_map_[attribute];
   tile_var_offsets_[attribute_id].push_back(
       next_tile_var_offsets_[attribute_id]);
   uint64_t new_offset = tile_var_offsets_[attribute_id].back() + step;
@@ -154,12 +160,9 @@ void FragmentMetadata::append_tile_var_offset(
 }
 
 void FragmentMetadata::append_tile_var_size(
-    unsigned int attribute_id, uint64_t size) {
+    const std::string& attribute, uint64_t size) {
+  auto attribute_id = attribute_idx_map_[attribute];
   tile_var_sizes_[attribute_id].push_back(size);
-}
-
-const std::vector<void*>& FragmentMetadata::bounding_coords() const {
-  return bounding_coords_;
 }
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
@@ -173,95 +176,58 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   return last_tile_cell_num();
 }
 
-uint64_t FragmentMetadata::cell_num_in_domain() const {
-  return cell_num_in_domain_;
-}
-
 template <class T>
-Status FragmentMetadata::compute_max_read_buffer_sizes(
+Status FragmentMetadata::add_max_read_buffer_sizes(
     const T* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const {
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const {
   if (dense_)
-    return compute_max_read_buffer_sizes_dense(
-        subarray, attribute_ids, buffer_num, buffer_sizes);
-  return compute_max_read_buffer_sizes_sparse(
-      subarray, attribute_ids, buffer_num, buffer_sizes);
+    return add_max_read_buffer_sizes_dense(subarray, buffer_sizes);
+  return add_max_read_buffer_sizes_sparse(subarray, buffer_sizes);
 }
 
 template <class T>
-Status FragmentMetadata::compute_max_read_buffer_sizes_dense(
+Status FragmentMetadata::add_max_read_buffer_sizes_dense(
     const T* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const {
-  // Zero out all buffer sizes
-  for (unsigned i = 0; i < buffer_num; ++i)
-    buffer_sizes[i] = 0;
-
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const {
   // Calculate the ids of all tiles overlapping with subarray
   auto tids = compute_overlapping_tile_ids(subarray);
 
-  // Calculate var sizes
-  std::vector<bool> var_sizes;
-  var_sizes.reserve(attribute_ids.size());
-  for (auto aid : attribute_ids)
-    var_sizes.push_back(array_schema_->var_size(aid));
-  auto attribute_num = attribute_ids.size();
-
   // Compute buffer sizes
-  unsigned bid;
   for (auto& tid : tids) {
-    bid = 0;
-    for (unsigned i = 0; i < attribute_num; ++i) {
-      if (var_sizes[i]) {
+    for (auto& it : *buffer_sizes) {
+      if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
-        buffer_sizes[bid++] += cell_num * constants::cell_var_offset_size;
-        buffer_sizes[bid++] += tile_var_sizes_[attribute_ids[i]][tid];
+        it.second.first += cell_num * constants::cell_var_offset_size;
+        it.second.second += tile_var_size(it.first, tid);
       } else {
-        buffer_sizes[bid++] +=
-            cell_num(tid) * array_schema_->cell_size(attribute_ids[i]);
+        it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
     }
-    assert(bid == buffer_num);
   }
 
   return Status::Ok();
 }
 
 template <class T>
-Status FragmentMetadata::compute_max_read_buffer_sizes_sparse(
+Status FragmentMetadata::add_max_read_buffer_sizes_sparse(
     const T* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const {
-  for (unsigned i = 0; i < buffer_num; ++i)
-    buffer_sizes[i] = 0;
-
-  // Calculate var sizes
-  std::vector<bool> var_sizes;
-  var_sizes.reserve(attribute_ids.size());
-  for (auto aid : attribute_ids)
-    var_sizes.push_back(array_schema_->var_size(aid));
-  auto attribute_num = attribute_ids.size();
-
-  unsigned bid, tid = 0;
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const {
+  unsigned tid = 0;
   auto dim_num = array_schema_->dim_num();
   for (auto& mbr : mbrs_) {
-    bid = 0;
     if (utils::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
-      for (unsigned i = 0; i < attribute_num; ++i) {
-        if (var_sizes[i]) {
+      for (auto& it : *buffer_sizes) {
+        if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
-          buffer_sizes[bid++] += cell_num * constants::cell_var_offset_size;
-          buffer_sizes[bid++] += tile_var_sizes_[attribute_ids[i]][tid];
+          it.second.first += cell_num * constants::cell_var_offset_size;
+          it.second.second += tile_var_size(it.first, tid);
         } else {
-          buffer_sizes[bid++] +=
-              cell_num(tid) * array_schema_->cell_size(attribute_ids[i]);
+          it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
         }
       }
-      assert(bid == buffer_num);
     }
     tid++;
   }
@@ -292,13 +258,15 @@ const void* FragmentMetadata::domain() const {
   return domain_;
 }
 
-uint64_t FragmentMetadata::file_sizes(unsigned int attribute_id) const {
-  assert(attribute_id < file_sizes_.size());
+uint64_t FragmentMetadata::file_sizes(const std::string& attribute) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   return file_sizes_[attribute_id];
 }
 
-uint64_t FragmentMetadata::file_var_sizes(unsigned int attribute_id) const {
-  assert(attribute_id < file_var_sizes_.size());
+uint64_t FragmentMetadata::file_var_sizes(const std::string& attribute) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   return file_var_sizes_[attribute_id];
 }
 
@@ -349,9 +317,6 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
     domain_ = std::malloc(domain_size);
     std::memcpy(domain_, non_empty_domain_, domain_size);
     domain->expand_domain(domain_);
-
-    // Compute cell num in expanded domain
-    cell_num_in_domain_ = domain->cell_num(domain_);
   }
 
   // Set last tile cell number
@@ -413,33 +378,33 @@ uint64_t FragmentMetadata::tile_num() const {
   return (uint64_t)mbrs_.size();
 }
 
-URI FragmentMetadata::attr_uri(unsigned int attribute_id) const {
-  if (attribute_id == array_schema_->attribute_num())
-    return fragment_uri_.join_path(
-        std::string(constants::coords) + constants::file_suffix);
-
-  const Attribute* attr = array_schema_->attribute(attribute_id);
-  return fragment_uri_.join_path(attr->name() + constants::file_suffix);
+URI FragmentMetadata::attr_uri(const std::string& attribute) const {
+  return fragment_uri_.join_path(attribute + constants::file_suffix);
 }
 
-URI FragmentMetadata::attr_var_uri(unsigned int attribute_id) const {
-  auto attr = array_schema_->attribute(attribute_id);
-  return fragment_uri_.join_path(
-      attr->name() + "_var" + constants::file_suffix);
+URI FragmentMetadata::attr_var_uri(const std::string& attribute) const {
+  return fragment_uri_.join_path(attribute + "_var" + constants::file_suffix);
 }
 
 uint64_t FragmentMetadata::file_offset(
-    unsigned attribute_id, uint64_t tile_idx) const {
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   return tile_offsets_[attribute_id][tile_idx];
 }
 
 uint64_t FragmentMetadata::file_var_offset(
-    unsigned attribute_id, uint64_t tile_idx) const {
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   return tile_var_offsets_[attribute_id][tile_idx];
 }
 
 uint64_t FragmentMetadata::compressed_tile_size(
-    unsigned attribute_id, uint64_t tile_idx) const {
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
+
   // Check if the tile is not compressed
   if (array_schema_->var_size(attribute_id)) {
     if (constants::cell_var_offsets_compression == Compressor::NO_COMPRESSION)
@@ -457,7 +422,9 @@ uint64_t FragmentMetadata::compressed_tile_size(
 }
 
 uint64_t FragmentMetadata::compressed_tile_var_size(
-    unsigned attribute_id, uint64_t tile_idx) const {
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   if (array_schema_->compression(attribute_id) == Compressor::NO_COMPRESSION)
     return 0;
 
@@ -470,31 +437,18 @@ uint64_t FragmentMetadata::compressed_tile_var_size(
 }
 
 uint64_t FragmentMetadata::tile_size(
-    unsigned attribute_id, uint64_t tile_idx) const {
-  auto var_size = array_schema_->var_size(attribute_id);
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto var_size = array_schema_->var_size(attribute);
   auto cell_num = this->cell_num(tile_idx);
   return (var_size) ? cell_num * constants::cell_var_offset_size :
-                      cell_num * array_schema_->cell_size(attribute_id);
+                      cell_num * array_schema_->cell_size(attribute);
 }
 
 uint64_t FragmentMetadata::tile_var_size(
-    unsigned attribute_id, uint64_t tile_idx) const {
+    const std::string& attribute, uint64_t tile_idx) const {
+  auto it = attribute_idx_map_.find(attribute);
+  auto attribute_id = it->second;
   return tile_var_sizes_[attribute_id][tile_idx];
-}
-
-const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_offsets()
-    const {
-  return tile_offsets_;
-}
-
-const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_var_offsets()
-    const {
-  return tile_var_offsets_;
-}
-
-const std::vector<std::vector<uint64_t>>& FragmentMetadata::tile_var_sizes()
-    const {
-  return tile_var_sizes_;
 }
 
 /* ****************************** */
@@ -1121,56 +1075,46 @@ template Status FragmentMetadata::append_mbr<uint64_t>(const void* mbr);
 template Status FragmentMetadata::append_mbr<float>(const void* mbr);
 template Status FragmentMetadata::append_mbr<double>(const void* mbr);
 
-template Status FragmentMetadata::compute_max_read_buffer_sizes<int8_t>(
+template Status FragmentMetadata::add_max_read_buffer_sizes<int8_t>(
     const int8_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<uint8_t>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<uint8_t>(
     const uint8_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<int16_t>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<int16_t>(
     const int16_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<uint16_t>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<uint16_t>(
     const uint16_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<int>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<int>(
     const int* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<unsigned>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<unsigned>(
     const unsigned* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<int64_t>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<int64_t>(
     const int64_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<uint64_t>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<uint64_t>(
     const uint64_t* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<float>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<float>(
     const float* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
-template Status FragmentMetadata::compute_max_read_buffer_sizes<double>(
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
+template Status FragmentMetadata::add_max_read_buffer_sizes<double>(
     const double* subarray,
-    const std::vector<unsigned>& attribute_ids,
-    unsigned buffer_num,
-    uint64_t* buffer_sizes) const;
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const;
 
 template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
     const int8_t* tile_coords) const;

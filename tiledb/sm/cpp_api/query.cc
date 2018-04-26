@@ -76,14 +76,6 @@ Query::Status Query::query_status() const {
   return to_status(status);
 }
 
-Query::Status Query::attribute_status(const std::string& attr) const {
-  tiledb_query_status_t status;
-  auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_query_get_attribute_status(
-      ctx, query_.get(), attr.c_str(), &status));
-  return to_status(status);
-}
-
 void Query::finalize() {
   auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_query_finalize(ctx, query_.get()));

@@ -60,14 +60,11 @@ namespace sm {
 Query::Query() {
   subarray_ = nullptr;
   array_schema_ = nullptr;
-  buffers_ = nullptr;
-  buffer_sizes_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   storage_manager_ = nullptr;
   status_ = QueryStatus::INPROGRESS;
   layout_ = Layout::ROW_MAJOR;
-  buffer_num_ = 0;
   global_write_state_.reset(nullptr);
 }
 
@@ -104,34 +101,6 @@ Status Query::process() {
   return st;
 }
 
-const std::vector<unsigned int>& Query::attribute_ids() const {
-  return attribute_ids_;
-}
-
-Status Query::coords_buffer_i(int* coords_buffer_i) const {
-  int buffer_i = 0;
-  auto attribute_id_num = attribute_ids_.size();
-  auto attribute_num = array_schema_->attribute_num();
-  for (size_t i = 0; i < attribute_id_num; ++i) {
-    if (attribute_ids_[i] == attribute_num) {
-      *coords_buffer_i = buffer_i;
-      break;
-    }
-    if (!array_schema_->var_size(attribute_ids_[i]))  // FIXED CELLS
-      ++buffer_i;
-    else  // VARIABLE-SIZED CELLS
-      buffer_i += 2;
-  }
-
-  // Coordinates are missing
-  if (*coords_buffer_i == -1)
-    return LOG_STATUS(
-        Status::QueryError("Cannot find coordinates buffer index"));
-
-  // Success
-  return Status::Ok();
-}
-
 Status Query::compute_subarrays(
     void* subarray, std::vector<void*>* subarrays) const {
   // Prepare subarray
@@ -145,8 +114,10 @@ Status Query::compute_subarrays(
   std::memcpy(first_subarray, to_copy, subarray_size);
 
   // Prepare buffer sizes
-  std::vector<uint64_t> max_buffer_sizes;
-  max_buffer_sizes.resize(buffer_num_);
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      max_buffer_sizes;
+  for (const auto& attr : attributes_)
+    max_buffer_sizes[attr] = std::pair<uint64_t, uint64_t>(0, 0);
 
   // Compute subarrays
   std::list<void*> my_subarrays;
@@ -156,19 +127,14 @@ Status Query::compute_subarrays(
   do {
     // Compute max buffer sizes for the current subarray
     st = storage_manager_->array_compute_max_read_buffer_sizes(
-        array_schema_,
-        fragment_metadata_,
-        *it,
-        attribute_ids_,
-        &max_buffer_sizes[0],
-        buffer_num_);
+        array_schema_, fragment_metadata_, *it, &max_buffer_sizes);
     if (!st.ok())
       break;
 
     // Handle case of no results
     auto no_results = true;
-    for (unsigned i = 0; i < buffer_num_; ++i) {
-      if (max_buffer_sizes[i] != 0) {
+    for (auto& item : max_buffer_sizes) {
+      if (item.second.first != 0) {
         no_results = false;
         break;
       }
@@ -181,8 +147,13 @@ Status Query::compute_subarrays(
 
     // Handle case of split
     auto must_split = false;
-    for (unsigned i = 0; i < buffer_num_; ++i) {
-      if (max_buffer_sizes[i] > buffer_sizes_[i]) {
+    for (auto& item : max_buffer_sizes) {
+      auto buffer_size = attr_buffers_.find(item.first)->second.buffer_size_;
+      auto buffer_var_size =
+          attr_buffers_.find(item.first)->second.buffer_var_size_;
+      auto var_size = array_schema_->var_size(item.first);
+      if (item.second.first > *buffer_size ||
+          (var_size && item.second.second > *buffer_var_size)) {
         must_split = true;
         break;
       }
@@ -268,13 +239,10 @@ Status Query::finalize_global_write_state() {
 }
 
 Status Query::close_files(FragmentMetadata* meta) const {
-  unsigned attr_id;
   for (const auto& attr : attributes_) {
-    RETURN_NOT_OK(array_schema_->attribute_id(attr, &attr_id));
-    RETURN_NOT_OK(storage_manager_->close_file(meta->attr_uri(attr_id)));
-    auto var_size = array_schema_->var_size(attr_id);
-    if (var_size)
-      RETURN_NOT_OK(storage_manager_->close_file(meta->attr_var_uri(attr_id)));
+    RETURN_NOT_OK(storage_manager_->close_file(meta->attr_uri(attr)));
+    if (array_schema_->var_size(attr))
+      RETURN_NOT_OK(storage_manager_->close_file(meta->attr_var_uri(attr)));
   }
 
   return Status::Ok();
@@ -304,8 +272,8 @@ Status Query::finalize_global_write_state() {
 
   // Check that the same number of cells was written across attributes
   for (size_t i = 1; i < attributes_.size(); ++i) {
-    if (global_write_state_->cell_written_[attributes_[i]] !=
-        global_write_state_->cell_written_[attributes_[i - 1]]) {
+    if (global_write_state_->cells_written_[attributes_[i]] !=
+        global_write_state_->cells_written_[attributes_[i - 1]]) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
       global_write_state_.reset(nullptr);
       return LOG_STATUS(
@@ -316,7 +284,7 @@ Status Query::finalize_global_write_state() {
 
   // Check if the total number of cells written is equal to the subarray size
   if (!has_coords()) {
-    auto cells_written = global_write_state_->cell_written_[attributes_[0]];
+    auto cells_written = global_write_state_->cells_written_[attributes_[0]];
     if (cells_written != array_schema_->domain()->cell_num<T>((T*)subarray_)) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
       global_write_state_.reset(nullptr);
@@ -344,10 +312,6 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
-const std::vector<FragmentMetadata*>& Query::fragment_metadata() const {
-  return fragment_metadata_;
-}
-
 std::vector<URI> Query::fragment_uris() const {
   std::vector<URI> uris;
   for (auto meta : fragment_metadata_)
@@ -368,10 +332,10 @@ Status Query::init() {
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::QueryError("Cannot initialize query; Array metadata not set"));
-  if (buffers_ == nullptr || buffer_sizes_ == nullptr)
+  if (attr_buffers_.empty())
     return LOG_STATUS(
         Status::QueryError("Cannot initialize query; Buffers not set"));
-  if (attribute_ids_.empty())
+  if (attributes_.empty())
     return LOG_STATUS(
         Status::QueryError("Cannot initialize query; Attributes not set"));
 
@@ -379,37 +343,8 @@ Status Query::init() {
 
   if (subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
-
   RETURN_NOT_OK(check_subarray(subarray_));
-
   RETURN_NOT_OK(check_buffer_sizes_ordered());
-
-  return Status::Ok();
-}
-
-Status Query::init(
-    StorageManager* storage_manager,
-    const ArraySchema* array_schema,
-    const std::vector<FragmentMetadata*>& fragment_metadata,
-    QueryType type,
-    Layout layout,
-    const void* subarray,
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes) {
-  storage_manager_ = storage_manager;
-  array_schema_ = array_schema;
-  type_ = type;
-  layout_ = layout;
-  status_ = QueryStatus::INPROGRESS;
-  buffers_ = buffers;
-  buffer_sizes_ = buffer_sizes;
-  fragment_metadata_ = fragment_metadata;
-
-  RETURN_NOT_OK(set_attributes(attributes, attribute_num));
-  RETURN_NOT_OK(array_schema->buffer_num(attribute_ids_, &buffer_num_));
-  RETURN_NOT_OK(set_subarray(subarray));
 
   return Status::Ok();
 }
@@ -422,33 +357,6 @@ URI Query::last_fragment_uri() const {
 
 Layout Query::layout() const {
   return layout_;
-}
-
-bool Query::overflow() const {
-  // TODO (sp)
-  return false;
-}
-
-bool Query::overflow(unsigned int attribute_id) const {
-  (void)attribute_id;
-  // TODO (sp)
-  return false;
-}
-
-Status Query::overflow(
-    const char* attribute_name, unsigned int* overflow) const {
-  unsigned int attribute_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute_name, &attribute_id));
-
-  *overflow = 0;
-  for (auto id : attribute_ids_) {
-    if (id == attribute_id) {
-      *overflow = 1;
-      break;
-    }
-  }
-
-  return Status::Ok();
 }
 
 Status Query::dense_read() {
@@ -650,6 +558,70 @@ Status Query::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
 }
 
 template <class T>
+Status Query::handle_coords_in_dense_cell_range(
+    const std::shared_ptr<OverlappingTile>& cur_tile,
+    const T* cur_tile_coords,
+    uint64_t* start,
+    uint64_t end,
+    uint64_t coords_size,
+    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+    typename std::list<std::shared_ptr<OverlappingCoords<T>>>::const_iterator*
+        coords_it,
+    std::shared_ptr<OverlappingTile>* coords_tile,
+    uint64_t* coords_pos,
+    unsigned* coords_fidx,
+    std::vector<T>* coords_tile_coords,
+    OverlappingCellRangeList* overlapping_cell_ranges) const {
+  auto domain = array_schema_->domain();
+
+  // While the coords are within the same dense cell range
+  while (*coords_it != coords.end() &&
+         !memcmp(&(*coords_tile_coords)[0], cur_tile_coords, coords_size) &&
+         *coords_pos >= *start && *coords_pos <= end) {
+    if (*coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
+      ++(*coords_it);
+      if (*coords_it != coords.end()) {
+        domain->get_tile_coords(
+            (*coords_it)->get()->coords_, &(*coords_tile_coords)[0]);
+        RETURN_NOT_OK(
+            domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
+        *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
+        *coords_tile = (*coords_it)->get()->tile_;
+      }
+      continue;
+    } else {  // Break dense range
+      // Left range
+      if (*coords_pos > *start) {
+        overlapping_cell_ranges->emplace_back(
+            std::make_shared<OverlappingCellRange>(
+                cur_tile, *start, *coords_pos - 1));
+      }
+      // Coords unary range
+      overlapping_cell_ranges->emplace_back(
+          std::make_shared<OverlappingCellRange>(
+              *coords_tile,
+              (*coords_it)->get()->pos_,
+              (*coords_it)->get()->pos_));
+      // Update start
+      *start = *coords_pos + 1;
+
+      // Advance coords
+      ++(*coords_it);
+      if (*coords_it != coords.end()) {
+        domain->get_tile_coords(
+            (*coords_it)->get()->coords_, &(*coords_tile_coords)[0]);
+        RETURN_NOT_OK(
+            domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
+        *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
+        *coords_tile = (*coords_it)->get()->tile_;
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
 Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
     const std::list<DenseCellRange<T>>& dense_cell_ranges,
     const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
@@ -728,47 +700,23 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
       continue;
     }
 
-    // While the coords are within the same dense cell range
-    while (coords_it != coords.end() &&
-           !memcmp(&coords_tile_coords[0], cur_tile_coords, coords_size) &&
-           coords_pos >= start && coords_pos <= end) {
-      if (coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
-        ++coords_it;
-        if (coords_it != coords.end()) {
-          domain->get_tile_coords(
-              coords_it->get()->coords_, &coords_tile_coords[0]);
-          RETURN_NOT_OK(
-              domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
-          coords_fidx = coords_it->get()->tile_->fragment_idx_;
-          coords_tile = coords_it->get()->tile_;
-        }
-        continue;
-      } else {  // Break dense range
-        // Left range
-        if (coords_pos > start) {
-          overlapping_cell_ranges->emplace_back(
-              std::make_shared<OverlappingCellRange>(
-                  cur_tile, start, coords_pos - 1));
-        }
-        // Coords unary range
-        overlapping_cell_ranges->emplace_back(
-            std::make_shared<OverlappingCellRange>(
-                coords_tile, coords_it->get()->pos_, coords_it->get()->pos_));
-        // Update start
-        start = coords_pos + 1;
-
-        // Advance coords
-        ++coords_it;
-        if (coords_it != coords.end()) {
-          domain->get_tile_coords(
-              coords_it->get()->coords_, &coords_tile_coords[0]);
-          RETURN_NOT_OK(
-              domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
-          coords_fidx = coords_it->get()->tile_->fragment_idx_;
-          coords_tile = coords_it->get()->tile_;
-        }
-      }
-    }
+    // Handle the coordinates that fall between `start` and `end`.
+    // This function will either skip the coordinates if they belong to an
+    // older fragment, or include them as results and split the dense cell
+    // range.
+    RETURN_NOT_OK(handle_coords_in_dense_cell_range(
+        cur_tile,
+        cur_tile_coords,
+        &start,
+        end,
+        coords_size,
+        coords,
+        &coords_it,
+        &coords_tile,
+        &coords_pos,
+        &coords_fidx,
+        &coords_tile_coords,
+        overlapping_cell_ranges));
 
     // Push remaining range to the result
     if (start <= end)
@@ -782,48 +730,23 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
     cur_tile_coords = cr_it->tile_coords_;
   }
 
-  // Handle last range
-  // While the coords are within the same dense cell range
-  while (coords_it != coords.end() &&
-         !memcmp(&coords_tile_coords[0], cur_tile_coords, coords_size) &&
-         coords_pos >= start && coords_pos <= end) {
-    if (coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
-      ++coords_it;
-      if (coords_it != coords.end()) {
-        domain->get_tile_coords(
-            coords_it->get()->coords_, &coords_tile_coords[0]);
-        RETURN_NOT_OK(
-            domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
-        coords_fidx = coords_it->get()->tile_->fragment_idx_;
-        coords_tile = coords_it->get()->tile_;
-      }
-      continue;
-    } else {  // Break dense range
-      // Left range
-      if (coords_pos > start) {
-        overlapping_cell_ranges->emplace_back(
-            std::make_shared<OverlappingCellRange>(
-                cur_tile, start, coords_pos - 1));
-      }
-      // Coords unary range
-      overlapping_cell_ranges->emplace_back(
-          std::make_shared<OverlappingCellRange>(
-              coords_tile, coords_it->get()->pos_, coords_it->get()->pos_));
-      // Update start
-      start = coords_pos + 1;
-
-      // Advance coords
-      ++coords_it;
-      if (coords_it != coords.end()) {
-        domain->get_tile_coords(
-            coords_it->get()->coords_, &coords_tile_coords[0]);
-        RETURN_NOT_OK(
-            domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
-        coords_fidx = coords_it->get()->tile_->fragment_idx_;
-        coords_tile = coords_it->get()->tile_;
-      }
-    }
-  }
+  // Handle the coordinates that fall between `start` and `end`.
+  // This function will either skip the coordinates if they belong to an
+  // older fragment, or include them as results and split the dense cell
+  // range.
+  RETURN_NOT_OK(handle_coords_in_dense_cell_range(
+      cur_tile,
+      cur_tile_coords,
+      &start,
+      end,
+      coords_size,
+      coords,
+      &coords_it,
+      &coords_tile,
+      &coords_pos,
+      &coords_fidx,
+      &coords_tile_coords,
+      overlapping_cell_ranges));
 
   // Push remaining range to the result
   if (start <= end)
@@ -834,69 +757,57 @@ Status Query::compute_dense_overlapping_tiles_and_cell_ranges(
 }
 
 Status Query::read_tiles(
-    const std::string& attr_name, OverlappingTileVec* tiles) const {
+    const std::string& attribute, OverlappingTileVec* tiles) const {
   // Prepare tile IO
-  unsigned attr_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attr_name, &attr_id));
-  auto var_size = array_schema_->var_size(attr_id);
+  auto var_size = array_schema_->var_size(attribute);
   std::vector<std::shared_ptr<TileIO>> tile_io;
   std::vector<std::shared_ptr<TileIO>> tile_io_var;
   for (const auto& f : fragment_metadata_) {
     tile_io.emplace_back(std::make_shared<TileIO>(
-        storage_manager_, f->attr_uri(attr_id), f->file_sizes(attr_id)));
+        storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute)));
     if (var_size)
       tile_io_var.emplace_back(std::make_shared<TileIO>(
           storage_manager_,
-          f->attr_var_uri(attr_id),
-          f->file_var_sizes(attr_id)));
+          f->attr_var_uri(attribute),
+          f->file_var_sizes(attribute)));
     else
       tile_io_var.emplace_back();
   }
-  bool is_coords = (attr_id == array_schema_->attribute_num());
-
   // For each fragment, read the tiles
   for (auto& tile : *tiles) {
-    auto& tile_pair = tile->attr_tiles_[attr_name];
+    auto& tile_pair = tile->attr_tiles_[attribute];
 
-    // Fixed-sized or offsets tile
+    // Initialize
     auto t = std::make_shared<Tile>();
-    RETURN_NOT_OK(t->init(
-        (var_size) ? constants::cell_var_offset_type :
-                     array_schema_->type(attr_id),
-        (var_size) ? array_schema_->cell_var_offsets_compression() :
-                     array_schema_->compression(attr_id),
-        (var_size) ? constants::cell_var_offset_size :
-                     array_schema_->cell_size(attr_id),
-        (is_coords) ? array_schema_->dim_num() : 0));
+    auto t_var = std::shared_ptr<Tile>(nullptr);
+    if (!var_size) {
+      RETURN_NOT_OK(init_tile(attribute, t.get()));
+    } else {
+      t_var = std::make_shared<Tile>();
+      RETURN_NOT_OK(init_tile(attribute, t.get(), t_var.get()));
+    }
 
+    // Read
     RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
         t.get(),
         fragment_metadata_[tile->fragment_idx_]->file_offset(
-            attr_id, tile->tile_idx_),
+            attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->compressed_tile_size(
-            attr_id, tile->tile_idx_),
+            attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->tile_size(
-            attr_id, tile->tile_idx_)));
+            attribute, tile->tile_idx_)));
     tile_pair.first = t;
-
-    // Var-sized tile
     if (var_size) {
-      auto t_var = std::make_shared<Tile>();
-      RETURN_NOT_OK(t_var->init(
-          array_schema_->type(attr_id),
-          array_schema_->compression(attr_id),
-          datatype_size(array_schema_->type(attr_id)),
-          0));
       RETURN_NOT_OK(tile_io_var[tile->fragment_idx_]->read(
           t_var.get(),
           fragment_metadata_[tile->fragment_idx_]->file_var_offset(
-              attr_id, tile->tile_idx_),
+              attribute, tile->tile_idx_),
           fragment_metadata_[tile->fragment_idx_]->compressed_tile_var_size(
-              attr_id, tile->tile_idx_),
+              attribute, tile->tile_idx_),
           fragment_metadata_[tile->fragment_idx_]->tile_var_size(
-              attr_id, tile->tile_idx_)));
-      tile_pair.second = t_var;
+              attribute, tile->tile_idx_)));
     }
+    tile_pair.second = t_var;
   }
 
   return Status::Ok();
@@ -908,7 +819,7 @@ Status Query::compute_overlapping_coords(
     std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
   for (const auto& tile : tiles) {
     std::list<std::shared_ptr<OverlappingCoords<T>>> tile_coords;
-    if (tile.get()->full_overlap_) {
+    if (tile->full_overlap_) {
       RETURN_NOT_OK(get_all_coords<T>(tile, &tile_coords));
     } else {
       RETURN_NOT_OK(compute_overlapping_coords<T>(tile, &tile_coords));
@@ -1056,39 +967,21 @@ bool Query::overlap(
 Status Query::copy_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
-  unsigned attr_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  if (array_schema_->var_size(attr_id))
+  if (array_schema_->var_size(attribute))
     return copy_var_cells(attribute, cell_ranges);
   return copy_fixed_cells(attribute, cell_ranges);
-}
-
-Status Query::buffer_idx(const std::string& attribute, unsigned* bid) const {
-  unsigned attr_id;
-  *bid = 0;
-  for (const auto& a : attributes_) {
-    if (a == attribute)
-      return Status::Ok();
-    RETURN_NOT_OK(array_schema_->attribute_id(a, &attr_id));
-    *bid += 1 + (unsigned)array_schema_->var_size(attr_id);
-  }
-
-  return Status::QueryError(
-      std::string("Cannot retrieve buffer index; Invalid attribute '") +
-      attribute + "'");
 }
 
 Status Query::copy_fixed_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
   // For easy reference
-  unsigned attr_id, bid;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  auto buffer = (unsigned char*)buffers_[bid];
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_size = it->second.buffer_size_;
   uint64_t buffer_offset = 0;
-  auto cell_size = array_schema_->cell_size(attr_id);
-  auto type = array_schema_->type(attr_id);
+  auto cell_size = array_schema_->cell_size(attribute);
+  auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
   auto fill_value = this->fill_value(type);
   assert(fill_value != nullptr);
@@ -1097,7 +990,7 @@ Status Query::copy_fixed_cells(
   for (const auto& cr : cell_ranges) {
     // Check for overflow
     auto bytes_to_copy = (cr->end_ - cr->start_ + 1) * cell_size;
-    if (buffer_offset + bytes_to_copy > buffer_sizes_[bid])
+    if (buffer_offset + bytes_to_copy > *buffer_size)
       return LOG_STATUS(Status::QueryError(
           std::string("Cannot copy cells for attribute '") + attribute +
           "'; Result buffer overflowed"));
@@ -1119,7 +1012,7 @@ Status Query::copy_fixed_cells(
   }
 
   // Update buffer sizes
-  buffer_sizes_[bid] = buffer_offset;
+  *buffer_size = buffer_offset;
 
   return Status::Ok();
 }
@@ -1128,16 +1021,16 @@ Status Query::copy_var_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
   // For easy reference
-  unsigned attr_id, bid;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  auto buffer = (unsigned char*)buffers_[bid];
-  auto buffer_var = (unsigned char*)buffers_[bid + 1];
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  auto buffer_size = it->second.buffer_size_;
+  auto buffer_var_size = it->second.buffer_var_size_;
   uint64_t buffer_offset = 0;
   uint64_t buffer_var_offset = 0;
   uint64_t offset_size = constants::cell_var_offset_size;
   uint64_t cell_var_size;
-  auto type = array_schema_->type(attr_id);
+  auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
   auto fill_value = this->fill_value(type);
   assert(fill_value != nullptr);
@@ -1146,7 +1039,7 @@ Status Query::copy_var_cells(
   for (const auto& cr : cell_ranges) {
     auto cell_num_in_range = cr->end_ - cr->start_ + 1;
     // Check if offset buffers can fit the result
-    if (buffer_offset + cell_num_in_range * offset_size > buffer_sizes_[bid])
+    if (buffer_offset + cell_num_in_range * offset_size > *buffer_size)
       return LOG_STATUS(Status::QueryError(
           std::string("Cannot copy cell offsets for var-sized attribute '") +
           attribute + "'; Result buffer overflow"));
@@ -1154,8 +1047,7 @@ Status Query::copy_var_cells(
     // Handle empty range
     if (cr->tile_ == nullptr) {
       // Check if result can fit in the buffer
-      if (buffer_var_offset + cell_num_in_range * fill_size >
-          buffer_sizes_[bid + 1])
+      if (buffer_var_offset + cell_num_in_range * fill_size > *buffer_var_size)
         return LOG_STATUS(Status::QueryError(
             std::string("Cannot copy cell data for var-sized attribute '") +
             attribute + "'; Result buffer overflowed"));
@@ -1193,7 +1085,7 @@ Status Query::copy_var_cells(
                           offsets[i + 1] - offsets[i] :
                           tile_var_size - (offsets[i] - offsets[0]);
 
-      if (buffer_var_offset + cell_var_size > buffer_sizes_[bid + 1])
+      if (buffer_var_offset + cell_var_size > *buffer_var_size)
         return LOG_STATUS(Status::QueryError(
             std::string("Cannot copy cell data for var-sized attribute '") +
             attribute + "'; Result buffer overflowed"));
@@ -1208,8 +1100,8 @@ Status Query::copy_var_cells(
   }
 
   // Update buffer sizes
-  buffer_sizes_[bid] = buffer_offset;
-  buffer_sizes_[bid + 1] = buffer_var_offset;
+  *buffer_size = buffer_offset;
+  *buffer_var_size = buffer_var_offset;
 
   return Status::Ok();
 }
@@ -1218,12 +1110,9 @@ Status Query::read() {
   // Check attributes
   RETURN_NOT_OK(check_attributes());
 
-  // Zero-out all buffers
-  zero_out_buffers();
-
   // Handle case of no fragments
   if (fragment_metadata_.empty()) {
-    zero_out_buffer_sizes(buffer_sizes_);
+    zero_out_buffer_sizes();
     return Status::Ok();
   }
 
@@ -1245,48 +1134,36 @@ Status Query::set_buffers(
     unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes) {
-  // Sanity checks
-  if (attributes == nullptr && attribute_num == 0)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffers; no attributes provided"));
-
   if (buffers == nullptr || buffer_sizes == nullptr)
     return LOG_STATUS(
         Status::QueryError("Cannot set buffers; Buffers not provided"));
 
-  // Get attributes
-  std::vector<std::string> attributes_vec;
-  for (unsigned int i = 0; i < attribute_num; ++i) {
-    // Check attribute name length
-    if (attributes[i] == nullptr)
-      return LOG_STATUS(
-          Status::QueryError("Cannot set buffers; Attributes cannot be null"));
-    attributes_vec.emplace_back(attributes[i]);
-  }
-
-  // Sanity check on duplicates
-  if (utils::has_duplicates(attributes_vec))
-    return LOG_STATUS(
-        Status::QueryError("Cannot set buffers; Duplicate attributes given"));
-
-  // Set attribute ids
-  RETURN_NOT_OK(
-      array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
-
-  // Set attribute names
-  for (unsigned i = 0; i < attribute_num; ++i)
-    attributes_.emplace_back(attributes[i]);
-
-  // Set buffers and buffer sizes
-  buffers_ = buffers;
-  buffer_sizes_ = buffer_sizes;
+  RETURN_NOT_OK(set_attributes(attributes, attribute_num));
+  set_buffers(buffers, buffer_sizes);
 
   return Status::Ok();
 }
 
 void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
-  buffers_ = buffers;
-  buffer_sizes_ = buffer_sizes;
+  attr_buffers_.clear();
+  unsigned bid = 0;
+  for (const auto& attr : attributes_) {
+    if (!array_schema_->var_size(attr)) {
+      attr_buffers_.emplace(
+          attr,
+          AttributeBuffer(buffers[bid], nullptr, &buffer_sizes[bid], nullptr));
+      ++bid;
+    } else {
+      attr_buffers_.emplace(
+          attr,
+          AttributeBuffer(
+              buffers[bid],
+              buffers[bid + 1],
+              &buffer_sizes[bid],
+              &buffer_sizes[bid + 1]));
+      bid += 2;
+    }
+  }
 }
 
 void Query::set_callback(
@@ -1390,39 +1267,23 @@ Status Query::write() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void Query::add_coords() {
-  unsigned int attribute_num = array_schema_->attribute_num();
-  bool has_coords = false;
-
-  for (auto id : attribute_ids_) {
-    if (id == attribute_num) {
-      has_coords = true;
-      break;
-    }
-  }
-
-  if (!has_coords)
-    attribute_ids_.emplace_back(attribute_num);
-}
-
 Status Query::check_attributes() {
   // If it is a write query, there should be no duplicate attributes
   if (type_ == QueryType::WRITE) {
-    std::set<unsigned int> unique_attribute_ids;
-    for (auto& id : attribute_ids_)
-      unique_attribute_ids.insert(id);
-    if (unique_attribute_ids.size() != attribute_ids_.size())
+    std::set<std::string> unique_attributes;
+    for (const auto& attr : attributes_)
+      unique_attributes.insert(attr);
+    if (unique_attributes.size() != attributes_.size())
       return LOG_STATUS(
-          Status::QueryError("Check attributes failed; Duplicate attributes "
-                             "set for a write query"));
+          Status::QueryError("Check attributes failed; Duplicate attributes"));
   }
 
   // If it is an unordered write query, all attributes must be provided
   if (type_ == QueryType::WRITE && layout_ == Layout::UNORDERED) {
-    if (attribute_ids_.size() != array_schema_->attribute_num() + 1)
+    if (attributes_.size() != array_schema_->attribute_num() + 1)
       return LOG_STATUS(
           Status::QueryError("Check attributes failed; Unordered writes expect "
-                             "all attributes to be set"));
+                             "all attributes (plus coordinates) to be set"));
   }
 
   return Status::Ok();
@@ -1432,27 +1293,25 @@ Status Query::check_buffer_sizes_ordered() const {
   if (!array_schema_->dense() || type_ == QueryType::READ ||
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
+
   auto cell_num = array_schema_->domain()->cell_num(subarray_);
-  unsigned bid = 0;
   uint64_t expected_cell_num = 0;
-  for (auto& aid : attribute_ids_) {
-    bool is_var_attr = array_schema_->var_size(aid);
-    if (is_var_attr) {
-      expected_cell_num = buffer_sizes_[bid] / constants::cell_var_offset_size;
+  for (const auto& attr : attributes_) {
+    bool is_var = array_schema_->var_size(attr);
+    auto it = attr_buffers_.find(attr);
+    auto buffer_size = *it->second.buffer_size_;
+    if (is_var) {
+      expected_cell_num = buffer_size / constants::cell_var_offset_size;
     } else {
-      expected_cell_num = buffer_sizes_[bid] / array_schema_->cell_size(aid);
+      expected_cell_num = buffer_size / array_schema_->cell_size(attr);
     }
     if (expected_cell_num != cell_num) {
       std::stringstream ss;
       ss << "Buffer sizes check failed; Invalid number of cells given for ";
-      ss << "attribute '" << array_schema_->attribute_name(aid) << "'";
+      ss << "attribute '" << attr << "'";
       ss << " (" << expected_cell_num << " != " << cell_num << ")";
       return LOG_STATUS(Status::QueryError(ss.str()));
     }
-    if (is_var_attr)
-      bid += 2;
-    else
-      bid += 1;
   }
   return Status::Ok();
 }
@@ -1491,7 +1350,7 @@ Status Query::check_subarray(const void* subarray) const {
     case Datatype::STRING_UCS4:
     case Datatype::ANY:
       // Not supported domain type
-      assert(0);
+      assert(false);
       break;
   }
 
@@ -1500,13 +1359,16 @@ Status Query::check_subarray(const void* subarray) const {
 
 template <class T>
 Status Query::check_subarray(const T* subarray) const {
-  // Check if subarray is outside the domain
+  // Check if subarray bounds
   auto domain = array_schema_->domain();
   auto dim_num = domain->dim_num();
   for (unsigned int i = 0; i < dim_num; ++i) {
     auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
     if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
       return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+    if (subarray[2 * i] > subarray[2 * i + 1])
+      return LOG_STATUS(Status::QueryError(
+          "Subarray lower bound is larger than upper bound"));
   }
 
   // In global dense writes, the subarray must coincide with tile extents
@@ -1766,44 +1628,21 @@ Status Query::set_attributes(
 
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec))
-      return LOG_STATUS(Status::QueryError(
-          "Cannot initialize array schema; Duplicate attributes"));
+      return LOG_STATUS(
+          Status::QueryError("Cannot set attributes; Duplicate attributes"));
   }
 
   // Set attribute names
   for (const auto& attr : attributes_vec)
     attributes_.emplace_back(attr);
 
-  // Set attribute ids
-  RETURN_NOT_OK(
-      array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
-
   return Status::Ok();
 }
 
-void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
-  unsigned int buffer_i = 0;
-  auto attribute_id_num = (unsigned int)attribute_ids_.size();
-  for (unsigned int i = 0; i < attribute_id_num; ++i) {
-    // Update all sizes to 0
-    buffer_sizes[buffer_i] = 0;
-    if (!array_schema_->var_size(attribute_ids_[i]))
-      ++buffer_i;
-    else
-      buffer_i += 2;
-  }
-}
-
-void Query::zero_out_buffers() {
-  unsigned int buffer_i = 0;
-  auto attribute_id_num = (unsigned int)attribute_ids_.size();
-  for (unsigned int i = 0; i < attribute_id_num; ++i) {
-    std::memset(buffers_[buffer_i], 0, buffer_sizes_[buffer_i]);
-    ++buffer_i;
-    if (array_schema_->var_size(attribute_ids_[i])) {
-      std::memset(buffers_[buffer_i], 0, buffer_sizes_[buffer_i]);
-      ++buffer_i;
-    }
+void Query::zero_out_buffer_sizes() {
+  for (auto& attr_buffer : attr_buffers_) {
+    *(attr_buffer.second.buffer_size_) = 0;
+    *(attr_buffer.second.buffer_var_size_) = 0;
   }
 }
 
@@ -1852,11 +1691,57 @@ bool Query::has_coords() const {
   return false;
 }
 
+Status Query::init_tile(const std::string& attribute, Tile* tile) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto cell_size = array_schema_->cell_size(attribute);
+  auto capacity = array_schema_->capacity();
+  auto type = array_schema_->type(attribute);
+  auto is_coords = (attribute == constants::coords);
+  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+  auto compressor = array_schema_->compression(attribute);
+  auto compression_level = array_schema_->compression_level(attribute);
+  auto cell_num_per_tile =
+      (has_coords()) ? capacity : domain->cell_num_per_tile();
+  auto tile_size = cell_num_per_tile * cell_size;
+
+  // Initialize
+  RETURN_NOT_OK(tile->init(
+      type, compressor, compression_level, tile_size, cell_size, dim_num));
+
+  return Status::Ok();
+}
+
+Status Query::init_tile(
+    const std::string& attribute, Tile* tile, Tile* tile_var) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto capacity = array_schema_->capacity();
+  auto type = array_schema_->type(attribute);
+  auto compressor = array_schema_->compression(attribute);
+  auto compression_level = array_schema_->compression_level(attribute);
+  auto cell_num_per_tile =
+      (has_coords()) ? capacity : domain->cell_num_per_tile();
+  auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
+
+  // Initialize
+  RETURN_NOT_OK(tile->init(
+      constants::cell_var_offset_type,
+      array_schema_->cell_var_offsets_compression(),
+      array_schema_->cell_var_offsets_compression_level(),
+      tile_size,
+      constants::cell_var_offset_size,
+      0));
+  RETURN_NOT_OK(tile_var->init(
+      type, compressor, compression_level, tile_size, datatype_size(type), 0));
+  return Status::Ok();
+}
+
 Status Query::init_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
     return LOG_STATUS(Status::QueryError(
-        "Cannot initialize global write state; St)ate not properly finalized"));
+        "Cannot initialize global write state; State not properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
 
   // Create fragments
@@ -1865,61 +1750,26 @@ Status Query::init_global_write_state() {
 
   Status st = Status::Ok();
   for (const auto& attr : attributes_) {
-    // For easy reference
-    unsigned attr_id;
-    RETURN_NOT_OK(array_schema_->attribute_id(attr, &attr_id));
-    auto domain = array_schema_->domain();
-    auto cell_size = array_schema_->cell_size(attr_id);
-    auto capacity = array_schema_->capacity();
-    auto type = array_schema_->type(attr_id);
-    auto is_coords = (attr == constants::coords);
-    auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
-    auto compressor = array_schema_->compression(attr_id);
-    auto compression_level = array_schema_->compression_level(attr_id);
-    auto var_size = array_schema_->var_size(attr_id);
-    auto cell_num_per_tile =
-        (has_coords()) ? capacity : domain->cell_num_per_tile();
-
     // Initialize last tiles
     auto last_tile_pair = std::pair<std::string, std::pair<Tile, Tile>>(
         attr, std::pair<Tile, Tile>(Tile(), Tile()));
     auto it_ret = global_write_state_->last_tiles_.emplace(last_tile_pair);
 
-    if (!var_size) {
+    if (!array_schema_->var_size(attr)) {
       auto& last_tile = it_ret.first->second.first;
-      auto tile_size = cell_num_per_tile * cell_size;
-      st = last_tile.init(
-          type, compressor, compression_level, tile_size, cell_size, dim_num);
-
+      st = init_tile(attr, &last_tile);
       if (!st.ok())
         break;
     } else {
       auto& last_tile = it_ret.first->second.first;
       auto& last_tile_var = it_ret.first->second.second;
-      auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
-      st = last_tile.init(
-          constants::cell_var_offset_type,
-          array_schema_->cell_var_offsets_compression(),
-          array_schema_->cell_var_offsets_compression_level(),
-          tile_size,
-          constants::cell_var_offset_size,
-          0);
-      if (!st.ok())
-        break;
-
-      st = last_tile_var.init(
-          type,
-          compressor,
-          compression_level,
-          tile_size,
-          datatype_size(type),
-          0);
+      st = init_tile(attr, &last_tile, &last_tile_var);
       if (!st.ok())
         break;
     }
 
     // Initialize cells written
-    global_write_state_->cell_written_[attr] = 0;
+    global_write_state_->cells_written_[attr] = 0;
   }
 
   // Handle error
@@ -2008,10 +1858,10 @@ Status Query::sort_coords(std::vector<uint64_t>* cell_pos) const {
   // For easy reference
   auto domain = array_schema_->domain();
   uint64_t coords_size = array_schema_->coords_size();
-  int coords_buff_i = -1;
-  RETURN_NOT_OK(coords_buffer_i(&coords_buff_i));
-  auto buff = (T*)buffers_[coords_buff_i];
-  uint64_t coords_num = buffer_sizes_[coords_buff_i] / coords_size;
+  auto it = attr_buffers_.find(constants::coords);
+  auto buffer = (T*)it->second.buffer_;
+  auto buffer_size = it->second.buffer_size_;
+  uint64_t coords_num = *buffer_size / coords_size;
 
   // Populate cell_pos
   cell_pos->resize(coords_num);
@@ -2019,7 +1869,7 @@ Status Query::sort_coords(std::vector<uint64_t>* cell_pos) const {
     (*cell_pos)[i] = i;
 
   // Sort the coordinates in global order
-  std::sort(cell_pos->begin(), cell_pos->end(), GlobalCmp<T>(domain, buff));
+  std::sort(cell_pos->begin(), cell_pos->end(), GlobalCmp<T>(domain, buffer));
 
   return Status::Ok();
 }
@@ -2255,23 +2105,15 @@ Status Query::prepare_full_tiles(
 Status Query::prepare_full_tiles_fixed(
     const std::string& attribute, std::vector<Tile>* tiles) const {
   // For easy reference
-  unsigned bid, attr_id;
-  auto is_coords = (attribute == constants::coords);
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  auto buff = (unsigned char*)buffers_[bid];
-  auto buff_size = buffer_sizes_[bid];
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_size = it->second.buffer_size_;
   auto capacity = array_schema_->capacity();
-  auto type = array_schema_->type(attr_id);
-  auto cell_size = array_schema_->cell_size(attr_id);
-  auto cell_num = buff_size / cell_size;
-  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
-  auto compressor = array_schema_->compression(attr_id);
-  auto compression_level = array_schema_->compression_level(attr_id);
+  auto cell_size = array_schema_->cell_size(attribute);
+  auto cell_num = *buffer_size / cell_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
-  auto tile_size = cell_num_per_tile * cell_size;
 
   // Do nothing if there are no cells to write
   if (cell_num == 0)
@@ -2282,7 +2124,7 @@ Status Query::prepare_full_tiles_fixed(
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
     do {
-      RETURN_NOT_OK(last_tile.write(buff + cell_idx * cell_size, cell_size));
+      RETURN_NOT_OK(last_tile.write(buffer + cell_idx * cell_size, cell_size));
       ++cell_idx;
     } while (!last_tile.full());
   }
@@ -2295,10 +2137,8 @@ Status Query::prepare_full_tiles_fixed(
 
   if (full_tile_num > 0) {
     tiles->resize(full_tile_num);
-    for (auto& tile : (*tiles)) {
-      RETURN_NOT_OK(tile.init(
-          type, compressor, compression_level, tile_size, cell_size, dim_num));
-    }
+    for (auto& tile : (*tiles))
+      RETURN_NOT_OK(init_tile(attribute, &tile));
 
     // Handle last tile (it must be either full or empty)
     if (last_tile.full()) {
@@ -2314,17 +2154,17 @@ Status Query::prepare_full_tiles_fixed(
         ++tile_idx;
 
       RETURN_NOT_OK(
-          (*tiles)[tile_idx].write(buff + cell_idx * cell_size, cell_size));
+          (*tiles)[tile_idx].write(buffer + cell_idx * cell_size, cell_size));
     }
   }
 
   // Potentially fill the last tile
   assert(cell_num - cell_idx < cell_num_per_tile - last_tile.cell_num());
   for (; cell_idx < cell_num; ++cell_idx) {
-    RETURN_NOT_OK(last_tile.write(buff + cell_idx * cell_size, cell_size));
+    RETURN_NOT_OK(last_tile.write(buffer + cell_idx * cell_size, cell_size));
   }
 
-  global_write_state_->cell_written_[attribute] += cell_num;
+  global_write_state_->cells_written_[attribute] += cell_num;
 
   return Status::Ok();
 }
@@ -2332,22 +2172,16 @@ Status Query::prepare_full_tiles_fixed(
 Status Query::prepare_full_tiles_var(
     const std::string& attribute, std::vector<Tile>* tiles) const {
   // For easy reference
-  unsigned bid, attr_id;
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  auto buff = (uint64_t*)buffers_[bid];
-  auto buff_size = buffer_sizes_[bid];
-  auto buff_var = (unsigned char*)buffers_[bid + 1];
-  auto buff_var_size = buffer_sizes_[bid + 1];
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (uint64_t*)it->second.buffer_;
+  auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  auto buffer_size = it->second.buffer_size_;
+  auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_->capacity();
-  auto type = array_schema_->type(attr_id);
-  auto cell_num = buff_size / constants::cell_var_offset_size;
-  auto compressor = array_schema_->compression(attr_id);
-  auto compression_level = array_schema_->compression_level(attr_id);
+  auto cell_num = *buffer_size / constants::cell_var_offset_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
-  auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
   uint64_t offset, var_size;
 
   // Do nothing if there are no cells to write
@@ -2367,9 +2201,10 @@ Status Query::prepare_full_tiles_var(
 
       // Write var-sized value
       var_size = (cell_idx == cell_num - 1) ?
-                     buff_var_size - buff[cell_idx] :
-                     buff[cell_idx + 1] - buff[cell_idx];
-      RETURN_NOT_OK(last_tile_var.write(&buff_var[buff[cell_idx]], var_size));
+                     *buffer_var_size - buffer[cell_idx] :
+                     buffer[cell_idx + 1] - buffer[cell_idx];
+      RETURN_NOT_OK(
+          last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
 
       ++cell_idx;
     } while (!last_tile.full());
@@ -2384,23 +2219,8 @@ Status Query::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->resize(2 * full_tile_num);
     auto tiles_len = tiles->size();
-    for (uint64_t i = 0; i < tiles_len; i += 2) {
-      RETURN_NOT_OK((*tiles)[i].init(
-          constants::cell_var_offset_type,
-          array_schema_->cell_var_offsets_compression(),
-          array_schema_->cell_var_offsets_compression_level(),
-          tile_size,
-          constants::cell_var_offset_size,
-          0));
-
-      RETURN_NOT_OK((*tiles)[i + 1].init(
-          type,
-          compressor,
-          compression_level,
-          tile_size,
-          datatype_size(type),
-          0));
-    }
+    for (uint64_t i = 0; i < tiles_len; i += 2)
+      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
 
     // Handle last tile (it must be either full or empty)
     if (last_tile.full()) {
@@ -2424,10 +2244,10 @@ Status Query::prepare_full_tiles_var(
 
       // Write var-sized value
       var_size = (cell_idx == cell_num - 1) ?
-                     buff_var_size - buff[cell_idx] :
-                     buff[cell_idx + 1] - buff[cell_idx];
-      RETURN_NOT_OK(
-          (*tiles)[tile_idx + 1].write(&buff_var[buff[cell_idx]], var_size));
+                     *buffer_var_size - buffer[cell_idx] :
+                     buffer[cell_idx + 1] - buffer[cell_idx];
+      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+          &buffer_var[buffer[cell_idx]], var_size));
     }
   }
 
@@ -2439,12 +2259,13 @@ Status Query::prepare_full_tiles_var(
     RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
     // Write var-sized value
-    var_size = (cell_idx == cell_num - 1) ? buff_var_size - buff[cell_idx] :
-                                            buff[cell_idx + 1] - buff[cell_idx];
-    RETURN_NOT_OK(last_tile_var.write(&buff_var[buff[cell_idx]], var_size));
+    var_size = (cell_idx == cell_num - 1) ?
+                   *buffer_var_size - buffer[cell_idx] :
+                   buffer[cell_idx + 1] - buffer[cell_idx];
+    RETURN_NOT_OK(last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
   }
 
-  global_write_state_->cell_written_[attribute] += cell_num;
+  global_write_state_->cells_written_[attribute] += cell_num;
 
   return Status::Ok();
 }
@@ -2518,27 +2339,17 @@ Status Query::prepare_tiles_fixed(
     return Status::Ok();
 
   // For easy reference
-  unsigned bid, attr_id;
-  auto is_coords = (attribute == constants::coords);
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  auto buff = (unsigned char*)buffers_[bid];
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (unsigned char*)it->second.buffer_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
   auto tile_num = utils::ceil(cell_num, capacity);
-  auto type = array_schema_->type(attr_id);
-  auto cell_size = array_schema_->cell_size(attr_id);
-  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
-  auto compressor = array_schema_->compression(attr_id);
-  auto compression_level = array_schema_->compression_level(attr_id);
-  auto tile_size = capacity * cell_size;
+  auto cell_size = array_schema_->cell_size(attribute);
 
   // Initialize tiles
   tiles->resize(tile_num);
-  for (auto& tile : (*tiles)) {
-    RETURN_NOT_OK(tile.init(
-        type, compressor, compression_level, tile_size, cell_size, dim_num));
-  }
+  for (auto& tile : (*tiles))
+    RETURN_NOT_OK(init_tile(attribute, &tile));
 
   // Write all cells one by one
   for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
@@ -2546,7 +2357,7 @@ Status Query::prepare_tiles_fixed(
       ++tile_idx;
 
     RETURN_NOT_OK(
-        (*tiles)[tile_idx].write(buff + cell_pos[i] * cell_size, cell_size));
+        (*tiles)[tile_idx].write(buffer + cell_pos[i] * cell_size, cell_size));
   }
 
   return Status::Ok();
@@ -2557,42 +2368,21 @@ Status Query::prepare_tiles_var(
     const std::vector<uint64_t>& cell_pos,
     std::vector<Tile>* tiles) const {
   // For easy reference
-  unsigned bid, attr_id;
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (uint64_t*)it->second.buffer_;
+  auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
   auto tile_num = utils::ceil(cell_num, capacity);
-  auto tile_size = capacity * constants::cell_var_offset_size;
-  auto type = array_schema_->type(attr_id);
-  auto compressor = array_schema_->compression(attr_id);
-  auto compression_level = array_schema_->compression_level(attr_id);
-  auto buff = (uint64_t*)buffers_[bid];
-  auto buff_var = (unsigned char*)buffers_[bid + 1];
-  auto buff_var_size = buffer_sizes_[bid + 1];
   uint64_t offset;
   uint64_t var_size;
 
   // Initialize tiles
   tiles->resize(2 * tile_num);
   auto tiles_len = tiles->size();
-  for (uint64_t i = 0; i < tiles_len; i += 2) {
-    RETURN_NOT_OK((*tiles)[i].init(
-        constants::cell_var_offset_type,
-        array_schema_->cell_var_offsets_compression(),
-        array_schema_->cell_var_offsets_compression_level(),
-        tile_size,
-        constants::cell_var_offset_size,
-        0));
-
-    RETURN_NOT_OK((*tiles)[i + 1].init(
-        type,
-        compressor,
-        compression_level,
-        tile_size,
-        datatype_size(type),
-        0));
-  }
+  for (uint64_t i = 0; i < tiles_len; i += 2)
+    RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
 
   // Write all cells one by one
   for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
@@ -2605,10 +2395,10 @@ Status Query::prepare_tiles_var(
 
     // Write var-sized value
     var_size = (cell_pos[i] == cell_num - 1) ?
-                   buff_var_size - buff[cell_pos[i]] :
-                   buff[cell_pos[i] + 1] - buff[cell_pos[i]];
-    RETURN_NOT_OK(
-        (*tiles)[tile_idx + 1].write(&buff_var[buff[cell_pos[i]]], var_size));
+                   *buffer_var_size - buffer[cell_pos[i]] :
+                   buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
+    RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+        &buffer_var[buffer[cell_pos[i]]], var_size));
   }
 
   return Status::Ok();
@@ -2624,19 +2414,20 @@ Status Query::prepare_tiles(
     return Status::Ok();
 
   // For easy reference
-  unsigned attr_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  auto var_size = array_schema_->var_size(attr_id);
-  unsigned bid;
-  RETURN_NOT_OK(buffer_idx(attribute, &bid));
-  auto cell_val_num = array_schema_->cell_val_num(attr_id);
+  auto var_size = array_schema_->var_size(attribute);
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (uint64_t*)it->second.buffer_;
+  auto buffer_var = (uint64_t*)it->second.buffer_var_;
+  auto buffer_size = it->second.buffer_size_;
+  auto buffer_var_size = it->second.buffer_var_size_;
+  auto cell_val_num = array_schema_->cell_val_num(attribute);
 
   // Initialize tiles and buffer
-  RETURN_NOT_OK(init_tiles(attr_id, tile_num, tiles));
-  auto buff = std::make_shared<ConstBuffer>(buffers_[bid], buffer_sizes_[bid]);
-  auto buff_var = (!var_size) ? nullptr :
-                                std::make_shared<ConstBuffer>(
-                                    buffers_[bid + 1], buffer_sizes_[bid + 1]);
+  RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
+  auto buff = std::make_shared<ConstBuffer>(buffer, *buffer_size);
+  auto buff_var =
+      (!var_size) ? nullptr :
+                    std::make_shared<ConstBuffer>(buffer_var, *buffer_var_size);
 
   // Populate each tile with the write cell ranges
   uint64_t end_pos = array_schema_->domain()->cell_num_per_tile() - 1;
@@ -2749,38 +2540,18 @@ Status Query::write_empty_cell_range_to_tile_var(
 }
 
 Status Query::init_tiles(
-    unsigned attr_id, uint64_t tile_num, std::vector<Tile>* tiles) const {
-  // For easy reference
-  auto domain = array_schema_->domain();
-  bool var_size = array_schema_->var_size(attr_id);
-  auto attr = array_schema_->attribute(attr_id);
-  auto cell_size = array_schema_->cell_size(attr_id);
-  auto cell_num = domain->cell_num_per_tile();
-  uint64_t tile_size =
-      cell_num * ((var_size) ? constants::cell_var_offset_size : cell_size);
-
+    const std::string& attribute,
+    uint64_t tile_num,
+    std::vector<Tile>* tiles) const {
   // Initialize tiles
+  bool var_size = array_schema_->var_size(attribute);
   auto tiles_len = (var_size) ? 2 * tile_num : tile_num;
   tiles->resize(tiles_len);
-  for (size_t i = 0; i < tiles_len; ++i) {
-    RETURN_NOT_OK((*tiles)[i].init(
-        (var_size) ? constants::cell_var_offset_type : attr->type(),
-        (var_size) ? array_schema_->cell_var_offsets_compression() :
-                     attr->compressor(),
-        (var_size) ? array_schema_->cell_var_offsets_compression_level() :
-                     attr->compression_level(),
-        tile_size,
-        (var_size) ? constants::cell_var_offset_size : cell_size,
-        0));
-
-    if (var_size) {
-      RETURN_NOT_OK((*tiles)[++i].init(
-          attr->type(),
-          attr->compressor(),
-          attr->compression_level(),
-          tile_size,
-          datatype_size(attr->type()),
-          0));
+  for (size_t i = 0; i < tiles_len; i += (1 + var_size)) {
+    if (!var_size) {
+      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i])));
+    } else {
+      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
     }
   }
 
@@ -2796,39 +2567,37 @@ Status Query::write_tiles(
     return Status::Ok();
 
   // For easy reference
-  unsigned attr_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute, &attr_id));
-  auto var_size = array_schema_->var_size(attr_id);
+  auto var_size = array_schema_->var_size(attribute);
 
   // Prepare TileIO
-  auto tile_io =
-      std::make_shared<TileIO>(storage_manager_, frag_meta->attr_uri(attr_id));
+  auto tile_io = std::make_shared<TileIO>(
+      storage_manager_, frag_meta->attr_uri(attribute));
   auto tile_io_var =
       (!var_size) ? nullptr :
                     std::make_shared<TileIO>(
-                        storage_manager_, frag_meta->attr_var_uri(attr_id));
+                        storage_manager_, frag_meta->attr_var_uri(attribute));
 
   // Write tiles
   auto tile_num = tiles.size();
   uint64_t bytes_written, bytes_written_var;
   for (size_t i = 0; i < tile_num; ++i) {
     RETURN_NOT_OK(tile_io->write(&(tiles[i]), &bytes_written));
-    frag_meta->append_tile_offset(attr_id, bytes_written);
+    frag_meta->append_tile_offset(attribute, bytes_written);
 
     if (var_size) {
       ++i;
       RETURN_NOT_OK(tile_io_var->write(&(tiles[i]), &bytes_written_var));
-      frag_meta->append_tile_var_offset(attr_id, bytes_written_var);
-      frag_meta->append_tile_var_size(attr_id, tiles[i].size());
+      frag_meta->append_tile_var_offset(attribute, bytes_written_var);
+      frag_meta->append_tile_var_size(attribute, tiles[i].size());
     }
   }
 
   // Close files, except in the case of global order
   if (layout_ != Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->attr_uri(attr_id)));
+    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->attr_uri(attribute)));
     if (var_size)
       RETURN_NOT_OK(
-          storage_manager_->close_file(frag_meta->attr_var_uri(attr_id)));
+          storage_manager_->close_file(frag_meta->attr_var_uri(attribute)));
   }
 
   return Status::Ok();

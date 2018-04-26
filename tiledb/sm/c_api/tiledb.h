@@ -2031,30 +2031,6 @@ TILEDB_EXPORT int tiledb_query_reset_buffers(
 TILEDB_EXPORT int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
 
-/**
- * Checks the query status for a particular attribute. This is because a
- * read query may be INCOMPLETE due to the fact that its corresponding
- * buffer did not have enough space to hold the results.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_query_status_t status;
- * tiledb_query_get_attribute_status(ctx, query, "attr_1", &status);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param attribute_name The name of the attribute to be checked.
- * @param status The query status for the input attribute.
- * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
- */
-TILEDB_EXPORT int tiledb_query_get_attribute_status(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* attribute_name,
-    tiledb_query_status_t* status);
-
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
