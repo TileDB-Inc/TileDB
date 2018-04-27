@@ -1280,7 +1280,7 @@ Status StorageManager::get_fragment_uris(
     const URI& array_uri, std::vector<URI>* fragment_uris) const {
   // Get all uris in the array directory
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.join_path(""), &uris));
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
 
   // Get only the fragment uris
   bool exists;
