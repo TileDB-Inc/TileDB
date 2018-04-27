@@ -136,7 +136,6 @@ Status KV::finalize() {
 Status KV::add_item(const KVItem* kv_item) {
   // Check if we are good for writes
   if (!write_good_) {
-    mtx_.unlock();
     return LOG_STATUS(
         Status::KVError("Cannot add item; Key-value store was not opened "
                         "properly for writes"));
@@ -145,10 +144,10 @@ Status KV::add_item(const KVItem* kv_item) {
   if (items_.size() >= max_items_)
     RETURN_NOT_OK(flush());
 
-  mtx_.lock();
+  // Take the lock.
+  std::unique_lock<std::mutex> lck(mtx_);
 
   if (!kv_item->good(attributes_, types_)) {
-    mtx_.unlock();
     return LOG_STATUS(Status::KVError("Cannot add item; Invalid item"));
   }
 
@@ -156,14 +155,13 @@ Status KV::add_item(const KVItem* kv_item) {
   *new_item = *kv_item;
   items_[new_item->key()->hash_] = new_item;
 
-  mtx_.unlock();
-
   return Status::Ok();
 }
 
 Status KV::get_item(
     const void* key, Datatype key_type, uint64_t key_size, KVItem** kv_item) {
-  mtx_.lock();
+  // Take the lock.
+  std::unique_lock<std::mutex> lck(mtx_);
 
   // Create key-value item
   *kv_item = new (std::nothrow) KVItem();
@@ -176,7 +174,6 @@ Status KV::get_item(
   if (!st.ok()) {
     delete *kv_item;
     *kv_item = nullptr;
-    mtx_.unlock();
     return st;
   }
 
@@ -184,7 +181,6 @@ Status KV::get_item(
   auto it = items_.find((*kv_item)->key()->hash_);
   if (it != items_.end()) {
     **kv_item = *(it->second);
-    mtx_.unlock();
     return Status::Ok();
   }
 
@@ -194,7 +190,6 @@ Status KV::get_item(
   if (!st.ok() || !found) {
     delete *kv_item;
     *kv_item = nullptr;
-    mtx_.unlock();
     return st;
   }
 
@@ -211,13 +206,10 @@ Status KV::get_item(
     if (!st.ok()) {
       delete *kv_item;
       *kv_item = nullptr;
-      mtx_.unlock();
       return st;
     }
     bid += 1 + (int)var;
   }
-
-  mtx_.unlock();
 
   return Status::Ok();
 }
@@ -296,17 +288,16 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
 }
 
 Status KV::flush() {
-  mtx_.lock();
+  // Take the lock.
+  std::unique_lock<std::mutex> lck(mtx_);
 
   // No items to flush
   if (items_.empty()) {
-    mtx_.unlock();
     return Status::Ok();
   }
 
   auto st = prepare_write_buffers();
   if (!st.ok()) {
-    mtx_.unlock();
     return st;
   }
 
@@ -314,7 +305,6 @@ Status KV::flush() {
   if (st.ok())
     clear_items();
 
-  mtx_.unlock();
   return st;
 }
 
@@ -329,9 +319,9 @@ Status KV::set_max_buffered_items(uint64_t max_items) {
     return LOG_STATUS(Status::KVError(
         "Cannot set maximum buffered items; Maximum items cannot be 0"));
 
-  mtx_.lock();
+  // Take the lock.
+  std::unique_lock<std::mutex> lck(mtx_);
   max_items_ = max_items;
-  mtx_.unlock();
   return Status::Ok();
 }
 

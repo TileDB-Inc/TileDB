@@ -65,6 +65,12 @@ class URI {
   /*                API                */
   /* ********************************* */
 
+  /**
+   * Return a copy of this URI with a trailing '/' added (if it did not already
+   * have one).
+   */
+  URI add_trailing_slash() const;
+
   /** Returns a C-style pointer to the URI string. */
   const char* c_str() const;
 

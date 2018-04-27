@@ -53,6 +53,22 @@ static std::string current_dir() {
 }
 #endif
 
+TEST_CASE("URI: Test join", "[uri]") {
+  URI uri("file:///path");
+  CHECK(uri.join_path("").to_string() == "file:///path");
+  CHECK(uri.join_path("abc").to_string() == "file:///path/abc");
+  CHECK(uri.join_path("/abc").to_string() == "file:///path/abc");
+  CHECK(uri.join_path("abc/def").to_string() == "file:///path/abc/def");
+  CHECK(uri.join_path("/abc/def").to_string() == "file:///path/abc/def");
+
+  uri = URI("file:///path/");
+  CHECK(uri.join_path("").to_string() == "file:///path/");
+  CHECK(uri.join_path("abc").to_string() == "file:///path/abc");
+  CHECK(uri.join_path("/abc").to_string() == "file:///path/abc");
+  CHECK(uri.join_path("abc/def").to_string() == "file:///path/abc/def");
+  CHECK(uri.join_path("/abc/def").to_string() == "file:///path/abc/def");
+}
+
 TEST_CASE("URI: Test file URIs", "[uri]") {
   URI uri("file:///path");
   CHECK(!uri.is_invalid());

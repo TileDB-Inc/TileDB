@@ -74,6 +74,16 @@ URI::~URI() = default;
 /*                API                */
 /* ********************************* */
 
+URI URI::add_trailing_slash() const {
+  if (uri_.empty()) {
+    return URI("/");
+  } else if (uri_.back() != '/') {
+    return URI(uri_ + '/');
+  } else {
+    return URI(uri_);
+  }
+}
+
 const char* URI::c_str() const {
   return uri_.c_str();
 }
@@ -112,6 +122,13 @@ bool URI::is_s3() const {
 }
 
 URI URI::join_path(const std::string& path) const {
+  // Check for empty strings.
+  if (path.empty()) {
+    return URI(uri_);
+  } else if (uri_.empty()) {
+    return URI(path);
+  }
+
   if (uri_.back() == '/') {
     if (path.front() == '/') {
       return URI(uri_ + path.substr(1, path.size()));

@@ -185,7 +185,7 @@ Status S3::disconnect() {
 }
 
 Status S3::empty_bucket(const URI& bucket) const {
-  auto uri_dir = bucket.join_path("");
+  auto uri_dir = bucket.add_trailing_slash();
   return remove_dir(uri_dir);
 }
 
@@ -318,7 +318,7 @@ bool S3::is_object(const URI& uri) const {
 
 Status S3::is_dir(const URI& uri, bool* exists) const {
   // Potentially add `/` to the end of `uri`
-  auto uri_dir = uri.join_path("");
+  auto uri_dir = uri.add_trailing_slash();
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri_dir, &paths, "/", 1));
   *exists = (bool)paths.size();
@@ -475,7 +475,7 @@ Status S3::remove_object(const URI& uri) const {
 
 Status S3::remove_dir(const URI& uri) const {
   std::vector<std::string> paths;
-  auto uri_dir = uri.join_path("");
+  auto uri_dir = uri.add_trailing_slash();
   RETURN_NOT_OK(ls(uri_dir, &paths, ""));
   for (const auto& p : paths)
     RETURN_NOT_OK(remove_object(URI(p)));
