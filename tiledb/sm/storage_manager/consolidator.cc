@@ -83,61 +83,114 @@ Status Consolidator::consolidate(const char* array_name) {
 
   // Create queries
   unsigned int fragment_num;
-  auto query_r = new Query();
-  auto query_w = new Query();
+  auto query_r = (Query*)nullptr;
+  auto query_w = (Query*)nullptr;
   Status st = create_queries(
-      query_r,
-      query_w,
+      &query_r,
+      &query_w,
       subarray,
       array_name,
       buffers,
       buffer_sizes,
       &fragment_num);
-  if (!st.ok())
-    goto clean_up;
+  if (!st.ok()) {
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return st;
+  }
 
   // Check number of fragments
-  if (fragment_num <= 1)  // Nothing to consolidate
-    goto clean_up;
+  if (fragment_num <= 1) {  // Nothing to consolidate
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return Status::Ok();
+  }
 
   // Read from one array and write to the other
   st = copy_array(subarray, query_r, query_w);
-  if (!st.ok())
-    goto clean_up;
+  if (!st.ok()) {
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return st;
+  }
 
   // Get old fragment uris
   old_fragment_uris = query_r->fragment_uris();
 
   // Finalize both queries
   st = finalize_queries(query_r, query_w);
-  if (!st.ok())
-    goto clean_up;
+  if (!st.ok()) {
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return st;
+  }
 
   // Lock the array exclusively
   st = storage_manager_->object_lock(array_uri, StorageManager::XLOCK);
-  if (!st.ok())
-    goto clean_up;
+  if (!st.ok()) {
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return st;
+  }
 
   // Delete old fragments
   st = delete_old_fragments(old_fragment_uris);
   if (!st.ok()) {
     storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
-    goto clean_up;
+    clean_up(
+        subarray,
+        array_schema,
+        buffer_num,
+        buffers,
+        buffer_sizes,
+        query_r,
+        query_w);
+    return st;
   }
 
   // Unlock the array
   st = storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
 
-// Clean up
-clean_up:
-  if (subarray != nullptr)
-    std::free(subarray);
-  delete array_schema;
-  free_buffers(buffer_num, buffers, buffer_sizes);
-  delete query_r;
-  delete query_w;
-
-  return st;
+  // Clean up
+  clean_up(
+      subarray,
+      array_schema,
+      buffer_num,
+      buffers,
+      buffer_sizes,
+      query_r,
+      query_w);
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -171,6 +224,22 @@ Status Consolidator::copy_array(
   }
 
   return st;
+}
+
+void Consolidator::clean_up(
+    void* subarray,
+    ArraySchema* array_schema,
+    unsigned buffer_num,
+    void** buffers,
+    uint64_t* buffer_sizes,
+    Query* query_r,
+    Query* query_w) const {
+  if (subarray != nullptr)
+    std::free(subarray);
+  delete array_schema;
+  free_buffers(buffer_num, buffers, buffer_sizes);
+  delete query_r;
+  delete query_w;
 }
 
 Status Consolidator::create_buffers(
@@ -223,8 +292,8 @@ Status Consolidator::create_buffers(
 }
 
 Status Consolidator::create_queries(
-    Query* query_r,
-    Query* query_w,
+    Query** query_r,
+    Query** query_w,
     void* subarray,
     const char* array_name,
     void** buffers,
@@ -243,12 +312,12 @@ Status Consolidator::create_queries(
       buffer_sizes));
 
   // Get fragment num and terminate with success if it is <=1
-  *fragment_num = query_r->fragment_num();
+  *fragment_num = (*query_r)->fragment_num();
   if (*fragment_num <= 1)
     return Status::Ok();
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
-  URI new_fragment_uri = query_r->last_fragment_uri();
+  URI new_fragment_uri = (*query_r)->last_fragment_uri();
   RETURN_NOT_OK(rename_new_fragment_uri(&new_fragment_uri));
 
   // Create write query
@@ -302,7 +371,7 @@ Status Consolidator::finalize_queries(Query* query_r, Query* query_w) {
 }
 
 void Consolidator::free_buffers(
-    unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) {
+    unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) const {
   for (unsigned int i = 0; i < buffer_num; ++i) {
     if (buffers[i] != nullptr)
       std::free(buffers[i]);

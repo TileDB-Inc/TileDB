@@ -92,6 +92,16 @@ class Consolidator {
    */
   Status copy_array(void* read_subarray, Query* query_r, Query* query_w);
 
+  /** Cleans up the inputs. */
+  void clean_up(
+      void* subarray,
+      ArraySchema* array_schema,
+      unsigned buffer_num,
+      void** buffers,
+      uint64_t* buffer_sizes,
+      Query* query_r,
+      Query* query_w) const;
+
   /**
    * Creates the buffers that will be used upon reading the input fragments and
    * writing into the new fragment. It also retrieves the number of buffers
@@ -123,8 +133,8 @@ class Consolidator {
    * @return Status
    */
   Status create_queries(
-      Query* query_r,
-      Query* query_w,
+      Query** query_r,
+      Query** query_w,
       void* write_subarray,
       const char* array_name,
       void** buffers,
@@ -155,7 +165,7 @@ class Consolidator {
    * @param buffer_sizes The corresponding buffer sizes.
    */
   void free_buffers(
-      unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes);
+      unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) const;
 
   /**
    * Renames the new fragment URI. The new name has the format

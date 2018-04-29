@@ -1607,26 +1607,16 @@ int tiledb_query_create(
     return TILEDB_OOM;
   }
 
-  // Create a new Query object
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query();
-  if ((*query)->query_ == nullptr) {
-    delete *query;
-    tiledb::sm::Status st = tiledb::sm::Status::Error(
-        "Failed to allocate TileDB query object in object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
   // Create query object
   if (save_error(
           ctx,
           ctx->storage_manager_->query_init(
-              ((*query)->query_),
+              &((*query)->query_),
               array_uri,
               static_cast<tiledb::sm::QueryType>(type)))) {
     delete (*query)->query_;
     delete *query;
+    *query = nullptr;
     return TILEDB_ERR;
   }
 

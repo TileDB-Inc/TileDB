@@ -857,24 +857,24 @@ Status StorageManager::query_finalize(Query* query) {
 }
 
 Status StorageManager::query_init(
-    Query* query, const char* array_name, QueryType type) {
+    Query** query, const char* array_name, QueryType type) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(
       array_open(URI(array_name), type, &array_schema, &fragment_metadata));
 
-  // Set basic query members
-  query->set_storage_manager(this);
-  query->set_type(type);
-  query->set_array_schema(array_schema);
-  query->set_fragment_metadata(fragment_metadata);
+  // Create query
+  *query = new Query(type);
+  (*query)->set_storage_manager(this);
+  (*query)->set_array_schema(array_schema);
+  (*query)->set_fragment_metadata(fragment_metadata);
 
   return Status::Ok();
 }
 
 Status StorageManager::query_init(
-    Query* query,
+    Query** query,
     const char* array_name,
     QueryType type,
     Layout layout,
@@ -890,14 +890,23 @@ Status StorageManager::query_init(
       array_open(URI(array_name), type, &array_schema, &fragment_metadata));
 
   // Set basic query members
-  query->set_array_schema(array_schema);
-  query->set_storage_manager(this);
-  query->set_type(type);
-  query->set_layout(layout);
-  query->set_fragment_metadata(fragment_metadata);
-  RETURN_NOT_OK(query->set_subarray(subarray));
-  RETURN_NOT_OK(
-      query->set_buffers(attributes, attribute_num, buffers, buffer_sizes));
+  *query = new Query(type);
+  (*query)->set_array_schema(array_schema);
+  (*query)->set_storage_manager(this);
+  (*query)->set_layout(layout);
+  (*query)->set_fragment_metadata(fragment_metadata);
+  Status st = (*query)->set_subarray(subarray);
+  if (!st.ok()) {
+    delete *query;
+    *query = nullptr;
+    return st;
+  }
+  st = (*query)->set_buffers(attributes, attribute_num, buffers, buffer_sizes);
+  if (!st.ok()) {
+    delete *query;
+    *query = nullptr;
+    return st;
+  }
 
   return Status::Ok();
 }

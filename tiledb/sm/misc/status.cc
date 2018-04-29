@@ -99,26 +99,11 @@ std::string Status::code_to_string() const {
     case StatusCode::StorageManager:
       type = "[TileDB::StorageManager] Error";
       break;
-    case StatusCode::WriteState:
-      type = "[TileDB::WriteState] Error";
-      break;
-    case StatusCode::ReadState:
-      type = "[TileDB::ReadState] Error";
-      break;
-    case StatusCode::Fragment:
-      type = "[TileDB::Fragment] Error";
-      break;
     case StatusCode::FragmentMetadata:
       type = "[TileDB::FragmentMetadata] Error";
       break;
     case StatusCode::ArraySchema:
       type = "[TileDB::ArraySchema] Error";
-      break;
-    case StatusCode::ASRS:
-      type = "[TileDB::ArraySortedReadState] Error";
-      break;
-    case StatusCode::ASWS:
-      type = "[TileDB::ArraySortedWriteState] Error";
       break;
     case StatusCode::Metadata:
       type = "[TileDB::Metadata] Error";
@@ -189,11 +174,14 @@ std::string Status::code_to_string() const {
     case StatusCode::Attribute:
       type = "[TileDB::Attribute] Error";
       break;
-    case StatusCode::SparseReader:
-      type = "[TileDB::SparseReader] Error";
-      break;
     case StatusCode::DenseCellRangeIter:
       type = "[TileDB::DenseCellRangeIter] Error";
+      break;
+    case StatusCode::Reader:
+      type = "[TileDB::Reader] Error";
+      break;
+    case StatusCode::Writer:
+      type = "[TileDB::Writer] Error";
       break;
     default:
       type = "[TileDB::?] Error:";
