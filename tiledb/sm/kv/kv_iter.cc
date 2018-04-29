@@ -114,6 +114,8 @@ Status KVIter::next() {
 void KVIter::clear() {
   delete kv_;
   kv_ = nullptr;
+  delete query_;
+  query_ = nullptr;
   delete[] read_buffers_[0];
   read_buffers_[0] = nullptr;
   read_buffer_sizes_[0] = 0;
@@ -125,9 +127,8 @@ void KVIter::clear() {
 
 Status KVIter::init_read_query() {
   // Create and init query
-  query_ = new Query();
   RETURN_NOT_OK(
-      storage_manager_->query_init(query_, kv_uri_.c_str(), QueryType::READ));
+      storage_manager_->query_init(&query_, kv_uri_.c_str(), QueryType::READ));
 
   // Set buffers
   read_buffers_[0] = new (std::nothrow) uint64_t[2 * max_item_num_];

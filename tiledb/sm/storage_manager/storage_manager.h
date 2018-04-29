@@ -413,7 +413,7 @@ class StorageManager {
    * @param type The query type.
    * @return Status
    */
-  Status query_init(Query* query, const char* array_name, QueryType type);
+  Status query_init(Query** query, const char* array_name, QueryType type);
 
   /**
    * Initializes a query.
@@ -431,7 +431,7 @@ class StorageManager {
    * @return Status
    */
   Status query_init(
-      Query* query,
+      Query** query,
       const char* array_name,
       QueryType type,
       Layout layout,

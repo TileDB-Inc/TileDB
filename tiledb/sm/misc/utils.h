@@ -202,6 +202,9 @@ Status expand_buffer(void*& buffer, uint64_t* buffer_allocated_size);
 template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 
+/** Returns the empty fill value based on the input datatype. */
+const void* fill_value(Datatype type);
+
 /**
  * Checks if there are duplicates in the input vector.
  *

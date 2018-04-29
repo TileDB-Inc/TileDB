@@ -79,14 +79,8 @@ enum class StatusCode : char {
   Ok,
   Error,
   StorageManager,
-  WriteState,
-  ReadState,
-  Fragment,
   FragmentMetadata,
   ArraySchema,
-  ARS,   // Array Read State
-  ASRS,  // Array Sorted Read State
-  ASWS,  // Array Sorted Write State
   Metadata,
   IO,
   Mem,
@@ -110,8 +104,9 @@ enum class StatusCode : char {
   FS_S3,
   FS_HDFS,
   Attribute,
-  SparseReader,
   DenseCellRangeIter,
+  Reader,
+  Writer
 };
 
 class Status {
@@ -156,11 +151,6 @@ class Status {
     return Status(StatusCode::StorageManager, msg, -1);
   }
 
-  /** Return a Fragment error class Status with a given message **/
-  static Status FragmentError(const std::string& msg) {
-    return Status(StatusCode::Fragment, msg, -1);
-  }
-
   /** Return a FragmentMetadata error class Status with a given message **/
   static Status FragmentMetadataError(const std::string& msg) {
     return Status(StatusCode::FragmentMetadata, msg, -1);
@@ -169,23 +159,6 @@ class Status {
   /** Return a ArraySchema error class Status with a given message **/
   static Status ArraySchemaError(const std::string& msg) {
     return Status(StatusCode::ArraySchema, msg, -1);
-  }
-
-  /** Return a ArrayReadState (ARS) error class Status with a given message **/
-  static Status ARSError(const std::string& msg) {
-    return Status(StatusCode::ARS, msg, -1);
-  }
-
-  /** Return a ArraySortedReadState (ASRS) error class Status with a given
-   * message **/
-  static Status ASRSError(const std::string& msg) {
-    return Status(StatusCode::ASRS, msg, -1);
-  }
-
-  /** Return a ArraySortedWriteState (ASWS) error class Status with a given
-   * message **/
-  static Status ASWSError(const std::string& msg) {
-    return Status(StatusCode::ASWS, msg, -1);
   }
 
   /** Return a Metadata error class Status with a given message **/
@@ -226,16 +199,6 @@ class Status {
   /** Return a BufferError error class Status with a given message **/
   static Status BufferError(const std::string& msg) {
     return Status(StatusCode::Buffer, msg, -1);
-  }
-
-  /** Return a WriteStateError error class Status with a given message **/
-  static Status WriteStateError(const std::string& msg) {
-    return Status(StatusCode::WriteState, msg, -1);
-  }
-
-  /** Return a ReadStateError error class Status with a given message **/
-  static Status ReadStateError(const std::string& msg) {
-    return Status(StatusCode::ReadState, msg, -1);
   }
 
   /** Return a QueryError error class Status with a given message **/
@@ -313,15 +276,20 @@ class Status {
     return Status(StatusCode::Attribute, msg, -1);
   }
 
-  /** Return a SparseReaderError error class Status with a given message **/
-  static Status SparseReaderError(const std::string& msg) {
-    return Status(StatusCode::SparseReader, msg, -1);
-  }
-
   /** Return a DenseCellRangeIterError error class Status with a given message
    * **/
   static Status DenseCellRangeIterError(const std::string& msg) {
     return Status(StatusCode::DenseCellRangeIter, msg, -1);
+  }
+
+  /** Return a ReaderError error class Status with a given message **/
+  static Status ReaderError(const std::string& msg) {
+    return Status(StatusCode::Reader, msg, -1);
+  }
+
+  /** Return a WriterError error class Status with a given message **/
+  static Status WriterError(const std::string& msg) {
+    return Status(StatusCode::Writer, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
