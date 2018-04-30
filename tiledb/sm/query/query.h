@@ -143,6 +143,9 @@ class Query {
   void set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
+  /** Sets the fragment URI. Applicable only to write queries. */
+  void set_fragment_uri(const URI& fragment_uri);
+
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default

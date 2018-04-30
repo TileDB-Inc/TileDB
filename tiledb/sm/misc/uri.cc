@@ -148,7 +148,13 @@ std::string URI::last_path_part() const {
 }
 
 URI URI::parent() const {
-  uint64_t pos = uri_.find_last_of('/');
+  if (uri_.empty())
+    return URI();
+
+  auto uri = uri_;
+  if (uri.back() == '/')
+    uri.pop_back();
+  uint64_t pos = uri.find_last_of('/');
   if (pos == std::string::npos)
     return URI();
   return URI(uri_.substr(0, pos));

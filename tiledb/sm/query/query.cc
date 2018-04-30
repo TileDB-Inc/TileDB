@@ -163,6 +163,12 @@ void Query::set_fragment_metadata(
     reader_.set_fragment_metadata(fragment_metadata);
 }
 
+void Query::set_fragment_uri(const URI& fragment_uri) {
+  if (type_ == QueryType::WRITE)
+    writer_.set_fragment_uri(fragment_uri);
+  // Non-applicable to reads
+}
+
 Status Query::set_layout(Layout layout) {
   if (type_ == QueryType::WRITE)
     return writer_.set_layout(layout);
