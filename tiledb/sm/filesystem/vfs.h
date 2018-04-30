@@ -113,6 +113,11 @@ class VFS {
   Status touch(const URI& uri) const;
 
   /**
+   * Cancels all background or queued tasks.
+   */
+  Status cancel_all_tasks();
+
+  /**
    * Creates an object-store bucket.
    *
    * @param uri The name of the bucket to be created.
@@ -221,7 +226,12 @@ class VFS {
    */
   Status is_empty_bucket(const URI& uri, bool* is_empty) const;
 
-  /** Initializes the virtual filesystem. */
+  /**
+   * Initializes the virtual filesystem with the given configuration.
+   *
+   * @param vfs_params VFS Configuration
+   * @return Status
+   */
   Status init(const Config::VFSParams& vfs_params);
 
   /**

@@ -344,7 +344,13 @@ TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
  * - `sm.fragment_metadata_cache_size` <br>
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
  *    acceptable. <br>
+ * - `sm.enable_signal_handlers` <br>
+ *    Whether or not TileDB will install signal handlers. <br>
+ *    **Default**: true
  *    **Default**: 10,000,000
+ * - `sm.number_of_threads` <br>
+ *    The number of allocated threads per TileDB context. <br>
+ *    **Default**: number of cores
  * - `vfs.max_parallel_ops` <br>
  *    The maximum number of VFS parallel operations. <br>
  *    **Default**: number of cores
@@ -752,6 +758,14 @@ TILEDB_EXPORT int tiledb_ctx_get_last_error(
  */
 TILEDB_EXPORT int tiledb_ctx_is_supported_fs(
     tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int* is_supported);
+
+/**
+ * Cancels all background or async tasks associated with the given context.
+ *
+ * @param ctx The TileDB context.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx);
 
 /* ********************************* */
 /*                GROUP              */

@@ -90,6 +90,8 @@ std::vector<URI> Query::fragment_uris() const {
 }
 
 Status Query::init() {
+  status_ = QueryStatus::INPROGRESS;
+
   if (type_ == QueryType::READ)
     return reader_.init();
   return writer_.init();
@@ -105,6 +107,11 @@ Layout Query::layout() const {
   if (type_ == QueryType::WRITE)
     return writer_.layout();
   return reader_.layout();
+}
+
+Status Query::cancel() {
+  status_ = QueryStatus::FAILED;
+  return Status::Ok();
 }
 
 Status Query::process() {

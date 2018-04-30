@@ -69,6 +69,14 @@ class Query {
   const ArraySchema* array_schema() const;
 
   /**
+   * Marks a query that has not yet been started as failed. This should not be
+   * called asynchronously to cancel an in-progress query; for that use the
+   * parent StorageManager's cancellation mechanism.
+   * @return Status
+   */
+  Status cancel();
+
+  /**
    * Computes a vector of `subarrays` into which `subarray` must be partitioned,
    * such that each subarray in `subarrays` can be safely answered by the
    * query without a memory overflow.

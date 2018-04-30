@@ -175,6 +175,11 @@ Status VFS::touch(const URI& uri) const {
   STATS_FUNC_OUT(vfs_create_file);
 }
 
+Status VFS::cancel_all_tasks() {
+  thread_pool_->cancel_all_tasks();
+  return Status::Ok();
+}
+
 Status VFS::create_bucket(const URI& uri) const {
   STATS_FUNC_IN(vfs_create_bucket);
 
@@ -545,11 +550,11 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 
   vfs_params_ = vfs_params;
 
-  thread_pool_ = std::unique_ptr<ThreadPool>(
-      new (std::nothrow) ThreadPool(vfs_params_.max_parallel_ops_));
+  thread_pool_ = std::unique_ptr<ThreadPool>(new (std::nothrow) ThreadPool());
   if (thread_pool_.get() == nullptr) {
-    return LOG_STATUS(Status::VFSError("Could not create VFS thread pool"));
+    return LOG_STATUS(Status::VFSError("Could not allocate VFS thread pool."));
   }
+  RETURN_NOT_OK(thread_pool_->init(vfs_params.max_parallel_ops_));
 
 #ifdef HAVE_HDFS
   hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
