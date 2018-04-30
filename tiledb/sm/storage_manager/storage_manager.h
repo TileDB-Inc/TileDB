@@ -428,6 +428,11 @@ class StorageManager {
    * @param buffers The buffers that will hold the cells to write, or will
    *     hold the cells that will be read.
    * @param buffer_sizes The corresponding buffer sizes.
+   * @param fragment_uri This is applicable only to write queries. This is
+   *     to indicate that the new fragment created by a write will have
+   *     a specific URI. This is useful mainly in consolidation, where
+   *     the consolidated fragment URI must be explicitly created by
+   *     the consolidator.
    * @return Status
    */
   Status query_init(
@@ -439,7 +444,8 @@ class StorageManager {
       const char** attributes,
       unsigned int attribute_num,
       void** buffers,
-      uint64_t* buffer_sizes);
+      uint64_t* buffer_sizes,
+      URI fragment_uri = URI(""));
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);

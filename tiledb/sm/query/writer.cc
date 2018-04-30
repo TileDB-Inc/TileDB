@@ -150,6 +150,10 @@ void Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   }
 }
 
+void Writer::set_fragment_uri(const URI& fragment_uri) {
+  fragment_uri_ = fragment_uri;
+}
+
 Status Writer::set_layout(Layout layout) {
   // Check if the array is a key-value store
   if (array_schema_->is_kv())
@@ -454,7 +458,8 @@ Status Writer::compute_write_cell_ranges(
 
 Status Writer::create_fragment(
     bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
-  auto uri = URI(new_fragment_name());
+  auto uri = (!fragment_uri_.to_string().empty()) ? fragment_uri_ :
+                                                    URI(new_fragment_name());
   *frag_meta = std::make_shared<FragmentMetadata>(array_schema_, dense, uri);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
