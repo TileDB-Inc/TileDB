@@ -882,7 +882,8 @@ Status StorageManager::query_init(
     const char** attributes,
     unsigned int attribute_num,
     void** buffers,
-    uint64_t* buffer_sizes) {
+    uint64_t* buffer_sizes,
+    URI fragment_uri) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_schema = (const ArraySchema*)nullptr;
@@ -895,6 +896,8 @@ Status StorageManager::query_init(
   (*query)->set_storage_manager(this);
   (*query)->set_layout(layout);
   (*query)->set_fragment_metadata(fragment_metadata);
+  if (type == QueryType::WRITE)
+    (*query)->set_fragment_uri(fragment_uri);
   Status st = (*query)->set_subarray(subarray);
   if (!st.ok()) {
     delete *query;

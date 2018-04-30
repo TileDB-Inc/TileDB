@@ -330,7 +330,8 @@ Status Consolidator::create_queries(
       nullptr,
       0,
       buffers,
-      buffer_sizes));
+      buffer_sizes,
+      new_fragment_uri));
 
   return Status::Ok();
 }

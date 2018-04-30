@@ -177,6 +177,9 @@ class Writer {
   /** Sets the query buffers. */
   void set_buffers(void** buffers, uint64_t* buffer_sizes);
 
+  /** Sets the fragment URI. Applicable only to write queries. */
+  void set_fragment_uri(const URI& fragment_uri);
+
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default
@@ -212,6 +215,9 @@ class Writer {
 
   /** Maps attribute names to their buffers. */
   std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+
+  /** The name of the new fragment to be created. */
+  URI fragment_uri_;
 
   /** The state associated with global writes. */
   std::unique_ptr<GlobalWriteState> global_write_state_;
