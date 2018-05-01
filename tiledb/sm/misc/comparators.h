@@ -64,8 +64,8 @@ class RowCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& b) {
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
     for (unsigned int i = 0; i < dim_num_; ++i) {
       if (a->coords_[i] < b->coords_[i])
         return true;
@@ -103,8 +103,8 @@ class ColCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& b) {
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
     for (unsigned int i = dim_num_ - 1;; --i) {
       if (a->coords_[i] < b->coords_[i])
         return true;
@@ -150,8 +150,8 @@ class GlobalCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::shared_ptr<Reader::OverlappingCoords<T>>& b) {
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
+      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
     // Compare tile order first
     auto tile_cmp = domain_->tile_order_cmp<T>(a->coords_, b->coords_);
 

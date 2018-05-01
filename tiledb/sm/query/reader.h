@@ -85,11 +85,11 @@ class Reader {
   };
 
   /**
-   * For each fixed-sized attributes, the second tile in the pair is
-   * ignored. For var-sized attributes, the first is a pointer to the
-   * offsets tile and the second is a pointer to the var-sized values tile.
+   * For each fixed-sized attributes, the second tile in the pair is ignored.
+   * For var-sized attributes, the first is the offsets tile and the second is
+   * the var-sized values tile.
    */
-  typedef std::pair<std::shared_ptr<Tile>, std::shared_ptr<Tile>> TilePair;
+  typedef std::pair<Tile, Tile> TilePair;
 
   /** Information about a tile (across multiple attributes). */
   struct OverlappingTile {
@@ -115,7 +115,7 @@ class Reader {
   };
 
   /** A vector of overlapping tiles. */
-  typedef std::vector<std::shared_ptr<OverlappingTile>> OverlappingTileVec;
+  typedef std::vector<std::unique_ptr<OverlappingTile>> OverlappingTileVec;
 
   /** A cell range belonging to a particular overlapping tile. */
   struct OverlappingCellRange {
@@ -123,8 +123,12 @@ class Reader {
      * The tile the cell range belongs to. If `nullptr`, then this is
      * an "empty" cell range, to be filled with the default empty
      * values.
+     *
+     * Note that the tile this points to is allocated and freed in
+     * sparse_read/dense_read, so the lifetime of this struct must not exceed
+     * the scope of those functions.
      */
-    std::shared_ptr<OverlappingTile> tile_;
+    const OverlappingTile* tile_;
     /** The starting cell in the range. */
     uint64_t start_;
     /** The ending cell in the range. */
@@ -132,15 +136,15 @@ class Reader {
 
     /** Constructor. */
     OverlappingCellRange(
-        std::shared_ptr<OverlappingTile> tile, uint64_t start, uint64_t end)
-        : tile_(std::move(tile))
+        const OverlappingTile* tile, uint64_t start, uint64_t end)
+        : tile_(tile)
         , start_(start)
         , end_(end) {
     }
   };
 
   /** A list of cell ranges. */
-  typedef std::list<std::shared_ptr<OverlappingCellRange>>
+  typedef std::list<std::unique_ptr<OverlappingCellRange>>
       OverlappingCellRangeList;
 
   /**
@@ -151,8 +155,14 @@ class Reader {
    */
   template <class T>
   struct OverlappingCoords {
-    /** The overlapping tile the coords belong to. */
-    std::shared_ptr<OverlappingTile> tile_;
+    /**
+     * The overlapping tile the coords belong to.
+     *
+     * Note that the tile this points to is allocated and freed in
+     * sparse_read/dense_read, so the lifetime of this struct must not exceed
+     * the scope of those functions.
+     */
+    const OverlappingTile* tile_;
     /** The coordinates. */
     const T* coords_;
     /** The position of the coordinates in the tile. */
@@ -160,12 +170,19 @@ class Reader {
 
     /** Constructor. */
     OverlappingCoords(
-        std::shared_ptr<OverlappingTile> tile, const T* coords, uint64_t pos)
-        : tile_(std::move(tile))
+        const OverlappingTile* tile, const T* coords, uint64_t pos)
+        : tile_(tile)
         , coords_(coords)
         , pos_(pos) {
     }
   };
+
+  /**
+   * Type alias for a list of OverlappingCoords.
+   */
+  template <typename T>
+  using OverlappingCoordsList =
+      std::list<std::unique_ptr<OverlappingCoords<T>>>;
 
   /** A cell range produced by the dense read algorithm. */
   template <class T>
@@ -343,7 +360,7 @@ class Reader {
    */
   template <class T>
   Status compute_cell_ranges(
-      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+      const OverlappingCoordsList<T>& coords,
       OverlappingCellRangeList* cell_ranges) const;
 
   /**
@@ -385,7 +402,7 @@ class Reader {
   template <class T>
   Status compute_dense_overlapping_tiles_and_cell_ranges(
       const std::list<DenseCellRange<T>>& dense_cell_ranges,
-      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+      const OverlappingCoordsList<T>& coords,
       OverlappingTileVec* tiles,
       OverlappingCellRangeList* overlapping_cell_ranges);
 
@@ -399,8 +416,7 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_coords(
-      const OverlappingTileVec& tiles,
-      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+      const OverlappingTileVec& tiles, OverlappingCoordsList<T>* coords) const;
 
   /**
    * Retrieves the coordinates that overlap the subarray from the input
@@ -413,8 +429,7 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_coords(
-      const std::shared_ptr<OverlappingTile>& tile,
-      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+      const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const;
 
   /**
    * Computes info about the overlapping tiles, such as which fragment they
@@ -472,8 +487,7 @@ class Reader {
    * @return Status
    */
   template <class T>
-  Status dedup_coords(
-      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+  Status dedup_coords(OverlappingCoordsList<T>* coords) const;
 
   /** Performs a read on a dense array. */
   Status dense_read();
@@ -497,8 +511,7 @@ class Reader {
    */
   template <class T>
   Status get_all_coords(
-      const std::shared_ptr<OverlappingTile>& tile,
-      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+      const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const;
 
   /**
    * Handles the coordinates that fall between `start` and `end`.
@@ -526,15 +539,14 @@ class Reader {
    */
   template <class T>
   Status handle_coords_in_dense_cell_range(
-      const std::shared_ptr<OverlappingTile>& cur_tile,
+      const OverlappingTile* cur_tile,
       const T* cur_tile_coords,
       uint64_t* start,
       uint64_t end,
       uint64_t coords_size,
-      const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
-      typename std::list<std::shared_ptr<OverlappingCoords<T>>>::const_iterator*
-          coords_it,
-      std::shared_ptr<OverlappingTile>* coords_tile,
+      const OverlappingCoordsList<T>& coords,
+      typename OverlappingCoordsList<T>::const_iterator* coords_it,
+      const OverlappingTile* coords_tile,
       uint64_t* coords_pos,
       unsigned* coords_fidx,
       std::vector<T>* coords_tile_coords,
@@ -617,8 +629,7 @@ class Reader {
    * @return Status
    */
   template <class T>
-  Status sort_coords(
-      std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const;
+  Status sort_coords(OverlappingCoordsList<T>* coords) const;
 
   /** Performs a read on a sparse array. */
   Status sparse_read();

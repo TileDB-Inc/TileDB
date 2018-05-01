@@ -362,7 +362,7 @@ Status Reader::check_subarray(const T* subarray) const {
 
 template <class T>
 Status Reader::compute_cell_ranges(
-    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+    const OverlappingCoordsList<T>& coords,
     OverlappingCellRangeList* cell_ranges) const {
   // Trivial case
   auto coords_num = (uint64_t)coords.size();
@@ -377,14 +377,13 @@ Status Reader::compute_cell_ranges(
 
   // Scan the coordinates and compute ranges
   for (++it; it != coords.end(); ++it) {
-    if (it->get()->tile_.get() == tile.get() &&
-        it->get()->pos_ == end_pos + 1) {
+    if (it->get()->tile_ == tile && it->get()->pos_ == end_pos + 1) {
       // Same range - advance end position
       end_pos = it->get()->pos_;
     } else {
       // New range - append previous range
-      cell_ranges->emplace_back(
-          std::make_shared<OverlappingCellRange>(tile, start_pos, end_pos));
+      cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
+          new OverlappingCellRange(tile, start_pos, end_pos)));
       start_pos = it->get()->pos_;
       end_pos = start_pos;
       tile = it->get()->tile_;
@@ -392,8 +391,8 @@ Status Reader::compute_cell_ranges(
   }
 
   // Append the last range
-  cell_ranges->emplace_back(
-      std::make_shared<OverlappingCellRange>(tile, start_pos, end_pos));
+  cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
+      new OverlappingCellRange(tile, start_pos, end_pos)));
 
   return Status::Ok();
 }
@@ -487,7 +486,7 @@ Status Reader::compute_dense_cell_ranges(
 template <class T>
 Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
     const std::list<DenseCellRange<T>>& dense_cell_ranges,
-    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
+    const OverlappingCoordsList<T>& coords,
     OverlappingTileVec* tiles,
     OverlappingCellRangeList* overlapping_cell_ranges) {
   // Trivial case = no dense cell ranges
@@ -504,18 +503,19 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
 
   // Prepare first range
   auto cr_it = dense_cell_ranges.begin();
-  std::shared_ptr<OverlappingTile> cur_tile = nullptr;
+  const OverlappingTile* cur_tile = nullptr;
   const T* cur_tile_coords = nullptr;
   if (cr_it->fragment_idx_ != -1) {
     auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
         cr_it->tile_coords_);
-    cur_tile = std::make_shared<OverlappingTile>(
-        (unsigned)cr_it->fragment_idx_, tile_idx);
+    auto cur_tile_ptr = std::unique_ptr<OverlappingTile>(
+        new OverlappingTile((unsigned)cr_it->fragment_idx_, tile_idx));
     tile_coords_map[std::pair<unsigned, const T*>(
         (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
         (uint64_t)tiles->size();
-    tiles->push_back(cur_tile);
+    cur_tile = cur_tile_ptr.get();
     cur_tile_coords = cr_it->tile_coords_;
+    tiles->push_back(std::move(cur_tile_ptr));
   }
   auto start = cr_it->start_;
   auto end = cr_it->end_;
@@ -526,7 +526,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   coords_tile_coords.resize(dim_num);
   uint64_t coords_pos = 0;
   unsigned coords_fidx = 0;
-  std::shared_ptr<OverlappingTile> coords_tile = nullptr;
+  const OverlappingTile* coords_tile = nullptr;
   if (coords_it != coords.end()) {
     domain->get_tile_coords(coords_it->get()->coords_, &coords_tile_coords[0]);
     RETURN_NOT_OK(
@@ -538,27 +538,28 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   // Compute overlapping tiles and cell ranges
   for (++cr_it; cr_it != dense_cell_ranges.end(); ++cr_it) {
     // Find tile
-    std::shared_ptr<OverlappingTile> tile = nullptr;
+    const OverlappingTile* tile = nullptr;
     if (cr_it->fragment_idx_ != -1) {  // Non-empty
       auto tile_coords_map_it =
           tile_coords_map.find(std::pair<unsigned, const T*>(
               (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_));
       if (tile_coords_map_it != tile_coords_map.end()) {
-        tile = (*tiles)[tile_coords_map_it->second];
+        tile = (*tiles)[tile_coords_map_it->second].get();
       } else {
         auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
             cr_it->tile_coords_);
-        tile = std::make_shared<OverlappingTile>(
-            (unsigned)cr_it->fragment_idx_, tile_idx);
+        auto tile_ptr = std::unique_ptr<OverlappingTile>(
+            new OverlappingTile((unsigned)cr_it->fragment_idx_, tile_idx));
         tile_coords_map[std::pair<unsigned, const T*>(
             (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
             (uint64_t)tiles->size();
-        tiles->push_back(tile);
+        tile = tile_ptr.get();
+        tiles->push_back(std::move(tile_ptr));
       }
     }
 
     // Check if the range must be appended to the current one
-    if (tile.get() == cur_tile.get() && cr_it->start_ == end + 1) {
+    if (tile == cur_tile && cr_it->start_ == end + 1) {
       end = cr_it->end_;
       continue;
     }
@@ -575,7 +576,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
         coords_size,
         coords,
         &coords_it,
-        &coords_tile,
+        coords_tile,
         &coords_pos,
         &coords_fidx,
         &coords_tile_coords,
@@ -583,8 +584,8 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
 
     // Push remaining range to the result
     if (start <= end)
-      overlapping_cell_ranges->emplace_back(
-          std::make_shared<OverlappingCellRange>(cur_tile, start, end));
+      overlapping_cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
+          new OverlappingCellRange(cur_tile, start, end)));
 
     // Update state
     cur_tile = tile;
@@ -605,7 +606,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
       coords_size,
       coords,
       &coords_it,
-      &coords_tile,
+      coords_tile,
       &coords_pos,
       &coords_fidx,
       &coords_tile_coords,
@@ -613,22 +614,21 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
 
   // Push remaining range to the result
   if (start <= end)
-    overlapping_cell_ranges->emplace_back(
-        std::make_shared<OverlappingCellRange>(cur_tile, start, end));
+    overlapping_cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
+        new OverlappingCellRange(cur_tile, start, end)));
 
   return Status::Ok();
 }
 
 template <class T>
 Status Reader::compute_overlapping_coords(
-    const OverlappingTileVec& tiles,
-    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+    const OverlappingTileVec& tiles, OverlappingCoordsList<T>* coords) const {
   for (const auto& tile : tiles) {
-    std::list<std::shared_ptr<OverlappingCoords<T>>> tile_coords;
+    OverlappingCoordsList<T> tile_coords;
     if (tile->full_overlap_) {
-      RETURN_NOT_OK(get_all_coords<T>(tile, &tile_coords));
+      RETURN_NOT_OK(get_all_coords<T>(tile.get(), &tile_coords));
     } else {
-      RETURN_NOT_OK(compute_overlapping_coords<T>(tile, &tile_coords));
+      RETURN_NOT_OK(compute_overlapping_coords<T>(tile.get(), &tile_coords));
     }
     coords->splice(coords->end(), tile_coords);
   }
@@ -638,19 +638,17 @@ Status Reader::compute_overlapping_coords(
 
 template <class T>
 Status Reader::compute_overlapping_coords(
-    const std::shared_ptr<OverlappingTile>& tile,
-    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+    const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const {
   auto dim_num = array_schema_->dim_num();
-  const auto t = tile->attr_tiles_.find(constants::coords)->second.first;
-  auto t_ptr = t.get();
-  auto coords_num = t_ptr->cell_num();
+  const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
+  auto coords_num = t.cell_num();
   auto subarray = (T*)subarray_;
-  auto c = (T*)t_ptr->data();
+  auto c = (T*)t.data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
     if (utils::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
-      coords->emplace_back(
-          std::make_shared<OverlappingCoords<T>>(tile, &c[pos], i));
+      coords->push_back(std::unique_ptr<OverlappingCoords<T>>(
+          new OverlappingCoords<T>(tile, &c[pos], i)));
   }
 
   return Status::Ok();
@@ -675,8 +673,9 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     auto mbr_num = (uint64_t)mbrs.size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
-        auto tile = std::make_shared<OverlappingTile>(i, j, full_overlap);
-        tiles->emplace_back(tile);
+        auto tile = std::unique_ptr<OverlappingTile>(
+            new OverlappingTile(i, j, full_overlap));
+        tiles->push_back(std::move(tile));
       }
     }
   }
@@ -724,7 +723,7 @@ Status Reader::copy_fixed_cells(
       }
     } else {  // Non-empty range
       const auto& tile = cr->tile_->attr_tiles_.find(attribute)->second.first;
-      auto data = (unsigned char*)tile->data();
+      auto data = (unsigned char*)tile.data();
       std::memcpy(
           buffer + buffer_offset, data + cr->start_ * cell_size, bytes_to_copy);
       buffer_offset += bytes_to_copy;
@@ -790,10 +789,10 @@ Status Reader::copy_var_cells(
     const auto& tile_pair = cr->tile_->attr_tiles_.find(attribute)->second;
     const auto& tile = tile_pair.first;
     const auto& tile_var = tile_pair.second;
-    const auto offsets = (uint64_t*)tile->data();
-    auto data = (unsigned char*)tile_var->data();
-    auto cell_num = tile->cell_num();
-    auto tile_var_size = tile_var->size();
+    const auto offsets = (uint64_t*)tile.data();
+    auto data = (unsigned char*)tile_var.data();
+    auto cell_num = tile.cell_num();
+    auto tile_var_size = tile_var.size();
 
     for (auto i = cr->start_; i <= cr->end_; ++i) {
       // Copy offsets
@@ -827,8 +826,7 @@ Status Reader::copy_var_cells(
 }
 
 template <class T>
-Status Reader::dedup_coords(
-    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+Status Reader::dedup_coords(OverlappingCoordsList<T>* coords) const {
   auto coords_size = array_schema_->coords_size();
   auto it = coords->begin();
   while (it != coords->end()) {
@@ -836,8 +834,8 @@ Status Reader::dedup_coords(
     if (next_it != coords->end() &&
         !std::memcmp(
             it->get()->coords_, next_it->get()->coords_, coords_size)) {
-      if (it->get()->tile_.get()->fragment_idx_ <
-          next_it->get()->tile_.get()->fragment_idx_) {
+      if (it->get()->tile_->fragment_idx_ <
+          next_it->get()->tile_->fragment_idx_) {
         it = coords->erase(it);
       } else {
         coords->erase(next_it);
@@ -898,7 +896,7 @@ Status Reader::dense_read() {
   }
 
   // Compute the read coordinates for all sparse fragments
-  std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
+  OverlappingCoordsList<T> coords;
   RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(sparse_tiles, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
@@ -954,32 +952,29 @@ Status Reader::dense_read() {
 
 template <class T>
 Status Reader::get_all_coords(
-    const std::shared_ptr<OverlappingTile>& tile,
-    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+    const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const {
   auto dim_num = array_schema_->dim_num();
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
-  auto t_ptr = t.get();
-  auto coords_num = t_ptr->cell_num();
-  auto c = (T*)t_ptr->data();
+  auto coords_num = t.cell_num();
+  auto c = (T*)t.data();
 
   for (uint64_t i = 0; i < coords_num; ++i)
-    coords->emplace_back(
-        std::make_shared<OverlappingCoords<T>>(tile, &c[i * dim_num], i));
+    coords->push_back(std::unique_ptr<OverlappingCoords<T>>(
+        new OverlappingCoords<T>(tile, &c[i * dim_num], i)));
 
   return Status::Ok();
 }
 
 template <class T>
 Status Reader::handle_coords_in_dense_cell_range(
-    const std::shared_ptr<OverlappingTile>& cur_tile,
+    const OverlappingTile* cur_tile,
     const T* cur_tile_coords,
     uint64_t* start,
     uint64_t end,
     uint64_t coords_size,
-    const std::list<std::shared_ptr<OverlappingCoords<T>>>& coords,
-    typename std::list<std::shared_ptr<OverlappingCoords<T>>>::const_iterator*
-        coords_it,
-    std::shared_ptr<OverlappingTile>* coords_tile,
+    const OverlappingCoordsList<T>& coords,
+    typename OverlappingCoordsList<T>::const_iterator* coords_it,
+    const OverlappingTile* coords_tile,
     uint64_t* coords_pos,
     unsigned* coords_fidx,
     std::vector<T>* coords_tile_coords,
@@ -998,22 +993,22 @@ Status Reader::handle_coords_in_dense_cell_range(
         RETURN_NOT_OK(
             domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
         *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
-        *coords_tile = (*coords_it)->get()->tile_;
+        coords_tile = (*coords_it)->get()->tile_;
       }
       continue;
     } else {  // Break dense range
       // Left range
       if (*coords_pos > *start) {
-        overlapping_cell_ranges->emplace_back(
-            std::make_shared<OverlappingCellRange>(
-                cur_tile, *start, *coords_pos - 1));
+        overlapping_cell_ranges->push_back(
+            std::unique_ptr<OverlappingCellRange>(
+                new OverlappingCellRange(cur_tile, *start, *coords_pos - 1)));
       }
       // Coords unary range
-      overlapping_cell_ranges->emplace_back(
-          std::make_shared<OverlappingCellRange>(
-              *coords_tile,
+      overlapping_cell_ranges->push_back(
+          std::unique_ptr<OverlappingCellRange>(new OverlappingCellRange(
+              coords_tile,
               (*coords_it)->get()->pos_,
-              (*coords_it)->get()->pos_));
+              (*coords_it)->get()->pos_)));
       // Update start
       *start = *coords_pos + 1;
 
@@ -1025,7 +1020,7 @@ Status Reader::handle_coords_in_dense_cell_range(
         RETURN_NOT_OK(
             domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
         *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
-        *coords_tile = (*coords_it)->get()->tile_;
+        coords_tile = (*coords_it)->get()->tile_;
       }
     }
   }
@@ -1183,46 +1178,43 @@ Status Reader::read_tiles(
     const std::string& attribute, OverlappingTileVec* tiles) const {
   // Prepare tile IO
   auto var_size = array_schema_->var_size(attribute);
-  std::vector<std::shared_ptr<TileIO>> tile_io;
-  std::vector<std::shared_ptr<TileIO>> tile_io_var;
+  std::vector<std::unique_ptr<TileIO>> tile_io;
+  std::vector<std::unique_ptr<TileIO>> tile_io_var;
   for (const auto& f : fragment_metadata_) {
-    tile_io.emplace_back(std::make_shared<TileIO>(
-        storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute)));
+    tile_io.push_back(std::unique_ptr<TileIO>(new TileIO(
+        storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute))));
     if (var_size)
-      tile_io_var.emplace_back(std::make_shared<TileIO>(
+      tile_io_var.push_back(std::unique_ptr<TileIO>(new TileIO(
           storage_manager_,
           f->attr_var_uri(attribute),
-          f->file_var_sizes(attribute)));
+          f->file_var_sizes(attribute))));
     else
-      tile_io_var.emplace_back();
+      tile_io_var.push_back(std::unique_ptr<TileIO>(nullptr));
   }
   // For each fragment, read the tiles
   for (auto& tile : *tiles) {
     auto& tile_pair = tile->attr_tiles_[attribute];
-
+    auto& t = tile_pair.first;
+    auto& t_var = tile_pair.second;
     // Initialize
-    auto t = std::make_shared<Tile>();
-    auto t_var = std::shared_ptr<Tile>(nullptr);
     if (!var_size) {
-      RETURN_NOT_OK(init_tile(attribute, t.get()));
+      RETURN_NOT_OK(init_tile(attribute, &t));
     } else {
-      t_var = std::make_shared<Tile>();
-      RETURN_NOT_OK(init_tile(attribute, t.get(), t_var.get()));
+      RETURN_NOT_OK(init_tile(attribute, &t, &t_var));
     }
 
     // Read
     RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
-        t.get(),
+        &t,
         fragment_metadata_[tile->fragment_idx_]->file_offset(
             attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->compressed_tile_size(
             attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->tile_size(
             attribute, tile->tile_idx_)));
-    tile_pair.first = t;
     if (var_size) {
       RETURN_NOT_OK(tile_io_var[tile->fragment_idx_]->read(
-          t_var.get(),
+          &t_var,
           fragment_metadata_[tile->fragment_idx_]->file_var_offset(
               attribute, tile->tile_idx_),
           fragment_metadata_[tile->fragment_idx_]->compressed_tile_var_size(
@@ -1230,7 +1222,6 @@ Status Reader::read_tiles(
           fragment_metadata_[tile->fragment_idx_]->tile_var_size(
               attribute, tile->tile_idx_)));
     }
-    tile_pair.second = t_var;
   }
 
   return Status::Ok();
@@ -1268,8 +1259,7 @@ Status Reader::set_attributes(
 }
 
 template <class T>
-Status Reader::sort_coords(
-    std::list<std::shared_ptr<OverlappingCoords<T>>>* coords) const {
+Status Reader::sort_coords(OverlappingCoordsList<T>* coords) const {
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto domain = array_schema_->domain();
     coords->sort(GlobalCmp<T>(domain));
@@ -1329,7 +1319,7 @@ Status Reader::sparse_read() {
   }
 
   // Compute the read coordinates for all fragments
-  std::list<std::shared_ptr<OverlappingCoords<T>>> coords;
+  OverlappingCoordsList<T> coords;
   RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(tiles, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
