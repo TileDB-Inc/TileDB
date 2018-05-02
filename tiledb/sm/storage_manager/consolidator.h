@@ -83,14 +83,13 @@ class Consolidator {
 
   /**
    * Copies the array by reading from the fragments to be consolidated
-   * (with *query_r*) and writing to the new fragment (with *query_w*).
+   * (with `query_r`) and writing to the new fragment (with `query_w`).
    *
-   * @param read_subarray The read subarray.
    * @param query_r The read query.
    * @param query_w The write query.
    * @return Status
    */
-  Status copy_array(void* read_subarray, Query* query_r, Query* query_w);
+  Status copy_array(Query* query_r, Query* query_w);
 
   /** Cleans up the inputs. */
   void clean_up(

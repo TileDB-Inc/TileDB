@@ -172,15 +172,21 @@ void AnyFx::read_array(const std::string& array_name) {
   int rc = tiledb_ctx_create(&ctx, NULL);
   REQUIRE(rc == TILEDB_OK);
 
+  // Get maximum buffer sizes
+  const char* attributes[] = {"a1"};
+  uint64_t max_buffer_sizes[2];
+  uint64_t subarray[] = {1, 4};
+  tiledb_array_compute_max_read_buffer_sizes(
+      ctx, array_name.c_str(), subarray, attributes, 1, &max_buffer_sizes[0]);
+
   // Prepare cell buffers
-  uint64_t buffer_a1_offsets[4];
-  char buffer_a1[28];
+  auto buffer_a1_offsets = new uint64_t[max_buffer_sizes[0] / sizeof(uint64_t)];
+  auto buffer_a1 = new char[max_buffer_sizes[1] / sizeof(char)];
   void* buffers[] = {buffer_a1_offsets, buffer_a1};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1_offsets), sizeof(buffer_a1)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0], max_buffer_sizes[1]};
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1"};
   rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
@@ -196,8 +202,8 @@ void AnyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
-  CHECK(buffer_sizes[0] == sizeof(buffer_a1_offsets));
-  CHECK(buffer_sizes[1] == sizeof(buffer_a1));
+  CHECK(buffer_sizes[0] == 32);
+  CHECK(buffer_sizes[1] == 28);
   CHECK(buffer_a1_offsets[0] == 0);
   CHECK(buffer_a1_offsets[1] == sizeof(char) + sizeof(int));
   CHECK(
@@ -220,6 +226,8 @@ void AnyFx::read_array(const std::string& array_name) {
   // Clean up
   REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
   REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  delete[] buffer_a1_offsets;
+  delete[] buffer_a1;
 }
 
 void AnyFx::delete_array(const std::string& array_name) {

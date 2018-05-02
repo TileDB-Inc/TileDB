@@ -94,7 +94,7 @@ int main() {
   };
   void* buffers_2[] = {buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2};
   uint64_t buffer_sizes_2[] = {
-      10 * sizeof(int),  // 6 cels on a1
+      10 * sizeof(int),  // 6 cells on a1
       8 * sizeof(uint64_t),
       20,                 // 8 cells on a2
       32 * sizeof(float)  // 16 cells on a3 (2 values each)

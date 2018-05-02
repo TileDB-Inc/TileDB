@@ -491,21 +491,28 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
       212.1f, 212.2f, 213.1f, 213.2f, 114.1f, 114.2f, 115.1f, 115.2f,
   };
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t max_buffer_sizes[4];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  auto buffer_a1 = (int*)malloc(sizeof(c_buffer_a1));
-  auto buffer_a2 = (uint64_t*)malloc(sizeof(c_buffer_a2));
-  auto buffer_var_a2 = (char*)malloc(sizeof(c_buffer_var_a2));
-  auto buffer_a3 = (float*)malloc(sizeof(c_buffer_a3));
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(c_buffer_a1),
-                             sizeof(c_buffer_a2),
-                             sizeof(c_buffer_var_a2) - 1,
-                             sizeof(c_buffer_a3)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3]};
 
   // Create query
-  const char* attributes[] = {"a1", "a2", "a3"};
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -517,11 +524,19 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
   CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
@@ -553,21 +568,28 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
       212.1f, 212.2f, 213.1f, 213.2f, 14.1f, 14.2f, 15.1f,  15.2f,
   };
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t max_buffer_sizes[4];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  auto buffer_a1 = (int*)malloc(sizeof(c_buffer_a1));
-  auto buffer_a2 = (uint64_t*)malloc(sizeof(c_buffer_a2));
-  auto buffer_var_a2 = (char*)malloc(sizeof(c_buffer_var_a2));
-  auto buffer_a3 = (float*)malloc(sizeof(c_buffer_a3));
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(c_buffer_a1),
-                             sizeof(c_buffer_a2),
-                             sizeof(c_buffer_var_a2) - 1,
-                             sizeof(c_buffer_a3)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3]};
 
   // Create query
-  const char* attributes[] = {"a1", "a2", "a3"};
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -614,21 +636,28 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
       12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
   };
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t max_buffer_sizes[4];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  auto buffer_a1 = (int*)malloc(sizeof(c_buffer_a1));
-  auto buffer_a2 = (uint64_t*)malloc(sizeof(c_buffer_a2));
-  auto buffer_var_a2 = (char*)malloc(sizeof(c_buffer_var_a2));
-  auto buffer_a3 = (float*)malloc(sizeof(c_buffer_a3));
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(c_buffer_a1),
-                             sizeof(c_buffer_a2),
-                             sizeof(c_buffer_var_a2) - 1,
-                             sizeof(c_buffer_a3)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3]};
 
   // Create query
-  const char* attributes[] = {"a1", "a2", "a3"};
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -669,24 +698,31 @@ void ConsolidationFx::read_sparse_full_unordered() {
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
                                 3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, SPARSE_ARRAY_NAME, subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  auto buffer_a1 = (int*)malloc(sizeof(c_buffer_a1));
-  auto buffer_a2 = (uint64_t*)malloc(sizeof(c_buffer_a2));
-  auto buffer_var_a2 = (char*)malloc(sizeof(c_buffer_var_a2));
-  auto buffer_a3 = (float*)malloc(sizeof(c_buffer_a3));
-  auto buffer_coords = (uint64_t*)malloc(sizeof(c_buffer_coords));
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {sizeof(c_buffer_a1),
-                             sizeof(c_buffer_a2),
-                             sizeof(c_buffer_var_a2) - 1,
-                             sizeof(c_buffer_a3),
-                             sizeof(c_buffer_coords)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
 
   // Create query
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -728,24 +764,31 @@ void ConsolidationFx::read_sparse_unordered_full() {
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
                                 3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, SPARSE_ARRAY_NAME, subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  auto buffer_a1 = (int*)malloc(sizeof(c_buffer_a1));
-  auto buffer_a2 = (uint64_t*)malloc(sizeof(c_buffer_a2));
-  auto buffer_var_a2 = (char*)malloc(sizeof(c_buffer_var_a2));
-  auto buffer_a3 = (float*)malloc(sizeof(c_buffer_a3));
-  auto buffer_coords = (uint64_t*)malloc(sizeof(c_buffer_coords));
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
-  uint64_t buffer_sizes[] = {sizeof(c_buffer_a1),
-                             sizeof(c_buffer_a2),
-                             sizeof(c_buffer_var_a2) - 1,
-                             sizeof(c_buffer_a3),
-                             sizeof(c_buffer_coords)};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
 
   // Create query
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);

@@ -38,6 +38,8 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
+#include <iostream>
+
 namespace tiledb {
 namespace sm {
 
@@ -81,13 +83,12 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 Reader::Reader() {
   array_schema_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
+  read_state_.subarray_ = nullptr;
   storage_manager_ = nullptr;
-  subarray_ = nullptr;
 }
 
 Reader::~Reader() {
-  if (subarray_ != nullptr)
-    std::free(subarray_);
+  clear_read_state();
 }
 
 /* ****************************** */
@@ -98,8 +99,8 @@ const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
 
-Status Reader::compute_subarrays(
-    void* subarray, std::vector<void*>* subarrays) const {
+Status Reader::compute_subarray_partitions(
+    void* subarray, std::vector<void*>* subarray_partitions) const {
   // Prepare subarray
   auto domain = array_schema_->domain();
   uint64_t subarray_size = 2 * array_schema_->coords_size();
@@ -113,8 +114,6 @@ Status Reader::compute_subarrays(
   // Prepare buffer sizes
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       max_buffer_sizes;
-  for (const auto& attr : attributes_)
-    max_buffer_sizes[attr] = std::pair<uint64_t, uint64_t>(0, 0);
 
   // Compute subarrays
   std::list<void*> my_subarrays;
@@ -123,6 +122,8 @@ Status Reader::compute_subarrays(
   Status st = Status::Ok();
   do {
     // Compute max buffer sizes for the current subarray
+    for (const auto& attr : attributes_)
+      max_buffer_sizes[attr] = std::pair<uint64_t, uint64_t>(0, 0);
     st = storage_manager_->array_compute_max_read_buffer_sizes(
         array_schema_, fragment_metadata_, *it, &max_buffer_sizes);
     if (!st.ok())
@@ -149,6 +150,7 @@ Status Reader::compute_subarrays(
       auto buffer_var_size =
           attr_buffers_.find(item.first)->second.buffer_var_size_;
       auto var_size = array_schema_->var_size(item.first);
+
       if (item.second.first > *buffer_size ||
           (var_size && item.second.second > *buffer_var_size)) {
         must_split = true;
@@ -160,10 +162,12 @@ Status Reader::compute_subarrays(
       st = domain->split_subarray(*it, layout_, &subarray_1, &subarray_2);
       if (!st.ok())
         break;
+
+      // Not splittable, return the original subarray as result
       if (subarray_1 == nullptr || subarray_2 == nullptr) {
-        st = LOG_STATUS(Status::ReaderError(
-            "Cannot compute subarrays; Subarray is not splittable"));
-        break;
+        for (auto s : my_subarrays)
+          std::free(s);
+        return Status::Ok();
       }
       my_subarrays.insert(std::next(it), subarray_2);
       my_subarrays.insert(std::next(it), subarray_1);
@@ -183,12 +187,17 @@ Status Reader::compute_subarrays(
 
   // Prepare the result
   for (auto s : my_subarrays)
-    subarrays->emplace_back(s);
+    subarray_partitions->emplace_back(s);
 
   return Status::Ok();
 }
 
+bool Reader::done() const {
+  return read_state_.idx_ >= read_state_.subarray_partitions_.size();
+}
+
 Status Reader::finalize() {
+  clear_read_state();
   return Status::Ok();
 }
 
@@ -219,9 +228,17 @@ Status Reader::init() {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize query; Attributes not set"));
 
-  if (subarray_ == nullptr)
+  if (read_state_.subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
-  RETURN_NOT_OK(check_subarray(subarray_));
+
+  RETURN_NOT_OK(compute_subarray_partitions(
+      read_state_.subarray_, &read_state_.subarray_partitions_));
+  if (read_state_.subarray_partitions_.empty())
+    read_state_.subarray_partitions_.push_back(read_state_.subarray_);
+
+  read_state_.idx_ = 0;
+  cur_subarray_ = read_state_.subarray_partitions_[0];
+  assert(cur_subarray_ != nullptr);
 
   return Status::Ok();
 }
@@ -234,6 +251,17 @@ URI Reader::last_fragment_uri() const {
 
 Layout Reader::layout() const {
   return layout_;
+}
+
+void Reader::next_subarray_partition() {
+  if (read_state_.idx_ >= read_state_.subarray_partitions_.size())
+    return;
+
+  ++read_state_.idx_;
+  if (read_state_.idx_ >= read_state_.subarray_partitions_.size())
+    return;
+
+  cur_subarray_ = read_state_.subarray_partitions_[read_state_.idx_];
 }
 
 Status Reader::read() {
@@ -264,18 +292,31 @@ Status Reader::set_buffers(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffers; Buffers not provided"));
 
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffers; Array schema not set"));
+
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
   set_buffers(buffers, buffer_sizes);
 
   return Status::Ok();
 }
 
-void Reader::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+Status Reader::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+  if (buffers == nullptr || buffer_sizes == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffers; Buffers not provided"));
+
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffers; Array schema not set"));
+
+  // Necessary check in case this is a reset
+  if (!attr_buffers_.empty())
+    RETURN_NOT_OK(check_reset_buffer_sizes(buffer_sizes));
+
+  // Reset attribute buffers
   attr_buffers_.clear();
-  if (!buffers || !buffer_sizes) {
-    attributes_.clear();
-    return;
-  }
   unsigned bid = 0;
   for (const auto& attr : attributes_) {
     if (!array_schema_->var_size(attr)) {
@@ -294,6 +335,8 @@ void Reader::set_buffers(void** buffers, uint64_t* buffer_sizes) {
       bid += 2;
     }
   }
+
+  return Status::Ok();
 }
 
 void Reader::set_fragment_metadata(
@@ -317,20 +360,22 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Reader::set_subarray(const void* subarray) {
-  RETURN_NOT_OK(check_subarray(subarray));
+  if (read_state_.subarray_ != nullptr)
+    clear_read_state();
 
-  uint64_t subarray_size = 2 * array_schema_->coords_size();
+  auto subarray_size = 2 * array_schema_->coords_size();
+  read_state_.subarray_ = std::malloc(subarray_size);
+  if (read_state_.subarray_ == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Memory allocation for read state subarray failed"));
 
-  if (subarray_ == nullptr)
-    subarray_ = std::malloc(subarray_size);
-  if (subarray_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Memory allocation for subarray failed"));
-
-  if (subarray == nullptr)
-    std::memcpy(subarray_, array_schema_->domain()->domain(), subarray_size);
+  if (subarray != nullptr)
+    std::memcpy(read_state_.subarray_, subarray, subarray_size);
   else
-    std::memcpy(subarray_, subarray, subarray_size);
+    std::memcpy(
+        read_state_.subarray_,
+        array_schema_->domain()->domain(),
+        subarray_size);
 
   return Status::Ok();
 }
@@ -339,62 +384,41 @@ Status Reader::set_subarray(const void* subarray) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Reader::check_subarray(const void* subarray) const {
-  if (subarray == nullptr)
-    return Status::Ok();
-
-  switch (array_schema_->domain()->type()) {
-    case Datatype::INT8:
-      return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
-    case Datatype::UINT8:
-      return check_subarray<uint8_t>(static_cast<const uint8_t*>(subarray));
-    case Datatype::INT16:
-      return check_subarray<int16_t>(static_cast<const int16_t*>(subarray));
-    case Datatype::UINT16:
-      return check_subarray<uint16_t>(static_cast<const uint16_t*>(subarray));
-    case Datatype::INT32:
-      return check_subarray<int32_t>(static_cast<const int32_t*>(subarray));
-    case Datatype::UINT32:
-      return check_subarray<uint32_t>(static_cast<const uint32_t*>(subarray));
-    case Datatype::INT64:
-      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
-    case Datatype::UINT64:
-      return check_subarray<uint64_t>(static_cast<const uint64_t*>(subarray));
-    case Datatype::FLOAT32:
-      return check_subarray<float>(static_cast<const float*>(subarray));
-    case Datatype::FLOAT64:
-      return check_subarray<double>(static_cast<const double*>(subarray));
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      break;
+Status Reader::check_reset_buffer_sizes(const uint64_t* buffer_sizes) const {
+  unsigned bid = 0;
+  for (const auto& attr : attributes_) {
+    auto attr_buffer_it = attr_buffers_.find(attr);
+    assert(attr_buffer_it != attr_buffers_.end());
+    if (array_schema_->var_size(attr)) {
+      if (buffer_sizes[bid] < *(attr_buffer_it->second.buffer_size_) ||
+          buffer_sizes[bid + 1] < (*attr_buffer_it->second.buffer_var_size_))
+        return LOG_STATUS(Status::ReaderError(
+            "Cannot reset buffers; New buffer sizes are smaller than the ones "
+            "set upon initialization"));
+      bid += 2;
+    } else {
+      if (buffer_sizes[bid] < *(attr_buffer_it->second.buffer_size_))
+        return LOG_STATUS(Status::ReaderError(
+            "Cannot reset buffers; New buffer sizes are smaller than the ones "
+            "set upon initialization"));
+      ++bid;
+    }
   }
 
   return Status::Ok();
 }
 
-template <class T>
-Status Reader::check_subarray(const T* subarray) const {
-  // Check subarray bounds
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-    if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
-      return LOG_STATUS(Status::ReaderError("Subarray out of bounds"));
-    if (subarray[2 * i] > subarray[2 * i + 1])
-      return LOG_STATUS(Status::ReaderError(
-          "Subarray lower bound is larger than upper bound"));
+void Reader::clear_read_state() {
+  for (auto p : read_state_.subarray_partitions_) {
+    if (p != nullptr && p != read_state_.subarray_)
+      std::free(p);
   }
+  read_state_.subarray_partitions_.clear();
 
-  return Status::Ok();
+  if (read_state_.subarray_ != nullptr) {
+    std::free(read_state_.subarray_);
+    read_state_.subarray_ = nullptr;
+  }
 }
 
 template <class T>
@@ -683,7 +707,7 @@ Status Reader::compute_overlapping_coords(
   auto dim_num = array_schema_->dim_num();
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
   auto coords_num = t.cell_num();
-  auto subarray = (T*)subarray_;
+  auto subarray = (T*)cur_subarray_;
   auto c = (T*)t.data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
@@ -697,7 +721,7 @@ Status Reader::compute_overlapping_coords(
 template <class T>
 Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
   // For easy reference
-  auto subarray = (T*)subarray_;
+  auto subarray = (T*)cur_subarray_;
   auto dim_num = array_schema_->dim_num();
   auto fragment_num = fragment_metadata_.size();
   bool full_overlap;
@@ -738,7 +762,7 @@ Status Reader::compute_tile_coordinates(
 
   // Allocate space for all OverlappingCoords' tile coordinate tuples.
   all_tile_coords->reset(new (std::nothrow) T[num_coords * dim_num]);
-  if (all_tile_coords->get() == nullptr) {
+  if (all_tile_coords == nullptr) {
     return LOG_STATUS(
         Status::ReaderError("Could not allocate tile coords array."));
   }
@@ -955,7 +979,7 @@ Status Reader::dense_read() {
   std::vector<T> subarray;
   subarray.resize(subarray_len);
   for (size_t i = 0; i < subarray_len; ++i)
-    subarray[i] = ((T*)subarray_)[i];
+    subarray[i] = ((T*)cur_subarray_)[i];
 
   // Get overlapping sparse tile indexes
   OverlappingTileVec sparse_tiles;
@@ -1166,7 +1190,7 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   std::vector<T> subarray;
   subarray.resize(2 * dim_num);
   for (unsigned i = 0; i < 2 * dim_num; ++i)
-    subarray[i] = ((T*)subarray_)[i];
+    subarray[i] = ((T*)cur_subarray_)[i];
 
   // Compute tile domain and current tile coords
   std::vector<T> tile_domain, tile_coords;
@@ -1328,6 +1352,7 @@ Status Reader::set_attributes(
   }
 
   // Set attribute names
+  attributes_.clear();
   for (const auto& attr : attributes_vec)
     attributes_.emplace_back(attr);
 

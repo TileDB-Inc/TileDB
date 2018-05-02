@@ -33,6 +33,8 @@
 #include "tiledb/sm/kv/kv_iter.h"
 #include "tiledb/sm/misc/logger.h"
 
+#include <iostream>
+
 namespace tiledb {
 namespace sm {
 
@@ -136,6 +138,7 @@ Status KVIter::init_read_query() {
     return LOG_STATUS(Status::KVIterError(
         "Cannot initialize read query; Memory allocation failed"));
   const char* attributes[] = {constants::coords};
+
   return query_->set_buffers(
       attributes, 1, (void**)read_buffers_, read_buffer_sizes_);
 }
@@ -147,6 +150,7 @@ Status KVIter::submit_read_query() {
 
   // Submit query
   RETURN_NOT_OK(storage_manager_->query_submit(query_));
+
   status_ = query_->status();
   item_num_ = read_buffer_sizes_[0] / (2 * sizeof(uint64_t));
 

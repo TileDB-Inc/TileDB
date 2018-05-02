@@ -175,7 +175,7 @@ class Writer {
       uint64_t* buffer_sizes);
 
   /** Sets the query buffers. */
-  void set_buffers(void** buffers, uint64_t* buffer_sizes);
+  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
@@ -241,12 +241,12 @@ class Writer {
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
 
-  /** Correctness checks for `subarray`. */
-  Status check_subarray(const void* subarray) const;
+  /** Correctness checks for `subarray_`. */
+  Status check_subarray() const;
 
-  /** Correctness checks for `subarray`. */
+  /** Correctness checks for `subarray_`. */
   template <class T>
-  Status check_subarray(const T* subarray) const;
+  Status check_subarray() const;
 
   /** Closes all attribute files, flushing their state to storage. */
   Status close_files(FragmentMetadata* meta) const;

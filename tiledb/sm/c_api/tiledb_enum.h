@@ -151,6 +151,8 @@
     TILEDB_QUERY_STATUS_ENUM(INPROGRESS) = 1,
     /** Query completed (but not all data has been read) */
     TILEDB_QUERY_STATUS_ENUM(INCOMPLETE) = 2,
+    /** Query not initialized.  */
+    TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 3,
 #endif
 
 #ifdef TILEDB_WALK_ORDER_ENUM
