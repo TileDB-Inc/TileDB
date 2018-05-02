@@ -44,6 +44,7 @@
 
 #include <functional>
 #include <memory>
+#include <sstream>
 
 namespace tiledb {
 
@@ -52,13 +53,18 @@ namespace tiledb {
  * of a type, lower and upper bound, and tile-extent describing
  * the memory ordering. Dimensions are added to a Domain.
  **/
-class TILEDB_EXPORT Dimension {
+class Dimension {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Dimension(const Context& ctx, tiledb_dimension_t* dim);
+  Dimension(const Context& ctx, tiledb_dimension_t* dim)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    dim_ = std::shared_ptr<tiledb_dimension_t>(dim, deleter_);
+  }
+
   Dimension(const Dimension&) = default;
   Dimension(Dimension&& o) = default;
   Dimension& operator=(const Dimension&) = default;
@@ -69,10 +75,20 @@ class TILEDB_EXPORT Dimension {
   /* ********************************* */
 
   /** Returns the name of the dimension. */
-  const std::string name() const;
+  const std::string name() const {
+    const char* name;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dimension_get_name(ctx, dim_.get(), &name));
+    return name;
+  }
 
   /** Returns the dimension datatype. */
-  tiledb_datatype_t type() const;
+  tiledb_datatype_t type() const {
+    tiledb_datatype_t type;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dimension_get_type(ctx, dim_.get(), &type));
+    return type;
+  }
 
   /** Returns the domain of the dimension. **/
   template <typename T>
@@ -83,7 +99,80 @@ class TILEDB_EXPORT Dimension {
   };
 
   /** Returns a string representation of the domain. */
-  std::string domain_to_str() const;
+  std::string domain_to_str() const {
+    auto domain = _domain();
+    auto type = this->type();
+    int8_t* di8;
+    uint8_t* dui8;
+    int16_t* di16;
+    uint16_t* dui16;
+    int32_t* di32;
+    uint32_t* dui32;
+    int64_t* di64;
+    uint64_t* dui64;
+    float* df32;
+    double* df64;
+
+    std::stringstream ss;
+    ss << "[";
+
+    switch (type) {
+      case TILEDB_INT8:
+        di8 = static_cast<int8_t*>(domain);
+        ss << di8[0] << "," << di8[1];
+        break;
+      case TILEDB_UINT8:
+        dui8 = static_cast<uint8_t*>(domain);
+        ss << dui8[0] << "," << dui8[1];
+        break;
+      case TILEDB_INT16:
+        di16 = static_cast<int16_t*>(domain);
+        ss << di16[0] << "," << di16[1];
+        break;
+      case TILEDB_UINT16:
+        dui16 = static_cast<uint16_t*>(domain);
+        ss << dui16[0] << "," << dui16[1];
+        break;
+      case TILEDB_INT32:
+        di32 = static_cast<int32_t*>(domain);
+        ss << di32[0] << "," << di32[1];
+        break;
+      case TILEDB_UINT32:
+        dui32 = static_cast<uint32_t*>(domain);
+        ss << dui32[0] << "," << dui32[1];
+        break;
+      case TILEDB_INT64:
+        di64 = static_cast<int64_t*>(domain);
+        ss << di64[0] << "," << di64[1];
+        break;
+      case TILEDB_UINT64:
+        dui64 = static_cast<uint64_t*>(domain);
+        ss << dui64[0] << "," << dui64[1];
+        break;
+      case TILEDB_FLOAT32:
+        df32 = static_cast<float*>(domain);
+        ss << df32[0] << "," << df32[1];
+        break;
+      case TILEDB_FLOAT64:
+        df64 = static_cast<double*>(domain);
+        ss << df64[0] << "," << df64[1];
+        break;
+      case TILEDB_CHAR:
+      case TILEDB_STRING_ASCII:
+      case TILEDB_STRING_UTF8:
+      case TILEDB_STRING_UTF16:
+      case TILEDB_STRING_UTF32:
+      case TILEDB_STRING_UCS2:
+      case TILEDB_STRING_UCS4:
+      case TILEDB_ANY:
+        // Not supported domain types
+        throw TileDBError("Invalid Dim type");
+    }
+
+    ss << "]";
+
+    return ss.str();
+  }
 
   /** Returns the tile extent of the dimension. */
   template <typename T>
@@ -93,13 +182,86 @@ class TILEDB_EXPORT Dimension {
   }
 
   /** Returns a string representation of the extent. */
-  std::string tile_extent_to_str() const;
+  std::string tile_extent_to_str() const {
+    auto tile_extent = _tile_extent();
+    auto type = this->type();
+    int8_t* ti8;
+    uint8_t* tui8;
+    int16_t* ti16;
+    uint16_t* tui16;
+    int32_t* ti32;
+    uint32_t* tui32;
+    int64_t* ti64;
+    uint64_t* tui64;
+    float* tf32;
+    double* tf64;
+
+    std::stringstream ss;
+
+    switch (type) {
+      case TILEDB_INT8:
+        ti8 = static_cast<int8_t*>(tile_extent);
+        ss << *ti8;
+        break;
+      case TILEDB_UINT8:
+        tui8 = static_cast<uint8_t*>(tile_extent);
+        ss << *tui8;
+        break;
+      case TILEDB_INT16:
+        ti16 = static_cast<int16_t*>(tile_extent);
+        ss << *ti16;
+        break;
+      case TILEDB_UINT16:
+        tui16 = static_cast<uint16_t*>(tile_extent);
+        ss << *tui16;
+        break;
+      case TILEDB_INT32:
+        ti32 = static_cast<int32_t*>(tile_extent);
+        ss << *ti32;
+        break;
+      case TILEDB_UINT32:
+        tui32 = static_cast<uint32_t*>(tile_extent);
+        ss << *tui32;
+        break;
+      case TILEDB_INT64:
+        ti64 = static_cast<int64_t*>(tile_extent);
+        ss << *ti64;
+        break;
+      case TILEDB_UINT64:
+        tui64 = static_cast<uint64_t*>(tile_extent);
+        ss << *tui64;
+        break;
+      case TILEDB_FLOAT32:
+        tf32 = static_cast<float*>(tile_extent);
+        ss << *tf32;
+        break;
+      case TILEDB_FLOAT64:
+        tf64 = static_cast<double*>(tile_extent);
+        ss << *tf64;
+        break;
+      case TILEDB_CHAR:
+      case TILEDB_STRING_ASCII:
+      case TILEDB_STRING_UTF8:
+      case TILEDB_STRING_UTF16:
+      case TILEDB_STRING_UTF32:
+      case TILEDB_STRING_UCS2:
+      case TILEDB_STRING_UCS4:
+      case TILEDB_ANY:
+        throw TileDBError("Invalid Dim type");
+    }
+
+    return ss.str();
+  }
 
   /** Returns a shared pointer to the C TileDB dimension object. */
-  std::shared_ptr<tiledb_dimension_t> ptr() const;
+  std::shared_ptr<tiledb_dimension_t> ptr() const {
+    return dim_;
+  }
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_dimension_t*() const;
+  operator tiledb_dimension_t*() const {
+    return dim_.get();
+  }
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -168,10 +330,21 @@ class TILEDB_EXPORT Dimension {
   /* ********************************* */
 
   /** Returns the binary representation of the dimension domain. */
-  void* _domain() const;
+  void* _domain() const {
+    auto& ctx = ctx_.get();
+    void* domain;
+    ctx.handle_error(tiledb_dimension_get_domain(ctx, dim_.get(), &domain));
+    return domain;
+  }
 
   /** Returns the binary representation of the dimension extent. */
-  void* _tile_extent() const;
+  void* _tile_extent() const {
+    void* tile_extent;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_dimension_get_tile_extent(ctx, dim_.get(), &tile_extent));
+    return tile_extent;
+  }
 
   /* ********************************* */
   /*     PRIVATE STATIC FUNCTIONS      */
@@ -186,7 +359,12 @@ class TILEDB_EXPORT Dimension {
       const std::string& name,
       tiledb_datatype_t type,
       const void* domain,
-      const void* tile_extent);
+      const void* tile_extent) {
+    tiledb_dimension_t* d;
+    ctx.handle_error(tiledb_dimension_create(
+        ctx, &d, name.c_str(), type, domain, tile_extent));
+    return Dimension(ctx, d);
+  }
 };
 
 /* ********************************* */
@@ -194,7 +372,11 @@ class TILEDB_EXPORT Dimension {
 /* ********************************* */
 
 /** Get a string representation of a dimension for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Dimension& dim);
+inline std::ostream& operator<<(std::ostream& os, const Dimension& dim) {
+  os << "Dim<" << dim.name() << "," << dim.domain_to_str() << ","
+     << dim.tile_extent_to_str() << ">";
+  return os;
+}
 
 }  // namespace tiledb
 

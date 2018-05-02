@@ -35,6 +35,8 @@
 #ifndef TILEDB_CPP_API_OBJECT_H
 #define TILEDB_CPP_API_OBJECT_H
 
+#include "context.h"
+#include "object.h"
 #include "tiledb.h"
 
 #include <functional>
@@ -44,10 +46,8 @@
 
 namespace tiledb {
 
-class Context;
-
 /** Represents a TileDB object: array, group, key-value, or none (invalid). */
-class TILEDB_EXPORT Object {
+class Object {
  public:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
@@ -60,8 +60,29 @@ class TILEDB_EXPORT Object {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Object(const Type& type, const std::string& uri = "");
-  explicit Object(tiledb_object_t type, const std::string& uri = "");
+  explicit Object(const Type& type, const std::string& uri = "")
+      : type_(type)
+      , uri_(uri) {
+  }
+
+  explicit Object(tiledb_object_t type, const std::string& uri = "")
+      : uri_(uri) {
+    switch (type) {
+      case TILEDB_ARRAY:
+        type_ = Type::Array;
+        break;
+      case TILEDB_GROUP:
+        type_ = Type::Group;
+        break;
+      case TILEDB_INVALID:
+        type_ = Type::Invalid;
+        break;
+      case TILEDB_KEY_VALUE:
+        type_ = Type::KeyValue;
+        break;
+    }
+  }
+
   Object();
   Object(const Object& o) = default;
   Object(Object&& o) = default;
@@ -76,13 +97,35 @@ class TILEDB_EXPORT Object {
    * Returns a string representation of the object, including its type
    * and URI.
    */
-  std::string to_str() const;
+  std::string to_str() const {
+    std::string ret = "Obj<";
+    switch (type_) {
+      case Type::Array:
+        ret += "ARRAY";
+        break;
+      case Type::Group:
+        ret += "GROUP";
+        break;
+      case Type::Invalid:
+        ret += "INVALID";
+        break;
+      case Type::KeyValue:
+        ret += "KEYVALUE";
+        break;
+    }
+    ret += " \"" + uri_ + "\">";
+    return ret;
+  }
 
   /** Returns the object type. */
-  Type type() const;
+  Type type() const {
+    return type_;
+  }
 
   /** Returns the object URI. */
-  std::string uri() const;
+  std::string uri() const {
+    return uri_;
+  }
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -95,7 +138,12 @@ class TILEDB_EXPORT Object {
    * @param uri The path to the object.
    * @return An object that contains the type along with the URI.
    */
-  static Object object(const Context& ctx, const std::string& uri);
+  static Object object(const Context& ctx, const std::string& uri) {
+    tiledb_object_t type;
+    ctx.handle_error(tiledb_object_type(ctx, uri.c_str(), &type));
+    Object ret(type, uri);
+    return ret;
+  }
 
   /**
    * Deletes a tiledb object.
@@ -103,7 +151,9 @@ class TILEDB_EXPORT Object {
    * @param ctx The TileDB context
    * @param uri The path to the object to be deleted.
    */
-  static void remove(const Context& ctx, const std::string& uri);
+  static void remove(const Context& ctx, const std::string& uri) {
+    ctx.handle_error(tiledb_object_remove(ctx, uri.c_str()));
+  }
 
   /**
    * Moves/renames a tiledb object.
@@ -114,7 +164,9 @@ class TILEDB_EXPORT Object {
   static void move(
       const Context& ctx,
       const std::string& old_uri,
-      const std::string& new_uri);
+      const std::string& new_uri) {
+    ctx.handle_error(tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str()));
+  }
 
  private:
   /* ********************************* */
@@ -133,7 +185,10 @@ class TILEDB_EXPORT Object {
 /* ********************************* */
 
 /** Writes object in string format to an output stream. */
-std::ostream& operator<<(std::ostream& os, const Object& obj);
+inline std::ostream& operator<<(std::ostream& os, const Object& obj) {
+  os << obj.to_str();
+  return os;
+}
 
 }  // namespace tiledb
 

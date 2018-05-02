@@ -38,8 +38,9 @@
  * $ ./tiledb_sparse_read_ordered_subarray_cpp
  */
 
+#include <tiledb/array.h>
+#include <tiledb/query.h>
 #include <iomanip>
-#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB context

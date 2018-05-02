@@ -117,7 +117,7 @@ struct CPPMapFromMapFx {
     map[1] = "12";
     map[2] = "123";
 
-    Map::create(ctx, "cpp_unit_map", map);
+    Map::create(ctx, "cpp_unit_map", map, "val");
   }
 
   ~CPPMapFromMapFx() {
@@ -131,7 +131,7 @@ struct CPPMapFromMapFx {
 
 TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
   Map map(ctx, "cpp_unit_map");
-  CHECK(map[0].get<std::string>() == "0");
-  CHECK(map[1].get<std::string>() == "12");
-  CHECK(map[2].get<std::string>() == "123");
+  CHECK(map[0]["val"].get<std::string>() == "0");
+  CHECK(map[1]["val"].get<std::string>() == "12");
+  CHECK(map[2]["val"].get<std::string>() == "123");
 }

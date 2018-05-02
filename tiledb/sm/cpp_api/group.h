@@ -48,7 +48,9 @@ namespace tiledb {
  * @param group The group URI.
  * @return void
  */
-TILEDB_EXPORT void create_group(const Context& ctx, const std::string& group);
+inline void create_group(const Context& ctx, const std::string& group) {
+  ctx.handle_error(tiledb_group_create(ctx, group.c_str()));
+}
 
 }  // namespace tiledb
 

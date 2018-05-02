@@ -40,7 +40,7 @@
  * $ ./tiledb_sparse_read_subset_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/query.h>
 
 int main() {
   // Create TileDB Context

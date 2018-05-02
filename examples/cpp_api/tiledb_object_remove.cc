@@ -39,7 +39,7 @@
  * ./tiledb_object_remove_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/object.h>
 
 int main() {
   // Create TileDB context

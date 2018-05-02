@@ -35,7 +35,6 @@
 #ifndef TILEDB_CPP_API_CONFIG_H
 #define TILEDB_CPP_API_CONFIG_H
 
-#include "config_iter.h"
 #include "tiledb.h"
 #include "utils.h"
 
@@ -44,9 +43,105 @@
 
 namespace tiledb {
 
+class Config;  // Forward decl for impl classes
+
 namespace impl {
-struct ConfigProxy;
-}
+
+class ConfigIter : public std::iterator<
+                       std::forward_iterator_tag,
+                       const std::pair<std::string, std::string>> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Iterate over a config for params matching a given prefix. **/
+  ConfigIter(const Config& config, std::string prefix, bool done = false)
+      : prefix_(std::move(prefix))
+      , done_(done) {
+    init(config);
+  }
+
+  ConfigIter(const ConfigIter&) = default;
+  ConfigIter(ConfigIter&&) = default;
+  ConfigIter& operator=(const ConfigIter&) = default;
+  ConfigIter& operator=(ConfigIter&&) = default;
+
+  bool operator==(const ConfigIter& o) const {
+    return done_ == o.done_;
+  }
+
+  bool operator!=(const ConfigIter& o) const {
+    return done_ != o.done_;
+  }
+
+  const std::pair<std::string, std::string>& operator*() const {
+    return here_;
+  }
+
+  const std::pair<std::string, std::string>* operator->() const {
+    return &here_;
+  }
+
+  ConfigIter& operator++();
+
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /** Wrapper function for freeing a config iter C object. */
+  static void free(tiledb_config_iter_t* config_iter) {
+    tiledb_config_iter_free(&config_iter);
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Prefix of parameters to match. **/
+  std::string prefix_;
+
+  /** Pointer to iter object. **/
+  std::shared_ptr<tiledb_config_iter_t> iter_;
+
+  /** Current object. **/
+  std::pair<std::string, std::string> here_;
+
+  /** If iter is done. **/
+  bool done_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Init the iterator object **/
+  void init(const Config& config);
+};
+
+/** Proxy to set params via operator `[]`. */
+struct ConfigProxy {
+  ConfigProxy(Config& conf, std::string param)
+      : conf(conf)
+      , param(std::move(param)) {
+  }
+
+  template <typename T>
+  ConfigProxy& operator=(const T& val);
+
+  ConfigProxy& operator=(const char* val);
+
+  ConfigProxy& operator=(const std::string& val);
+
+  ConfigProxy operator[](const std::string& append);
+
+  operator std::string();
+
+  Config& conf;
+  const std::string param;
+};
+
+}  // namespace impl
 
 /**
  * Carries configuration parameters for a context.
@@ -61,14 +156,16 @@ struct ConfigProxy;
  * // array/kv operations with ctx
  * @endcode
  * */
-class TILEDB_EXPORT Config {
+class Config {
  public:
   using iterator = impl::ConfigIter;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Config();
+  Config() {
+    create_config();
+  }
 
   /**
    * Constructor that takes as input a filename (URI) that stores the config
@@ -84,20 +181,34 @@ class TILEDB_EXPORT Config {
    * @param filename The name of the file where the parameters will be read
    *     from.
    */
-  explicit Config(const std::string& filename);
+  explicit Config(const std::string& filename) {
+    create_config();
+    tiledb_error_t* err;
+    tiledb_config_load_from_file(config_.get(), filename.c_str(), &err);
+    impl::check_config_error(err);
+  }
 
   /** Constructor from a C config object. */
-  explicit Config(tiledb_config_t** config);
+  explicit Config(tiledb_config_t** config) {
+    if (config) {
+      config_ = std::shared_ptr<tiledb_config_t>(*config, Config::free);
+      *config = nullptr;
+    }
+  }
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the pointer to the TileDB C config object. */
-  std::shared_ptr<tiledb_config_t> ptr() const;
+  std::shared_ptr<tiledb_config_t> ptr() const {
+    return config_;
+  }
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_config_t*() const;
+  operator tiledb_config_t*() const {
+    return config_.get();
+  }
 
   /**
    * Sets a config parameter-value pair.
@@ -169,20 +280,41 @@ class TILEDB_EXPORT Config {
    *    HDFS kerb ticket cache path. <br>
    *    **Default**: ""
    */
-  Config& set(const std::string& param, const std::string& value);
+  Config& set(const std::string& param, const std::string& value) {
+    tiledb_error_t* err;
+    tiledb_config_set(config_.get(), param.c_str(), value.c_str(), &err);
+    impl::check_config_error(err);
+    return *this;
+  }
 
   /**
    * Get a parameter from the configuration by key.
    * @param param Key
    * @return Value
    */
-  std::string get(const std::string& param) const;
+  std::string get(const std::string& param) const {
+    const char* val;
+    tiledb_error_t* err;
+    tiledb_config_get(config_.get(), param.c_str(), &val, &err);
+    impl::check_config_error(err);
+
+    if (val == nullptr)
+      throw TileDBError("Config Error: Invalid parameter '" + param + "'");
+
+    return val;
+  }
 
   /** Enables setting parameters with `[]`. */
   impl::ConfigProxy operator[](const std::string& param);
 
   /** Unsets a config parameter. */
-  Config& unset(const std::string& param);
+  Config& unset(const std::string& param) {
+    tiledb_error_t* err;
+    tiledb_config_unset(config_.get(), param.c_str(), &err);
+    impl::check_config_error(err);
+
+    return *this;
+  }
 
   /** Iterate over params starting with a prefix **/
   iterator begin(const std::string& prefix) {
@@ -204,7 +336,9 @@ class TILEDB_EXPORT Config {
   /* ********************************* */
 
   /** Wrapper function for freeing a config C object. */
-  static void free(tiledb_config_t* config);
+  static void free(tiledb_config_t* config) {
+    tiledb_config_free(&config);
+  }
 
  private:
   /* ********************************* */
@@ -219,45 +353,95 @@ class TILEDB_EXPORT Config {
   /* ********************************* */
 
   /** Creates the TileDB C config object. */
-  void create_config();
+  void create_config() {
+    tiledb_config_t* config;
+    tiledb_error_t* err;
+    tiledb_config_create(&config, &err);
+    impl::check_config_error(err);
+
+    config_ = std::shared_ptr<tiledb_config_t>(config, Config::free);
+  }
 };
+
+/* ********************************* */
+/*            DEFINITIONS            */
+/* ********************************* */
+
+inline impl::ConfigProxy Config::operator[](const std::string& param) {
+  return {*this, param};
+}
 
 namespace impl {
 
-/** Proxy to set params via operator `[]`. */
-struct TILEDB_EXPORT ConfigProxy {
-  ConfigProxy(Config& conf, std::string param)
-      : conf(conf)
-      , param(std::move(param)) {
-  }
+template <typename T>
+inline ConfigProxy& impl::ConfigProxy::operator=(const T& val) {
+  conf.set(param, std::to_string(val));
+  return *this;
+}
 
-  template <typename T>
-  ConfigProxy& operator=(const T& val) {
-    conf.set(param, std::to_string(val));
+inline ConfigProxy& impl::ConfigProxy::operator=(const char* val) {
+  conf.set(param, std::string(val));
+  return *this;
+}
+
+inline ConfigProxy& impl::ConfigProxy::operator=(const std::string& val) {
+  conf.set(param, val);
+  return *this;
+}
+
+inline ConfigProxy impl::ConfigProxy::operator[](const std::string& append) {
+  return {conf, param + append};
+}
+
+inline ConfigProxy::operator std::string() {
+  return conf.get(param);
+}
+
+inline void ConfigIter::init(const Config& config) {
+  tiledb_config_iter_t* iter;
+  tiledb_error_t* err;
+  const char* p = prefix_.size() ? prefix_.c_str() : nullptr;
+  tiledb_config_iter_create(config.ptr().get(), &iter, p, &err);
+  check_config_error(err);
+
+  iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, ConfigIter::free);
+
+  // Get first param-value pair
+  int done;
+  tiledb_config_iter_done(iter_.get(), &done, &err);
+  check_config_error(err);
+  if (done == 1) {
+    done_ = true;
+  } else {
+    const char *param, *value;
+    tiledb_config_iter_here(iter_.get(), &param, &value, &err);
+    check_config_error(err);
+    here_ = std::pair<std::string, std::string>(param, value);
+  }
+}
+
+inline ConfigIter& ConfigIter::operator++() {
+  if (done_)
+    return *this;
+  int done;
+  tiledb_error_t* err;
+
+  tiledb_config_iter_next(iter_.get(), &err);
+  check_config_error(err);
+
+  tiledb_config_iter_done(iter_.get(), &done, &err);
+  check_config_error(err);
+  if (done == 1) {
+    done_ = true;
     return *this;
   }
 
-  ConfigProxy& operator=(const char* val) {
-    conf.set(param, std::string(val));
-    return *this;
-  }
-
-  ConfigProxy& operator=(const std::string& val) {
-    conf.set(param, val);
-    return *this;
-  }
-
-  ConfigProxy operator[](const std::string& append) {
-    return {conf, param + append};
-  }
-
-  operator std::string() {
-    return conf.get(param);
-  }
-
-  Config& conf;
-  const std::string param;
-};
+  const char *param, *value;
+  tiledb_config_iter_here(iter_.get(), &param, &value, &err);
+  check_config_error(err);
+  here_ = std::pair<std::string, std::string>(param, value);
+  return *this;
+}
 
 }  // namespace impl
 

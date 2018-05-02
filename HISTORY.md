@@ -62,13 +62,14 @@
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
 * `std::array<T, N>` is backed by a `char` tiledb attribute since the size is not guaranteed.
-* `Attribute::set_cell_val_num()` is deprecated. This is now deduced from the Attribute type.
 * Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
 * Removed `VFS::move` and added `VFS::move_file` and `VFS::move_dir` instead.
 * Removed `force` argument from `VFS::move_*` and `Object::move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
 * `Query::finalize` must **always** be called before going out of scope after global-order writes.
 * Removed `Query::attribute_status`.
+* The API was made header only to improve cross-platform compatibility. `config_iter.h`, `filebuf.h`, `map_item.h`, `map_iter.h`, and `map_proxy.h` are no longer available, but grouped into the headers of the objects they support.
+* Previously a `tiledb::Map` could be created from a `std::map`, an anonymous attribute name was defined. This must now be explicitly defined: `tiledb::Map::create(tiledb::Context, std::string uri, std::map, std::string attr_name)`
 
 # TileDB v1.2.1 Release Notes
 

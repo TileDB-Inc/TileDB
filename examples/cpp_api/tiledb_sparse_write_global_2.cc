@@ -36,7 +36,7 @@
  * ./tiledb_sparse_write_global_2_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/query.h>
 
 int main() {
   // Create TileDB context

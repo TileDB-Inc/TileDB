@@ -81,15 +81,14 @@ script:
       cat <<EOF > $testfile
       #include <assert.h>
       #include <tiledb/tiledb.h>
-      #include <tiledb/tiledb>
+      #include <tiledb/version.h>
       int main(int argc, char **argv) {
-        tiledb::Context ctx;
         int major = 0;
         int minor = 0;
         int patch = 0;
         tiledb_version(&major,&minor,&patch);
-        auto version = tiledb::Version::version();
-        assert(version.major() == major);
+        auto version = tiledb::version();
+        assert(major == std::get<0>(version));
         return 0;
       }
       EOF

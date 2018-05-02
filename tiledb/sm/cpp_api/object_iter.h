@@ -52,7 +52,7 @@ namespace tiledb {
  * Enables listing TileDB objects in a directory or walking recursively an
  * entire directory tree.
  */
-class TILEDB_EXPORT ObjectIter {
+class ObjectIter {
  public:
   /* ********************************* */
   /*         TYPE DEFINITIONS          */
@@ -85,7 +85,15 @@ class TILEDB_EXPORT ObjectIter {
    * @param ctx The TileDB context.
    * @param root The root directory where the iteration will begin.
    */
-  explicit ObjectIter(Context& ctx, const std::string& root = ".");
+  explicit ObjectIter(Context& ctx, const std::string& root = ".")
+      : ctx_(ctx)
+      , root_(root) {
+    recursive_ = false;
+    walk_order_ = TILEDB_PREORDER;
+    group_ = true;
+    array_ = true;
+    kv_ = true;
+  }
 
   /* ********************************* */
   /*                API                */
@@ -100,7 +108,11 @@ class TILEDB_EXPORT ObjectIter {
    * @param array If `true`, arrays will be considered.
    * @param kv If `true`, key-values will be considered.
    */
-  void set_iter_policy(bool group, bool array, bool kv);
+  void set_iter_policy(bool group, bool array, bool kv) {
+    group_ = group;
+    array_ = array;
+    kv_ = kv;
+  }
 
   /**
    * Specifies that the iteration will be over all the directories in the
@@ -108,10 +120,15 @@ class TILEDB_EXPORT ObjectIter {
    *
    * @param walk_order The walk order.
    */
-  void set_recursive(tiledb_walk_order_t walk_order = TILEDB_PREORDER);
+  void set_recursive(tiledb_walk_order_t walk_order = TILEDB_PREORDER) {
+    recursive_ = true;
+    walk_order_ = walk_order;
+  }
 
   /** Disables recursive traversal. */
-  void set_non_recursive();
+  void set_non_recursive() {
+    recursive_ = false;
+  }
 
   /** The actual iterator implementation in this class. */
   class iterator
@@ -167,10 +184,24 @@ class TILEDB_EXPORT ObjectIter {
   };
 
   /** Returns an object iterator at the beginning of its iteration. */
-  iterator begin();
+  iterator begin() {
+    std::vector<Object> objs;
+    auto& ctx = ctx_.get();
+    ObjGetterData data(objs, array_, group_, kv_);
+    if (recursive_) {
+      ctx.handle_error(tiledb_object_walk(
+          ctx, root_.c_str(), walk_order_, obj_getter, &data));
+    } else {
+      ctx.handle_error(tiledb_object_ls(ctx, root_.c_str(), obj_getter, &data));
+    }
+
+    return iterator(objs);
+  }
 
   /** Returns an object iterator at the end of its iteration. */
-  iterator end() const;
+  iterator end() const {
+    return iterator().end();
+  }
 
   /**
    * Callback function to be used when invoking the C TileDB functions
@@ -183,7 +214,17 @@ class TILEDB_EXPORT ObjectIter {
    * @param obj_vec The vector where the visited object will be stored.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int obj_getter(const char* path, tiledb_object_t type, void* data);
+  static int obj_getter(const char* path, tiledb_object_t type, void* data) {
+    auto data_struct = static_cast<ObjGetterData*>(data);
+    if ((type == TILEDB_ARRAY && data_struct->array_) ||
+        (type == TILEDB_GROUP && data_struct->group_) ||
+        (type == TILEDB_KEY_VALUE && data_struct->kv_)) {
+      Object obj(type, path);
+      auto& objs = data_struct->objs_.get();
+      objs.emplace_back(obj);
+    }
+    return 1;
+  }
 
  private:
   /* ********************************* */

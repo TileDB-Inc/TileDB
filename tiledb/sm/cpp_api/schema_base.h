@@ -49,7 +49,7 @@ class Compressor;
  * Base class for TileDB schemas. This is intended
  * for all array-backed stores.
  */
-class TILEDB_EXPORT Schema {
+class Schema {
  public:
   const Context& context() const {
     return ctx_.get();
@@ -92,8 +92,7 @@ class TILEDB_EXPORT Schema {
   virtual void check() const = 0;
 
   /** Gets all attributes in the array. */
-  virtual const std::unordered_map<std::string, Attribute> attributes()
-      const = 0;
+  virtual std::unordered_map<std::string, Attribute> attributes() const = 0;
 
   /** Number of attributes **/
   virtual unsigned attribute_num() const = 0;

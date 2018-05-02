@@ -35,7 +35,7 @@
  * ./tiledb_sparse_write_unordered_1_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/query.h>
 
 int main() {
   // Create TileDB context

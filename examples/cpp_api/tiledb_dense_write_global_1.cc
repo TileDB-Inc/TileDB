@@ -35,7 +35,7 @@
  * ./tiledb_dense_write_global_1_cpp
  */
 
-#include "tiledb/query.h"
+#include <tiledb/query.h>
 
 int main() {
   // Create TileDB context

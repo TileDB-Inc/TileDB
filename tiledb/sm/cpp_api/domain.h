@@ -84,14 +84,26 @@ namespace tiledb {
  * @endcode
  *
  **/
-class TILEDB_EXPORT Domain {
+class Domain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Domain(const Context& ctx);
-  Domain(const Context& ctx, tiledb_domain_t* domain);
+  explicit Domain(const Context& ctx)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    tiledb_domain_t* domain;
+    ctx.handle_error(tiledb_domain_create(ctx, &domain));
+    domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
+  }
+
+  Domain(const Context& ctx, tiledb_domain_t* domain)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
+  }
+
   Domain(const Domain& domain) = default;
   Domain(Domain&& domain) = default;
   Domain& operator=(const Domain& domain) = default;
@@ -105,22 +117,82 @@ class TILEDB_EXPORT Domain {
    * Returns the total number of cells in the domain. Throws an exception
    * if the domain type is `float32` or `float64`.
    */
-  uint64_t cell_num() const;
+  uint64_t cell_num() const {
+    auto type = this->type();
+    if (type == TILEDB_FLOAT32 || type == TILEDB_FLOAT64)
+      throw TileDBError(
+          "[TileDB::C++API::Domain] Cannot compute number of cells for a "
+          "non-integer domain");
+
+    switch (type) {
+      case TILEDB_INT8:
+        return cell_num<int8_t>();
+      case TILEDB_UINT8:
+        return cell_num<uint8_t>();
+      case TILEDB_INT16:
+        return cell_num<int16_t>();
+      case TILEDB_UINT16:
+        return cell_num<uint16_t>();
+      case TILEDB_INT32:
+        return cell_num<int32_t>();
+      case TILEDB_UINT32:
+        return cell_num<uint32_t>();
+      case TILEDB_INT64:
+        return cell_num<int64_t>();
+      case TILEDB_UINT64:
+        return cell_num<uint64_t>();
+      default:
+        throw TileDBError(
+            "[TileDB::C++API::Domain] Cannot compute number of cells; Unknown "
+            "domain type");
+    }
+
+    return 0;
+  }
 
   /** Dumps the domain in an ASCII representation to an output. */
-  void dump(FILE* out = stdout) const;
+  void dump(FILE* out = stdout) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_domain_dump(ctx, domain_.get(), out));
+  }
 
   /** Returns the domain type. */
-  tiledb_datatype_t type() const;
+  tiledb_datatype_t type() const {
+    auto& ctx = ctx_.get();
+    tiledb_datatype_t type;
+    ctx.handle_error(tiledb_domain_get_type(ctx, domain_.get(), &type));
+    return type;
+  }
 
   /** Get the rank (number of dimensions) **/
-  unsigned rank() const;
+  unsigned rank() const {
+    auto& ctx = ctx_.get();
+    unsigned n;
+    ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &n));
+    return n;
+  }
 
   /** Returns the current set of dimensions in domain. */
-  const std::vector<Dimension> dimensions() const;
+  std::vector<Dimension> dimensions() const {
+    auto& ctx = ctx_.get();
+    unsigned int ndim;
+    tiledb_dimension_t* dimptr;
+    std::vector<Dimension> dims;
+    ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &ndim));
+    for (unsigned int i = 0; i < ndim; ++i) {
+      ctx.handle_error(tiledb_domain_get_dimension_from_index(
+          ctx, domain_.get(), i, &dimptr));
+      dims.emplace_back(Dimension(ctx, dimptr));
+    }
+    return dims;
+  }
 
   /** Adds a new dimension to the domain. */
-  Domain& add_dimension(const Dimension& d);
+  Domain& add_dimension(const Dimension& d) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_domain_add_dimension(ctx, domain_.get(), d));
+    return *this;
+  }
 
   /** Add multiple Dimension's. **/
   template <typename... Args>
@@ -132,10 +204,14 @@ class TILEDB_EXPORT Domain {
   }
 
   /** Returns a shared pointer to the C TileDB domain object. */
-  std::shared_ptr<tiledb_domain_t> ptr() const;
+  std::shared_ptr<tiledb_domain_t> ptr() const {
+    return domain_;
+  }
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_domain_t*() const;
+  operator tiledb_domain_t*() const {
+    return domain_.get();
+  }
 
  private:
   /**
@@ -144,7 +220,16 @@ class TILEDB_EXPORT Domain {
    * @tparam T The domain datatype.
    */
   template <class T>
-  uint64_t cell_num() const;
+  uint64_t cell_num() const {
+    uint64_t ret = 1;
+    auto dimensions = this->dimensions();
+    for (const auto& dim : dimensions) {
+      const auto& d = dim.domain<T>();
+      ret *= (d.second - d.first + 1);
+    }
+
+    return ret;
+  }
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -165,7 +250,14 @@ class TILEDB_EXPORT Domain {
 /* ********************************* */
 
 /** Get a string representation of an attribute for an output stream. */
-TILEDB_EXPORT std::ostream& operator<<(std::ostream& os, const Domain& d);
+inline std::ostream& operator<<(std::ostream& os, const Domain& d) {
+  os << "Domain<(" << impl::to_str(d.type()) << ")";
+  for (const auto& dimension : d.dimensions()) {
+    os << " " << dimension;
+  }
+  os << '>';
+  return os;
+}
 
 }  // namespace tiledb
 

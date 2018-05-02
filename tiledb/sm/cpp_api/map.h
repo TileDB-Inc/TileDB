@@ -36,8 +36,6 @@
 
 #include "context.h"
 #include "deleter.h"
-#include "map_item.h"
-#include "map_iter.h"
 #include "map_schema.h"
 #include "utils.h"
 
@@ -46,6 +44,461 @@
 #include <string>
 
 namespace tiledb {
+
+class Map;
+
+namespace impl {
+class MultiMapItemProxy;
+class MapItemProxy;
+}  // namespace impl
+
+/** Object representing a Map key and its values. **/
+class MapItem {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Load a MapItem given a pointer. **/
+  MapItem(const Context& ctx, tiledb_kv_item_t** item, Map* map = nullptr)
+      : ctx_(ctx)
+      , deleter_(ctx)
+      , map_(map) {
+    item_ = std::shared_ptr<tiledb_kv_item_t>(*item, deleter_);
+    *item = nullptr;
+  }
+
+  MapItem(const MapItem&) = default;
+  MapItem(MapItem&& o) = default;
+  MapItem& operator=(const MapItem&) = default;
+  MapItem& operator=(MapItem&& o) = default;
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
+   * Checks the goodness of the key-value item. Useful when
+   * checking if a retrieved key-value item exists in a map.
+   */
+  bool good() const {
+    return item_ != nullptr;
+  }
+
+  /** Set an attribute to the given value **/
+  template <typename T>
+  void set(const std::string& attr, const T& val) {
+    using DataT = typename impl::TypeHandler<T>;
+
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_kv_item_set_value(
+        ctx,
+        item_.get(),
+        attr.c_str(),
+        DataT::data(val),
+        DataT::tiledb_type,
+        DataT::size(val) * sizeof(typename DataT::value_type)));
+  }
+
+  /** Get the key for the item. */
+  template <typename T>
+  T key() const {
+    using DataT = typename impl::TypeHandler<T>;
+    auto& ctx = ctx_.get();
+
+    typename DataT::value_type* buf;
+    tiledb_datatype_t type;
+    uint64_t size;
+
+    ctx.handle_error(tiledb_kv_item_get_key(
+        ctx, item_.get(), (const void**)&buf, &type, &size));
+
+    impl::type_check<T>(type, unsigned(size / sizeof(T)));
+    T key;
+    DataT::set(key, buf, size);
+    return key;
+  }
+
+  /** Get the key datatype and size **/
+  std::pair<tiledb_datatype_t, uint64_t> key_info() const {
+    auto& ctx = ctx_.get();
+    const void* key;
+    tiledb_datatype_t type;
+    uint64_t size;
+    ctx.handle_error(
+        tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+    return {type, size};
+  }
+
+  /**
+   * Get the value for a given attribute.
+   *
+   * @note
+   * This does not check for the number of elements, but rather returns
+   * the size (in elements) retrieved.
+   * */
+  template <typename T>
+  std::pair<const T*, uint64_t> get_ptr(const std::string& attr) const {
+    using DataT = typename impl::TypeHandler<T>;
+    const Context& ctx = ctx_.get();
+
+    typename DataT::value_type* data;
+    tiledb_datatype_t type;
+    uint64_t size;
+
+    ctx.handle_error(tiledb_kv_item_get_value(
+        ctx, item_.get(), attr.c_str(), (const void**)&data, &type, &size));
+
+    auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
+    impl::type_check<T>(type);  // Just check type
+    return std::pair<const T*, uint64_t>(data, num);
+  }
+
+  /** Get a attribute with a given return type. **/
+  template <typename T>
+  T get(const std::string& attr) const {
+    using DataT = typename impl::TypeHandler<T>;
+
+    const typename DataT::value_type* data;
+    unsigned num;
+    std::tie(data, num) = get_ptr<typename DataT::value_type>(attr);
+
+    T ret;
+    DataT::set(ret, data, num * sizeof(typename DataT::value_type));
+    return ret;
+  }
+
+  /** Get a proxy to set/get with operator[] **/
+  impl::MapItemProxy operator[](const std::string& attr);
+
+  impl::MultiMapItemProxy operator[](const std::vector<std::string>& attrs);
+
+  /** Ptr to underlying object. **/
+  std::shared_ptr<tiledb_kv_item_t> ptr() const {
+    return item_;
+  }
+
+ private:
+  friend class Map;
+  friend class impl::MapItemProxy;
+  friend class impl::MultiMapItemProxy;
+
+  void add_to_map();
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Make an item with the given key. **/
+  MapItem(
+      const Context& ctx,
+      const void* key,
+      tiledb_datatype_t type,
+      size_t size,
+      Map* map = nullptr)
+      : ctx_(ctx)
+      , deleter_(ctx)
+      , map_(map) {
+    tiledb_kv_item_t* p;
+    ctx.handle_error(tiledb_kv_item_create(ctx, &p));
+    ctx.handle_error(tiledb_kv_item_set_key(ctx, p, key, type, size));
+    item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
+  }
+
+  /** A TileDB context reference wrapper. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** Ptr to TileDB object. **/
+  std::shared_ptr<tiledb_kv_item_t> item_;
+
+  /** Deleter for tiledb object **/
+  impl::Deleter deleter_;
+
+  /** Underlying Map **/
+  Map* map_ = nullptr;
+};
+
+namespace impl {
+
+/**
+ * Proxy class for multi-attribute set and get.
+ * The class facilitates tuple unrolling, and is
+ * equivalent to setting one attribute at a time.
+ * After assignment, the item is added to the
+ * underlying map.
+ *
+ * @details
+ * This class should never be constructed explicitly.
+ * Instead, it should be used to retrieve the value
+ * with the correct type.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ *   using my_cell_t = std::tuple<int, std::string, std::vector<float>>;
+ *
+ *   // Implicit conversion
+ *   my_cell_t vals_implicit = map[100][{"a1", "a2", "a3"}];
+ *
+ *   // Explicit conversion
+ *   auto vals_explicit = map[100][{"a1", "a2", "a3"}].get<my_cell_t>();
+ *
+ *   // Defer conversion
+ *   auto vals_deferred = map[100][{"a1", "a2", "a3"}];
+ *
+ *   // vals_deferred is of type MultMapItemProxy, no values
+ *   // are fetched yet.
+ *
+ *   // Writing & flushing map[100] here would change
+ *   // the result of below.
+ *
+ *   auto my_fn = [](my_cell_t cell){ std::cout << std::get<0>(cell); };
+ *   my_fn(vals_deferred); // Retrieve values
+ *
+ *   // Set new values, but does not explicity flush to storage
+ *   vals_deferred = std::make_tuple(10, "str", {1.2, 3.2});
+ *
+ * @endcode
+ **/
+class MultiMapItemProxy {
+ public:
+  MultiMapItemProxy(const std::vector<std::string>& attrs, MapItem& item)
+      : attrs(attrs)
+      , item(item) {
+  }
+
+  /** Get multiple attributes into an existing tuple **/
+  template <typename... T>
+  void get(std::tuple<T...>& tp) const {
+    if (attrs.size() != sizeof...(T)) {
+      throw TileDBError("Attribute list size does not match tuple length.");
+    }
+    get_tuple<0, T...>(tp);
+  }
+
+  /** Get multiple attributes **/
+  template <typename... T>
+  std::tuple<T...> get() const {
+    std::tuple<T...> ret;
+    get<T...>(ret);
+    return ret;
+  }
+
+  /** Set the attributes **/
+  template <typename... T>
+  void set(const std::tuple<T...>& vals) {
+    if (attrs.size() != sizeof...(T)) {
+      throw TileDBError("Attribute list size does not match tuple length.");
+    }
+    set_tuple<0, T...>(vals);
+    add_to_map();
+  }
+
+  /** Implicit cast to a tuple. **/
+  template <typename... T>
+  operator std::tuple<T...>() const {
+    return get<T...>();
+  }
+
+  /** Set the attributes with a tuple **/
+  template <typename... T>
+  MultiMapItemProxy& operator=(const std::tuple<T...>& vals) {
+    set<T...>(vals);
+    return *this;
+  }
+
+ private:
+  /** Iterate over a tuple. Set version (non const) **/
+  /** Base case. Do nothing and terminate recursion. **/
+  template <std::size_t I = 0, typename... T>
+  inline typename std::enable_if<I == sizeof...(T), void>::type set_tuple(
+      const std::tuple<T...>&) {
+  }
+
+  template <std::size_t I = 0, typename... T>
+      inline typename std::enable_if <
+      I<sizeof...(T), void>::type set_tuple(const std::tuple<T...>& t) {
+    item.set(attrs[I], std::get<I>(t));
+    set_tuple<I + 1, T...>(t);
+  }
+
+  /** Iterate over a tuple. Get version (const) **/
+  /** Base case. Do nothing and terminate recursion. **/
+  template <std::size_t I = 0, typename... T>
+  inline typename std::enable_if<I == sizeof...(T), void>::type get_tuple(
+      std::tuple<T...>&) const {
+  }
+
+  template <std::size_t I = 0, typename... T>
+      inline typename std::enable_if <
+      I<sizeof...(T), void>::type get_tuple(std::tuple<T...>& t) const {
+    std::get<I>(t) =
+        item.get<typename std::tuple_element<I, std::tuple<T...>>::type>(
+            attrs[I]);
+    get_tuple<I + 1, T...>(t);
+  }
+
+  /** Keyed attributes **/
+  const std::vector<std::string>& attrs;
+
+  /** Item that created proxy. **/
+  MapItem& item;
+
+  /** Add to underlying map, if associated with one. Otherwise pass. **/
+  bool add_to_map() const;
+};
+
+/**
+ * Proxy struct to set a single value with operator[].
+ * If bound to a map, the item will be added after assignment.
+ *
+ * @details
+ * This class should never be constructed explicitly.
+ * Instead, it should be used to retrieve the value
+ * with the correct type.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ *   // Implicit conversion
+ *   my_cell_t a2_implicit = map[100]["a2"];
+ *
+ *   // Explicit conversion
+ *   auto a2_explicit = map[100]["a2"].get<std::string>();
+ *
+ *   // Defer conversion
+ *   auto a2_deferred = map[100]["a2"];
+ *   // a2_deferred is of type MapItemProxy and is symbolic.
+ *
+ *   // Writing & flushing map[100]["a2"] here would change
+ *   // the result of below.
+ *
+ *   auto my_fn = [](std::string a2){ std::cout << a2; };
+ *   my_fn(a2_deferred); // Retrieve value
+ *
+ *   // Assigning adds to the map, but does not flush
+ *   a2_deferred = "new_value";
+ *
+ * @endcode
+ **/
+class MapItemProxy {
+ public:
+  /** Create a proxy for the given attribute and underlying MapItem **/
+  MapItemProxy(std::string attr, MapItem& item)
+      : attr(std::move(attr))
+      , item(item) {
+  }
+
+  /** Set the value **/
+  template <typename T>
+  void set(T val) {
+    item.set<T>(attr, val);
+    add_to_map();
+  }
+
+  /** Get the value, fundamental type. **/
+  template <typename T>
+  T get() const {
+    return item.get<T>(attr);
+  }
+
+  /** Set value with operator= **/
+  template <typename T>
+  MapItemProxy& operator=(const T& val) {
+    set(val);
+    add_to_map();
+    return *this;
+  }
+
+  /** Implicit cast **/
+  template <typename T>
+  operator T() {
+    return get<T>();
+  }
+
+  /** Bound attribute name **/
+  const std::string attr;
+
+  /** Underlying Item **/
+  MapItem& item;
+
+ private:
+  /** Add to underlying map, if associated with one. Otherwise pass. **/
+  bool add_to_map() const;
+};
+
+/** Iterate over items in a map. **/
+class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
+ public:
+  explicit MapIter(Map& map, bool end = false);
+  MapIter(const MapIter&) = delete;
+  MapIter(MapIter&&) = default;
+  MapIter& operator=(const MapIter&) = delete;
+  MapIter& operator=(MapIter&&) = default;
+
+  /** Init iter. This must manually be invoked. **/
+  void init();
+
+  /** Flush on iterator destruction. **/
+  ~MapIter();
+
+  /**
+   * Only iterate over keys with some type. Only keys with the
+   * underlying tiledb datatype and num will be returned.
+   */
+  template <typename T>
+  void limit_key_type() {
+    using DataT = impl::TypeHandler<T>;
+    limit_type_ = true;
+    type_ = DataT::tiledb_type;
+    num_ = DataT::tiledb_num;
+  }
+
+  /** Disable any key filters. */
+  void all_keys() {
+    limit_type_ = false;
+  }
+
+  /** Iterators are only equal when both are end. **/
+  bool operator==(const MapIter& o) const {
+    return done_ == o.done_;
+  }
+
+  bool operator!=(const MapIter& o) const {
+    return done_ != o.done_;
+  }
+
+  MapItem& operator*() const {
+    return *item_;
+  }
+
+  MapItem* operator->() const {
+    return item_.get();
+  }
+
+  MapIter& operator++();
+
+ private:
+  /** Base map. **/
+  Map* map_;
+  Deleter deleter_;
+
+  /** Current item **/
+  std::unique_ptr<MapItem> item_;
+
+  /** TileDB iterator object **/
+  std::shared_ptr<tiledb_kv_iter_t> iter_;
+
+  /** Whether the iterator has reached the end **/
+  int done_;
+
+  /** Settings determining filters for the iterator. **/
+  bool limit_type_ = false;
+  tiledb_datatype_t type_;
+  unsigned num_;
+};
+
+}  // namespace impl
 
 /**
  * A Key value store backed by a TileDB Sparse array. A Map
@@ -75,7 +528,7 @@ namespace tiledb {
  * std::tuple<int, std::string, std::array<float, 2>> vals = map[key];
  * @endcode
  */
-class TILEDB_EXPORT Map {
+class Map {
  public:
   using iterator = impl::MapIter;
 
@@ -232,26 +685,40 @@ class TILEDB_EXPORT Map {
   /* ********************************* */
 
   /** Create a new map. */
-  static void create(const std::string& uri, const MapSchema& schema);
+  static void create(const std::string& uri, const MapSchema& schema) {
+    auto& ctx = schema.context();
+    schema.check();
+    ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
+  }
 
-  /** Create a TileDB map from a std::map **/
-  template <typename Key, typename Value>
+  /**
+   * Create a TileDB map from a std::map.
+   * The resulting tiledb map will be accessible as
+   * map[key][attr_name].
+   **/
+  template <
+      typename MapT,
+      typename Key = typename MapT::key_type,
+      typename Value = typename MapT::mapped_type>
   static void create(
       const Context& ctx,
       const std::string& uri,
-      const std::map<Key, Value>& map) {
+      const MapT& map,
+      const std::string& attr_name) {
     MapSchema schema(ctx);
-    auto a = Attribute::create<Value>(ctx, TILEDB_SINGLE_ATTRIBUTE_MAP);
+    auto a = Attribute::create<Value>(ctx, attr_name);
     schema.add_attribute(a);
     create(uri, schema);
     Map m(ctx, uri);
     for (const auto& p : map) {
-      m[p.first] = p.second;
+      m[p.first][attr_name] = p.second;
     }
   }
 
   /** Consolidate map fragments. **/
-  static void consolidate(const Context& ctx, const std::string& map);
+  static void consolidate(const Context& ctx, const std::string& map) {
+    ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
+  }
 
  private:
   /* ********************************* */
@@ -272,6 +739,89 @@ class TILEDB_EXPORT Map {
   /** URI **/
   std::string uri_;
 };
+
+/* ********************************* */
+/*            DEFINITIONS            */
+/* ********************************* */
+
+inline void MapItem::add_to_map() {
+  if (map_)
+    map_->add_item(*this);
+}
+
+inline impl::MapItemProxy MapItem::operator[](const std::string& attr) {
+  return impl::MapItemProxy(attr, *this);
+}
+
+inline impl::MultiMapItemProxy MapItem::operator[](
+    const std::vector<std::string>& attrs) {
+  return impl::MultiMapItemProxy(attrs, *this);
+}
+
+inline bool impl::MapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
+  }
+  return false;
+}
+
+inline bool impl::MultiMapItemProxy::add_to_map() const {
+  if (item.map_ != nullptr) {
+    item.map_->add_item(item);
+    return true;
+  }
+  return false;
+}
+
+namespace impl {
+
+inline MapIter::MapIter(Map& map, bool end)
+    : map_(&map)
+    , deleter_(map.context())
+    , done_((int)end) {
+}
+
+inline MapIter::~MapIter() {
+  map_->flush();
+}
+
+inline MapIter& MapIter::operator++() {
+  auto& ctx = map_->context();
+  if (done_)
+    return *this;
+  ctx.handle_error(tiledb_kv_iter_done(ctx, iter_.get(), &done_));
+  if (done_)
+    return *this;
+  tiledb_kv_item_t* p;
+  ctx.handle_error(tiledb_kv_iter_here(ctx, iter_.get(), &p));
+  item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
+  ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
+  if (limit_type_) {
+    auto t = item_->key_info();
+    if (t.first != type_ ||
+        (num_ != TILEDB_VAR_NUM && t.second / type_size(t.first) != num_))
+      operator++();
+  }
+  return *this;
+}
+
+inline void MapIter::init() {
+  auto& ctx = map_->context();
+  MapSchema schema(ctx, map_->uri());
+  std::vector<const char*> names;
+  auto attrs = schema.attributes();
+  for (const auto& a : attrs) {
+    names.push_back(a.first.c_str());
+  }
+  tiledb_kv_iter_t* p;
+  ctx.handle_error(tiledb_kv_iter_create(
+      ctx, &p, map_->uri().c_str(), names.data(), (unsigned)attrs.size()));
+  iter_ = std::shared_ptr<tiledb_kv_iter_t>(p, deleter_);
+  this->operator++();
+}
+
+}  // namespace impl
 
 }  // namespace tiledb
 
