@@ -165,15 +165,31 @@ class Reader {
     const OverlappingTile* tile_;
     /** The coordinates. */
     const T* coords_;
+    /** The coordinates of the tile. */
+    const T* tile_coords_;
     /** The position of the coordinates in the tile. */
     uint64_t pos_;
+    /** Whether this instance is "valid". */
+    bool valid_;
 
     /** Constructor. */
     OverlappingCoords(
         const OverlappingTile* tile, const T* coords, uint64_t pos)
         : tile_(tile)
         , coords_(coords)
-        , pos_(pos) {
+        , tile_coords_(nullptr)
+        , pos_(pos)
+        , valid_(true) {
+    }
+
+    /** Invalidate this instance. */
+    void invalidate() {
+      valid_ = false;
+    }
+
+    /** Return true if this instance is valid. */
+    bool valid() const {
+      return valid_;
     }
   };
 
@@ -181,8 +197,7 @@ class Reader {
    * Type alias for a list of OverlappingCoords.
    */
   template <typename T>
-  using OverlappingCoordsList =
-      std::list<std::unique_ptr<OverlappingCoords<T>>>;
+  using OverlappingCoordsList = std::vector<OverlappingCoords<T>>;
 
   /** A cell range produced by the dense read algorithm. */
   template <class T>
@@ -441,6 +456,21 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_tiles(OverlappingTileVec* tiles) const;
+
+  /**
+   * Computes the tile coordinates for each OverlappingCoords and populates
+   * their `tile_coords_` field. The tile coordinates are placed in a
+   * newly-allocated array.
+   *
+   * @tparam T The coords type.
+   * @param all_tile_coords Pointer to the memory allocated by this function.
+   * @param coords The overlapping coords list
+   * @return Status
+   */
+  template <class T>
+  Status compute_tile_coordinates(
+      std::unique_ptr<T[]>* all_tile_coords,
+      OverlappingCoordsList<T>* coords) const;
 
   /**
    * Copies the cells for the input attribute and cell ranges, into

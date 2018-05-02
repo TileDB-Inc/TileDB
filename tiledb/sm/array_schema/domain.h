@@ -659,6 +659,21 @@ class Domain {
   template <class T>
   int tile_order_cmp(const T* coords_a, const T* coords_b) const;
 
+  /**
+   * Checks the tile order of the input tile coordinates.
+   *
+   * @tparam T The coordinates type.
+   * @param coords_a The first tile's coordinates.
+   * @param coords_b The second tile's coordinates.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinates succeed the second on the tile order
+   */
+  template <class T>
+  int tile_order_cmp_tile_coords(
+      const T* tile_coords_a, const T* tile_coords_b) const;
+
   /** Return the number of cells in a column tile slab of an input subarray. */
   uint64_t tile_slab_col_cell_num(const void* subarray) const;
 

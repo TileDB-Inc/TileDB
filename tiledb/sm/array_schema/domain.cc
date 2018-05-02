@@ -1189,6 +1189,41 @@ int Domain::tile_order_cmp(const T* coords_a, const T* coords_b) const {
   return 0;
 }
 
+template <class T>
+int Domain::tile_order_cmp_tile_coords(
+    const T* tile_coords_a, const T* tile_coords_b) const {
+  if (tile_coords_a == nullptr || tile_coords_b == nullptr)
+    return 0;
+
+  if (tile_order_ == Layout::ROW_MAJOR) {
+    for (unsigned i = 0; i < dim_num_; ++i) {
+      auto ta = tile_coords_a[i];
+      auto tb = tile_coords_b[i];
+
+      if (ta < tb)
+        return -1;
+      if (ta > tb)
+        return 1;
+      // else ta == tb --> continue
+    }
+  } else {  // COL_MAJOR
+    for (unsigned i = dim_num_ - 1;; --i) {
+      auto ta = tile_coords_a[i];
+      auto tb = tile_coords_b[i];
+      if (ta < tb)
+        return -1;
+      if (ta > tb)
+        return 1;
+      // else ta == tb --> continue
+
+      if (i == 0)
+        break;
+    }
+  }
+
+  return 0;
+}
+
 uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
   // Invoke the proper templated function
   switch (type_) {
@@ -2237,6 +2272,27 @@ template int Domain::tile_order_cmp<uint64_t>(
 template int Domain::tile_order_cmp<float>(
     const float* coords_a, const float* coords_b) const;
 template int Domain::tile_order_cmp<double>(
+    const double* coords_a, const double* coords_b) const;
+
+template int Domain::tile_order_cmp_tile_coords<int8_t>(
+    const int8_t* coords_a, const int8_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<uint8_t>(
+    const uint8_t* coords_a, const uint8_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<int16_t>(
+    const int16_t* coords_a, const int16_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<uint16_t>(
+    const uint16_t* coords_a, const uint16_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<int>(
+    const int* coords_a, const int* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<unsigned>(
+    const unsigned* coords_a, const unsigned* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<int64_t>(
+    const int64_t* coords_a, const int64_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<uint64_t>(
+    const uint64_t* coords_a, const uint64_t* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<float>(
+    const float* coords_a, const float* coords_b) const;
+template int Domain::tile_order_cmp_tile_coords<double>(
     const double* coords_a, const double* coords_b) const;
 
 template uint64_t Domain::tile_id<int>(
