@@ -341,7 +341,7 @@ struct TypeHandler<T[N], enable_trivial<T>> {
   static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
   static constexpr unsigned tiledb_num = N * element_th::tiledb_num;
 
-  static size_t size(const T&) {
+  static size_t size(T const[N]) {
     return N;
   }
 

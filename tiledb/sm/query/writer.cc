@@ -124,6 +124,10 @@ Status Writer::set_buffers(
 
 void Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   attr_buffers_.clear();
+  if (!buffers || !buffer_sizes) {
+    attributes_.clear();
+    return;
+  }
   unsigned bid = 0;
   for (const auto& attr : attributes_) {
     if (!array_schema_->var_size(attr)) {

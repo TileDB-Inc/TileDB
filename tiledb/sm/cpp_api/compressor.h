@@ -54,7 +54,7 @@ namespace tiledb {
  * a1.set_compressor({TILEDB_BLOSC_LZ, -1});
  * @endcode
  */
-class TILEDB_EXPORT Compressor {
+class Compressor {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

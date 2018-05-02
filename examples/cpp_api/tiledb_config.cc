@@ -37,7 +37,9 @@
  *
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/config.h>
+#include <tiledb/context.h>
+#include <tiledb/vfs.h>
 
 int main() {
   // Create a TileDB config

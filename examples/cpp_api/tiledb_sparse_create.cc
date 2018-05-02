@@ -31,7 +31,7 @@
  * with the name `my_sparse_array` in the current working directory.
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/array.h>
 
 int main() {
   // Create TileDB context

@@ -50,17 +50,27 @@
 namespace tiledb {
 
 /** Implements the array schema functionality. */
-class TILEDB_EXPORT MapSchema : public Schema {
+class MapSchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Creates a new array schema. */
-  explicit MapSchema(const Context& ctx);
+  explicit MapSchema(const Context& ctx)
+      : Schema(ctx) {
+    tiledb_kv_schema_t* schema;
+    ctx.handle_error(tiledb_kv_schema_create(ctx, &schema));
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+  }
 
   /** Loads the schema of an existing array with the input URI. */
-  MapSchema(const Context& ctx, const std::string& uri);
+  MapSchema(const Context& ctx, const std::string& uri)
+      : Schema(ctx) {
+    tiledb_kv_schema_t* schema;
+    ctx.handle_error(tiledb_kv_schema_load(ctx, &schema, uri.c_str()));
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+  }
 
   MapSchema(const MapSchema&) = default;
   MapSchema(MapSchema&& o) = default;
@@ -77,10 +87,18 @@ class TILEDB_EXPORT MapSchema : public Schema {
   }
 
   /** Dumps the array schema in an ASCII representation to an output. */
-  void dump(FILE* out = stdout) const override;
+  void dump(FILE* out = stdout) const override {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_kv_schema_dump(ctx, schema_.get(), out));
+  }
 
   /** Adds an attribute to the array. */
-  MapSchema& add_attribute(const Attribute& attr) override;
+  MapSchema& add_attribute(const Attribute& attr) override {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_kv_schema_add_attribute(ctx, schema_.get(), attr.ptr().get()));
+    return *this;
+  }
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_kv_schema_t> ptr() const {
@@ -88,20 +106,55 @@ class TILEDB_EXPORT MapSchema : public Schema {
   }
 
   /** Validates the schema. */
-  void check() const override;
+  void check() const override {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_kv_schema_check(ctx, schema_.get()));
+  }
 
   /** Gets all attributes in the array. */
-  const std::unordered_map<std::string, Attribute> attributes() const override;
-  ;
-
-  /** Get an attribute by name. **/
-  Attribute attribute(const std::string& name) const override;
+  std::unordered_map<std::string, Attribute> attributes() const override {
+    auto& ctx = ctx_.get();
+    tiledb_attribute_t* attrptr;
+    unsigned int nattr;
+    std::unordered_map<std::string, Attribute> attrs;
+    ctx.handle_error(
+        tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &nattr));
+    for (unsigned int i = 0; i < nattr; ++i) {
+      ctx.handle_error(tiledb_kv_schema_get_attribute_from_index(
+          ctx, schema_.get(), i, &attrptr));
+      auto attr = Attribute(ctx_, attrptr);
+      attrs.emplace(
+          std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
+    }
+    return attrs;
+  }
 
   /** Number of attributes **/
-  unsigned attribute_num() const override;
+  unsigned attribute_num() const override {
+    auto& ctx = context();
+    unsigned num;
+    ctx.handle_error(
+        tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &num));
+    return num;
+  }
+
+  /** Get an attribute by name. **/
+  Attribute attribute(const std::string& name) const override {
+    auto& ctx = ctx_.get();
+    tiledb_attribute_t* attr;
+    ctx.handle_error(tiledb_kv_schema_get_attribute_from_name(
+        ctx, schema_.get(), name.c_str(), &attr));
+    return {ctx, attr};
+  }
 
   /** Get an attribute by index **/
-  Attribute attribute(unsigned int i) const override;
+  Attribute attribute(unsigned int i) const override {
+    auto& ctx = ctx_.get();
+    tiledb_attribute_t* attr;
+    ctx.handle_error(tiledb_kv_schema_get_attribute_from_index(
+        ctx, schema_.get(), i, &attr));
+    return {ctx, attr};
+  }
 
  private:
   /* ********************************* */
@@ -117,7 +170,14 @@ class TILEDB_EXPORT MapSchema : public Schema {
 /* ********************************* */
 
 /** Converts the array schema into a string representation. */
-std::ostream& operator<<(std::ostream& os, const MapSchema& schema);
+inline std::ostream& operator<<(std::ostream& os, const MapSchema& schema) {
+  os << "MapSchema<Attributes:";
+  for (const auto& a : schema.attributes()) {
+    os << ' ' << a.second;
+  }
+  os << '>';
+  return os;
+}
 }  // namespace tiledb
 
 #endif  // TILEDB_CPP_API_MAP_SCHEMA_H

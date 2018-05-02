@@ -35,7 +35,7 @@
  *
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/vfs.h>
 
 int main() {
   // Create TileDB context

@@ -36,11 +36,13 @@
  * directory before running this example.
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/group.h>
 
 int main() {
   tiledb::Context ctx;
   tiledb::create_group(ctx, "my_group");
   tiledb::create_group(ctx, "my_group/dense_arrays");
   tiledb::create_group(ctx, "my_group/sparse_arrays");
+
+  return 0;
 }

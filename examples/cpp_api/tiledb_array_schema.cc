@@ -34,7 +34,7 @@
  * $ ./tiledb_array_schema_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/array_schema.h>
 
 int main() {
   // Create TileDB context

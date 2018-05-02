@@ -36,7 +36,7 @@
  * $ ./tiledb_error_cpp
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/group.h>
 
 int main() {
   // Create TileDB context
@@ -55,4 +55,6 @@ int main() {
     std::cout << "Callback:\n" << msg << "\n";
   });
   tiledb::create_group(ctx, "my_group");
+
+  return 0;
 }

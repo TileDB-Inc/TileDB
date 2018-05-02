@@ -72,7 +72,7 @@ namespace tiledb {
  * query.submit();
  * @endcode
  */
-class TILEDB_EXPORT Query {
+class Query {
  public:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
@@ -108,7 +108,16 @@ class TILEDB_EXPORT Query {
   Query(
       const Context& ctx,
       const std::string& array_uri,
-      tiledb_query_type_t type);
+      tiledb_query_type_t type)
+      : ctx_(ctx)
+      , deleter_(ctx)
+      , schema_(ctx, array_uri)
+      , uri_(array_uri) {
+    tiledb_query_t* q;
+    ctx.handle_error(tiledb_query_create(ctx, &q, array_uri.c_str(), type));
+    query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
+    array_attributes_ = schema_.attributes();
+  }
 
   Query(const Query&) = default;
   Query(Query&& o) = default;
@@ -120,13 +129,27 @@ class TILEDB_EXPORT Query {
   /* ********************************* */
 
   /** Sets the data layout of the buffers.  */
-  Query& set_layout(tiledb_layout_t layout);
+  Query& set_layout(tiledb_layout_t layout) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_set_layout(ctx, query_.get(), layout));
+    return *this;
+  }
 
   /** Returns the query status. */
-  Status query_status() const;
+  Status query_status() const {
+    tiledb_query_status_t status;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_get_status(ctx, query_.get(), &status));
+    return to_status(status);
+  }
 
   /** Submits the query. Call will block until query is complete. */
-  Status submit();
+  Status submit() {
+    auto& ctx = ctx_.get();
+    prepare_submission();
+    ctx.handle_error(tiledb_query_submit(ctx, query_.get()));
+    return query_status();
+  }
 
   /**
    * Submit an async query, with callback.
@@ -140,8 +163,8 @@ class TILEDB_EXPORT Query {
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
     prepare_submission();
-    ctx.handle_error(tiledb::impl::tiledb_query_submit_async(
-        ctx, query_.get(), wrapper, nullptr));
+    ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
+        ctx, query_.get(), &wrapper, nullptr));
   }
 
   /** Submit an async query (non-blocking). */
@@ -166,7 +189,10 @@ class TILEDB_EXPORT Query {
    * objects on the same array until you are done issuing queries to that array
    * or consolidation is needed.
    */
-  void finalize();
+  void finalize() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_finalize(ctx, query_.get()));
+  }
 
   /**
    * Returns the number of elements in the result buffers. This is a map
@@ -179,10 +205,37 @@ class TILEDB_EXPORT Query {
    * If the query has not been submitted, an empty map is returned.
    */
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  result_buffer_elements() const;
+  result_buffer_elements() const {
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
+    if (buff_sizes_.size() == 0)
+      return {};  // Query hasn't been submitted
+    unsigned bid = 0;
+    for (const auto& attr : attrs_) {
+      auto var =
+          (attr != TILEDB_COORDS &&
+           schema_.attribute(attr).cell_val_num() == TILEDB_VAR_NUM);
+      elements[attr] = (var) ? std::pair<uint64_t, uint64_t>(
+                                   buff_sizes_[bid] / sub_tsize_[bid],
+                                   buff_sizes_[bid + 1] / sub_tsize_[bid + 1]) :
+                               std::pair<uint64_t, uint64_t>(
+                                   0, buff_sizes_[bid] / sub_tsize_[bid]);
+      bid += (var) ? 2 : 1;
+    }
+    return elements;
+  }
 
   /** Clears all attribute buffers. */
-  void reset_buffers();
+  void reset_buffers() {
+    attrs_.clear();
+    attr_buffs_.clear();
+    var_offsets_.clear();
+    buff_sizes_.clear();
+    all_buff_.clear();
+    sub_tsize_.clear();
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_query_reset_buffers(ctx, query_.get(), nullptr, nullptr));
+  }
 
   /**
    * Sets a subarray, defined in the order dimensions were added.
@@ -393,10 +446,30 @@ class TILEDB_EXPORT Query {
   /* ********************************* */
 
   /** Converts the TileDB C query status to a C++ query status. */
-  static Status to_status(const tiledb_query_status_t& status);
+  static Status to_status(const tiledb_query_status_t& status) {
+    switch (status) {
+      case TILEDB_INCOMPLETE:
+        return Status::INCOMPLETE;
+      case TILEDB_COMPLETED:
+        return Status::COMPLETE;
+      case TILEDB_INPROGRESS:
+        return Status::INPROGRESS;
+      case TILEDB_FAILED:
+        return Status::FAILED;
+    }
+    return Status::UNDEF;
+  }
 
   /** Converts the TileDB C query type to a string representation. */
-  static std::string to_str(tiledb_query_type_t type);
+  static std::string to_str(tiledb_query_type_t type) {
+    switch (type) {
+      case TILEDB_READ:
+        return "READ";
+      case TILEDB_WRITE:
+        return "WRITE";
+    }
+    return "";  // silence error
+  }
 
  private:
   /* ********************************* */
@@ -465,7 +538,42 @@ class TILEDB_EXPORT Query {
   /* ********************************* */
 
   /** Collate buffers and attach them to the query. */
-  void prepare_submission();
+  void prepare_submission() {
+    all_buff_.clear();
+    buff_sizes_.clear();
+    attr_names_.clear();
+    sub_tsize_.clear();
+
+    uint64_t bufsize;
+    size_t tsize;
+    void* ptr;
+
+    for (const auto& a : attrs_) {
+      if (attr_buffs_.count(a) == 0) {
+        throw AttributeError("No buffer for attribute " + a);
+      }
+      if (var_offsets_.count(a)) {
+        std::tie(bufsize, tsize, ptr) = var_offsets_[a];
+        all_buff_.push_back(ptr);
+        buff_sizes_.push_back(bufsize);
+        sub_tsize_.push_back(tsize);
+      }
+      std::tie(bufsize, tsize, ptr) = attr_buffs_[a];
+      all_buff_.push_back(ptr);
+      buff_sizes_.push_back(bufsize);
+      attr_names_.push_back(a.c_str());
+      sub_tsize_.push_back(tsize);
+    }
+
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_set_buffers(
+        ctx,
+        query_.get(),
+        attr_names_.data(),
+        (unsigned)attr_names_.size(),
+        all_buff_.data(),
+        buff_sizes_.data()));
+  }
 };
 
 /* ********************************* */
@@ -473,8 +581,26 @@ class TILEDB_EXPORT Query {
 /* ********************************* */
 
 /** Get a string representation of a query status for an output stream. */
-TILEDB_EXPORT std::ostream& operator<<(
-    std::ostream& os, const Query::Status& stat);
+inline std::ostream& operator<<(std::ostream& os, const Query::Status& stat) {
+  switch (stat) {
+    case tiledb::Query::Status::INCOMPLETE:
+      os << "INCOMPLETE";
+      break;
+    case tiledb::Query::Status::INPROGRESS:
+      os << "INPROGRESS";
+      break;
+    case tiledb::Query::Status::FAILED:
+      os << "FAILED";
+      break;
+    case tiledb::Query::Status::COMPLETE:
+      os << "COMPLETE";
+      break;
+    case tiledb::Query::Status::UNDEF:
+      os << "UNDEF";
+      break;
+  }
+  return os;
+}
 
 }  // namespace tiledb
 

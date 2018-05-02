@@ -3099,13 +3099,17 @@ int tiledb_stats_dump(FILE* out) {
 /*            C++ API             */
 /* ****************************** */
 
-int tiledb::impl::tiledb_query_submit_async(
+int tiledb::impl::tiledb_query_submit_async_func(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    std::function<void(void*)> callback,
+    void* callback_func,
     void* callback_data) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR || callback_func == nullptr)
     return TILEDB_ERR;
+
+  std::function<void(void*)> callback =
+      *reinterpret_cast<std::function<void(void*)>*>(callback_func);
 
   if (save_error(
           ctx,

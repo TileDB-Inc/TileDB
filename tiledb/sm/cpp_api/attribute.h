@@ -81,13 +81,17 @@ namespace tiledb {
  * schema.add_attributes(a1, a2, a3);
  * @endcode
  */
-class TILEDB_EXPORT Attribute {
+class Attribute {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Attribute(const Context& ctx, tiledb_attribute_t* attr);
+  Attribute(const Context& ctx, tiledb_attribute_t* attr)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
+  }
   Attribute(const Attribute& attr) = default;
   Attribute(Attribute&& o) = default;
   Attribute& operator=(const Attribute&) = default;
@@ -98,20 +102,56 @@ class TILEDB_EXPORT Attribute {
   /* ********************************* */
 
   /** Returns the name of the attribute. */
-  std::string name() const;
+  std::string name() const {
+    auto& ctx = ctx_.get();
+    const char* name;
+    ctx.handle_error(tiledb_attribute_get_name(ctx, attr_.get(), &name));
+    return name;
+  }
 
   /** Returns the attribute datatype. */
-  tiledb_datatype_t type() const;
+  tiledb_datatype_t type() const {
+    auto& ctx = ctx_.get();
+    tiledb_datatype_t type;
+    ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
+    return type;
+  }
 
   /** Returns the size (in bytes) of one cell on this attribute. */
-  uint64_t cell_size() const;
+  uint64_t cell_size() const {
+    auto& ctx = ctx_.get();
+    uint64_t cell_size;
+    ctx.handle_error(
+        tiledb_attribute_get_cell_size(ctx, attr_.get(), &cell_size));
+    return cell_size;
+  }
 
   /**
    * Returns the number of values stored in each cell.
    * This is equal to the size of the attribute * sizeof(attr_type).
    * For variable size attributes this is TILEDB_VAR_NUM.
    */
-  unsigned cell_val_num() const;
+  unsigned cell_val_num() const {
+    auto& ctx = ctx_.get();
+    unsigned num;
+    ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr_.get(), &num));
+    return num;
+  }
+
+  /**
+   * Sets the number of attribute values per cell. This is
+   * inferred from from the attribute constructor, but can
+   * also be set manually. E.x. a1 and a2 are equivilant:
+   *
+   * a1 = Attribute::create<std::vector<int>>(...);
+   * a2 = Attribute::create<int>(...);
+   * a2.set_cel_val_num(TILEDB_VAR_NUM);
+   **/
+  Attribute& set_cell_val_num(unsigned num) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, attr_.get(), num));
+    return *this;
+  }
 
   /** Check if attribute is variable sized. **/
   bool variable_sized() const {
@@ -119,16 +159,33 @@ class TILEDB_EXPORT Attribute {
   }
 
   /** Returns the attribute compressor. */
-  Compressor compressor() const;
+  Compressor compressor() const {
+    auto& ctx = ctx_.get();
+    tiledb_compressor_t compressor;
+    int level;
+    ctx.handle_error(
+        tiledb_attribute_get_compressor(ctx, attr_.get(), &compressor, &level));
+    Compressor cmp(compressor, level);
+    return cmp;
+  }
 
   /** Sets the attribute compressor. */
-  Attribute& set_compressor(Compressor c);
+  Attribute& set_compressor(Compressor c) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_attribute_set_compressor(
+        ctx, attr_.get(), c.compressor(), c.level()));
+    return *this;
+  }
 
   /** Returns the C TileDB attribute object pointer. */
-  std::shared_ptr<tiledb_attribute_t> ptr() const;
+  std::shared_ptr<tiledb_attribute_t> ptr() const {
+    return attr_;
+  }
 
   /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_attribute_t*() const;
+  operator tiledb_attribute_t*() const {
+    return attr_.get();
+  }
 
   /** Dump information about the attribute to a FILE. **/
   void dump(FILE* out = stdout) const {
@@ -197,12 +254,13 @@ class TILEDB_EXPORT Attribute {
   /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
 
-  /** Sets the number of attribute values per cell. */
-  Attribute& set_cell_val_num(unsigned num);
-
   /** Creates an attribute with the input name and datatype. */
   static Attribute create(
-      const Context& ctx, const std::string& name, tiledb_datatype_t type);
+      const Context& ctx, const std::string& name, tiledb_datatype_t type) {
+    tiledb_attribute_t* attr;
+    ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
+    return Attribute(ctx, attr);
+  }
 };
 
 /* ********************************* */
@@ -210,7 +268,13 @@ class TILEDB_EXPORT Attribute {
 /* ********************************* */
 
 /** Gets a string representation of an attribute for an output stream. */
-std::ostream& operator<<(std::ostream& os, const Attribute& a);
+inline std::ostream& operator<<(std::ostream& os, const Attribute& a) {
+  os << "Attr<" << a.name() << ',' << tiledb::impl::to_str(a.type()) << ','
+     << (a.cell_val_num() == TILEDB_VAR_NUM ? "VAR" :
+                                              std::to_string(a.cell_val_num()))
+     << '>';
+  return os;
+}
 
 }  // namespace tiledb
 

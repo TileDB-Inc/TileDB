@@ -53,7 +53,7 @@ namespace impl {
  * auto p = std::shared_ptr<tiledb_type_t>(ptr, deleter);
  * @endcode
  */
-class TILEDB_EXPORT Deleter {
+class Deleter {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -68,17 +68,57 @@ class TILEDB_EXPORT Deleter {
   /*              DELETERS             */
   /* ********************************* */
 
-  void operator()(tiledb_vfs_fh_t* p) const;
-  void operator()(tiledb_query_t* p) const;
-  void operator()(tiledb_array_schema_t* p) const;
-  void operator()(tiledb_kv_t* p) const;
-  void operator()(tiledb_kv_schema_t* p) const;
-  void operator()(tiledb_kv_item_t* p) const;
-  void operator()(tiledb_kv_iter_t* p) const;
-  void operator()(tiledb_attribute_t* p) const;
-  void operator()(tiledb_dimension_t* p) const;
-  void operator()(tiledb_domain_t* p) const;
-  void operator()(tiledb_vfs_t* p) const;
+  void operator()(tiledb_vfs_fh_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_fh_free(ctx, &p));
+  }
+
+  void operator()(tiledb_query_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_free(ctx, &p));
+  }
+
+  void operator()(tiledb_array_schema_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_free(ctx, &p));
+  }
+
+  void operator()(tiledb_kv_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_kv_close(ctx, &p));
+  }
+
+  void operator()(tiledb_kv_schema_t* p) const {
+    ctx_.get().handle_error(tiledb_kv_schema_free(ctx_.get(), &p));
+  }
+
+  void operator()(tiledb_kv_item_t* p) const {
+    ctx_.get().handle_error(tiledb_kv_item_free(ctx_.get(), &p));
+  }
+
+  void operator()(tiledb_kv_iter_t* p) const {
+    ctx_.get().handle_error(tiledb_kv_iter_free(ctx_.get(), &p));
+  }
+
+  void operator()(tiledb_attribute_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_attribute_free(ctx, &p));
+  }
+
+  void operator()(tiledb_dimension_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dimension_free(ctx, &p));
+  }
+
+  void operator()(tiledb_domain_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_domain_free(ctx, &p));
+  }
+
+  void operator()(tiledb_vfs_t* p) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_free(ctx, &p));
+  }
 
  private:
   /* ********************************* */

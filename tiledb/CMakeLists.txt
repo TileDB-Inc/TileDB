@@ -55,19 +55,14 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/compressor.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/core_interface.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/deleter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filebuf.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_item.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_iter.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_proxy.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
@@ -131,31 +126,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_io.cc
 )
-
-if (TILEDB_CPP_API)
-  list(APPEND TILEDB_CORE_SOURCES
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config_iter.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/deleter.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filebuf.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_item.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_iter.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_proxy.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_schema.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs.cc
-  )
-endif()
 
 # 'External' source files included in the source tree.
 set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/include")

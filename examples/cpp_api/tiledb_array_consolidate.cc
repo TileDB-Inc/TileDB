@@ -41,7 +41,7 @@
  * The last program consolidates the three fragments in a single one.
  */
 
-#include <tiledb/tiledb>
+#include <tiledb/array.h>
 
 int main() {
   // Create TileDB context

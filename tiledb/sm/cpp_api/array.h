@@ -48,7 +48,7 @@ namespace tiledb {
 /**
  * TileDB array class.
  */
-class TILEDB_EXPORT Array {
+class Array {
  public:
   /**
    * Consolidates the fragments of an array into a single fragment.
@@ -60,10 +60,16 @@ class TILEDB_EXPORT Array {
    * @param ctx TileDB context
    * @param uri Array URI
    */
-  static void consolidate(const Context& ctx, const std::string& uri);
+  static void consolidate(const Context& ctx, const std::string& uri) {
+    ctx.handle_error(tiledb_array_consolidate(ctx, uri.c_str()));
+  }
 
   /** Creates an array on persistent storage from a schema definition. **/
-  static void create(const std::string& uri, const ArraySchema& schema);
+  static void create(const std::string& uri, const ArraySchema& schema) {
+    auto& ctx = schema.context();
+    ctx.handle_error(tiledb_array_schema_check(ctx, schema));
+    ctx.handle_error(tiledb_array_create(ctx, uri.c_str(), schema));
+  }
 
   /**
    * Get the non-empty domain of an array. This returns the bounding

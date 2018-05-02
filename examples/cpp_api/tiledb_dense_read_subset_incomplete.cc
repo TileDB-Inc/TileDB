@@ -40,8 +40,8 @@
  * $ ./tiledb_dense_read_subset_incomplete_cpp
  */
 
+#include <tiledb/query.h>
 #include <iomanip>
-#include <tiledb/tiledb>
 
 int main() {
   // Create TileDB Context
