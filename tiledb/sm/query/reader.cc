@@ -41,6 +41,39 @@
 namespace tiledb {
 namespace sm {
 
+namespace {
+/**
+ * If the given iterator points to an "invalid" element, advance it until the
+ * pointed-to element is valid, or `end`. Validity is determined by calling
+ * `it->valid()`.
+ *
+ * Example:
+ *
+ * @code{.cpp}
+ * std::vector<T> vec = ...;
+ * // Get an iterator to the first valid vec element, or vec.end() if the
+ * // vector is empty or only contains invalid elements.
+ * auto it = skip_invalid_elements(vec.begin(), vec.end());
+ * // If there was a valid element, now advance the iterator to the next
+ * // valid element (or vec.end() if there are no more).
+ * it = skip_invalid_elements(++it, vec.end());
+ * @endcode
+ *
+ *
+ * @tparam IterT The iterator type
+ * @param it The iterator
+ * @param end The end iterator value
+ * @return Iterator pointing to a valid element, or `end`.
+ */
+template <typename IterT>
+inline IterT skip_invalid_elements(IterT it, const IterT& end) {
+  while (it != end && !it->valid()) {
+    ++it;
+  }
+  return it;
+}
+}  // namespace
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -374,24 +407,30 @@ Status Reader::compute_cell_ranges(
     return Status::Ok();
 
   // Initialize the first range
-  auto it = coords.begin();
-  uint64_t start_pos = it->get()->pos_;
+  auto coords_end = coords.end();
+  auto it = skip_invalid_elements(coords.begin(), coords_end);
+  if (it == coords_end) {
+    return LOG_STATUS(Status::ReaderError("Unexpected empty cell range."));
+  }
+  uint64_t start_pos = it->pos_;
   uint64_t end_pos = start_pos;
-  auto tile = it->get()->tile_;
+  auto tile = it->tile_;
 
   // Scan the coordinates and compute ranges
-  for (++it; it != coords.end(); ++it) {
-    if (it->get()->tile_ == tile && it->get()->pos_ == end_pos + 1) {
+  it = skip_invalid_elements(++it, coords_end);
+  while (it != coords_end) {
+    if (it->tile_ == tile && it->pos_ == end_pos + 1) {
       // Same range - advance end position
-      end_pos = it->get()->pos_;
+      end_pos = it->pos_;
     } else {
       // New range - append previous range
       cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
           new OverlappingCellRange(tile, start_pos, end_pos)));
-      start_pos = it->get()->pos_;
+      start_pos = it->pos_;
       end_pos = start_pos;
-      tile = it->get()->tile_;
+      tile = it->tile_;
     }
+    it = skip_invalid_elements(++it, coords_end);
   }
 
   // Append the last range
@@ -525,18 +564,18 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   auto end = cr_it->end_;
 
   // Initialize coords info
-  auto coords_it = coords.begin();
+  auto coords_end = coords.end();
+  auto coords_it = skip_invalid_elements(coords.begin(), coords_end);
   std::vector<T> coords_tile_coords;
   coords_tile_coords.resize(dim_num);
   uint64_t coords_pos = 0;
   unsigned coords_fidx = 0;
   const OverlappingTile* coords_tile = nullptr;
-  if (coords_it != coords.end()) {
-    domain->get_tile_coords(coords_it->get()->coords_, &coords_tile_coords[0]);
-    RETURN_NOT_OK(
-        domain->get_cell_pos<T>(coords_it->get()->coords_, &coords_pos));
-    coords_fidx = coords_it->get()->tile_->fragment_idx_;
-    coords_tile = coords_it->get()->tile_;
+  if (coords_it != coords_end) {
+    domain->get_tile_coords(coords_it->coords_, &coords_tile_coords[0]);
+    RETURN_NOT_OK(domain->get_cell_pos<T>(coords_it->coords_, &coords_pos));
+    coords_fidx = coords_it->tile_->fragment_idx_;
+    coords_tile = coords_it->tile_;
   }
 
   // Compute overlapping tiles and cell ranges
@@ -628,13 +667,11 @@ template <class T>
 Status Reader::compute_overlapping_coords(
     const OverlappingTileVec& tiles, OverlappingCoordsList<T>* coords) const {
   for (const auto& tile : tiles) {
-    OverlappingCoordsList<T> tile_coords;
     if (tile->full_overlap_) {
-      RETURN_NOT_OK(get_all_coords<T>(tile.get(), &tile_coords));
+      RETURN_NOT_OK(get_all_coords<T>(tile.get(), coords));
     } else {
-      RETURN_NOT_OK(compute_overlapping_coords<T>(tile.get(), &tile_coords));
+      RETURN_NOT_OK(compute_overlapping_coords<T>(tile.get(), coords));
     }
-    coords->splice(coords->end(), tile_coords);
   }
 
   return Status::Ok();
@@ -651,8 +688,7 @@ Status Reader::compute_overlapping_coords(
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
     if (utils::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
-      coords->push_back(std::unique_ptr<OverlappingCoords<T>>(
-          new OverlappingCoords<T>(tile, &c[pos], i)));
+      coords->emplace_back(tile, &c[pos], i);
   }
 
   return Status::Ok();
@@ -682,6 +718,39 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
         tiles->push_back(std::move(tile));
       }
     }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Reader::compute_tile_coordinates(
+    std::unique_ptr<T[]>* all_tile_coords,
+    OverlappingCoordsList<T>* coords) const {
+  if (coords->empty() || array_schema_->domain()->tile_extents() == nullptr)
+    return Status::Ok();
+
+  auto domain = reinterpret_cast<const T*>(array_schema_->domain()->domain());
+  auto tile_extents =
+      reinterpret_cast<const T*>(array_schema_->domain()->tile_extents());
+  auto dim_num = array_schema_->dim_num();
+  const auto num_coords = (uint64_t)coords->size();
+
+  // Allocate space for all OverlappingCoords' tile coordinate tuples.
+  all_tile_coords->reset(new (std::nothrow) T[num_coords * dim_num]);
+  if (all_tile_coords->get() == nullptr) {
+    return LOG_STATUS(
+        Status::ReaderError("Could not allocate tile coords array."));
+  }
+
+  // Compute the tile coordinates for each OverlappingCoords.
+  for (uint64_t i = 0; i < num_coords; i++) {
+    auto& c = (*coords)[i];
+    T* tile_coords = all_tile_coords->get() + i * dim_num;
+    for (unsigned j = 0; j < dim_num; j++) {
+      tile_coords[j] = (c.coords_[j] - domain[2 * j]) / tile_extents[j];
+    }
+    c.tile_coords_ = tile_coords;
   }
 
   return Status::Ok();
@@ -832,20 +901,20 @@ Status Reader::copy_var_cells(
 template <class T>
 Status Reader::dedup_coords(OverlappingCoordsList<T>* coords) const {
   auto coords_size = array_schema_->coords_size();
-  auto it = coords->begin();
-  while (it != coords->end()) {
-    auto next_it = std::next(it);
-    if (next_it != coords->end() &&
-        !std::memcmp(
-            it->get()->coords_, next_it->get()->coords_, coords_size)) {
-      if (it->get()->tile_->fragment_idx_ <
-          next_it->get()->tile_->fragment_idx_) {
-        it = coords->erase(it);
+  auto coords_end = coords->end();
+  auto it = skip_invalid_elements(coords->begin(), coords_end);
+  while (it != coords_end) {
+    auto next_it = skip_invalid_elements(std::next(it), coords_end);
+    if (next_it != coords_end &&
+        !std::memcmp(it->coords_, next_it->coords_, coords_size)) {
+      if (it->tile_->fragment_idx_ < next_it->tile_->fragment_idx_) {
+        it->invalidate();
+        it = skip_invalid_elements(++it, coords_end);
       } else {
-        coords->erase(next_it);
+        next_it->invalidate();
       }
     } else {
-      ++it;
+      it = skip_invalid_elements(++it, coords_end);
     }
   }
   return Status::Ok();
@@ -903,12 +972,17 @@ Status Reader::dense_read() {
   OverlappingCoordsList<T> coords;
   RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(sparse_tiles, &coords));
 
+  // Compute the tile coordinates for all overlapping coordinates (for sorting).
+  std::unique_ptr<T[]> tile_coords(nullptr);
+  RETURN_CANCEL_OR_ERROR(compute_tile_coordinates<T>(&tile_coords, &coords));
+
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
   if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
     RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
     RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
   }
+  tile_coords.reset(nullptr);
 
   // For each tile, initialize a dense cell range iterator per
   // (dense) fragment
@@ -963,8 +1037,7 @@ Status Reader::get_all_coords(
   auto c = (T*)t.data();
 
   for (uint64_t i = 0; i < coords_num; ++i)
-    coords->push_back(std::unique_ptr<OverlappingCoords<T>>(
-        new OverlappingCoords<T>(tile, &c[i * dim_num], i)));
+    coords->emplace_back(tile, &c[i * dim_num], i);
 
   return Status::Ok();
 }
@@ -984,20 +1057,21 @@ Status Reader::handle_coords_in_dense_cell_range(
     std::vector<T>* coords_tile_coords,
     OverlappingCellRangeList* overlapping_cell_ranges) const {
   auto domain = array_schema_->domain();
+  auto coords_end = coords.end();
 
   // While the coords are within the same dense cell range
-  while (*coords_it != coords.end() &&
+  while (*coords_it != coords_end &&
          !memcmp(&(*coords_tile_coords)[0], cur_tile_coords, coords_size) &&
          *coords_pos >= *start && *coords_pos <= end) {
     if (*coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
-      ++(*coords_it);
-      if (*coords_it != coords.end()) {
+      *coords_it = skip_invalid_elements(++(*coords_it), coords_end);
+      if (*coords_it != coords_end) {
         domain->get_tile_coords(
-            (*coords_it)->get()->coords_, &(*coords_tile_coords)[0]);
+            (*coords_it)->coords_, &(*coords_tile_coords)[0]);
         RETURN_NOT_OK(
-            domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
-        *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
-        coords_tile = (*coords_it)->get()->tile_;
+            domain->get_cell_pos<T>((*coords_it)->coords_, coords_pos));
+        *coords_fidx = (*coords_it)->tile_->fragment_idx_;
+        coords_tile = (*coords_it)->tile_;
       }
       continue;
     } else {  // Break dense range
@@ -1010,21 +1084,19 @@ Status Reader::handle_coords_in_dense_cell_range(
       // Coords unary range
       overlapping_cell_ranges->push_back(
           std::unique_ptr<OverlappingCellRange>(new OverlappingCellRange(
-              coords_tile,
-              (*coords_it)->get()->pos_,
-              (*coords_it)->get()->pos_)));
+              coords_tile, (*coords_it)->pos_, (*coords_it)->pos_)));
       // Update start
       *start = *coords_pos + 1;
 
       // Advance coords
-      ++(*coords_it);
-      if (*coords_it != coords.end()) {
+      *coords_it = skip_invalid_elements(++(*coords_it), coords_end);
+      if (*coords_it != coords_end) {
         domain->get_tile_coords(
-            (*coords_it)->get()->coords_, &(*coords_tile_coords)[0]);
+            (*coords_it)->coords_, &(*coords_tile_coords)[0]);
         RETURN_NOT_OK(
-            domain->get_cell_pos<T>((*coords_it)->get()->coords_, coords_pos));
-        *coords_fidx = (*coords_it)->get()->tile_->fragment_idx_;
-        coords_tile = (*coords_it)->get()->tile_;
+            domain->get_cell_pos<T>((*coords_it)->coords_, coords_pos));
+        *coords_fidx = (*coords_it)->tile_->fragment_idx_;
+        coords_tile = (*coords_it)->tile_;
       }
     }
   }
@@ -1266,13 +1338,13 @@ template <class T>
 Status Reader::sort_coords(OverlappingCoordsList<T>* coords) const {
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto domain = array_schema_->domain();
-    coords->sort(GlobalCmp<T>(domain));
+    std::sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
   } else {
     auto dim_num = array_schema_->dim_num();
     if (layout_ == Layout::ROW_MAJOR)
-      coords->sort(RowCmp<T>(dim_num));
+      std::sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
     else if (layout_ == Layout::COL_MAJOR)
-      coords->sort(ColCmp<T>(dim_num));
+      std::sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
   }
 
   return Status::Ok();
@@ -1326,12 +1398,17 @@ Status Reader::sparse_read() {
   OverlappingCoordsList<T> coords;
   RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(tiles, &coords));
 
+  // Compute the tile coordinates for all overlapping coordinates (for sorting).
+  std::unique_ptr<T[]> tile_coords(nullptr);
+  RETURN_CANCEL_OR_ERROR(compute_tile_coordinates<T>(&tile_coords, &coords));
+
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
   if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
     RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
     RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
   }
+  tile_coords.reset(nullptr);
 
   // Compute the maximal cell ranges
   OverlappingCellRangeList cell_ranges;

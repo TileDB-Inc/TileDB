@@ -64,14 +64,14 @@ class RowCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
+      const Reader::OverlappingCoords<T>& a,
+      const Reader::OverlappingCoords<T>& b) {
     for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (a->coords_[i] < b->coords_[i])
+      if (a.coords_[i] < b.coords_[i])
         return true;
-      if (a->coords_[i] > b->coords_[i])
+      if (a.coords_[i] > b.coords_[i])
         return false;
-      // else a->coords_[i] == b->coords_[i] --> continue
+      // else a.coords_[i] == b.coords_[i] --> continue
     }
 
     return false;
@@ -103,14 +103,14 @@ class ColCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
+      const Reader::OverlappingCoords<T>& a,
+      const Reader::OverlappingCoords<T>& b) {
     for (unsigned int i = dim_num_ - 1;; --i) {
-      if (a->coords_[i] < b->coords_[i])
+      if (a.coords_[i] < b.coords_[i])
         return true;
-      if (a->coords_[i] > b->coords_[i])
+      if (a.coords_[i] > b.coords_[i])
         return false;
-      // else a->coords_[i] == b->coords_[i] --> continue
+      // else a.coords_[i] == b.coords_[i] --> continue
 
       if (i == 0)
         break;
@@ -150,10 +150,11 @@ class GlobalCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& a,
-      const std::unique_ptr<Reader::OverlappingCoords<T>>& b) {
+      const Reader::OverlappingCoords<T>& a,
+      const Reader::OverlappingCoords<T>& b) {
     // Compare tile order first
-    auto tile_cmp = domain_->tile_order_cmp<T>(a->coords_, b->coords_);
+    auto tile_cmp =
+        domain_->tile_order_cmp_tile_coords<T>(a.tile_coords_, b.tile_coords_);
 
     if (tile_cmp == -1)
       return true;
@@ -162,7 +163,7 @@ class GlobalCmp {
     // else tile_cmp == 0 --> continue
 
     // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(a->coords_, b->coords_);
+    auto cell_cmp = domain_->cell_order_cmp(a.coords_, b.coords_);
     return cell_cmp == -1;
   }
 
