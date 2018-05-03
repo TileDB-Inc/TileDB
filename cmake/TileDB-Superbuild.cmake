@@ -31,6 +31,7 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
   -DSANITIZER=${SANITIZER}
   -DTILEDB_EP_BASE=${TILEDB_EP_BASE}
+  -DTILEDB_TBB=${TILEDB_TBB}
 )
 
 if (WIN32)
@@ -65,6 +66,10 @@ if (TILEDB_S3)
     include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
   endif()
   include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
+endif()
+
+if (TILEDB_TBB)
+  include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindTBB_EP.cmake)
 endif()
 
 ############################################################

@@ -106,6 +106,11 @@ When building from source, TileDB will locate these dependencies if already inst
 Optional Dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
+TBB
+^^^
+
+Some TileDB internals are parallelized using the `Intel Threaded Building Blocks <https://www.threadingbuildingblocks.org/>`__ library. The TileDB build system will install this library if it is not already present on your system. You can disable the TBB dependency when configuring the TileDB build, in which case TileDB will fall back on serial implementations of several algorithms. As a part of the TileDB installation process, the TBB dynamic library will also be installed in the same destination as the TileDB dynamic library. The TBB headers are not installed with TileDB.
+
 S3
 ^^
 
@@ -170,6 +175,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 ``--enable-s3``        Enables building with S3 storage backend support        TILEDB_S3=ON
 ``--disable-werror``   Disables building with the ``-Werror`` flag             TILEDB_WERROR=OFF
 ``--disable-cpp-api``  Disables building the TileDB C++ API                    TILEDB_CPP_API=OFF
+``--disable-tbb``      Disables use of TBB for parallelization                 TILEDB_TBB=OFF
 =====================  ======================================================  ==============================
 
 After configuring, run the generated make script::
@@ -246,6 +252,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 ``-EnableS3``          Enables building with the S3 storage backend.     TILEDB_S3=ON
 ``-DisableWerror``     Disables building with the ``/WX`` flag           TILEDB_WERROR=OFF
 ``-DisableCppApi``     Disables building the TileDB C++ API              TILEDB_CPP_API=OFF
+``-DisableTBB``        Disables use of TBB for parallelization           TILEDB_TBB=OFF
 =====================  ================================================  ==============================
 
 Note that the HDFS storage backend is not yet supported on Windows.

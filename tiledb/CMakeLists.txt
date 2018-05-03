@@ -230,6 +230,16 @@ if (TILEDB_HDFS)
   endif()
 endif()
 
+# TBB dependency
+if (TILEDB_TBB)
+  find_package(TBB_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      TBB::tbb
+  )
+  add_definitions(-DHAVE_TBB)
+endif()
+
 # Sanitizer linker flags
 if (SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

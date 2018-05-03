@@ -38,6 +38,9 @@ Disable use of warnings-as-errors (/WX) during build.
 .Parameter DisableCppApi
 Disable building the TileDB C++ API.
 
+.Parameter DisableTBB
+Disable use of TBB for parallelization.
+
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
 
@@ -63,6 +66,7 @@ Param(
     [switch]$EnableS3,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
+    [switch]$DisableTBB,
     [Alias('J')]
     [int]
     $BuildProcesses = $env:NUMBER_OF_PROCESSORS
@@ -114,6 +118,11 @@ if ($DisableCppApi.IsPresent) {
     $CppApi = "OFF"
 }
 
+$TBB = "ON"
+if ($DisableTBB.IsPresent) {
+    $TBB = "OFF"
+}
+
 # Set TileDB prefix
 $InstallPrefix = $DefaultPrefix
 if ($Prefix.IsPresent) {
@@ -147,7 +156,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TBB=$TBB $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

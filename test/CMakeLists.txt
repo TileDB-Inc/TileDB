@@ -124,6 +124,16 @@ add_test(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test
 )
 
+# Set the PATH on Windows so that the test executable can find the TBB library.
+if (TILEDB_TBB AND WIN32)
+  set(PATH_STRING "$ENV{PATH};${TBB_LIB_DIR}")
+  # Handle escaped semicolons. See
+  # https://cmake.org/pipermail/cmake/2010-December/041176.html
+  string(REPLACE "\\;" ";" PATH_STRING "${PATH_STRING}")
+  string(REPLACE ";" "\\;" PATH_STRING "${PATH_STRING}")
+  set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "PATH=${PATH_STRING}")
+endif()
+
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS
   if (APPLE)

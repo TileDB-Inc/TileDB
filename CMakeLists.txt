@@ -68,6 +68,7 @@ option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings"
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
+option(TILEDB_TBB "Enables use of TBB for parallelization." ON)
 
 ############################################################
 # Superbuild setup

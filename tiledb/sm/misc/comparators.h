@@ -65,7 +65,7 @@ class RowCmp {
    */
   bool operator()(
       const Reader::OverlappingCoords<T>& a,
-      const Reader::OverlappingCoords<T>& b) {
+      const Reader::OverlappingCoords<T>& b) const {
     for (unsigned int i = 0; i < dim_num_; ++i) {
       if (a.coords_[i] < b.coords_[i])
         return true;
@@ -104,7 +104,7 @@ class ColCmp {
    */
   bool operator()(
       const Reader::OverlappingCoords<T>& a,
-      const Reader::OverlappingCoords<T>& b) {
+      const Reader::OverlappingCoords<T>& b) const {
     for (unsigned int i = dim_num_ - 1;; --i) {
       if (a.coords_[i] < b.coords_[i])
         return true;
@@ -151,7 +151,7 @@ class GlobalCmp {
    */
   bool operator()(
       const Reader::OverlappingCoords<T>& a,
-      const Reader::OverlappingCoords<T>& b) {
+      const Reader::OverlappingCoords<T>& b) const {
     // Compare tile order first
     auto tile_cmp =
         domain_->tile_order_cmp_tile_coords<T>(a.tile_coords_, b.tile_coords_);

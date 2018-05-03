@@ -18,6 +18,7 @@
 * Refactored unordered writes, making them simpler and more amenable to parallelization.
 * Refactored global writes, making them simpler and more amenable to parallelization.
 * Added ability to cancel pending background/async tasks. SIGINT signals now cancel pending tasks.
+* Sparse read performance improvements with parallelism (using TBB as a dependency).
 
 ## Bug Fixes
 
