@@ -146,6 +146,15 @@ inline bool datatype_is_string(Datatype type) {
       type == Datatype::STRING_UCS2 || type == Datatype::STRING_UCS4);
 }
 
+/** Returns true if the input datatype is an integer type. */
+inline bool datatype_is_integer(Datatype type) {
+  return (
+      type == Datatype::INT8 || type == Datatype::UINT8 ||
+      type == Datatype::INT16 || type == Datatype::UINT16 ||
+      type == Datatype::INT32 || type == Datatype::UINT32 ||
+      type == Datatype::INT64 || type == Datatype::UINT64);
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

@@ -45,6 +45,7 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -79,7 +80,7 @@ class Query {
   /* ********************************* */
 
   /** The query or query attribute status. */
-  enum class Status { FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNDEF };
+  enum class Status { FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNINITIALIZED };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -456,8 +457,11 @@ class Query {
         return Status::INPROGRESS;
       case TILEDB_FAILED:
         return Status::FAILED;
+      case TILEDB_UNINITIALIZED:
+        return Status::UNINITIALIZED;
     }
-    return Status::UNDEF;
+    assert(false);
+    return Status::UNINITIALIZED;
   }
 
   /** Converts the TileDB C query type to a string representation. */
@@ -595,8 +599,8 @@ inline std::ostream& operator<<(std::ostream& os, const Query::Status& stat) {
     case tiledb::Query::Status::COMPLETE:
       os << "COMPLETE";
       break;
-    case tiledb::Query::Status::UNDEF:
-      os << "UNDEF";
+    case tiledb::Query::Status::UNINITIALIZED:
+      os << "UNINITIALIZED";
       break;
   }
   return os;

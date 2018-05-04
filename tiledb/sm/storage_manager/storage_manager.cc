@@ -46,6 +46,7 @@
 /* ****************************** */
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -405,9 +406,7 @@ Status StorageManager::async_push_query(Query* query) {
   thread_pool_->enqueue(
       [this, query]() {
         // Process query.
-        increment_in_progress();
-        Status st = query->process();
-        decrement_in_progress();
+        Status st = query_submit(query);
         if (!st.ok())
           LOG_STATUS(st);
         return st;
@@ -977,8 +976,7 @@ Status StorageManager::query_init(
 
 Status StorageManager::query_submit(Query* query) {
   // Initialize query
-  if (query->status() != QueryStatus::INCOMPLETE)
-    RETURN_NOT_OK(query->init());
+  RETURN_NOT_OK(query->init());
 
   // Process the query
   increment_in_progress();
@@ -989,8 +987,9 @@ Status StorageManager::query_submit(Query* query) {
 
 Status StorageManager::query_submit_async(
     Query* query, std::function<void(void*)> callback, void* callback_data) {
-  // Do nothing if the query is completed
-  if (query->status() == QueryStatus::COMPLETED)
+  // Do nothing if the query is completed or failed
+  auto status = query->status();
+  if (status == QueryStatus::COMPLETED)
     return Status::Ok();
 
   // Initialize query
@@ -1228,6 +1227,21 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
             cell_num * datatype_size(array_schema->type(it.first));
       } else {
         it.second.first = cell_num * array_schema->cell_size(it.first);
+      }
+    }
+  }
+
+  // Rectify bound for sparse arrays with integer domain
+  if (!array_schema->dense() &&
+      datatype_is_integer(array_schema->domain()->type())) {
+    auto cell_num = array_schema->domain()->cell_num(subarray);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *buffer_sizes) {
+        if (!array_schema->var_size(it.first))
+          it.second.first = MIN(
+              it.second.first, cell_num * array_schema->cell_size(it.first));
       }
     }
   }

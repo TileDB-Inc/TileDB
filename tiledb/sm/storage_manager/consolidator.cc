@@ -35,6 +35,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
+#include <iostream>
 #include <sstream>
 
 /* ****************************** */
@@ -119,7 +120,7 @@ Status Consolidator::consolidate(const char* array_name) {
   }
 
   // Read from one array and write to the other
-  st = copy_array(subarray, query_r, query_w);
+  st = copy_array(query_r, query_w);
   if (!st.ok()) {
     clean_up(
         subarray,
@@ -197,33 +198,13 @@ Status Consolidator::consolidate(const char* array_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status Consolidator::copy_array(
-    void* read_subarray, Query* query_r, Query* query_w) {
-  // Compute subarrays
-  std::vector<void*> subarrays;
-  RETURN_NOT_OK(query_r->compute_subarrays(read_subarray, &subarrays));
+Status Consolidator::copy_array(Query* query_r, Query* query_w) {
+  do {
+    RETURN_NOT_OK(storage_manager_->query_submit(query_r));
+    RETURN_NOT_OK(storage_manager_->query_submit(query_w));
+  } while (query_r->status() == QueryStatus::INCOMPLETE);
 
-  // Perform a potentilly step-wise copy in a loop
-  Status st = Status::Ok();
-  for (const auto& s : subarrays) {
-    st = query_r->set_subarray(s);
-    if (!st.ok())
-      break;
-    st = storage_manager_->query_submit(query_r);
-    if (!st.ok())
-      break;
-    st = storage_manager_->query_submit(query_w);
-    if (!st.ok())
-      break;
-  }
-
-  // Clean up
-  for (const auto& s : subarrays) {
-    if (s != nullptr)
-      std::free(s);
-  }
-
-  return st;
+  return Status::Ok();
 }
 
 void Consolidator::clean_up(

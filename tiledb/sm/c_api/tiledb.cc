@@ -1754,7 +1754,8 @@ int tiledb_query_reset_buffers(
     return TILEDB_ERR;
 
   // Reset buffers
-  query->query_->set_buffers(buffers, buffer_sizes);
+  if (save_error(ctx, query->query_->set_buffers(buffers, buffer_sizes)))
+    return TILEDB_ERR;
 
   // Success
   return TILEDB_OK;

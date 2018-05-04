@@ -36,6 +36,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 /* ****************************** */
@@ -401,9 +402,20 @@ uint64_t Domain::cell_num(const T* domain) const {
   if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
     return 0;
 
-  uint64_t cell_num = 1;
-  for (unsigned i = 0; i < dim_num_; ++i)
-    cell_num *= (domain[2 * i + 1] - domain[2 * i] + 1);
+  uint64_t cell_num = 1, tmp;
+  for (unsigned i = 0; i < dim_num_; ++i) {
+    // The code below essentially computes
+    // cell_num *= domain[2 * i + 1] - domain[2 * i] + 1;
+    // while performing overflow checks
+    tmp = domain[2 * i + 1] - domain[2 * i];
+    if (tmp == std::numeric_limits<uint64_t>::max())  // overflow
+      return 0;
+    ++tmp;
+    tmp *= cell_num;
+    if (tmp < cell_num)  // overflow
+      return 0;
+    cell_num = tmp;
+  }
   return cell_num;
 }
 

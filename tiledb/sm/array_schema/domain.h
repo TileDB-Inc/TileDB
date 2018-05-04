@@ -170,6 +170,9 @@ class Domain {
    *
    * @param domain The domain to be checked.
    * @return The number of cells in the domain.
+   *
+   * @note The function returns 0 in case `domain` is huge, leading to more
+   *      cells than `uint64_t` can hold.
    */
   uint64_t cell_num(const void* domain) const;
 

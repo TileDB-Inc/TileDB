@@ -48,6 +48,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-error.cc
+  src/unit-capi-incomplete.cc
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-sparse_array.cc

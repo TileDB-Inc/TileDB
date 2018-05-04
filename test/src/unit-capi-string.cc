@@ -200,23 +200,30 @@ void StringFx::read_array(const std::string& array_name) {
   int rc = tiledb_ctx_create(&ctx, NULL);
   REQUIRE(rc == TILEDB_OK);
 
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3"};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4};
+  rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx, array_name.c_str(), subarray, attributes, 3, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare cell buffers
-  void* buffer_a1 = std::malloc(sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
-  uint64_t buffer_a2_offsets[4];
-  uint64_t buffer_a3_offsets[4];
-  void* buffer_a2 = std::malloc(sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
-  void* buffer_a3 = std::malloc(sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
+  void* buffer_a1 = std::malloc(max_buffer_sizes[0]);
+  auto buffer_a2_offsets = (uint64_t*)std::malloc(max_buffer_sizes[1]);
+  void* buffer_a2 = std::malloc(max_buffer_sizes[2]);
+  auto buffer_a3_offsets = (uint64_t*)std::malloc(max_buffer_sizes[3]);
+  void* buffer_a3 = std::malloc(max_buffer_sizes[4]);
   void* buffers[] = {
       buffer_a1, buffer_a2_offsets, buffer_a2, buffer_a3_offsets, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3"};
   rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
@@ -259,7 +266,9 @@ void StringFx::read_array(const std::string& array_name) {
   REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
   std::free(buffer_a1);
   std::free(buffer_a2);
+  std::free(buffer_a2_offsets);
   std::free(buffer_a3);
+  std::free(buffer_a3_offsets);
 }
 
 void StringFx::delete_array(const std::string& array_name) {

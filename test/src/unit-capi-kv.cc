@@ -886,6 +886,7 @@ void KVFx::check_iter(const std::string& path) {
   int done;
   rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
   REQUIRE(rc == TILEDB_OK);
+
   while (!(bool)done) {
     tiledb_kv_item_t* kv_item;
     rc = tiledb_kv_iter_here(ctx_, kv_iter, &kv_item);

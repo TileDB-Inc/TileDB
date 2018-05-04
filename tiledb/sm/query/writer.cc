@@ -38,6 +38,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
+#include <iostream>
 #include <sstream>
 
 namespace tiledb {
@@ -91,7 +92,7 @@ Status Writer::init() {
 
   if (subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
-  RETURN_NOT_OK(check_subarray(subarray_));
+  RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());
 
   return Status::Ok();
@@ -116,18 +117,26 @@ Status Writer::set_buffers(
     return LOG_STATUS(
         Status::WriterError("Cannot set buffers; Buffers not provided"));
 
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffers; Array schema not set"));
+
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
   set_buffers(buffers, buffer_sizes);
 
   return Status::Ok();
 }
 
-void Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+Status Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+  if (buffers == nullptr || buffer_sizes == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffers; Buffers not provided"));
+
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffers; Array schema not set"));
+
   attr_buffers_.clear();
-  if (!buffers || !buffer_sizes) {
-    attributes_.clear();
-    return;
-  }
   unsigned bid = 0;
   for (const auto& attr : attributes_) {
     if (!array_schema_->var_size(attr)) {
@@ -146,6 +155,8 @@ void Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
       bid += 2;
     }
   }
+
+  return Status::Ok();
 }
 
 void Writer::set_fragment_uri(const URI& fragment_uri) {
@@ -176,8 +187,6 @@ void Writer::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Writer::set_subarray(const void* subarray) {
-  RETURN_NOT_OK(check_subarray(subarray));
-
   uint64_t subarray_size = 2 * array_schema_->coords_size();
 
   if (subarray_ == nullptr)
@@ -262,31 +271,35 @@ Status Writer::check_buffer_sizes() const {
   return Status::Ok();
 }
 
-Status Writer::check_subarray(const void* subarray) const {
-  if (subarray == nullptr)
+Status Writer::check_subarray() const {
+  if (subarray_ == nullptr)
     return Status::Ok();
+
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot check subarray; Array schema not set"));
 
   switch (array_schema_->domain()->type()) {
     case Datatype::INT8:
-      return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
+      return check_subarray<int8_t>();
     case Datatype::UINT8:
-      return check_subarray<uint8_t>(static_cast<const uint8_t*>(subarray));
+      return check_subarray<uint8_t>();
     case Datatype::INT16:
-      return check_subarray<int16_t>(static_cast<const int16_t*>(subarray));
+      return check_subarray<int16_t>();
     case Datatype::UINT16:
-      return check_subarray<uint16_t>(static_cast<const uint16_t*>(subarray));
+      return check_subarray<uint16_t>();
     case Datatype::INT32:
-      return check_subarray<int32_t>(static_cast<const int32_t*>(subarray));
+      return check_subarray<int32_t>();
     case Datatype::UINT32:
-      return check_subarray<uint32_t>(static_cast<const uint32_t*>(subarray));
+      return check_subarray<uint32_t>();
     case Datatype::INT64:
-      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
+      return check_subarray<int64_t>();
     case Datatype::UINT64:
-      return check_subarray<uint64_t>(static_cast<const uint64_t*>(subarray));
+      return check_subarray<uint64_t>();
     case Datatype::FLOAT32:
-      return check_subarray<float>(static_cast<const float*>(subarray));
+      return check_subarray<float>();
     case Datatype::FLOAT64:
-      return check_subarray<double>(static_cast<const double*>(subarray));
+      return check_subarray<double>();
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -304,21 +317,14 @@ Status Writer::check_subarray(const void* subarray) const {
 }
 
 template <class T>
-Status Writer::check_subarray(const T* subarray) const {
+Status Writer::check_subarray() const {
   // Check subarray bounds
   auto domain = array_schema_->domain();
   auto dim_num = domain->dim_num();
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-    if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
-      return LOG_STATUS(Status::WriterError("Subarray out of bounds"));
-    if (subarray[2 * i] > subarray[2 * i + 1])
-      return LOG_STATUS(Status::WriterError(
-          "Subarray lower bound is larger than upper bound"));
-  }
+  auto subarray = (T*)subarray_;
 
   // In global dense writes, the subarray must coincide with tile extents
-  if (array_schema_->dense() && layout_ == Layout::GLOBAL_ORDER) {
+  if (array_schema_->dense() && layout() == Layout::GLOBAL_ORDER) {
     for (unsigned int i = 0; i < dim_num; ++i) {
       auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
       auto tile_extent =
@@ -1234,6 +1240,7 @@ Status Writer::set_attributes(
   }
 
   // Set attribute names
+  attributes_.clear();
   for (const auto& attr : attributes_vec)
     attributes_.emplace_back(attr);
 

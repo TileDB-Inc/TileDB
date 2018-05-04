@@ -54,6 +54,29 @@ class Reader {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  /**
+   * For a read query, the user sets a subarray and buffers that will
+   * hold the results. For some subarray, the user buffers may not be
+   * able to hold the entire result. Given a subarray and the buffer sizes,
+   * TileDB knows how to decompose the subarray into partitions, such
+   * that the results of each partition can certainly fit in the user
+   * buffers. The user can perform successive calls to `submit` in order
+   * to incrementally perform each subarray partition. The query is
+   * "incomplete" until all partititions are processed.
+   *
+   * The read state maintains a vector with all the subarray partitions,
+   * along with an index `idx_` that indicates the parition to be processed
+   * next.
+   */
+  struct ReadState {
+    /** The index to the partition to be processed next. */
+    size_t idx_;
+    /** The original subarray set by the user. */
+    void* subarray_;
+    /** The subarray partitions. */
+    std::vector<void*> subarray_partitions_;
+  };
+
   /** Contains the buffer(s) and buffer size(s) for some attribute. */
   struct AttributeBuffer {
     /**
@@ -247,15 +270,24 @@ class Reader {
   const ArraySchema* array_schema() const;
 
   /**
-   * Computes a vector of `subarrays` into which `subarray` must be partitioned,
+   * Computes a vector of `subarray_partitions`
+   * into which `subarray` must be partitioned,
    * such that each subarray in `subarrays` can be safely answered by the
    * query without a memory overflow.
    *
    * @param subarray The input subarray.
-   * @param subarrays The vector of subarray partitions to be retrieved.
+   * @param subarray_partitions The vector of subarray partitions to be
+   * retrieved.
    * @return Status
    */
-  Status compute_subarrays(void* subarray, std::vector<void*>* subarrays) const;
+  Status compute_subarray_partitions(
+      void* subarray, std::vector<void*>* subarray_partitions) const;
+
+  /**
+   * Returns `true` if all subarray partitions in the read state have been
+   * processed.
+   */
+  bool done() const;
 
   /** Finalizes the reader. */
   Status finalize();
@@ -274,6 +306,9 @@ class Reader {
 
   /** Returns the cell layout. */
   Layout layout() const;
+
+  /** Advances the read state to the next subarray partition. */
+  void next_subarray_partition();
 
   /** Performs a read query using its set members. */
   Status read();
@@ -303,7 +338,7 @@ class Reader {
       uint64_t* buffer_sizes);
 
   /** Sets the query buffers. */
-  void set_buffers(void** buffers, uint64_t* buffer_sizes);
+  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
 
   /** Sets the fragment metadata. */
   void set_fragment_metadata(
@@ -348,22 +383,37 @@ class Reader {
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
+  /** To handle incomplete read queries. */
+  ReadState read_state_;
+
   /** The storage manager. */
   StorageManager* storage_manager_;
 
-  /** The subarray the query is constrained on. */
-  void* subarray_;
+  /** The current subarray the query is constrained on. */
+  void* cur_subarray_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Correctness checks for `subarray`. */
-  Status check_subarray(const void* subarray) const;
+  /**
+   * In case the buffer sizes are reset while the query is incomplete and
+   * still in progress, a necessary check must be performed on the new
+   * (input) buffer sizes. Recall that when a read query is initialized,
+   * subarray partitions are computed based on the original buffer sizes,
+   * such that each partition results can fit in the user buffers. If the
+   * buffer sizes are reset, then the subarray partitions are effectively
+   * invalidated. To prevent this case, any buffer sizes to be reset
+   * must be at least as large as the initially set buffer sizes. This
+   * is the the check that this function performs.
+   *
+   * @param buffer_sizes The buffer sizes to be checked.
+   * @return Status.
+   */
+  Status check_reset_buffer_sizes(const uint64_t* buffer_sizes) const;
 
-  /** Correctness checks for `subarray`. */
-  template <class T>
-  Status check_subarray(const T* subarray) const;
+  /** Clears the read state. */
+  void clear_read_state();
 
   /**
    * Compute the maximal cell ranges of contiguous cell positions.

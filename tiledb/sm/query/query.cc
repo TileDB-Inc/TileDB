@@ -47,7 +47,7 @@ Query::Query(QueryType type)
     : type_(type) {
   callback_ = nullptr;
   callback_data_ = nullptr;
-  status_ = QueryStatus::INPROGRESS;
+  status_ = QueryStatus::UNINITIALIZED;
 }
 
 Query::~Query() = default;
@@ -62,18 +62,14 @@ const ArraySchema* Query::array_schema() const {
   return reader_.array_schema();
 }
 
-Status Query::compute_subarrays(
-    void* subarray, std::vector<void*>* subarrays) const {
-  if (type_ != QueryType::READ)
-    return LOG_STATUS(
-        Status::Error("Cannot compute subarrays for write queries"));
-  return reader_.compute_subarrays(subarray, subarrays);
-}
-
 Status Query::finalize() {
-  if (type_ == QueryType::READ)
-    return reader_.finalize();
-  return writer_.finalize();
+  if (status_ == QueryStatus::UNINITIALIZED)
+    return Status::Ok();
+
+  RETURN_NOT_OK(reader_.finalize());
+  RETURN_NOT_OK(writer_.finalize());
+  status_ = QueryStatus::UNINITIALIZED;
+  return Status::Ok();
 }
 
 unsigned Query::fragment_num() const {
@@ -90,11 +86,18 @@ std::vector<URI> Query::fragment_uris() const {
 }
 
 Status Query::init() {
+  // Only if the query has not been initialized before
+  if (status_ == QueryStatus::UNINITIALIZED) {
+    if (type_ == QueryType::READ) {
+      RETURN_NOT_OK_ELSE(reader_.init(), status_ = QueryStatus::FAILED);
+    } else {  // Write
+      RETURN_NOT_OK_ELSE(writer_.init(), status_ = QueryStatus::FAILED);
+    }
+  }
+
   status_ = QueryStatus::INPROGRESS;
 
-  if (type_ == QueryType::READ)
-    return reader_.init();
-  return writer_.init();
+  return Status::Ok();
 }
 
 URI Query::last_fragment_uri() const {
@@ -115,23 +118,44 @@ Status Query::cancel() {
 }
 
 Status Query::process() {
+  if (status_ == QueryStatus::UNINITIALIZED)
+    return LOG_STATUS(
+        Status::QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
 
+  // Process query
   Status st = Status::Ok();
   if (type_ == QueryType::READ)
     st = reader_.read();
   else  // WRITE MODE
     st = writer_.write();
 
-  if (st.ok()) {  // Success
+  // Handle error
+  if (!st.ok()) {
+    status_ = QueryStatus::FAILED;
+    return st;
+  }
+
+  // Check if the query is complete
+  bool completed = false;
+  if (type_ == QueryType::WRITE) {
+    completed = true;
+  } else {  // Read query - need to check subarray partitions
+    reader_.next_subarray_partition();
+    if (reader_.done())
+      completed = true;
+  }
+
+  // Handle callback and status
+  if (completed) {
     if (callback_ != nullptr)
       callback_(callback_data_);
     status_ = QueryStatus::COMPLETED;
-  } else {  // Error
-    status_ = QueryStatus::FAILED;
+  } else {  // Incomplete
+    status_ = QueryStatus::INCOMPLETE;
   }
 
-  return st;
+  return Status::Ok();
 }
 
 void Query::set_array_schema(const ArraySchema* array_schema) {
@@ -152,10 +176,10 @@ Status Query::set_buffers(
   return reader_.set_buffers(attributes, attribute_num, buffers, buffer_sizes);
 }
 
-void Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+Status Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
   if (type_ == QueryType::WRITE)
-    writer_.set_buffers(buffers, buffer_sizes);
-  reader_.set_buffers(buffers, buffer_sizes);
+    return writer_.set_buffers(buffers, buffer_sizes);
+  return reader_.set_buffers(buffers, buffer_sizes);
 }
 
 void Query::set_callback(
@@ -190,9 +214,14 @@ void Query::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Query::set_subarray(const void* subarray) {
-  if (type_ == QueryType::WRITE)
-    return writer_.set_subarray(subarray);
-  return reader_.set_subarray(subarray);
+  RETURN_NOT_OK(check_subarray_bounds(subarray));
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_subarray(subarray));
+  } else {  // READ
+    RETURN_NOT_OK(reader_.set_subarray(subarray));
+  }
+
+  return Status::Ok();
 }
 
 QueryStatus Query::status() const {
@@ -206,6 +235,79 @@ QueryType Query::type() const {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+Status Query::check_subarray_bounds(const void* subarray) const {
+  if (subarray == nullptr)
+    return Status::Ok();
+
+  auto array_schema = this->array_schema();
+  if (array_schema == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Cannot check subarray; Array schema not set"));
+
+  switch (array_schema->domain()->type()) {
+    case Datatype::INT8:
+      return check_subarray_bounds<int8_t>(
+          static_cast<const int8_t*>(subarray));
+    case Datatype::UINT8:
+      return check_subarray_bounds<uint8_t>(
+          static_cast<const uint8_t*>(subarray));
+    case Datatype::INT16:
+      return check_subarray_bounds<int16_t>(
+          static_cast<const int16_t*>(subarray));
+    case Datatype::UINT16:
+      return check_subarray_bounds<uint16_t>(
+          static_cast<const uint16_t*>(subarray));
+    case Datatype::INT32:
+      return check_subarray_bounds<int32_t>(
+          static_cast<const int32_t*>(subarray));
+    case Datatype::UINT32:
+      return check_subarray_bounds<uint32_t>(
+          static_cast<const uint32_t*>(subarray));
+    case Datatype::INT64:
+      return check_subarray_bounds<int64_t>(
+          static_cast<const int64_t*>(subarray));
+    case Datatype::UINT64:
+      return check_subarray_bounds<uint64_t>(
+          static_cast<const uint64_t*>(subarray));
+    case Datatype::FLOAT32:
+      return check_subarray_bounds<float>(static_cast<const float*>(subarray));
+    case Datatype::FLOAT64:
+      return check_subarray_bounds<double>(
+          static_cast<const double*>(subarray));
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      break;
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Query::check_subarray_bounds(const T* subarray) const {
+  // Check subarray bounds
+  auto array_schema = this->array_schema();
+  auto domain = array_schema->domain();
+  auto dim_num = domain->dim_num();
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
+    if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
+      return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+    if (subarray[2 * i] > subarray[2 * i + 1])
+      return LOG_STATUS(Status::QueryError(
+          "Subarray lower bound is larger than upper bound"));
+  }
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

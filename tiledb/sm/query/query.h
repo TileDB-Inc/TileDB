@@ -77,17 +77,6 @@ class Query {
   Status cancel();
 
   /**
-   * Computes a vector of `subarrays` into which `subarray` must be partitioned,
-   * such that each subarray in `subarrays` can be safely answered by the
-   * query without a memory overflow.
-   *
-   * @param subarray The input subarray.
-   * @param subarrays The vector of subarray partitions to be retrieved.
-   * @return Status
-   */
-  Status compute_subarrays(void* subarray, std::vector<void*>* subarrays) const;
-
-  /**
    * Finalizes the query, properly finalizing and deleting the involved
    * fragments.
    */
@@ -138,7 +127,7 @@ class Query {
       uint64_t* buffer_sizes);
 
   /** Sets the query buffers. */
-  void set_buffers(void** buffers, uint64_t* buffer_sizes);
+  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Sets the callback function and its data input that will be called
@@ -205,6 +194,13 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Correctness checks on the bounds of `subarray`. */
+  Status check_subarray_bounds(const void* subarray) const;
+
+  /** Correctness checks for `subarray`. */
+  template <class T>
+  Status check_subarray_bounds(const T* subarray) const;
 };
 
 }  // namespace sm
