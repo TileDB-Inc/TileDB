@@ -43,7 +43,7 @@ function(build_TileDB_example_capi TARGET)
     target_link_libraries(${TARGET}_c pthread)
   endif()
   target_include_directories(${TARGET}_c PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/examples/"
+    "${CMAKE_CURRENT_BINARY_DIR}/../"
   )
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()

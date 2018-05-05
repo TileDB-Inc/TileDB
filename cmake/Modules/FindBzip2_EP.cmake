@@ -101,6 +101,13 @@ if (NOT BZIP2_FOUND OR TILEDB_FORCE_ALL_DEPS)
   endif()
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_bzip2)
   SET(TILEDB_USE_STATIC_BZIP2 TRUE CACHE INTERNAL "")
+  SET(BZIP2_FOUND TRUE)
+  set(BZIP2_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libbz2static${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(BZIP2_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${BZIP2_INCLUDE_DIR})
 endif()
 
 if (BZIP2_FOUND AND NOT TARGET Bzip2::Bzip2)

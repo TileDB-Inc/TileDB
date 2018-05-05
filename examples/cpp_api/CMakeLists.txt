@@ -33,7 +33,7 @@ function(build_TileDB_example_cppapi TARGET)
   add_executable(${TARGET}_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
   target_link_libraries(${TARGET}_cpp tiledb_shared)
   target_include_directories(${TARGET}_cpp PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/examples/"
+    "${CMAKE_CURRENT_BINARY_DIR}/../"
   )
   add_dependencies(examples_cpp ${TARGET}_cpp)
 endfunction()

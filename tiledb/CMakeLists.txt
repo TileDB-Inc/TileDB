@@ -263,12 +263,12 @@ find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
-    Blosc
+    Blosc::Blosc
     Bzip2::Bzip2
     LZ4::LZ4
     Spdlog::Spdlog
     Zlib::Zlib
-    Zstd
+    Zstd::Zstd
 )
 
 # Copy over dependency info (e.g. include directories) to the core objects.
@@ -285,7 +285,9 @@ target_include_directories(TILEDB_CORE_OBJECTS
 # TileDB static and shared library targets
 ############################################################
 
-add_dependencies(TILEDB_CORE_OBJECTS ${TILEDB_EXTERNAL_PROJECTS})
+if(TILEDB_EXTERNAL_PROJECTS)
+  add_dependencies(TILEDB_CORE_OBJECTS ${TILEDB_EXTERNAL_PROJECTS})
+endif()
 
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)

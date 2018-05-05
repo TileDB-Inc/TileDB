@@ -102,6 +102,15 @@ if (NOT OPENSSL_FOUND OR TILEDB_FORCE_ALL_DEPS)
   )
 
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_openssl)
+
+  set(OPENSSL_FOUND TRUE)
+  set(OPENSSL_SSL_LIBRARY "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libssl${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(OPENSSL_CRYPTO_LIBRARY "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libcrypto${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(OPENSSL_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/openssl")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${ZSTD_INCLUDE_DIR})
 endif()
 
 if (OPENSSL_FOUND)

@@ -86,6 +86,8 @@ add_executable(
   ${TILEDB_TEST_SOURCES}
 )
 
+add_dependencies(tiledb_unit ep_catch)
+
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
@@ -95,7 +97,7 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     tiledb_shared
-    Catch
+    Catch::Catch
 )
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface

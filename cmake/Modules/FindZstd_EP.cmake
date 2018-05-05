@@ -80,6 +80,8 @@ if (NOT ZSTD_FOUND OR TILEDB_FORCE_ALL_DEPS)
       ${CMAKE_COMMAND}
       ${ARCH_SPEC}
       -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+      -DCMAKE_CXX_FLAGS=-fPIC
+      -DCMAKE_C_FLAGS=-fPIC
       ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
     SOURCE_DIR "${TILEDB_EP_BASE}/src/ep_zstd"
     UPDATE_COMMAND ""
@@ -90,6 +92,13 @@ if (NOT ZSTD_FOUND OR TILEDB_FORCE_ALL_DEPS)
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zstd)
   SET(TILEDB_USE_STATIC_ZSTD TRUE CACHE INTERNAL "")
+  set(ZSTD_FOUND TRUE)
+  set(ZSTD_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(ZSTD_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${ZSTD_INCLUDE_DIR})
 endif()
 
 if (ZSTD_FOUND AND NOT TARGET Zstd::Zstd)

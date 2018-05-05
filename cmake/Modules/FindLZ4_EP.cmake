@@ -117,9 +117,14 @@ if (NOT LZ4_FOUND OR TILEDB_FORCE_ALL_DEPS)
     )
   endif()
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
-  list(APPEND FORWARD_EP_CMAKE_ARGS
-    -DTILEDB_USE_STATIC_LZ4=TRUE
-  )
+  set(TILEDB_USE_STATIC_LZ4 TRUE CACHE INTERNAL "")
+  set(LZ4_FOUND TRUE)
+  set(LZ4_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/liblz4${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(LZ4_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${LZ4_INCLUDE_DIR})
 endif()
 
 if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)

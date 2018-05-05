@@ -103,6 +103,13 @@ if (NOT CURL_FOUND OR TILEDB_FORCE_ALL_DEPS)
     DEPENDS ${DEPENDS}
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_curl)
+  SET(CURL_FOUND TRUE)
+  set(CURL_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libcurl${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(CURL_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/curl")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${CURL_INCLUDE_DIR})
 endif()
 
 if (CURL_FOUND AND NOT TARGET Curl::Curl)

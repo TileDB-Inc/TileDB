@@ -36,20 +36,13 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 # Try searching for the SDK in the EP prefix.
 set(AWSSDK_ROOT_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
+# AWS Linked Libs List
+set(AWS_LINKED_LIBS)
+
 # Check to see if the SDK is installed (which provides the find module).
 # This will either use the system-installed AWSSDK find module (if present),
 # or the superbuild-installed find module.
-if (TILEDB_SUPERBUILD)
-  # Don't use find_package in superbuild if we are forcing all deps.
-  # That's because the AWSSDK config file hard-codes a search of /usr,
-  # /usr/local, etc.
-  if (NOT TILEDB_FORCE_ALL_DEPS)
-    find_package(AWSSDK CONFIG QUIET)
-  endif()
-else()
-  find_package(AWSSDK CONFIG QUIET)
-endif()
-
+find_package(AWSSDK CONFIG QUIET)
 if (NOT AWSSDK_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Could NOT find AWSSDK")
   message(STATUS "Adding AWSSDK as an external project")
@@ -76,6 +69,8 @@ if (NOT AWSSDK_FOUND OR TILEDB_FORCE_ALL_DEPS)
       -DCUSTOM_MEMORY_MANAGEMENT=0
       -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
       -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+      -DCMAKE_CXX_FLAGS=-fPIC
+      -DCMAKE_C_FLAGS=-fPIC
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
     LOG_CONFIGURE TRUE
@@ -84,9 +79,25 @@ if (NOT AWSSDK_FOUND OR TILEDB_FORCE_ALL_DEPS)
     DEPENDS ${DEPENDS}
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_awssdk)
-endif ()
+  list(APPEND AWS_LINKED_LIBS aws-cpp-sdk-core aws-cpp-sdk-s3)
 
-if (AWSSDK_FOUND)
+  set(AWSSDK_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/aws")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${AWSSDK_INCLUDE_DIR})
+
+  foreach (LIB ${AWS_LINKED_LIBS})
+    if (NOT TARGET AWSSDK::${LIB})
+      add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
+      set_target_properties(AWSSDK::${LIB} PROPERTIES
+        IMPORTED_LOCATION "${TILEDB_EP_INSTALL_PREFIX}/lib/lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
+      )
+    endif()
+  endforeach ()
+  set(AWSSDK_FOUND TRUE)
+elseif (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
   foreach (LIB ${AWS_LINKED_LIBS})
@@ -104,4 +115,6 @@ if (AWSSDK_FOUND)
       )
     endif()
   endforeach ()
+else()
+  message(FATAL_ERROR "AWSSDK not found and not built as dependency!")
 endif ()

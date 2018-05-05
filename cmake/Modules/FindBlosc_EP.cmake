@@ -97,7 +97,14 @@ if (NOT BLOSC_FOUND OR TILEDB_FORCE_ALL_DEPS)
   endif()
 
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_blosc)
-  SET(TILEDB_USE_STATIC_BLOSC TRUE CACHE INTERNAL "")
+  set(TILEDB_USE_STATIC_BLOSC TRUE CACHE INTERNAL "")
+  set(BLOSC_FOUND TRUE)
+  set(BLOSC_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libblosc${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(BLOSC_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${BLOSC_INCLUDE_DIR})
 endif()
 
 if (BLOSC_FOUND AND NOT TARGET Blosc::Blosc)
