@@ -39,6 +39,8 @@
 
 #include <dirent.h>
 
+#include <limits.h>
+
 #include <ftw.h>
 
 #include <fstream>
