@@ -67,34 +67,38 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
   REQUIRED_VARS ZSTD_LIBRARIES ZSTD_INCLUDE_DIR
 )
 
-if (NOT ZSTD_FOUND)
-  if (TILEDB_SUPERBUILD)
-    message(STATUS "Adding Zstd as an external project")
-    if (WIN32)
-      set(ARCH_SPEC -A X64)
-    endif()
-    ExternalProject_Add(ep_zstd
-      PREFIX "externals"
-      URL "https://github.com/facebook/zstd/archive/v1.3.4.zip"
-      URL_HASH SHA1=2f33cb8af3c964124be67ff4a50824a85b5e1907
-      CONFIGURE_COMMAND
-        ${CMAKE_COMMAND}
-        ${ARCH_SPEC}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-        ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
-      UPDATE_COMMAND ""
-      LOG_DOWNLOAD TRUE
-      LOG_CONFIGURE TRUE
-      LOG_BUILD TRUE
-      LOG_INSTALL TRUE
-    )
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zstd)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_ZSTD=TRUE
-    )
-  else()
-    message(FATAL_ERROR "Unable to find Zstd")
+if (NOT ZSTD_FOUND OR TILEDB_FORCE_ALL_DEPS)
+  message(STATUS "Adding Zstd as an external project")
+  if (WIN32)
+    set(ARCH_SPEC -A X64)
   endif()
+  ExternalProject_Add(ep_zstd
+    PREFIX "externals"
+    URL "https://github.com/facebook/zstd/archive/v1.3.4.zip"
+    URL_HASH SHA1=2f33cb8af3c964124be67ff4a50824a85b5e1907
+    CONFIGURE_COMMAND
+      ${CMAKE_COMMAND}
+      ${ARCH_SPEC}
+      -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+      -DCMAKE_CXX_FLAGS=-fPIC
+      -DCMAKE_C_FLAGS=-fPIC
+      ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
+    SOURCE_DIR "${TILEDB_EP_BASE}/src/ep_zstd"
+    UPDATE_COMMAND ""
+    LOG_DOWNLOAD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_BUILD TRUE
+    LOG_INSTALL TRUE
+  )
+  list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zstd)
+  SET(TILEDB_USE_STATIC_ZSTD TRUE CACHE INTERNAL "")
+  set(ZSTD_FOUND TRUE)
+  set(ZSTD_LIBRARIES "${TILEDB_EP_INSTALL_PREFIX}/lib${LIB_SUFFIX}/libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(ZSTD_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${ZSTD_INCLUDE_DIR})
 endif()
 
 if (ZSTD_FOUND AND NOT TARGET Zstd::Zstd)

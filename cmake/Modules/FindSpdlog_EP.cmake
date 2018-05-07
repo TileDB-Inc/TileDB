@@ -44,19 +44,26 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Spdlog
   REQUIRED_VARS SPDLOG_INCLUDE_DIR
 )
 
-if (NOT SPDLOG_FOUND AND TILEDB_SUPERBUILD)
+if (NOT SPDLOG_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Adding Spdlog as an external project")
   ExternalProject_Add(ep_spdlog
     PREFIX "externals"
     URL "https://github.com/gabime/spdlog/archive/v0.16.3.zip"
     URL_HASH SHA1=00a732da1449c15b787491a924d63590c1649710
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+    CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+    -DCMAKE_CXX_FLAGS=-fPIC
+    -DCMAKE_C_FLAGS=-fPIC
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_spdlog)
+  SET(SPDLOG_FOUND TRUE)
+  set(SPDLOG_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/spdlog")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${SPDLOG_INCLUDE_DIR})
 endif()
 
 if (SPDLOG_FOUND AND NOT TARGET Spdlog::Spdlog)

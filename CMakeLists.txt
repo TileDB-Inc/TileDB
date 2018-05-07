@@ -31,7 +31,7 @@
 ############################################################
 
 cmake_minimum_required(VERSION 3.3)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_SOURCE_DIR}/cmake/inputs")
 
@@ -57,20 +57,15 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 # Build options
 ############################################################
 
-# Note: when adding options, make sure to forward them via INHERITED_CMAKE_ARGS
-# in TileDB-Superbuild.cmake.
-
-option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
-option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
+option(TILEDB_FORCE_ALL_DEPS "If true, force build to download and build all dependencies, even those installed on the system." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
 option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
-option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 
 ############################################################
-# Superbuild setup
+# Dependency setup
 ############################################################
 
 # Set the variable used when calling find_package(), find_file() etc.
@@ -81,29 +76,80 @@ else()
   set(TILEDB_DEPS_NO_DEFAULT_PATH)
 endif()
 
-# If this is an in-IDE build, we need to disable the superbuild and explicitly
-# set the EP base dir. The normal 'cmake && make' process won't need this step,
-# it is for better CLion support of this superbuild architecture.
-if (TILEDB_CMAKE_IDE)
-  set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_BINARY_DIR}/externals")
-endif()
+# Variable that will hold a list of all the external projects added
+# as a part of the superbuild.
+set(TILEDB_EXTERNAL_PROJECTS CACHE INTERNAL "")
 
-# Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-  message(STATUS "Starting TileDB superbuild.")
-  include("cmake/TileDB-Superbuild.cmake")
-  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # Stop processing this file here.
-  return()
-endif()
+include (ExternalProject)
 
 project(TileDB)
-message(STATUS "Starting TileDB regular build.")
+
+############################################################
+# Set up external projects for dependencies
+############################################################
+
+if (TILEDB_FORCE_ALL_DEPS)
+  message(STATUS "Forcing superbuild to build all dependencies as ExternalProjects.")
+endif()
+
+############################################################
+# Common variables
+############################################################
+
+# Build paths for external projects
+set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
+set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
+set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
+
+############################################################
+# "make format" and "make check-format" targets
+############################################################
+
+set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+
+find_package(ClangTools)
+if (${CLANG_FORMAT_FOUND})
+  # runs clang format and updates files in place.
+  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples
+    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+
+  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
+  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples
+    -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+endif()
+
+###########################################################
+# Doxygen documentation
+###########################################################
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  set(TILEDB_C_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h")
+  file(GLOB TILEDB_CPP_API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h")
+  set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
+    COMMAND mkdir -p doxygen
+    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/doc/mainpage.dox
+    ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
+    COMMENT "Preparing for Doxygen documentation" VERBATIM
+    )
+  add_custom_target(doc
+    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.mk >
+    ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
+    COMMENT "Generating API documentation with Doxygen" VERBATIM
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
+    )
+endif(DOXYGEN_FOUND)
+
 
 ############################################################
 # Compile options/definitions for all targets

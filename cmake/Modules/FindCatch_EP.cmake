@@ -45,19 +45,24 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Catch
   REQUIRED_VARS CATCH_INCLUDE_DIR
 )
 
-if (NOT CATCH_FOUND AND TILEDB_SUPERBUILD)
+if (NOT CATCH_FOUND OR TILEDB_FORCE_ALL_DEPS)
   message(STATUS "Adding Catch as an external project")
   ExternalProject_Add(ep_catch
     PREFIX "externals"
     URL "https://github.com/catchorg/Catch2/archive/v2.2.1.zip"
     URL_HASH SHA1=578908c96d67e681a13ea903188a107076a6d1ee
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+    CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_catch)
+  set(CATCH_FOUND TRUE)
+  set(CATCH_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include/catch")
+
+  # INTERFACE_INCLUDE_DIRECTORIES does not allow for empty directories in config phase,
+  # thus we need to create the directory. See https://cmake.org/Bug/view.php?id=15052
+  file(MAKE_DIRECTORY ${CATCH_INCLUDE_DIR})
 endif()
 
 if (CATCH_FOUND AND NOT TARGET Catch::Catch)

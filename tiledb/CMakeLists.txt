@@ -38,7 +38,7 @@ cmake_policy(SET CMP0063 NEW)
 ############################################################
 
 # The core header directory.
-set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # List of API headers (to be installed)
 set(TILEDB_PUBLIC_HEADERS
@@ -128,9 +128,9 @@ set(TILEDB_CORE_SOURCES
 )
 
 # 'External' source files included in the source tree.
-set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/include")
+set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/include")
 set(TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_SOURCE_DIR}/external/src/md5/md5.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
 )
 
 ############################################################
@@ -284,6 +284,10 @@ target_include_directories(TILEDB_CORE_OBJECTS
 ############################################################
 # TileDB static and shared library targets
 ############################################################
+
+if(TILEDB_EXTERNAL_PROJECTS)
+  add_dependencies(TILEDB_CORE_OBJECTS ${TILEDB_EXTERNAL_PROJECTS})
+endif()
 
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
