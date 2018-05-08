@@ -267,8 +267,6 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_status
     :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_attribute_status
-    :project: TileDB-C
 
 Group
 -----
