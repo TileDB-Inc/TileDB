@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -575,8 +576,8 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   if (cr_it->fragment_idx_ != -1) {
     auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
         cr_it->tile_coords_);
-    auto cur_tile_ptr = std::unique_ptr<OverlappingTile>(
-        new OverlappingTile((unsigned)cr_it->fragment_idx_, tile_idx));
+    auto cur_tile_ptr = std::unique_ptr<OverlappingTile>(new OverlappingTile(
+        (unsigned)cr_it->fragment_idx_, tile_idx, attributes_));
     tile_coords_map[std::pair<unsigned, const T*>(
         (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
         (uint64_t)tiles->size();
@@ -615,8 +616,8 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
       } else {
         auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
             cr_it->tile_coords_);
-        auto tile_ptr = std::unique_ptr<OverlappingTile>(
-            new OverlappingTile((unsigned)cr_it->fragment_idx_, tile_idx));
+        auto tile_ptr = std::unique_ptr<OverlappingTile>(new OverlappingTile(
+            (unsigned)cr_it->fragment_idx_, tile_idx, attributes_));
         tile_coords_map[std::pair<unsigned, const T*>(
             (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
             (uint64_t)tiles->size();
@@ -738,7 +739,7 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
         auto tile = std::unique_ptr<OverlappingTile>(
-            new OverlappingTile(i, j, full_overlap));
+            new OverlappingTile(i, j, attributes_, full_overlap));
         tiles->push_back(std::move(tile));
       }
     }
@@ -1274,6 +1275,25 @@ bool Reader::overlap(
   return true;
 }
 
+Status Reader::read_all_tiles(OverlappingTileVec* tiles) const {
+  std::set<std::string> all_attributes(attributes_.begin(), attributes_.end());
+  // Make sure the coordinate tiles are always read.
+  all_attributes.insert(constants::coords);
+  // Read the tiles in parallel over the attributes.
+  auto statuses = parallel_for_each(
+      all_attributes.begin(),
+      all_attributes.end(),
+      [this, &tiles](const std::string& attr) {
+        RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles));
+        return Status::Ok();
+      });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
+}
+
 Status Reader::read_tiles(
     const std::string& attribute, OverlappingTileVec* tiles) const {
   // Prepare tile IO
@@ -1293,7 +1313,13 @@ Status Reader::read_tiles(
   }
   // For each fragment, read the tiles
   for (auto& tile : *tiles) {
-    auto& tile_pair = tile->attr_tiles_[attribute];
+    auto it = tile->attr_tiles_.find(attribute);
+    if (it == tile->attr_tiles_.end()) {
+      return LOG_STATUS(
+          Status::ReaderError("Invalid tile map for attribute " + attribute));
+    }
+
+    auto& tile_pair = it->second;
     auto& t = tile_pair.first;
     auto& t_var = tile_pair.second;
     // Initialize
@@ -1363,13 +1389,13 @@ template <class T>
 Status Reader::sort_coords(OverlappingCoordsList<T>* coords) const {
   if (layout_ == Layout::GLOBAL_ORDER) {
     auto domain = array_schema_->domain();
-    std::sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
+    parallel_sort(coords->begin(), coords->end(), GlobalCmp<T>(domain));
   } else {
     auto dim_num = array_schema_->dim_num();
     if (layout_ == Layout::ROW_MAJOR)
-      std::sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
+      parallel_sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
     else if (layout_ == Layout::COL_MAJOR)
-      std::sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
+      parallel_sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
   }
 
   return Status::Ok();
@@ -1413,11 +1439,7 @@ Status Reader::sparse_read() {
   RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&tiles));
 
   // Read tiles
-  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, &tiles));
-  for (const auto& attr : attributes_) {
-    if (attr != constants::coords)
-      RETURN_CANCEL_OR_ERROR(read_tiles(attr, &tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(read_all_tiles(&tiles));
 
   // Compute the read coordinates for all fragments
   OverlappingCoordsList<T> coords;

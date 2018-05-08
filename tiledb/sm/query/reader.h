@@ -130,10 +130,18 @@ class Reader {
 
     /** Constructor. */
     OverlappingTile(
-        unsigned fragment_idx, uint64_t tile_idx, bool full_overlap = false)
+        unsigned fragment_idx,
+        uint64_t tile_idx,
+        const std::vector<std::string>& attributes,
+        bool full_overlap = false)
         : fragment_idx_(fragment_idx)
         , tile_idx_(tile_idx)
         , full_overlap_(full_overlap) {
+      attr_tiles_[constants::coords] = std::make_pair(Tile(), Tile());
+      for (const auto& attr : attributes) {
+        if (attr != constants::coords)
+          attr_tiles_[attr] = std::make_pair(Tile(), Tile());
+      }
     }
   };
 
@@ -686,6 +694,15 @@ class Reader {
   template <class T>
   bool overlap(
       const T* a, const T* b, unsigned dim_num, bool* a_contains_b) const;
+
+  /**
+   * Retrieves the tiles on all attributes from all input fragments based on
+   * the tile info in `tiles`.
+   *
+   * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @return Status
+   */
+  Status read_all_tiles(OverlappingTileVec* tiles) const;
 
   /**
    * Retrieves the tiles on a particular attribute from all input fragments
