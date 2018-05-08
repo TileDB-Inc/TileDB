@@ -110,6 +110,5 @@ Utils
 
 Version
 -------
-.. doxygenclass:: tiledb::Version
+.. doxygenfunction:: tiledb::version
     :project: TileDB-C++
-    :members:
