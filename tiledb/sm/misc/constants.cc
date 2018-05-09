@@ -332,8 +332,8 @@ const char* null_str = "null";
 const int version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
-/** The size of a tile chunk. */
-const uint64_t tile_chunk_size = (uint64_t)std::numeric_limits<int>::max();
+/** The maximum size of a tile chunk (unit of compression) in bytes. */
+const uint64_t tile_chunk_size = 64 * 1024;
 
 /** The default attribute name prefix. */
 const char* default_attr_name = "__attr";

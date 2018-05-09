@@ -987,11 +987,7 @@ Status Reader::dense_read() {
   RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&sparse_tiles));
 
   // Read sparse tiles
-  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, &sparse_tiles));
-  for (const auto& attr : attributes_) {
-    if (attr != constants::coords)
-      RETURN_CANCEL_OR_ERROR(read_tiles(attr, &sparse_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(read_all_tiles(&sparse_tiles));
 
   // Compute the read coordinates for all sparse fragments
   OverlappingCoordsList<T> coords;
@@ -1043,8 +1039,7 @@ Status Reader::dense_read() {
   overlapping_tile_idx_coords.clear();
 
   // Read dense tiles
-  for (const auto& attr : attributes_)
-    RETURN_CANCEL_OR_ERROR(read_tiles(attr, &dense_tiles));
+  RETURN_CANCEL_OR_ERROR(read_all_tiles(&dense_tiles, false));
 
   // Copy cells
   for (const auto& attr : attributes_)
@@ -1275,10 +1270,17 @@ bool Reader::overlap(
   return true;
 }
 
-Status Reader::read_all_tiles(OverlappingTileVec* tiles) const {
+Status Reader::read_all_tiles(
+    OverlappingTileVec* tiles, bool ensure_coords) const {
+  // Shortcut for empty tile vec
+  if (tiles->empty())
+    return Status::Ok();
+
   std::set<std::string> all_attributes(attributes_.begin(), attributes_.end());
-  // Make sure the coordinate tiles are always read.
-  all_attributes.insert(constants::coords);
+  // Make sure the coordinate tiles are read if specified.
+  if (ensure_coords)
+    all_attributes.insert(constants::coords);
+
   // Read the tiles in parallel over the attributes.
   auto statuses = parallel_for_each(
       all_attributes.begin(),
@@ -1298,21 +1300,32 @@ Status Reader::read_tiles(
     const std::string& attribute, OverlappingTileVec* tiles) const {
   // Prepare tile IO
   auto var_size = array_schema_->var_size(attribute);
-  std::vector<std::unique_ptr<TileIO>> tile_io;
-  std::vector<std::unique_ptr<TileIO>> tile_io_var;
-  for (const auto& f : fragment_metadata_) {
-    tile_io.push_back(std::unique_ptr<TileIO>(new TileIO(
-        storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute))));
-    if (var_size)
-      tile_io_var.push_back(std::unique_ptr<TileIO>(new TileIO(
-          storage_manager_,
-          f->attr_var_uri(attribute),
-          f->file_var_sizes(attribute))));
-    else
-      tile_io_var.push_back(std::unique_ptr<TileIO>(nullptr));
+  auto num_tiles = static_cast<uint64_t>(tiles->size());
+  std::vector<std::vector<std::unique_ptr<TileIO>>> tile_io_vec(num_tiles);
+  std::vector<std::vector<std::unique_ptr<TileIO>>> tile_io_var_vec(num_tiles);
+
+  // Create one TileIO instance per tile, per fragment.
+  for (uint64_t i = 0; i < num_tiles; i++) {
+    auto& tile_io = tile_io_vec[i];
+    auto& tile_io_var = tile_io_var_vec[i];
+    for (const auto& f : fragment_metadata_) {
+      tile_io.push_back(std::unique_ptr<TileIO>(new TileIO(
+          storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute))));
+      if (var_size)
+        tile_io_var.push_back(std::unique_ptr<TileIO>(new TileIO(
+            storage_manager_,
+            f->attr_var_uri(attribute),
+            f->file_var_sizes(attribute))));
+      else
+        tile_io_var.push_back(std::unique_ptr<TileIO>(nullptr));
+    }
   }
-  // For each fragment, read the tiles
-  for (auto& tile : *tiles) {
+
+  // For each tile, read from its fragment.
+  auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
+    auto& tile = (*tiles)[i];
+    auto& tile_io = tile_io_vec[i];
+    auto& tile_io_var = tile_io_var_vec[i];
     auto it = tile->attr_tiles_.find(attribute);
     if (it == tile->attr_tiles_.end()) {
       return LOG_STATUS(
@@ -1348,7 +1361,12 @@ Status Reader::read_tiles(
           fragment_metadata_[tile->fragment_idx_]->tile_var_size(
               attribute, tile->tile_idx_)));
     }
-  }
+
+    return Status::Ok();
+  });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
 
   return Status::Ok();
 }

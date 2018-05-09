@@ -179,6 +179,38 @@ class TileIO {
   URI uri_;
 
   /* ********************************* */
+  /*      PRIVATE TYPE DEFINITIONS     */
+  /* ********************************* */
+
+  /**
+   * Encapsulated information about tile chunks for decompression.
+   */
+  struct DecompressionChunkInfo {
+    /** Number of chunks to decompress. */
+    uint64_t chunk_num_;
+    /** Pointer to start of compressed chunk data. */
+    const char* compressed_chunks_;
+    /** Pointer to start of destination buffer for decompressed chunks. */
+    char* decompressed_chunks_;
+    /** Vector of (offset, len) pairs for the compressed chunks. */
+    std::vector<std::pair<uint64_t, uint64_t>> compressed_chunk_info_;
+    /**
+     * Vector of (offset, len) pairs for the decompressed chunk destinations.
+     */
+    std::vector<std::pair<uint64_t, uint64_t>> decompressed_chunk_info_;
+    /** Total number of bytes that will be decompressed. */
+    uint64_t total_decompressed_bytes_;
+
+    /** Constructor. */
+    DecompressionChunkInfo()
+        : chunk_num_(0)
+        , compressed_chunks_(nullptr)
+        , decompressed_chunks_(nullptr)
+        , total_decompressed_bytes_(0) {
+    }
+  };
+
+  /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
@@ -215,6 +247,16 @@ class TileIO {
       uint64_t* chunk_num,
       uint64_t* max_chunk_size,
       uint64_t* overhead);
+
+  /**
+   * Computes necessary info for decompressing chunks of a tile.
+   *
+   * @param tile The tile whose chunking info is being computed.
+   * @param info The info that will be computed.
+   * @return Status
+   */
+  Status compute_decompression_chunk_info(
+      Tile* tile, DecompressionChunkInfo* info);
 
   /**
    * Decompresses buffer_ into a tile.
