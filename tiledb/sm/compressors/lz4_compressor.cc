@@ -74,7 +74,8 @@ Status LZ4::compress(
   return Status::Ok();
 }
 
-Status LZ4::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status LZ4::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -92,7 +93,6 @@ Status LZ4::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
     return Status::CompressionError("LZ4 decompression failed");
 
   // Set size of decompressed data
-  output_buffer->advance_size(static_cast<uint64_t>(ret));
   output_buffer->advance_offset(static_cast<uint64_t>(ret));
 
   return Status::Ok();

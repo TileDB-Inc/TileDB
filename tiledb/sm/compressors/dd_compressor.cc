@@ -92,7 +92,9 @@ Status DoubleDelta::compress(
 }
 
 Status DoubleDelta::decompress(
-    Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
+    Datatype type,
+    ConstBuffer* input_buffer,
+    PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
@@ -231,7 +233,7 @@ Status DoubleDelta::compute_bitsize(
 
 template <class T>
 Status DoubleDelta::decompress(
-    ConstBuffer* input_buffer, Buffer* output_buffer) {
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Read bitsize and number of values
   uint8_t bitsize_c = 0;
   uint64_t num = 0;
@@ -396,23 +398,23 @@ template Status DoubleDelta::compress<uint64_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
 
 template Status DoubleDelta::decompress<char>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<int8_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<uint8_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<int16_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<uint16_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<int>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<uint32_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<int64_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 template Status DoubleDelta::decompress<uint64_t>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
 };  // namespace sm
 }  // namespace tiledb

@@ -87,7 +87,8 @@ Status BZip::compress(
   return Status::Ok();
 }
 
-Status BZip::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status BZip::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -128,7 +129,6 @@ Status BZip::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   }
 
   // Set size of compressed data
-  output_buffer->advance_size(out_size);
   output_buffer->advance_offset(out_size);
 
   return Status::Ok();

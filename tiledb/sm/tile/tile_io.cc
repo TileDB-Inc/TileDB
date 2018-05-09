@@ -458,19 +458,21 @@ Status TileIO::decompress_one_tile(Tile* tile) {
     auto input_buffer =
         new ConstBuffer(buffer_->cur_data(), compressed_chunk_size);
 
+    PreallocatedBuffer tile_buffer(tile->buffer()->cur_data(), chunk_size);
+
     // Invoke the proper decompressor
     switch (tile->compressor()) {
       case Compressor::NO_COMPRESSION:
         assert(0);
         break;
       case Compressor::GZIP:
-        st = GZip::decompress(input_buffer, tile->buffer());
+        st = GZip::decompress(input_buffer, &tile_buffer);
         break;
       case Compressor::ZSTD:
-        st = ZStd::decompress(input_buffer, tile->buffer());
+        st = ZStd::decompress(input_buffer, &tile_buffer);
         break;
       case Compressor::LZ4:
-        st = LZ4::decompress(input_buffer, tile->buffer());
+        st = LZ4::decompress(input_buffer, &tile_buffer);
         break;
       case Compressor::BLOSC_LZ:
 #undef BLOSC_LZ4
@@ -483,16 +485,16 @@ Status TileIO::decompress_one_tile(Tile* tile) {
       case Compressor::BLOSC_ZLIB:
 #undef BLOSC_ZSTD
       case Compressor::BLOSC_ZSTD:
-        st = Blosc::decompress(input_buffer, tile->buffer());
+        st = Blosc::decompress(input_buffer, &tile_buffer);
         break;
       case Compressor::RLE:
-        st = RLE::decompress(tile->cell_size(), input_buffer, tile->buffer());
+        st = RLE::decompress(tile->cell_size(), input_buffer, &tile_buffer);
         break;
       case Compressor::BZIP2:
-        st = BZip::decompress(input_buffer, tile->buffer());
+        st = BZip::decompress(input_buffer, &tile_buffer);
         break;
       case Compressor::DOUBLE_DELTA:
-        st = DoubleDelta::decompress(type, input_buffer, tile->buffer());
+        st = DoubleDelta::decompress(type, input_buffer, &tile_buffer);
         break;
     }
 
@@ -500,6 +502,8 @@ Status TileIO::decompress_one_tile(Tile* tile) {
     RETURN_NOT_OK(st);
 
     buffer_->advance_offset(compressed_chunk_size);
+    tile->buffer()->advance_size(chunk_size);
+    tile->buffer()->advance_offset(chunk_size);
   }
 
   return st;

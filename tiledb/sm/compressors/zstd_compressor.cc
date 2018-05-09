@@ -68,7 +68,8 @@ Status ZStd::compress(
   return Status::Ok();
 }
 
-Status ZStd::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status ZStd::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -89,7 +90,6 @@ Status ZStd::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   }
 
   // Set size decompressed data
-  output_buffer->advance_size(zstd_ret);
   output_buffer->advance_offset(zstd_ret);
 
   return Status::Ok();

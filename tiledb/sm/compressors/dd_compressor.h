@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -109,7 +110,9 @@ class DoubleDelta {
    * @return Status
    */
   static Status decompress(
-      Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
+      Datatype type,
+      ConstBuffer* input_buffer,
+      PreallocatedBuffer* output_buffer);
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
@@ -145,7 +148,8 @@ class DoubleDelta {
    * @return Status
    */
   template <class T>
-  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static Status decompress(
+      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /**
    * Reads/reconstructs a double delta value from a compressed buffer.

@@ -82,7 +82,8 @@ Status GZip::compress(
   return Status::Ok();
 }
 
-Status GZip::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status GZip::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -117,7 +118,6 @@ Status GZip::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
   // Set size of decompressed data
   uint64_t compressed_size = output_buffer->free_space() - strm.avail_out;
-  output_buffer->advance_size(compressed_size);
   output_buffer->advance_offset(compressed_size);
 
   // Clean up

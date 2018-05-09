@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 #include <cmath>
@@ -63,7 +64,8 @@ class GZip {
    * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
-  static Status decompress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static Status decompress(
+      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t buffer_size);

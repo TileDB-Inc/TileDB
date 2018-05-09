@@ -95,7 +95,9 @@ Status RLE::compress(
 }
 
 Status RLE::decompress(
-    uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
+    uint64_t value_size,
+    ConstBuffer* input_buffer,
+    PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(

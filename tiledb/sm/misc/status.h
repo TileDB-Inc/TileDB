@@ -106,7 +106,8 @@ enum class StatusCode : char {
   Attribute,
   DenseCellRangeIter,
   Reader,
-  Writer
+  Writer,
+  PreallocatedBuffer
 };
 
 class Status {
@@ -290,6 +291,12 @@ class Status {
   /** Return a WriterError error class Status with a given message **/
   static Status WriterError(const std::string& msg) {
     return Status(StatusCode::Writer, msg, -1);
+  }
+
+  /** Return a PreallocatedBufferError error class Status with a given message
+   * **/
+  static Status PreallocatedBufferError(const std::string& msg) {
+    return Status(StatusCode::PreallocatedBuffer, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

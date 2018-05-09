@@ -183,6 +183,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Writer:
       type = "[TileDB::Writer] Error";
       break;
+    case StatusCode::PreallocatedBuffer:
+      type = "[TileDB::PreallocatedBuffer] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

@@ -75,7 +75,8 @@ Status Blosc::compress(
   return Status::Ok();
 }
 
-Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status Blosc::decompress(
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -94,7 +95,6 @@ Status Blosc::decompress(ConstBuffer* input_buffer, Buffer* output_buffer) {
     return LOG_STATUS(Status::CompressionError("Blosc decompress error"));
 
   // Set size of decompressed data
-  output_buffer->advance_size(uint64_t(rc));
   output_buffer->advance_offset(uint64_t(rc));
 
   return Status::Ok();
