@@ -93,8 +93,10 @@ TEST_CASE("Compression-RLE: Test all values unique", "[compression], [rle]") {
   input = new ConstBuffer(compressed->data(), compressed->size());
   auto decompressed = new Buffer();
   st = decompressed->realloc(sizeof(data));
+  PreallocatedBuffer prealloc_buf(
+      decompressed->data(), decompressed->alloced_size());
   REQUIRE(st.ok());
-  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, &prealloc_buf);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -131,8 +133,10 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
   // Decompress data
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
+  PreallocatedBuffer prealloc_buf(
+      decompressed->data(), decompressed->alloced_size());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, &prealloc_buf);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -173,8 +177,10 @@ TEST_CASE(
   auto decompressed = new Buffer();
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
+  PreallocatedBuffer prealloc_buf(
+      decompressed->data(), decompressed->alloced_size());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, &prealloc_buf);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(int)));
 
@@ -215,8 +221,10 @@ TEST_CASE(
   // Decompress data
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
+  PreallocatedBuffer prealloc_buf(
+      decompressed->data(), decompressed->alloced_size());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::sm::RLE::decompress(sizeof(int), input, decompressed);
+  st = tiledb::sm::RLE::decompress(sizeof(int), input, &prealloc_buf);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 
@@ -271,8 +279,10 @@ TEST_CASE(
   auto decompressed = new Buffer();
   st = decompressed->realloc(sizeof(data));
   REQUIRE(st.ok());
+  PreallocatedBuffer prealloc_buf(
+      decompressed->data(), decompressed->alloced_size());
   input = new ConstBuffer(compressed->data(), compressed->size());
-  st = tiledb::sm::RLE::decompress(value_size, input, decompressed);
+  st = tiledb::sm::RLE::decompress(value_size, input, &prealloc_buf);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(data, decompressed->data(), sizeof(data)));
 

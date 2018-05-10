@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -63,7 +64,9 @@ class RLE {
    * @return Status
    */
   static Status decompress(
-      uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer);
+      uint64_t value_size,
+      ConstBuffer* input_buffer,
+      PreallocatedBuffer* output_buffer);
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes, uint64_t value_size);

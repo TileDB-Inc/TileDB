@@ -52,8 +52,12 @@ TEST_CASE(
   auto decomp_in_buff =
       new tiledb::sm::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
   auto decomp_out_buff = new tiledb::sm::Buffer();
+  st = decomp_out_buff->realloc(sizeof(data));
+  REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
   st = tiledb::sm::DoubleDelta::decompress(
-      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      tiledb::sm::Datatype::INT32, decomp_in_buff, &prealloc_buf);
   REQUIRE(st.ok());
 
   // Check data
@@ -82,8 +86,12 @@ TEST_CASE(
   auto decomp_in_buff =
       new tiledb::sm::ConstBuffer(comp_out_buff->data(), comp_out_buff->size());
   auto decomp_out_buff = new tiledb::sm::Buffer();
+  st = decomp_out_buff->realloc(sizeof(data));
+  REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
   st = tiledb::sm::DoubleDelta::decompress(
-      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      tiledb::sm::Datatype::INT32, decomp_in_buff, &prealloc_buf);
   REQUIRE(st.ok());
 
   // Check data
@@ -115,8 +123,10 @@ TEST_CASE(
   auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(data));
   REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
   st = tiledb::sm::DoubleDelta::decompress(
-      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      tiledb::sm::Datatype::INT32, decomp_in_buff, &prealloc_buf);
   REQUIRE(st.ok());
 
   // Check data
@@ -149,8 +159,10 @@ TEST_CASE(
   auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(data));
   REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
   st = tiledb::sm::DoubleDelta::decompress(
-      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      tiledb::sm::Datatype::INT32, decomp_in_buff, &prealloc_buf);
   REQUIRE(st.ok());
 
   // Check data
@@ -191,8 +203,10 @@ TEST_CASE(
   auto decomp_out_buff = new tiledb::sm::Buffer();
   st = decomp_out_buff->realloc(sizeof(int) * n);
   REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
   st = tiledb::sm::DoubleDelta::decompress(
-      tiledb::sm::Datatype::INT32, decomp_in_buff, decomp_out_buff);
+      tiledb::sm::Datatype::INT32, decomp_in_buff, &prealloc_buf);
   REQUIRE(st.ok());
 
   // Check data
