@@ -36,7 +36,7 @@
 #include <algorithm>
 
 #ifdef HAVE_TBB
-#include <tbb/concurrent_vector.h>
+#include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_sort.h>
 #endif
@@ -75,25 +75,34 @@ void parallel_sort(IterT begin, IterT end, CmpT cmp) {
  */
 template <typename IterT, typename FuncT>
 std::vector<Status> parallel_for_each(IterT begin, IterT end, const FuncT& F) {
-  std::vector<Status> result;
+  auto niters = static_cast<uint64_t>(std::distance(begin, end));
+  std::vector<Status> result(niters);
 #ifdef HAVE_TBB
-  tbb::concurrent_vector<Status> tbb_result;
-  tbb::parallel_for_each(
-      begin,
-      end,
-      [&tbb_result,
-       &F](const typename std::iterator_traits<IterT>::value_type& elem) {
-        tbb_result.push_back(F(elem));
-      });
-  result.insert(result.end(), tbb_result.begin(), tbb_result.end());
+  tbb::parallel_for(uint64_t(0), niters, [begin, &result, &F](uint64_t i) {
+    auto it = std::next(begin, i);
+    result[i] = F(*it);
+  });
 #else
-  std::for_each(
-      begin,
-      end,
-      [&result,
-       &F](const typename std::iterator_traits<IterT>::value_type& elem) {
-        result.push_back(F(elem));
-      });
+  for (uint64_t i = 0; i < niters; i++) {
+    auto it = std::next(begin, i);
+    result[i] = F(*it);
+  }
+#endif
+  return result;
+}
+
+template <typename FuncT>
+std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
+  assert(begin < end);
+  uint64_t num_iters = end - begin;
+  std::vector<Status> result(num_iters);
+#ifdef HAVE_TBB
+  tbb::parallel_for(
+      begin, end, [&result, &F](uint64_t i) { result[i] = F(i); });
+#else
+  for (uint64_t i = begin; i < end; i++) {
+    result[i] = F(i);
+  }
 #endif
   return result;
 }

@@ -39,12 +39,15 @@
 #include "tiledb/sm/compressors/rle_compressor.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
 
+#ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 namespace tiledb {
 namespace sm {
@@ -424,6 +427,46 @@ Status TileIO::compute_chunking_info(
   return Status::Ok();
 }
 
+Status TileIO::compute_decompression_chunk_info(
+    Tile* tile, DecompressionChunkInfo* info) {
+  // Read number of chunks
+  RETURN_NOT_OK(buffer_->read(&info->chunk_num_, sizeof(uint64_t)));
+  if (info->chunk_num_ == 0) {
+    return LOG_STATUS(Status::TileIOError("Tile has 0 chunks."));
+  }
+
+  // Skip the size and compressed size (uint64_t) values to get the pointer
+  // to the first chunk's compressed data.
+  info->compressed_chunks_ =
+      reinterpret_cast<const char*>(buffer_->cur_data()) + 2 * sizeof(uint64_t);
+  // Decompressed chunks will be stored in the tile buffer.
+  info->decompressed_chunks_ =
+      reinterpret_cast<char*>(tile->buffer()->cur_data());
+
+  // Compute chunk source and destination offsets in the input and output
+  // buffers.
+  info->compressed_chunk_info_.resize(info->chunk_num_);
+  info->decompressed_chunk_info_.resize(info->chunk_num_);
+  info->total_decompressed_bytes_ = 0;
+  for (uint64_t i = 0, chunk_offset = 0; i < info->chunk_num_; i++) {
+    // Read original and compressed chunk size
+    uint64_t chunk_size, compressed_chunk_size;
+    RETURN_NOT_OK(buffer_->read(&chunk_size, sizeof(uint64_t)));
+    RETURN_NOT_OK(buffer_->read(&compressed_chunk_size, sizeof(uint64_t)));
+    buffer_->advance_offset(compressed_chunk_size);
+
+    info->compressed_chunk_info_[i] =
+        std::make_pair(chunk_offset, compressed_chunk_size);
+    info->decompressed_chunk_info_[i] =
+        std::make_pair(info->total_decompressed_bytes_, chunk_size);
+
+    chunk_offset += 2 * sizeof(uint64_t) + compressed_chunk_size;
+    info->total_decompressed_bytes_ += chunk_size;
+  }
+
+  return Status::Ok();
+}
+
 Status TileIO::decompress_tile(Tile* tile) {
   // Simple case - No coordinates
   if (!tile->stores_coords())
@@ -441,24 +484,22 @@ Status TileIO::decompress_tile(Tile* tile) {
 }
 
 Status TileIO::decompress_one_tile(Tile* tile) {
-  // Read number of chunks
-  uint64_t chunk_num;
+  DecompressionChunkInfo info;
+  RETURN_NOT_OK(compute_decompression_chunk_info(tile, &info));
 
-  RETURN_NOT_OK(buffer_->read(&chunk_num, sizeof(uint64_t)));
-  assert(chunk_num > 0);
+  auto statuses = parallel_for(0, info.chunk_num_, [&tile, &info](uint64_t i) {
+    // Get source/dest buffer information.
+    auto compressed_info = info.compressed_chunk_info_[i];
+    auto decompressed_info = info.decompressed_chunk_info_[i];
+    auto src = info.compressed_chunks_ + compressed_info.first;
+    auto src_len = compressed_info.second;
+    auto dest = info.decompressed_chunks_ + decompressed_info.first;
+    auto dest_len = decompressed_info.second;
 
-  Status st;
-  Datatype type = tile->type();
-  for (uint64_t i = 0; i < chunk_num; ++i) {
-    // Read original and compressed chunk size
-    uint64_t chunk_size, compressed_chunk_size;
-    RETURN_NOT_OK(buffer_->read(&chunk_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buffer_->read(&compressed_chunk_size, sizeof(uint64_t)));
-
-    auto input_buffer =
-        new ConstBuffer(buffer_->cur_data(), compressed_chunk_size);
-
-    PreallocatedBuffer tile_buffer(tile->buffer()->cur_data(), chunk_size);
+    ConstBuffer input_buffer(src, src_len);
+    PreallocatedBuffer output_buffer(dest, dest_len);
+    Status st = Status::Ok();
+    Datatype type = tile->type();
 
     // Invoke the proper decompressor
     switch (tile->compressor()) {
@@ -466,13 +507,13 @@ Status TileIO::decompress_one_tile(Tile* tile) {
         assert(0);
         break;
       case Compressor::GZIP:
-        st = GZip::decompress(input_buffer, &tile_buffer);
+        st = GZip::decompress(&input_buffer, &output_buffer);
         break;
       case Compressor::ZSTD:
-        st = ZStd::decompress(input_buffer, &tile_buffer);
+        st = ZStd::decompress(&input_buffer, &output_buffer);
         break;
       case Compressor::LZ4:
-        st = LZ4::decompress(input_buffer, &tile_buffer);
+        st = LZ4::decompress(&input_buffer, &output_buffer);
         break;
       case Compressor::BLOSC_LZ:
 #undef BLOSC_LZ4
@@ -485,28 +526,30 @@ Status TileIO::decompress_one_tile(Tile* tile) {
       case Compressor::BLOSC_ZLIB:
 #undef BLOSC_ZSTD
       case Compressor::BLOSC_ZSTD:
-        st = Blosc::decompress(input_buffer, &tile_buffer);
+        st = Blosc::decompress(&input_buffer, &output_buffer);
         break;
       case Compressor::RLE:
-        st = RLE::decompress(tile->cell_size(), input_buffer, &tile_buffer);
+        st = RLE::decompress(tile->cell_size(), &input_buffer, &output_buffer);
         break;
       case Compressor::BZIP2:
-        st = BZip::decompress(input_buffer, &tile_buffer);
+        st = BZip::decompress(&input_buffer, &output_buffer);
         break;
       case Compressor::DOUBLE_DELTA:
-        st = DoubleDelta::decompress(type, input_buffer, &tile_buffer);
+        st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
         break;
     }
 
-    delete input_buffer;
+    return st;
+  });
+
+  // Check all statuses
+  for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
-    buffer_->advance_offset(compressed_chunk_size);
-    tile->buffer()->advance_size(chunk_size);
-    tile->buffer()->advance_offset(chunk_size);
-  }
+  tile->buffer()->advance_size(info.total_decompressed_bytes_);
+  tile->buffer()->advance_offset(info.total_decompressed_bytes_);
 
-  return st;
+  return Status::Ok();
 }
 
 uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {

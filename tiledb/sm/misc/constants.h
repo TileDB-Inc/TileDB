@@ -319,7 +319,7 @@ extern const char* null_str;
 /** The version in format { major, minor, revision }. */
 extern const int version[3];
 
-/** The size of a tile chunk. */
+/** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t tile_chunk_size;
 
 /** The default attribute name prefix. */

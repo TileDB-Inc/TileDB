@@ -700,9 +700,12 @@ class Reader {
    * the tile info in `tiles`.
    *
    * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @param ensure_coords If true (the default), always read the coordinate
+   * tiles.
    * @return Status
    */
-  Status read_all_tiles(OverlappingTileVec* tiles) const;
+  Status read_all_tiles(
+      OverlappingTileVec* tiles, bool ensure_coords = true) const;
 
   /**
    * Retrieves the tiles on a particular attribute from all input fragments
