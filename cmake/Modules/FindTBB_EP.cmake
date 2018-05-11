@@ -61,28 +61,31 @@ function(install_tbb)
   get_target_property(TBB_LIBRARIES_RELEASE TBB::tbb IMPORTED_LOCATION_RELEASE)
   get_target_property(TBB_LIBRARIES_DEBUG TBB::tbb IMPORTED_LOCATION_DEBUG)
 
+  # Get library directory for multiarch linux distros
+  include(GNUInstallDirs)
+
   if (WIN32)
     # Install the DLLs to bin.
     if (CMAKE_BUILD_TYPE MATCHES "Release")
-      install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION bin)
+      install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION ${CMAKE_INSTALL_BINDIR})
     else()
-      install(FILES ${TBB_LIBRARIES_DEBUG} DESTINATION bin)
+      install(FILES ${TBB_LIBRARIES_DEBUG} DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
 
     # Install the import libraries (.lib) to lib.
     get_target_property(TBB_LIBRARIES_IMPLIB_RELEASE TBB::tbb IMPORTED_IMPLIB_RELEASE)
     get_target_property(TBB_LIBRARIES_IMPLIB_DEBUG TBB::tbb IMPORTED_IMPLIB_DEBUG)
     if (CMAKE_BUILD_TYPE MATCHES "Release")
-      install(FILES ${TBB_LIBRARIES_IMPLIB_RELEASE} DESTINATION lib)
+      install(FILES ${TBB_LIBRARIES_IMPLIB_RELEASE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     else()
-      install(FILES ${TBB_LIBRARIES_IMPLIB_DEBUG} DESTINATION lib)
+      install(FILES ${TBB_LIBRARIES_IMPLIB_DEBUG} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     endif()
   else()
     # Just install the libraries to lib.
     if (CMAKE_BUILD_TYPE MATCHES "Release")
-      install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION lib)
+      install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     else()
-      install(FILES ${TBB_LIBRARIES_DEBUG} DESTINATION lib)
+      install(FILES ${TBB_LIBRARIES_DEBUG} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     endif()
   endif()
 endfunction()

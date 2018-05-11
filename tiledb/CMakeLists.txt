@@ -373,13 +373,16 @@ set_target_properties(tiledb_static
 ############################################################
 # Installation
 ############################################################
-
 # Install libraries.
 # Note on Windows, the DLL counts as "runtime" and should go into bin.
+
+# Get library directory for multiarch linux distros
+include(GNUInstallDirs)
+
 install(
     TARGETS tiledb_static tiledb_shared
-    PUBLIC_HEADER DESTINATION include/tiledb
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
