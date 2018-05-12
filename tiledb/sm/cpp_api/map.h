@@ -171,11 +171,29 @@ class MapItem {
   /** Get a proxy to set/get with operator[] **/
   impl::MapItemProxy operator[](const std::string& attr);
 
+  impl::MapItemProxy operator[](const char* cstr);
+
   impl::MultiMapItemProxy operator[](const std::vector<std::string>& attrs);
 
   /** Ptr to underlying object. **/
   std::shared_ptr<tiledb_kv_item_t> ptr() const {
     return item_;
+  }
+
+  template <typename T>
+  void set(const T&);
+
+  template <typename T>
+  T get() const;
+
+  template <typename T>
+  void operator=(const T& v) {
+    set<T>(v);
+  }
+
+  template <typename T>
+  operator T() {
+    return get<T>();
   }
 
  private:
@@ -575,6 +593,24 @@ class Map {
         nullptr);
   }
 
+  /** Check if a key is in the map. */
+  template <typename T>
+  bool has_key(const T& key) {
+    using DataT = typename impl::TypeHandler<T>;
+    int has;
+    auto& ctx = context();
+
+    ctx.handle_error(tiledb_kv_has_key(
+        ctx,
+        kv_.get(),
+        DataT::data(key),
+        DataT::tiledb_type,
+        DataT::size(key) * sizeof(typename DataT::value_type),
+        &has));
+
+    return has != 0;
+  }
+
   /**
    * Get an item from the map given a key. Throws `TileDBError` on missing
    * key.
@@ -744,6 +780,22 @@ class Map {
 /*            DEFINITIONS            */
 /* ********************************* */
 
+template <typename T>
+inline void MapItem::set(const T& v) {
+  if (map_->schema_.attribute_num() != 1)
+    throw TileDBError(
+        "Attribute name must be defined for maps with >1 attribute.");
+  operator[](map_->schema_.attribute(0).name()) = v;
+}
+
+template <typename T>
+inline T MapItem::get() const {
+  if (map_->schema_.attribute_num() != 1)
+    throw TileDBError(
+        "Attribute name must be defined for maps with >1 attribute.");
+  return get<T>(map_->schema_.attribute(0).name());
+}
+
 inline void MapItem::add_to_map() {
   if (map_)
     map_->add_item(*this);
@@ -751,6 +803,10 @@ inline void MapItem::add_to_map() {
 
 inline impl::MapItemProxy MapItem::operator[](const std::string& attr) {
   return impl::MapItemProxy(attr, *this);
+}
+
+inline impl::MapItemProxy MapItem::operator[](const char* cstr) {
+  return operator[](std::string(cstr));
 }
 
 inline impl::MultiMapItemProxy MapItem::operator[](

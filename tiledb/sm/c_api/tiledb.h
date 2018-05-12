@@ -2156,7 +2156,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * uint64_t subarray[] = {11, 20, 11, 20};
  * uint64_t npartitions;
  * void** subarray_partitions;
- * tiledb_array_compute_subarray_partitions(
+ * tiledb_array_partition_subarray(
  *     ctx,
  *     "my_array",
  *     subarray,
@@ -2200,7 +2200,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  *
  * @note The user is responsible for freeing `subarray_partitions`.
  */
-TILEDB_EXPORT int tiledb_array_compute_subarray_partitions(
+TILEDB_EXPORT int tiledb_array_partition_subarray(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const void* subarray,

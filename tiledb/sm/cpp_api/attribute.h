@@ -92,6 +92,27 @@ class Attribute {
       , deleter_(ctx) {
     attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
+
+  /** Construct an attribute with a given enuemrated type. By default, cell_num
+   * is 1.*/
+  Attribute(const Context& ctx, const std::string& name, tiledb_datatype_t type)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    init_from_type(name, type);
+  }
+
+  /** Construct an attribute with an enumerated type and given compressor. */
+  Attribute(
+      const Context& ctx,
+      const std::string& name,
+      tiledb_datatype_t type,
+      const Compressor& compressor)
+      : ctx_(ctx)
+      , deleter_(ctx) {
+    init_from_type(name, type);
+    set_compressor(compressor);
+  }
+
   Attribute(const Attribute& attr) = default;
   Attribute(Attribute&& o) = default;
   Attribute& operator=(const Attribute&) = default;
@@ -210,7 +231,7 @@ class Attribute {
   template <typename T>
   static Attribute create(const Context& ctx, const std::string& name) {
     using DataT = typename impl::TypeHandler<T>;
-    auto a = create(ctx, name, DataT::tiledb_type);
+    Attribute a(ctx, name, DataT::tiledb_type);
     a.set_cell_val_num(DataT::tiledb_num);
     return a;
   }
@@ -254,12 +275,11 @@ class Attribute {
   /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
 
-  /** Creates an attribute with the input name and datatype. */
-  static Attribute create(
-      const Context& ctx, const std::string& name, tiledb_datatype_t type) {
+  void init_from_type(const std::string& name, tiledb_datatype_t type) {
     tiledb_attribute_t* attr;
+    auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_attribute_create(ctx, &attr, name.c_str(), type));
-    return Attribute(ctx, attr);
+    attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
 };
 

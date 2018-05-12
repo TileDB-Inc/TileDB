@@ -144,7 +144,7 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_compute_max_read_buffer_sizes
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_compute_subarray_partitions
+.. doxygenfunction:: tiledb_array_partition_subarray
     :project: TileDB-C
 
 Array Schema
