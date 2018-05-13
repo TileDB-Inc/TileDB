@@ -104,6 +104,44 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   CHECK(std::get<2>(ret)[0] == 4.2);
 }
 
+/**
+ * Test to catch segfault in empty map due to nullptr for
+ * attr_buffer.second.buffer_var_size_ in Reader::zero_out_buffer_sizes()
+ *
+ * Issue #606 https://github.com/TileDB-Inc/TileDB/issues/606
+ *
+ */
+TEST_CASE_METHOD(
+    CPPMapFx,
+    "C++ API: Map Issue 606 segault in Reader::zero_out_buffer_sizes()",
+    "[cppapi]") {
+  Map map(ctx, "cpp_unit_map");
+
+  int simple_key = 1;
+
+  // Create item to add to map
+  auto i1 = Map::create_item(ctx, simple_key);
+  i1["a1"] = 1;
+  i1["a2"] = std::string("someval");
+  i1["a3"] = std::array<double, 2>({{3, 2.4}});
+
+  // Get item from map, at this point the map is empty, item should != good()
+  // This is where segfault was happening for issue #606
+  tiledb::MapItem test_get_item_by_key = map.get_item(simple_key);
+  CHECK(!test_get_item_by_key.good());
+
+  // Add the item
+  map.add_item(i1);
+  map.flush();
+
+  // Validate item is now on map
+  test_get_item_by_key = map.get_item(simple_key);
+  CHECK(test_get_item_by_key.good());
+  CHECK(test_get_item_by_key.get<int>("a1") == 1);
+  CHECK(test_get_item_by_key.get<std::string>("a2") == "someval");
+  CHECK(test_get_item_by_key.get<std::array<double, 2>>("a3")[0] == 3);
+}
+
 struct CPPMapFromMapFx {
   CPPMapFromMapFx()
       : vfs(ctx) {
