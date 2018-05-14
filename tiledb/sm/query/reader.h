@@ -370,6 +370,32 @@ class Reader {
    */
   Status set_subarray(const void* subarray);
 
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Compute the partitions of a subarray given some buffer sizes budget.
+   *
+   * @param storage_manager The storage manager.
+   * @param array_schema The array schema.
+   * @param fragment_metadata The fragment metadata.
+   * @param subarray The subarray to compute the partitions on.
+   * @param layout The layout of the subarray query.
+   * @param buffer_sizes_map The buffer sizes budget for each attribute.
+   * @param subarray_partitions The subarray partitions result.
+   * @return Status
+   */
+  static Status compute_subarray_partitions(
+      StorageManager* storage_manager,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const void* subarray,
+      Layout layout,
+      const std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>&
+          buffer_sizes_map,
+      std::vector<void*>* subarray_partitions);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

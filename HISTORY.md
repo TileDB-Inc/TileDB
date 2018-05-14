@@ -40,6 +40,7 @@
 * Added `tiledb_ctx_cancel_tasks` function.
 * Added `sm.number_of_threads` config parameter.
 * Added `sm.enable_signal_handlers` config parameter.
+* Added `tiledb_array_compute_subarray_partitions` for computing subarray partitions based on memory budget.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.

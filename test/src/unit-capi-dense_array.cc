@@ -92,6 +92,10 @@ struct DenseArrayFx {
   void check_simultaneous_writes(const std::string& path);
   void check_cancel_and_retry_writes(const std::string& path);
   void check_return_coords(const std::string& path);
+  void check_subarray_partitions(const std::string& path);
+  void check_subarray_partitions_2_row(const std::string& array_name);
+  void check_subarray_partitions_2_col(const std::string& array_name);
+  void check_subarray_partitions_0(const std::string& array_name);
   void create_dense_array(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
   void read_dense_array_with_coords_full_global(const std::string& array_name);
@@ -1915,6 +1919,117 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   free(buffer_coords);
 }
 
+void DenseArrayFx::check_subarray_partitions(const std::string& path) {
+  std::string array_name = path + "subarray_partitions";
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+  check_subarray_partitions_2_row(array_name);
+  check_subarray_partitions_2_col(array_name);
+  check_subarray_partitions_0(array_name);
+}
+
+void DenseArrayFx::check_subarray_partitions_2_row(
+    const std::string& array_name) {
+  // Get subarray partitions
+  const char* attributes[] = {"a1"};
+  uint64_t buffer_sizes[] = {32};
+  uint64_t subarray[] = {1, 4, 1, 4};
+  void** subarray_partitions = nullptr;
+  uint64_t npartitions;
+  int rc = tiledb_array_compute_subarray_partitions(
+      ctx_,
+      array_name.c_str(),
+      subarray,
+      TILEDB_ROW_MAJOR,
+      attributes,
+      1,
+      buffer_sizes,
+      &subarray_partitions,
+      &npartitions);
+  CHECK(rc == TILEDB_OK);
+
+  // Check subarray partitions
+  uint64_t c_subarray_partition_1[] = {1, 2, 1, 4};
+  uint64_t c_subarray_partition_2[] = {3, 4, 1, 4};
+  REQUIRE(npartitions == 2);
+  CHECK(!memcmp(
+      subarray_partitions[0],
+      c_subarray_partition_1,
+      sizeof(c_subarray_partition_1)));
+  CHECK(!memcmp(
+      subarray_partitions[1],
+      c_subarray_partition_2,
+      sizeof(c_subarray_partition_2)));
+
+  if (subarray_partitions != nullptr) {
+    for (uint64_t i = 0; i < npartitions; ++i)
+      free(subarray_partitions[i]);
+    free(subarray_partitions);
+  }
+}
+
+void DenseArrayFx::check_subarray_partitions_2_col(
+    const std::string& array_name) {
+  // Get subarray partitions
+  const char* attributes[] = {"a1"};
+  uint64_t buffer_sizes[] = {32};
+  uint64_t subarray[] = {1, 4, 1, 4};
+  void** subarray_partitions = nullptr;
+  uint64_t npartitions;
+  int rc = tiledb_array_compute_subarray_partitions(
+      ctx_,
+      array_name.c_str(),
+      subarray,
+      TILEDB_COL_MAJOR,
+      attributes,
+      1,
+      buffer_sizes,
+      &subarray_partitions,
+      &npartitions);
+  CHECK(rc == TILEDB_OK);
+
+  // Check subarray partitions
+  uint64_t c_subarray_partition_1[] = {1, 4, 1, 2};
+  uint64_t c_subarray_partition_2[] = {1, 4, 3, 4};
+  REQUIRE(npartitions == 2);
+  CHECK(!memcmp(
+      subarray_partitions[0],
+      c_subarray_partition_1,
+      sizeof(c_subarray_partition_1)));
+  CHECK(!memcmp(
+      subarray_partitions[1],
+      c_subarray_partition_2,
+      sizeof(c_subarray_partition_2)));
+
+  if (subarray_partitions != nullptr) {
+    for (uint64_t i = 0; i < npartitions; ++i)
+      std::free(subarray_partitions[i]);
+    std::free(subarray_partitions);
+  }
+}
+
+void DenseArrayFx::check_subarray_partitions_0(const std::string& array_name) {
+  // Get subarray partitions
+  const char* attributes[] = {"a1"};
+  uint64_t buffer_sizes[] = {3};
+  uint64_t subarray[] = {1, 4, 1, 4};
+  void** subarray_partitions = nullptr;
+  uint64_t npartitions;
+  int rc = tiledb_array_compute_subarray_partitions(
+      ctx_,
+      array_name.c_str(),
+      subarray,
+      TILEDB_COL_MAJOR,
+      attributes,
+      1,
+      buffer_sizes,
+      &subarray_partitions,
+      &npartitions);
+  CHECK(rc == TILEDB_OK);
+  CHECK(npartitions == 0);
+  CHECK(subarray_partitions == NULL);
+}
+
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -2052,5 +2167,22 @@ TEST_CASE_METHOD(
   }
   create_temp_dir(temp_dir);
   check_return_coords(temp_dir);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, subarray partitions",
+    "[capi], [dense], [subarray-partitions]") {
+  std::string temp_dir;
+  if (supports_s3_) {
+    temp_dir = S3_TEMP_DIR;
+  } else if (supports_hdfs_) {
+    temp_dir = HDFS_TEMP_DIR;
+  } else {
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  }
+  create_temp_dir(temp_dir);
+  check_subarray_partitions(temp_dir);
   remove_temp_dir(temp_dir);
 }

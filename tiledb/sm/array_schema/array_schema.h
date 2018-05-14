@@ -180,6 +180,17 @@ class ArraySchema {
    */
   Status check() const;
 
+  /**
+   * Throws an error if there is an attribute in the input that does not
+   * exist in the schema.
+   *
+   * @param attributes The attributes to be checked.
+   * @param attribute_num The number of attributes.
+   * @return Status
+   */
+  Status check_attributes(
+      const char** attributes, unsigned attribute_num) const;
+
   /** Returns the compression type of the attribute with the input id. */
   Compressor compression(unsigned int attribute_id) const;
 

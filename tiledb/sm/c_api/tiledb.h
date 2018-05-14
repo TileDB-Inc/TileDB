@@ -2144,6 +2144,73 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
     unsigned attribute_num,
     uint64_t* buffer_sizes);
 
+/**
+ * Computes the partitions a given subarray must be decomposed into, given
+ * buffer size budgets for a set of attributes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t buffer_sizes[] = {200, 200};
+ * const char* attributes[] = {"attr_1", "attr_2"};
+ * uint64_t subarray[] = {11, 20, 11, 20};
+ * uint64_t npartitions;
+ * void** subarray_partitions;
+ * tiledb_array_compute_subarray_partitions(
+ *     ctx,
+ *     "my_array",
+ *     subarray,
+ *     TILEDB_ROW_MAJOR,
+ *     attributes,
+ *     2,
+ *     buffer_sizes,
+ *     &subarray_partitions,
+ *     &npartitions);
+ *
+ * // This is how you should free
+ * if (subarray_partitions != nullptr) {
+ *   for(uint64_t i=0; i<npartitions; ++i)
+ *     free(subarray_partitions[i]);
+ *   free(subarray_partitions);
+ * }
+ * @endcode
+ *
+ * If `attr_1` and `attr_2` have type `int32`, then in the above example
+ * `npartitions` will be set to `2`, and `subarray_partitions` to
+ * `{ {11, 15, 11, 20}, {16, 20, 11, 20} }`. Note that the number of dimensions
+ * and domain type are necessary for properly parsing `subarray_partitions`.
+ *
+ * If instead the layout was set to `TILEDB_COL_MAJOR`, then
+ * `subarray_partitions` would be equalt to
+ * `{ {11, 20, 11, 15}, {11, 20, 16, 20} }` instead (splitting by columns
+ * instead of by rows).
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array URI.
+ * @param subarray The subarray.
+ * @param layout The layout in which the results are retrieved in the subarray.
+ * @param attributes The attributes.
+ * @param attribute_num The number of attributes.
+ * @param buffer_sizes The buffer size budgets. There is one buffer size per
+ *     fixed-sized attribute, and two for var-sized attributes (the first is
+ *     for the offsets, the second for the actual values).
+ * @param subarray_partitions The subarray partitions to be retrieved.
+ * @param npartitions The number of the retrieved partitions.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The user is responsible for freeing `subarray_partitions`.
+ */
+TILEDB_EXPORT int tiledb_array_compute_subarray_partitions(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const char** attributes,
+    unsigned attribute_num,
+    const uint64_t* buffer_sizes,
+    void*** subarray_partitions,
+    uint64_t* npartitions);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */

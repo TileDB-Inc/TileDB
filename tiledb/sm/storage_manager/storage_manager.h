@@ -128,6 +128,35 @@ class StorageManager {
       uint64_t* buffer_sizes);
 
   /**
+   * Computes the partitions a given subarray must be decomposed into, given
+   * buffer size budgets for a set of attributes.
+   *
+   * @param array_uri The array URI.
+   * @param subarray The subarray.
+   * @param layout The layout in which the results are retrieved in the
+   * subarray.
+   * @param attributes The attributes.
+   * @param attribute_num The number of attributes.
+   * @param buffer_sizes The buffer size budgets. There is one buffer size per
+   *     fixed-sized attribute, and two for var-sized attributes (the first is
+   *     for the offsets, the second for the actual values).
+   * @param subarray_partitions The subarray partitions to be retrieved.
+   * @param npartitions The number of the retrieved partitions.
+   * @return Status
+   *
+   * @note The user is responsible for freeing `subarray_partitions`.
+   */
+  Status array_compute_subarray_partitions(
+      const char* array_uri,
+      const void* subarray,
+      Layout layout,
+      const char** attributes,
+      unsigned attribute_num,
+      const uint64_t* buffer_sizes,
+      void*** subarray_partitions,
+      uint64_t* npartitions);
+
+  /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *

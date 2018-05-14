@@ -94,6 +94,11 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
 
+  // Check attributes
+  RETURN_NOT_OK_ELSE(
+      array_schema->check_attributes(attributes, attribute_num),
+      array_close(uri));
+
   // Compute buffer sizes
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       buffer_sizes_tmp;
@@ -198,6 +203,87 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
       return LOG_STATUS(Status::StorageManagerError(
           "Cannot compute max read buffer sizes; Invalid coordinates type"));
   }
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_compute_subarray_partitions(
+    const char* array_uri,
+    const void* subarray,
+    Layout layout,
+    const char** attributes,
+    unsigned attribute_num,
+    const uint64_t* buffer_sizes,
+    void*** subarray_partitions,
+    uint64_t* npartitions) {
+  // Initialization
+  *npartitions = 0;
+  *subarray_partitions = nullptr;
+
+  // Open the array
+  auto uri = URI(array_uri);
+  std::vector<FragmentMetadata*> metadata;
+  auto array_schema = (const ArraySchema*)nullptr;
+  RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
+  auto subarray_size = 2 * array_schema->coords_size();
+
+  // Compute buffer sizes map
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      buffer_sizes_map;
+  RETURN_NOT_OK_ELSE(
+      array_schema->check_attributes(attributes, attribute_num),
+      array_close(uri));
+  for (unsigned i = 0, bid = 0; i < attribute_num; ++i) {
+    if (array_schema->var_size(attributes[i])) {
+      buffer_sizes_map[attributes[i]] = std::pair<uint64_t, uint64_t>(
+          buffer_sizes[bid], buffer_sizes[bid + 1]);
+      bid += 2;
+    } else {
+      buffer_sizes_map[attributes[i]] =
+          std::pair<uint64_t, uint64_t>(buffer_sizes[bid], 0);
+      ++bid;
+    }
+  }
+
+  // Get partitions
+  std::vector<void*> subarray_partitions_vec;
+  RETURN_NOT_OK_ELSE(
+      Reader::compute_subarray_partitions(
+          this,
+          array_schema,
+          metadata,
+          subarray,
+          layout,
+          buffer_sizes_map,
+          &subarray_partitions_vec),
+      array_close(uri));
+
+  RETURN_NOT_OK(array_close(uri));
+
+  // Handle empty partitions
+  if (subarray_partitions_vec.empty())
+    return Status::Ok();
+
+  // Copy subarray partitions
+  *subarray_partitions =
+      (void**)std::malloc(subarray_partitions_vec.size() * sizeof(void*));
+  if (*subarray_partitions == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Failed to compute subarray partitions; memory allocation error"));
+  for (uint64_t i = 0; i < (uint64_t)subarray_partitions_vec.size(); ++i) {
+    (*subarray_partitions)[i] = std::malloc(subarray_size);
+    if ((*subarray_partitions)[i] == nullptr) {
+      for (uint64_t j = 0; j < i; ++j)
+        std::free((*subarray_partitions)[j]);
+      std::free(*subarray_partitions);
+      *subarray_partitions = nullptr;
+      return LOG_STATUS(Status::StorageManagerError(
+          "Failed to compute subarray partitions; memory allocation error"));
+    }
+    std::memcpy(
+        (*subarray_partitions)[i], subarray_partitions_vec[i], subarray_size);
+  }
+  *npartitions = (uint64_t)subarray_partitions_vec.size();
 
   return Status::Ok();
 }
