@@ -43,7 +43,7 @@ function(build_TileDB_example_capi TARGET)
     target_link_libraries(${TARGET}_c pthread)
   endif()
   target_include_directories(${TARGET}_c PUBLIC
-    "${CMAKE_BINARY_DIR}/examples/"
+    "${CMAKE_CURRENT_BINARY_DIR}/../"
   )
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()
@@ -55,7 +55,7 @@ file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "*.c")
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
   # Get the binary name
   string(REGEX
-    REPLACE "^${CMAKE_SOURCE_DIR}/examples/c_api/" ""
+    REPLACE "^${CMAKE_CURRENT_SOURCE_DIR}/" ""
     EXAMPLE_STRIPPED ${EXAMPLE_SOURCE}
   )
   string(REGEX
