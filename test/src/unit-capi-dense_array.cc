@@ -91,6 +91,16 @@ struct DenseArrayFx {
   void check_sparse_writes(const std::string& path);
   void check_simultaneous_writes(const std::string& path);
   void check_cancel_and_retry_writes(const std::string& path);
+  void check_return_coords(const std::string& path);
+  void create_dense_array(const std::string& array_name);
+  void write_dense_array(const std::string& array_name);
+  void read_dense_array_with_coords_full_global(const std::string& array_name);
+  void read_dense_array_with_coords_full_row(const std::string& array_name);
+  void read_dense_array_with_coords_full_col(const std::string& array_name);
+  void read_dense_array_with_coords_subarray_global(
+      const std::string& array_name);
+  void read_dense_array_with_coords_subarray_row(const std::string& array_name);
+  void read_dense_array_with_coords_subarray_col(const std::string& array_name);
   static std::string random_bucket_name(const std::string& prefix);
 
   /**
@@ -1237,6 +1247,674 @@ void DenseArrayFx::check_cancel_and_retry_writes(const std::string& path) {
   delete[] read_buffer;
 }
 
+void DenseArrayFx::create_dense_array(const std::string& array_name) {
+  // Create dimensions
+  uint64_t dim_domain[] = {1, 4, 1, 4};
+  uint64_t tile_extents[] = {2, 2};
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_create(
+      ctx_, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_create(
+      ctx_, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_create(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attributes
+  tiledb_attribute_t* a1;
+  rc = tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_INT32);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a2;
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_create(ctx_, &a2, "a2", TILEDB_CHAR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a3;
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_create(ctx_, &a3, "a3", TILEDB_FLOAT32);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a3);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(ctx_, &a1);
+  tiledb_attribute_free(ctx_, &a2);
+  tiledb_attribute_free(ctx_, &a3);
+  tiledb_dimension_free(ctx_, &d1);
+  tiledb_dimension_free(ctx_, &d2);
+  tiledb_domain_free(ctx_, &domain);
+  tiledb_array_schema_free(ctx_, &array_schema);
+}
+
+void DenseArrayFx::check_return_coords(const std::string& path) {
+  std::string array_name = path + "return_coords";
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+  read_dense_array_with_coords_full_global(array_name);
+  read_dense_array_with_coords_full_row(array_name);
+  read_dense_array_with_coords_full_col(array_name);
+  read_dense_array_with_coords_subarray_global(array_name);
+  read_dense_array_with_coords_subarray_row(array_name);
+  read_dense_array_with_coords_subarray_col(array_name);
+}
+
+void DenseArrayFx::write_dense_array(const std::string& array_name) {
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3"};
+
+  // Prepare cell buffers
+  // clang-format off
+  int buffer_a1[] = {
+      0,  1,  2,  3, 4,  5,  6,  7,
+      8,  9,  10, 11, 12, 13, 14, 15
+  };
+  uint64_t buffer_a2[] = {
+      0,  1,  3,  6, 10, 11, 13, 16,
+      20, 21, 23, 26, 30, 31, 33, 36
+  };
+  char buffer_var_a2[] =
+      "abbcccdddd"
+      "effggghhhh"
+      "ijjkkkllll"
+      "mnnooopppp";
+  float buffer_a3[] = {
+      0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
+      4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+      8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
+      12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+  };
+  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  uint64_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_a3)
+  };
+  // clang-format on
+
+  // Create query
+  tiledb_query_t* query;
+  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_full_global(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  uint64_t c_buffer_a2[] = {
+      0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
+  char c_buffer_var_a2[] =
+      "abbcccdddd"
+      "effggghhhh"
+      "ijjkkkllll"
+      "mnnooopppp";
+  float c_buffer_a3[] = {
+      0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
+      4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+      8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
+      12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+  };
+  uint64_t c_buffer_coords[] = {1, 1, 1, 2, 2, 1, 2, 2, 1, 3, 1, 4, 2, 3, 2, 4,
+                                3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_full_row(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
+  uint64_t c_buffer_a2[] = {
+      0, 1, 3, 4, 6, 9, 13, 16, 20, 21, 23, 24, 26, 29, 33, 36};
+  char c_buffer_var_a2[] =
+      "abbeff"
+      "cccddddggghhhh"
+      "ijjmnn"
+      "kkkllllooopppp";
+  float c_buffer_a3[] = {
+      0.1f,  0.2f,  1.1f,  1.2f,  4.1f,  4.2f,  5.1f,  5.2f,
+      2.1f,  2.2f,  3.1f,  3.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+      8.1f,  8.2f,  9.1f,  9.2f,  12.1f, 12.2f, 13.1f, 13.2f,
+      10.1f, 10.2f, 11.1f, 11.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+  };
+  uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 3, 1, 4, 2, 1, 2, 2, 2, 3, 2, 4,
+                                3, 1, 3, 2, 3, 3, 3, 4, 4, 1, 4, 2, 4, 3, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_full_col(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 2, 8, 10, 1, 3, 9, 11, 4, 6, 12, 14, 5, 7, 13, 15};
+  uint64_t c_buffer_a2[] = {
+      0, 1, 4, 5, 8, 10, 14, 16, 20, 21, 24, 25, 28, 30, 34, 36};
+  char c_buffer_var_a2[] =
+      "acccikkk"
+      "bbddddjjllll"
+      "egggmooo"
+      "ffhhhhnnpppp";
+  float c_buffer_a3[] = {
+      0.1f,  0.2f,  2.1f, 2.2f,  8.1f,  8.2f, 10.1f, 10.2f, 1.1f,  1.2f,  3.1f,
+      3.2f,  9.1f,  9.2f, 11.1f, 11.2f, 4.1f, 4.2f,  6.1f,  6.2f,  12.1f, 12.2f,
+      14.1f, 14.2f, 5.1f, 5.2f,  7.1f,  7.2f, 13.1f, 13.2f, 15.1f, 15.2f,
+  };
+  uint64_t c_buffer_coords[] = {1, 1, 2, 1, 3, 1, 4, 1, 1, 2, 2, 2, 3, 2, 4, 2,
+                                1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {1, 4, 1, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_subarray_global(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {9, 11, 12, 13, 14, 15};
+  uint64_t c_buffer_a2[] = {0, 2, 6, 7, 9, 12};
+  char c_buffer_var_a2[] = "jjllllmnnooopppp";
+  float c_buffer_a3[] = {
+      9.1f,
+      9.2f,
+      11.1f,
+      11.2f,
+      12.1f,
+      12.2f,
+      13.1f,
+      13.2f,
+      14.1f,
+      14.2f,
+      15.1f,
+      15.2f,
+  };
+  uint64_t c_buffer_coords[] = {3, 2, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {3, 4, 2, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_subarray_row(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {9, 12, 13, 11, 14, 15};
+  uint64_t c_buffer_a2[] = {0, 2, 3, 5, 9, 12};
+  char c_buffer_var_a2[] = "jjmnnllllooopppp";
+  float c_buffer_a3[] = {9.1f,
+                         9.2f,
+                         12.1f,
+                         12.2f,
+                         13.1f,
+                         13.2f,
+                         11.1f,
+                         11.2f,
+                         14.1f,
+                         14.2f,
+                         15.1f,
+                         15.2f};
+  uint64_t c_buffer_coords[] = {3, 2, 3, 3, 3, 4, 4, 2, 4, 3, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {3, 4, 2, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
+void DenseArrayFx::read_dense_array_with_coords_subarray_col(
+    const std::string& array_name) {
+  // Correct buffers
+  int c_buffer_a1[] = {9, 11, 12, 14, 13, 15};
+  uint64_t c_buffer_a2[] = {0, 2, 6, 7, 10, 12};
+  char c_buffer_var_a2[] = "jjllllmooonnpppp";
+  float c_buffer_a3[] = {9.1f,
+                         9.2f,
+                         11.1f,
+                         11.2f,
+                         12.1f,
+                         12.2f,
+                         14.1f,
+                         14.2f,
+                         13.1f,
+                         13.2f,
+                         15.1f,
+                         15.2f};
+  uint64_t c_buffer_coords[] = {3, 2, 4, 2, 3, 3, 4, 3, 3, 4, 4, 4};
+
+  // Compute max buffer sizes
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  uint64_t max_buffer_sizes[5];
+  uint64_t subarray[] = {3, 4, 2, 4};
+  int rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array_name.c_str(), subarray, attributes, 4, &max_buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(max_buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(max_buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(max_buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(max_buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(max_buffer_sizes[4]);
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
+                             max_buffer_sizes[1],
+                             max_buffer_sizes[2],
+                             max_buffer_sizes[3],
+                             max_buffer_sizes[4]};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(sizeof(c_buffer_a1) <= max_buffer_sizes[0]);
+  CHECK(sizeof(c_buffer_a2) <= max_buffer_sizes[1]);
+  CHECK(sizeof(c_buffer_var_a2) <= max_buffer_sizes[2]);
+  CHECK(sizeof(c_buffer_a3) <= max_buffer_sizes[3]);
+  CHECK(sizeof(c_buffer_coords) <= max_buffer_sizes[4]);
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2, c_buffer_a2, sizeof(c_buffer_a2)));
+  CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  // Clean up
+  tiledb_query_free(ctx_, &query);
+  free(buffer_a1);
+  free(buffer_a2);
+  free(buffer_var_a2);
+  free(buffer_a3);
+  free(buffer_coords);
+}
+
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -1357,5 +2035,22 @@ TEST_CASE_METHOD(
   }
   create_temp_dir(temp_dir);
   check_cancel_and_retry_writes(temp_dir);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, return coordinates",
+    "[capi], [dense], [return-coords]") {
+  std::string temp_dir;
+  if (supports_s3_) {
+    temp_dir = S3_TEMP_DIR;
+  } else if (supports_hdfs_) {
+    temp_dir = HDFS_TEMP_DIR;
+  } else {
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  }
+  create_temp_dir(temp_dir);
+  check_return_coords(temp_dir);
   remove_temp_dir(temp_dir);
 }

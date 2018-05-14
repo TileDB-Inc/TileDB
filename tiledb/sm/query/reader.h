@@ -590,6 +590,51 @@ class Reader {
   Status dense_read();
 
   /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized.
+   *
+   * @tparam T The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status fill_coords() const;
+
+  /**
+   * Fills coordinates in the input buffer for a particular cell slab, following
+   * a row-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [3, 1], [3, 2], and [3, 3].
+   *
+   * @tparam T The domain type.
+   * @param start The starting coordinates in the slab.
+   * @param num The number of coords to be written.
+   * @param buff The buffer to write the coordinates into.
+   * @param offset The offset in `buff` where the write will begin.
+   */
+  template <class T>
+  void fill_coords_row_slab(
+      const T* start, uint64_t num, void* buff, uint64_t* offset) const;
+
+  /**
+   * Fills coordinates in the input buffer for a particular cell slab, following
+   * a col-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [4, 1], [5, 1], and [6, 1].
+   *
+   * @tparam T The domain type.
+   * @param start The starting coordinates in the slab.
+   * @param num The number of coords to be written.
+   * @param buff The buffer to write the coordinates into.
+   * @param offset The offset in `buff` where the write will begin.
+   */
+  template <class T>
+  void fill_coords_col_slab(
+      const T* start, uint64_t num, void* buff, uint64_t* offset) const;
+
+  /**
    * Gets all the coordinates of the input tile into `coords`.
    *
    * @tparam T The coords type.

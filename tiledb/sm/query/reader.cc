@@ -1042,10 +1042,101 @@ Status Reader::dense_read() {
   RETURN_CANCEL_OR_ERROR(read_all_tiles(&dense_tiles, false));
 
   // Copy cells
-  for (const auto& attr : attributes_)
-    RETURN_CANCEL_OR_ERROR(copy_cells(attr, overlapping_cell_ranges));
+  for (const auto& attr : attributes_) {
+    if (attr != constants::coords)  // Skip coordinates
+      RETURN_CANCEL_OR_ERROR(copy_cells(attr, overlapping_cell_ranges));
+  }
+
+  // Fill coordinates if the user requested them
+  if (has_coords())
+    RETURN_CANCEL_OR_ERROR(fill_coords<T>());
 
   return Status::Ok();
+}
+
+template <class T>
+Status Reader::fill_coords() const {
+  // For easy reference
+  auto it = attr_buffers_.find(constants::coords);
+  assert(it != attr_buffers_.end());
+  auto coords_buff = it->second.buffer_;
+  auto coords_buff_offset = (uint64_t)0;
+  auto coords_buff_size = it->second.buffer_size_;
+  auto domain = array_schema_->domain();
+  auto cell_order = array_schema_->cell_order();
+  auto subarray_len = 2 * array_schema_->dim_num();
+  std::vector<T> subarray;
+  subarray.resize(subarray_len);
+  for (size_t i = 0; i < subarray_len; ++i)
+    subarray[i] = ((T*)cur_subarray_)[i];
+
+  // Iterate over all coordinates, retrieved in cell slabs
+  DenseCellRangeIter<T> cell_it(domain, subarray, layout_);
+  RETURN_CANCEL_OR_ERROR(cell_it.begin());
+  while (!cell_it.end()) {
+    auto coords_num = cell_it.range_end() - cell_it.range_start() + 1;
+    if (layout_ == Layout::ROW_MAJOR ||
+        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
+      fill_coords_row_slab(
+          cell_it.coords_start(), coords_num, coords_buff, &coords_buff_offset);
+    else
+      fill_coords_col_slab(
+          cell_it.coords_start(), coords_num, coords_buff, &coords_buff_offset);
+    ++cell_it;
+  }
+
+  // Update the coords buffer size
+  *coords_buff_size = coords_buff_offset;
+
+  return Status::Ok();
+}
+
+template <class T>
+void Reader::fill_coords_row_slab(
+    const T* start, uint64_t num, void* buff, uint64_t* offset) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+  assert(dim_num > 0);
+  auto c_buff = (char*)buff;
+
+  // Fill coordinates
+  for (uint64_t i = 0; i < num; ++i) {
+    // First dim-1 dimensions are copied as they are
+    if (dim_num > 1) {
+      auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+      std::memcpy(c_buff + *offset, start, bytes_to_copy);
+      *offset += bytes_to_copy;
+    }
+
+    // Last dimension is incremented by `i`
+    auto new_coord = start[dim_num - 1] + i;
+    std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+    *offset += sizeof(T);
+  }
+}
+
+template <class T>
+void Reader::fill_coords_col_slab(
+    const T* start, uint64_t num, void* buff, uint64_t* offset) const {
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+  assert(dim_num > 0);
+  auto c_buff = (char*)buff;
+
+  // Fill coordinates
+  for (uint64_t i = 0; i < num; ++i) {
+    // First dimension is incremented by `i`
+    auto new_coord = start[0] + i;
+    std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+    *offset += sizeof(T);
+
+    // Last dim-1 dimensions are copied as they are
+    if (dim_num > 1) {
+      auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+      std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+      *offset += bytes_to_copy;
+    }
+  }
 }
 
 template <class T>
@@ -1276,7 +1367,14 @@ Status Reader::read_all_tiles(
   if (tiles->empty())
     return Status::Ok();
 
-  std::set<std::string> all_attributes(attributes_.begin(), attributes_.end());
+  // Prepare attributes
+  std::set<std::string> all_attributes;
+  for (const auto& attr : attributes_) {
+    if (array_schema_->dense() && attr == constants::coords)
+      continue;  // Skip coords in dense case - no actual tiles to read
+    all_attributes.insert(attr);
+  }
+
   // Make sure the coordinate tiles are read if specified.
   if (ensure_coords)
     all_attributes.insert(constants::coords);
