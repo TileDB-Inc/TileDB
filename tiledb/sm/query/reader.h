@@ -175,8 +175,7 @@ class Reader {
   };
 
   /** A list of cell ranges. */
-  typedef std::list<std::unique_ptr<OverlappingCellRange>>
-      OverlappingCellRangeList;
+  typedef std::vector<OverlappingCellRange> OverlappingCellRangeList;
 
   /**
    * Records the overlapping tile and position of the coordinates

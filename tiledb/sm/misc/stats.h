@@ -44,6 +44,10 @@ namespace tiledb {
 namespace sm {
 namespace stats {
 
+/* ********************************* */
+/*          TYPE DEFINITIONS         */
+/* ********************************* */
+
 /**
  * Class that defines stats counters and methods to manipulate them.
  */
@@ -122,6 +126,10 @@ class Statistics {
  */
 extern Statistics all_stats;
 
+/* ********************************* */
+/*               MACROS              */
+/* ********************************* */
+
 /** Marks the beginning of a stats-enabled function. This should come before the
  * first statement where you want the function timer to start. */
 #define STATS_FUNC_IN(f)                                 \
@@ -169,6 +177,20 @@ extern Statistics all_stats;
   if (stats::all_stats.enabled()) {                     \
     stats::all_stats.counter_##counter_name += (value); \
   }
+
+/** Starts an ad hoc timer of the given name. */
+#define STATS_TIMER_START(name) \
+  auto __timer_##name = std::chrono::steady_clock::now()
+
+/** Returns nanoseconds since the given ad hoc timer was started. */
+#define STATS_TIMER_NS(name)                              \
+  (std::chrono::duration_cast<std::chrono::nanoseconds>(  \
+       std::chrono::steady_clock::now() - __timer_##name) \
+       .count())
+
+#define STATS_TIMER_PRINT(os, name)                                           \
+  (os) << "[stats] Timer " #name " value = " << STATS_TIMER_NS(name) << " ns" \
+       << std::endl
 
 }  // namespace stats
 }  // namespace sm

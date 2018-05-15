@@ -449,8 +449,7 @@ Status Reader::compute_cell_ranges(
       end_pos = it->pos_;
     } else {
       // New range - append previous range
-      cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
-          new OverlappingCellRange(tile, start_pos, end_pos)));
+      cell_ranges->emplace_back(tile, start_pos, end_pos);
       start_pos = it->pos_;
       end_pos = start_pos;
       tile = it->tile_;
@@ -459,8 +458,7 @@ Status Reader::compute_cell_ranges(
   }
 
   // Append the last range
-  cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
-      new OverlappingCellRange(tile, start_pos, end_pos)));
+  cell_ranges->emplace_back(tile, start_pos, end_pos);
 
   return Status::Ok();
 }
@@ -652,8 +650,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
 
     // Push remaining range to the result
     if (start <= end)
-      overlapping_cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
-          new OverlappingCellRange(cur_tile, start, end)));
+      overlapping_cell_ranges->emplace_back(cur_tile, start, end);
 
     // Update state
     cur_tile = tile;
@@ -682,8 +679,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
 
   // Push remaining range to the result
   if (start <= end)
-    overlapping_cell_ranges->push_back(std::unique_ptr<OverlappingCellRange>(
-        new OverlappingCellRange(cur_tile, start, end)));
+    overlapping_cell_ranges->emplace_back(cur_tile, start, end);
 
   return Status::Ok();
 }
@@ -784,6 +780,10 @@ Status Reader::compute_tile_coordinates(
 Status Reader::copy_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
+  // Early exit for empty cell range list.
+  if (cell_ranges.empty())
+    return Status::Ok();
+
   if (array_schema_->var_size(attribute))
     return copy_var_cells(attribute, cell_ranges);
   return copy_fixed_cells(attribute, cell_ranges);
@@ -796,37 +796,50 @@ Status Reader::copy_fixed_cells(
   auto it = attr_buffers_.find(attribute);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
-  uint64_t buffer_offset = 0;
   auto cell_size = array_schema_->cell_size(attribute);
   auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
   auto fill_value = utils::fill_value(type);
   assert(fill_value != nullptr);
 
-  // Copy cells
-  for (const auto& cr : cell_ranges) {
+  // Precompute the cell range destination offsets in the buffer.
+  auto num_cr = cell_ranges.size();
+  uint64_t buffer_offset = 0;
+  std::vector<uint64_t> cr_offsets(num_cr);
+  for (uint64_t i = 0; i < num_cr; i++) {
+    const auto& cr = cell_ranges[i];
+    auto bytes_to_copy = (cr.end_ - cr.start_ + 1) * cell_size;
+    cr_offsets[i] = buffer_offset;
+    buffer_offset += bytes_to_copy;
+  }
+
+  // Copy cell ranges in parallel.
+  auto statuses = parallel_for(0, num_cr, [&](uint64_t i) {
+    const auto& cr = cell_ranges[i];
+    uint64_t offset = cr_offsets[i];
     // Check for overflow
-    auto bytes_to_copy = (cr->end_ - cr->start_ + 1) * cell_size;
-    if (buffer_offset + bytes_to_copy > *buffer_size)
+    auto bytes_to_copy = (cr.end_ - cr.start_ + 1) * cell_size;
+    if (offset + bytes_to_copy > *buffer_size)
       return LOG_STATUS(Status::ReaderError(
           std::string("Cannot copy cells for attribute '") + attribute +
           "'; Result buffer overflowed"));
 
     // Copy
-    if (cr->tile_ == nullptr) {  // Empty range
+    if (cr.tile_ == nullptr) {  // Empty range
       auto fill_num = bytes_to_copy / fill_size;
       for (uint64_t i = 0; i < fill_num; ++i) {
-        std::memcpy(buffer + buffer_offset, fill_value, fill_size);
-        buffer_offset += fill_size;
+        std::memcpy(buffer + offset, fill_value, fill_size);
       }
     } else {  // Non-empty range
-      const auto& tile = cr->tile_->attr_tiles_.find(attribute)->second.first;
+      const auto& tile = cr.tile_->attr_tiles_.find(attribute)->second.first;
       auto data = (unsigned char*)tile.data();
-      std::memcpy(
-          buffer + buffer_offset, data + cr->start_ * cell_size, bytes_to_copy);
-      buffer_offset += bytes_to_copy;
+      std::memcpy(buffer + offset, data + cr.start_ * cell_size, bytes_to_copy);
     }
-  }
+    return Status::Ok();
+  });
+
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
 
   // Update buffer sizes
   *buffer_size = buffer_offset;
@@ -854,7 +867,7 @@ Status Reader::copy_var_cells(
 
   // Copy cells
   for (const auto& cr : cell_ranges) {
-    auto cell_num_in_range = cr->end_ - cr->start_ + 1;
+    auto cell_num_in_range = cr.end_ - cr.start_ + 1;
     // Check if offset buffers can fit the result
     if (buffer_offset + cell_num_in_range * offset_size > *buffer_size)
       return LOG_STATUS(Status::ReaderError(
@@ -862,7 +875,7 @@ Status Reader::copy_var_cells(
           attribute + "'; Result buffer overflow"));
 
     // Handle empty range
-    if (cr->tile_ == nullptr) {
+    if (cr.tile_ == nullptr) {
       // Check if result can fit in the buffer
       if (buffer_var_offset + cell_num_in_range * fill_size > *buffer_var_size)
         return LOG_STATUS(Status::ReaderError(
@@ -870,7 +883,7 @@ Status Reader::copy_var_cells(
             attribute + "'; Result buffer overflowed"));
 
       // Fill with empty
-      for (auto i = cr->start_; i <= cr->end_; ++i) {
+      for (auto i = cr.start_; i <= cr.end_; ++i) {
         // Offsets
         std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
         buffer_offset += offset_size;
@@ -884,7 +897,7 @@ Status Reader::copy_var_cells(
     }
 
     // Non-empty range
-    const auto& tile_pair = cr->tile_->attr_tiles_.find(attribute)->second;
+    const auto& tile_pair = cr.tile_->attr_tiles_.find(attribute)->second;
     const auto& tile = tile_pair.first;
     const auto& tile_var = tile_pair.second;
     const auto offsets = (uint64_t*)tile.data();
@@ -892,7 +905,7 @@ Status Reader::copy_var_cells(
     auto cell_num = tile.cell_num();
     auto tile_var_size = tile_var.size();
 
-    for (auto i = cr->start_; i <= cr->end_; ++i) {
+    for (auto i = cr.start_; i <= cr.end_; ++i) {
       // Copy offsets
       std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
       buffer_offset += offset_size;
@@ -1188,14 +1201,12 @@ Status Reader::handle_coords_in_dense_cell_range(
     } else {  // Break dense range
       // Left range
       if (*coords_pos > *start) {
-        overlapping_cell_ranges->push_back(
-            std::unique_ptr<OverlappingCellRange>(
-                new OverlappingCellRange(cur_tile, *start, *coords_pos - 1)));
+        overlapping_cell_ranges->emplace_back(
+            cur_tile, *start, *coords_pos - 1);
       }
       // Coords unary range
-      overlapping_cell_ranges->push_back(
-          std::unique_ptr<OverlappingCellRange>(new OverlappingCellRange(
-              coords_tile, (*coords_it)->pos_, (*coords_it)->pos_)));
+      overlapping_cell_ranges->emplace_back(
+          coords_tile, (*coords_it)->pos_, (*coords_it)->pos_);
       // Update start
       *start = *coords_pos + 1;
 
