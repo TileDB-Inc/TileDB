@@ -814,8 +814,10 @@ Status Reader::copy_cells(
     const std::string& attribute,
     const OverlappingCellRangeList& cell_ranges) const {
   // Early exit for empty cell range list.
-  if (cell_ranges.empty())
+  if (cell_ranges.empty()) {
+    zero_out_buffer_sizes();
     return Status::Ok();
+  }
 
   if (array_schema_->var_size(attribute))
     return copy_var_cells(attribute, cell_ranges);
@@ -1629,7 +1631,7 @@ Status Reader::sparse_read() {
   return Status::Ok();
 }
 
-void Reader::zero_out_buffer_sizes() {
+void Reader::zero_out_buffer_sizes() const {
   for (auto& attr_buffer : attr_buffers_) {
     if (attr_buffer.second.buffer_size_ != nullptr)
       *(attr_buffer.second.buffer_size_) = 0;

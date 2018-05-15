@@ -814,7 +814,7 @@ class Reader {
   Status sparse_read();
 
   /** Sets the buffer sizes to zero. */
-  void zero_out_buffer_sizes();
+  void zero_out_buffer_sizes() const;
 };
 
 }  // namespace sm

@@ -104,6 +104,18 @@ class KV {
   Status get_item(const KVItem::Hash& hash, KVItem** kv_item);
 
   /**
+   * Checks if the key-value store contains a particular key.
+   *
+   * @param key The key to query on.
+   * @param key_type The key type.
+   * @param key_size The key size.
+   * @param has_key Set to `true` if the key exists and `false` otherwise.
+   * @return Status
+   */
+  Status has_key(
+      const void* key, Datatype key_type, uint64_t key_size, bool* has_key);
+
+  /**
    * Initializes the key-value store for reading/writing.
    *
    * @param uri The URI of the key-value store.

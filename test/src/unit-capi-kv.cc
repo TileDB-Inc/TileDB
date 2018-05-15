@@ -470,7 +470,11 @@ void KVFx::check_single_read(const std::string& path) {
   char key4[] = "key_4";
   const char* key5 = "invalid";
   tiledb_datatype_t key4_type = TILEDB_CHAR;
+  tiledb_datatype_t key5_type = TILEDB_CHAR;
   uint64_t key4_size = strlen(key4) + 1;
+  uint64_t key5_size = strlen(key5) + 1;
+
+  int has_key;
 
   // Get key-value item #1
   tiledb_kv_item_t* kv_item1;
@@ -494,9 +498,15 @@ void KVFx::check_single_read(const std::string& path) {
   CHECK(!memcmp(a3, KEY1_A3, 2 * sizeof(float)));
   CHECK(a3_type == TILEDB_FLOAT32);
   CHECK(a3_size == 2 * sizeof(float));
+  rc = tiledb_kv_has_key(ctx_, kv, &key1, key1_type, key1_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 1);
 
   // Get key-value item #2
   tiledb_kv_item_t* kv_item2;
+  rc = tiledb_kv_has_key(ctx_, kv, &key2, key2_type, key2_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 1);
   rc = tiledb_kv_get_item(ctx_, kv, &kv_item2, &key2, key2_type, key2_size);
   REQUIRE(rc == TILEDB_OK);
   rc =
@@ -566,9 +576,12 @@ void KVFx::check_single_read(const std::string& path) {
 
   // Invalid key
   tiledb_kv_item_t* kv_item5;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item5, key5, key4_type, key4_size);
+  rc = tiledb_kv_get_item(ctx_, kv, &kv_item5, key5, key5_type, key5_size);
   REQUIRE(rc == TILEDB_OK);
   CHECK(kv_item5 == nullptr);
+  rc = tiledb_kv_has_key(ctx_, kv, key5, key5_type, key5_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 0);
 
   // Close key-value store
   rc = tiledb_kv_close(ctx_, &kv);

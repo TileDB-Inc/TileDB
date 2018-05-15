@@ -293,6 +293,9 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_get_item
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_has_key
+    :project: TileDB-C
+
 
 Key-value Schema
 ----------------
