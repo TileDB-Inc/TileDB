@@ -230,7 +230,7 @@ void Tile::split_coordinates() {
   uint64_t ptr = 0, ptr_tmp = 0;
 
   // Create a tile clone
-  auto tile_tmp = (char*)malloc(tile_size);
+  auto tile_tmp = (char*)std::malloc(tile_size);
   std::memcpy(tile_tmp, tile_c, tile_size);
 
   // Split coordinates
@@ -288,7 +288,7 @@ void Tile::zip_coordinates() {
   uint64_t ptr = 0, ptr_tmp = 0;
 
   // Create a tile clone
-  auto tile_tmp = (char*)malloc(tile_size);
+  auto tile_tmp = (char*)std::malloc(tile_size);
   std::memcpy(tile_tmp, tile_c, tile_size);
 
   // Zip coordinates

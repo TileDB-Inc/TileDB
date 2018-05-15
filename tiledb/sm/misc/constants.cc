@@ -333,7 +333,7 @@ const int version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
-const uint64_t tile_chunk_size = 64 * 1024;
+const uint64_t max_tile_chunk_size = 64 * 1024;
 
 /** The default attribute name prefix. */
 const char* default_attr_name = "__attr";

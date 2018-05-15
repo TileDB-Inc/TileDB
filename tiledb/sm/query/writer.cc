@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -1309,7 +1310,8 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
     (*cell_pos)[i] = i;
 
   // Sort the coordinates in global order
-  std::sort(cell_pos->begin(), cell_pos->end(), GlobalCmp<T>(domain, buffer));
+  parallel_sort(
+      cell_pos->begin(), cell_pos->end(), GlobalCmp<T>(domain, buffer));
 
   return Status::Ok();
 }

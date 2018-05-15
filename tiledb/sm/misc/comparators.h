@@ -177,7 +177,7 @@ class GlobalCmp {
    * @return `true` if coordinates at `a` precedes coordinates at `b`,
    *     and `false` otherwise.
    */
-  bool operator()(uint64_t a, uint64_t b) {
+  bool operator()(uint64_t a, uint64_t b) const {
     // Get coordinates
     const T* coords_a = &buff_[a * dim_num_];
     const T* coords_b = &buff_[b * dim_num_];
