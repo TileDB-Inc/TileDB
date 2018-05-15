@@ -1853,6 +1853,35 @@ int tiledb_array_compute_max_read_buffer_sizes(
   return TILEDB_OK;
 }
 
+int tiledb_array_compute_subarray_partitions(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const char** attributes,
+    unsigned attribute_num,
+    const uint64_t* buffer_sizes,
+    void*** subarray_partitions,
+    uint64_t* npartitions) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_compute_subarray_partitions(
+              array_uri,
+              subarray,
+              static_cast<tiledb::sm::Layout>(layout),
+              attributes,
+              attribute_num,
+              buffer_sizes,
+              subarray_partitions,
+              npartitions)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */

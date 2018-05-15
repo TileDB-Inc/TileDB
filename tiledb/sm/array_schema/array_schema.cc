@@ -317,6 +317,19 @@ Status ArraySchema::check() const {
   return Status::Ok();
 }
 
+Status ArraySchema::check_attributes(
+    const char** attributes, unsigned attribute_num) const {
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    if (attributes[i] == constants::coords)
+      continue;
+    if (attribute_map_.find(attributes[i]) == attribute_map_.end())
+      return LOG_STATUS(Status::ArraySchemaError(
+          "Attribute check failed; cannot find attribute"));
+  }
+
+  return Status::Ok();
+}
+
 Compressor ArraySchema::compression(unsigned int attr_id) const {
   assert(attr_id <= attribute_num_ + 1);
 

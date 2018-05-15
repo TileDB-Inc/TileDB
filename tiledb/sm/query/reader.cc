@@ -102,95 +102,25 @@ const ArraySchema* Reader::array_schema() const {
 
 Status Reader::compute_subarray_partitions(
     void* subarray, std::vector<void*>* subarray_partitions) const {
-  // Prepare subarray
-  auto domain = array_schema_->domain();
-  uint64_t subarray_size = 2 * array_schema_->coords_size();
-  void* first_subarray = std::malloc(subarray_size);
-  if (first_subarray == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot compute subarrays; Failed to allocate memory"));
-  auto to_copy = (subarray != nullptr) ? subarray : domain->domain();
-  std::memcpy(first_subarray, to_copy, subarray_size);
-
-  // Prepare buffer sizes
+  // Prepare buffer sizes map
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      max_buffer_sizes;
-
-  // Compute subarrays
-  std::list<void*> my_subarrays;
-  my_subarrays.emplace_back(first_subarray);
-  auto it = my_subarrays.begin();
-  Status st = Status::Ok();
-  do {
-    // Compute max buffer sizes for the current subarray
-    for (const auto& attr : attributes_)
-      max_buffer_sizes[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-    st = storage_manager_->array_compute_max_read_buffer_sizes(
-        array_schema_, fragment_metadata_, *it, &max_buffer_sizes);
-    if (!st.ok())
-      break;
-
-    // Handle case of no results
-    auto no_results = true;
-    for (auto& item : max_buffer_sizes) {
-      if (item.second.first != 0) {
-        no_results = false;
-        break;
-      }
-    }
-    if (no_results) {
-      std::free(*it);
-      it = my_subarrays.erase(it);
-      continue;
-    }
-
-    // Handle case of split
-    auto must_split = false;
-    for (auto& item : max_buffer_sizes) {
-      auto buffer_size = attr_buffers_.find(item.first)->second.buffer_size_;
-      auto buffer_var_size =
-          attr_buffers_.find(item.first)->second.buffer_var_size_;
-      auto var_size = array_schema_->var_size(item.first);
-
-      if (item.second.first > *buffer_size ||
-          (var_size && item.second.second > *buffer_var_size)) {
-        must_split = true;
-        break;
-      }
-    }
-    if (must_split) {
-      void *subarray_1 = nullptr, *subarray_2 = nullptr;
-      st = domain->split_subarray(*it, layout_, &subarray_1, &subarray_2);
-      if (!st.ok())
-        break;
-
-      // Not splittable, return the original subarray as result
-      if (subarray_1 == nullptr || subarray_2 == nullptr) {
-        for (auto s : my_subarrays)
-          std::free(s);
-        return Status::Ok();
-      }
-      my_subarrays.insert(std::next(it), subarray_2);
-      my_subarrays.insert(std::next(it), subarray_1);
-      it = my_subarrays.erase(it);
-      continue;
-    }
-
-    ++it;
-  } while (it != my_subarrays.end());
-
-  // Clean up upon error
-  if (!st.ok()) {
-    for (auto s : my_subarrays)
-      std::free(s);
-    return st;
+      buffer_sizes_map;
+  for (const auto& it : attr_buffers_) {
+    buffer_sizes_map[it.first] = std::pair<uint64_t, uint64_t>(
+        *(it.second.buffer_size_),
+        (array_schema_->var_size(it.first)) ? *(it.second.buffer_var_size_) :
+                                              0);
   }
 
-  // Prepare the result
-  for (auto s : my_subarrays)
-    subarray_partitions->emplace_back(s);
-
-  return Status::Ok();
+  // Compute subarray partitions
+  return compute_subarray_partitions(
+      storage_manager_,
+      array_schema_,
+      fragment_metadata_,
+      subarray,
+      layout_,
+      buffer_sizes_map,
+      subarray_partitions);
 }
 
 bool Reader::done() const {
@@ -377,6 +307,109 @@ Status Reader::set_subarray(const void* subarray) {
         read_state_.subarray_,
         array_schema_->domain()->domain(),
         subarray_size);
+
+  return Status::Ok();
+}
+
+/* ****************************** */
+/*         STATIC FUNCTIONS       */
+/* ****************************** */
+
+Status Reader::compute_subarray_partitions(
+    StorageManager* storage_manager,
+    const ArraySchema* array_schema,
+    const std::vector<FragmentMetadata*>& fragment_metadata,
+    const void* subarray,
+    Layout layout,
+    const std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>&
+        buffer_sizes_map,
+    std::vector<void*>* subarray_partitions) {
+  // Prepare subarray
+  auto domain = array_schema->domain();
+  uint64_t subarray_size = 2 * array_schema->coords_size();
+  void* first_subarray = std::malloc(subarray_size);
+  if (first_subarray == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot compute subarray partitions; Failed to allocate memory"));
+  auto to_copy = (subarray != nullptr) ? subarray : domain->domain();
+  std::memcpy(first_subarray, to_copy, subarray_size);
+
+  // Prepare buffer sizes
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      max_buffer_sizes;
+
+  // Compute subarrays
+  std::list<void*> my_subarrays;
+  my_subarrays.emplace_back(first_subarray);
+  auto it = my_subarrays.begin();
+  Status st = Status::Ok();
+  do {
+    // Compute max buffer sizes for the current subarray
+    for (const auto& attr_it : buffer_sizes_map)
+      max_buffer_sizes[attr_it.first] = std::pair<uint64_t, uint64_t>(0, 0);
+    st = storage_manager->array_compute_max_read_buffer_sizes(
+        array_schema, fragment_metadata, *it, &max_buffer_sizes);
+    if (!st.ok())
+      break;
+
+    // Handle case of no results
+    auto no_results = true;
+    for (auto& item : max_buffer_sizes) {
+      if (item.second.first != 0) {
+        no_results = false;
+        break;
+      }
+    }
+    if (no_results) {
+      std::free(*it);
+      it = my_subarrays.erase(it);
+      continue;
+    }
+
+    // Handle case of split
+    auto must_split = false;
+    for (auto& item : max_buffer_sizes) {
+      auto buffer_size = buffer_sizes_map.find(item.first)->second.first;
+      auto buffer_var_size = buffer_sizes_map.find(item.first)->second.second;
+      auto var_size = array_schema->var_size(item.first);
+
+      if (item.second.first > buffer_size ||
+          (var_size && item.second.second > buffer_var_size)) {
+        must_split = true;
+        break;
+      }
+    }
+    if (must_split) {
+      void *subarray_1 = nullptr, *subarray_2 = nullptr;
+      st = domain->split_subarray(*it, layout, &subarray_1, &subarray_2);
+      if (!st.ok())
+        break;
+
+      // Not splittable, return the original subarray as result
+      if (subarray_1 == nullptr || subarray_2 == nullptr) {
+        for (auto s : my_subarrays)
+          std::free(s);
+        return Status::Ok();
+      }
+      my_subarrays.insert(std::next(it), subarray_2);
+      my_subarrays.insert(std::next(it), subarray_1);
+      it = my_subarrays.erase(it);
+      continue;
+    }
+
+    ++it;
+  } while (it != my_subarrays.end());
+
+  // Clean up upon error
+  if (!st.ok()) {
+    for (auto s : my_subarrays)
+      std::free(s);
+    return st;
+  }
+
+  // Prepare the result
+  for (auto s : my_subarrays)
+    subarray_partitions->emplace_back(s);
 
   return Status::Ok();
 }
