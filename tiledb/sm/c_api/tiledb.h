@@ -2814,6 +2814,25 @@ TILEDB_EXPORT int tiledb_kv_get_item(
     tiledb_datatype_t key_type,
     uint64_t key_size);
 
+/**
+ * Checks if a key exists in the key-value store.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store.
+ * @param key The key to check.
+ * @param key_type The key type.
+ * @param key_size The key size.
+ * @param has_key Set to `1` if the key exists and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_has_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const void* key,
+    tiledb_datatype_t key_type,
+    uint64_t key_size,
+    int* has_key);
+
 /* ****************************** */
 /*          KEY-VALUE ITER        */
 /* ****************************** */

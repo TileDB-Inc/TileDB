@@ -34,6 +34,7 @@
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
+#include <iostream>
 
 namespace tiledb {
 namespace sm {
@@ -283,6 +284,30 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
       return st;
     }
   }
+
+  return Status::Ok();
+}
+
+Status KV::has_key(
+    const void* key, Datatype key_type, uint64_t key_size, bool* has_key) {
+  // Take the lock.
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  // Create key-value item
+  KVItem kv_item;
+
+  // Set key
+  RETURN_NOT_OK(kv_item.set_key(key, key_type, key_size));
+
+  // If the item is buffered, copy and return
+  auto it = items_.find(kv_item.key()->hash_);
+  if (it != items_.end()) {
+    *has_key = true;
+    return Status::Ok();
+  }
+
+  // Query
+  RETURN_NOT_OK(read_item(kv_item.hash(), has_key));
 
   return Status::Ok();
 }

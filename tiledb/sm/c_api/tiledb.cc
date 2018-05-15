@@ -2426,6 +2426,33 @@ int tiledb_kv_get_item(
   return TILEDB_OK;
 }
 
+int tiledb_kv_has_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const void* key,
+    tiledb_datatype_t key_type,
+    uint64_t key_size,
+    int* has_key) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check if key exists
+  bool has_key_b;
+  if (save_error(
+          ctx,
+          kv->kv_->has_key(
+              key,
+              static_cast<tiledb::sm::Datatype>(key_type),
+              key_size,
+              &has_key_b)))
+    return TILEDB_ERR;
+
+  *has_key = (int)has_key_b;
+
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*             KEY-VALUE          */
 /* ****************************** */

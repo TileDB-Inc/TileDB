@@ -41,6 +41,7 @@
 * Added `sm.number_of_threads` config parameter.
 * Added `sm.enable_signal_handlers` config parameter.
 * Added `tiledb_array_compute_subarray_partitions` for computing subarray partitions based on memory budget.
+* Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
