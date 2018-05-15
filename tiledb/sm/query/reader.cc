@@ -1587,8 +1587,10 @@ Status Reader::sparse_read() {
 
 void Reader::zero_out_buffer_sizes() {
   for (auto& attr_buffer : attr_buffers_) {
-    *(attr_buffer.second.buffer_size_) = 0;
-    *(attr_buffer.second.buffer_var_size_) = 0;
+    if (attr_buffer.second.buffer_size_ != nullptr)
+      *(attr_buffer.second.buffer_size_) = 0;
+    if (attr_buffer.second.buffer_var_size_ != nullptr)
+      *(attr_buffer.second.buffer_var_size_) = 0;
   }
 }
 
