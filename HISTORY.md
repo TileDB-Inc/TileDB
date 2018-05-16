@@ -40,8 +40,8 @@
 * Added `tiledb_ctx_cancel_tasks` function.
 * Added `sm.number_of_threads` config parameter.
 * Added `sm.enable_signal_handlers` config parameter.
-* Added `tiledb_array_compute_subarray_partitions` for computing subarray partitions based on memory budget.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
+* Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -51,6 +51,10 @@
   which sets the tile extent to `NULL`.
 * Added `Query::finalize()` function.
 * Added `Context::cancel_tasks()` function.
+* `tiledb::Attribute` can now be constructed with an enumerated type (e.x. `TILEDB_CHAR`).
+* A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
+* Added `Array::partition_subarray` for computing subarray partitions based on memory budget.
+* Add `Map::has_key` to check for key presence.
 
 ## Breaking changes
 
@@ -73,6 +77,7 @@
 * Removed `Query::attribute_status`.
 * The API was made header only to improve cross-platform compatibility. `config_iter.h`, `filebuf.h`, `map_item.h`, `map_iter.h`, and `map_proxy.h` are no longer available, but grouped into the headers of the objects they support.
 * Previously a `tiledb::Map` could be created from a `std::map`, an anonymous attribute name was defined. This must now be explicitly defined: `tiledb::Map::create(tiledb::Context, std::string uri, std::map, std::string attr_name)`
+* Removed `tiledb::Query::reset_buffers`. Any previous usages can safely be removed.
 
 # TileDB v1.2.1 Release Notes
 

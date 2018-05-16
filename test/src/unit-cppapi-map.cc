@@ -92,6 +92,9 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   map[compound_key][{"a1", "a2", "a3"}] = my_cell_t(2, "aaa", {{4.2, 1}});
 
   map.flush();
+  CHECK(map.has_key(simple_key));
+  CHECK(map.has_key(compound_key));
+  CHECK(!map.has_key(3453463));
 
   CHECK((int)map[simple_key]["a1"] == 1);
   CHECK(map.get_item(simple_key).get<std::string>("a2") == "someval");
@@ -133,6 +136,7 @@ TEST_CASE_METHOD(
   // Add the item
   map.add_item(i1);
   map.flush();
+  CHECK(map.has_key(simple_key));
 
   // Validate item is now on map
   test_get_item_by_key = map.get_item(simple_key);
@@ -140,6 +144,39 @@ TEST_CASE_METHOD(
   CHECK(test_get_item_by_key.get<int>("a1") == 1);
   CHECK(test_get_item_by_key.get<std::string>("a2") == "someval");
   CHECK(test_get_item_by_key.get<std::array<double, 2>>("a3")[0] == 3);
+}
+
+struct CPPMapFx1A {
+  CPPMapFx1A()
+      : vfs(ctx) {
+    using namespace tiledb;
+
+    if (vfs.is_dir("cpp_unit_map"))
+      vfs.remove_dir("cpp_unit_map");
+
+    auto a1 = Attribute::create<int>(ctx, "a1");
+    a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+
+    MapSchema schema(ctx);
+    schema.add_attribute(a1);
+    Map::create("cpp_unit_map", schema);
+  }
+
+  ~CPPMapFx1A() {
+    if (vfs.is_dir("cpp_unit_map"))
+      vfs.remove_dir("cpp_unit_map");
+  }
+
+  Context ctx;
+  VFS vfs;
+};
+
+TEST_CASE_METHOD(CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi]") {
+  Map map(ctx, "cpp_unit_map");
+
+  map[10] = 1;
+  map.flush();
+  assert(int(map[10]) == 1);
 }
 
 struct CPPMapFromMapFx {

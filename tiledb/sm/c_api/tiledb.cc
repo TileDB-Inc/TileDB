@@ -1853,7 +1853,7 @@ int tiledb_array_compute_max_read_buffer_sizes(
   return TILEDB_OK;
 }
 
-int tiledb_array_compute_subarray_partitions(
+int tiledb_array_partition_subarray(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const void* subarray,

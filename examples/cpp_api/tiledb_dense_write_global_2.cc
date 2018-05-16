@@ -73,8 +73,7 @@ int main() {
   };
   // clang-format on
 
-  // Reset buffers
-  query.reset_buffers();
+  // Update buffers. Necessary if data pointer or length changes
   query.set_buffer("a1", a1_data);
   query.set_buffer("a2", a2_offsets, a2str);
   query.set_buffer("a3", a3_data);

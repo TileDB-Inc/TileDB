@@ -214,6 +214,110 @@ class Array {
     ArraySchema schema(ctx, uri);
     return max_buffer_elements<T>(uri, schema, subarray);
   }
+
+  /**
+   * Partitions a subarray into multiple subarrays to meet buffer
+   * size constraints. Layout is used to split the subarray by
+   * the optimal axis.
+   *
+   * @tparam T Domain type
+   * @param uri Array URI
+   * @param schema Array Schema
+   * @param subarray Subarray to be decomposed
+   * @param attrs Attributes being queried
+   * @param buffer_sizes Buffer size limits
+   * @param layout Layout of query
+   * @return list of subarrays
+   */
+  template <typename T>
+  static std::vector<std::vector<T>> partition_subarray(
+      const std::string& uri,
+      const ArraySchema& schema,
+      const std::vector<T>& subarray,
+      const std::vector<std::string>& attrs,
+      const std::vector<uint64_t>& buffer_sizes,
+      tiledb_layout_t layout) {
+    impl::type_check<T>(schema.domain().type());
+
+    const auto& schema_attrs = schema.attributes();
+    std::vector<const char*> attrnames;
+    std::vector<uint64_t> buff_sizes_scaled;
+    unsigned expected_buff_cnt = 0;
+
+    for (auto& a : attrs) {
+      if (schema_attrs.count(a) == 0)
+        throw AttributeError("Attribute does not exist: " + a);
+      attrnames.push_back(a.data());
+      if (schema_attrs.at(a).variable_sized()) {
+        buff_sizes_scaled.push_back(
+            buffer_sizes[expected_buff_cnt] * TILEDB_OFFSET_SIZE);
+        ++expected_buff_cnt;
+      }
+      buff_sizes_scaled.push_back(
+          buffer_sizes[expected_buff_cnt] *
+          tiledb_datatype_size(schema_attrs.at(a).type()));
+      ++expected_buff_cnt;
+    }
+    if (expected_buff_cnt != buffer_sizes.size())
+      throw TileDBError(
+          "buffer_sizes size does not match number of provided attributes.");
+    if (subarray.size() != schema.domain().rank() * 2)
+      throw TileDBError("Subarray should have array rank * 2 values.");
+
+    auto& ctx = schema.context();
+    T** partition_buf;
+    uint64_t npartitions;
+
+    ctx.handle_error(tiledb_array_partition_subarray(
+        ctx,
+        uri.c_str(),
+        subarray.data(),
+        layout,
+        attrnames.data(),
+        (unsigned)attrnames.size(),
+        buff_sizes_scaled.data(),
+        (void***)&partition_buf,
+        &npartitions));
+
+    std::vector<std::vector<T>> ret;
+
+    if (partition_buf != nullptr) {
+      for (uint64_t i = 0; i < npartitions; ++i) {
+        ret.emplace_back(partition_buf[i], partition_buf[i] + subarray.size());
+        free(partition_buf[i]);
+      }
+      free(partition_buf);
+    }
+
+    return ret;
+  }
+
+  /**
+   * Partitions a subarray into multiple subarrays to meet buffer
+   * size constraints. Layout is used to split the subarray by
+   * the optimal axis.
+   *
+   * @tparam T Domain type
+   * @param uri Array URI
+   * @param schema Array Schema
+   * @param subarray Subarray to be decomposed
+   * @param attrs Attributes being queried
+   * @param buffer_sizes Buffer size limits
+   * @param layout Layout of query
+   * @return list of subarrays
+   */
+  template <typename T>
+  static std::vector<std::vector<T>> partition_subarray(
+      const Context& ctx,
+      const std::string& uri,
+      const std::vector<T>& subarray,
+      const std::vector<std::string>& attrs,
+      const std::vector<size_t>& buffer_sizes,
+      tiledb_layout_t layout) {
+    ArraySchema schema(ctx, uri);
+    return partition_subarray(
+        uri, schema, subarray, attrs, buffer_sizes, layout);
+  }
 };
 
 }  // namespace tiledb

@@ -83,8 +83,6 @@ int main() {
   a3_buff.clear();
   coords_buff = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
 
-  // Reset buffers
-  query.reset_buffers();
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
   query.set_buffer("a3", a3_buff);

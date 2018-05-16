@@ -225,19 +225,6 @@ class Query {
     return elements;
   }
 
-  /** Clears all attribute buffers. */
-  void reset_buffers() {
-    attrs_.clear();
-    attr_buffs_.clear();
-    var_offsets_.clear();
-    buff_sizes_.clear();
-    all_buff_.clear();
-    sub_tsize_.clear();
-    auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_query_reset_buffers(ctx, query_.get(), nullptr, nullptr));
-  }
-
   /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive.
@@ -361,11 +348,16 @@ class Query {
     } else {
       throw AttributeError("Attribute does not exist: " + attr);
     }
+    if (!attr_buffs_.count(attr)) {
+      if (!buffers_set_)
+        attrs_.emplace_back(attr);
+      else
+        throw TileDBError("Cannot add new attr after submitting query.");
+    }
     attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
         sizeof(T) * size,
         std::move(element_size),
         const_cast<void*>(reinterpret_cast<const void*>(buf)));
-    attrs_.emplace_back(attr);
   }
 
   /**
@@ -537,6 +529,9 @@ class Query {
   /** URI of array being queried. **/
   std::string uri_;
 
+  /** If true, use reset_buffers instead of set_buffers **/
+  bool buffers_set_ = false;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -570,13 +565,21 @@ class Query {
     }
 
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_buffers(
-        ctx,
-        query_.get(),
-        attr_names_.data(),
-        (unsigned)attr_names_.size(),
-        all_buff_.data(),
-        buff_sizes_.data()));
+
+    // In the lifetime of the query, set_buffers should only be called once.
+    if (buffers_set_) {
+      ctx.handle_error(tiledb_query_reset_buffers(
+          ctx, query_.get(), all_buff_.data(), buff_sizes_.data()));
+    } else {
+      ctx.handle_error(tiledb_query_set_buffers(
+          ctx,
+          query_.get(),
+          attr_names_.data(),
+          (unsigned)attr_names_.size(),
+          all_buff_.data(),
+          buff_sizes_.data()));
+      buffers_set_ = true;
+    }
   }
 };
 

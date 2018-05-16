@@ -1936,7 +1936,7 @@ void DenseArrayFx::check_subarray_partitions_2_row(
   uint64_t subarray[] = {1, 4, 1, 4};
   void** subarray_partitions = nullptr;
   uint64_t npartitions;
-  int rc = tiledb_array_compute_subarray_partitions(
+  int rc = tiledb_array_partition_subarray(
       ctx_,
       array_name.c_str(),
       subarray,
@@ -1976,7 +1976,7 @@ void DenseArrayFx::check_subarray_partitions_2_col(
   uint64_t subarray[] = {1, 4, 1, 4};
   void** subarray_partitions = nullptr;
   uint64_t npartitions;
-  int rc = tiledb_array_compute_subarray_partitions(
+  int rc = tiledb_array_partition_subarray(
       ctx_,
       array_name.c_str(),
       subarray,
@@ -2015,7 +2015,7 @@ void DenseArrayFx::check_subarray_partitions_0(const std::string& array_name) {
   uint64_t subarray[] = {1, 4, 1, 4};
   void** subarray_partitions = nullptr;
   uint64_t npartitions;
-  int rc = tiledb_array_compute_subarray_partitions(
+  int rc = tiledb_array_partition_subarray(
       ctx_,
       array_name.c_str(),
       subarray,
