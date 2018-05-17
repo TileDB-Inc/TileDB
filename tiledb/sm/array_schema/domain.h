@@ -845,6 +845,20 @@ class Domain {
   std::string default_dimension_name(unsigned int i) const;
 
   /**
+   * Floors the value such that it coincides with the largest start of a tile
+   * that is smaller than value, on a given dimension. If there are no tile
+   * extents, then the returned value is the start of the domain on the input
+   * dimension.
+   *
+   * @tparam T The domain type.
+   * @param value The value to be floored.
+   * @param dim_idx The targeted dimension.
+   * @return The floored value.
+   */
+  template <class T>
+  T floor_to_tile(T value, unsigned dim_idx) const;
+
+  /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays, and focusing on
    * the **column-major** tile order.
