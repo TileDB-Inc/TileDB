@@ -62,6 +62,7 @@ FragmentMetadata::FragmentMetadata(
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
   std::memcpy(version_, constants::version, sizeof(version_));
+  tile_index_base_ = 0;
 
   auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i)
@@ -91,38 +92,41 @@ FragmentMetadata::~FragmentMetadata() {
 /*             ACCESSORS          */
 /* ****************************** */
 
-void FragmentMetadata::append_bounding_coords(const void* bounding_coords) {
+void FragmentMetadata::set_bounding_coords(
+    uint64_t tile, const void* bounding_coords) {
   // For easy reference
   uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
+  tile += tile_index_base_;
 
-  // Copy and append MBR
+  // Copy and set MBR
   void* new_bounding_coords = std::malloc(bounding_coords_size);
   std::memcpy(new_bounding_coords, bounding_coords, bounding_coords_size);
-  bounding_coords_.push_back(new_bounding_coords);
+  assert(tile < bounding_coords_.size());
+  bounding_coords_[tile] = new_bounding_coords;
 }
 
-Status FragmentMetadata::append_mbr(const void* mbr) {
+Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
   switch (array_schema_->coords_type()) {
     case Datatype::INT8:
-      return append_mbr<int8_t>(static_cast<const int8_t*>(mbr));
+      return set_mbr<int8_t>(tile, static_cast<const int8_t*>(mbr));
     case Datatype::UINT8:
-      return append_mbr<uint8_t>(static_cast<const uint8_t*>(mbr));
+      return set_mbr<uint8_t>(tile, static_cast<const uint8_t*>(mbr));
     case Datatype::INT16:
-      return append_mbr<int16_t>(static_cast<const int16_t*>(mbr));
+      return set_mbr<int16_t>(tile, static_cast<const int16_t*>(mbr));
     case Datatype::UINT16:
-      return append_mbr<uint16_t>(static_cast<const uint16_t*>(mbr));
+      return set_mbr<uint16_t>(tile, static_cast<const uint16_t*>(mbr));
     case Datatype::INT32:
-      return append_mbr<int>(static_cast<const int*>(mbr));
+      return set_mbr<int>(tile, static_cast<const int*>(mbr));
     case Datatype::UINT32:
-      return append_mbr<unsigned>(static_cast<const unsigned*>(mbr));
+      return set_mbr<unsigned>(tile, static_cast<const unsigned*>(mbr));
     case Datatype::INT64:
-      return append_mbr<int64_t>(static_cast<const int64_t*>(mbr));
+      return set_mbr<int64_t>(tile, static_cast<const int64_t*>(mbr));
     case Datatype::UINT64:
-      return append_mbr<uint64_t>(static_cast<const uint64_t*>(mbr));
+      return set_mbr<uint64_t>(tile, static_cast<const uint64_t*>(mbr));
     case Datatype::FLOAT32:
-      return append_mbr<float>(static_cast<const float*>(mbr));
+      return set_mbr<float>(tile, static_cast<const float*>(mbr));
     case Datatype::FLOAT64:
-      return append_mbr<double>(static_cast<const double*>(mbr));
+      return set_mbr<double>(tile, static_cast<const double*>(mbr));
     default:
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot append mbr; Unsupported coordinates type"));
@@ -130,39 +134,48 @@ Status FragmentMetadata::append_mbr(const void* mbr) {
 }
 
 template <class T>
-Status FragmentMetadata::append_mbr(const void* mbr) {
+Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
   // For easy reference
   uint64_t mbr_size = 2 * array_schema_->coords_size();
+  tile += tile_index_base_;
 
-  // Copy and append MBR
+  // Copy and set MBR
   void* new_mbr = std::malloc(mbr_size);
   std::memcpy(new_mbr, mbr, mbr_size);
-  mbrs_.push_back(new_mbr);
+  assert(tile < mbrs_.size());
+  mbrs_[tile] = new_mbr;
 
   return expand_non_empty_domain(static_cast<const T*>(mbr));
 }
 
-void FragmentMetadata::append_tile_offset(
-    const std::string& attribute, uint64_t tile_size) {
-  auto attribute_id = attribute_idx_map_[attribute];
-  tile_offsets_[attribute_id].push_back(next_tile_offsets_[attribute_id]);
-  uint64_t new_offset = tile_offsets_[attribute_id].back() + tile_size;
-  next_tile_offsets_[attribute_id] = new_offset;
+void FragmentMetadata::set_tile_index_base(uint64_t tile_base) {
+  tile_index_base_ = tile_base;
 }
 
-void FragmentMetadata::append_tile_var_offset(
-    const std::string& attribute, uint64_t step) {
+void FragmentMetadata::set_tile_offset(
+    const std::string& attribute, uint64_t tile, uint64_t tile_size) {
   auto attribute_id = attribute_idx_map_[attribute];
-  tile_var_offsets_[attribute_id].push_back(
-      next_tile_var_offsets_[attribute_id]);
-  uint64_t new_offset = tile_var_offsets_[attribute_id].back() + step;
-  next_tile_var_offsets_[attribute_id] = new_offset;
+  tile += tile_index_base_;
+  assert(tile < tile_offsets_[attribute_id].size());
+  tile_offsets_[attribute_id][tile] = next_tile_offsets_[attribute_id];
+  next_tile_offsets_[attribute_id] += tile_size;
 }
 
-void FragmentMetadata::append_tile_var_size(
-    const std::string& attribute, uint64_t size) {
+void FragmentMetadata::set_tile_var_offset(
+    const std::string& attribute, uint64_t tile, uint64_t step) {
   auto attribute_id = attribute_idx_map_[attribute];
-  tile_var_sizes_[attribute_id].push_back(size);
+  tile += tile_index_base_;
+  assert(tile < tile_var_offsets_[attribute_id].size());
+  tile_var_offsets_[attribute_id][tile] = next_tile_var_offsets_[attribute_id];
+  next_tile_var_offsets_[attribute_id] += step;
+}
+
+void FragmentMetadata::set_tile_var_size(
+    const std::string& attribute, uint64_t tile, uint64_t size) {
+  auto attribute_id = attribute_idx_map_[attribute];
+  tile += tile_index_base_;
+  assert(tile < tile_var_sizes_[attribute_id].size());
+  tile_var_sizes_[attribute_id][tile] = size;
 }
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
@@ -367,8 +380,32 @@ Status FragmentMetadata::serialize(Buffer* buf) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
+  auto num_attributes = array_schema_->attribute_num();
+
+  for (unsigned i = 0; i < num_attributes + 1; i++) {
+    assert(num_tiles >= tile_offsets_[i].size());
+    tile_offsets_[i].resize(num_tiles, 0);
+    if (i < num_attributes) {
+      tile_var_offsets_[i].resize(num_tiles, 0);
+      tile_var_sizes_[i].resize(num_tiles, 0);
+    }
+  }
+
+  if (!dense_) {
+    mbrs_.resize(num_tiles, nullptr);
+    bounding_coords_.resize(num_tiles, nullptr);
+  }
+
+  return Status::Ok();
+}
+
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
+}
+
+uint64_t FragmentMetadata::tile_index_base() const {
+  return tile_index_base_;
 }
 
 uint64_t FragmentMetadata::tile_num() const {
@@ -1064,16 +1101,26 @@ Status FragmentMetadata::write_version(Buffer* buff) {
 }
 
 // Explicit template instantiations
-template Status FragmentMetadata::append_mbr<int8_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<uint8_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<int16_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<uint16_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<int32_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<uint32_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<int64_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<uint64_t>(const void* mbr);
-template Status FragmentMetadata::append_mbr<float>(const void* mbr);
-template Status FragmentMetadata::append_mbr<double>(const void* mbr);
+template Status FragmentMetadata::set_mbr<int8_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<uint8_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<int16_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<uint16_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<int32_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<uint32_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<int64_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<uint64_t>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<float>(
+    uint64_t tile, const void* mbr);
+template Status FragmentMetadata::set_mbr<double>(
+    uint64_t tile, const void* mbr);
 
 template Status FragmentMetadata::add_max_read_buffer_sizes<int8_t>(
     const int8_t* subarray,

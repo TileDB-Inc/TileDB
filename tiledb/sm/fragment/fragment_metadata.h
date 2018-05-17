@@ -69,63 +69,6 @@ class FragmentMetadata {
   /*                API                */
   /* ********************************* */
 
-  /**
-   * Appends the tile bounding coordinates to the fragment metadata.
-   *
-   * @param bounding_coords The bounding coordinates to be appended.
-   * @return void
-   */
-  void append_bounding_coords(const void* bounding_coords);
-
-  /**
-   * Appends the input MBR to the fragment metadata. It also expands the
-   * non-empty domain of the fragment.
-   *
-   * @param mbr The MBR to be appended.
-   * @return Status
-   */
-  Status append_mbr(const void* mbr);
-
-  /**
-   * Appends the input MBR to the fragment metadata. It also expands the
-   * non-empty domain of the fragment.
-   *
-   * @tparam T The coordinates type.
-   * @param mbr The MBR to be appended.
-   * @return Status
-   */
-  template <class T>
-  Status append_mbr(const void* mbr);
-
-  /**
-   * Appends a tile offset for the input attribute.
-   *
-   * @param attribute The attribute for which the offset is appended.
-   * @param step This is essentially the step by which the previous
-   *     offset will be expanded. It is practically the last tile size.
-   * @return void
-   */
-  void append_tile_offset(const std::string& attribute_id, uint64_t step);
-
-  /**
-   * Appends a variable tile offset for the input attribute.
-   *
-   * @param attribute The attribute for which the offset is appended.
-   * @param step This is essentially the step by which the previous
-   *     offset will be expanded. It is practically the last variable tile size.
-   * @return void
-   */
-  void append_tile_var_offset(const std::string& attribute, uint64_t step);
-
-  /**
-   * Appends a variable tile size for the input attribute.
-   *
-   * @param attribute The attribute for which the size is appended.
-   * @param size The size to be appended.
-   * @return void
-   */
-  void append_tile_var_size(const std::string& attribute, uint64_t size);
-
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
 
@@ -252,12 +195,102 @@ class FragmentMetadata {
   Status serialize(Buffer* buff);
 
   /**
+   * Sets the input tile's bounding coordinates in the fragment metadata.
+   *
+   * @param tile The tile index whose bounding coords will be set.
+   * @param bounding_coords The bounding coordinates to be set.
+   * @return void
+   */
+  void set_bounding_coords(uint64_t tile, const void* bounding_coords);
+
+  /**
    * Simply sets the number of cells for the last tile.
    *
    * @param cell_num The number of cells for the last tile.
    * @return void
    */
   void set_last_tile_cell_num(uint64_t cell_num);
+
+  /**
+   * Sets the input tile's MBR in the fragment metadata. It also expands the
+   * non-empty domain of the fragment.
+   *
+   * @param tile The tile index whose MBR will be set.
+   * @param mbr The MBR to be set.
+   * @return Status
+   */
+  Status set_mbr(uint64_t tile, const void* mbr);
+
+  /**
+   * Sets the input tile's MBR in the fragment metadata. It also expands the
+   * non-empty domain of the fragment.
+   *
+   * @tparam T The coordinates type.
+   * @param tile The tile index whose MBR will be set.
+   * @param mbr The MBR to be set.
+   * @return Status
+   */
+  template <class T>
+  Status set_mbr(uint64_t tile, const void* mbr);
+
+  /**
+   * Resizes the per-tile metadata vectors for the given number of tiles. This
+   * is not serialized, and is only used during writes.
+   *
+   * @param num_tiles Number of tiles
+   * @return Status
+   */
+  Status set_num_tiles(uint64_t num_tiles);
+
+  /**
+   * Sets the tile "index base" which is added to the tile index in the set_*()
+   * functions. Only used during global order writes/appends.
+   *
+   * Ex: if the first global order write adds 2 tiles (indices 0 and 1) to the
+   * metadata, then tile index 0 in the second global order write should be tile
+   * index 2 in the metadata, since there are already 2 tiles in the metadata.
+   *
+   * @param tile_base New tile index base
+   */
+  void set_tile_index_base(uint64_t tile_base);
+
+  /**
+   * Sets a tile offset for the input attribute.
+   *
+   * @param attribute The attribute for which the offset is set.
+   * @param tile The index of the tile for which the offset is set.
+   * @param step This is essentially the step by which the previous
+   *     offset will be expanded. It is practically the last tile size.
+   * @return void
+   */
+  void set_tile_offset(
+      const std::string& attribute, uint64_t tile, uint64_t step);
+
+  /**
+   * Sets a variable tile offset for the input attribute.
+   *
+   * @param attribute The attribute for which the offset is set.
+   * @param tile The index of the tile for which the offset is set.
+   * @param step This is essentially the step by which the previous
+   *     offset will be expanded. It is practically the last variable tile size.
+   * @return void
+   */
+  void set_tile_var_offset(
+      const std::string& attribute, uint64_t tile, uint64_t step);
+
+  /**
+   * Sets a variable tile size for the input attribute.
+   *
+   * @param attribute The attribute for which the size is set.
+   * @param tile The index of the tile for which the offset is set.
+   * @param size The size to be appended.
+   * @return void
+   */
+  void set_tile_var_size(
+      const std::string& attribute, uint64_t tile, uint64_t size);
+
+  /** Returns the tile index base value. */
+  uint64_t tile_index_base() const;
 
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
@@ -385,6 +418,12 @@ class FragmentMetadata {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* non_empty_domain_;
+
+  /**
+   * The tile index base which is added to tile indices in setter functions.
+   * Only used in global order writes.
+   */
+  uint64_t tile_index_base_;
 
   /**
    * The tile offsets in their corresponding attribute files. Meaningful only
