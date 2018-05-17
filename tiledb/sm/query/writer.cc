@@ -368,7 +368,8 @@ Status Writer::compute_coords_metadata(
   mbr.resize(2 * dim_num);
 
   // Compute MBRs
-  for (const auto& tile : tiles) {
+  for (uint64_t tile_id = 0; tile_id < tiles.size(); tile_id++) {
+    const auto& tile = tiles[tile_id];
     // Initialize MBR with the first coords
     auto data = (T*)tile.data();
     auto cell_num = tile.size() / coords_size;
@@ -382,13 +383,14 @@ Status Writer::compute_coords_metadata(
     for (uint64_t i = 1; i < cell_num; ++i)
       utils::expand_mbr(&mbr[0], &data[i * dim_num], dim_num);
 
-    meta->append_mbr(&mbr[0]);
+    meta->set_mbr(tile_id, &mbr[0]);
   }
 
   // Compute bounding coordinates
   std::vector<T> bcoords;
   bcoords.resize(2 * dim_num);
-  for (const auto& tile : tiles) {
+  for (uint64_t tile_id = 0; tile_id < tiles.size(); tile_id++) {
+    const auto& tile = tiles[tile_id];
     auto data = (T*)tile.data();
     auto cell_num = tile.size() / coords_size;
     assert(cell_num > 0);
@@ -396,7 +398,7 @@ Status Writer::compute_coords_metadata(
     std::memcpy(&bcoords[0], data, coords_size);
     std::memcpy(
         &bcoords[dim_num], &data[(cell_num - 1) * dim_num], coords_size);
-    meta->append_bounding_coords(&bcoords[0]);
+    meta->set_bounding_coords(tile_id, &bcoords[0]);
   }
 
   // Set last tile cell number
@@ -601,13 +603,28 @@ Status Writer::global_write() {
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   auto frag_meta = global_write_state_->frag_meta_.get();
   auto uri = frag_meta->fragment_uri();
+  auto num_attributes = attributes_.size();
 
-  // Prepare tiles for all attributes and write
+  // Prepare tiles for all attributes
   auto st = Status::Ok();
-  for (const auto& attr : attributes_) {
-    std::vector<Tile> full_tiles;
+  std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
+    auto& full_tiles = attribute_tiles[i];
     BREAK_CANCEL_OR_ERROR(st, prepare_full_tiles(attr, &full_tiles));
+  }
 
+  // Increment number of tiles in the fragment metadata
+  uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
+                           attribute_tiles[0].size() / 2 :
+                           attribute_tiles[0].size();
+  auto new_num_tiles = frag_meta->tile_index_base() + num_tiles;
+  frag_meta->set_num_tiles(new_num_tiles);
+
+  // Write all attributes
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
+    auto& full_tiles = attribute_tiles[i];
     if (attr == constants::coords) {
       BREAK_CANCEL_OR_ERROR(
           st, compute_coords_metadata<T>(full_tiles, frag_meta));
@@ -615,6 +632,9 @@ Status Writer::global_write() {
 
     BREAK_CANCEL_OR_ERROR(st, write_tiles(attr, frag_meta, full_tiles));
   }
+
+  // Increment the tile index base for the next global order write.
+  frag_meta->set_tile_index_base(new_num_tiles);
 
   if (!st.ok()) {
     storage_manager_->vfs()->remove_dir(uri);
@@ -626,10 +646,28 @@ Status Writer::global_write() {
 
 template <class T>
 Status Writer::global_write_handle_last_tile() {
+  // See if any last tiles are nonempty.
+  bool all_empty = true;
+  for (const auto& attr : attributes_) {
+    auto& last_tile = global_write_state_->last_tiles_[attr].first;
+    if (!last_tile.empty()) {
+      all_empty = false;
+      break;
+    }
+  }
+
+  // Return early if there are no tiles to write.
+  if (all_empty)
+    return Status::Ok();
+
+  // Reserve space for the last tile in the fragment metadata
+  auto meta = global_write_state_->frag_meta_.get();
+  meta->set_num_tiles(meta->tile_index_base() + 1);
+
+  // Write the last tiles
   for (const auto& attr : attributes_) {
     auto& last_tile = global_write_state_->last_tiles_[attr].first;
     auto& last_tile_var = global_write_state_->last_tiles_[attr].second;
-    auto meta = global_write_state_->frag_meta_.get();
     if (!last_tile.empty()) {
       std::vector<Tile> tiles;
       tiles.push_back(last_tile);
@@ -640,6 +678,9 @@ Status Writer::global_write_handle_last_tile() {
       RETURN_NOT_OK(write_tiles(attr, meta, tiles));
     }
   }
+
+  // Increment the tile index base.
+  meta->set_tile_index_base(meta->tile_index_base() + 1);
 
   return Status::Ok();
 }
@@ -868,8 +909,13 @@ Status Writer::ordered_write() {
         storage_manager_->vfs()->remove_dir(uri));
   dense_cell_range_its.clear();
 
+  // Set number of tiles in the fragment metadata
+  frag_meta->set_num_tiles(tile_num);
+
   // Prepare tiles for all attributes and write
-  for (const auto& attr : attributes_) {
+  uint64_t num_attributes = attributes_.size();
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
     std::vector<Tile> tiles;
     RETURN_CANCEL_OR_ERROR_ELSE(
         prepare_tiles(attr, write_cell_ranges, &tiles),
@@ -1315,12 +1361,27 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
-  // Prepare tiles for all attributes and write
-  for (const auto& attr : attributes_) {
-    std::vector<Tile> tiles;
+  // Prepare tiles for all attributes
+  auto num_attributes = attributes_.size();
+  std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
+    auto& tiles = attribute_tiles[i];
     RETURN_CANCEL_OR_ERROR_ELSE(
         prepare_tiles(attr, cell_pos, &tiles),
         storage_manager_->vfs()->remove_dir(uri));
+  }
+
+  // Set the number of tiles in the metadata
+  uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
+                           attribute_tiles[0].size() / 2 :
+                           attribute_tiles[0].size();
+  frag_meta->set_num_tiles(num_tiles);
+
+  // Write tiles for all attributes
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
+    auto& tiles = attribute_tiles[i];
     if (attr == constants::coords)
       RETURN_CANCEL_OR_ERROR_ELSE(
           compute_coords_metadata<T>(tiles, frag_meta.get()),
@@ -1425,15 +1486,15 @@ Status Writer::write_tiles(
   // Write tiles
   auto tile_num = tiles.size();
   uint64_t bytes_written, bytes_written_var;
-  for (size_t i = 0; i < tile_num; ++i) {
+  for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
     RETURN_NOT_OK(tile_io->write(&(tiles[i]), &bytes_written));
-    frag_meta->append_tile_offset(attribute, bytes_written);
+    frag_meta->set_tile_offset(attribute, tile_id, bytes_written);
 
     if (var_size) {
       ++i;
       RETURN_NOT_OK(tile_io_var->write(&(tiles[i]), &bytes_written_var));
-      frag_meta->append_tile_var_offset(attribute, bytes_written_var);
-      frag_meta->append_tile_var_size(attribute, tiles[i].size());
+      frag_meta->set_tile_var_offset(attribute, tile_id, bytes_written_var);
+      frag_meta->set_tile_var_size(attribute, tile_id, tiles[i].size());
     }
   }
 
