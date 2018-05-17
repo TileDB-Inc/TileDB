@@ -607,13 +607,23 @@ Status Writer::global_write() {
   auto num_attributes = attributes_.size();
 
   // Prepare tiles for all attributes
-  auto st = Status::Ok();
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
-  for (uint64_t i = 0; i < num_attributes; i++) {
+  auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& full_tiles = attribute_tiles[i];
-    BREAK_CANCEL_OR_ERROR(st, prepare_full_tiles(attr, &full_tiles));
+    RETURN_CANCEL_OR_ERROR(prepare_full_tiles(attr, &full_tiles));
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses) {
+    if (!st.ok()) {
+      storage_manager_->vfs()->remove_dir(uri);
+      global_write_state_.reset(nullptr);
+      return st;
+    }
   }
+  statuses.clear();
 
   // Increment number of tiles in the fragment metadata
   uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
@@ -623,26 +633,28 @@ Status Writer::global_write() {
   frag_meta->set_num_tiles(new_num_tiles);
 
   // Write all attributes
-  for (uint64_t i = 0; i < num_attributes; i++) {
+  statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& full_tiles = attribute_tiles[i];
-    if (attr == constants::coords) {
-      BREAK_CANCEL_OR_ERROR(
-          st, compute_coords_metadata<T>(full_tiles, frag_meta));
-    }
+    if (attr == constants::coords)
+      RETURN_CANCEL_OR_ERROR(compute_coords_metadata<T>(full_tiles, frag_meta));
+    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, full_tiles));
+    return Status::Ok();
+  });
 
-    BREAK_CANCEL_OR_ERROR(st, write_tiles(attr, frag_meta, full_tiles));
+  // Check all statuses
+  for (auto& st : statuses) {
+    if (!st.ok()) {
+      storage_manager_->vfs()->remove_dir(uri);
+      global_write_state_.reset(nullptr);
+      return st;
+    }
   }
 
   // Increment the tile index base for the next global order write.
   frag_meta->set_tile_index_base(new_num_tiles);
 
-  if (!st.ok()) {
-    storage_manager_->vfs()->remove_dir(uri);
-    global_write_state_.reset(nullptr);
-  }
-
-  return st;
+  return Status::Ok();
 }
 
 template <class T>
@@ -915,16 +927,17 @@ Status Writer::ordered_write() {
 
   // Prepare tiles for all attributes and write
   uint64_t num_attributes = attributes_.size();
-  for (uint64_t i = 0; i < num_attributes; i++) {
+  auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     std::vector<Tile> tiles;
-    RETURN_CANCEL_OR_ERROR_ELSE(
-        prepare_tiles(attr, write_cell_ranges, &tiles),
-        storage_manager_->vfs()->remove_dir(uri));
-    RETURN_CANCEL_OR_ERROR_ELSE(
-        write_tiles(attr, frag_meta.get(), tiles),
-        storage_manager_->vfs()->remove_dir(uri));
-  }
+    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
+    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta.get(), tiles));
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -1366,13 +1379,17 @@ Status Writer::unordered_write() {
   // Prepare tiles for all attributes
   auto num_attributes = attributes_.size();
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
-  for (uint64_t i = 0; i < num_attributes; i++) {
+  auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& tiles = attribute_tiles[i];
-    RETURN_CANCEL_OR_ERROR_ELSE(
-        prepare_tiles(attr, cell_pos, &tiles),
-        storage_manager_->vfs()->remove_dir(uri));
-  }
+    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, cell_pos, &tiles));
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  statuses.clear();
 
   // Set the number of tiles in the metadata
   uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
@@ -1381,17 +1398,19 @@ Status Writer::unordered_write() {
   frag_meta->set_num_tiles(num_tiles);
 
   // Write tiles for all attributes
-  for (uint64_t i = 0; i < num_attributes; i++) {
+  statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& tiles = attribute_tiles[i];
     if (attr == constants::coords)
-      RETURN_CANCEL_OR_ERROR_ELSE(
-          compute_coords_metadata<T>(tiles, frag_meta.get()),
-          storage_manager_->vfs()->remove_dir(uri));
-    RETURN_CANCEL_OR_ERROR_ELSE(
-        write_tiles(attr, frag_meta.get(), tiles),
-        storage_manager_->vfs()->remove_dir(uri));
-  }
+      RETURN_CANCEL_OR_ERROR(
+          compute_coords_metadata<T>(tiles, frag_meta.get()));
+    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta.get(), tiles));
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
