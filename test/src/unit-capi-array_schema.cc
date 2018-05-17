@@ -149,7 +149,7 @@ ArraySchemaFx::ArraySchemaFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Connect to S3
   if (supports_s3_) {
@@ -175,8 +175,8 @@ ArraySchemaFx::~ArraySchemaFx() {
     }
   }
 
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
+  tiledb_ctx_free(&ctx_);
 }
 
 void ArraySchemaFx::set_supported_fs() {
@@ -191,7 +191,7 @@ void ArraySchemaFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void ArraySchemaFx::create_temp_dir(const std::string& path) {
@@ -293,8 +293,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, inv_attr);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_attribute_free(ctx_, &inv_attr);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&inv_attr);
 
   // Set attribute
   tiledb_attribute_t* attr;
@@ -316,16 +315,11 @@ void ArraySchemaFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_ERR);
 
   // Clean up
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_free(&array_schema);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
 }
 
 void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
@@ -384,7 +378,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
-  tiledb_attribute_free(ctx_, &attr);
+  tiledb_attribute_free(&attr);
 
   // get first attribute by name
   rc = tiledb_array_schema_get_attribute_from_name(
@@ -434,8 +428,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
-  rc = tiledb_dimension_free(ctx_, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(&dim);
 
   // get first dimension by index
   rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 0, &dim);
@@ -453,9 +446,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_dimension_get_tile_extent(ctx_, dim, &tile_extent);
   REQUIRE(rc == TILEDB_OK);
   CHECK(!memcmp(tile_extent, &TILE_EXTENTS[0], TILE_EXTENT_SIZE));
-
-  rc = tiledb_dimension_free(ctx_, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(&dim);
 
   // Check second dimension
   // get second dimension by name
@@ -465,9 +456,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
-
-  rc = tiledb_dimension_free(ctx_, &dim);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_free(&dim);
 
   // get from index
   rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 1, &dim);
@@ -532,14 +521,10 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   CHECK(tiledb_vfs_remove_file(ctx_, vfs_, "fout.txt") == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 std::string ArraySchemaFx::random_bucket_name(const std::string& prefix) {
@@ -609,8 +594,7 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* get_dim = nullptr;
   rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "", &get_dim);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &get_dim);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&get_dim);
 
   rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d2", &get_dim);
   const char* get_name = nullptr;
@@ -618,15 +602,12 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_get_name(ctx_, get_dim, &get_name);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(get_name, Catch::Equals("d2"));
-  tiledb_dimension_free(ctx_, &get_dim);
+  tiledb_dimension_free(&get_dim);
 
   // Clean up
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
 }
 
 TEST_CASE_METHOD(
@@ -661,16 +642,12 @@ TEST_CASE_METHOD(
   rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 0, &get_dim);
   CHECK(rc == TILEDB_OK);
   CHECK(get_dim != nullptr);
-  rc = tiledb_dimension_free(ctx_, &get_dim);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&get_dim);
 
   // Clean up
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
 }
 
 TEST_CASE_METHOD(
@@ -716,8 +693,7 @@ TEST_CASE_METHOD(
   // from name when there are multiple anon attributes is an error
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
-  rc = tiledb_attribute_free(ctx_, &get_attr);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&get_attr);
 
   rc = tiledb_array_schema_get_attribute_from_name(
       ctx_, array_schema, "foo", &get_attr);
@@ -727,20 +703,14 @@ TEST_CASE_METHOD(
   rc = tiledb_attribute_get_name(ctx_, get_attr, &get_name);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(get_name, Catch::Equals("foo"));
-  rc = tiledb_attribute_free(ctx_, &get_attr);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&get_attr);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &attr1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &attr2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr1);
+  tiledb_attribute_free(&attr2);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 TEST_CASE_METHOD(
@@ -789,20 +759,14 @@ TEST_CASE_METHOD(
       ctx_, array_schema, 0, &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
-  rc = tiledb_attribute_free(ctx_, &get_attr);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&get_attr);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &attr1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &attr2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr1);
+  tiledb_attribute_free(&attr2);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 TEST_CASE_METHOD(
@@ -832,12 +796,9 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
 
   // Clean up
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 TEST_CASE_METHOD(
@@ -875,6 +836,5 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  rc = tiledb_dimension_free(ctx_, &d1);
-  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_free(&d1);
 }

@@ -111,5 +111,5 @@ TEST_CASE("C API: Test URI", "[capi], [uri]") {
   CHECK(strlen(path) == path_length);
   CHECK(strcmp(path, "hdfs://my/path") == 0);
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }

@@ -42,6 +42,8 @@
 * Added `sm.enable_signal_handlers` config parameter.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
 * Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
+* Added `tiledb_kv_iter_finalize`, which must be called before freeing the kv iterator.
+* Added `tiledb_kv_free`.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -54,7 +56,8 @@
 * `tiledb::Attribute` can now be constructed with an enumerated type (e.x. `TILEDB_CHAR`).
 * A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
 * Added `Array::partition_subarray` for computing subarray partitions based on memory budget.
-* Add `Map::has_key` to check for key presence.
+* Added `Map::has_key` to check for key presence.
+* Added `Map::finalize`.
 
 ## Breaking changes
 
@@ -65,6 +68,8 @@
 * Removed `force` argument from `tiledb_vfs_move_*` and `tiledb_object_move`.
 * Removed `vfs.s3.file_buffer_size` config parameter.
 * Removed `tiledb_query_get_attribute_status`.
+* All `tiledb_*_free` functions now return `void` and do not take `ctx` as input (except for `tiledb_ctx_free`).
+* Changed signature of `tiledb_kv_close` to take a `tiledb_kv_t*` argument instead of `tiledb_kv_t**`.
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.

@@ -112,7 +112,7 @@ DenseVectorFx::DenseVectorFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Connect to S3
   if (supports_s3_) {
@@ -138,8 +138,8 @@ DenseVectorFx::~DenseVectorFx() {
     }
   }
 
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
+  tiledb_ctx_free(&ctx_);
 }
 
 void DenseVectorFx::set_supported_fs() {
@@ -154,7 +154,7 @@ void DenseVectorFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void DenseVectorFx::create_temp_dir(const std::string& path) {
@@ -216,12 +216,9 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   // Create array
   rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_array_schema_free(&array_schema);
 
   const char* attributes[] = {ATTR_NAME};
 
@@ -241,8 +238,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, write_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &write_query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&write_query);
 }
 
 void DenseVectorFx::check_read(
@@ -268,8 +264,7 @@ void DenseVectorFx::check_read(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &read_query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&read_query);
 
   CHECK(buffer[0] == 0);
   CHECK(buffer[1] == 1);
@@ -298,8 +293,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, update_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &update_query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&update_query);
 
   // Read
   int64_t buffer[] = {0, 0, 0};
@@ -319,8 +313,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &read_query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&read_query);
 
   CHECK((buffer[0] == 9 && buffer[1] == 8 && buffer[2] == 7));
 }
@@ -349,8 +342,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_finalize(ctx_, update_query);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_free(ctx_, &update_query);
-    REQUIRE(rc == TILEDB_OK);
+    tiledb_query_free(&update_query);
   }
 
   // Read
@@ -373,8 +365,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &read_query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&read_query);
 
   CHECK(
       (buffer[0] == num_writes - 1 && buffer[1] == num_writes - 1 &&

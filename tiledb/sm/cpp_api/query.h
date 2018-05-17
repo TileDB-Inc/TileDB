@@ -111,7 +111,6 @@ class Query {
       const std::string& array_uri,
       tiledb_query_type_t type)
       : ctx_(ctx)
-      , deleter_(ctx)
       , schema_(ctx, array_uri)
       , uri_(array_uri) {
     tiledb_query_t* q;

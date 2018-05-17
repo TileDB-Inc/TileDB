@@ -89,7 +89,7 @@ int main() {
   tiledb_vfs_remove_dir(ctx, vfs, "dir_A");
 
   // Clean up
-  tiledb_vfs_free(ctx, &vfs);
+  tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 
   return 0;

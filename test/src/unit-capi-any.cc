@@ -102,11 +102,11 @@ void AnyFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  REQUIRE(tiledb_attribute_free(ctx, &a1) == TILEDB_OK);
-  REQUIRE(tiledb_dimension_free(ctx, &d1) == TILEDB_OK);
-  REQUIRE(tiledb_domain_free(ctx, &domain) == TILEDB_OK);
-  REQUIRE(tiledb_array_schema_free(ctx, &array_schema) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_attribute_free(&a1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx);
 }
 
 void AnyFx::write_array(const std::string& array_name) {
@@ -162,8 +162,8 @@ void AnyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_ctx_free(&ctx);
 }
 
 void AnyFx::read_array(const std::string& array_name) {
@@ -224,8 +224,8 @@ void AnyFx::read_array(const std::string& array_name) {
       !std::memcmp(&buffer_a1[buffer_a1_offsets[3] + 1], &C4, sizeof(double)));
 
   // Clean up
-  REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_ctx_free(&ctx);
   delete[] buffer_a1_offsets;
   delete[] buffer_a1;
 }
@@ -246,7 +246,7 @@ void AnyFx::delete_array(const std::string& array_name) {
   }
 
   // Clean up
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi], [any]") {

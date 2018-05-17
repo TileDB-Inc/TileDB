@@ -121,7 +121,7 @@ int main() {
   tiledb_config_iter_free(&config_iter);
   if (error != NULL)
     tiledb_error_free(&error);
-  tiledb_vfs_free(ctx, &vfs);
+  tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 
   return 0;

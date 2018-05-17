@@ -287,6 +287,8 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_close
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_free
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_add_item
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_flush
@@ -336,6 +338,8 @@ Key-value Item
 Key-value Iterator
 ------------------
 .. doxygenfunction:: tiledb_kv_iter_create
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_iter_finalize
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_free
     :project: TileDB-C

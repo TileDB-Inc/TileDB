@@ -83,6 +83,9 @@ int main() {
     std::cout << e.what() << "\n";
   }
 
+  // Finalize map
+  map.finalize();
+
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 
   return 0;

@@ -90,7 +90,9 @@ int main() {
       std::cout << e.what() << "\n";
     }
 
-  }  // Map goes out of scope, so it will be flushed.
+    // Finalize map
+    map.finalize();
+  }
 
   // Consolidate fragments (optional)
   tiledb::Map::consolidate(ctx, "my_map");

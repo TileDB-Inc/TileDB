@@ -44,12 +44,12 @@ void remove_file(const std::string& filename) {
   // Remove file
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_create(&ctx, nullptr);
+  REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
   REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
-  CHECK(tiledb_vfs_free(ctx, &vfs) == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
 }
 
 void check_load_correct_file() {
@@ -74,10 +74,8 @@ void check_load_correct_file() {
   tiledb_ctx_t* ctx = nullptr;
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
+  tiledb_config_free(&config);
 
   remove_file("test_config.txt");
 }
@@ -102,10 +100,8 @@ void check_load_incorrect_file_cannot_open() {
   check_error(
       error,
       "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
+  tiledb_config_free(&config);
   CHECK(config == nullptr);
 }
 
@@ -132,11 +128,9 @@ void check_load_incorrect_file_missing_value() {
       error,
       "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
   CHECK(error == nullptr);
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
   CHECK(config == nullptr);
   remove_file("test_config.txt");
 }
@@ -164,10 +158,8 @@ void check_load_incorrect_file_extra_word() {
       error,
       "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
+  tiledb_config_free(&config);
   remove_file("test_config.txt");
 }
 
@@ -222,8 +214,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   tiledb_ctx_t* ctx;
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
   CHECK(ctx == nullptr);
 
   // Check get for existing argument
@@ -249,10 +240,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
-  rc = tiledb_config_free(&get_config);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&get_config);
+  tiledb_ctx_free(&ctx);
 
   // Check correct parameter, correct argument
   rc = tiledb_config_set(config, "sm.tile_cache_size", "+100", &error);
@@ -260,8 +249,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error == nullptr);
   rc = tiledb_ctx_create(&ctx, config);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 
   // Check invalid argument for correct parameter
   rc = tiledb_config_set(config, "sm.tile_cache_size", "xadf", &error);
@@ -271,8 +259,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       error,
       "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
       "argument");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
   rc = tiledb_config_set(config, "sm.tile_cache_size", "10xadf", &error);
@@ -282,8 +269,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       error,
       "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
       "argument");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
   rc = tiledb_config_set(config, "sm.tile_cache_size", "-10", &error);
@@ -293,8 +279,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       error,
       "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
       "argument");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
 
   // Check invalid parameters are ignored
   rc = tiledb_config_set(config, "sm.tile_cache_size", "10", &error);
@@ -318,11 +303,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       error,
       "[TileDB::Utils] Error: Failed to convert string to uint64_t; Value out "
       "of range");
-  rc = tiledb_error_free(&error);
-  CHECK(rc == TILEDB_OK);
-
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
+  tiledb_error_free(&error);
+  tiledb_config_free(&config);
 }
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {
@@ -428,8 +410,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(all_param_values == all_iter_map);
-  rc = tiledb_config_iter_free(&config_iter);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);
 
   // Create an iterator and iterate over vfs parameters
@@ -456,8 +437,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(vfs_param_values == vfs_iter_map);
-  rc = tiledb_config_iter_free(&config_iter);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_iter_free(&config_iter);
 
   // Create an iterator and iterate over s3 parameters
   rc = tiledb_config_iter_create(config, &config_iter, "vfs.s3.", &error);
@@ -483,15 +463,12 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
     CHECK(error == nullptr);
   } while (!done);
   CHECK(s3_param_values == s3_iter_map);
-  rc = tiledb_config_iter_free(&config_iter);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_iter_free(&config_iter);
   CHECK(error == nullptr);
 
   // Clean up
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_ctx_free(&ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
+  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE("C API: Test config from file", "[capi], [config]") {

@@ -62,7 +62,6 @@ class MapItem {
   /** Load a MapItem given a pointer. **/
   MapItem(const Context& ctx, tiledb_kv_item_t** item, Map* map = nullptr)
       : ctx_(ctx)
-      , deleter_(ctx)
       , map_(map) {
     item_ = std::shared_ptr<tiledb_kv_item_t>(*item, deleter_);
     *item = nullptr;
@@ -215,7 +214,6 @@ class MapItem {
       size_t size,
       Map* map = nullptr)
       : ctx_(ctx)
-      , deleter_(ctx)
       , map_(map) {
     tiledb_kv_item_t* p;
     ctx.handle_error(tiledb_kv_item_create(ctx, &p));
@@ -562,7 +560,6 @@ class Map {
    */
   Map(const Context& ctx, const std::string& uri)
       : schema_(ctx, uri)
-      , deleter_(ctx)
       , uri_(uri) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
@@ -716,6 +713,12 @@ class Map {
     return iterator{*this, true};
   }
 
+  /** Finalize the map. */
+  void finalize() {
+    auto& ctx = context();
+    ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
+  }
+
   /* ********************************* */
   /*               STATIC              */
   /* ********************************* */
@@ -834,7 +837,6 @@ namespace impl {
 
 inline MapIter::MapIter(Map& map, bool end)
     : map_(&map)
-    , deleter_(map.context())
     , done_((int)end) {
 }
 

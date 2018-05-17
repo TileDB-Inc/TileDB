@@ -105,6 +105,8 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   CHECK(std::get<1>(ret) == "aaa");
   CHECK(std::get<2>(ret).size() == 2);
   CHECK(std::get<2>(ret)[0] == 4.2);
+
+  map.finalize();
 }
 
 /**
@@ -144,6 +146,8 @@ TEST_CASE_METHOD(
   CHECK(test_get_item_by_key.get<int>("a1") == 1);
   CHECK(test_get_item_by_key.get<std::string>("a2") == "someval");
   CHECK(test_get_item_by_key.get<std::array<double, 2>>("a3")[0] == 3);
+
+  map.finalize();
 }
 
 struct CPPMapFx1A {
@@ -177,6 +181,8 @@ TEST_CASE_METHOD(CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi]") {
   map[10] = 1;
   map.flush();
   assert(int(map[10]) == 1);
+
+  map.finalize();
 }
 
 struct CPPMapFromMapFx {
@@ -209,4 +215,6 @@ TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2]["val"].get<std::string>() == "123");
+
+  map.finalize();
 }

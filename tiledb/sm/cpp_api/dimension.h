@@ -60,8 +60,7 @@ class Dimension {
   /* ********************************* */
 
   Dimension(const Context& ctx, tiledb_dimension_t* dim)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     dim_ = std::shared_ptr<tiledb_dimension_t>(dim, deleter_);
   }
 

@@ -197,7 +197,7 @@ SparseArrayFx::SparseArrayFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Connect to S3
   if (supports_s3_) {
@@ -236,8 +236,8 @@ SparseArrayFx::~SparseArrayFx() {
   if (supports_hdfs_)
     remove_temp_dir(HDFS_TEMP_DIR);
 
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
+  tiledb_ctx_free(&ctx_);
 }
 
 void SparseArrayFx::set_supported_fs() {
@@ -252,7 +252,7 @@ void SparseArrayFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::create_temp_dir(const std::string& path) {
@@ -335,16 +335,11 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &a);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 int* SparseArrayFx::read_sparse_array_2D(
@@ -392,8 +387,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Success - return the created buffer
   return buffer_a1;
@@ -443,8 +437,7 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Clean up
   delete[] buffer_a1;

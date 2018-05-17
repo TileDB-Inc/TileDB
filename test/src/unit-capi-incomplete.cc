@@ -78,7 +78,7 @@ IncompleteFx::IncompleteFx() {
 }
 
 IncompleteFx::~IncompleteFx() {
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
 }
 
 void IncompleteFx::create_dense_array() {
@@ -154,13 +154,13 @@ void IncompleteFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void IncompleteFx::create_sparse_array() {
@@ -236,13 +236,13 @@ void IncompleteFx::create_sparse_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void IncompleteFx::write_dense_full() {
@@ -299,7 +299,7 @@ void IncompleteFx::write_dense_full() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::write_sparse_full() {
@@ -353,7 +353,7 @@ void IncompleteFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::remove_array(const std::string& array_name) {
@@ -414,8 +414,7 @@ void IncompleteFx::check_dense_incomplete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Check buffer
   int c_buffer_a1[2] = {0, 1};
@@ -479,8 +478,7 @@ void IncompleteFx::check_dense_until_complete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_dense_unsplittable_overflow() {
@@ -515,8 +513,7 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_dense_unsplittable_complete() {
@@ -555,8 +552,7 @@ void IncompleteFx::check_dense_unsplittable_complete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_dense_reset_buffers() {
@@ -624,8 +620,7 @@ void IncompleteFx::check_dense_reset_buffers() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_sparse_incomplete() {
@@ -665,8 +660,7 @@ void IncompleteFx::check_sparse_incomplete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Check buffer
   int c_buffer_a1[1] = {0};
@@ -730,8 +724,7 @@ void IncompleteFx::check_sparse_until_complete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_sparse_unsplittable_overflow() {
@@ -766,8 +759,7 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void IncompleteFx::check_sparse_unsplittable_complete() {
@@ -806,8 +798,7 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 TEST_CASE_METHOD(

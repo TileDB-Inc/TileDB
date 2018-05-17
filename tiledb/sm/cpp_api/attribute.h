@@ -88,16 +88,14 @@ class Attribute {
   /* ********************************* */
 
   Attribute(const Context& ctx, tiledb_attribute_t* attr)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
 
   /** Construct an attribute with a given enuemrated type. By default, cell_num
    * is 1.*/
   Attribute(const Context& ctx, const std::string& name, tiledb_datatype_t type)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     init_from_type(name, type);
   }
 
@@ -107,8 +105,7 @@ class Attribute {
       const std::string& name,
       tiledb_datatype_t type,
       const Compressor& compressor)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     init_from_type(name, type);
     set_compressor(compressor);
   }
