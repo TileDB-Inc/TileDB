@@ -197,12 +197,15 @@ Status Domain::split_subarray_global(
   int dim_to_split = -1;
   auto tile_extents = (T*)tile_extents_;
   auto domain = (T*)domain_;
+  uint64_t tiles_apart = 0;
 
   if (tile_extents != nullptr) {
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (int i = 0; i < (int)dim_num_; ++i) {
-        if ((s[2 * i] - domain[2 * i]) / tile_extents[i] !=
-            (s[2 * i + 1] - domain[2 * i]) / tile_extents[i]) {
+        tiles_apart =
+            (T)floor(((s[2 * i + 1] - domain[2 * i]) / tile_extents[i])) -
+            (T)floor(((s[2 * i] - domain[2 * i]) / tile_extents[i]));
+        if (tiles_apart != 0) {
           // Not in the same tile - can split
           dim_to_split = i;
           break;
@@ -210,8 +213,10 @@ Status Domain::split_subarray_global(
       }
     } else {
       for (int i = (int)dim_num_ - 1;; --i) {
-        if ((s[2 * i] - domain[2 * i]) / tile_extents[i] !=
-            (s[2 * i + 1] - domain[2 * i]) / tile_extents[i]) {
+        tiles_apart =
+            (T)floor(((s[2 * i + 1] - domain[2 * i]) / tile_extents[i])) -
+            (T)floor(((s[2 * i] - domain[2 * i]) / tile_extents[i]));
+        if (tiles_apart != 0) {
           // Not in the same tile - can split
           dim_to_split = i;
           break;
@@ -244,7 +249,6 @@ Status Domain::split_subarray_global(
   T e = (std::numeric_limits<T>::is_integer) ?
             1 :
             std::numeric_limits<T>::epsilon();
-  T tile_diff;
   for (int i = 0; i < (int)dim_num_; ++i) {
     if (i != dim_to_split) {
       s1[2 * i] = s[2 * i];
@@ -253,23 +257,14 @@ Status Domain::split_subarray_global(
       s2[2 * i + 1] = s[2 * i + 1];
     } else {
       s1[2 * i] = s[2 * i];
-      tile_diff = (s[2 * i + 1] - domain[2 * i]) -
-                  (s[2 * i + 1] - domain[2 * i]) / tile_extents[i];
-      if (type_ == Datatype::FLOAT32 || type_ == Datatype::FLOAT64)
-        s1[2 * i + 1] = floor(
-                            ((s1[2 * i] + ((tile_diff / 2) * tile_extents[i])) -
-                             domain[2 * i]) /
-                            tile_extents[i]) *
-                            tile_extents[i] +
-                        domain[2 * i];
-      else
-        s1[2 * i + 1] = (((s1[2 * i] + ((tile_diff / 2) * tile_extents[i])) -
-                          domain[2 * i]) /
-                         tile_extents[i]) *
-                            tile_extents[i] +
-                        domain[2 * i] - 1;
+      s1[2 * i + 1] =
+          s1[2 * i] + MAX(1, floor(tiles_apart / 2)) * tile_extents[i];
+      s1[2 * i + 1] = floor_to_tile(s1[2 * i + 1], i) - e;
       s2[2 * i] = s1[2 * i + 1] + e;
       s2[2 * i + 1] = s[2 * i + 1];
+
+      assert(s1[2 * i + 1] >= s1[2 * i]);
+      assert(s2[2 * i + 1] >= s2[2 * i]);
     }
   }
 
@@ -1509,6 +1504,18 @@ std::string Domain::default_dimension_name(unsigned int i) const {
   std::stringstream ss;
   ss << constants::default_dim_name << "_" << i;
   return ss.str();
+}
+
+template <class T>
+T Domain::floor_to_tile(T value, unsigned dim_idx) const {
+  auto domain = (T*)domain_;
+  auto tile_extents = (T*)tile_extents_;
+
+  if (tile_extents_ == nullptr)
+    return domain[2 * dim_idx];
+
+  return ((value - domain[2 * dim_idx]) / tile_extents[dim_idx]) *
+         tile_extents[dim_idx];
 }
 
 template <class T>

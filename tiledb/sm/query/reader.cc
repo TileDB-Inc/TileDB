@@ -363,7 +363,10 @@ Status Reader::compute_subarray_partitions(
     if (no_results) {
       std::free(*it);
       it = my_subarrays.erase(it);
-      continue;
+      if (it != my_subarrays.end())
+        continue;
+      else
+        break;
     }
 
     // Handle case of split
