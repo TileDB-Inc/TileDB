@@ -94,7 +94,7 @@ target_include_directories(
 
 target_link_libraries(tiledb_unit
   PUBLIC
-    tiledb_shared
+    tiledb_static
     Catch::Catch
 )
 

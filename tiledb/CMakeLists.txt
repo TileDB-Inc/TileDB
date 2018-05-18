@@ -311,7 +311,14 @@ set_target_properties(tiledb_static
 
 # Link the dependencies specified earlier
 target_link_libraries(tiledb_shared
-  PUBLIC
+  PRIVATE
+  $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+)
+
+# Add INTERFACE_LINK_LIBRARIES for tiledb_static
+# this exports the required targets for usage of static library
+target_link_libraries(tiledb_static
+    PUBLIC
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
 )
 
@@ -379,10 +386,53 @@ set_target_properties(tiledb_static
 # Get library directory for multiarch linux distros
 include(GNUInstallDirs)
 
+# Set name for export target file
+set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+
 install(
-    TARGETS tiledb_static tiledb_shared
+    TARGETS tiledb_static tiledb_shared TILEDB_CORE_OBJECTS_ILIB
+    EXPORT ${TARGETS_EXPORT_NAME}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+
+# Set directory where TileDBConfig.cmake will be installed
+set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+
+# Set the generated dir for target cmake modules during build
+set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+# Configuration
+set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+
+# Include module with fuction 'write_basic_package_version_file'
+include(CMakePackageConfigHelpers)
+
+# Configure '<PROJECT-NAME>Config.cmake'
+# Use variables:
+#   * TARGETS_EXPORT_NAME
+#   * PROJECT_NAME
+configure_package_config_file(
+  "${TILEDB_CMAKE_INPUTS_DIR}/Config.cmake.in"
+  "${project_config}"
+  INSTALL_DESTINATION "${config_install_dir}"
+)
+
+# Config
+#   * <prefix>/lib/cmake/TileDB/TileDBConfig.cmake
+#   * <prefix>/lib/cmake/TileDB/TileDBConfigVersion.cmake
+install(
+  FILES "${project_config}"# "${version_config}"
+  DESTINATION "${config_install_dir}"
+)
+
+# Targets
+#   * <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
+install(
+  EXPORT "${TARGETS_EXPORT_NAME}"
+  NAMESPACE "${PROJECT_NAME}::"
+  DESTINATION "${config_install_dir}"
 )
