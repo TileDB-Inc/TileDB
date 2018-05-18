@@ -57,6 +57,15 @@ namespace sm {
 
 namespace constants {
 
+/**
+ * If `true`, this will check for coordinate duplicates upon sparse
+ * writes.
+ */
+const bool check_coord_dups = true;
+
+/** If `true`, this will deduplicate coordinates upon sparse writes. */
+const bool dedup_coords = false;
+
 /** The array schema file name. */
 const char* array_schema_filename = "__array_schema.tdb";
 

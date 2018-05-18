@@ -20,6 +20,7 @@
 * Added ability to cancel pending background/async tasks. SIGINT signals now cancel pending tasks.
 * Sparse read performance improvements with parallelism (using TBB as a dependency).
 * Async queries now use a configurable number of background threads (default number of threads is 1).
+* Added checks for duplicate coordinates and option for coordinate deduplication.
 
 ## Bug Fixes
 

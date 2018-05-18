@@ -43,6 +43,15 @@ enum class Compressor : char;
 
 namespace constants {
 
+/**
+ * If `true`, this will check for coordinate duplicates upon sparse
+ * writes.
+ */
+extern const bool check_coord_dups;
+
+/** If `true`, this will deduplicate coordinates upon sparse writes. */
+extern const bool dedup_coords;
+
 /** The object filelock name. */
 extern const char* filelock_name;
 

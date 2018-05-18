@@ -57,6 +57,8 @@ class Config {
     uint64_t num_async_threads_;
     int num_tbb_threads_;
     uint64_t tile_cache_size_;
+    bool dedup_coords_;
+    bool check_coord_dups_;
 
     SMParams() {
       array_schema_cache_size_ = constants::array_schema_cache_size;
@@ -65,6 +67,8 @@ class Config {
       num_async_threads_ = constants::num_async_threads;
       num_tbb_threads_ = constants::num_tbb_threads;
       tile_cache_size_ = constants::tile_cache_size;
+      dedup_coords_ = false;
+      check_coord_dups_ = true;
     }
   };
 
@@ -163,6 +167,18 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.dedup_coords` <br>
+   *    If `true`, cells with duplicate coordinates will be removed during
+   *    sparse array writes. Note that ties during deduplication are
+   *    arbitrary. <br>
+   *    **Default**: false
+   * - `sm.check_coord_dups` <br>
+   *    This is applicable only if `sm.dedup_coords` is `false`.
+   *    If `true`, an error will be thrown if there are cells with duplicate
+   *    coordinates during sparse array writes. If `false` and there are
+   *    duplicates, the duplicates will be written without errors, but the
+   *    TileDB behavior could be unpredictable. <br>
+   *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
    *    **Default**: 10,000,000
@@ -294,6 +310,12 @@ class Config {
 
   /** Normalizes and parses a string boolean value **/
   Status parse_bool(const std::string& value, bool* result);
+
+  /** Sets the dedup coordinates parameter. */
+  Status set_sm_dedup_coords(const std::string& value);
+
+  /** Sets the check for coordinates duplicates parameter. */
+  Status set_sm_check_coord_dups(const std::string& value);
 
   /** Sets the array metadata cache size, properly parsing the input value. */
   Status set_sm_array_schema_cache_size(const std::string& value);
