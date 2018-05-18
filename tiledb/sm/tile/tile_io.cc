@@ -251,6 +251,13 @@ Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+bool TileIO::can_compress_nbytes(uint64_t nbytes) const {
+  // Conservatively, some compressors can only compress up to int32 max, so
+  // use that as the limit for all compressors.
+  auto limit = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  return nbytes <= limit;
+}
+
 Status TileIO::compress_tile(Tile* tile) {
   // Simple case - No coordinates
   if (!tile->stores_coords())
@@ -294,94 +301,141 @@ Status TileIO::compress_one_tile(Tile* tile) {
   auto tile_size = tile->size();
 
   // Compute necessary info for chunking
-  uint64_t chunk_num, max_chunk_size, overhead;
-  RETURN_NOT_OK(
-      compute_chunking_info(tile, &chunk_num, &max_chunk_size, &overhead));
+  uint64_t chunk_num, chunk_size, chunk_overhead, total_overhead;
+  RETURN_NOT_OK(compute_chunking_info(
+      tile, &chunk_num, &chunk_size, &chunk_overhead, &total_overhead));
+  if (chunk_num == 0)
+    return LOG_STATUS(
+        Status::TileIOError("Compressed tile would have 0 chunks."));
 
-  // Properly reallocate buffer
-  RETURN_NOT_OK(buffer_->realloc(buffer_->size() + tile_size + overhead));
+  // Compress each chunk in parallel.
+  std::vector<Buffer> chunk_buffers(chunk_num);
+  auto tile_data = reinterpret_cast<const char*>(tile->cur_data());
+  auto statuses = parallel_for(0, chunk_num, [&](uint64_t i) {
+    auto& chunk_buffer = chunk_buffers[i];
+    uint64_t compressed_chunk_size = 0;
+    auto this_chunk_size = chunk_size;
+    auto tile_data_offset = i * chunk_size;
+    // The last chunk may be smaller when the chunk size does not evenly divide
+    // the tile size.
+    if (i == chunk_num - 1)
+      this_chunk_size = tile_size - (chunk_num - 1) * chunk_size;
 
-  // Write number of chunks
-  RETURN_NOT_OK(buffer_->write(&chunk_num, sizeof(uint64_t)));
+    // Pre-allocate enough space for the compression function.
+    chunk_buffer.realloc(
+        this_chunk_size + 2 * sizeof(uint64_t) + chunk_overhead);
 
-  // Compress in chunks
-  Status st;
-  uint64_t compressed_chunk_size = 0;
-  uint64_t left_to_compress = tile_size;
-  for (uint64_t i = 0; i < chunk_num; ++i) {
-    // Write chunk info
-    auto chunk_size = MIN(left_to_compress, max_chunk_size);
-
-    RETURN_NOT_OK(buffer_->write(&chunk_size, sizeof(uint64_t)));
-    uint64_t buffer_offset = buffer_->offset();  // Will be used later
-    RETURN_NOT_OK(buffer_->write(&compressed_chunk_size, sizeof(uint64_t)));
+    RETURN_NOT_OK(chunk_buffer.write(&this_chunk_size, sizeof(uint64_t)));
+    uint64_t compressed_size_offset =
+        chunk_buffer.offset();  // Will be used later
+    RETURN_NOT_OK(chunk_buffer.write(&compressed_chunk_size, sizeof(uint64_t)));
 
     // Create const buffer
-    auto input_buffer = new ConstBuffer(tile->cur_data(), chunk_size);
+    ConstBuffer input_buffer(tile_data + tile_data_offset, this_chunk_size);
 
     // Invoke the proper compressor
+    Status st = Status::Ok();
     switch (compressor) {
       case Compressor::GZIP:
-        st = GZip::compress(level, input_buffer, buffer_);
+        st = GZip::compress(level, &input_buffer, &chunk_buffer);
         break;
       case Compressor::ZSTD:
-        st = ZStd::compress(level, input_buffer, buffer_);
+        st = ZStd::compress(level, &input_buffer, &chunk_buffer);
         break;
       case Compressor::LZ4:
-        st = LZ4::compress(level, input_buffer, buffer_);
+        st = LZ4::compress(level, &input_buffer, &chunk_buffer);
         break;
       case Compressor::BLOSC_LZ:
-        st =
-            Blosc::compress("blosclz", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "blosclz", type_size, level, &input_buffer, &chunk_buffer);
         break;
 #undef BLOSC_LZ4
       case Compressor::BLOSC_LZ4:
-        st = Blosc::compress("lz4", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "lz4", type_size, level, &input_buffer, &chunk_buffer);
         break;
 #undef BLOSC_LZ4HC
       case Compressor::BLOSC_LZ4HC:
-        st = Blosc::compress("lz4hc", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "lz4hc", type_size, level, &input_buffer, &chunk_buffer);
         break;
 #undef BLOSC_SNAPPY
       case Compressor::BLOSC_SNAPPY:
-        st = Blosc::compress("snappy", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "snappy", type_size, level, &input_buffer, &chunk_buffer);
         break;
 #undef BLOSC_ZLIB
       case Compressor::BLOSC_ZLIB:
-        st = Blosc::compress("zlib", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "zlib", type_size, level, &input_buffer, &chunk_buffer);
         break;
 #undef BLOSC_ZSTD
       case Compressor::BLOSC_ZSTD:
-        st = Blosc::compress("zstd", type_size, level, input_buffer, buffer_);
+        st = Blosc::compress(
+            "zstd", type_size, level, &input_buffer, &chunk_buffer);
         break;
       case Compressor::RLE:
-        st = RLE::compress(cell_size, input_buffer, buffer_);
+        st = RLE::compress(cell_size, &input_buffer, &chunk_buffer);
         break;
       case Compressor::BZIP2:
-        st = BZip::compress(level, input_buffer, buffer_);
+        st = BZip::compress(level, &input_buffer, &chunk_buffer);
         break;
       case Compressor::DOUBLE_DELTA:
-        st = DoubleDelta::compress(type, input_buffer, buffer_);
+        st = DoubleDelta::compress(type, &input_buffer, &chunk_buffer);
         break;
       default:
         assert(0);
     }
 
-    delete input_buffer;
     RETURN_NOT_OK(st);
 
     // Write compressed chunk size
-    compressed_chunk_size =
-        buffer_->size() - (buffer_offset + sizeof(uint64_t));
+    compressed_chunk_size = chunk_buffer.size() - 2 * sizeof(uint64_t);
     std::memcpy(
-        buffer_->data(buffer_offset), &compressed_chunk_size, sizeof(uint64_t));
+        chunk_buffer.data(compressed_size_offset),
+        &compressed_chunk_size,
+        sizeof(uint64_t));
 
-    // Update
-    left_to_compress -= chunk_size;
-    tile->advance_offset(chunk_size);
+    return Status::Ok();
+  });
+
+  // Check compression status
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Advance tile buffer offset
+  tile->advance_offset(tile->size());
+
+  // Properly reallocate buffer
+  RETURN_NOT_OK(buffer_->realloc(buffer_->size() + tile_size + total_overhead));
+
+  // Write number of chunks
+  RETURN_NOT_OK(buffer_->write(&chunk_num, sizeof(uint64_t)));
+
+  // Compute compressed chunk offsets in total buffer.
+  std::vector<uint64_t> chunk_dest(chunk_num);
+  uint64_t buffer_offset = buffer_->offset();
+  for (uint64_t i = 0; i < chunk_num; ++i) {
+    chunk_dest[i] = buffer_offset;
+    buffer_offset += chunk_buffers[i].size();
   }
 
-  assert(left_to_compress == 0);
+  // Concatenate compressed chunks into buffer in parallel.
+  auto buffer_data = reinterpret_cast<char*>(buffer_->data());
+  parallel_for(
+      0, chunk_num, [&chunk_buffers, &chunk_dest, &buffer_data](uint64_t i) {
+        auto& chunk_buffer = chunk_buffers[i];
+        std::memcpy(
+            buffer_data + chunk_dest[i],
+            chunk_buffer.data(),
+            chunk_buffer.size());
+        return Status::Ok();
+      });
+
+  // Advance buffer offset and size appropriately.
+  uint64_t buffer_increase = buffer_offset - buffer_->offset();
+  buffer_->advance_offset(buffer_increase);
+  buffer_->advance_size(buffer_increase);
 
   return Status::Ok();
 }
@@ -389,40 +443,33 @@ Status TileIO::compress_one_tile(Tile* tile) {
 Status TileIO::compute_chunking_info(
     Tile* tile,
     uint64_t* chunk_num,
-    uint64_t* max_chunk_size,
-    uint64_t* overhead) {
+    uint64_t* chunk_size,
+    uint64_t* chunk_overhead,
+    uint64_t* total_overhead) {
   // For easy reference
   auto cell_size = tile->cell_size();
   auto tile_size = tile->size();
 
-  // Compute max chunk size
-  *max_chunk_size = MIN(constants::tile_chunk_size, tile_size);
-  *max_chunk_size = *max_chunk_size / cell_size * cell_size;
-  uint64_t chunk_overhead = this->overhead(tile, *max_chunk_size);
+  // Compute a chunk size as a multiple of the cell size.
+  *chunk_size = MIN(constants::max_tile_chunk_size, tile_size);
+  *chunk_size = *chunk_size / cell_size * cell_size;
+  *chunk_overhead = this->overhead(tile, *chunk_size);
 
-  // Adjust max chunk size
-  if (*max_chunk_size + chunk_overhead > constants::tile_chunk_size) {
-    *max_chunk_size -= chunk_overhead;
-    *max_chunk_size = (*max_chunk_size) / cell_size * cell_size;
-    chunk_overhead = this->overhead(tile, *max_chunk_size);
-  }
-
-  // Handle special error
-  if (*max_chunk_size + chunk_overhead > constants::tile_chunk_size) {
-    return LOG_STATUS(
-        Status::TileIOError("Compute chunking info failed; Consider adjusting "
-                            "constants::tile_chunk_size"));
-  }
+  // Check valid total size
+  if (!can_compress_nbytes(*chunk_size + *chunk_overhead))
+    return LOG_STATUS(Status::TileIOError(
+        "Cannot compress a chunk of size " + std::to_string(*chunk_size) +
+        " with overhead " + std::to_string(*chunk_overhead)));
 
   // Compute number of chunks
-  *chunk_num = tile_size / (*max_chunk_size) +
-               uint64_t(bool(tile_size % (*max_chunk_size)));
+  *chunk_num =
+      tile_size / (*chunk_size) + uint64_t(bool(tile_size % (*chunk_size)));
 
-  // Compute overhead: equal to the compression overhead per chunk, plus 2
-  // values per chunk that store the original and compressed chunk size,
+  // Compute total overhead: equal to the compression total_overhead per chunk,
+  // plus 2 values per chunk that store the original and compressed chunk size,
   // plus a single value in the beginning for the total number of chunks.
-  *overhead =
-      (*chunk_num) * chunk_overhead * 2 * sizeof(uint64_t) + sizeof(uint64_t);
+  *total_overhead = (*chunk_num) * (*chunk_overhead) * 2 * sizeof(uint64_t) +
+                    sizeof(uint64_t);
 
   return Status::Ok();
 }

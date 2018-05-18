@@ -215,6 +215,14 @@ class TileIO {
   /* ********************************* */
 
   /**
+   * Checks if the given number of bytes can be compressed in a single block.
+   *
+   * @param nbytes Number of bytes including overhead to check.
+   * @return True if the given number of bytes can be compressed
+   */
+  bool can_compress_nbytes(uint64_t nbytes) const;
+
+  /**
    * Compresses a tile. The compressed data are written in buffer_.
    * Note that a coordinates tile must be split into one tile per
    * dimension. In that case *compress_one_tile* will be invoked
@@ -237,16 +245,18 @@ class TileIO {
    * Computes necessary info for chunking a tile upon compression.
    *
    * @param tile The tile whose chunking info is being computed.
-   * @param chunk_num The number of chunks to compute.
-   * @param max_chunk_size The maximum chunk size to compute.
-   * @param overhead The total compression overhead.
+   * @param chunk_num The computed number of chunks.
+   * @param chunk_size The computed chunk size (a multiple of the cell size).
+   * @param chunk_overhead The compression overhead for `chunk_size` bytes.
+   * @param total_overhead The total compression overhead.
    * @return Status
    */
   Status compute_chunking_info(
       Tile* tile,
       uint64_t* chunk_num,
-      uint64_t* max_chunk_size,
-      uint64_t* overhead);
+      uint64_t* chunk_size,
+      uint64_t* chunk_overhead,
+      uint64_t* total_overhead);
 
   /**
    * Computes necessary info for decompressing chunks of a tile.

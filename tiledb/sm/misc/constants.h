@@ -320,7 +320,7 @@ extern const char* null_str;
 extern const int version[3];
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
-extern const uint64_t tile_chunk_size;
+extern const uint64_t max_tile_chunk_size;
 
 /** The default attribute name prefix. */
 extern const char* default_attr_name;
