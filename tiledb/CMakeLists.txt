@@ -96,10 +96,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix_filesystem.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win_filesystem.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc

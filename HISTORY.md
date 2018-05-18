@@ -8,7 +8,7 @@
 
 ## Improvements
 
-* Added parallel S3 writes, enabled by default.
+* Added parallel S3, POSIX, and Win32 writes, enabled by default.
 * Minor S3 optimizations and error message fixes (PR #462)
 * Changed S3 default config so that AWS S3 just works (PR #455)
 * Got rid of special S3 "directory objects"
