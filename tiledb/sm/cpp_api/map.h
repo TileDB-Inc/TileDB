@@ -443,9 +443,15 @@ class MapItemProxy {
   bool add_to_map() const;
 };
 
+}  // namespace impl
+
 /** Iterate over items in a map. **/
 class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  public:
+  /**
+   * Construct a iterator for a given map. init() must be called
+   * for non-end iterators, and finalize() before destruction.
+   */
   explicit MapIter(Map& map, bool end = false);
   MapIter(const MapIter&) = delete;
   MapIter(MapIter&&) = default;
@@ -494,10 +500,13 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
 
   MapIter& operator++();
 
+  /** Finalize the iterator. Must be called before destruction. */
+  void finalize() const;
+
  private:
   /** Base map. **/
   Map* map_;
-  Deleter deleter_;
+  impl::Deleter deleter_;
 
   /** Current item **/
   std::unique_ptr<MapItem> item_;
@@ -512,6 +521,43 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
   bool limit_type_ = false;
   tiledb_datatype_t type_;
   unsigned num_;
+};
+
+namespace impl {
+
+/**
+ * A copy constructable reference to a MapIter.
+ * Used for for (auto &i : map) style iteration.
+ */
+class MapIterReference {
+ public:
+  MapIterReference(MapIter& iter)
+      : iter_(iter) {
+  }
+
+  bool operator==(const MapIterReference& o) const {
+    return iter_ == o.iter_;
+  }
+
+  bool operator!=(const MapIterReference& o) const {
+    return iter_ != o.iter_;
+  }
+
+  MapItem& operator*() const {
+    return iter_.operator*();
+  }
+
+  MapItem* operator->() const {
+    return iter_.operator->();
+  }
+
+  MapIterReference& operator++() {
+    iter_.operator++();
+    return *this;
+  }
+
+ private:
+  MapIter& iter_;
 };
 
 }  // namespace impl
@@ -546,7 +592,7 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  */
 class Map {
  public:
-  using iterator = impl::MapIter;
+  using iterator = MapIter;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -560,7 +606,9 @@ class Map {
    */
   Map(const Context& ctx, const std::string& uri)
       : schema_(ctx, uri)
-      , uri_(uri) {
+      , uri_(uri)
+      , iter_(*this)
+      , iter_end_(*this, true) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
@@ -692,31 +740,43 @@ class Map {
     return uri_;
   }
 
-  /** Iterator to beginning of map. **/
-  iterator begin() {
-    iterator i(*this);
-    i.init();
-    return i;
+  /**
+   * Iterator to beginning of map.
+   *
+   * Note the iterator is global to the Map object.
+   * If multiple iterators are needed for concurrent use,
+   * then multiple Map objects or manually created MapIter objects are needed.
+   **/
+  impl::MapIterReference begin() {
+    iter_.init();
+    return iter_;
   }
 
-  /** Iterate over keys of type T */
+  /**
+   * Iterate over keys of type T.
+   *
+   * Note the iterator is global to the Map object.
+   * If multiple iterators are needed for concurrent use,
+   * then multiple Map objects or manually created MapIter objects are needed.
+   * */
   template <typename T>
-  iterator begin() {
-    iterator i(*this);
-    i.limit_key_type<T>();
-    i.init();
-    return i;
+  impl::MapIterReference begin() {
+    iter_.limit_key_type<T>();
+    iter_.init();
+    return iter_;
   }
 
   /** Iterator to end of map. **/
-  iterator end() {
-    return iterator{*this, true};
+  impl::MapIterReference end() {
+    // Note this doesn't init, so we can return a new object.
+    return iter_end_;
   }
 
   /** Finalize the map. */
   void finalize() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
+    iter_.finalize();
   }
 
   /* ********************************* */
@@ -777,6 +837,9 @@ class Map {
 
   /** URI **/
   std::string uri_;
+
+  /** Object-global iterator */
+  iterator iter_, iter_end_;
 };
 
 /* ********************************* */
@@ -833,8 +896,6 @@ inline bool impl::MultiMapItemProxy::add_to_map() const {
   return false;
 }
 
-namespace impl {
-
 inline MapIter::MapIter(Map& map, bool end)
     : map_(&map)
     , done_((int)end) {
@@ -858,10 +919,17 @@ inline MapIter& MapIter::operator++() {
   if (limit_type_) {
     auto t = item_->key_info();
     if (t.first != type_ ||
-        (num_ != TILEDB_VAR_NUM && t.second / type_size(t.first) != num_))
+        (num_ != TILEDB_VAR_NUM && t.second / impl::type_size(t.first) != num_))
       operator++();
   }
   return *this;
+}
+
+inline void MapIter::finalize() const {
+  if (iter_) {
+    auto ctx = map_->context();
+    ctx.handle_error(tiledb_kv_iter_finalize(ctx, iter_.get()));
+  }
 }
 
 inline void MapIter::init() {
@@ -878,8 +946,6 @@ inline void MapIter::init() {
   iter_ = std::shared_ptr<tiledb_kv_iter_t>(p, deleter_);
   this->operator++();
 }
-
-}  // namespace impl
 
 }  // namespace tiledb
 

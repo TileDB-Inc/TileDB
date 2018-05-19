@@ -91,6 +91,12 @@ Map Item
     :project: TileDB-C++
     :members:
 
+Map Iter
+--------
+.. doxygenclass:: tiledb::MapIter
+    :project: TileDB-C++
+    :members:
+
 Object Management
 -----------------
 .. doxygenclass:: tiledb::Object

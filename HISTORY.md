@@ -58,6 +58,7 @@
 * Added `Array::partition_subarray` for computing subarray partitions based on memory budget.
 * Added `Map::has_key` to check for key presence.
 * Added `Map::finalize`.
+* `MapIter` can be used to create iterators for a map.
 
 ## Breaking changes
 
@@ -83,6 +84,7 @@
 * The API was made header only to improve cross-platform compatibility. `config_iter.h`, `filebuf.h`, `map_item.h`, `map_iter.h`, and `map_proxy.h` are no longer available, but grouped into the headers of the objects they support.
 * Previously a `tiledb::Map` could be created from a `std::map`, an anonymous attribute name was defined. This must now be explicitly defined: `tiledb::Map::create(tiledb::Context, std::string uri, std::map, std::string attr_name)`
 * Removed `tiledb::Query::reset_buffers`. Any previous usages can safely be removed.
+* `Map::begin` refers to the same iterator object. For multiple concurrent iterators, a `MapIter` should be manually constructed instead of using `Map::begin()` more than once.
 
 # TileDB v1.2.1 Release Notes
 
