@@ -91,16 +91,14 @@ class Domain {
   /* ********************************* */
 
   explicit Domain(const Context& ctx)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     tiledb_domain_t* domain;
     ctx.handle_error(tiledb_domain_create(ctx, &domain));
     domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
   }
 
   Domain(const Context& ctx, tiledb_domain_t* domain)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
   }
 

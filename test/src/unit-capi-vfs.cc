@@ -91,8 +91,8 @@ VFSFx::VFSFx() {
 }
 
 VFSFx::~VFSFx() {
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
+  tiledb_ctx_free(&ctx_);
 }
 
 void VFSFx::set_supported_fs() {
@@ -107,16 +107,14 @@ void VFSFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void VFSFx::set_num_vfs_threads(unsigned num_threads) {
-  if (vfs_ != nullptr) {
-    CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  }
-  if (ctx_ != nullptr) {
-    CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
-  }
+  if (vfs_ != nullptr)
+    tiledb_vfs_free(&vfs_);
+  if (ctx_ != nullptr)
+    tiledb_ctx_free(&ctx_);
 
   // Create TileDB context
   tiledb_config_t* config = nullptr;
@@ -159,7 +157,7 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
   REQUIRE(error == nullptr);
   int rc = tiledb_vfs_create(ctx_, &vfs_, config);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 }
 
 void VFSFx::check_vfs(const std::string& path) {
@@ -472,8 +470,7 @@ void VFSFx::check_write(const std::string& path) {
   rc = tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_closed == 1);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_fh_free(&fh);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);  // It is a file even for S3
@@ -491,7 +488,7 @@ void VFSFx::check_write(const std::string& path) {
   CHECK_THAT(to_read, Catch::Equals(to_write));
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Open in WRITE mode again - previous file will be removed
@@ -501,7 +498,7 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
@@ -513,7 +510,7 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
@@ -536,7 +533,7 @@ void VFSFx::check_append(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Second write - append
@@ -551,7 +548,7 @@ void VFSFx::check_append(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_vfs_close(ctx_, fh);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_fh_free(ctx_, &fh);
+    tiledb_vfs_fh_free(&fh);
     REQUIRE(rc == TILEDB_OK);
     uint64_t file_size = 0;
     rc = tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size);
@@ -569,7 +566,7 @@ void VFSFx::check_append(const std::string& path) {
     CHECK_THAT(to_read, Catch::Equals(to_write + to_write_2));
     rc = tiledb_vfs_close(ctx_, fh);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_fh_free(ctx_, &fh);
+    tiledb_vfs_fh_free(&fh);
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -588,7 +585,7 @@ void VFSFx::check_read(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Read only the "will be written" portion of the file
@@ -603,7 +600,7 @@ void VFSFx::check_read(const std::string& path) {
   CHECK_THAT(to_read, Catch::Equals(to_check));
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_fh_free(ctx_, &fh);
+  tiledb_vfs_fh_free(&fh);
   REQUIRE(rc == TILEDB_OK);
 
   // Remove file
@@ -645,8 +642,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_vfs_create_bucket(ctx_, vfs, "s3://foo");
     REQUIRE(rc == TILEDB_ERR);
-    rc = tiledb_vfs_free(ctx_, &vfs);
-    CHECK(rc == TILEDB_OK);
+    tiledb_vfs_free(&vfs);
   }
 }
 
@@ -680,12 +676,9 @@ TEST_CASE_METHOD(
   CHECK(!strncmp(value, "10000000", strlen("10000000")));
 
   // Clean up
-  rc = tiledb_config_free(&config);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_free(&config2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_vfs_free(ctx_, &vfs);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
+  tiledb_config_free(&config2);
+  tiledb_vfs_free(&vfs);
 }
 
 TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {

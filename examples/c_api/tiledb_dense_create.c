@@ -97,13 +97,13 @@ int main() {
   tiledb_array_create(ctx, "my_dense_array", array_schema);
 
   // Clean up
-  tiledb_attribute_free(ctx, &a1);
-  tiledb_attribute_free(ctx, &a2);
-  tiledb_attribute_free(ctx, &a3);
-  tiledb_dimension_free(ctx, &d1);
-  tiledb_dimension_free(ctx, &d2);
-  tiledb_domain_free(ctx, &domain);
-  tiledb_array_schema_free(ctx, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
   tiledb_ctx_free(&ctx);
 
   return 0;

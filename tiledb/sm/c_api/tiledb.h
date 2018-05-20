@@ -285,9 +285,8 @@ TILEDB_EXPORT int tiledb_error_message(
  * @endcode
  *
  * @param err The TileDB error object.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_error_free(tiledb_error_t** err);
+TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err);
 
 /* ********************************* */
 /*              CONFIG               */
@@ -325,9 +324,8 @@ TILEDB_EXPORT int tiledb_config_create(
  * @endcode
  *
  * @param config The config to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_config_free(tiledb_config_t** config);
+TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
 
 /**
  * Sets a config parameter.
@@ -592,9 +590,8 @@ TILEDB_EXPORT int tiledb_config_iter_reset(
  * @endcode
  *
  * @param config_iter The config iterator to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_config_iter_free(tiledb_config_iter_t** config_iter);
+TILEDB_EXPORT void tiledb_config_iter_free(tiledb_config_iter_t** config_iter);
 
 /**
  * Retrieves the config param and value currently pointed by the iterator.
@@ -700,9 +697,8 @@ TILEDB_EXPORT int tiledb_ctx_create(
  * @endcode
  *
  * @param ctx The TileDB context to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t** ctx);
+TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
 
 /**
  * Retrieves the config from a TileDB context.
@@ -822,15 +818,12 @@ TILEDB_EXPORT int tiledb_attribute_create(
  * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_attribute_create(ctx, &attr, "my_attr", TILEDB_INT32);
- * tiledb_attribute_free(ctx, &attr);
+ * tiledb_attribute_free(&attr);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param attr The attribute to be destroyed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_attribute_free(
-    tiledb_ctx_t* ctx, tiledb_attribute_t** attr);
+TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr);
 
 /**
  * Sets a compressor for an attribute.
@@ -1025,15 +1018,12 @@ TILEDB_EXPORT int tiledb_domain_create(
  * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_domain_create(ctx, &domain);
- * tiledb_domain_free(ctx, &domain);
+ * tiledb_domain_free(&domain);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param domain The domain to be destroyed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_domain_free(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain);
+TILEDB_EXPORT void tiledb_domain_free(tiledb_domain_t** domain);
 
 /**
  * Retrieves the domain's type.
@@ -1194,15 +1184,12 @@ TILEDB_EXPORT int tiledb_dimension_create(
  * **Example:**
  *
  * @code{.c}
- * tiledb_dimension_free(ctx, &dim);
+ * tiledb_dimension_free(&dim);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param dim The dimension to be destroyed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_dimension_free(
-    tiledb_ctx_t* ctx, tiledb_dimension_t** dim);
+TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
 
 /**
  * Retrieves the dimension name.
@@ -1330,15 +1317,13 @@ TILEDB_EXPORT int tiledb_array_schema_create(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_schema_free(ctx, &array_schema);
+ * tiledb_array_schema_free(&array_schema);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param array_schema The array schema to be destroyed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_array_schema_free(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t** array_schema);
+TILEDB_EXPORT void tiledb_array_schema_free(
+    tiledb_array_schema_t** array_schema);
 
 /**
  * Adds an attribute to an array schema.
@@ -1947,14 +1932,12 @@ TILEDB_EXPORT int tiledb_query_finalize(
  * **Example:**
  *
  * @code{.c}
- * tiledb_query_free(ctx, &query);
+ * tiledb_query_free(&query);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param query The query object to be deleted.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t** query);
+TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
 
 /**
  * Submits a TileDB query.
@@ -1969,7 +1952,7 @@ TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t** query);
  * @param query The query to be submitted.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  *
- * @note Always invoke `tiledb_query_free` after the query is completed.
+ * @note Always invoke `tiledb_query_finalize` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
@@ -1998,7 +1981,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * @param callback_data The data to be passed to the callback function.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  *
- * @note Always invoke `tiledb_query_free` after the query is completed.
+ * @note Always invoke `tiledb_query_finalize` after the query is completed.
  */
 TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
@@ -2353,15 +2336,12 @@ TILEDB_EXPORT int tiledb_kv_schema_create(
  * **Example:**
  *
  * @code{.c}
- * tiledb_kv_schema_free(ctx, &kv_schema);
+ * tiledb_kv_schema_free(&kv_schema);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param kv_schema The key-value schema to be destroyed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_kv_schema_free(
-    tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema);
+TILEDB_EXPORT void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema);
 
 /**
  * Adds an attribute to a key-value schema.
@@ -2536,15 +2516,12 @@ TILEDB_EXPORT int tiledb_kv_item_create(
  * **Example:**
  *
  * @code{.c}
- * tiledb_kv_item_free(ctx, &kv_item);
+ * tiledb_kv_item_free(&kv_item);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param kv_item The key-value item to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_kv_item_free(
-    tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item);
+TILEDB_EXPORT void tiledb_kv_item_free(tiledb_kv_item_t** kv_item);
 
 /**
  * Set the key in the key-value item.
@@ -2734,20 +2711,27 @@ TILEDB_EXPORT int tiledb_kv_open(
     unsigned int attribute_num);
 
 /**
- * Closes a key-value store and frees all memory. All bufferd written items
+ * Closes a key-value store and frees all memory. All buffered written items
  * will be flushed to persistent storage.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_kv_close(ctx, &kv);
+ * tiledb_kv_close(ctx, kv);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param kv The key-value store to be closed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t** kv);
+TILEDB_EXPORT int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+
+/**
+ * Frees the key-value store object.
+ *
+ * @param kv The key-value store object to be freed.
+ */
+TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
 
 /**
  * Adds a key-value item to a key-value store. The item is buffered
@@ -2867,20 +2851,27 @@ TILEDB_EXPORT int tiledb_kv_iter_create(
     unsigned int attribute_num);
 
 /**
+ * Finalizes the key-value iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value iterator to be finalized.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_finalize(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
+
+/**
  * Frees a key-value store iterator.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_kv_iter_free(ctx, &kv_iter);
+ * tiledb_kv_iter_free(&kv_iter);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param kv_iter The key-value store iterator to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_kv_iter_free(
-    tiledb_ctx_t* ctx, tiledb_kv_iter_t** kv_iter);
+TILEDB_EXPORT void tiledb_kv_iter_free(tiledb_kv_iter_t** kv_iter);
 
 /**
  * Retrieves the key-value item currently pointed by the iterator.
@@ -2964,14 +2955,12 @@ TILEDB_EXPORT int tiledb_vfs_create(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_free(ctx, &vfs);
+ * tiledb_vfs_free(&vfs);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param vfs The virtual filesystem object to be freed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_vfs_free(tiledb_ctx_t* ctx, tiledb_vfs_t** vfs);
+TILEDB_EXPORT void tiledb_vfs_free(tiledb_vfs_t** vfs);
 
 /**
  * Retrieves the config from a VFS context.
@@ -3374,14 +3363,12 @@ TILEDB_EXPORT int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_fh_free(ctx, &fh);
+ * tiledb_vfs_fh_free(&fh);
  * @endcode
  *
- * @param ctx The TileDB context.
  * @param fh The URI file handle.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_vfs_fh_free(tiledb_ctx_t* ctx, tiledb_vfs_fh_t** fh);
+TILEDB_EXPORT void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh);
 
 /**
  * Checks if a file handle is closed.

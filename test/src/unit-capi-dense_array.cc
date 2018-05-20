@@ -290,7 +290,7 @@ DenseArrayFx::DenseArrayFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Connect to S3
   if (supports_s3_) {
@@ -317,9 +317,9 @@ DenseArrayFx::~DenseArrayFx() {
           tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
     }
   }
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
   CHECK(ctx_ == nullptr);
 }
 
@@ -335,7 +335,7 @@ void DenseArrayFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void DenseArrayFx::create_temp_dir(const std::string& path) {
@@ -442,16 +442,11 @@ void DenseArrayFx::create_dense_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &a);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_dimension_free(ctx_, &d2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_free(ctx_, &domain);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_free(ctx_, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 int** DenseArrayFx::generate_2D_buffer(
@@ -520,8 +515,7 @@ int* DenseArrayFx::read_dense_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
   CHECK(query == nullptr);
 
   // Success - return the created buffer
@@ -587,8 +581,7 @@ void DenseArrayFx::update_dense_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
   CHECK(query == nullptr);
 }
 
@@ -655,8 +648,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
   REQUIRE(rc == TILEDB_OK);
 
   // Finalize the query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Clean up
   for (int64_t i = 0; i < domain_size_0; ++i)
@@ -695,8 +687,7 @@ void DenseArrayFx::write_dense_subarray_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::write_dense_subarray_2D_with_cancel(
@@ -758,8 +749,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   REQUIRE(rc == TILEDB_OK);
 
   // Free/finalize query
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::check_sorted_reads(const std::string& path) {
@@ -858,8 +848,7 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::check_sorted_writes(const std::string& path) {
@@ -994,8 +983,7 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 
   // Ordered layout
   rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
@@ -1009,8 +997,7 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   REQUIRE(rc == TILEDB_ERR);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_free(ctx_, &query);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::check_sparse_writes(const std::string& path) {
@@ -1324,13 +1311,13 @@ void DenseArrayFx::create_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void DenseArrayFx::check_return_coords(const std::string& path) {
@@ -1399,7 +1386,7 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_full_global(
@@ -1479,7 +1466,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -1564,7 +1551,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -1648,7 +1635,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -1737,7 +1724,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -1824,7 +1811,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -1911,7 +1898,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);

@@ -70,8 +70,7 @@ class Schema {
   /* ********************************* */
 
   explicit Schema(const Context& ctx)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
   }
   Schema(const Schema&) = default;
   Schema(Schema&&) = default;

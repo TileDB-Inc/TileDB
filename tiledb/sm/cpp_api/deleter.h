@@ -49,7 +49,7 @@ namespace impl {
  *
  * @code{.cpp}
  * Context ctx;
- * Deleter deleter(ctx);
+ * Deleter deleter;
  * auto p = std::shared_ptr<tiledb_type_t>(ptr, deleter);
  * @endcode
  */
@@ -59,9 +59,7 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  explicit Deleter(const Context& ctx)
-      : ctx_(ctx) {
-  }
+  Deleter() = default;
   Deleter(const Deleter&) = default;
 
   /* ********************************* */
@@ -69,64 +67,53 @@ class Deleter {
   /* ********************************* */
 
   void operator()(tiledb_vfs_fh_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_fh_free(ctx, &p));
+    tiledb_vfs_fh_free(&p);
   }
 
   void operator()(tiledb_query_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_free(ctx, &p));
+    tiledb_query_free(&p);
   }
 
   void operator()(tiledb_array_schema_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_schema_free(ctx, &p));
+    tiledb_array_schema_free(&p);
   }
 
   void operator()(tiledb_kv_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_kv_close(ctx, &p));
+    tiledb_kv_free(&p);
   }
 
   void operator()(tiledb_kv_schema_t* p) const {
-    ctx_.get().handle_error(tiledb_kv_schema_free(ctx_.get(), &p));
+    tiledb_kv_schema_free(&p);
   }
 
   void operator()(tiledb_kv_item_t* p) const {
-    ctx_.get().handle_error(tiledb_kv_item_free(ctx_.get(), &p));
+    tiledb_kv_item_free(&p);
   }
 
   void operator()(tiledb_kv_iter_t* p) const {
-    ctx_.get().handle_error(tiledb_kv_iter_free(ctx_.get(), &p));
+    tiledb_kv_iter_free(&p);
   }
 
   void operator()(tiledb_attribute_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_attribute_free(ctx, &p));
+    tiledb_attribute_free(&p);
   }
 
   void operator()(tiledb_dimension_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_dimension_free(ctx, &p));
+    tiledb_dimension_free(&p);
   }
 
   void operator()(tiledb_domain_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_domain_free(ctx, &p));
+    tiledb_domain_free(&p);
   }
 
   void operator()(tiledb_vfs_t* p) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_free(ctx, &p));
+    tiledb_vfs_free(&p);
   }
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The TileDB context. */
-  std::reference_wrapper<const Context> ctx_;
 };
 
 }  // namespace impl

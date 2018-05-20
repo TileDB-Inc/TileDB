@@ -303,8 +303,7 @@ class VFS {
    * @param ctx A TileDB context.
    */
   explicit VFS(const Context& ctx)
-      : ctx_(ctx)
-      , deleter_(ctx) {
+      : ctx_(ctx) {
     create_vfs(nullptr);
   }
 
@@ -316,8 +315,7 @@ class VFS {
    */
   VFS(const Context& ctx, const Config& config)
       : ctx_(ctx)
-      , config_(config)
-      , deleter_(ctx) {
+      , config_(config) {
     create_vfs(config.ptr().get());
   }
 
@@ -478,8 +476,7 @@ class VFS {
 namespace impl {
 
 inline VFSFilebuf::VFSFilebuf(const VFS& vfs)
-    : vfs_(vfs)
-    , deleter_(vfs.context()) {
+    : vfs_(vfs) {
 }
 
 inline VFSFilebuf* VFSFilebuf::open(

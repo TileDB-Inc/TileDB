@@ -105,6 +105,8 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   CHECK(std::get<1>(ret) == "aaa");
   CHECK(std::get<2>(ret).size() == 2);
   CHECK(std::get<2>(ret)[0] == 4.2);
+
+  map.finalize();
 }
 
 /**
@@ -144,6 +146,8 @@ TEST_CASE_METHOD(
   CHECK(test_get_item_by_key.get<int>("a1") == 1);
   CHECK(test_get_item_by_key.get<std::string>("a2") == "someval");
   CHECK(test_get_item_by_key.get<std::array<double, 2>>("a3")[0] == 3);
+
+  map.finalize();
 }
 
 struct CPPMapFx1A {
@@ -177,6 +181,8 @@ TEST_CASE_METHOD(CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi]") {
   map[10] = 1;
   map.flush();
   assert(int(map[10]) == 1);
+
+  map.finalize();
 }
 
 struct CPPMapFromMapFx {
@@ -208,5 +214,38 @@ TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
   Map map(ctx, "cpp_unit_map");
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
-  CHECK(map[2]["val"].get<std::string>() == "123");
+  CHECK(map[2].get<std::string>() == "123");  // implicit
+
+  map.finalize();
+}
+
+TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map iter", "[cppapi]") {
+  Map map(ctx, "cpp_unit_map");
+
+  std::vector<std::string> vals;
+  for (auto& item : map) {
+    vals.push_back(item.get<std::string>());
+  }
+
+  REQUIRE(vals.size() == 3);
+  CHECK(std::count(vals.begin(), vals.end(), "0") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "12") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
+
+  MapIter iter(map), end(map, true);
+  iter.init();
+  vals = {};
+  while (iter != end) {
+    vals.push_back(iter->get<std::string>());
+    ++iter;
+  }
+
+  REQUIRE(vals.size() == 3);
+  CHECK(std::count(vals.begin(), vals.end(), "0") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "12") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
+
+  // don't need to finalize end since init() not called
+  iter.finalize();
+  map.finalize();
 }

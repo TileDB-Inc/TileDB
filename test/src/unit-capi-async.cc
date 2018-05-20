@@ -68,7 +68,7 @@ AsyncFx::AsyncFx() {
 }
 
 AsyncFx::~AsyncFx() {
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
 }
 
 void AsyncFx::create_dense_array() {
@@ -144,13 +144,13 @@ void AsyncFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void AsyncFx::create_sparse_array() {
@@ -226,13 +226,13 @@ void AsyncFx::create_sparse_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void callback(void* v) {
@@ -304,7 +304,7 @@ void AsyncFx::write_dense_async() {
   CHECK(callback_made == 1);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void AsyncFx::write_sparse_async() {
@@ -369,7 +369,7 @@ void AsyncFx::write_sparse_async() {
   CHECK(callback_made == 1);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void AsyncFx::write_sparse_async_cancelled() {
@@ -453,7 +453,7 @@ void AsyncFx::write_sparse_async_cancelled() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void AsyncFx::read_dense_async() {
@@ -466,10 +466,10 @@ void AsyncFx::read_dense_async() {
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
-  int* buffer_a1 = (int*)malloc(buffer_sizes[0]);
-  uint64_t* buffer_a2 = (uint64_t*)malloc(buffer_sizes[1]);
-  char* buffer_var_a2 = (char*)malloc(buffer_sizes[2]);
-  float* buffer_a3 = (float*)malloc(buffer_sizes[3]);
+  auto buffer_a1 = (int*)malloc(buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(buffer_sizes[3]);
   void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
 
   // Create query
@@ -523,7 +523,7 @@ void AsyncFx::read_dense_async() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void AsyncFx::read_sparse_async() {
@@ -536,11 +536,11 @@ void AsyncFx::read_sparse_async() {
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
-  int* buffer_a1 = (int*)malloc(buffer_sizes[0]);
-  uint64_t* buffer_a2 = (uint64_t*)malloc(buffer_sizes[1]);
-  char* buffer_var_a2 = (char*)malloc(buffer_sizes[2]);
-  float* buffer_a3 = (float*)malloc(buffer_sizes[3]);
-  uint64_t* buffer_coords = (uint64_t*)malloc(buffer_sizes[4]);
+  auto buffer_a1 = (int*)malloc(buffer_sizes[0]);
+  auto buffer_a2 = (uint64_t*)malloc(buffer_sizes[1]);
+  auto buffer_var_a2 = (char*)malloc(buffer_sizes[2]);
+  auto buffer_a3 = (float*)malloc(buffer_sizes[3]);
+  auto buffer_coords = (uint64_t*)malloc(buffer_sizes[4]);
   void* buffers[] = {
       buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
 
@@ -602,7 +602,7 @@ void AsyncFx::read_sparse_async() {
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void AsyncFx::remove_array(const std::string& array_name) {

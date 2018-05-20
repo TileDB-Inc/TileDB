@@ -134,7 +134,7 @@ int main() {
 
   // It is important to always close the key-value store, since
   // this operation flushes all buffered items to the persistent storage.
-  tiledb_kv_close(ctx, &kv);
+  tiledb_kv_close(ctx, kv);
 
   // Each flush operation generates a new fragment in the key-value store.
   // In case this happens multiple times, it is a good idea to consolidate
@@ -143,10 +143,11 @@ int main() {
   tiledb_kv_consolidate(ctx, "my_kv");
 
   // Clean up
-  tiledb_kv_item_free(ctx, &kv_item1);
-  tiledb_kv_item_free(ctx, &kv_item2);
-  tiledb_kv_item_free(ctx, &kv_item3);
-  tiledb_kv_item_free(ctx, &kv_item4);
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&kv_item1);
+  tiledb_kv_item_free(&kv_item2);
+  tiledb_kv_item_free(&kv_item3);
+  tiledb_kv_item_free(&kv_item4);
   tiledb_ctx_free(&ctx);
 
   return 0;

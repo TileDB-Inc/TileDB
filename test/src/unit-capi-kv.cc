@@ -133,7 +133,7 @@ KVFx::KVFx() {
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
-  REQUIRE(tiledb_config_free(&config) == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Connect to S3
   if (supports_s3_) {
@@ -159,8 +159,8 @@ KVFx::~KVFx() {
     }
   }
 
-  CHECK(tiledb_vfs_free(ctx_, &vfs_) == TILEDB_OK);
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_vfs_free(&vfs_);
+  tiledb_ctx_free(&ctx_);
 }
 
 void KVFx::set_supported_fs() {
@@ -175,7 +175,7 @@ void KVFx::set_supported_fs() {
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
 
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 void KVFx::create_temp_dir(const std::string& path) {
@@ -241,14 +241,10 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_attribute_free(ctx_, &a1);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &a2);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_free(ctx_, &a3);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_kv_schema_free(ctx_, &kv_schema);
-  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_kv_schema_free(&kv_schema);
 }
 
 void KVFx::check_kv_item() {
@@ -296,7 +292,7 @@ void KVFx::check_kv_item() {
   CHECK(value_type == TILEDB_INT32);
   CHECK(value_size == sizeof(int));
 
-  rc = tiledb_kv_item_free(ctx_, &kv_item);
+  tiledb_kv_item_free(&kv_item);
   REQUIRE(rc == TILEDB_OK);
 }
 
@@ -418,27 +414,22 @@ void KVFx::check_write(const std::string& path) {
   CHECK(rc == TILEDB_ERR);
 
   // Close kv
-  rc = tiledb_kv_close(ctx_, &kv);
+  rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(kv == nullptr);
 
   // Consolidate
   rc = tiledb_kv_consolidate(ctx_, path.c_str());
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_kv_item_free(ctx_, &kv_item1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item3);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item4);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item5);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item6);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+  CHECK(kv == nullptr);
+  tiledb_kv_item_free(&kv_item1);
+  tiledb_kv_item_free(&kv_item2);
+  tiledb_kv_item_free(&kv_item3);
+  tiledb_kv_item_free(&kv_item4);
+  tiledb_kv_item_free(&kv_item5);
+  tiledb_kv_item_free(&kv_item6);
   CHECK(kv_item6 == nullptr);
 }
 
@@ -584,18 +575,15 @@ void KVFx::check_single_read(const std::string& path) {
   CHECK(has_key == 0);
 
   // Close key-value store
-  rc = tiledb_kv_close(ctx_, &kv);
+  rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_kv_item_free(ctx_, &kv_item1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item3);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item4);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&kv_item1);
+  tiledb_kv_item_free(&kv_item2);
+  tiledb_kv_item_free(&kv_item3);
+  tiledb_kv_item_free(&kv_item4);
 }
 
 void KVFx::check_read_on_attribute_subset(const std::string& path) {
@@ -691,18 +679,15 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
   CHECK(rc == TILEDB_ERR);
 
   // Close key-value store
-  rc = tiledb_kv_close(ctx_, &kv);
+  rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_kv_item_free(ctx_, &kv_item1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item3);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item4);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&kv_item1);
+  tiledb_kv_item_free(&kv_item2);
+  tiledb_kv_item_free(&kv_item3);
+  tiledb_kv_item_free(&kv_item4);
 }
 
 void KVFx::check_interleaved_read_write(const std::string& path) {
@@ -787,14 +772,13 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   CHECK(a3_size == 2 * sizeof(float));
 
   // Close key-value store
-  rc = tiledb_kv_close(ctx_, &kv);
+  rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  rc = tiledb_kv_item_free(ctx_, &kv_item1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_item_free(ctx_, &kv_item2);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&kv_item1);
+  tiledb_kv_item_free(&kv_item2);
 }
 
 void KVFx::check_kv_item(tiledb_kv_item_t* kv_item) {
@@ -905,17 +889,18 @@ void KVFx::check_iter(const std::string& path) {
     rc = tiledb_kv_iter_here(ctx_, kv_iter, &kv_item);
     REQUIRE(rc == TILEDB_OK);
     check_kv_item(kv_item);
-    rc = tiledb_kv_item_free(ctx_, &kv_item);
-    REQUIRE(rc == TILEDB_OK);
+    tiledb_kv_item_free(&kv_item);
     rc = tiledb_kv_iter_next(ctx_, kv_iter);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
     REQUIRE(rc == TILEDB_OK);
   }
 
-  // Clean up
-  rc = tiledb_kv_iter_free(ctx_, &kv_iter);
+  rc = tiledb_kv_iter_finalize(ctx_, kv_iter);
   REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_kv_iter_free(&kv_iter);
 }
 
 TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {

@@ -224,7 +224,7 @@ int main() {
     tiledb_array_schema_get_attribute_from_index(ctx, array_schema, i, &attr);
     tiledb_attribute_get_name(ctx, attr, &attr_name);
     printf("* %s\n", attr_name);
-    tiledb_attribute_free(ctx, &attr);
+    tiledb_attribute_free(&attr);
   }
   printf("\n");
 
@@ -243,17 +243,17 @@ int main() {
     tiledb_domain_get_dimension_from_index(ctx, domain, i, &dim);
     tiledb_dimension_get_name(ctx, dim, &dim_name);
     printf("* %s\n", dim_name);
-    tiledb_dimension_free(ctx, &dim);
+    tiledb_dimension_free(&dim);
   }
 
   // Clean up
-  tiledb_attribute_free(ctx, &a1);
-  tiledb_attribute_free(ctx, &a2);
-  tiledb_dimension_free(ctx, &d1);
-  tiledb_dimension_free(ctx, &d2);
-  tiledb_domain_free(ctx, &domain);
-  tiledb_domain_free(ctx, &got_domain);
-  tiledb_array_schema_free(ctx, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_domain_free(&got_domain);
+  tiledb_array_schema_free(&array_schema);
   tiledb_ctx_free(&ctx);
 
   return 0;

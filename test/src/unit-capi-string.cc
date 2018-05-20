@@ -131,13 +131,13 @@ void StringFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  REQUIRE(tiledb_attribute_free(ctx, &a1) == TILEDB_OK);
-  REQUIRE(tiledb_attribute_free(ctx, &a2) == TILEDB_OK);
-  REQUIRE(tiledb_attribute_free(ctx, &a3) == TILEDB_OK);
-  REQUIRE(tiledb_dimension_free(ctx, &d1) == TILEDB_OK);
-  REQUIRE(tiledb_domain_free(ctx, &domain) == TILEDB_OK);
-  REQUIRE(tiledb_array_schema_free(ctx, &array_schema) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+  tiledb_ctx_free(&ctx);
 }
 
 void StringFx::write_array(const std::string& array_name) {
@@ -187,8 +187,8 @@ void StringFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
   std::free(buffer_a2);
   std::free(buffer_a3);
@@ -262,8 +262,8 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(buffer_a3_offsets[3] == UTF16_OFFSET_3);
 
   // Clean up
-  REQUIRE(tiledb_query_free(ctx, &query) == TILEDB_OK);
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
   std::free(buffer_a2);
   std::free(buffer_a2_offsets);
@@ -287,7 +287,7 @@ void StringFx::delete_array(const std::string& array_name) {
   }
 
   // Clean up
-  REQUIRE(tiledb_ctx_free(&ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi], [string]") {

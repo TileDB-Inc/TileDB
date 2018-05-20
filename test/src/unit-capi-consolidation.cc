@@ -71,11 +71,11 @@ struct ConsolidationFx {
 
 ConsolidationFx::ConsolidationFx() {
   ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_create(&ctx_, NULL) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_create(&ctx_, nullptr) == TILEDB_OK);
 }
 
 ConsolidationFx::~ConsolidationFx() {
-  CHECK(tiledb_ctx_free(&ctx_) == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
 }
 
 void ConsolidationFx::create_dense_array() {
@@ -151,13 +151,13 @@ void ConsolidationFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void ConsolidationFx::create_sparse_array() {
@@ -233,13 +233,13 @@ void ConsolidationFx::create_sparse_array() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_attribute_free(ctx_, &a1);
-  tiledb_attribute_free(ctx_, &a2);
-  tiledb_attribute_free(ctx_, &a3);
-  tiledb_dimension_free(ctx_, &d1);
-  tiledb_dimension_free(ctx_, &d2);
-  tiledb_domain_free(ctx_, &domain);
-  tiledb_array_schema_free(ctx_, &array_schema);
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void ConsolidationFx::write_dense_full() {
@@ -296,7 +296,7 @@ void ConsolidationFx::write_dense_full() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void ConsolidationFx::write_dense_subarray() {
@@ -336,7 +336,7 @@ void ConsolidationFx::write_dense_subarray() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void ConsolidationFx::write_dense_unordered() {
@@ -376,7 +376,7 @@ void ConsolidationFx::write_dense_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void ConsolidationFx::write_sparse_full() {
@@ -430,7 +430,7 @@ void ConsolidationFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void ConsolidationFx::write_sparse_unordered() {
@@ -470,7 +470,7 @@ void ConsolidationFx::write_sparse_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
 }
 
 void ConsolidationFx::read_dense_full_subarray_unordered() {
@@ -543,7 +543,7 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -612,7 +612,7 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -680,7 +680,7 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -746,7 +746,7 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
@@ -812,7 +812,7 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Clean up
-  tiledb_query_free(ctx_, &query);
+  tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
   free(buffer_var_a2);
