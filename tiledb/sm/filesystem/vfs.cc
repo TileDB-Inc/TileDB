@@ -576,17 +576,7 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 #endif
 
 #ifdef HAVE_S3
-  S3::S3Config s3_config;
-  s3_config.region_ = vfs_params.s3_params_.region_;
-  s3_config.scheme_ = vfs_params.s3_params_.scheme_;
-  s3_config.endpoint_override_ = vfs_params.s3_params_.endpoint_override_;
-  s3_config.use_virtual_addressing_ =
-      vfs_params.s3_params_.use_virtual_addressing_;
-  s3_config.max_parallel_ops_ = vfs_params.s3_params_.max_parallel_ops_;
-  s3_config.multipart_part_size_ = vfs_params.s3_params_.multipart_part_size_;
-  s3_config.connect_timeout_ms_ = vfs_params.s3_params_.connect_timeout_ms_;
-  s3_config.request_timeout_ms_ = vfs_params.s3_params_.request_timeout_ms_;
-  RETURN_NOT_OK(s3_.init(s3_config, thread_pool_.get()));
+  RETURN_NOT_OK(s3_.init(vfs_params.s3_params_, thread_pool_.get()));
 #endif
 
 #ifdef WIN32

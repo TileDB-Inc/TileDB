@@ -294,9 +294,27 @@ class Config {
    * - `vfs.s3.connect_scale_factor` <br>
    *    The scale factor for exponential backofff when connecting to S3.
    *    Any `long` value is acceptable. <br>
-   *    **Default**: 25   * - `vfs.s3.request_timeout_ms` <br>
+   *    **Default**: 25
+   * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
+   * - `vfs.s3.proxy_host` <br>
+   *    The proxy host. <br>
+   *    **Default**: ""
+   * - `vfs.s3.proxy_port` <br>
+   *    The proxy port. <br>
+   *    **Default**: 0
+   * - `vfs.s3.proxy_scheme` <br>
+   *    The proxy scheme. <br>
+   *    **Default**: "https"
+   * - `vfs.s3.proxy_username` <br>
+   *    The proxy username. Note: this parameter is not serialized by
+   *    `tiledb_config_save_to_file`. <br>
+   *    **Default**: ""
+   * - `vfs.s3.proxy_password` <br>
+   *    The proxy password. Note: this parameter is not serialized by
+   *    `tiledb_config_save_to_file`. <br>
+   *    **Default**: ""
    * - `vfs.hdfs.name_node"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""

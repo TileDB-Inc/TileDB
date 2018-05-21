@@ -82,37 +82,6 @@ namespace sm {
 class S3 {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /** S3 configuration parameters. */
-  struct S3Config {
-    S3Config() {
-      region_ = constants::s3_region;
-      scheme_ = constants::s3_scheme;
-      endpoint_override_ = constants::s3_endpoint_override;
-      use_virtual_addressing_ = constants::s3_use_virtual_addressing;
-      max_parallel_ops_ = constants::s3_max_parallel_ops;
-      multipart_part_size_ = constants::s3_multipart_part_size;
-      request_timeout_ms_ = constants::s3_request_timeout_ms;
-      connect_timeout_ms_ = constants::s3_connect_timeout_ms;
-      connect_max_tries_ = constants::s3_connect_max_tries;
-      connect_scale_factor_ = constants::s3_connect_scale_factor;
-    }
-
-    std::string region_;
-    std::string scheme_;
-    std::string endpoint_override_;
-    bool use_virtual_addressing_;
-    uint64_t max_parallel_ops_;
-    uint64_t multipart_part_size_;
-    long request_timeout_ms_;
-    long connect_timeout_ms_;
-    long connect_max_tries_;
-    long connect_scale_factor_;
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -133,7 +102,7 @@ class S3 {
    * @param thread_pool The parent VFS thread pool.
    * @return Status
    */
-  Status init(const S3Config& s3_config, ThreadPool* thread_pool);
+  Status init(const Config::S3Params& s3_config, ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.
@@ -376,6 +345,9 @@ class S3 {
 
   /** File buffers used in the multi-part uploads. */
   std::unordered_map<std::string, Buffer*> file_buffers_;
+
+  /** The AWS region this instance was initialized with. */
+  std::string region_;
 
   /** Pointer to thread pool owned by parent VFS instance. */
   ThreadPool* vfs_thread_pool_;
