@@ -380,36 +380,41 @@ set_target_properties(tiledb_static
 ############################################################
 # Installation
 ############################################################
-# Install libraries.
-# Note on Windows, the DLL counts as "runtime" and should go into bin.
 
 # Get library directory for multiarch linux distros
 include(GNUInstallDirs)
+# Include module with function 'configure_package_config_file'
+include(CMakePackageConfigHelpers)
+
+# Set rpath so the TileDB dynamic dependencies can be located.
+if (NOT WIN32)
+  set_target_properties(tiledb_shared
+    PROPERTIES
+      INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+  )
+endif()
 
 # Set name for export target file
 set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
 
+# Note on Windows, the DLL counts as "runtime" and should go into bin.
 install(
-    TARGETS tiledb_static tiledb_shared TILEDB_CORE_OBJECTS_ILIB
-    EXPORT ${TARGETS_EXPORT_NAME}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  TARGETS tiledb_static tiledb_shared TILEDB_CORE_OBJECTS_ILIB
+  EXPORT ${TARGETS_EXPORT_NAME}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-
 # Set directory where TileDBConfig.cmake will be installed
-set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 
 # Set the generated dir for target cmake modules during build
-set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
-# Configuration
-set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
-
-# Include module with fuction 'write_basic_package_version_file'
-include(CMakePackageConfigHelpers)
+# Path to generated cmake file
+set(PROJECT_CONFIG "${GENERATED_DIR}/${PROJECT_NAME}Config.cmake")
 
 # Configure '<PROJECT-NAME>Config.cmake'
 # Use variables:
@@ -417,16 +422,16 @@ include(CMakePackageConfigHelpers)
 #   * PROJECT_NAME
 configure_package_config_file(
   "${TILEDB_CMAKE_INPUTS_DIR}/Config.cmake.in"
-  "${project_config}"
-  INSTALL_DESTINATION "${config_install_dir}"
+  "${PROJECT_CONFIG}"
+  INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
 # Config
 #   * <prefix>/lib/cmake/TileDB/TileDBConfig.cmake
 #   * <prefix>/lib/cmake/TileDB/TileDBConfigVersion.cmake
 install(
-  FILES "${project_config}"# "${version_config}"
-  DESTINATION "${config_install_dir}"
+  FILES "${PROJECT_CONFIG}"
+  DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
 # Targets
@@ -434,5 +439,5 @@ install(
 install(
   EXPORT "${TARGETS_EXPORT_NAME}"
   NAMESPACE "${PROJECT_NAME}::"
-  DESTINATION "${config_install_dir}"
+  DESTINATION "${CONFIG_INSTALL_DIR}"
 )
