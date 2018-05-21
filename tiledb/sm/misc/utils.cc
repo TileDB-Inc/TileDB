@@ -56,6 +56,24 @@ namespace parse {
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
 
+Status convert(const std::string& str, int* value) {
+  if (!is_int(str))
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to int; Invalid argument"));
+
+  try {
+    *value = std::stoi(str);
+  } catch (std::invalid_argument& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to int; Invalid argument"));
+  } catch (std::out_of_range& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to int; Value out of range"));
+  }
+
+  return Status::Ok();
+}
+
 Status convert(const std::string& str, long* value) {
   if (!is_int(str))
     return LOG_STATUS(Status::UtilsError(

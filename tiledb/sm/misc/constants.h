@@ -205,6 +205,9 @@ extern const bool enable_signal_handlers;
 /** The number of threads allocated per StorageManager for async queries. */
 extern const uint64_t num_async_threads;
 
+/** The number of threads allocated for TBB. */
+extern const int num_tbb_threads;
+
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 

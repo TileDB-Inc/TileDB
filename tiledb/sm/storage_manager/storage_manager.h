@@ -43,6 +43,10 @@
 #include <string>
 #include <thread>
 
+#ifdef HAVE_TBB
+#include <tbb/task_scheduler_init.h>
+#endif
+
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/enums/object_type.h"
@@ -634,6 +638,11 @@ class StorageManager {
   /** The storage manager's thread pool for async queries. */
   std::unique_ptr<ThreadPool> async_thread_pool_;
 
+#ifdef HAVE_TBB
+  /** The TBB scheduler, used for controlling the number of TBB threads. */
+  std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
+#endif
+
   /** A tile cache. */
   LRUCache* tile_cache_;
 
@@ -694,6 +703,14 @@ class StorageManager {
 
   /** Increment the count of in-progress queries. */
   void increment_in_progress();
+
+  /**
+   * Configures the TBB runtime. If TBB is not enabled, does nothing.
+   *
+   * @param config The configuration parameters
+   * @return Status
+   */
+  Status init_tbb(Config::SMParams& config);
 
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);

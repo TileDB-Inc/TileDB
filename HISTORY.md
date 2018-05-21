@@ -40,8 +40,7 @@
 * Added `vfs.{s3,file}.max_parallel_ops` config parameters.
 * Added `vfs.s3.multipart_part_size` config parameter.
 * Added `tiledb_ctx_cancel_tasks` function.
-* Added `sm.num_async_threads` config parameter.
-* Added `sm.enable_signal_handlers` config parameter.
+* Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
 * Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
 * Added `tiledb_kv_iter_finalize`, which must be called before freeing the kv iterator.

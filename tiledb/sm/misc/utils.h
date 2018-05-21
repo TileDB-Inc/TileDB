@@ -55,6 +55,9 @@ namespace parse {
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
 
+/** Converts the input string into an `int` value. */
+Status convert(const std::string& str, int* value);
+
 /** Converts the input string into a `long` value. */
 Status convert(const std::string& str, long* value);
 
