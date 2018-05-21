@@ -380,6 +380,14 @@ class VFS {
    * @return Status
    */
   Status decr_lock_count(const URI& uri, bool* is_zero) const;
+
+  /**
+   * Return the backend-specific max number of parallel operations for VFS read.
+   *
+   * @param uri URI (used for determining the backend)
+   * @return Max number of parallel operations
+   */
+  uint64_t max_parallel_ops(const URI& uri) const;
 };
 
 }  // namespace sm

@@ -453,7 +453,7 @@ Status Win::write(
   // bytes, and cap the number of parallel operations at the thread pool size.
   uint64_t num_ops = std::min(
       std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
-      vfs_thread_pool_->num_threads());
+      vfs_params_.file_params_.max_parallel_ops_);
 
   if (num_ops == 1) {
     if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {

@@ -424,6 +424,19 @@ Status VFS::decr_lock_count(const URI& uri, bool* is_zero) const {
   return Status::Ok();
 }
 
+uint64_t VFS::max_parallel_ops(const URI& uri) const {
+  if (uri.is_file()) {
+    return vfs_params_.file_params_.max_parallel_ops_;
+  } else if (uri.is_hdfs()) {
+    // HDFS backend is currently serial.
+    return 1;
+  } else if (uri.is_s3()) {
+    return vfs_params_.s3_params_.max_parallel_ops_;
+  } else {
+    return 1;
+  }
+}
+
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
   STATS_FUNC_IN(vfs_file_size);
 
@@ -552,7 +565,7 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   if (thread_pool_.get() == nullptr) {
     return LOG_STATUS(Status::VFSError("Could not allocate VFS thread pool."));
   }
-  RETURN_NOT_OK(thread_pool_->init(vfs_params.max_parallel_ops_));
+  RETURN_NOT_OK(thread_pool_->init(vfs_params.num_threads_));
 
 #ifdef HAVE_HDFS
   hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
@@ -569,6 +582,7 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   s3_config.endpoint_override_ = vfs_params.s3_params_.endpoint_override_;
   s3_config.use_virtual_addressing_ =
       vfs_params.s3_params_.use_virtual_addressing_;
+  s3_config.max_parallel_ops_ = vfs_params.s3_params_.max_parallel_ops_;
   s3_config.multipart_part_size_ = vfs_params.s3_params_.multipart_part_size_;
   s3_config.connect_timeout_ms_ = vfs_params.s3_params_.connect_timeout_ms_;
   s3_config.request_timeout_ms_ = vfs_params.s3_params_.request_timeout_ms_;
@@ -734,10 +748,11 @@ Status VFS::read(
   STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
 
   // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the thread pool size.
+  // bytes, and cap the number of parallel operations at the configured maximum
+  // number.
   uint64_t num_ops = std::min(
       std::max(nbytes / vfs_params_.min_parallel_size_, uint64_t(1)),
-      thread_pool_->num_threads());
+      max_parallel_ops(uri));
 
   if (num_ops == 1) {
     return read_impl(uri, offset, buffer, nbytes);

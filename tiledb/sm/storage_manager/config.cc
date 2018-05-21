@@ -160,12 +160,14 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(value));
   } else if (param == "sm.enable_signal_handlers") {
     RETURN_NOT_OK(set_sm_enable_signal_handlers(value));
-  } else if (param == "sm.number_of_threads") {
-    RETURN_NOT_OK(set_sm_number_of_threads(value));
-  } else if (param == "vfs.max_parallel_ops") {
-    RETURN_NOT_OK(set_vfs_max_parallel_ops(value));
+  } else if (param == "sm.num_async_threads") {
+    RETURN_NOT_OK(set_sm_num_async_threads(value));
+  } else if (param == "vfs.num_threads") {
+    RETURN_NOT_OK(set_vfs_num_threads(value));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(set_vfs_min_parallel_size(value));
+  } else if (param == "vfs.file.max_parallel_ops") {
+    RETURN_NOT_OK(set_vfs_file_max_parallel_ops(value));
   } else if (param == "vfs.s3.region") {
     RETURN_NOT_OK(set_vfs_s3_region(value));
   } else if (param == "vfs.s3.scheme") {
@@ -174,6 +176,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_endpoint_override(value));
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(set_vfs_s3_use_virtual_addressing(value));
+  } else if (param == "vfs.s3.max_parallel_ops") {
+    RETURN_NOT_OK(set_vfs_s3_max_parallel_ops(value));
   } else if (param == "vfs.s3.multipart_part_size") {
     RETURN_NOT_OK(set_vfs_s3_multipart_part_size(value));
   } else if (param == "vfs.s3.connect_timeout_ms") {
@@ -242,20 +246,26 @@ Status Config::unset(const std::string& param) {
     value << (sm_params_.enable_signal_handlers_ ? "true" : "false");
     param_values_["sm.enable_signal_handlers"] = value.str();
     value.str(std::string());
-  } else if (param == "sm.number_of_threads") {
-    sm_params_.number_of_threads_ = constants::number_of_threads;
-    value << sm_params_.number_of_threads_;
-    param_values_["sm.number_of_threads"] = value.str();
+  } else if (param == "sm.num_async_threads") {
+    sm_params_.num_async_threads_ = constants::num_async_threads;
+    value << sm_params_.num_async_threads_;
+    param_values_["sm.num_async_threads"] = value.str();
     value.str(std::string());
-  } else if (param == "vfs.max_parallel_ops") {
-    vfs_params_.max_parallel_ops_ = constants::vfs_max_parallel_ops;
-    value << vfs_params_.max_parallel_ops_;
-    param_values_["vfs.max_parallel_ops"] = value.str();
+  } else if (param == "vfs.num_threads") {
+    vfs_params_.num_threads_ = constants::vfs_num_threads;
+    value << vfs_params_.num_threads_;
+    param_values_["vfs.num_threads"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.min_parallel_size") {
     vfs_params_.min_parallel_size_ = constants::vfs_min_parallel_size;
     value << vfs_params_.min_parallel_size_;
     param_values_["vfs.min_parallel_size"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.file.max_parallel_ops") {
+    vfs_params_.file_params_.max_parallel_ops_ =
+        constants::vfs_file_max_parallel_ops;
+    value << vfs_params_.file_params_.max_parallel_ops_;
+    param_values_["vfs.file.max_parallel_ops"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.region") {
     vfs_params_.s3_params_.region_ = constants::s3_region;
@@ -279,6 +289,11 @@ Status Config::unset(const std::string& param) {
         << ((vfs_params_.s3_params_.use_virtual_addressing_) ? "true" :
                                                                "false");
     param_values_["vfs.s3.use_virtual_addressing"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.max_parallel_ops") {
+    vfs_params_.s3_params_.max_parallel_ops_ = constants::s3_max_parallel_ops;
+    value << vfs_params_.s3_params_.max_parallel_ops_;
+    param_values_["vfs.s3.max_parallel_ops"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.multipart_part_size") {
     vfs_params_.s3_params_.multipart_part_size_ =
@@ -353,16 +368,20 @@ void Config::set_default_param_values() {
   param_values_["sm.enable_signal_handlers"] = value.str();
   value.str(std::string());
 
-  value << sm_params_.number_of_threads_;
-  param_values_["sm.number_of_threads"] = value.str();
+  value << sm_params_.num_async_threads_;
+  param_values_["sm.num_async_threads"] = value.str();
   value.str(std::string());
 
-  value << vfs_params_.max_parallel_ops_;
-  param_values_["vfs.max_parallel_ops"] = value.str();
+  value << vfs_params_.num_threads_;
+  param_values_["vfs.num_threads"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.min_parallel_size_;
   param_values_["vfs.min_parallel_size"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.file_params_.max_parallel_ops_;
+  param_values_["vfs.file.max_parallel_ops"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.s3_params_.region_;
@@ -380,6 +399,10 @@ void Config::set_default_param_values() {
   value
       << ((vfs_params_.s3_params_.use_virtual_addressing_) ? "true" : "false");
   param_values_["vfs.s3.use_virtual_addressing"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.max_parallel_ops_;
+  param_values_["vfs.s3.max_parallel_ops"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.s3_params_.multipart_part_size_;
@@ -452,10 +475,10 @@ Status Config::set_sm_enable_signal_handlers(const std::string& value) {
   return Status::Ok();
 }
 
-Status Config::set_sm_number_of_threads(const std::string& value) {
+Status Config::set_sm_num_async_threads(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
-  sm_params_.number_of_threads_ = v;
+  sm_params_.num_async_threads_ = v;
 
   return Status::Ok();
 }
@@ -468,10 +491,10 @@ Status Config::set_sm_tile_cache_size(const std::string& value) {
   return Status::Ok();
 }
 
-Status Config::set_vfs_max_parallel_ops(const std::string& value) {
+Status Config::set_vfs_num_threads(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
-  vfs_params_.max_parallel_ops_ = v;
+  vfs_params_.num_threads_ = v;
 
   return Status::Ok();
 }
@@ -480,6 +503,14 @@ Status Config::set_vfs_min_parallel_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.min_parallel_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_vfs_file_max_parallel_ops(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.file_params_.max_parallel_ops_ = v;
 
   return Status::Ok();
 }
@@ -509,6 +540,14 @@ Status Config::set_vfs_s3_use_virtual_addressing(const std::string& value) {
         "Cannot set parameter; Invalid S3 virtual addressing value"));
   }
   vfs_params_.s3_params_.use_virtual_addressing_ = v;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_max_parallel_ops(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.s3_params_.max_parallel_ops_ = v;
+
   return Status::Ok();
 }
 

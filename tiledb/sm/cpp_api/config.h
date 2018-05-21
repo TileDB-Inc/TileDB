@@ -229,16 +229,22 @@ class Config {
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
-   * - `sm.number_of_threads` <br>
-   *    The number of allocated threads per TileDB context. <br>
-   *    **Default**: number of cores
-   * - `vfs.max_parallel_ops` <br>
-   *    The maximum number of VFS parallel operations. <br>
+   * - `sm.num_async_threads` <br>
+   *    The number of threads allocated for async queries. <br>
+   *    **Default**: 1
+   * - `vfs.num_threads` <br>
+   *    The number of threads allocated for VFS operations (any backend), per
+   *    VFS instance. <br>
    *    **Default**: number of cores
    * - `vfs.min_parallel_size` <br>
-   *    The minimum number of bytes in a parallel VFS operation. (Does not
-   *    affect parallel S3 writes.) <br>
+   *    The minimum number of bytes in a parallel VFS operation
+   *    (except parallel S3 writes, which are controlled by
+   *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.file.max_parallel_ops` <br>
+   *    The maximum number of parallel operations on objects with `file:///`
+   *    URIs. <br>
+   *    **Default**: `vfs.num_threads`
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -252,12 +258,15 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
+   * - `vfs.s3.max_parallel_ops` <br>
+   *    The maximum number of S3 backend parallel operations. <br>
+   *    **Default**: `vfs.num_threads`
    * - `vfs.s3.multipart_part_size` <br>
-   *    The part size (in bytes) used in S3 multipart writes, if S3 is enabled.
+   *    The part size (in bytes) used in S3 multipart writes.
    *    Any `uint64_t` value is acceptable. Note: `vfs.s3.multipart_part_size *
-   *    vfs.max_parallel_ops` bytes will be buffered before issuing multipart
+   *    vfs.s3.max_parallel_ops` bytes will be buffered before issuing multipart
    *    uploads in parallel. <br>
-   *    **Default**: 5*1024*1024
+   *    **Default**: 5MB
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000

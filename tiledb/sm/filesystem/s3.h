@@ -92,6 +92,7 @@ class S3 {
       scheme_ = constants::s3_scheme;
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
+      max_parallel_ops_ = constants::s3_max_parallel_ops;
       multipart_part_size_ = constants::s3_multipart_part_size;
       request_timeout_ms_ = constants::s3_request_timeout_ms;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
@@ -103,6 +104,7 @@ class S3 {
     std::string scheme_;
     std::string endpoint_override_;
     bool use_virtual_addressing_;
+    uint64_t max_parallel_ops_;
     uint64_t multipart_part_size_;
     long request_timeout_ms_;
     long connect_timeout_ms_;
@@ -365,6 +367,9 @@ class S3 {
 
   /** Protects multi-part upload data structures. */
   std::mutex multipart_upload_mtx_;
+
+  /** The maximum number of parallel operations issued. */
+  uint64_t max_parallel_ops_;
 
   /** The length of a non-terminal multipart part. */
   uint64_t multipart_part_size_;

@@ -166,11 +166,14 @@ extern const uint64_t consolidation_buffer_size;
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
-/** The default maximum number of parallel VFS operations. */
-extern const uint64_t vfs_max_parallel_ops;
+/** The default number of allocated VFS threads. */
+extern const uint64_t vfs_num_threads;
 
 /** The default minimum number of bytes in a parallel VFS operation. */
 extern const uint64_t vfs_min_parallel_size;
+
+/** The default maximum number of parallel file:/// operations. */
+extern const uint64_t vfs_file_max_parallel_ops;
 
 /** The maximum name length. */
 extern const unsigned uri_max_len;
@@ -199,8 +202,8 @@ extern const uint64_t fragment_metadata_cache_size;
 /** Whether or not the signal handlers are installed. */
 extern const bool enable_signal_handlers;
 
-/** The number of threads allocated per StorageManager. */
-extern const uint64_t number_of_threads;
+/** The number of threads allocated per StorageManager for async queries. */
+extern const uint64_t num_async_threads;
 
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
@@ -389,6 +392,9 @@ extern const long s3_request_timeout_ms;
 
 /** S3 scheme (http for local minio, https for AWS S3). */
 extern const char* s3_scheme;
+
+/** The default maximum number of parallel S3 operations. */
+extern const uint64_t s3_max_parallel_ops;
 
 /** Size of parts used in the S3 multi-part uploads. */
 extern const uint64_t s3_multipart_part_size;

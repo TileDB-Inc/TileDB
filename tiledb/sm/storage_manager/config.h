@@ -54,14 +54,14 @@ class Config {
     uint64_t array_schema_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
-    uint64_t number_of_threads_;
+    uint64_t num_async_threads_;
     uint64_t tile_cache_size_;
 
     SMParams() {
       array_schema_cache_size_ = constants::array_schema_cache_size;
       fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
-      number_of_threads_ = constants::number_of_threads;
+      num_async_threads_ = constants::num_async_threads;
       tile_cache_size_ = constants::tile_cache_size;
     }
   };
@@ -71,6 +71,7 @@ class Config {
     std::string scheme_;
     std::string endpoint_override_;
     bool use_virtual_addressing_;
+    uint64_t max_parallel_ops_;
     uint64_t multipart_part_size_;
     long connect_timeout_ms_;
     long connect_max_tries_;
@@ -82,6 +83,7 @@ class Config {
       scheme_ = constants::s3_scheme;
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
+      max_parallel_ops_ = constants::s3_max_parallel_ops;
       multipart_part_size_ = constants::s3_multipart_part_size;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
       connect_max_tries_ = constants::s3_connect_max_tries;
@@ -102,14 +104,23 @@ class Config {
     }
   };
 
+  struct FileParams {
+    uint64_t max_parallel_ops_;
+
+    FileParams() {
+      max_parallel_ops_ = constants::vfs_file_max_parallel_ops;
+    }
+  };
+
   struct VFSParams {
     S3Params s3_params_;
     HDFSParams hdfs_params_;
-    uint64_t max_parallel_ops_;
+    FileParams file_params_;
+    uint64_t num_threads_;
     uint64_t min_parallel_size_;
 
     VFSParams() {
-      max_parallel_ops_ = constants::vfs_max_parallel_ops;
+      num_threads_ = constants::vfs_num_threads;
       min_parallel_size_ = constants::vfs_min_parallel_size;
     }
   };
@@ -164,16 +175,22 @@ class Config {
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
-   * - `sm.number_of_threads` <br>
-   *    The number of allocated threads per TileDB context. <br>
-   *    **Default**: number of cores
-   * - `vfs.max_parallel_ops` <br>
-   *    The maximum number of VFS parallel operations.<br>
+   * - `sm.num_async_threads` <br>
+   *    The number of threads allocated for async queries. <br>
+   *    **Default**: 1
+   * - `vfs.num_threads` <br>
+   *    The number of threads allocated for VFS operations (any backend), per
+   *    VFS instance. <br>
    *    **Default**: number of cores
    * - `vfs.min_parallel_size` <br>
-   *    The minimum number of bytes in a parallel VFS operation. (Does not
-   *    affect parallel S3 writes.)<br>
+   *    The minimum number of bytes in a parallel VFS operation
+   *    (except parallel S3 writes, which are controlled by
+   *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.file.max_parallel_ops` <br>
+   *    The maximum number of parallel operations on objects with `file:///`
+   *    URIs. <br>
+   *    **Default**: `vfs.num_threads`
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -187,12 +204,15 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
+   * - `vfs.s3.max_parallel_ops` <br>
+   *    The maximum number of S3 backend parallel operations. <br>
+   *    **Default**: `vfs.num_threads`
    * - `vfs.s3.multipart_part_size` <br>
-   *    The part size (in bytes) used in S3 multipart writes, if S3 is enabled.
+   *    The part size (in bytes) used in S3 multipart writes.
    *    Any `uint64_t` value is acceptable. Note: `vfs.s3.multipart_part_size *
-   *    vfs.max_parallel_ops` bytes will be buffered before issuing multipart
+   *    vfs.s3.max_parallel_ops` bytes will be buffered before issuing multipart
    *    uploads in parallel. <br>
-   *    **Default**: 5*1024*1024
+   *    **Default**: 5MB
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -277,16 +297,19 @@ class Config {
   Status set_sm_enable_signal_handlers(const std::string& value);
 
   /** Sets the number of threads, properly parsing the input value.*/
-  Status set_sm_number_of_threads(const std::string& value);
+  Status set_sm_num_async_threads(const std::string& value);
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);
 
-  /** Sets the max number of allowed VFS parallel operations. */
-  Status set_vfs_max_parallel_ops(const std::string& value);
+  /** Sets the number of VFS threads. */
+  Status set_vfs_num_threads(const std::string& value);
 
   /** Sets the min number of bytes of a VFS parallel operation. */
   Status set_vfs_min_parallel_size(const std::string& value);
+
+  /** Sets the max number of allowed file:/// parallel operations. */
+  Status set_vfs_file_max_parallel_ops(const std::string& value);
 
   /** Sets the S3 region. */
   Status set_vfs_s3_region(const std::string& value);
@@ -299,6 +322,9 @@ class Config {
 
   /** Sets the S3 virtual addressing. */
   Status set_vfs_s3_use_virtual_addressing(const std::string& value);
+
+  /** Sets the maximum number of parallel S3 operations. */
+  Status set_vfs_s3_max_parallel_ops(const std::string& value);
 
   /** Sets the S3 multipart part size. */
   Status set_vfs_s3_multipart_part_size(const std::string& value);

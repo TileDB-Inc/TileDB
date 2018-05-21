@@ -19,6 +19,7 @@
 * Refactored global writes, making them simpler and more amenable to parallelization.
 * Added ability to cancel pending background/async tasks. SIGINT signals now cancel pending tasks.
 * Sparse read performance improvements with parallelism (using TBB as a dependency).
+* Async queries now use a configurable number of background threads (default number of threads is 1).
 
 ## Bug Fixes
 
@@ -35,10 +36,11 @@
 
 * Added `tiledb_query_finalize` function. 
 * Added `tiledb_vfs_get_config` function.
-* Added `vfs.max_parallel_ops` and `vfs.min_parallel_size` config parameters.
+* Added `vfs.num_threads` and `vfs.min_parallel_size` config parameters.
+* Added `vfs.{s3,file}.max_parallel_ops` config parameters.
 * Added `vfs.s3.multipart_part_size` config parameter.
 * Added `tiledb_ctx_cancel_tasks` function.
-* Added `sm.number_of_threads` config parameter.
+* Added `sm.num_async_threads` config parameter.
 * Added `sm.enable_signal_handlers` config parameter.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
 * Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.

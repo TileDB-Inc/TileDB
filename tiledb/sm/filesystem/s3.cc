@@ -62,6 +62,7 @@ static std::once_flag aws_lib_initialized;
 
 S3::S3() {
   client_ = nullptr;
+  max_parallel_ops_ = 1;
   multipart_part_size_ = 0;
 }
 
@@ -84,8 +85,9 @@ Status S3::init(const S3Config& s3_config, ThreadPool* thread_pool) {
   std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
   vfs_thread_pool_ = thread_pool;
+  max_parallel_ops_ = s3_config.max_parallel_ops_;
   multipart_part_size_ = s3_config.multipart_part_size_;
-  file_buffer_size_ = multipart_part_size_ * thread_pool->num_threads();
+  file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
 
   Aws::Client::ClientConfiguration config;
   if (!s3_config.region_.empty())
@@ -741,11 +743,10 @@ Status S3::write_multipart(
   // Ensure that each thread is responsible for exactly multipart_part_size_
   // bytes (except if this is the last write_multipart, in which case the final
   // thread should write less), and cap the number of parallel operations at the
-  // thread pool size.
+  // configured max number.
   uint64_t num_ops = last_part ? utils::ceil(length, multipart_part_size_) :
                                  (length / multipart_part_size_);
-  num_ops =
-      std::min(std::max(num_ops, uint64_t(1)), vfs_thread_pool_->num_threads());
+  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
 
   if (!last_part && length % multipart_part_size_ != 0) {
     return LOG_STATUS(
