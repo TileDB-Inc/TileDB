@@ -177,13 +177,17 @@ void check_save_to_file() {
   ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
-  ss << "sm.number_of_threads " << std::thread::hardware_concurrency() << "\n";
+  ss << "sm.num_async_threads 1\n";
   ss << "sm.tile_cache_size 10000000\n";
-  ss << "vfs.max_parallel_ops " << std::thread::hardware_concurrency() << "\n";
+  ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
+     << "\n";
   ss << "vfs.min_parallel_size 10485760\n";
+  ss << "vfs.num_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
+  ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
+     << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
@@ -337,15 +341,18 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.array_schema_cache_size"] = "1000";
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
   all_param_values["sm.enable_signal_handlers"] = "true";
-  all_param_values["sm.number_of_threads"] =
-      std::to_string(std::thread::hardware_concurrency());
-  all_param_values["vfs.max_parallel_ops"] =
+  all_param_values["sm.num_async_threads"] = "1";
+  all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_parallel_size"] = "10485760";
+  all_param_values["vfs.file.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
+  all_param_values["vfs.s3.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.multipart_part_size"] = "5242880";
   all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
@@ -356,13 +363,17 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> vfs_param_values;
-  vfs_param_values["max_parallel_ops"] =
+  vfs_param_values["num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["min_parallel_size"] = "10485760";
+  vfs_param_values["file.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
+  vfs_param_values["s3.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.multipart_part_size"] = "5242880";
   vfs_param_values["s3.connect_timeout_ms"] = "3000";
   vfs_param_values["s3.connect_max_tries"] = "5";
@@ -377,6 +388,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["region"] = "us-east-1";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
+  s3_param_values["max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
   s3_param_values["multipart_part_size"] = "5242880";
   s3_param_values["connect_timeout_ms"] = "3000";
   s3_param_values["connect_max_tries"] = "5";

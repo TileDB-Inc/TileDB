@@ -138,11 +138,23 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
 #endif
   }
 
-  // Set number of threads
+  // Set number of threads across all backends.
   REQUIRE(
       tiledb_config_set(
           config,
-          "vfs.max_parallel_ops",
+          "vfs.num_threads",
+          std::to_string(num_threads).c_str(),
+          &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.s3.max_parallel_ops",
+          std::to_string(num_threads).c_str(),
+          &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.file.max_parallel_ops",
           std::to_string(num_threads).c_str(),
           &error) == TILEDB_OK);
   // Set very small parallelization threshold (ignored when there is only 1
@@ -688,10 +700,13 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
 
   if (supports_s3_) {
     check_vfs(S3_TEMP_DIR);
+    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
   } else if (supports_hdfs_) {
     check_vfs(HDFS_TEMP_DIR);
+    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized == 0);
   } else {
     check_vfs(FILE_TEMP_DIR);
+    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
 #ifdef _WIN32
     CHECK(
         tiledb::sm::stats::all_stats.counter_vfs_win32_write_num_parallelized >
@@ -702,6 +717,4 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
         0);
 #endif
   }
-
-  CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
 }

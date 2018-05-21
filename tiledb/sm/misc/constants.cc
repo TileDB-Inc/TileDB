@@ -176,11 +176,14 @@ const uint64_t consolidation_buffer_size = 50000000;
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
-/** The default maximum number of parallel VFS operations. */
-const uint64_t vfs_max_parallel_ops = std::thread::hardware_concurrency();
+/** The default number of allocated VFS threads. */
+const uint64_t vfs_num_threads = std::thread::hardware_concurrency();
 
 /** The default minimum number of bytes in a parallel VFS operation. */
 const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
+
+/** The default maximum number of parallel file:/// operations. */
+const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
 
 /** The maximum name length. */
 const unsigned uri_max_len = 256;
@@ -211,8 +214,8 @@ const uint64_t fragment_metadata_cache_size = 10000000;
 /** Whether or not the signal handlers are installed. */
 const bool enable_signal_handlers = true;
 
-/** The number of threads allocated per StorageManager. */
-const uint64_t number_of_threads = std::thread::hardware_concurrency();
+/** The number of threads allocated per StorageManager for async queries. */
+const uint64_t num_async_threads = 1;
 
 /** The tile cache size. */
 const uint64_t tile_cache_size = 10000000;
@@ -402,6 +405,9 @@ const long s3_request_timeout_ms = 3000;
 
 /** S3 scheme (http for local minio, https for AWS S3). */
 const char* s3_scheme = "https";
+
+/** S3 max parallel operations. */
+const uint64_t s3_max_parallel_ops = vfs_num_threads;
 
 /** Size of parts used in the S3 multi-part uploads. */
 const uint64_t s3_multipart_part_size = 5 * 1024 * 1024;

@@ -489,7 +489,7 @@ Status StorageManager::object_unlock(const URI& uri, LockType lock_type) {
 }
 
 Status StorageManager::async_push_query(Query* query) {
-  thread_pool_->enqueue(
+  async_thread_pool_->enqueue(
       [this, query]() {
         // Process query.
         Status st = query_submit(query);
@@ -521,7 +521,7 @@ Status StorageManager::cancel_all_tasks() {
   // Handle the cancellation.
   if (handle_cancel) {
     // Cancel any queued tasks.
-    thread_pool_->cancel_all_tasks();
+    async_thread_pool_->cancel_all_tasks();
     vfs_->cancel_all_tasks();
 
     // Wait for in-progress queries to finish.
@@ -649,8 +649,8 @@ Status StorageManager::init(Config* config) {
   array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
-  thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
-  RETURN_NOT_OK(thread_pool_->init(sm_params.number_of_threads_));
+  async_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
+  RETURN_NOT_OK(async_thread_pool_->init(sm_params.num_async_threads_));
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));

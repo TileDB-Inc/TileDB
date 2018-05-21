@@ -631,8 +631,8 @@ class StorageManager {
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
 
-  /** The storage manager's thread pool. */
-  std::unique_ptr<ThreadPool> thread_pool_;
+  /** The storage manager's thread pool for async queries. */
+  std::unique_ptr<ThreadPool> async_thread_pool_;
 
   /** A tile cache. */
   LRUCache* tile_cache_;
