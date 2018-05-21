@@ -40,6 +40,7 @@
 #include "tiledb/sm/tile/tile.h"
 
 #include <memory>
+#include <set>
 
 namespace tiledb {
 namespace sm {
@@ -216,6 +217,21 @@ class Writer {
   /** Maps attribute names to their buffers. */
   std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
 
+  /**
+   * Meaningful only when `dedup_coords_` is `false`.
+   * If `true`, a check for duplicate coordinates will be performed upon
+   * sparse writes and appropriate errors will be thrown in case
+   * duplicates are found.
+   */
+  bool check_coord_dups_;
+
+  /**
+   * If `true`, deduplication of coordinates/cells will happen upon
+   * sparse writes. Ties are broken arbitrarily.
+   *
+   */
+  bool dedup_coords_;
+
   /** The name of the new fragment to be created. */
   URI fragment_uri_;
 
@@ -241,6 +257,24 @@ class Writer {
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
 
+  /**
+   * Throws an error if there are coordinate duplicates.
+   *
+   * @param cell_pos The sorted positions of the coordinates in the
+   *     `attr_buffers_`.
+   * @return Status
+   */
+  Status check_coord_dups(const std::vector<uint64_t>& cell_pos) const;
+
+  /**
+   * Throws an error if there are coordinate duplicates. This function
+   * assumes that the coordinates are written in the global layout,
+   * which means that they are already sorted in the attribute buffers.
+   *
+   * @return Status
+   */
+  Status check_coord_dups() const;
+
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;
 
@@ -250,6 +284,39 @@ class Writer {
 
   /** Closes all attribute files, flushing their state to storage. */
   Status close_files(FragmentMetadata* meta) const;
+
+  /**
+   * Computes the positions of the coordinate duplicates (if any). Note
+   * that only the duplicate occurrences are determined, i.e., if the same
+   * coordinates appear 3 times, only 2 will be marked as duplicates,
+   * whereas the first occurrence will not be marked as duplicate.
+   *
+   * @param cell_pos The sorted positions of the coordinates in the
+   *     `attr_buffers_`.
+   * @param A set indicating the positions of the duplicates.
+   *     If there are not duplicates, this vector will be **empty** after
+   *     the termination of the function.
+   * @return Status
+   */
+  Status compute_coord_dups(
+      const std::vector<uint64_t>& cell_pos,
+      std::set<uint64_t>* coord_dups) const;
+
+  /**
+   * Computes the positions of the coordinate duplicates (if any). Note
+   * that only the duplicate occurrences are determined, i.e., if the same
+   * coordinates appear 3 times, only 2 will be marked as duplicates,
+   * whereas the first occurrence will not be marked as duplicate.
+   *
+   * This functions assumes that the coordinates are laid out in the
+   * global order and, hence, they are sorted in the attribute buffers.
+   *
+   * @param A set indicating the positions of the duplicates.
+   *     If there are not duplicates, this vector will be **empty** after
+   *     the termination of the function.
+   * @return Status
+   */
+  Status compute_coord_dups(std::set<uint64_t>* coord_dups) const;
 
   /**
    * Computes the coordinates metadata (e.g., MBRs).
@@ -416,11 +483,14 @@ class Writer {
    * invocation.
    *
    * @param attribute The attribute to prepare the tiles for.
+   * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles(
-      const std::string& attribute, std::vector<Tile>* tiles) const;
+      const std::string& attribute,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<Tile>* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -432,11 +502,14 @@ class Writer {
    * invocation. Applicable only to fixed-sized attributes.
    *
    * @param attribute The attribute to prepare the tiles for.
+   * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles_fixed(
-      const std::string& attribute, std::vector<Tile>* tiles) const;
+      const std::string& attribute,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<Tile>* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -448,11 +521,14 @@ class Writer {
    * invocation. Applicable only to var-sized attributes.
    *
    * @param attribute The attribute to prepare the tiles for.
+   * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles_var(
-      const std::string& attribute, std::vector<Tile>* tiles) const;
+      const std::string& attribute,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<Tile>* tiles) const;
 
   /**
    * It prepares the tiles, copying from the user buffers into the tiles
@@ -476,12 +552,15 @@ class Writer {
    * @param attribute The attribute to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles(
       const std::string& attribute,
       const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /**
@@ -492,12 +571,15 @@ class Writer {
    * @param attribute The attribute to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_fixed(
       const std::string& attribute,
       const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /**
@@ -508,12 +590,15 @@ class Writer {
    * @param attribute The attribute to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_var(
       const std::string& attribute,
       const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /** Sets the query attributes. */

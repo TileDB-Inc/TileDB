@@ -96,6 +96,16 @@ Status Writer::init() {
   RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());
 
+  // Get configuration parameters
+  const char* check_coord_dups;
+  const char* dedup_coords;
+  auto config = storage_manager_->config();
+  RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
+  RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
+  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
+  check_coord_dups_ = (!strcmp(check_coord_dups, "true")) ? true : false;
+  dedup_coords_ = (!strcmp(dedup_coords, "true")) ? true : false;
+
   return Status::Ok();
 }
 
@@ -272,6 +282,55 @@ Status Writer::check_buffer_sizes() const {
   return Status::Ok();
 }
 
+Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
+  auto coords_buff_it = attr_buffers_.find(constants::coords);
+  if (coords_buff_it == attr_buffers_.end())
+    return LOG_STATUS(
+        Status::WriterError("Cannot check for coordinate duplicates; "
+                            "Coordinates buffer not found"));
+
+  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
+  auto coords_size = array_schema_->coords_size();
+  auto coords_num = cell_pos.size();
+
+  for (uint64_t i = 1; i < coords_num; ++i) {
+    if (!memcmp(
+            coords_buff + cell_pos[i] * coords_size,
+            coords_buff + cell_pos[i - 1] * coords_size,
+            coords_size)) {
+      return LOG_STATUS(
+          Status::WriterError("Duplicate coordinates are not allowed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::check_coord_dups() const {
+  auto coords_buff_it = attr_buffers_.find(constants::coords);
+  if (coords_buff_it == attr_buffers_.end())
+    return LOG_STATUS(
+        Status::WriterError("Cannot check for coordinate duplicates; "
+                            "Coordinates buffer not found"));
+
+  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
+  auto coords_buff_size = *coords_buff_it->second.buffer_size_;
+  auto coords_size = array_schema_->coords_size();
+  auto coords_num = coords_buff_size / coords_size;
+
+  for (uint64_t i = 1; i < coords_num; ++i) {
+    if (!memcmp(
+            coords_buff + i * coords_size,
+            coords_buff + (i - 1) * coords_size,
+            coords_size)) {
+      return LOG_STATUS(
+          Status::WriterError("Duplicate coordinates are not allowed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::check_subarray() const {
   if (subarray_ == nullptr)
     return Status::Ok();
@@ -350,6 +409,55 @@ Status Writer::close_files(FragmentMetadata* meta) const {
     RETURN_NOT_OK(storage_manager_->close_file(meta->attr_uri(attr)));
     if (array_schema_->var_size(attr))
       RETURN_NOT_OK(storage_manager_->close_file(meta->attr_var_uri(attr)));
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::compute_coord_dups(
+    const std::vector<uint64_t>& cell_pos,
+    std::set<uint64_t>* coord_dups) const {
+  auto coords_buff_it = attr_buffers_.find(constants::coords);
+  if (coords_buff_it == attr_buffers_.end())
+    return LOG_STATUS(
+        Status::WriterError("Cannot check for coordinate duplicates; "
+                            "Coordinates buffer not found"));
+
+  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
+  auto coords_size = array_schema_->coords_size();
+  auto coords_num = cell_pos.size();
+
+  for (uint64_t i = 1; i < coords_num; ++i) {
+    if (!memcmp(
+            coords_buff + cell_pos[i] * coords_size,
+            coords_buff + cell_pos[i - 1] * coords_size,
+            coords_size)) {
+      coord_dups->insert(cell_pos[i]);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
+  auto coords_buff_it = attr_buffers_.find(constants::coords);
+  if (coords_buff_it == attr_buffers_.end())
+    return LOG_STATUS(
+        Status::WriterError("Cannot check for coordinate duplicates; "
+                            "Coordinates buffer not found"));
+
+  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
+  auto coords_buff_size = *coords_buff_it->second.buffer_size_;
+  auto coords_size = array_schema_->coords_size();
+  auto coords_num = coords_buff_size / coords_size;
+
+  for (uint64_t i = 1; i < coords_num; ++i) {
+    if (!memcmp(
+            coords_buff + i * coords_size,
+            coords_buff + (i - 1) * coords_size,
+            coords_size)) {
+      coord_dups->insert(i);
+    }
   }
 
   return Status::Ok();
@@ -606,12 +714,23 @@ Status Writer::global_write() {
   auto uri = frag_meta->fragment_uri();
   auto num_attributes = attributes_.size();
 
+  // Check for coordinate duplicates
+  bool has_coords =
+      attr_buffers_.find(constants::coords) != attr_buffers_.end();
+  if (has_coords && check_coord_dups_ && !dedup_coords_)
+    RETURN_CANCEL_OR_ERROR(check_coord_dups());
+
+  // Retrieve coordinate duplicates
+  std::set<uint64_t> coord_dups;
+  if (dedup_coords_)
+    RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
+
   // Prepare tiles for all attributes
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& full_tiles = attribute_tiles[i];
-    RETURN_CANCEL_OR_ERROR(prepare_full_tiles(attr, &full_tiles));
+    RETURN_CANCEL_OR_ERROR(prepare_full_tiles(attr, coord_dups, &full_tiles));
     return Status::Ok();
   });
 
@@ -948,14 +1067,18 @@ Status Writer::ordered_write() {
 }
 
 Status Writer::prepare_full_tiles(
-    const std::string& attribute, std::vector<Tile>* tiles) const {
+    const std::string& attribute,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<Tile>* tiles) const {
   return array_schema_->var_size(attribute) ?
-             prepare_full_tiles_var(attribute, tiles) :
-             prepare_full_tiles_fixed(attribute, tiles);
+             prepare_full_tiles_var(attribute, coord_dups, tiles) :
+             prepare_full_tiles_fixed(attribute, coord_dups, tiles);
 }
 
 Status Writer::prepare_full_tiles_fixed(
-    const std::string& attribute, std::vector<Tile>* tiles) const {
+    const std::string& attribute,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<Tile>* tiles) const {
   // For easy reference
   auto it = attr_buffers_.find(attribute);
   auto buffer = (unsigned char*)it->second.buffer_;
@@ -975,10 +1098,20 @@ Status Writer::prepare_full_tiles_fixed(
   auto& last_tile = global_write_state_->last_tiles_[attribute].first;
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
-    do {
-      RETURN_NOT_OK(last_tile.write(buffer + cell_idx * cell_size, cell_size));
-      ++cell_idx;
-    } while (!last_tile.full());
+    if (coord_dups.empty()) {
+      do {
+        RETURN_NOT_OK(
+            last_tile.write(buffer + cell_idx * cell_size, cell_size));
+        ++cell_idx;
+      } while (!last_tile.full() && cell_idx != cell_num);
+    } else {
+      do {
+        if (coord_dups.find(cell_idx) == coord_dups.end())
+          RETURN_NOT_OK(
+              last_tile.write(buffer + cell_idx * cell_size, cell_size));
+        ++cell_idx;
+      } while (!last_tile.full() && cell_idx != cell_num);
+    }
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -1001,19 +1134,41 @@ Status Writer::prepare_full_tiles_fixed(
     }
 
     // Write all remaining cells one by one
-    for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write; ++cell_idx, ++i) {
-      if ((*tiles)[tile_idx].full())
-        ++tile_idx;
+    if (coord_dups.empty()) {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
+        if ((*tiles)[tile_idx].full())
+          ++tile_idx;
 
-      RETURN_NOT_OK(
-          (*tiles)[tile_idx].write(buffer + cell_idx * cell_size, cell_size));
+        RETURN_NOT_OK(
+            (*tiles)[tile_idx].write(buffer + cell_idx * cell_size, cell_size));
+      }
+    } else {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
+        if (coord_dups.find(cell_idx) == coord_dups.end()) {
+          if ((*tiles)[tile_idx].full())
+            ++tile_idx;
+
+          RETURN_NOT_OK((*tiles)[tile_idx].write(
+              buffer + cell_idx * cell_size, cell_size));
+        }
+      }
     }
   }
 
   // Potentially fill the last tile
   assert(cell_num - cell_idx < cell_num_per_tile - last_tile.cell_num());
-  for (; cell_idx < cell_num; ++cell_idx) {
-    RETURN_NOT_OK(last_tile.write(buffer + cell_idx * cell_size, cell_size));
+  if (coord_dups.empty()) {
+    for (; cell_idx < cell_num; ++cell_idx) {
+      RETURN_NOT_OK(last_tile.write(buffer + cell_idx * cell_size, cell_size));
+    }
+  } else {
+    for (; cell_idx < cell_num; ++cell_idx) {
+      if (coord_dups.find(cell_idx) == coord_dups.end())
+        RETURN_NOT_OK(
+            last_tile.write(buffer + cell_idx * cell_size, cell_size));
+    }
   }
 
   global_write_state_->cells_written_[attribute] += cell_num;
@@ -1022,7 +1177,9 @@ Status Writer::prepare_full_tiles_fixed(
 }
 
 Status Writer::prepare_full_tiles_var(
-    const std::string& attribute, std::vector<Tile>* tiles) const {
+    const std::string& attribute,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<Tile>* tiles) const {
   // For easy reference
   auto it = attr_buffers_.find(attribute);
   auto buffer = (uint64_t*)it->second.buffer_;
@@ -1046,20 +1203,39 @@ Status Writer::prepare_full_tiles_var(
   auto& last_tile_var = last_tile_pair.second;
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
-    do {
-      // Write offset
-      offset = last_tile_var.size();
-      RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
+    if (coord_dups.empty()) {
+      do {
+        // Write offset
+        offset = last_tile_var.size();
+        RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
-      // Write var-sized value
-      var_size = (cell_idx == cell_num - 1) ?
-                     *buffer_var_size - buffer[cell_idx] :
-                     buffer[cell_idx + 1] - buffer[cell_idx];
-      RETURN_NOT_OK(
-          last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
+        // Write var-sized value
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buffer[cell_idx] :
+                       buffer[cell_idx + 1] - buffer[cell_idx];
+        RETURN_NOT_OK(
+            last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
 
-      ++cell_idx;
-    } while (!last_tile.full());
+        ++cell_idx;
+      } while (!last_tile.full() && cell_idx != cell_num);
+    } else {
+      do {
+        if (coord_dups.find(cell_idx) == coord_dups.end()) {
+          // Write offset
+          offset = last_tile_var.size();
+          RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
+
+          // Write var-sized value
+          var_size = (cell_idx == cell_num - 1) ?
+                         *buffer_var_size - buffer[cell_idx] :
+                         buffer[cell_idx + 1] - buffer[cell_idx];
+          RETURN_NOT_OK(
+              last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
+        }
+
+        ++cell_idx;
+      } while (!last_tile.full() && cell_idx != cell_num);
+    }
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -1086,35 +1262,75 @@ Status Writer::prepare_full_tiles_var(
     }
 
     // Write all remaining cells one by one
-    for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write; ++cell_idx, ++i) {
-      if ((*tiles)[tile_idx].full())
-        tile_idx += 2;
+    if (coord_dups.empty()) {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
+        if ((*tiles)[tile_idx].full())
+          tile_idx += 2;
 
-      // Write offset
-      offset = (*tiles)[tile_idx + 1].size();
-      RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+        // Write offset
+        offset = (*tiles)[tile_idx + 1].size();
+        RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
-      // Write var-sized value
-      var_size = (cell_idx == cell_num - 1) ?
-                     *buffer_var_size - buffer[cell_idx] :
-                     buffer[cell_idx + 1] - buffer[cell_idx];
-      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
-          &buffer_var[buffer[cell_idx]], var_size));
+        // Write var-sized value
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buffer[cell_idx] :
+                       buffer[cell_idx + 1] - buffer[cell_idx];
+        RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+            &buffer_var[buffer[cell_idx]], var_size));
+      }
+    } else {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
+        if (coord_dups.find(cell_idx) == coord_dups.end()) {
+          if ((*tiles)[tile_idx].full())
+            tile_idx += 2;
+
+          // Write offset
+          offset = (*tiles)[tile_idx + 1].size();
+          RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+
+          // Write var-sized value
+          var_size = (cell_idx == cell_num - 1) ?
+                         *buffer_var_size - buffer[cell_idx] :
+                         buffer[cell_idx + 1] - buffer[cell_idx];
+          RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+              &buffer_var[buffer[cell_idx]], var_size));
+        }
+      }
     }
   }
 
   // Potentially fill the last tile
   assert(cell_num - cell_idx < cell_num_per_tile - last_tile.cell_num());
-  for (; cell_idx < cell_num; ++cell_idx) {
-    // Write offset
-    offset = last_tile_var.size();
-    RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
+  if (coord_dups.empty()) {
+    for (; cell_idx < cell_num; ++cell_idx) {
+      // Write offset
+      offset = last_tile_var.size();
+      RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
-    // Write var-sized value
-    var_size = (cell_idx == cell_num - 1) ?
-                   *buffer_var_size - buffer[cell_idx] :
-                   buffer[cell_idx + 1] - buffer[cell_idx];
-    RETURN_NOT_OK(last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
+      // Write var-sized value
+      var_size = (cell_idx == cell_num - 1) ?
+                     *buffer_var_size - buffer[cell_idx] :
+                     buffer[cell_idx + 1] - buffer[cell_idx];
+      RETURN_NOT_OK(
+          last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
+    }
+  } else {
+    for (; cell_idx < cell_num; ++cell_idx) {
+      if (coord_dups.find(cell_idx) == coord_dups.end()) {
+        // Write offset
+        offset = last_tile_var.size();
+        RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
+
+        // Write var-sized value
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buffer[cell_idx] :
+                       buffer[cell_idx + 1] - buffer[cell_idx];
+        RETURN_NOT_OK(
+            last_tile_var.write(&buffer_var[buffer[cell_idx]], var_size));
+      }
+    }
   }
 
   global_write_state_->cells_written_[attribute] += cell_num;
@@ -1195,15 +1411,17 @@ Status Writer::prepare_tiles(
 Status Writer::prepare_tiles(
     const std::string& attribute,
     const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   return array_schema_->var_size(attribute) ?
-             prepare_tiles_var(attribute, cell_pos, tiles) :
-             prepare_tiles_fixed(attribute, cell_pos, tiles);
+             prepare_tiles_var(attribute, cell_pos, coord_dups, tiles) :
+             prepare_tiles_fixed(attribute, cell_pos, coord_dups, tiles);
 }
 
 Status Writer::prepare_tiles_fixed(
     const std::string& attribute,
     const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   // Trivial case
   if (cell_pos.empty())
@@ -1214,7 +1432,8 @@ Status Writer::prepare_tiles_fixed(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
-  auto tile_num = utils::ceil(cell_num, capacity);
+  auto dups_num = coord_dups.size();
+  auto tile_num = utils::ceil(cell_num - dups_num, capacity);
   auto cell_size = array_schema_->cell_size(attribute);
 
   // Initialize tiles
@@ -1223,12 +1442,25 @@ Status Writer::prepare_tiles_fixed(
     RETURN_NOT_OK(init_tile(attribute, &tile));
 
   // Write all cells one by one
-  for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
-    if ((*tiles)[tile_idx].full())
-      ++tile_idx;
+  if (dups_num == 0) {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if ((*tiles)[tile_idx].full())
+        ++tile_idx;
 
-    RETURN_NOT_OK(
-        (*tiles)[tile_idx].write(buffer + cell_pos[i] * cell_size, cell_size));
+      RETURN_NOT_OK((*tiles)[tile_idx].write(
+          buffer + cell_pos[i] * cell_size, cell_size));
+    }
+  } else {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if (coord_dups.find(cell_pos[i]) != coord_dups.end())
+        continue;
+
+      if ((*tiles)[tile_idx].full())
+        ++tile_idx;
+
+      RETURN_NOT_OK((*tiles)[tile_idx].write(
+          buffer + cell_pos[i] * cell_size, cell_size));
+    }
   }
 
   return Status::Ok();
@@ -1237,6 +1469,7 @@ Status Writer::prepare_tiles_fixed(
 Status Writer::prepare_tiles_var(
     const std::string& attribute,
     const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   // For easy reference
   auto it = attr_buffers_.find(attribute);
@@ -1245,7 +1478,8 @@ Status Writer::prepare_tiles_var(
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
-  auto tile_num = utils::ceil(cell_num, capacity);
+  auto dups_num = coord_dups.size();
+  auto tile_num = utils::ceil(cell_num - dups_num, capacity);
   uint64_t offset;
   uint64_t var_size;
 
@@ -1256,20 +1490,41 @@ Status Writer::prepare_tiles_var(
     RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
 
   // Write all cells one by one
-  for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
-    if ((*tiles)[tile_idx].full())
-      tile_idx += 2;
+  if (dups_num == 0) {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if ((*tiles)[tile_idx].full())
+        tile_idx += 2;
 
-    // Write offset
-    offset = (*tiles)[tile_idx + 1].size();
-    RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+      // Write offset
+      offset = (*tiles)[tile_idx + 1].size();
+      RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
-    // Write var-sized value
-    var_size = (cell_pos[i] == cell_num - 1) ?
-                   *buffer_var_size - buffer[cell_pos[i]] :
-                   buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
-    RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
-        &buffer_var[buffer[cell_pos[i]]], var_size));
+      // Write var-sized value
+      var_size = (cell_pos[i] == cell_num - 1) ?
+                     *buffer_var_size - buffer[cell_pos[i]] :
+                     buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
+      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+          &buffer_var[buffer[cell_pos[i]]], var_size));
+    }
+  } else {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if (coord_dups.find(cell_pos[i]) != coord_dups.end())
+        continue;
+
+      if ((*tiles)[tile_idx].full())
+        tile_idx += 2;
+
+      // Write offset
+      offset = (*tiles)[tile_idx + 1].size();
+      RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+
+      // Write var-sized value
+      var_size = (cell_pos[i] == cell_num - 1) ?
+                     *buffer_var_size - buffer[cell_pos[i]] :
+                     buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
+      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+          &buffer_var[buffer[cell_pos[i]]], var_size));
+    }
   }
 
   return Status::Ok();
@@ -1371,6 +1626,15 @@ Status Writer::unordered_write() {
   std::vector<uint64_t> cell_pos;
   RETURN_CANCEL_OR_ERROR(sort_coords<T>(&cell_pos));
 
+  // Check for coordinate duplicates
+  if (check_coord_dups_ && !dedup_coords_)
+    RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
+
+  // Retrieve coordinate duplicates
+  std::set<uint64_t> coord_dups;
+  if (dedup_coords_)
+    RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
+
   // Create new fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
@@ -1382,9 +1646,12 @@ Status Writer::unordered_write() {
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& tiles = attribute_tiles[i];
-    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, cell_pos, &tiles));
+    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, cell_pos, coord_dups, &tiles));
     return Status::Ok();
   });
+
+  // Clear the boolean vector for coordinate duplicates
+  coord_dups.clear();
 
   // Check all statuses
   for (auto& st : statuses)

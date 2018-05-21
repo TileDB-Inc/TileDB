@@ -152,7 +152,11 @@ Config::S3Params Config::s3_params() const {
 Status Config::set(const std::string& param, const std::string& value) {
   param_values_[param] = value;
 
-  if (param == "sm.tile_cache_size") {
+  if (param == "sm.dedup_coords") {
+    RETURN_NOT_OK(set_sm_dedup_coords(value));
+  } else if (param == "sm.check_coord_dups") {
+    RETURN_NOT_OK(set_sm_check_coord_dups(value));
+  } else if (param == "sm.tile_cache_size") {
     RETURN_NOT_OK(set_sm_tile_cache_size(value));
   } else if (param == "sm.array_schema_cache_size") {
     RETURN_NOT_OK(set_sm_array_schema_cache_size(value));
@@ -227,7 +231,17 @@ Status Config::unset(const std::string& param) {
   std::stringstream value;
 
   // Set back to default
-  if (param == "sm.tile_cache_size") {
+  if (param == "sm.dedup_coords") {
+    sm_params_.dedup_coords_ = constants::dedup_coords;
+    value << (sm_params_.dedup_coords_ ? "true" : "false");
+    param_values_["sm.dedup_coords"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.check_coord_dups") {
+    sm_params_.check_coord_dups_ = constants::check_coord_dups;
+    value << (sm_params_.check_coord_dups_ ? "true" : "false");
+    param_values_["sm.check_coord_dups"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.tile_cache_size") {
     sm_params_.tile_cache_size_ = constants::tile_cache_size;
     value << sm_params_.tile_cache_size_;
     param_values_["sm.tile_cache_size"] = value.str();
@@ -359,6 +373,14 @@ Status Config::unset(const std::string& param) {
 void Config::set_default_param_values() {
   std::stringstream value;
 
+  value << (sm_params_.dedup_coords_ ? "true" : "false");
+  param_values_["sm.dedup_coords"] = value.str();
+  value.str(std::string());
+
+  value << (sm_params_.check_coord_dups_ ? "true" : "false");
+  param_values_["sm.check_coord_dups"] = value.str();
+  value.str(std::string());
+
   value << sm_params_.tile_cache_size_;
   param_values_["sm.tile_cache_size"] = value.str();
   value.str(std::string());
@@ -459,6 +481,26 @@ Status Config::parse_bool(const std::string& value, bool* result) {
   } else {
     return Status::ConfigError("cannot parse boolean value: " + value);
   }
+  return Status::Ok();
+}
+
+Status Config::set_sm_dedup_coords(const std::string& value) {
+  bool v = false;
+  if (!parse_bool(value, &v).ok()) {
+    return LOG_STATUS(Status::ConfigError(
+        "Cannot set parameter; Invalid dedup coords value"));
+  }
+  sm_params_.dedup_coords_ = v;
+  return Status::Ok();
+}
+
+Status Config::set_sm_check_coord_dups(const std::string& value) {
+  bool v = false;
+  if (!parse_bool(value, &v).ok()) {
+    return LOG_STATUS(Status::ConfigError(
+        "Cannot set parameter; Invalid check coords duplicates value"));
+  }
+  sm_params_.check_coord_dups_ = v;
   return Status::Ok();
 }
 

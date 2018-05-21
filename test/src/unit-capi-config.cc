@@ -175,6 +175,8 @@ void check_save_to_file() {
 
   std::stringstream ss;
   ss << "sm.array_schema_cache_size 10000000\n";
+  ss << "sm.check_coord_dups true\n";
+  ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
   ss << "sm.num_async_threads 1\n";
@@ -338,6 +340,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
+  all_param_values["sm.dedup_coords"] = "false";
+  all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.array_schema_cache_size"] = "1000";
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";

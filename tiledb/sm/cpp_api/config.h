@@ -215,6 +215,18 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.dedup_coords` <br>
+   *    If `true`, cells with duplicate coordinates will be removed during
+   *    sparse array writes. Note that ties during deduplication are
+   *    arbitrary. <br>
+   *    **Default**: false
+   * - `sm.check_coord_dups` <br>
+   *    This is applicable only if `sm.dedup_coords` is `false`.
+   *    If `true`, an error will be thrown if there are cells with duplicate
+   *    coordinates during sparse array writes. If `false` and there are
+   *    duplicates, the duplicates will be written without errors, but the
+   *    TileDB behavior could be unpredictable. <br>
+   *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
    *    **Default**: 10,000,000
