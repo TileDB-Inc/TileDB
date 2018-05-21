@@ -654,6 +654,7 @@ Status StorageManager::init(Config* config) {
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
+  RETURN_NOT_OK(init_tbb(sm_params));
 
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.initialize(config));
@@ -1441,6 +1442,14 @@ Status StorageManager::get_fragment_uris(
       fragment_uris->push_back(uri);
   }
 
+  return Status::Ok();
+}
+
+Status StorageManager::init_tbb(Config::SMParams& config) {
+#ifdef HAVE_TBB
+  tbb_scheduler_ = std::unique_ptr<tbb::task_scheduler_init>(
+      new tbb::task_scheduler_init(config.num_tbb_threads_));
+#endif
   return Status::Ok();
 }
 

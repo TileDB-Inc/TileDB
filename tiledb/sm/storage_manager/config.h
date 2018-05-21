@@ -55,6 +55,7 @@ class Config {
     uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
     uint64_t num_async_threads_;
+    int num_tbb_threads_;
     uint64_t tile_cache_size_;
 
     SMParams() {
@@ -62,6 +63,7 @@ class Config {
       fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
       num_async_threads_ = constants::num_async_threads;
+      num_tbb_threads_ = constants::num_tbb_threads;
       tile_cache_size_ = constants::tile_cache_size;
     }
   };
@@ -178,6 +180,12 @@ class Config {
    * - `sm.num_async_threads` <br>
    *    The number of threads allocated for async queries. <br>
    *    **Default**: 1
+   * - `sm.num_tbb_threads` <br>
+   *    The number of threads allocated for the TBB thread pool (if TBB is
+   *    enabled). Note: this is a whole-program setting. Usually this should not
+   *    be modified from the default. See also the documentation for TBB's
+   *    `task_scheduler_init` class.<br>
+   *    **Default**: TBB automatic
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>
@@ -298,6 +306,9 @@ class Config {
 
   /** Sets the number of threads, properly parsing the input value.*/
   Status set_sm_num_async_threads(const std::string& value);
+
+  /** Sets the number of TBB threads, properly parsing the input value.*/
+  Status set_sm_num_tbb_threads(const std::string& value);
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);

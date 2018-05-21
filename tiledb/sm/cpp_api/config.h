@@ -232,6 +232,12 @@ class Config {
    * - `sm.num_async_threads` <br>
    *    The number of threads allocated for async queries. <br>
    *    **Default**: 1
+   * - `sm.num_tbb_threads` <br>
+   *    The number of threads allocated for the TBB thread pool (if TBB is
+   *    enabled). Note: this is a whole-program setting. Usually this should not
+   *    be modified from the default. See also the documentation for TBB's
+   *    `task_scheduler_init` class.<br>
+   *    **Default**: TBB automatic
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>

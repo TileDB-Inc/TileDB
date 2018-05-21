@@ -34,6 +34,10 @@
 #include <limits>
 #include <thread>
 
+#ifdef HAVE_TBB
+#include <tbb/task_scheduler_init.h>
+#endif
+
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
@@ -216,6 +220,13 @@ const bool enable_signal_handlers = true;
 
 /** The number of threads allocated per StorageManager for async queries. */
 const uint64_t num_async_threads = 1;
+
+/** The number of threads allocated for TBB. */
+#ifdef HAVE_TBB
+const int num_tbb_threads = tbb::task_scheduler_init::automatic;
+#else
+const int num_tbb_threads = std::thread::hardware_concurrency();
+#endif
 
 /** The tile cache size. */
 const uint64_t tile_cache_size = 10000000;
