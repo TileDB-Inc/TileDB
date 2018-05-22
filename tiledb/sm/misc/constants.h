@@ -417,6 +417,21 @@ extern const char* s3_region;
 /** S3 endpoint override. */
 extern const char* s3_endpoint_override;
 
+/** S3 proxy scheme. */
+extern const char* s3_proxy_scheme;
+
+/** S3 proxy host. */
+extern const char* s3_proxy_host;
+
+/** S3 proxy port. */
+extern const unsigned s3_proxy_port;
+
+/** S3 proxy username. */
+extern const char* s3_proxy_username;
+
+/** S3 proxy password. */
+extern const char* s3_proxy_password;
+
 /** HDFS default kerb ticket cache path. */
 extern const char* hdfs_kerb_ticket_cache_path;
 

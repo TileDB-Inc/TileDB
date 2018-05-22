@@ -75,7 +75,7 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(const S3Config& s3_config, ThreadPool* thread_pool) {
+Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   if (thread_pool == nullptr) {
     return LOG_STATUS(
         Status::S3Error("Can't initialize with null thread pool."));
@@ -88,12 +88,23 @@ Status S3::init(const S3Config& s3_config, ThreadPool* thread_pool) {
   max_parallel_ops_ = s3_config.max_parallel_ops_;
   multipart_part_size_ = s3_config.multipart_part_size_;
   file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
+  region_ = s3_config.region_;
 
   Aws::Client::ClientConfiguration config;
   if (!s3_config.region_.empty())
     config.region = s3_config.region_.c_str();
   if (!s3_config.endpoint_override_.empty())
     config.endpointOverride = s3_config.endpoint_override_.c_str();
+
+  if (!s3_config.proxy_host_.empty()) {
+    config.proxyHost = s3_config.proxy_host_.c_str();
+    config.proxyPort = s3_config.proxy_port_;
+    config.proxyScheme = s3_config.proxy_scheme_ == "http" ?
+                             Aws::Http::Scheme::HTTP :
+                             Aws::Http::Scheme::HTTPS;
+    config.proxyUserName = s3_config.proxy_username_.c_str();
+    config.proxyPassword = s3_config.proxy_password_.c_str();
+  }
 
   config.scheme = (s3_config.scheme_ == "http") ? Aws::Http::Scheme::HTTP :
                                                   Aws::Http::Scheme::HTTPS;
@@ -124,6 +135,18 @@ Status S3::create_bucket(const URI& bucket) const {
   Aws::Http::URI aws_uri = bucket.c_str();
   Aws::S3::Model::CreateBucketRequest create_bucket_request;
   create_bucket_request.SetBucket(aws_uri.GetAuthority());
+
+  // Set the bucket location constraint equal to the S3 region.
+  // Note: empty string and 'us-east-1' are parsing errors in the SDK.
+  if (!region_.empty() && region_ != "us-east-1") {
+    Aws::S3::Model::CreateBucketConfiguration cfg;
+    Aws::String region_str(region_.c_str());
+    auto location_constraint = Aws::S3::Model::BucketLocationConstraintMapper::
+        GetBucketLocationConstraintForName(region_str);
+    cfg.SetLocationConstraint(location_constraint);
+    create_bucket_request.SetCreateBucketConfiguration(cfg);
+  }
+
   auto create_bucket_outcome = client_->CreateBucket(create_bucket_request);
   if (!create_bucket_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(

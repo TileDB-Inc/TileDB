@@ -35,6 +35,7 @@
 * Added `vfs.num_threads` and `vfs.min_parallel_size` config parameters.
 * Added `vfs.{s3,file}.max_parallel_ops` config parameters.
 * Added `vfs.s3.multipart_part_size` config parameter.
+* Added `vfs.s3.proxy_{scheme,host,port,username,password}` config parameters.
 * Added `tiledb_ctx_cancel_tasks` function.
 * Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.

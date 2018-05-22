@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/status.h"
 
 #include <map>
+#include <set>
 #include <thread>
 
 namespace tiledb {
@@ -83,6 +84,11 @@ class Config {
     long connect_max_tries_;
     long connect_scale_factor_;
     long request_timeout_ms_;
+    std::string proxy_scheme_;
+    std::string proxy_host_;
+    unsigned proxy_port_;
+    std::string proxy_username_;
+    std::string proxy_password_;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -95,6 +101,11 @@ class Config {
       connect_max_tries_ = constants::s3_connect_max_tries;
       connect_scale_factor_ = constants::s3_connect_scale_factor;
       request_timeout_ms_ = constants::s3_request_timeout_ms;
+      proxy_scheme_ = constants::s3_proxy_scheme;
+      proxy_host_ = constants::s3_proxy_host;
+      proxy_port_ = constants::s3_proxy_port;
+      proxy_username_ = constants::s3_proxy_username;
+      proxy_password_ = constants::s3_proxy_password;
     }
   };
 
@@ -250,6 +261,23 @@ class Config {
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
+   * - `vfs.s3.proxy_host` <br>
+   *    The proxy host. <br>
+   *    **Default**: ""
+   * - `vfs.s3.proxy_port` <br>
+   *    The proxy port. <br>
+   *    **Default**: 0
+   * - `vfs.s3.proxy_scheme` <br>
+   *    The proxy scheme. <br>
+   *    **Default**: "https"
+   * - `vfs.s3.proxy_username` <br>
+   *    The proxy username. Note: this parameter is not serialized by
+   *    `tiledb_config_save_to_file`. <br>
+   *    **Default**: ""
+   * - `vfs.s3.proxy_password` <br>
+   *    The proxy password. Note: this parameter is not serialized by
+   *    `tiledb_config_save_to_file`. <br>
+   *    **Default**: ""
    * - `vfs.hdfs.name_node"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -300,6 +328,9 @@ class Config {
 
   /** Character indicating the start of a comment in a config file. */
   static const char COMMENT_START;
+
+  /** Set of parameter names that are not serialized to file. */
+  static const std::set<std::string> unserialized_params_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -373,6 +404,21 @@ class Config {
 
   /** Sets the S3 request timeout in milliseconds. */
   Status set_vfs_s3_request_timeout_ms(const std::string& value);
+
+  /** Sets the S3 proxy scheme. */
+  Status set_vfs_s3_proxy_scheme(const std::string& value);
+
+  /** Sets the S3 proxy host. */
+  Status set_vfs_s3_proxy_host(const std::string& value);
+
+  /** Sets the S3 proxy port. */
+  Status set_vfs_s3_proxy_port(const std::string& value);
+
+  /** Sets the S3 proxy username. */
+  Status set_vfs_s3_proxy_username(const std::string& value);
+
+  /** Sets the S3 proxy password. */
+  Status set_vfs_s3_proxy_password(const std::string& value);
 
   /** Sets the HDFS namenode hostname and port (uri) */
   Status set_vfs_hdfs_name_node(const std::string& value);

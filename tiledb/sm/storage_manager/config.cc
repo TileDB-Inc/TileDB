@@ -48,6 +48,9 @@ namespace sm {
 
 const char Config::COMMENT_START = '#';
 
+const std::set<std::string> Config::unserialized_params_ = {
+    "vfs.s3.proxy_username", "vfs.s3.proxy_password"};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -131,6 +134,8 @@ Status Config::save_to_file(const std::string& filename) {
     return LOG_STATUS(Status::ConfigError(msg.str()));
   }
   for (auto& pv : param_values_) {
+    if (unserialized_params_.count(pv.first) != 0)
+      continue;
     if (!pv.second.empty())
       ofs << pv.first << " " << pv.second << "\n";
   }
@@ -194,6 +199,16 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_connect_scale_factor(value));
   } else if (param == "vfs.s3.request_timeout_ms") {
     RETURN_NOT_OK(set_vfs_s3_request_timeout_ms(value));
+  } else if (param == "vfs.s3.proxy_scheme") {
+    RETURN_NOT_OK(set_vfs_s3_proxy_scheme(value));
+  } else if (param == "vfs.s3.proxy_host") {
+    RETURN_NOT_OK(set_vfs_s3_proxy_host(value));
+  } else if (param == "vfs.s3.proxy_port") {
+    RETURN_NOT_OK(set_vfs_s3_proxy_port(value));
+  } else if (param == "vfs.s3.proxy_username") {
+    RETURN_NOT_OK(set_vfs_s3_proxy_username(value));
+  } else if (param == "vfs.s3.proxy_password") {
+    RETURN_NOT_OK(set_vfs_s3_proxy_password(value));
   } else if (param == "vfs.hdfs.name_node") {
     RETURN_NOT_OK(set_vfs_hdfs_name_node(value));
   } else if (param == "vfs.hdfs.username") {
@@ -345,6 +360,31 @@ Status Config::unset(const std::string& param) {
     value << vfs_params_.s3_params_.request_timeout_ms_;
     param_values_["vfs.s3.request_timeout_ms"] = value.str();
     value.str(std::string());
+  } else if (param == "vfs.s3.proxy_scheme") {
+    vfs_params_.s3_params_.proxy_scheme_ = constants::s3_proxy_scheme;
+    value << vfs_params_.s3_params_.proxy_scheme_;
+    param_values_["vfs.s3.proxy_scheme"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.proxy_host") {
+    vfs_params_.s3_params_.proxy_host_ = constants::s3_proxy_host;
+    value << vfs_params_.s3_params_.proxy_host_;
+    param_values_["vfs.s3.proxy_host"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.proxy_port") {
+    vfs_params_.s3_params_.proxy_port_ = constants::s3_proxy_port;
+    value << vfs_params_.s3_params_.proxy_port_;
+    param_values_["vfs.s3.proxy_port"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.proxy_username") {
+    vfs_params_.s3_params_.proxy_username_ = constants::s3_proxy_username;
+    value << vfs_params_.s3_params_.proxy_username_;
+    param_values_["vfs.s3.proxy_username"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.proxy_password") {
+    vfs_params_.s3_params_.proxy_password_ = constants::s3_proxy_password;
+    value << vfs_params_.s3_params_.proxy_password_;
+    param_values_["vfs.s3.proxy_password"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.hdfs.name_node") {
     vfs_params_.hdfs_params_.name_node_uri_ = constants::hdfs_name_node_uri;
     value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -456,6 +496,26 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.request_timeout_ms_;
   param_values_["vfs.s3.request_timeout_ms"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.proxy_scheme_;
+  param_values_["vfs.s3.proxy_scheme"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.proxy_host_;
+  param_values_["vfs.s3.proxy_host"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.proxy_port_;
+  param_values_["vfs.s3.proxy_port"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.proxy_username_;
+  param_values_["vfs.s3.proxy_username"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.proxy_password_;
+  param_values_["vfs.s3.proxy_password"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -646,6 +706,33 @@ Status Config::set_vfs_s3_request_timeout_ms(const std::string& value) {
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.s3_params_.request_timeout_ms_ = v;
 
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_proxy_scheme(const std::string& value) {
+  vfs_params_.s3_params_.proxy_scheme_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_proxy_host(const std::string& value) {
+  vfs_params_.s3_params_.proxy_host_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_proxy_port(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.s3_params_.proxy_port_ = static_cast<unsigned>(v);
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_proxy_username(const std::string& value) {
+  vfs_params_.s3_params_.proxy_username_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_proxy_password(const std::string& value) {
+  vfs_params_.s3_params_.proxy_password_ = value;
   return Status::Ok();
 }
 

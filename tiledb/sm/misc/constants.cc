@@ -438,6 +438,21 @@ const char* s3_region = "us-east-1";
 /** S3 endpoint override. */
 const char* s3_endpoint_override = "";
 
+/** S3 proxy scheme. */
+const char* s3_proxy_scheme = "https";
+
+/** S3 proxy host. */
+const char* s3_proxy_host = "";
+
+/** S3 proxy port. */
+const unsigned s3_proxy_port = 0;
+
+/** S3 proxy username. */
+const char* s3_proxy_username = "";
+
+/** S3 proxy password. */
+const char* s3_proxy_password = "";
+
 /** HDFS default kerb ticket cache path. */
 const char* hdfs_kerb_ticket_cache_path = "";
 

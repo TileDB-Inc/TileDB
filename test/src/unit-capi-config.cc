@@ -170,6 +170,11 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
+  // Check that password is not serialized.
+  rc = tiledb_config_set(config, "vfs.s3.proxy_password", "password", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
 
@@ -192,6 +197,8 @@ void check_save_to_file() {
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
+  ss << "vfs.s3.proxy_port 0\n";
+  ss << "vfs.s3.proxy_scheme https\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.scheme https\n";
@@ -364,6 +371,11 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.proxy_host"] = "";
+  all_param_values["vfs.s3.proxy_password"] = "";
+  all_param_values["vfs.s3.proxy_port"] = "0";
+  all_param_values["vfs.s3.proxy_scheme"] = "https";
+  all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
@@ -385,6 +397,11 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
+  vfs_param_values["s3.proxy_host"] = "";
+  vfs_param_values["s3.proxy_password"] = "";
+  vfs_param_values["s3.proxy_port"] = "0";
+  vfs_param_values["s3.proxy_scheme"] = "https";
+  vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -401,6 +418,11 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["request_timeout_ms"] = "3000";
+  s3_param_values["proxy_host"] = "";
+  s3_param_values["proxy_password"] = "";
+  s3_param_values["proxy_port"] = "0";
+  s3_param_values["proxy_scheme"] = "https";
+  s3_param_values["proxy_username"] = "";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
