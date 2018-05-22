@@ -401,18 +401,14 @@ unsigned int ArraySchema::dim_num() const {
 }
 
 void ArraySchema::dump(FILE* out) const {
-  const char* array_type_s = array_type_str(array_type_);
-  const char* cell_order_s = layout_str(cell_order_);
-  const char* tile_order_s = layout_str(tile_order_);
-
-  fprintf(out, "- Array type: %s\n", array_type_s);
-  fprintf(out, "- Cell order: %s\n", cell_order_s);
-  fprintf(out, "- Tile order: %s\n", tile_order_s);
+  fprintf(out, "- Array type: %s\n", array_type_str(array_type_).c_str());
+  fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
+  fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());
   fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
   fprintf(
       out,
       "- Coordinates compressor: %s\n",
-      compressor_str(coords_compression_));
+      compressor_str(coords_compression_).c_str());
   fprintf(
       out,
       "- Coordinates compression level: %d\n\n",

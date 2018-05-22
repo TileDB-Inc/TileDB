@@ -34,6 +34,8 @@
 #ifndef TILEDB_ARRAY_TYPE_H
 #define TILEDB_ARRAY_TYPE_H
 
+#include <cassert>
+
 #include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
@@ -47,13 +49,16 @@ enum class ArrayType : char {
 };
 
 /** Returns the string representation of the input array type. */
-inline const char* array_type_str(ArrayType array_type) {
-  if (array_type == ArrayType::DENSE)
-    return constants::dense_str;
-  if (array_type == ArrayType::SPARSE)
-    return constants::sparse_str;
-
-  return nullptr;
+inline const std::string& array_type_str(ArrayType array_type) {
+  switch (array_type) {
+    case ArrayType::DENSE:
+      return constants::dense_str;
+    case ArrayType::SPARSE:
+      return constants::sparse_str;
+    default:
+      assert(0);
+      return constants::empty_str;
+  }
 }
 
 }  // namespace sm

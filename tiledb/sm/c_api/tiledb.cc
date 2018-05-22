@@ -51,7 +51,7 @@
 /* ****************************** */
 
 const char* tiledb_coords() {
-  return tiledb::sm::constants::coords;
+  return tiledb::sm::constants::coords.c_str();
 }
 
 unsigned int tiledb_var_num() {

@@ -46,9 +46,8 @@ namespace sm {
 
 Attribute::Attribute() = default;
 
-Attribute::Attribute(const char* name, Datatype type) {
-  if (name != nullptr)
-    name_ = name;
+Attribute::Attribute(const std::string& name, Datatype type) {
+  name_ = name;
   type_ = type;
   cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
   compressor_ = Compressor::NO_COMPRESSION;
@@ -57,7 +56,6 @@ Attribute::Attribute(const char* name, Datatype type) {
 
 Attribute::Attribute(const Attribute* attr) {
   assert(attr != nullptr);
-
   name_ = attr->name();
   type_ = attr->type();
   cell_val_num_ = attr->cell_val_num();
@@ -122,15 +120,11 @@ Status Attribute::deserialize(ConstBuffer* buff) {
 }
 
 void Attribute::dump(FILE* out) const {
-  // Retrieve type and compressor strings
-  const char* type_s = datatype_str(type_);
-  const char* compressor_s = compressor_str(compressor_);
-
   // Dump
   fprintf(out, "### Attribute ###\n");
   fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
-  fprintf(out, "- Type: %s\n", type_s);
-  fprintf(out, "- Compressor: %s\n", compressor_s);
+  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
+  fprintf(out, "- Compressor: %s\n", compressor_str(compressor_).c_str());
   fprintf(out, "- Compression level: %d\n", compression_level_);
 
   if (!var_size())

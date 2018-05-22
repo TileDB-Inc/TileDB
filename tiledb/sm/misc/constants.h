@@ -34,6 +34,7 @@
 #define TILEDB_CONSTANTS_H
 
 #include <cinttypes>
+#include <string>
 
 namespace tiledb {
 namespace sm {
@@ -53,13 +54,13 @@ extern const bool check_coord_dups;
 extern const bool dedup_coords;
 
 /** The object filelock name. */
-extern const char* filelock_name;
+extern const std::string filelock_name;
 
 /** The array schema file name. */
-extern const char* array_schema_filename;
+extern const std::string array_schema_filename;
 
 /** The key-value schema file name. */
-extern const char* kv_schema_filename;
+extern const std::string kv_schema_filename;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -89,7 +90,7 @@ extern Compressor real_coords_compression;
 extern int coords_compression_level;
 
 /** Special name reserved for the coordinates attribute. */
-extern const char* coords;
+extern const std::string coords;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;
@@ -146,10 +147,10 @@ extern const uint32_t empty_ucs4;
 extern const uint8_t empty_any;
 
 /** The file suffix used in TileDB. */
-extern const char* file_suffix;
+extern const std::string file_suffix;
 
 /** The fragment metadata file name. */
-extern const char* fragment_metadata_filename;
+extern const std::string fragment_metadata_filename;
 
 /** Default datatype for a generic tile. */
 extern const Datatype generic_tile_datatype;
@@ -164,7 +165,7 @@ extern int generic_tile_compression_level;
 extern uint64_t generic_tile_cell_size;
 
 /** The group file name. */
-extern const char* group_filename;
+extern const std::string group_filename;
 
 /** The initial internal buffer size for the case of sparse arrays. */
 extern const uint64_t internal_buffer_size;
@@ -200,7 +201,7 @@ extern const uint64_t sorted_buffer_var_size;
 extern const unsigned int var_num;
 
 /** String describing no compression. */
-extern const char* no_compression_str;
+extern const std::string no_compression_str;
 
 /** The array schema cache size. */
 extern const uint64_t array_schema_cache_size;
@@ -220,116 +221,119 @@ extern const int num_tbb_threads;
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
+/** Empty String reference **/
+extern const std::string empty_str;
+
 /** String describing GZIP. */
-extern const char* gzip_str;
+extern const std::string gzip_str;
 
 /** String describing ZSTD. */
-extern const char* zstd_str;
+extern const std::string zstd_str;
 
 /** String describing LZ4. */
-extern const char* lz4_str;
+extern const std::string lz4_str;
 
 /** String describing BLOSC. */
-extern const char* blosc_lz_str;
+extern const std::string blosc_lz_str;
 
 /** String describing BLOSC_LZ4. */
-extern const char* blosc_lz4_str;
+extern const std::string blosc_lz4_str;
 
 /** String describing BLOSC_LZ4HC. */
-extern const char* blosc_lz4hc_str;
+extern const std::string blosc_lz4hc_str;
 
 /** String describing BLOSC_SNAPPY. */
-extern const char* blosc_snappy_str;
+extern const std::string blosc_snappy_str;
 
 /** String describing BLOSC_ZLIB. */
-extern const char* blosc_zlib_str;
+extern const std::string blosc_zlib_str;
 
 /** String describing BLOSC_ZSTD. */
-extern const char* blosc_zstd_str;
+extern const std::string blosc_zstd_str;
 
 /** String describing RLE. */
-extern const char* rle_str;
+extern const std::string rle_str;
 
 /** String describing BZIP2. */
-extern const char* bzip2_str;
+extern const std::string bzip2_str;
 
 /** String describing DOUBLE_DELTA. */
-extern const char* double_delta_str;
+extern const std::string double_delta_str;
 
 /** The string representation for type int32. */
-extern const char* int32_str;
+extern const std::string int32_str;
 
 /** The string representation for type int64. */
-extern const char* int64_str;
+extern const std::string int64_str;
 
 /** The string representation for type float32. */
-extern const char* float32_str;
+extern const std::string float32_str;
 
 /** The string representation for type float64. */
-extern const char* float64_str;
+extern const std::string float64_str;
 
 /** The string representation for type char. */
-extern const char* char_str;
+extern const std::string char_str;
 
 /** The string representation for type int8. */
-extern const char* int8_str;
+extern const std::string int8_str;
 
 /** The string representation for type uint8. */
-extern const char* uint8_str;
+extern const std::string uint8_str;
 
 /** The string representation for type int16. */
-extern const char* int16_str;
+extern const std::string int16_str;
 
 /** The string representation for type uint16. */
-extern const char* uint16_str;
+extern const std::string uint16_str;
 
 /** The string representation for type uint32. */
-extern const char* uint32_str;
+extern const std::string uint32_str;
 
 /** The string representation for type uint64. */
-extern const char* uint64_str;
+extern const std::string uint64_str;
 
 /** The string representation for type STRING_ASCII. */
-extern const char* string_ascii_str;
+extern const std::string string_ascii_str;
 
 /** The string representation for type STRING_UTF8. */
-extern const char* string_utf8_str;
+extern const std::string string_utf8_str;
 
 /** The string representation for type STRING_UTF16. */
-extern const char* string_utf16_str;
+extern const std::string string_utf16_str;
 
 /** The string representation for type STRING_UTF32. */
-extern const char* string_utf32_str;
+extern const std::string string_utf32_str;
 
 /** The string representation for type STRING_UCS2. */
-extern const char* string_ucs2_str;
+extern const std::string string_ucs2_str;
 
 /** The string representation for type STRING_UCS4. */
-extern const char* string_ucs4_str;
+extern const std::string string_ucs4_str;
 
 /** The string representation for type ANY. */
-extern const char* any_str;
+extern const std::string any_str;
 
 /** The string representation for the dense array type. */
-extern const char* dense_str;
+extern const std::string dense_str;
 
 /** The string representation for the sparse array type. */
-extern const char* sparse_str;
+extern const std::string sparse_str;
 
 /** The string representation for the column-major layout. */
-extern const char* col_major_str;
+extern const std::string col_major_str;
 
 /** The string representation for the row-major layout. */
-extern const char* row_major_str;
+extern const std::string row_major_str;
 
 /** The string representation for the global order layout. */
-extern const char* global_order_str;
+extern const std::string global_order_str;
 
 /** The string representation for the unordered layout. */
-extern const char* unordered_str;
+extern const std::string unordered_str;
 
 /** The string representation of null. */
-extern const char* null_str;
+extern const std::string null_str;
 
 /** The version in format { major, minor, revision }. */
 extern const int version[3];
@@ -338,19 +342,19 @@ extern const int version[3];
 extern const uint64_t max_tile_chunk_size;
 
 /** The default attribute name prefix. */
-extern const char* default_attr_name;
+extern const std::string default_attr_name;
 
 /** The default dimension name prefix. */
-extern const char* default_dim_name;
+extern const std::string default_dim_name;
 
 /** The key attribute name. */
-extern const char* key_attr_name;
+extern const std::string key_attr_name;
 
 /** The key attribute type. */
 extern Datatype key_attr_type;
 
 /** The key type attribute name. */
-extern const char* key_type_attr_name;
+extern const std::string key_type_attr_name;
 
 /** The key type attribute type. */
 extern Datatype key_type_attr_type;
@@ -366,14 +370,14 @@ extern Compressor key_type_attr_compressor;
  * key-value store is hashed into a 16-byte MD5 digest, which
  * is represented as a 2-dimensional uint64_t value.
  */
-extern const char* key_dim_1;
+extern const std::string key_dim_1;
 
 /**
  * The name of the second key dimension (recall that a key in a
  * key-value store is hashed into a 16-byte MD5 digest, which
  * is represented as a 2-dimensional uint64_t value.
  */
-extern const char* key_dim_2;
+extern const std::string key_dim_2;
 
 /** Maximum number of items to be buffered before a flush. */
 extern uint64_t kv_max_items;
@@ -385,7 +389,7 @@ extern const unsigned int s3_max_attempts;
 extern const unsigned int s3_attempt_sleep_ms;
 
 /** An allocation tag used for logging. */
-extern const char* s3_allocation_tag;
+extern const std::string s3_allocation_tag;
 
 /** Use virtual addressing (false for minio, true for AWS S3). */
 extern const bool s3_use_virtual_addressing;
@@ -403,7 +407,7 @@ extern const long s3_connect_scale_factor;
 extern const long s3_request_timeout_ms;
 
 /** S3 scheme (http for local minio, https for AWS S3). */
-extern const char* s3_scheme;
+extern const std::string s3_scheme;
 
 /** The default maximum number of parallel S3 operations. */
 extern const uint64_t s3_max_parallel_ops;
@@ -412,37 +416,37 @@ extern const uint64_t s3_max_parallel_ops;
 extern const uint64_t s3_multipart_part_size;
 
 /** S3 region. */
-extern const char* s3_region;
+extern const std::string s3_region;
 
 /** S3 endpoint override. */
-extern const char* s3_endpoint_override;
+extern const std::string s3_endpoint_override;
 
 /** S3 proxy scheme. */
-extern const char* s3_proxy_scheme;
+extern const std::string s3_proxy_scheme;
 
 /** S3 proxy host. */
-extern const char* s3_proxy_host;
+extern const std::string s3_proxy_host;
 
 /** S3 proxy port. */
 extern const unsigned s3_proxy_port;
 
 /** S3 proxy username. */
-extern const char* s3_proxy_username;
+extern const std::string s3_proxy_username;
 
 /** S3 proxy password. */
-extern const char* s3_proxy_password;
+extern const std::string s3_proxy_password;
 
 /** HDFS default kerb ticket cache path. */
-extern const char* hdfs_kerb_ticket_cache_path;
+extern const std::string hdfs_kerb_ticket_cache_path;
 
 /** HDFS default name node uri. */
-extern const char* hdfs_name_node_uri;
+extern const std::string hdfs_name_node_uri;
 
 /** HDFS default username. */
-extern const char* hdfs_username;
+extern const std::string hdfs_username;
 
 /** Prefix indicating a special name reserved by TileDB. */
-extern const char* special_name_prefix;
+extern const std::string special_name_prefix;
 
 /** Number of milliseconds between watchdog thread wakeups. */
 extern const unsigned watchdog_thread_sleep_ms;

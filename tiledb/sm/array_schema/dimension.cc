@@ -50,10 +50,9 @@ Dimension::Dimension() {
   tile_extent_ = nullptr;
 }
 
-Dimension::Dimension(const char* name, Datatype type) {
+Dimension::Dimension(const std::string& name, Datatype type) {
   // Set name
-  if (name != nullptr)
-    name_ = name;
+  name_ = name;
 
   // Set type, domain and tile extent
   type_ = type;

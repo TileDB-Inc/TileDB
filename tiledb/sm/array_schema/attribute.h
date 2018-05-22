@@ -62,7 +62,7 @@ class Attribute {
    * @note The default number of values per cell is 1 for all datatypes except
    *     `ANY`, which is always variable-sized.
    */
-  Attribute(const char* name, Datatype type);
+  Attribute(const std::string& name, Datatype type);
 
   /**
    * Constructor. It clones the input attribute.
