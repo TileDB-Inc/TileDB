@@ -162,11 +162,11 @@ class Domain {
     return type;
   }
 
-  /** Get the rank (number of dimensions) **/
-  unsigned rank() const {
+  /** Get the number of dimensions **/
+  unsigned ndim() const {
     auto& ctx = ctx_.get();
     unsigned n;
-    ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &n));
+    ctx.handle_error(tiledb_domain_get_ndim(ctx, domain_.get(), &n));
     return n;
   }
 
@@ -176,7 +176,7 @@ class Domain {
     unsigned int ndim;
     tiledb_dimension_t* dimptr;
     std::vector<Dimension> dims;
-    ctx.handle_error(tiledb_domain_get_rank(ctx, domain_.get(), &ndim));
+    ctx.handle_error(tiledb_domain_get_ndim(ctx, domain_.get(), &ndim));
     for (unsigned int i = 0; i < ndim; ++i) {
       ctx.handle_error(tiledb_domain_get_dimension_from_index(
           ctx, domain_.get(), i, &dimptr));

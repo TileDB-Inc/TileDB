@@ -261,7 +261,7 @@ class Array {
     if (expected_buff_cnt != buffer_sizes.size())
       throw TileDBError(
           "buffer_sizes size does not match number of provided attributes.");
-    if (subarray.size() != schema.domain().rank() * 2)
+    if (subarray.size() != schema.domain().ndim() * 2)
       throw TileDBError("Subarray should have array rank * 2 values.");
 
     auto& ctx = schema.context();

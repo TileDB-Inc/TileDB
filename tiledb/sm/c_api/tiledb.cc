@@ -925,12 +925,12 @@ int tiledb_domain_get_type(
   return TILEDB_OK;
 }
 
-int tiledb_domain_get_rank(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* rank) {
+int tiledb_domain_get_ndim(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* ndim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
-  *rank = domain->domain_->dim_num();
+  *ndim = domain->domain_->dim_num();
   return TILEDB_OK;
 }
 

@@ -478,11 +478,11 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_domain_get_dimension_from_index(ctx_, domain, 2, &dim);
   CHECK(rc != TILEDB_OK);
 
-  // check that the rank of the domain is 2
-  unsigned int rank = 0;
-  rc = tiledb_domain_get_rank(ctx_, domain, &rank);
+  // check that the ndim of the domain is 2
+  unsigned int ndim = 0;
+  rc = tiledb_domain_get_ndim(ctx_, domain, &ndim);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(rank == 2);
+  CHECK(ndim == 2);
 
   // Check dump
   std::string dump_str =

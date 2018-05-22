@@ -1086,22 +1086,22 @@ TILEDB_EXPORT int tiledb_domain_get_type(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type);
 
 /**
- * Retrieves the domain's rank (number of dimensions).
+ * Retrieves the number of dimensions in a domain.
  *
  * **Example:**
  *
  * @code{.c}
  * unsigned dim_num;
- * tiledb_domain_get_rank(ctx, domain, &dim_num);
+ * tiledb_domain_get_ndim(ctx, domain, &dim_num);
  * @endcode
  *
  * @param ctx The TileDB context
  * @param domain The domain
- * @param rank The rank (number of dimensions) to be retrieved.
+ * @param ndim The number of dimensions in a domain.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_domain_get_rank(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* rank);
+TILEDB_EXPORT int tiledb_domain_get_ndim(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* ndim);
 
 /**
  * Adds a dimension to a TileDB domain.

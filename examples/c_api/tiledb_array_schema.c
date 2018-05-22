@@ -235,11 +235,11 @@ int main() {
 
   // Print the dimension names
   printf("\nArray schema dimension names: \n");
-  unsigned int rank = 0;
-  tiledb_domain_get_rank(ctx, domain, &rank);
+  unsigned int ndim = 0;
+  tiledb_domain_get_ndim(ctx, domain, &ndim);
   tiledb_dimension_t* dim = NULL;
   const char* dim_name = NULL;
-  for (unsigned int i = 0; i < rank; i++) {
+  for (unsigned int i = 0; i < ndim; i++) {
     tiledb_domain_get_dimension_from_index(ctx, domain, i, &dim);
     tiledb_dimension_get_name(ctx, dim, &dim_name);
     printf("* %s\n", dim_name);
