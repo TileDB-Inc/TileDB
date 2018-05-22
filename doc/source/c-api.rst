@@ -221,7 +221,7 @@ Domain
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_get_type
     :project: TileDB-C
-.. doxygenfunction:: tiledb_domain_get_rank
+.. doxygenfunction:: tiledb_domain_get_ndim
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_add_dimension
     :project: TileDB-C

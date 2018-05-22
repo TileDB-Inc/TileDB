@@ -239,7 +239,7 @@ class Query {
   void set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
-    if (size != schema_.domain().rank() * 2) {
+    if (size != schema_.domain().ndim() * 2) {
       throw SchemaMismatch(
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
