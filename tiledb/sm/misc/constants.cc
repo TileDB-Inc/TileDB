@@ -67,13 +67,13 @@ const bool check_coord_dups = true;
 const bool dedup_coords = false;
 
 /** The array schema file name. */
-const char* array_schema_filename = "__array_schema.tdb";
+const std::string array_schema_filename = "__array_schema.tdb";
 
 /** The key-value schema file name. */
-const char* kv_schema_filename = "__kv_schema.tdb";
+const std::string kv_schema_filename = "__kv_schema.tdb";
 
 /** The fragment metadata file name. */
-const char* fragment_metadata_filename = "__fragment_metadata.tdb";
+const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
@@ -94,7 +94,7 @@ Compressor cell_var_offsets_compression = Compressor::BLOSC_ZSTD;
 int cell_var_offsets_compression_level = -1;
 
 /** Special name reserved for the coordinates attribute. */
-const char* coords = "__coords";
+const std::string coords = "__coords";
 
 /** The default compressor for the coordinates. */
 Compressor coords_compression = Compressor::BLOSC_ZSTD;
@@ -106,7 +106,7 @@ Compressor real_coords_compression = Compressor::BLOSC_ZSTD;
 int coords_compression_level = -1;
 
 /** The filelock name. */
-const char* filelock_name = "__lock.tdb";
+const std::string filelock_name = "__lock.tdb";
 
 /** The special value for an empty int32. */
 const int empty_int32 = std::numeric_limits<int32_t>::max();
@@ -163,7 +163,7 @@ const uint32_t empty_ucs4 = 0;
 const uint8_t empty_any = 0;
 
 /** The file suffix used in TileDB. */
-const char* file_suffix = ".tdb";
+const std::string file_suffix = ".tdb";
 
 /** Default datatype for a generic tile. */
 const Datatype generic_tile_datatype = Datatype::CHAR;
@@ -178,7 +178,7 @@ int generic_tile_compression_level = -1;
 uint64_t generic_tile_cell_size = sizeof(char);
 
 /** The group file name. */
-const char* group_filename = "__tiledb_group.tdb";
+const std::string group_filename = "__tiledb_group.tdb";
 
 /** The initial internal buffer size for the case of sparse arrays. */
 const uint64_t internal_buffer_size = 10000000;
@@ -216,7 +216,7 @@ const uint64_t sorted_buffer_var_size = 10000000;
 const unsigned int var_num = std::numeric_limits<unsigned int>::max();
 
 /** String describing no compression. */
-const char* no_compression_str = "NO_COMPRESSION";
+const std::string no_compression_str = "NO_COMPRESSION";
 
 /** The array schema cache size. */
 const uint64_t array_schema_cache_size = 10000000;
@@ -240,116 +240,119 @@ const int num_tbb_threads = std::thread::hardware_concurrency();
 /** The tile cache size. */
 const uint64_t tile_cache_size = 10000000;
 
+/** Empty String **/
+const std::string empty_str = "";
+
 /** String describing GZIP. */
-const char* gzip_str = "GZIP";
+const std::string gzip_str = "GZIP";
 
 /** String describing ZSTD. */
-const char* zstd_str = "ZSTD";
+const std::string zstd_str = "ZSTD";
 
 /** String describing LZ4. */
-const char* lz4_str = "LZ4";
+const std::string lz4_str = "LZ4";
 
 /** String describing BLOSC. */
-const char* blosc_lz_str = "BLOSC_LZ";
+const std::string blosc_lz_str = "BLOSC_LZ";
 
 /** String describing BLOSC_LZ4. */
-const char* blosc_lz4_str = "BLOSC_LZ4";
+const std::string blosc_lz4_str = "BLOSC_LZ4";
 
 /** String describing BLOSC_LZ4HC. */
-const char* blosc_lz4hc_str = "BLOSC_LZ4HC";
+const std::string blosc_lz4hc_str = "BLOSC_LZ4HC";
 
 /** String describing BLOSC_SNAPPY. */
-const char* blosc_snappy_str = "BLOSC_SNAPPY";
+const std::string blosc_snappy_str = "BLOSC_SNAPPY";
 
 /** String describing BLOSC_ZLIB. */
-const char* blosc_zlib_str = "BLOSC_ZLIB";
+const std::string blosc_zlib_str = "BLOSC_ZLIB";
 
 /** String describing BLOSC_ZSTD. */
-const char* blosc_zstd_str = "BLOSC_ZSTD";
+const std::string blosc_zstd_str = "BLOSC_ZSTD";
 
 /** String describing RLE. */
-const char* rle_str = "RLE";
+const std::string rle_str = "RLE";
 
 /** String describing BZIP2. */
-const char* bzip2_str = "BZIP2";
+const std::string bzip2_str = "BZIP2";
 
 /** String describing DOUBLE_DELTA. */
-const char* double_delta_str = "DOUBLE_DELTA";
+const std::string double_delta_str = "DOUBLE_DELTA";
 
 /** The string representation for type int32. */
-const char* int32_str = "INT32";
+const std::string int32_str = "INT32";
 
 /** The string representation for type int64. */
-const char* int64_str = "INT64";
+const std::string int64_str = "INT64";
 
 /** The string representation for type float32. */
-const char* float32_str = "FLOAT32";
+const std::string float32_str = "FLOAT32";
 
 /** The string representation for type float64. */
-const char* float64_str = "FLOAT64";
+const std::string float64_str = "FLOAT64";
 
 /** The string representation for type char. */
-const char* char_str = "CHAR";
+const std::string char_str = "CHAR";
 
 /** The string representation for type int8. */
-const char* int8_str = "INT8";
+const std::string int8_str = "INT8";
 
 /** The string representation for type uint8. */
-const char* uint8_str = "UINT8";
+const std::string uint8_str = "UINT8";
 
 /** The string representation for type int16. */
-const char* int16_str = "INT16";
+const std::string int16_str = "INT16";
 
 /** The string representation for type uint16. */
-const char* uint16_str = "UINT16";
+const std::string uint16_str = "UINT16";
 
 /** The string representation for type uint32. */
-const char* uint32_str = "UINT32";
+const std::string uint32_str = "UINT32";
 
 /** The string representation for type uint64. */
-const char* uint64_str = "UINT64";
+const std::string uint64_str = "UINT64";
 
 /** The string representation for type STRING_ASCII. */
-const char* string_ascii_str = "STRING_ASCII";
+const std::string string_ascii_str = "STRING_ASCII";
 
 /** The string representation for type STRING_UTF8. */
-const char* string_utf8_str = "STRING_UTF8";
+const std::string string_utf8_str = "STRING_UTF8";
 
 /** The string representation for type STRING_UTF16. */
-const char* string_utf16_str = "STRING_UTF16";
+const std::string string_utf16_str = "STRING_UTF16";
 
 /** The string representation for type STRING_UTF32. */
-const char* string_utf32_str = "STRING_UTF32";
+const std::string string_utf32_str = "STRING_UTF32";
 
 /** The string representation for type STRING_UCS2. */
-const char* string_ucs2_str = "STRING_UCS2";
+const std::string string_ucs2_str = "STRING_UCS2";
 
 /** The string representation for type STRING_UCS4. */
-const char* string_ucs4_str = "STRING_UCS4";
+const std::string string_ucs4_str = "STRING_UCS4";
 
 /** The string representation for type ANY. */
-const char* any_str = "ANY";
+const std::string any_str = "ANY";
 
 /** The string representation for the dense array type. */
-const char* dense_str = "dense";
+const std::string dense_str = "dense";
 
 /** The string representation for the sparse array type. */
-const char* sparse_str = "sparse";
+const std::string sparse_str = "sparse";
 
 /** The string representation for the column-major layout. */
-const char* col_major_str = "col-major";
+const std::string col_major_str = "col-major";
 
 /** The string representation for the row-major layout. */
-const char* row_major_str = "row-major";
+const std::string row_major_str = "row-major";
 
 /** The string representation for the global order layout. */
-const char* global_order_str = "global-order";
+const std::string global_order_str = "global-order";
 
 /** The string representation for the unordered layout. */
-const char* unordered_str = "unordered";
+const std::string unordered_str = "unordered";
 
 /** The string representation of null. */
-const char* null_str = "null";
+const std::string null_str = "null";
 
 /** The version in format { major, minor, revision }. */
 const int version[3] = {
@@ -359,19 +362,19 @@ const int version[3] = {
 const uint64_t max_tile_chunk_size = 64 * 1024;
 
 /** The default attribute name prefix. */
-const char* default_attr_name = "__attr";
+const std::string default_attr_name = "__attr";
 
 /** The default dimension name prefix. */
-const char* default_dim_name = "__dim";
+const std::string default_dim_name = "__dim";
 
 /** The key attribute name. */
-const char* key_attr_name = "__key";
+const std::string key_attr_name = "__key";
 
 /** The key attribute type. */
 Datatype key_attr_type = Datatype::CHAR;
 
 /** The key type attribute name. */
-const char* key_type_attr_name = "__key_type";
+const std::string key_type_attr_name = "__key_type";
 
 /** The key type attribute type. */
 Datatype key_type_attr_type = Datatype::CHAR;
@@ -387,14 +390,14 @@ Compressor key_type_attr_compressor = Compressor::BLOSC_ZSTD;
  * key-value store is hashed into a 16-byte MD5 digest, which
  * is represented as a 2-dimensional uint64_t value.
  */
-const char* key_dim_1 = "__key_dim_1";
+const std::string key_dim_1 = "__key_dim_1";
 
 /**
  * The name of the second key dimension (recall that a key in a
  * key-value store is hashed into a 16-byte MD5 digest, which
  * is represented as a 2-dimensional uint64_t value.
  */
-const char* key_dim_2 = "__key_dim_2";
+const std::string key_dim_2 = "__key_dim_2";
 
 /** Maximum number of items to be buffered before a flush. */
 uint64_t kv_max_items = 1000;
@@ -406,7 +409,7 @@ const unsigned int s3_max_attempts = 1000;
 const unsigned int s3_attempt_sleep_ms = 100;
 
 /** An allocation tag used for logging. */
-const char* s3_allocation_tag = "TileDB";
+const std::string s3_allocation_tag = "TileDB";
 
 /** Use virtual addressing (false for minio, true for AWS S3). */
 const bool s3_use_virtual_addressing = true;
@@ -424,7 +427,7 @@ const long s3_connect_scale_factor = 25;
 const long s3_request_timeout_ms = 3000;
 
 /** S3 scheme (http for local minio, https for AWS S3). */
-const char* s3_scheme = "https";
+const std::string s3_scheme = "https";
 
 /** S3 max parallel operations. */
 const uint64_t s3_max_parallel_ops = vfs_num_threads;
@@ -433,37 +436,37 @@ const uint64_t s3_max_parallel_ops = vfs_num_threads;
 const uint64_t s3_multipart_part_size = 5 * 1024 * 1024;
 
 /** S3 region. */
-const char* s3_region = "us-east-1";
+const std::string s3_region = "us-east-1";
 
 /** S3 endpoint override. */
-const char* s3_endpoint_override = "";
+const std::string s3_endpoint_override = "";
 
 /** S3 proxy scheme. */
-const char* s3_proxy_scheme = "https";
+const std::string s3_proxy_scheme = "https";
 
 /** S3 proxy host. */
-const char* s3_proxy_host = "";
+const std::string s3_proxy_host = "";
 
 /** S3 proxy port. */
 const unsigned s3_proxy_port = 0;
 
 /** S3 proxy username. */
-const char* s3_proxy_username = "";
+const std::string s3_proxy_username = "";
 
 /** S3 proxy password. */
-const char* s3_proxy_password = "";
+const std::string s3_proxy_password = "";
 
 /** HDFS default kerb ticket cache path. */
-const char* hdfs_kerb_ticket_cache_path = "";
+const std::string hdfs_kerb_ticket_cache_path = "";
 
 /** HDFS default name node uri. */
-const char* hdfs_name_node_uri = "";
+const std::string hdfs_name_node_uri = "";
 
 /** HDFS default username. */
-const char* hdfs_username = "";
+const std::string hdfs_username = "";
 
 /** Prefix indicating a special name reserved by TileDB. */
-const char* special_name_prefix = "__";
+const std::string special_name_prefix = "__";
 
 /** Number of milliseconds between watchdog thread wakeups. */
 const unsigned watchdog_thread_sleep_ms = 1000;

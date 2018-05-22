@@ -94,7 +94,7 @@ inline uint64_t datatype_size(Datatype type) {
 }
 
 /** Returns the string representation of the input datatype. */
-inline const char* datatype_str(Datatype type) {
+inline const std::string& datatype_str(Datatype type) {
   switch (type) {
     case Datatype::INT32:
       return constants::int32_str;
@@ -132,10 +132,10 @@ inline const char* datatype_str(Datatype type) {
       return constants::string_ucs4_str;
     case Datatype::ANY:
       return constants::any_str;
+    default:
+      assert(0);
+      return constants::empty_str;
   }
-
-  assert(false);
-  return 0;
 }
 
 /** Returns true if the input datatype is a string type. */

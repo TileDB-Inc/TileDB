@@ -112,13 +112,13 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   config.requestTimeoutMs = s3_config.request_timeout_ms_;
 
   config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
-      constants::s3_allocation_tag,
+      constants::s3_allocation_tag.c_str(),
       s3_config.connect_max_tries_,
       s3_config.connect_scale_factor_);
 
   // Connect S3 client
   client_ = Aws::MakeShared<Aws::S3::S3Client>(
-      constants::s3_allocation_tag,
+      constants::s3_allocation_tag.c_str(),
       config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
       s3_config.use_virtual_addressing_);
@@ -452,7 +452,8 @@ Status S3::read(
                                   .c_str());
   get_object_request.SetResponseStreamFactory([buffer, length]() {
     auto streamBuf = new boost::interprocess::bufferbuf((char*)buffer, length);
-    return Aws::New<Aws::IOStream>(constants::s3_allocation_tag, streamBuf);
+    return Aws::New<Aws::IOStream>(
+        constants::s3_allocation_tag.c_str(), streamBuf);
   });
 
   auto get_object_outcome = client_->GetObject(get_object_request);
@@ -519,7 +520,7 @@ Status S3::touch(const URI& uri) const {
       .WithBucket(aws_uri.GetAuthority());
 
   auto request_stream =
-      Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag);
+      Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag.c_str());
   put_object_request.SetBody(request_stream);
 
   auto put_object_outcome = client_->PutObject(put_object_request);

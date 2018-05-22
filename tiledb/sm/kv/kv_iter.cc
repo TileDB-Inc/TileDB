@@ -137,7 +137,7 @@ Status KVIter::init_read_query() {
   if (read_buffers_[0] == nullptr)
     return LOG_STATUS(Status::KVIterError(
         "Cannot initialize read query; Memory allocation failed"));
-  const char* attributes[] = {constants::coords};
+  const char* attributes[] = {constants::coords.c_str()};
 
   return query_->set_buffers(
       attributes, 1, (void**)read_buffers_, read_buffer_sizes_);

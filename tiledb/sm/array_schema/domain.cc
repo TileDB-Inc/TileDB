@@ -504,10 +504,8 @@ const Dimension* Domain::dimension(std::string name) const {
 }
 
 void Domain::dump(FILE* out) const {
-  const char* type_s = datatype_str(type_);
-
   fprintf(out, "=== Domain ===\n");
-  fprintf(out, "- Dimensions type: %s\n", type_s);
+  fprintf(out, "- Dimensions type: %s\n", datatype_str(type_).c_str());
 
   for (auto& dim : dimensions_) {
     fprintf(out, "\n");

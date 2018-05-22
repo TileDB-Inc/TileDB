@@ -562,29 +562,30 @@ Status KV::prepare_write_attributes() {
   write_attribute_var_sizes_.resize(write_attribute_num_);
 
   // Coords
-  write_attributes_[0] = new (std::nothrow) char[strlen(constants::coords) + 1];
+  write_attributes_[0] =
+      new (std::nothrow) char[constants::coords.length() + 1];
   if (write_attributes_[0] == nullptr)
     return LOG_STATUS(Status::KVItemError(
         "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[0], constants::coords);
+  strcpy(write_attributes_[0], constants::coords.c_str());
   write_attribute_var_sizes_[0] = false;
 
   // Key
   write_attributes_[1] =
-      new (std::nothrow) char[strlen(constants::key_attr_name) + 1];
+      new (std::nothrow) char[constants::key_attr_name.length() + 1];
   if (write_attributes_[1] == nullptr)
     return LOG_STATUS(Status::KVItemError(
         "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[1], constants::key_attr_name);
+  strcpy(write_attributes_[1], constants::key_attr_name.c_str());
   write_attribute_var_sizes_[1] = true;
 
   // Key type
   write_attributes_[2] =
-      new (std::nothrow) char[strlen(constants::key_type_attr_name) + 1];
+      new (std::nothrow) char[constants::key_type_attr_name.length() + 1];
   if (write_attributes_[2] == nullptr)
     return LOG_STATUS(Status::KVItemError(
         "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[2], constants::key_type_attr_name);
+  strcpy(write_attributes_[2], constants::key_type_attr_name.c_str());
   write_attribute_var_sizes_[2] = false;
 
   // User attributes

@@ -59,7 +59,7 @@ class Dimension {
    * @param name The name of the dimension.
    * @param type The type of the dimension.
    */
-  Dimension(const char* name, Datatype type);
+  Dimension(const std::string& name, Datatype type);
 
   /**
    * Constructor. It clones the input.

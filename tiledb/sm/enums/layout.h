@@ -36,6 +36,8 @@
 
 #include "tiledb/sm/misc/constants.h"
 
+#include <cassert>
+
 namespace tiledb {
 namespace sm {
 
@@ -47,17 +49,20 @@ enum class Layout : char {
 };
 
 /** Returns the string representation of the input layout. */
-inline const char* layout_str(Layout layout) {
-  if (layout == Layout::COL_MAJOR)
-    return constants::col_major_str;
-  if (layout == Layout::ROW_MAJOR)
-    return constants::row_major_str;
-  if (layout == Layout::GLOBAL_ORDER)
-    return constants::global_order_str;
-  if (layout == Layout::UNORDERED)
-    return constants::unordered_str;
-
-  return nullptr;
+inline const std::string& layout_str(Layout layout) {
+  switch (layout) {
+    case Layout::COL_MAJOR:
+      return constants::col_major_str;
+    case Layout::ROW_MAJOR:
+      return constants::row_major_str;
+    case Layout::GLOBAL_ORDER:
+      return constants::global_order_str;
+    case Layout::UNORDERED:
+      return constants::unordered_str;
+    default:
+      assert(0);
+      return constants::empty_str;
+  }
 }
 
 }  // namespace sm

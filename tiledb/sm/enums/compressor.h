@@ -36,6 +36,8 @@
 
 #include "tiledb/sm/misc/constants.h"
 
+#include <cassert>
+
 namespace tiledb {
 namespace sm {
 
@@ -47,7 +49,7 @@ enum class Compressor : char {
 };
 
 /** Returns the string representation of the input compressor. */
-inline const char* compressor_str(Compressor type) {
+inline const std::string& compressor_str(Compressor type) {
   switch (type) {
     case Compressor::NO_COMPRESSION:
       return constants::no_compression_str;
@@ -76,7 +78,8 @@ inline const char* compressor_str(Compressor type) {
     case Compressor::DOUBLE_DELTA:
       return constants::double_delta_str;
     default:
-      return "";
+      assert(0);
+      return constants::empty_str;
   }
 }
 
