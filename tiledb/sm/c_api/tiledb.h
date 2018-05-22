@@ -199,6 +199,9 @@ TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 /*           TILEDB TYPES            */
 /* ********************************* */
 
+/** An array object. */
+typedef struct tiledb_array_t tiledb_array_t;
+
 /** A config object. */
 typedef struct tiledb_config_t tiledb_config_t;
 

@@ -2087,7 +2087,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test dense array, sparse writes", "[capi], [dense]") {
+    DenseArrayFx,
+    "C API: Test dense array, sparse writes",
+    "[capi], [dense], [dense-sparse-writes]") {
   if (supports_s3_) {
     // S3
     create_temp_dir(S3_TEMP_DIR);
@@ -2109,7 +2111,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, simultaneous writes",
-    "[capi], [dense]") {
+    "[capi], [dense], [dense-simultaneous-writes]") {
   std::string temp_dir;
   if (supports_s3_) {
     temp_dir = S3_TEMP_DIR;

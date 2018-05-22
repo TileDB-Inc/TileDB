@@ -58,7 +58,6 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/config.h"
 #include "tiledb/sm/storage_manager/consolidator.h"
-#include "tiledb/sm/storage_manager/locked_object.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 
 namespace tiledb {
@@ -212,22 +211,18 @@ class StorageManager {
       const char* array_uri, void* domain, bool* is_empty);
 
   /**
-   * Locks a TileDB object (array or group).
+   * Exclusively locks an array. This function will wait on the array to
+   * be closed if it is already open. After an array is locked in this mode,
+   * any attempt to open an array will have to wait until the array is
+   * unlocked with `xunlock_array`.
    *
-   * @param uri The object to be locked
-   * @param lock_type The lock type.
-   * @return Status
+   * An array is exclusively locked only for a short time upon consolidation,
+   * during removing the old fragments that got consolidated.
    */
-  Status object_lock(const URI& uri, LockType lock_type);
+  Status array_xlock(const URI& array_uri);
 
-  /**
-   * Unlocks a TileDB object (array or group).
-   *
-   * @param uri The object to be unlocked
-   * @param lock_type The lock type.
-   * @return Status
-   */
-  Status object_unlock(const URI& uri, LockType lock_type);
+  /** Releases an exclusive lock for the input array. */
+  Status array_xunlock(const URI& array_uri);
 
   /**
    * Pushes an async query to the queue.
@@ -334,10 +329,12 @@ class StorageManager {
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
+   * @param object_type This is either ARRAY or KEY_VALUE.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
-  Status load_array_schema(const URI& array_uri, ArraySchema** array_schema);
+  Status load_array_schema(
+      const URI& array_uri, ObjectType object_type, ArraySchema** array_schema);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -443,28 +440,11 @@ class StorageManager {
   Status query_finalize(Query* query);
 
   /**
-   * Initializes a query.
+   * Creates a query.
    *
    * @param query The query to initialize.
    * @param array_name The name of the array the query targets at.
    * @param type The query type.
-   * @return Status
-   */
-  Status query_init(Query** query, const char* array_name, QueryType type);
-
-  /**
-   * Initializes a query.
-   *
-   * @param query The query to initialize.
-   * @param array_name The name of the array the query targets at.
-   * @param type The query type.
-   * @param layout The cell layout.
-   * @param subarray The subarray the query will be constrained on.
-   * @param attributes The attributes the query will be constrained on.
-   * @param attribute_num The number of attributes.
-   * @param buffers The buffers that will hold the cells to write, or will
-   *     hold the cells that will be read.
-   * @param buffer_sizes The corresponding buffer sizes.
    * @param fragment_uri This is applicable only to write queries. This is
    *     to indicate that the new fragment created by a write will have
    *     a specific URI. This is useful mainly in consolidation, where
@@ -472,16 +452,10 @@ class StorageManager {
    *     the consolidator.
    * @return Status
    */
-  Status query_init(
+  Status query_create(
       Query** query,
       const char* array_name,
       QueryType type,
-      Layout layout,
-      const void* subarray,
-      const char** attributes,
-      unsigned int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes,
       URI fragment_uri = URI(""));
 
   /** Submits a query for (sync) execution. */
@@ -596,6 +570,13 @@ class StorageManager {
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
 
+  /**
+   * The condition variable for exlcusively locking arrays. This is used
+   * to wait for an array to be closed, before being exclusively locked
+   * by `array_xlock`.
+   */
+  std::condition_variable xlock_cv_;
+
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
 
@@ -605,25 +586,23 @@ class StorageManager {
   /** Object that handles array consolidation. */
   Consolidator* consolidator_;
 
+  /** Stores exclusive filelocks for arrays. */
+  std::unordered_map<std::string, filelock_t> xfilelocks_;
+
   /** A fragment metadata cache. */
   LRUCache* fragment_metadata_cache_;
 
-  /** Used for object shared and exclusive locking. */
-  std::mutex locked_object_mtx_;
-
   /**
-   * Stores locked object entries. The map is indexed by the object URI string
-   * and stores the number of **shared** locks.
+   * Mutex for managing OpenArray objects. Its purpose is threefold:
+   *
+   * - Protect `open_arrays_` during `array_{open, close} and
+   *   `array_{xlock, xunlock}`.
+   * - Protect `xfilelocks_` during `array_{xlock, xunlock}
+   * - Used by conditional variable `xlock_cv_`.
    */
-  std::map<std::string, LockedObject*> locked_objs_;
-
-  /** Mutex for managing OpenArray objects. */
   std::mutex open_array_mtx_;
 
-  /**
-   * Stores the currently open arrays. An array is *opened* when a new query is
-   * initialized via *query_init* for a particular array.
-   */
+  /** Stores the currently open arrays. */
   std::map<std::string, OpenArray*> open_arrays_;
 
   /** Count of the number of queries currently in progress. */
@@ -657,7 +636,7 @@ class StorageManager {
   /* ********************************* */
 
   /** Closes an array. */
-  Status array_close(URI array);
+  Status array_close(const URI& array_uri);
 
   /**
    * Retrieves the non-empty domain from the input fragment metadata. This is
@@ -675,24 +654,21 @@ class StorageManager {
       T* domain);
 
   /**
-   * Opens an array, retrieving its schema and fragment metadata.
+   * Opens an array, retrieving its schema and fragment metadata. If the
+   * array is exclusively locked with `array_xlock`, this function will
+   * wait until the array is unlocked with `array_xunlock`.
    *
    * @param array_uri The array URI.
    * @param query_type The query type.
    * @param array_schema The array schema to be retrieved.
    * @param fragment_metadata The fragment metadat to be retrieved.
-   * @return
+   * @return Status
    */
   Status array_open(
       const URI& array_uri,
       QueryType query_type,
       const ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
-
-  /**
-   * Invokes in case an error occurs in array_open. It is a clean-up function.
-   */
-  Status array_open_error(OpenArray* open_array);
 
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
@@ -712,16 +688,19 @@ class StorageManager {
    */
   Status init_tbb(Config::SMParams& config);
 
-  /** Retrieves an open array entry for the given array URI. */
-  Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
-
-  /** Loads the array schema into an open array. */
-  Status open_array_load_array_schema(
-      const URI& array_uri, OpenArray* open_array);
+  /**
+   * Loads the array schema into an open array.
+   *
+   * @param array_uri The array URI.
+   * @param object_type This is either ARRAY or KEY_VALUE.
+   * @param open_array The open array object.
+   * @return Status
+   */
+  Status load_array_schema(
+      const URI& array_uri, ObjectType object_type, OpenArray* open_array);
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
-  Status open_array_load_fragment_metadata(
-      OpenArray* open_array, std::vector<FragmentMetadata*>* fragment_metadata);
+  Status load_fragment_metadata(OpenArray* open_array);
 
   /**
    * Sorts the input fragment URIs in ascending timestamp order, breaking
