@@ -9,8 +9,6 @@
 ## Improvements
 
 * Added parallel S3, POSIX, and Win32 writes, enabled by default.
-* Minor S3 optimizations and error message fixes (PR #462)
-* Changed S3 default config so that AWS S3 just works (PR #455)
 * Got rid of special S3 "directory objects"
 * Refactored sparse reads, making them simpler and more amenable to parallelization.
 * Refactored dense reads, making them simpler and more amenable to parallelization.
@@ -24,9 +22,6 @@
 
 ## Bug Fixes
 
-* Memory overflow error handling (moved from constructors to init functions)
-* Memory leaks with realloc in case of error
-* Handle non-existent config param in C++ API.
 * Fixed bugs with reads/writes of variable-sized attributes.
 * Fixed file locking issue with simultaneous queries.
 * Fixed S3 issues with simultaneous queries within the same context.
@@ -87,6 +82,23 @@
 * Previously a `tiledb::Map` could be created from a `std::map`, an anonymous attribute name was defined. This must now be explicitly defined: `tiledb::Map::create(tiledb::Context, std::string uri, std::map, std::string attr_name)`
 * Removed `tiledb::Query::reset_buffers`. Any previous usages can safely be removed.
 * `Map::begin` refers to the same iterator object. For multiple concurrent iterators, a `MapIter` should be manually constructed instead of using `Map::begin()` more than once.
+
+# TileDB v1.2.2 Release Notes
+
+## Bug fixes
+
+* Fix I/O bug on POSIX systems with large reads/writes ([#467](https://github.com/TileDB-Inc/TileDB/pull/467))
+* Memory overflow error handling (moved from constructors to init functions) ([#472](https://github.com/TileDB-Inc/TileDB/pull/472))
+* Memory leaks with realloc in case of error ([#472](https://github.com/TileDB-Inc/TileDB/pull/472))
+* Handle non-existent config param in C++ API ([#475](https://github.com/TileDB-Inc/TileDB/pull/475))
+* Read query overflow handling ([#485](https://github.com/TileDB-Inc/TileDB/pull/485))
+
+## Improvements
+
+* Changed S3 default config so that AWS S3 just works ([#455](https://github.com/TileDB-Inc/TileDB/pull/455))
+* Minor S3 optimizations and error message fixes ([#462](https://github.com/TileDB-Inc/TileDB/pull/462))
+* Documentation additions including S3 usage ([#456](https://github.com/TileDB-Inc/TileDB/pull/456), [#458](https://github.com/TileDB-Inc/TileDB/pull/458), [#459](https://github.com/TileDB-Inc/TileDB/pull/459))
+* Various CI improvements ([#449](https://github.com/TileDB-Inc/TileDB/pull/449))
 
 # TileDB v1.2.1 Release Notes
 
