@@ -1330,7 +1330,9 @@ int tiledb_array_schema_load(
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
-              tiledb::sm::URI(array_uri), &((*array_schema)->array_schema_)))) {
+              tiledb::sm::URI(array_uri),
+              tiledb::sm::ObjectType::ARRAY,
+              &((*array_schema)->array_schema_)))) {
     delete *array_schema;
     return TILEDB_ERR;
   }
@@ -1590,7 +1592,7 @@ int tiledb_query_create(
   // Create query object
   if (save_error(
           ctx,
-          ctx->storage_manager_->query_init(
+          ctx->storage_manager_->query_create(
               &((*query)->query_),
               array_uri,
               static_cast<tiledb::sm::QueryType>(type)))) {
@@ -2075,7 +2077,9 @@ int tiledb_kv_schema_load(
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
-              tiledb::sm::URI(kv_uri), &((*kv_schema)->array_schema_)))) {
+              tiledb::sm::URI(kv_uri),
+              tiledb::sm::ObjectType::KEY_VALUE,
+              &((*kv_schema)->array_schema_)))) {
     delete *kv_schema;
     return TILEDB_ERR;
   }

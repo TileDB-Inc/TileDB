@@ -38,8 +38,8 @@
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
   // Constants
-  const char* DENSE_ARRAY_NAME = "test_async_dense";
-  const char* SPARSE_ARRAY_NAME = "test_async_sparse";
+  const char* DENSE_ARRAY_NAME = "test_consolidate_dense";
+  const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse";
 
   // TileDB context
   tiledb_ctx_t* ctx_;

@@ -64,9 +64,18 @@ Status Consolidator::consolidate(const char* array_name) {
   URI new_fragment_uri;
   URI array_uri = URI(array_name);
 
+  // Check if array exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(storage_manager_->object_type(array_uri, &obj_type));
+  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot open array; Array does not exist"));
+  }
+
   // Get array schema
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(storage_manager_->load_array_schema(array_uri, &array_schema));
+  RETURN_NOT_OK(
+      storage_manager_->load_array_schema(array_uri, obj_type, &array_schema));
 
   // Create subarray
   void* subarray = nullptr;
@@ -151,7 +160,7 @@ Status Consolidator::consolidate(const char* array_name) {
   }
 
   // Lock the array exclusively
-  st = storage_manager_->object_lock(array_uri, StorageManager::XLOCK);
+  st = storage_manager_->array_xlock(array_uri);
   if (!st.ok()) {
     clean_up(
         subarray,
@@ -167,7 +176,7 @@ Status Consolidator::consolidate(const char* array_name) {
   // Delete old fragments
   st = delete_old_fragments(old_fragment_uris);
   if (!st.ok()) {
-    storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
+    storage_manager_->array_xunlock(array_uri);
     clean_up(
         subarray,
         array_schema,
@@ -180,7 +189,7 @@ Status Consolidator::consolidate(const char* array_name) {
   }
 
   // Unlock the array
-  st = storage_manager_->object_unlock(array_uri, StorageManager::XLOCK);
+  st = storage_manager_->array_xunlock(array_uri);
 
   // Clean up
   clean_up(
@@ -281,16 +290,11 @@ Status Consolidator::create_queries(
     uint64_t* buffer_sizes,
     unsigned int* fragment_num) {
   // Create read query
-  RETURN_NOT_OK(storage_manager_->query_init(
-      query_r,
-      array_name,
-      QueryType::READ,
-      Layout::GLOBAL_ORDER,
-      nullptr,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes));
+  RETURN_NOT_OK(
+      storage_manager_->query_create(query_r, array_name, QueryType::READ));
+  if (!(*query_r)->array_schema()->is_kv())
+    RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK((*query_r)->set_buffers(nullptr, 0, buffers, buffer_sizes));
 
   // Get fragment num and terminate with success if it is <=1
   *fragment_num = (*query_r)->fragment_num();
@@ -302,17 +306,12 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK(rename_new_fragment_uri(&new_fragment_uri));
 
   // Create write query
-  RETURN_NOT_OK(storage_manager_->query_init(
-      query_w,
-      array_name,
-      QueryType::WRITE,
-      Layout::GLOBAL_ORDER,
-      subarray,
-      nullptr,
-      0,
-      buffers,
-      buffer_sizes,
-      new_fragment_uri));
+  RETURN_NOT_OK(storage_manager_->query_create(
+      query_w, array_name, QueryType::WRITE, new_fragment_uri));
+  if (!(*query_w)->array_schema()->is_kv())
+    RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK((*query_w)->set_subarray(subarray));
+  RETURN_NOT_OK((*query_w)->set_buffers(nullptr, 0, buffers, buffer_sizes));
 
   return Status::Ok();
 }

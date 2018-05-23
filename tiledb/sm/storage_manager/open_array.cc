@@ -33,6 +33,8 @@
 
 #include "tiledb/sm/storage_manager/open_array.h"
 
+#include <iostream>
+
 namespace tiledb {
 namespace sm {
 
@@ -40,15 +42,17 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-OpenArray::OpenArray() {
+OpenArray::OpenArray(const URI& array_uri)
+    : array_uri_(array_uri) {
   array_schema_ = nullptr;
   cnt_ = 0;
+  filelock_ = INVALID_FILELOCK;
 }
 
 OpenArray::~OpenArray() {
   delete array_schema_;
   for (auto& fragment : fragment_metadata_)
-    delete fragment.second;
+    delete fragment;
 }
 
 /* ****************************** */
@@ -67,24 +71,37 @@ uint64_t OpenArray::cnt() const {
   return cnt_;
 }
 
-void OpenArray::decr_cnt() {
+void OpenArray::cnt_decr() {
   --cnt_;
 }
 
-void OpenArray::fragment_metadata_add(FragmentMetadata* metadata) {
-  fragment_metadata_[metadata->fragment_uri().to_string()] = metadata;
-}
-
-FragmentMetadata* OpenArray::fragment_metadata_get(const URI& fragment_uri) {
-  auto it = fragment_metadata_.find(fragment_uri.to_string());
-  if (it == fragment_metadata_.end())
-    return nullptr;
-
-  return it->second;
-}
-
-void OpenArray::incr_cnt() {
+void OpenArray::cnt_incr() {
   ++cnt_;
+}
+
+Status OpenArray::file_lock(VFS* vfs) {
+  auto uri = array_uri_.join_path(constants::filelock_name);
+  if (filelock_ == INVALID_FILELOCK)
+    RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, true));
+
+  return Status::Ok();
+}
+
+Status OpenArray::file_unlock(VFS* vfs) {
+  auto uri = array_uri_.join_path(constants::filelock_name);
+  if (filelock_ != INVALID_FILELOCK)
+    RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
+  filelock_ = INVALID_FILELOCK;
+
+  return Status::Ok();
+}
+
+const std::vector<FragmentMetadata*>& OpenArray::fragment_metadata() const {
+  return fragment_metadata_;
+}
+
+bool OpenArray::fragment_metadata_empty() const {
+  return fragment_metadata_.empty();
 }
 
 void OpenArray::mtx_lock() {
@@ -97,6 +114,11 @@ void OpenArray::mtx_unlock() {
 
 void OpenArray::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
+}
+
+void OpenArray::set_fragment_metadata(
+    const std::vector<FragmentMetadata*>& metadata) {
+  fragment_metadata_ = metadata;
 }
 
 /* ****************************** */

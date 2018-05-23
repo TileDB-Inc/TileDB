@@ -73,7 +73,8 @@ Status KV::init(
     unsigned attribute_num,
     bool include_keys) {
   kv_uri_ = URI(kv_uri);
-  RETURN_NOT_OK(storage_manager_->load_array_schema(kv_uri_, &schema_));
+  RETURN_NOT_OK(storage_manager_->load_array_schema(
+      kv_uri_, ObjectType::KEY_VALUE, &schema_));
 
   if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
     write_good_ = true;
@@ -652,7 +653,7 @@ Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
-      storage_manager_->query_init(&query, kv_uri_.c_str(), QueryType::READ));
+      storage_manager_->query_create(&query, kv_uri_.c_str(), QueryType::READ));
   RETURN_NOT_OK_ELSE(
       query->set_buffers(
           (const char**)read_attributes_,
@@ -672,8 +673,8 @@ Status KV::submit_read_query(const uint64_t* subarray) {
 
 Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
-  RETURN_NOT_OK(
-      storage_manager_->query_init(&query, kv_uri_.c_str(), QueryType::WRITE));
+  RETURN_NOT_OK(storage_manager_->query_create(
+      &query, kv_uri_.c_str(), QueryType::WRITE));
   RETURN_NOT_OK_ELSE(
       query->set_buffers(
           (const char**)write_attributes_,

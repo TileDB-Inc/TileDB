@@ -129,8 +129,8 @@ void KVIter::clear() {
 
 Status KVIter::init_read_query() {
   // Create and init query
-  RETURN_NOT_OK(
-      storage_manager_->query_init(&query_, kv_uri_.c_str(), QueryType::READ));
+  RETURN_NOT_OK(storage_manager_->query_create(
+      &query_, kv_uri_.c_str(), QueryType::READ));
 
   // Set buffers
   read_buffers_[0] = new (std::nothrow) uint64_t[2 * max_item_num_];

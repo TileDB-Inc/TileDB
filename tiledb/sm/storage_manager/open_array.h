@@ -39,6 +39,7 @@
 #include <vector>
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -53,7 +54,7 @@ class OpenArray {
   /* ********************************* */
 
   /** Constructor. */
-  OpenArray();
+  explicit OpenArray(const URI& array_uri);
 
   /** Destructor. */
   ~OpenArray();
@@ -68,24 +69,26 @@ class OpenArray {
   /** Returns the array URI. */
   const URI& array_uri() const;
 
-  /** Decrements the counter indicating the times this array has been opened. */
-  void decr_cnt();
-
-  /** Returns the open array query counter. */
+  /** Returns the counter. */
   uint64_t cnt() const;
 
-  /** Adds a new entry to the fragment metadata map. */
-  void fragment_metadata_add(FragmentMetadata* metadata);
+  /** Decrements the counter. */
+  void cnt_decr();
 
-  /**
-   * Returns the stored metadata for a particular fragment uri (nullptr if not
-   * found). If found, it also increments the respective counter of the
-   * metadata.
-   */
-  FragmentMetadata* fragment_metadata_get(const URI& fragment_uri);
+  /** Increments the counter. */
+  void cnt_incr();
 
-  /** Increments the counter indicating the times this array has been opened. */
-  void incr_cnt();
+  /** Retrieves a (shared) filelock for the array. */
+  Status file_lock(VFS* vfs);
+
+  /** Retrieves a (shared) filelock for the array. */
+  Status file_unlock(VFS* vfs);
+
+  /** Returns the fragment metadata. */
+  const std::vector<FragmentMetadata*>& fragment_metadata() const;
+
+  /** Returns `true` if the fragment metadata is empty. */
+  bool fragment_metadata_empty() const;
 
   /** Locks the array mutex. */
   void mtx_lock();
@@ -96,6 +99,9 @@ class OpenArray {
   /** Sets an array schema. */
   void set_array_schema(const ArraySchema* array_schema);
 
+  /** Sets the fragment metadata. */
+  void set_fragment_metadata(const std::vector<FragmentMetadata*>& metadata);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -104,14 +110,17 @@ class OpenArray {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  /** Counts the number of queries that opened the array. */
+  /** The array URI. */
+  URI array_uri_;
+
+  /** Counts how many times the array has been opened. */
   uint64_t cnt_;
 
-  /**
-   * Enables searching for loaded fragment metadata by fragment name.
-   * Format: <fragment_name> --> (fragment_metadata)
-   */
-  std::map<std::string, FragmentMetadata*> fragment_metadata_;
+  /** Filelock handle. */
+  filelock_t filelock_;
+
+  /** The fragment metadata of the open array. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and
