@@ -445,18 +445,18 @@ class Writer {
       std::vector<Tile>* tiles) const;
 
   /**
-   * Returns a new fragment name, which is in the form: <br>
-   * .__thread-id_timestamp. For instance,
-   *  __6426153_1458759561320
+   * Generates a new fragment name, which is in the form: <br>
+   * .__uuid_timestamp. For instance,
+   *  __6ba7b8129dad11d180b400c04fd430c8_1458759561320
    *
    * Note that this is a temporary name, initiated by a new write process.
    * After the new fragmemt is finalized, the array will change its name
    * by removing the leading '.' character.
    *
-   * @return A new special fragment name on success, or "" (empty string) on
-   *     error.
+   * @param frag_uri Will store the new special fragment name
+   * @return Status
    */
-  std::string new_fragment_name() const;
+  Status new_fragment_name(std::string* frag_uri) const;
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only

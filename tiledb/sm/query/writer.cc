@@ -35,6 +35,7 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
@@ -573,8 +574,14 @@ Status Writer::compute_write_cell_ranges(
 
 Status Writer::create_fragment(
     bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
-  auto uri = (!fragment_uri_.to_string().empty()) ? fragment_uri_ :
-                                                    URI(new_fragment_name());
+  URI uri;
+  if (!fragment_uri_.to_string().empty()) {
+    uri = fragment_uri_;
+  } else {
+    std::string uri_str;
+    RETURN_NOT_OK(new_fragment_name(&uri_str));
+    uri = URI(uri_str);
+  }
   *frag_meta = std::make_shared<FragmentMetadata>(array_schema_, dense, uri);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
@@ -976,12 +983,17 @@ Status Writer::init_tiles(
   return Status::Ok();
 }
 
-std::string Writer::new_fragment_name() const {
+Status Writer::new_fragment_name(std::string* frag_uri) const {
+  if (frag_uri == nullptr)
+    return Status::WriterError("Null fragment uri argument.");
   uint64_t ms = utils::timestamp_ms();
+  std::string uuid;
+  frag_uri->clear();
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << array_schema_->array_uri().to_string() << "/__"
-     << std::this_thread::get_id() << "_" << ms;
-  return ss.str();
+  ss << array_schema_->array_uri().to_string() << "/__" << uuid << "_" << ms;
+  *frag_uri = ss.str();
+  return Status::Ok();
 }
 
 Status Writer::ordered_write() {

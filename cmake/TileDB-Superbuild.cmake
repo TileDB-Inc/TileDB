@@ -59,10 +59,14 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 
+if (NOT WIN32)
+  # Note: on Windows, AWS SDK uses builtin BCrypt.
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
+endif()
+
 if (TILEDB_S3)
   if (NOT WIN32)
-    # AWS SDK uses builtin WinHTTP and BCrypt instead of these.
-    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
+    # AWS SDK uses builtin WinHTTP instead of this.
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
   endif()
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)

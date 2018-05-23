@@ -1,5 +1,5 @@
 /**
- * @file   global_state.cc
+ * @file   openssl_state.cc
  *
  * @section LICENSE
  *
@@ -27,58 +27,69 @@
  *
  * @section DESCRIPTION
  *
- This file defines the GlobalState class.
+ This file defines the OpenSSL state, if OpenSSL is present.
  */
 
-#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/openssl_state.h"
-#include "tiledb/sm/global_state/signal_handlers.h"
-#include "tiledb/sm/global_state/watchdog.h"
+
+#ifdef _WIN32
 
 namespace tiledb {
 namespace sm {
 namespace global_state {
 
-GlobalState& GlobalState::GetGlobalState() {
-  // This is thread-safe in C++11.
-  static GlobalState globalState;
-  return globalState;
-}
-
-GlobalState::GlobalState() {
-  initialized_ = false;
-}
-
-Status GlobalState::initialize(Config* config) {
-  std::unique_lock<std::mutex> lck(init_mtx_);
-  if (!initialized_) {
-    if (config != nullptr) {
-      config_ = *config;
-    }
-    if (config_.sm_params().enable_signal_handlers_) {
-      RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
-    }
-    RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
-    RETURN_NOT_OK(init_openssl());
-    initialized_ = true;
-  }
+Status init_openssl() {
   return Status::Ok();
 }
 
-void GlobalState::register_storage_manager(StorageManager* sm) {
-  std::unique_lock<std::mutex> lck(storage_managers_mtx_);
-  storage_managers_.insert(sm);
-}
-
-void GlobalState::unregister_storage_manager(StorageManager* sm) {
-  std::unique_lock<std::mutex> lck(storage_managers_mtx_);
-  storage_managers_.erase(sm);
-}
-
-std::set<StorageManager*> GlobalState::storage_managers() {
-  std::unique_lock<std::mutex> lck(storage_managers_mtx_);
-  return storage_managers_;
-}
 }  // namespace global_state
 }  // namespace sm
 }  // namespace tiledb
+
+#else
+
+#include <openssl/crypto.h>
+#include <memory>
+#include <mutex>
+#include <vector>
+
+namespace tiledb {
+namespace sm {
+namespace global_state {
+
+/** Vector of lock objects for use by OpenSSL. */
+static std::vector<std::unique_ptr<std::mutex>> openssl_locks;
+
+/**
+ * Lock callback provided for OpenSSL.
+ *
+ * @param mode If set to CRYPTO_LOCK, lock. Else unlock.
+ * @param n The index of the lock object.
+ * @param file For debugging, calling file.
+ * @param line For debugging, calling line number.
+ */
+static void openssl_lock_cb(int mode, int n, const char* file, int line) {
+  (void)file;
+  (void)line;
+  if (mode & CRYPTO_LOCK) {
+    openssl_locks.at(n)->lock();
+  } else {
+    openssl_locks.at(n)->unlock();
+  }
+}
+
+Status init_openssl() {
+  int num_locks = CRYPTO_num_locks();
+  for (int i = 0; i < num_locks; i++) {
+    openssl_locks.push_back(std::unique_ptr<std::mutex>(new std::mutex()));
+  }
+
+  CRYPTO_set_locking_callback(openssl_lock_cb);
+  return Status::Ok();
+}
+
+}  // namespace global_state
+}  // namespace sm
+}  // namespace tiledb
+
+#endif

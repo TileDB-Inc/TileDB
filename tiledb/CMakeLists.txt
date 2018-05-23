@@ -102,6 +102,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv.cc
@@ -114,6 +115,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
@@ -198,11 +200,15 @@ endif()
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
+# Find OpenSSL first in case it's needed for S3
+if (NOT WIN32)
+  find_package(OpenSSL_EP REQUIRED)
+endif()
+
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
   find_package(Curl_EP REQUIRED)
-  find_package(OpenSSL_EP REQUIRED)
   find_package(AWSSDK_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -210,12 +216,10 @@ if (TILEDB_S3)
       AWSSDK::aws-cpp-sdk-core
   )
   if (NOT WIN32)
-    # No Curl or OpenSSL required on Windows.
+    # No Curl required on Windows.
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         Curl::Curl
-        OpenSSL::SSL
-        OpenSSL::Crypto
     )
   endif()
   add_definitions(-DHAVE_S3)
@@ -281,6 +285,13 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zlib::Zlib
     Zstd::Zstd
 )
+if (NOT WIN32)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      OpenSSL::SSL
+      OpenSSL::Crypto
+  )
+endif()
 
 # Copy over dependency info (e.g. include directories) to the core objects.
 target_compile_definitions(TILEDB_CORE_OBJECTS
@@ -324,7 +335,7 @@ target_link_libraries(tiledb_static
 
 # Windows linker configuration
 if (WIN32)
-  set(WIN32_LIBS shlwapi)
+  set(WIN32_LIBS shlwapi rpcrt4)
 
   if (TILEDB_S3)
     list(APPEND WIN32_LIBS bcrypt winhttp wininet userenv version)
