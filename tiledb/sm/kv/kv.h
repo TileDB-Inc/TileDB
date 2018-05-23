@@ -122,18 +122,13 @@ class KV {
    * @param attributes The attributes of the key-value store schema to focus on.
    *     Use `nullptr` to indicate **all** attributes.
    * @param attribute_num The number of attributes.
-   * @param include_keys If `true` the special key attributes will be included.
    * @return Status
    *
    * @note If the key-value store will be used for writes, `attributes` **must**
    *     be set to `nullptr`, indicating that all attributes will participate in
    *     the write.
    */
-  Status init(
-      const std::string& uri,
-      const char** attributes,
-      unsigned attribute_num,
-      bool include_keys = false);
+  Status init(const URI& uri, const char** attributes, unsigned attribute_num);
 
   /** Clears the key-value store. */
   void clear();
@@ -143,6 +138,9 @@ class KV {
    * will be flushed to persistent storage.
    */
   Status finalize();
+
+  /** The open array used for dispatching queries. */
+  OpenArray* open_array() const;
 
   /** Sets the number of maximum written items buffered before being flushed. */
   Status set_max_buffered_items(uint64_t max_items);
@@ -157,6 +155,9 @@ class KV {
    * Note that these exclude the special key attributes and coordinates.
    */
   std::vector<std::string> attributes_;
+
+  /** The array object that will receive the queries. */
+  OpenArray* open_array_;
 
   /**
    * Indicates whether an attribute is variable-sized or not.
@@ -247,7 +248,7 @@ class KV {
   uint64_t max_items_;
 
   /** The key-value store schema. */
-  ArraySchema* schema_;
+  const ArraySchema* schema_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

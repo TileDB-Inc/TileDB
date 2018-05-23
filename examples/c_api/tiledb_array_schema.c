@@ -121,11 +121,11 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, TILEDB_SPARSE);
+  tiledb_array_schema_alloc(ctx, &array_schema, TILEDB_SPARSE);
 
   // Print array schema contents
   printf("First dump:\n");
@@ -149,15 +149,15 @@ int main() {
   uint64_t d1_domain[] = {1, 1000};
   uint64_t d1_extent = 10;
   tiledb_dimension_t* d1;
-  tiledb_dimension_create(ctx, &d1, "", TILEDB_UINT64, d1_domain, &d1_extent);
+  tiledb_dimension_alloc(ctx, &d1, "", TILEDB_UINT64, d1_domain, &d1_extent);
   uint64_t d2_domain[] = {101, 10000};
   uint64_t d2_extent = 100;
   tiledb_dimension_t* d2;
-  tiledb_dimension_create(ctx, &d2, "d2", TILEDB_UINT64, d2_domain, &d2_extent);
+  tiledb_dimension_alloc(ctx, &d2, "d2", TILEDB_UINT64, d2_domain, &d2_extent);
 
   // Create and set domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx, &domain);
+  tiledb_domain_alloc(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
@@ -168,8 +168,8 @@ int main() {
   // compression level (`-1`). We make another printout to see how the
   // array schema contents got updated.
   tiledb_attribute_t *a1, *a2;
-  tiledb_attribute_create(ctx, &a1, "", TILEDB_INT32);
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx, &a1, "", TILEDB_INT32);
+  tiledb_attribute_alloc(ctx, &a2, "a2", TILEDB_FLOAT32);
   tiledb_attribute_set_cell_val_num(ctx, a1, 3);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_array_schema_add_attribute(ctx, array_schema, a1);

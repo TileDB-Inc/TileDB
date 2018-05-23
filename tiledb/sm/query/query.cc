@@ -43,11 +43,18 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(QueryType type)
+Query::Query(
+    StorageManager* storage_manager,
+    QueryType type,
+    const ArraySchema* array_schema,
+    const std::vector<FragmentMetadata*>& fragment_metadata)
     : type_(type) {
   callback_ = nullptr;
   callback_data_ = nullptr;
   status_ = QueryStatus::UNINITIALIZED;
+  set_storage_manager(storage_manager);
+  set_array_schema(array_schema);
+  set_fragment_metadata(fragment_metadata);
 }
 
 Query::~Query() = default;
@@ -66,7 +73,6 @@ Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();
 
-  RETURN_NOT_OK(reader_.finalize());
   RETURN_NOT_OK(writer_.finalize());
   status_ = QueryStatus::UNINITIALIZED;
   return Status::Ok();
@@ -158,13 +164,6 @@ Status Query::process() {
   return Status::Ok();
 }
 
-void Query::set_array_schema(const ArraySchema* array_schema) {
-  if (type_ == QueryType::READ)
-    reader_.set_array_schema(array_schema);
-  else
-    writer_.set_array_schema(array_schema);
-}
-
 Status Query::set_buffers(
     const char** attributes,
     unsigned int attribute_num,
@@ -186,12 +185,6 @@ void Query::set_callback(
     const std::function<void(void*)>& callback, void* callback_data) {
   callback_ = callback;
   callback_data_ = callback_data;
-}
-
-void Query::set_fragment_metadata(
-    const std::vector<FragmentMetadata*>& fragment_metadata) {
-  if (type_ == QueryType::READ)
-    reader_.set_fragment_metadata(fragment_metadata);
 }
 
 void Query::set_fragment_uri(const URI& fragment_uri) {
@@ -307,6 +300,19 @@ Status Query::check_subarray_bounds(const T* subarray) const {
   }
 
   return Status::Ok();
+}
+
+void Query::set_array_schema(const ArraySchema* array_schema) {
+  if (type_ == QueryType::READ)
+    reader_.set_array_schema(array_schema);
+  else
+    writer_.set_array_schema(array_schema);
+}
+
+void Query::set_fragment_metadata(
+    const std::vector<FragmentMetadata*>& fragment_metadata) {
+  if (type_ == QueryType::READ)
+    reader_.set_fragment_metadata(fragment_metadata);
 }
 
 }  // namespace sm

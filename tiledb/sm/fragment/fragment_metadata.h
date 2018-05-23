@@ -69,6 +69,9 @@ class FragmentMetadata {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the array URI. */
+  const URI& array_uri() const;
+
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
 

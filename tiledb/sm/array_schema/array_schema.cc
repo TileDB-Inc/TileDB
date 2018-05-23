@@ -195,9 +195,7 @@ Status ArraySchema::buffer_num(
 
   *buffer_num = 0;
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    unsigned int id;
-    RETURN_NOT_OK(attribute_id(attributes[i], &id));
-    if (var_size(id))
+    if (var_size(attributes[i]))
       (*buffer_num) += 2;
     else
       ++(*buffer_num);

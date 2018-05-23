@@ -119,7 +119,7 @@ int print_path(const char* path, tiledb_object_t type, void* data);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // List children
   printf("List children:\n");

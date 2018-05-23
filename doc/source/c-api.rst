@@ -83,7 +83,7 @@ Enumerations
 
 Context
 -------
-.. doxygenfunction:: tiledb_ctx_create
+.. doxygenfunction:: tiledb_ctx_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_free
     :project: TileDB-C
@@ -96,7 +96,7 @@ Context
 
 Config
 ------
-.. doxygenfunction:: tiledb_config_create
+.. doxygenfunction:: tiledb_config_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_config_free
     :project: TileDB-C
@@ -113,7 +113,7 @@ Config
 
 Config Iterator
 ---------------
-.. doxygenfunction:: tiledb_config_iter_create
+.. doxygenfunction:: tiledb_config_iter_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_config_iter_free
     :project: TileDB-C
@@ -136,6 +136,14 @@ Error
 
 Array
 -----
+.. doxygenfunction:: tiledb_array_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_open
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_close
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_free
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_create
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
@@ -149,7 +157,7 @@ Array
 
 Array Schema
 ------------
-.. doxygenfunction:: tiledb_array_schema_create
+.. doxygenfunction:: tiledb_array_schema_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_free
     :project: TileDB-C
@@ -194,7 +202,7 @@ Array Schema
 
 Attribute
 ---------
-.. doxygenfunction:: tiledb_attribute_create
+.. doxygenfunction:: tiledb_attribute_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_free
     :project: TileDB-C
@@ -215,7 +223,7 @@ Attribute
 
 Domain
 ------
-.. doxygenfunction:: tiledb_domain_create
+.. doxygenfunction:: tiledb_domain_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_free
     :project: TileDB-C
@@ -234,7 +242,7 @@ Domain
 
 Dimension
 ---------
-.. doxygenfunction:: tiledb_dimension_create
+.. doxygenfunction:: tiledb_dimension_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_free
     :project: TileDB-C
@@ -251,7 +259,7 @@ Dimension
 
 Query
 -----
-.. doxygenfunction:: tiledb_query_create
+.. doxygenfunction:: tiledb_query_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_subarray
     :project: TileDB-C
@@ -277,6 +285,8 @@ Group
 
 Key-value
 ---------
+.. doxygenfunction:: tiledb_kv_alloc
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_create
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_consolidate
@@ -301,7 +311,7 @@ Key-value
 
 Key-value Schema
 ----------------
-.. doxygenfunction:: tiledb_kv_schema_create
+.. doxygenfunction:: tiledb_kv_schema_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_free
     :project: TileDB-C
@@ -322,7 +332,7 @@ Key-value Schema
 
 Key-value Item
 --------------
-.. doxygenfunction:: tiledb_kv_item_create
+.. doxygenfunction:: tiledb_kv_item_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_item_free
     :project: TileDB-C
@@ -337,7 +347,7 @@ Key-value Item
 
 Key-value Iterator
 ------------------
-.. doxygenfunction:: tiledb_kv_iter_create
+.. doxygenfunction:: tiledb_kv_iter_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_finalize
     :project: TileDB-C
@@ -365,7 +375,7 @@ Object Management
 
 VFS
 ---
-.. doxygenfunction:: tiledb_vfs_create
+.. doxygenfunction:: tiledb_vfs_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_free
     :project: TileDB-C

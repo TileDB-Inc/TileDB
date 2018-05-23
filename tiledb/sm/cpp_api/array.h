@@ -51,6 +51,60 @@ namespace tiledb {
 class Array {
  public:
   /**
+   * Constructor.
+   *
+   * @param array_uri The array URI.
+   */
+  Array(const Context& ctx, const std::string& array_uri)
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr))
+      , uri_(array_uri) {
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
+    array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+    ctx.handle_error(tiledb_array_open(ctx, array));
+
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  Array(const Array&) = default;
+  Array(Array&& array) = default;
+  Array& operator=(const Array&) = default;
+  Array& operator=(Array&& o) = default;
+
+  /** Returns the array URI. */
+  std::string uri() const {
+    return uri_;
+  }
+
+  /** Returns a shared pointer to the C TileDB array object. */
+  std::shared_ptr<tiledb_array_t> ptr() const {
+    return array_;
+  }
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_array_t*() const {
+    return array_.get();
+  }
+
+  /** Opens the array. */
+  void open() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_open(ctx, array_.get()));
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  /** Closes the array. */
+  void close() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_close(ctx, array_.get()));
+  }
+
+  /**
    * Consolidates the fragments of an array into a single fragment.
    *
    * You must first finalize all queries to the array before consolidation can
@@ -72,28 +126,26 @@ class Array {
   }
 
   /**
-   * Get the non-empty domain of an array. This returns the bounding
+   * Get the non-empty domain of the array. This returns the bounding
    * coordinates for each dimension.
    *
    * @tparam T Domain datatype
-   * @param uri array name
-   * @param schema array schema
    * @return Vector of dim names with a {lower, upper} pair. Inclusive.
    *         Empty vector if the array has no data.
    */
   template <typename T>
-  static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
-      const std::string& uri, const ArraySchema& schema) {
-    impl::type_check<T>(schema.domain().type());
-
+  std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain() {
+    impl::type_check<T>(schema_.domain().type());
     std::vector<std::pair<std::string, std::pair<T, T>>> ret;
 
-    auto dims = schema.domain().dimensions();
+    auto dims = schema_.domain().dimensions();
     std::vector<T> buf(dims.size() * 2);
-    auto& ctx = schema.context();
     int empty;
+
+    auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_get_non_empty_domain(
-        ctx, uri.c_str(), buf.data(), &empty));
+        ctx, array_.get(), buf.data(), &empty));
+
     if (empty)
       return ret;
 
@@ -104,23 +156,6 @@ class Array {
     }
 
     return ret;
-  }
-
-  /**
-   * Get the non-empty domain of an array. This returns the bounding
-   * coordinates for each dimension.
-   *
-   * @tparam T domain datatype
-   * @param ctx The TileDB context.
-   * @param uri Array name.
-   * @return Vector of dim names with a {lower, upper} pair. Inclusive.
-   *         Empty vector if the array has no data.
-   */
-  template <typename T>
-  static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
-      const Context& ctx, const std::string& uri) {
-    ArraySchema schema(ctx, uri);
-    return non_empty_domain<T>(uri, schema);
   }
 
   /**
@@ -138,16 +173,13 @@ class Array {
    *     and the second is the maximum number of elements of the value buffer.
    */
   template <typename T>
-  static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  max_buffer_elements(
-      const std::string& uri,
-      const ArraySchema& schema,
-      const std::vector<T>& subarray) {
-    auto ctx = schema.context();
-    impl::type_check<T>(schema.domain().type(), 1);
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+  max_buffer_elements(const std::vector<T>& subarray) {
+    auto ctx = ctx_.get();
+    impl::type_check<T>(schema_.domain().type(), 1);
 
     std::vector<uint64_t> sizes;
-    auto attrs = schema.attributes();
+    auto attrs = schema_.attributes();
     std::vector<const char*> names;
 
     unsigned nbuffs = 0, attr_num = 0;
@@ -156,7 +188,7 @@ class Array {
       ++attr_num;
       names.push_back(a.first.c_str());
     }
-    if (schema.array_type() == TILEDB_SPARSE) {
+    if (schema_.array_type() == TILEDB_SPARSE) {
       ++nbuffs;
       ++attr_num;
       names.push_back(TILEDB_COORDS);
@@ -165,7 +197,7 @@ class Array {
     sizes.resize(nbuffs);
     ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
         ctx,
-        uri.c_str(),
+        array_.get(),
         subarray.data(),
         names.data(),
         attr_num,
@@ -184,35 +216,11 @@ class Array {
       sid += var ? 2 : 1;
     }
 
-    if (schema.array_type() == TILEDB_SPARSE)
+    if (schema_.array_type() == TILEDB_SPARSE)
       ret[TILEDB_COORDS] = std::pair<uint64_t, uint64_t>(
-          0, sizes.back() / tiledb_datatype_size(schema.domain().type()));
+          0, sizes.back() / tiledb_datatype_size(schema_.domain().type()));
 
     return ret;
-  }
-
-  /**
-   * Compute an upper bound on the buffer elements needed to read a subarray.
-   *
-   * @tparam T The domain datatype
-   * @param ctx The TileDB context
-   * @param uri The array URI.
-   * @param subarray Targeted subarray.
-   * @return The maximum number of elements for each array attribute (plus
-   *     coordinates for sparse arrays).
-   *     Note that two numbers are returned per attribute. The first
-   *     is the maximum number of elements in the offset buffer
-   *     (0 for fixed-sized attributes and coordinates),
-   *     and the second is the maximum number of elements of the value buffer.
-   */
-  template <typename T>
-  static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  max_buffer_elements(
-      const Context& ctx,
-      const std::string& uri,
-      const std::vector<T>& subarray) {
-    ArraySchema schema(ctx, uri);
-    return max_buffer_elements<T>(uri, schema, subarray);
   }
 
   /**
@@ -230,16 +238,14 @@ class Array {
    * @return list of subarrays
    */
   template <typename T>
-  static std::vector<std::vector<T>> partition_subarray(
-      const std::string& uri,
-      const ArraySchema& schema,
+  std::vector<std::vector<T>> partition_subarray(
       const std::vector<T>& subarray,
       const std::vector<std::string>& attrs,
-      const std::vector<uint64_t>& buffer_sizes,
+      const std::vector<size_t>& buffer_sizes,
       tiledb_layout_t layout) {
-    impl::type_check<T>(schema.domain().type());
+    impl::type_check<T>(schema_.domain().type());
 
-    const auto& schema_attrs = schema.attributes();
+    const auto& schema_attrs = schema_.attributes();
     std::vector<const char*> attrnames;
     std::vector<uint64_t> buff_sizes_scaled;
     unsigned expected_buff_cnt = 0;
@@ -261,16 +267,16 @@ class Array {
     if (expected_buff_cnt != buffer_sizes.size())
       throw TileDBError(
           "buffer_sizes size does not match number of provided attributes.");
-    if (subarray.size() != schema.domain().ndim() * 2)
-      throw TileDBError("Subarray should have array rank * 2 values.");
+    if (subarray.size() != schema_.domain().ndim() * 2)
+      throw TileDBError("Subarray should have array ndim * 2 values.");
 
-    auto& ctx = schema.context();
+    auto& ctx = ctx_.get();
     T** partition_buf;
     uint64_t npartitions;
 
     ctx.handle_error(tiledb_array_partition_subarray(
         ctx,
-        uri.c_str(),
+        array_.get(),
         subarray.data(),
         layout,
         attrnames.data(),
@@ -292,32 +298,29 @@ class Array {
     return ret;
   }
 
-  /**
-   * Partitions a subarray into multiple subarrays to meet buffer
-   * size constraints. Layout is used to split the subarray by
-   * the optimal axis.
-   *
-   * @tparam T Domain type
-   * @param uri Array URI
-   * @param schema Array Schema
-   * @param subarray Subarray to be decomposed
-   * @param attrs Attributes being queried
-   * @param buffer_sizes Buffer size limits
-   * @param layout Layout of query
-   * @return list of subarrays
-   */
-  template <typename T>
-  static std::vector<std::vector<T>> partition_subarray(
-      const Context& ctx,
-      const std::string& uri,
-      const std::vector<T>& subarray,
-      const std::vector<std::string>& attrs,
-      const std::vector<size_t>& buffer_sizes,
-      tiledb_layout_t layout) {
-    ArraySchema schema(ctx, uri);
-    return partition_subarray(
-        uri, schema, subarray, attrs, buffer_sizes, layout);
-  }
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** The TileDB context. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** Deleter wrapper. */
+  impl::Deleter deleter_;
+
+  /** Pointer to the TileDB C array object. */
+  std::shared_ptr<tiledb_array_t> array_;
+
+  /** The array schema. */
+  ArraySchema schema_;
+
+  /** The array URI. */
+  std::string uri_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
 };
 
 }  // namespace tiledb

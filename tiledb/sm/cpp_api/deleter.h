@@ -70,6 +70,10 @@ class Deleter {
     tiledb_vfs_fh_free(&p);
   }
 
+  void operator()(tiledb_array_t* p) const {
+    tiledb_array_free(&p);
+  }
+
   void operator()(tiledb_query_t* p) const {
     tiledb_query_free(&p);
   }

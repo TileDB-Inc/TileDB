@@ -56,7 +56,11 @@ class Query {
   /* ********************************* */
 
   /** Constructor. */
-  explicit Query(QueryType type);
+  Query(
+      StorageManager* storage_manager,
+      QueryType type,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata);
 
   /** Destructor. */
   ~Query();
@@ -77,8 +81,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, properly finalizing and deleting the involved
-   * fragments.
+   * Finalizes the query, flushing all internal state. Applicable only to global
+   * layout writes. It has no effect for any other query type.
    */
   Status finalize();
 
@@ -99,9 +103,6 @@ class Query {
 
   /** Processes a query. */
   Status process();
-
-  /** Sets the array schema. */
-  void set_array_schema(const ArraySchema* array_schema);
 
   /**
    * Sets the buffers to the query for a set of attributes.
@@ -136,10 +137,6 @@ class Query {
   void set_callback(
       const std::function<void(void*)>& callback, void* callback_data);
 
-  /** Sets the fragment metadata. */
-  void set_fragment_metadata(
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
 
@@ -149,9 +146,6 @@ class Query {
    * layout for both reads and writes.
    */
   Status set_layout(Layout layout);
-
-  /** Sets the storage manager. */
-  void set_storage_manager(StorageManager* storage_manager);
 
   /**
    * Sets the query subarray. If it is null, then the subarray will be set to
@@ -201,6 +195,16 @@ class Query {
   /** Correctness checks for `subarray`. */
   template <class T>
   Status check_subarray_bounds(const T* subarray) const;
+
+  /** Sets the array schema. */
+  void set_array_schema(const ArraySchema* array_schema);
+
+  /** Sets the fragment metadata. */
+  void set_fragment_metadata(
+      const std::vector<FragmentMetadata*>& fragment_metadata);
+
+  /** Sets the storage manager. */
+  void set_storage_manager(StorageManager* storage_manager);
 };
 
 }  // namespace sm

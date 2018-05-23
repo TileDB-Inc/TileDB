@@ -42,6 +42,9 @@ int main() {
   // Create TileDB context
   tiledb::Context ctx;
 
+  // Open array
+  tiledb::Array array(ctx, "my_sparse_array");
+
   // Prepare cell buffers - #1
   std::vector<int> a1_buff = {0, 1, 2};
   auto a2_buff = tiledb::ungroup_var_buffer<std::string>(
@@ -65,7 +68,7 @@ int main() {
   std::vector<uint64_t> coords_buff = {1, 1, 1, 2};
 
   // Create query
-  tiledb::Query query(ctx, "my_sparse_array", TILEDB_WRITE);
+  tiledb::Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_buff);
@@ -90,8 +93,12 @@ int main() {
 
   // Submit query - #2
   query.submit();
+
   // Finalize query only after the second write.
   query.finalize();
+
+  // Close array
+  array.close();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 
