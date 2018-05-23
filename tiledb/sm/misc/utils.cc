@@ -491,6 +491,13 @@ bool starts_with(const std::string& value, const std::string& prefix) {
   return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
+bool ends_with(const std::string& value, const std::string& suffix) {
+  if (suffix.size() > value.size())
+    return false;
+  return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
+         0;
+}
+
 std::string tile_extent_str(const void* tile_extent, Datatype type) {
   std::stringstream ss;
 
