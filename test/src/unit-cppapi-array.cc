@@ -126,6 +126,22 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     }
 
     {
+      std::vector<std::string> attrs = {"a1"};
+      std::vector<size_t> buffer_el = {1};
+      auto parts = Array::partition_subarray<int>(
+          ctx, "cpp_unit_array", subarray, attrs, buffer_el, TILEDB_ROW_MAJOR);
+      CHECK(parts.size() == 2);
+      CHECK(parts[0][0] == 0);
+      CHECK(parts[0][1] == 0);
+      CHECK(parts[0][2] == 0);
+      CHECK(parts[0][3] == 0);
+      CHECK(parts[1][0] == 1);
+      CHECK(parts[1][1] == 1);
+      CHECK(parts[1][2] == 0);
+      CHECK(parts[1][3] == 0);
+    }
+
+    {
       std::fill(std::begin(a1), std::end(a1), 0);
       std::fill(std::begin(a2buf.first), std::end(a2buf.first), 0);
       std::fill(std::begin(a2buf.second), std::end(a2buf.second), 0);

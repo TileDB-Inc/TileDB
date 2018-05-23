@@ -107,11 +107,25 @@ class StorageManager {
   /*                API                */
   /* ********************************* */
 
+  /** Closes an array. */
+  Status array_close(const URI& array_uri);
+
+  /**
+   * Opens an array, retrieving its schema and fragment metadata. If the
+   * array is exclusively locked with `array_xlock`, this function will
+   * wait until the array is unlocked with `array_xunlock`.
+   *
+   * @param array_uri The array URI.
+   * @param open_array The open array object to be retrieved.
+   * @return Status
+   */
+  Status array_open(const URI& array_uri, OpenArray** open_array);
+
   /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
-   * @param array_uri The array URI.
+   * @param open_array The opened array.
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param attributes The attributes to focus on.
@@ -124,7 +138,7 @@ class StorageManager {
    * @return Status
    */
   Status array_compute_max_read_buffer_sizes(
-      const char* array_uri,
+      OpenArray* open_array,
       const void* subarray,
       const char** attributes,
       unsigned attribute_num,
@@ -134,7 +148,7 @@ class StorageManager {
    * Computes the partitions a given subarray must be decomposed into, given
    * buffer size budgets for a set of attributes.
    *
-   * @param array_uri The array URI.
+   * @param open_array The open array.
    * @param subarray The subarray.
    * @param layout The layout in which the results are retrieved in the
    * subarray.
@@ -150,7 +164,7 @@ class StorageManager {
    * @note The user is responsible for freeing `subarray_partitions`.
    */
   Status array_compute_subarray_partitions(
-      const char* array_uri,
+      OpenArray* open_array,
       const void* subarray,
       Layout layout,
       const char** attributes,
@@ -201,14 +215,14 @@ class StorageManager {
    * Retrieves the non-empty domain from an array. This is the union of the
    * non-empty domains of the array fragments.
    *
-   * @param array_uri The array URI.
+   * @param open_array An open array object (must be already open).
    * @param domain The domain to be retrieved.
    * @param is_empty `ture` if the non-empty domain is empty (the array
    *     is empty).
    * @return Status
    */
   Status array_get_non_empty_domain(
-      const char* array_uri, void* domain, bool* is_empty);
+      OpenArray* open_array, void* domain, bool* is_empty);
 
   /**
    * Exclusively locks an array. This function will wait on the array to
@@ -635,9 +649,6 @@ class StorageManager {
   /*         PRIVATE METHODS           */
   /* ********************************* */
 
-  /** Closes an array. */
-  Status array_close(const URI& array_uri);
-
   /**
    * Retrieves the non-empty domain from the input fragment metadata. This is
    * the union of the non-empty domains of the fragments.
@@ -652,23 +663,6 @@ class StorageManager {
       const std::vector<FragmentMetadata*>& metadata,
       unsigned dim_num,
       T* domain);
-
-  /**
-   * Opens an array, retrieving its schema and fragment metadata. If the
-   * array is exclusively locked with `array_xlock`, this function will
-   * wait until the array is unlocked with `array_xunlock`.
-   *
-   * @param array_uri The array URI.
-   * @param query_type The query type.
-   * @param array_schema The array schema to be retrieved.
-   * @param fragment_metadata The fragment metadat to be retrieved.
-   * @return Status
-   */
-  Status array_open(
-      const URI& array_uri,
-      QueryType query_type,
-      const ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
 
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();

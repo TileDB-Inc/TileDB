@@ -172,12 +172,16 @@ void AnyFx::read_array(const std::string& array_name) {
   int rc = tiledb_ctx_create(&ctx, NULL);
   REQUIRE(rc == TILEDB_OK);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, array_name.c_str(), &array);
+
   // Get maximum buffer sizes
   const char* attributes[] = {"a1"};
   uint64_t max_buffer_sizes[2];
   uint64_t subarray[] = {1, 4};
   tiledb_array_compute_max_read_buffer_sizes(
-      ctx, array_name.c_str(), subarray, attributes, 1, &max_buffer_sizes[0]);
+      ctx, array, subarray, attributes, 1, &max_buffer_sizes[0]);
 
   // Prepare cell buffers
   auto buffer_a1_offsets = new uint64_t[max_buffer_sizes[0] / sizeof(uint64_t)];
@@ -223,7 +227,11 @@ void AnyFx::read_array(const std::string& array_name) {
   CHECK(
       !std::memcmp(&buffer_a1[buffer_a1_offsets[3] + 1], &C4, sizeof(double)));
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   delete[] buffer_a1_offsets;

@@ -88,32 +88,130 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
+Status StorageManager::array_close(const URI& array_uri) {
+  // Lock mutex
+  open_array_mtx_.lock();
+
+  // Find the open array entry
+  auto it = open_arrays_.find(array_uri.to_string());
+
+  // Sanity check
+  if (it == open_arrays_.end()) {
+    open_array_mtx_.unlock();
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot close array; Open array entry not found"));
+  }
+
+  // For easy reference
+  OpenArray* open_array = it->second;
+
+  // Lock the mutex of the array and decrement counter
+  open_array->mtx_lock();
+  open_array->cnt_decr();
+
+  // Close the array if the counter reaches 0
+  if (open_array->cnt() == 0) {
+    // Release file lock
+    auto st = open_array->file_unlock(vfs_);
+    if (!st.ok()) {
+      open_array->mtx_unlock();
+      open_array_mtx_.unlock();
+      return st;
+    }
+
+    // Remove open array entry
+    open_array->mtx_unlock();
+    delete open_array;
+    open_arrays_.erase(it);
+  } else {  // Just unlock the array mutex
+    open_array->mtx_unlock();
+  }
+
+  // Unlock mutex and notify condition on exclusive locks
+  open_array_mtx_.unlock();
+  xlock_cv_.notify_all();
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_open(
+    const URI& array_uri, OpenArray** open_array) {
+  // Check if array exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
+  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot open array; Array does not exist"));
+  }
+
+  // Lock mutex
+  open_array_mtx_.lock();
+
+  // Find the open array entry
+  auto it = open_arrays_.find(array_uri.to_string());
+  if (it != open_arrays_.end()) {
+    *open_array = it->second;
+  } else {  // Create a new entry
+    *open_array = new OpenArray(array_uri);
+    open_arrays_[array_uri.to_string()] = *open_array;
+  }
+
+  // Lock the mutex of the array and increment counter
+  (*open_array)->mtx_lock();
+  (*open_array)->cnt_incr();
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
+  // Get a (shared) filelock
+  RETURN_NOT_OK((*open_array)->file_lock(vfs_));
+
+  // Load array schema if not fetched already
+  if ((*open_array)->array_schema() == nullptr) {
+    auto st = load_array_schema(array_uri, obj_type, *open_array);
+    if (!st.ok()) {
+      (*open_array)->mtx_unlock();
+      array_close((*open_array)->array_uri());
+      return st;
+    }
+  }
+
+  // Get fragment metadata in the case of reads, if not fetched already
+  if ((*open_array)->fragment_metadata_empty()) {
+    auto st = load_fragment_metadata(*open_array);
+    if (!st.ok()) {
+      (*open_array)->mtx_unlock();
+      array_close((*open_array)->array_uri());
+      return st;
+    }
+  }
+
+  // Unlock the array mutex
+  (*open_array)->mtx_unlock();
+
+  return Status::Ok();
+}
+
 Status StorageManager::array_compute_max_read_buffer_sizes(
-    const char* array_uri,
+    OpenArray* open_array,
     const void* subarray,
     const char** attributes,
     unsigned attribute_num,
     uint64_t* buffer_sizes) {
   // Open the array
-  auto uri = URI(array_uri);
-  std::vector<FragmentMetadata*> metadata;
-  auto array_schema = (const ArraySchema*)nullptr;
-  RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata();
 
   // Check attributes
-  RETURN_NOT_OK_ELSE(
-      array_schema->check_attributes(attributes, attribute_num),
-      array_close(uri));
+  RETURN_NOT_OK(array_schema->check_attributes(attributes, attribute_num));
 
   // Compute buffer sizes
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       buffer_sizes_tmp;
   for (unsigned i = 0; i < attribute_num; ++i)
     buffer_sizes_tmp[attributes[i]] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK_ELSE(
-      array_compute_max_read_buffer_sizes(
-          array_schema, metadata, subarray, &buffer_sizes_tmp),
-      array_close(uri));
+  RETURN_NOT_OK(array_compute_max_read_buffer_sizes(
+      array_schema, metadata, subarray, &buffer_sizes_tmp));
 
   // Copy to input buffer sizes
   unsigned bid = 0;
@@ -130,7 +228,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   }
 
   // Close array
-  return array_close(uri);
+  return Status::Ok();
 }
 
 Status StorageManager::array_compute_max_read_buffer_sizes(
@@ -214,7 +312,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
 }
 
 Status StorageManager::array_compute_subarray_partitions(
-    const char* array_uri,
+    OpenArray* open_array,
     const void* subarray,
     Layout layout,
     const char** attributes,
@@ -227,18 +325,14 @@ Status StorageManager::array_compute_subarray_partitions(
   *subarray_partitions = nullptr;
 
   // Open the array
-  auto uri = URI(array_uri);
-  std::vector<FragmentMetadata*> metadata;
-  auto array_schema = (const ArraySchema*)nullptr;
-  RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata();
   auto subarray_size = 2 * array_schema->coords_size();
 
   // Compute buffer sizes map
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       buffer_sizes_map;
-  RETURN_NOT_OK_ELSE(
-      array_schema->check_attributes(attributes, attribute_num),
-      array_close(uri));
+  RETURN_NOT_OK(array_schema->check_attributes(attributes, attribute_num));
   for (unsigned i = 0, bid = 0; i < attribute_num; ++i) {
     if (array_schema->var_size(attributes[i])) {
       buffer_sizes_map[attributes[i]] = std::pair<uint64_t, uint64_t>(
@@ -253,18 +347,14 @@ Status StorageManager::array_compute_subarray_partitions(
 
   // Get partitions
   std::vector<void*> subarray_partitions_vec;
-  RETURN_NOT_OK_ELSE(
-      Reader::compute_subarray_partitions(
-          this,
-          array_schema,
-          metadata,
-          subarray,
-          layout,
-          buffer_sizes_map,
-          &subarray_partitions_vec),
-      array_close(uri));
-
-  RETURN_NOT_OK(array_close(uri));
+  RETURN_NOT_OK(Reader::compute_subarray_partitions(
+      this,
+      array_schema,
+      metadata,
+      subarray,
+      layout,
+      buffer_sizes_map,
+      &subarray_partitions_vec));
 
   // Handle empty partitions
   if (subarray_partitions_vec.empty())
@@ -368,13 +458,15 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_get_non_empty_domain(
-    const char* array_uri, void* domain, bool* is_empty) {
+    OpenArray* open_array, void* domain, bool* is_empty) {
+  if (open_array == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot get non-empty domain; Open array object is null"));
+
   // Open the array
   *is_empty = true;
-  auto uri = URI(array_uri);
-  std::vector<FragmentMetadata*> metadata;
-  auto array_schema = (const ArraySchema*)nullptr;
-  RETURN_NOT_OK(array_open(uri, QueryType::READ, &array_schema, &metadata));
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata();
 
   // Return if there are no metadata
   if (metadata.empty())
@@ -431,7 +523,7 @@ Status StorageManager::array_get_non_empty_domain(
   *is_empty = false;
 
   // Close array
-  return array_close(uri);
+  return Status::Ok();
 }
 
 Status StorageManager::array_xlock(const URI& array_uri) {
@@ -996,16 +1088,13 @@ Status StorageManager::query_finalize(Query* query) {
 Status StorageManager::query_create(
     Query** query, const char* array_name, QueryType type, URI fragment_uri) {
   // Open the array
-  std::vector<FragmentMetadata*> fragment_metadata;
-  auto array_schema = (const ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      array_open(URI(array_name), type, &array_schema, &fragment_metadata));
+  auto open_array = (OpenArray*)nullptr;
+  RETURN_NOT_OK(array_open(URI(array_name), &open_array));
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata();
 
   // Create query
-  *query = new Query(type);
-  (*query)->set_storage_manager(this);
-  (*query)->set_array_schema(array_schema);
-  (*query)->set_fragment_metadata(fragment_metadata);
+  *query = new Query(this, type, array_schema, metadata);
 
   if (type == QueryType::WRITE)
     (*query)->set_fragment_uri(fragment_uri);
@@ -1198,52 +1287,6 @@ Status StorageManager::write(const URI& uri, Buffer* buffer) const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-Status StorageManager::array_close(const URI& array_uri) {
-  // Lock mutex
-  open_array_mtx_.lock();
-
-  // Find the open array entry
-  auto it = open_arrays_.find(array_uri.to_string());
-
-  // Sanity check
-  if (it == open_arrays_.end()) {
-    open_array_mtx_.unlock();
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot close array; Open array entry not found"));
-  }
-
-  // For easy reference
-  OpenArray* open_array = it->second;
-
-  // Lock the mutex of the array and decrement counter
-  open_array->mtx_lock();
-  open_array->cnt_decr();
-
-  // Close the array if the counter reaches 0
-  if (open_array->cnt() == 0) {
-    // Release file lock
-    auto st = open_array->file_unlock(vfs_);
-    if (!st.ok()) {
-      open_array->mtx_unlock();
-      open_array_mtx_.unlock();
-      return st;
-    }
-
-    // Remove open array entry
-    open_array->mtx_unlock();
-    delete open_array;
-    open_arrays_.erase(it);
-  } else {  // Just unlock the array mutex
-    open_array->mtx_unlock();
-  }
-
-  // Unlock mutex and notify condition on exclusive locks
-  open_array_mtx_.unlock();
-  xlock_cv_.notify_all();
-
-  return Status::Ok();
-}
-
 template <class T>
 Status StorageManager::array_compute_max_read_buffer_sizes(
     const ArraySchema* array_schema,
@@ -1316,70 +1359,6 @@ void StorageManager::array_get_non_empty_domain(
     utils::expand_mbr(domain, coords, dim_num);
   }
   delete[] coords;
-}
-
-Status StorageManager::array_open(
-    const URI& array_uri,
-    QueryType type,
-    const ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
-  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot open array; Array does not exist"));
-  }
-
-  // Lock mutex
-  open_array_mtx_.lock();
-
-  // Find the open array entry
-  OpenArray* open_array;
-  auto it = open_arrays_.find(array_uri.to_string());
-  if (it != open_arrays_.end()) {
-    open_array = it->second;
-  } else {  // Create a new entry
-    open_array = new OpenArray(array_uri);
-    open_arrays_[array_uri.to_string()] = open_array;
-  }
-
-  // Lock the mutex of the array and increment counter
-  open_array->mtx_lock();
-  open_array->cnt_incr();
-
-  // Unlock mutex
-  open_array_mtx_.unlock();
-
-  // Get a (shared) filelock
-  RETURN_NOT_OK(open_array->file_lock(vfs_));
-
-  // Load array schema if not fetched already
-  if (open_array->array_schema() == nullptr) {
-    auto st = load_array_schema(array_uri, obj_type, open_array);
-    if (!st.ok()) {
-      open_array->mtx_unlock();
-      array_close(open_array->array_uri());
-      return st;
-    }
-  }
-  *array_schema = open_array->array_schema();
-
-  // Get fragment metadata in the case of reads, if not fetched already
-  if (type == QueryType::READ && open_array->fragment_metadata_empty()) {
-    auto st = load_fragment_metadata(open_array);
-    if (!st.ok()) {
-      open_array->mtx_unlock();
-      array_close(open_array->array_uri());
-      return st;
-    }
-  }
-  *fragment_metadata = open_array->fragment_metadata();
-
-  // Unlock the array mutex
-  open_array->mtx_unlock();
-
-  return Status::Ok();
 }
 
 Status StorageManager::get_fragment_uris(

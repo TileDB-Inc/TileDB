@@ -42,6 +42,7 @@
 * Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
 * Added `tiledb_kv_iter_finalize`, which must be called before freeing the kv iterator.
 * Added `tiledb_kv_free`.
+* Added `tiledb_array_{open, close, free}`.
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -70,6 +71,9 @@
 * All `tiledb_*_free` functions now return `void` and do not take `ctx` as input (except for `tiledb_ctx_free`).
 * Changed signature of `tiledb_kv_close` to take a `tiledb_kv_t*` argument instead of `tiledb_kv_t**`.
 * Renamed `tiledb_domain_get_rank` to `tiledb_domain_get_ndim` to avoid confusion with matrix def of rank.
+* Changed signature of `tiledb_array_get_non_empty_domain`.
+* Changed signature of `tiledb_array_partition_subarray`.
+* Changed signature of `tiledb_array_compute_max_read_buffer_sizes`.
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.

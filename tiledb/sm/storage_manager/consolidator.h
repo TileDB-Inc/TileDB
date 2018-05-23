@@ -34,6 +34,7 @@
 #define TILEDB_CONSOLIDATOR_H
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/storage_manager/open_array.h"
 
 #include <vector>
 
@@ -94,7 +95,6 @@ class Consolidator {
   /** Cleans up the inputs. */
   void clean_up(
       void* subarray,
-      ArraySchema* array_schema,
       unsigned buffer_num,
       void** buffers,
       uint64_t* buffer_sizes,
@@ -113,7 +113,7 @@ class Consolidator {
    * @return Status
    */
   Status create_buffers(
-      ArraySchema* array_schema,
+      const ArraySchema* array_schema,
       void*** buffers,
       uint64_t** buffer_sizes,
       unsigned int* buffer_num);
@@ -141,10 +141,7 @@ class Consolidator {
       unsigned int* fragment_num);
 
   /** Creates the subarray that should represent the entire array domain. */
-  Status create_subarray(
-      const std::string& array_name,
-      const ArraySchema* array_schema,
-      void** subarray) const;
+  Status create_subarray(OpenArray* open_array, void** subarray) const;
 
   /**
    * Deletes the old fragments that got consolidated.

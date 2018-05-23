@@ -85,15 +85,23 @@ class Array {
   static std::vector<std::pair<std::string, std::pair<T, T>>> non_empty_domain(
       const std::string& uri, const ArraySchema& schema) {
     impl::type_check<T>(schema.domain().type());
-
+    auto& ctx = schema.context();
     std::vector<std::pair<std::string, std::pair<T, T>>> ret;
+
+    // Open array
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_open(ctx, uri.c_str(), &array));
 
     auto dims = schema.domain().dimensions();
     std::vector<T> buf(dims.size() * 2);
-    auto& ctx = schema.context();
     int empty;
-    ctx.handle_error(tiledb_array_get_non_empty_domain(
-        ctx, uri.c_str(), buf.data(), &empty));
+    ctx.handle_error(
+        tiledb_array_get_non_empty_domain(ctx, array, buf.data(), &empty));
+
+    // Close array
+    ctx.handle_error(tiledb_array_close(ctx, array));
+    tiledb_array_free(&array);
+
     if (empty)
       return ret;
 
@@ -162,14 +170,17 @@ class Array {
       names.push_back(TILEDB_COORDS);
     }
 
+    // Open array
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_open(ctx, uri.c_str(), &array));
+
     sizes.resize(nbuffs);
     ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
-        ctx,
-        uri.c_str(),
-        subarray.data(),
-        names.data(),
-        attr_num,
-        sizes.data()));
+        ctx, array, subarray.data(), names.data(), attr_num, sizes.data()));
+
+    // Close array
+    ctx.handle_error(tiledb_array_close(ctx, array));
+    tiledb_array_free(&array);
 
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
     unsigned sid = 0;
@@ -231,11 +242,38 @@ class Array {
    */
   template <typename T>
   static std::vector<std::vector<T>> partition_subarray(
+      const Context& ctx,
+      const std::string& uri,
+      const std::vector<T>& subarray,
+      const std::vector<std::string>& attrs,
+      const std::vector<size_t>& buffer_sizes,
+      tiledb_layout_t layout) {
+    ArraySchema schema(ctx, uri);
+    return partition_subarray<T>(
+        uri, schema, subarray, attrs, buffer_sizes, layout);
+  }
+
+  /**
+   * Partitions a subarray into multiple subarrays to meet buffer
+   * size constraints. Layout is used to split the subarray by
+   * the optimal axis.
+   *
+   * @tparam T Domain type
+   * @param uri Array URI
+   * @param schema Array Schema
+   * @param subarray Subarray to be decomposed
+   * @param attrs Attributes being queried
+   * @param buffer_sizes Buffer size limits
+   * @param layout Layout of query
+   * @return list of subarrays
+   */
+  template <typename T>
+  static std::vector<std::vector<T>> partition_subarray(
       const std::string& uri,
       const ArraySchema& schema,
       const std::vector<T>& subarray,
       const std::vector<std::string>& attrs,
-      const std::vector<uint64_t>& buffer_sizes,
+      const std::vector<size_t>& buffer_sizes,
       tiledb_layout_t layout) {
     impl::type_check<T>(schema.domain().type());
 
@@ -262,15 +300,19 @@ class Array {
       throw TileDBError(
           "buffer_sizes size does not match number of provided attributes.");
     if (subarray.size() != schema.domain().ndim() * 2)
-      throw TileDBError("Subarray should have array rank * 2 values.");
+      throw TileDBError("Subarray should have array ndim * 2 values.");
 
     auto& ctx = schema.context();
     T** partition_buf;
     uint64_t npartitions;
 
+    // Open array
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_open(ctx, uri.c_str(), &array));
+
     ctx.handle_error(tiledb_array_partition_subarray(
         ctx,
-        uri.c_str(),
+        array,
         subarray.data(),
         layout,
         attrnames.data(),
@@ -289,34 +331,11 @@ class Array {
       free(partition_buf);
     }
 
-    return ret;
-  }
+    // Close and free array
+    ctx.handle_error(tiledb_array_close(ctx, array));
+    tiledb_array_free(&array);
 
-  /**
-   * Partitions a subarray into multiple subarrays to meet buffer
-   * size constraints. Layout is used to split the subarray by
-   * the optimal axis.
-   *
-   * @tparam T Domain type
-   * @param uri Array URI
-   * @param schema Array Schema
-   * @param subarray Subarray to be decomposed
-   * @param attrs Attributes being queried
-   * @param buffer_sizes Buffer size limits
-   * @param layout Layout of query
-   * @return list of subarrays
-   */
-  template <typename T>
-  static std::vector<std::vector<T>> partition_subarray(
-      const Context& ctx,
-      const std::string& uri,
-      const std::vector<T>& subarray,
-      const std::vector<std::string>& attrs,
-      const std::vector<size_t>& buffer_sizes,
-      tiledb_layout_t layout) {
-    ArraySchema schema(ctx, uri);
-    return partition_subarray(
-        uri, schema, subarray, attrs, buffer_sizes, layout);
+    return ret;
   }
 };
 

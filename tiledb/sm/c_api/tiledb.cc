@@ -84,6 +84,11 @@ void tiledb_version(int* major, int* minor, int* rev) {
 /*           TILEDB TYPES            */
 /* ********************************* */
 
+struct tiledb_array_t {
+  tiledb::sm::URI array_uri_;
+  tiledb::sm::OpenArray* open_array_;
+};
+
 struct tiledb_config_t {
   tiledb::sm::Config* config_;
 };
@@ -196,6 +201,16 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   }
 
   return true;
+}
+
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
+  if (array == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
 }
 
 inline int sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
@@ -1742,6 +1757,55 @@ int tiledb_query_get_status(
 /*              ARRAY             */
 /* ****************************** */
 
+int tiledb_array_open(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array struct
+  *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Set array URI
+  (*array)->array_uri_ = tiledb::sm::URI(array_uri);
+
+  // Open array
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_open(
+              (*array)->array_uri_, &((*array)->open_array_)))) {
+    delete *array;
+    *array = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, ctx->storage_manager_->array_close(array->array_uri_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+void tiledb_array_free(tiledb_array_t** array) {
+  if (array != nullptr && *array != nullptr) {
+    delete *array;
+    *array = nullptr;
+  }
+}
+
 int tiledb_array_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
@@ -1783,7 +1847,7 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
 }
 
 int tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, const char* array_uri, void* domain, int* is_empty) {
+    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int* is_empty) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1792,7 +1856,7 @@ int tiledb_array_get_non_empty_domain(
   if (save_error(
           ctx,
           ctx->storage_manager_->array_get_non_empty_domain(
-              array_uri, domain, &is_empty_b)))
+              array->open_array_, domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int)is_empty_b;
@@ -1802,7 +1866,7 @@ int tiledb_array_get_non_empty_domain(
 
 int tiledb_array_compute_max_read_buffer_sizes(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    tiledb_array_t* array,
     const void* subarray,
     const char** attributes,
     unsigned attribute_num,
@@ -1813,7 +1877,11 @@ int tiledb_array_compute_max_read_buffer_sizes(
   if (save_error(
           ctx,
           ctx->storage_manager_->array_compute_max_read_buffer_sizes(
-              array_uri, subarray, attributes, attribute_num, buffer_sizes)))
+              array->open_array_,
+              subarray,
+              attributes,
+              attribute_num,
+              buffer_sizes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1821,7 +1889,7 @@ int tiledb_array_compute_max_read_buffer_sizes(
 
 int tiledb_array_partition_subarray(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    tiledb_array_t* array,
     const void* subarray,
     tiledb_layout_t layout,
     const char** attributes,
@@ -1835,7 +1903,7 @@ int tiledb_array_partition_subarray(
   if (save_error(
           ctx,
           ctx->storage_manager_->array_compute_subarray_partitions(
-              array_uri,
+              array->open_array_,
               subarray,
               static_cast<tiledb::sm::Layout>(layout),
               attributes,

@@ -83,12 +83,16 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, "my_dense_array", &array);
+
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   tiledb_array_compute_max_read_buffer_sizes(
-      ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
+      ctx, array, subarray, attributes, 3, &buffer_sizes[0]);
 
   // Prepare cell buffers
   int* buffer_a1 = malloc(buffer_sizes[0]);
@@ -133,7 +137,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   free(buffer_a1);

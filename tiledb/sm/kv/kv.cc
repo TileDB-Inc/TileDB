@@ -611,13 +611,18 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[2] = hash.second;
   subarray[3] = hash.second;
 
+  auto open_array = (OpenArray*)nullptr;
+  RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array));
+
   // Compute max buffer sizes
   RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
-      kv_uri_.c_str(),
+      open_array,
       subarray,
       (const char**)read_attributes_,
       read_attribute_num_,
       read_buffer_sizes_));
+
+  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
 
   // Potentially reallocate read buffers
   RETURN_NOT_OK(realloc_read_buffers());

@@ -200,12 +200,16 @@ void StringFx::read_array(const std::string& array_name) {
   int rc = tiledb_ctx_create(&ctx, NULL);
   REQUIRE(rc == TILEDB_OK);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, array_name.c_str(), &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t max_buffer_sizes[5];
   uint64_t subarray[] = {1, 4};
   rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx, array_name.c_str(), subarray, attributes, 3, &max_buffer_sizes[0]);
+      ctx, array, subarray, attributes, 3, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -261,7 +265,11 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(buffer_a3_offsets[2] == UTF16_OFFSET_2);
   CHECK(buffer_a3_offsets[3] == UTF16_OFFSET_3);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   std::free(buffer_a1);

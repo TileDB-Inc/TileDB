@@ -457,12 +457,16 @@ void AsyncFx::write_sparse_async_cancelled() {
 }
 
 void AsyncFx::read_dense_async() {
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 3, &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -522,17 +526,25 @@ void AsyncFx::read_dense_async() {
   CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
 void AsyncFx::read_sparse_async() {
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, SPARSE_ARRAY_NAME, subarray, attributes, 4, &buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 4, &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -601,7 +613,11 @@ void AsyncFx::read_sparse_async() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 

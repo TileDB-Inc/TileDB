@@ -2078,6 +2078,57 @@ TILEDB_EXPORT int tiledb_query_get_status(
 /* ********************************* */
 
 /**
+ * Opens a TileDB array, creating an array object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array URI.
+ * @param array The array object to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_open(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+
+/**
+ * Closes a TileDB array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_close(ctx, array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be closed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
+
+/**
+ * Frees a TileDB array object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_close(ctx, array);
+ * tiledb_array_free(&array);
+ * @endcode
+ *
+ * @param array The array object to be freed.
+ */
+TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
+
+/**
  * Creates a new TileDB array given an input schema.
  *
  * **Example:**
@@ -2124,18 +2175,20 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * @code{.c}
  * uint64_t domain[4]; // Assuming a 2D array, 2 [low, high] pairs
  * int is_empty;
- * tiledb_array_get_non_empty_domain(ctx, "my_array", domain, &is_empty);
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "my_array", &array);
+ * tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param array_uri The array URI.
+ * @param array The array object (must be opened beforehand).
  * @param domain The domain to be retrieved.
  * @param is_empty The function sets it to `1` if the non-empty domain is
  *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, const char* array_uri, void* domain, int* is_empty);
+    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int* is_empty);
 
 /**
  * Computes an upper bound on the buffer sizes required for a read
@@ -2144,15 +2197,17 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  * **Example:**
  *
  * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "my_array", &array);
  * uint64_t buffer_sizes[2];
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {10, 20, 10, 100};
  * tiledb_array_compute_max_read_buffer_sizes(
- *     ctx, "my_array", subarray, attributes, 2, buffer_sizes);
+ *     ctx, array, subarray, attributes, 2, buffer_sizes);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_uri The array URI.
+ * @param array The array object (must be opened beforehand).
  * @param subarray The subarray to focus on. Note that it must have the same
  *     underlying type as the array domain.
  * @param attributes The attributes to focus on.
@@ -2166,7 +2221,7 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  */
 TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    tiledb_array_t* array,
     const void* subarray,
     const char** attributes,
     unsigned attribute_num,
@@ -2179,6 +2234,8 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * **Example:**
  *
  * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "my_array", &array);
  * uint64_t buffer_sizes[] = {200, 200};
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {11, 20, 11, 20};
@@ -2186,7 +2243,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * void** subarray_partitions;
  * tiledb_array_partition_subarray(
  *     ctx,
- *     "my_array",
+ *     array,
  *     subarray,
  *     TILEDB_ROW_MAJOR,
  *     attributes,
@@ -2214,7 +2271,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * instead of by rows).
  *
  * @param ctx The TileDB context.
- * @param array_uri The array URI.
+ * @param array The array object (must be opened beforehand).
  * @param subarray The subarray.
  * @param layout The layout in which the results are retrieved in the subarray.
  * @param attributes The attributes.
@@ -2230,7 +2287,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  */
 TILEDB_EXPORT int tiledb_array_partition_subarray(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    tiledb_array_t* array,
     const void* subarray,
     tiledb_layout_t layout,
     const char** attributes,

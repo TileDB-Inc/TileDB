@@ -72,10 +72,14 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, "my_sparse_array", &array);
+
   // Print non-empty domain
   int is_empty = 0;
   uint64_t domain[4];
-  tiledb_array_get_non_empty_domain(ctx, "my_sparse_array", domain, &is_empty);
+  tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
   printf("Non-empty domain:\n");
   printf(
       "d1: (%llu, %llu)\n",
@@ -91,7 +95,7 @@ int main() {
   uint64_t buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
   tiledb_array_compute_max_read_buffer_sizes(
-      ctx, "my_sparse_array", subarray, attributes, 4, &buffer_sizes[0]);
+      ctx, array, subarray, attributes, 4, &buffer_sizes[0]);
   printf("Maximum buffer sizes:\n");
   printf("a1: %llu\n", (unsigned long long)buffer_sizes[0]);
   printf(
@@ -143,7 +147,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   free(buffer_a1);

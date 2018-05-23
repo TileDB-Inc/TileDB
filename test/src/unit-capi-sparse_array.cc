@@ -102,6 +102,8 @@ struct SparseArrayFx {
       const std::string& array_name);
   void check_sparse_array_global_with_all_duplicates_dedup(
       const std::string& array_name);
+  void check_non_empty_domain(const std::string& path);
+  void write_partial_sparse_array(const std::string& array_name);
   void set_supported_fs();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
@@ -372,13 +374,17 @@ int* SparseArrayFx::read_sparse_array_2D(
   const int64_t subarray[] = {
       domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, array_name.c_str(), &array);
+
   // Subset over a specific attribute
   const char* attributes[] = {ATTR_NAME};
 
   // Prepare the buffers that will store the result
   uint64_t max_buffer_sizes[1];
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, array_name.c_str(), subarray, attributes, 1, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
   REQUIRE(buffer_a1 != nullptr);
@@ -404,7 +410,11 @@ int* SparseArrayFx::read_sparse_array_2D(
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Free/finalize query
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Success - return the created buffer
@@ -1337,6 +1347,75 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   tiledb_ctx_free(&ctx);
 }
 
+void SparseArrayFx::check_non_empty_domain(const std::string& path) {
+  std::string array_name = path + "sparse_non_empty";
+  create_sparse_array(array_name);
+
+  // Check empty domain
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  int is_empty;
+  uint64_t domain[4];
+  rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 1);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Write
+  write_partial_sparse_array(array_name);
+
+  // Check non-empty domain
+  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 0);
+  uint64_t c_domain[] = {3, 4, 2, 4};
+  CHECK(!memcmp(domain, c_domain, sizeof(c_domain)));
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+}
+
+void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
+  // Prepare cell buffers
+  int buffer_a1[] = {7, 5, 0};
+  uint64_t buffer_a2[] = {0, 4, 6};
+  char buffer_a2_var[] = "hhhhffa";
+  float buffer_a3[] = {7.1f, 7.2f, 5.1f, 5.2f, 0.1f, 0.2f};
+  uint64_t buffer_coords[] = {3, 4, 4, 2, 3, 3};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_a2_var, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_a2_var) - 1,
+                             sizeof(buffer_a3),
+                             sizeof(buffer_coords)};
+
+  // Create query
+  tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffers(
+      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_query_free(&query);
+}
+
 TEST_CASE_METHOD(
     SparseArrayFx, "C API: Test sparse sorted reads", "[capi], [sparse]") {
   std::string array_name;
@@ -1635,4 +1714,14 @@ TEST_CASE_METHOD(
   SECTION("- global, all duplicates, dedup") {
     check_sparse_array_global_with_all_duplicates_dedup(array_name);
   }
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, non-empty domain",
+    "[capi], [sparse], [sparse-non-empty]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  create_temp_dir(temp_dir);
+  check_non_empty_domain(temp_dir);
+  remove_temp_dir(temp_dir);
 }

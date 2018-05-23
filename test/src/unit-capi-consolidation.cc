@@ -491,12 +491,16 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
       212.1f, 212.2f, 213.1f, 213.2f, 114.1f, 114.2f, 115.1f, 115.2f,
   };
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t max_buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 3, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -542,7 +546,11 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
@@ -568,12 +576,16 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
       212.1f, 212.2f, 213.1f, 213.2f, 14.1f, 14.2f, 15.1f,  15.2f,
   };
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t max_buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 3, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -611,7 +623,11 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
   CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
@@ -636,12 +652,16 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
       12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
   };
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t max_buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, DENSE_ARRAY_NAME, subarray, attributes, 3, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 3, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -679,7 +699,11 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
   CHECK(!memcmp(buffer_var_a2, c_buffer_var_a2, sizeof(c_buffer_var_a2) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
@@ -698,12 +722,16 @@ void ConsolidationFx::read_sparse_full_unordered() {
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
                                 3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t max_buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, SPARSE_ARRAY_NAME, subarray, attributes, 4, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 4, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -745,7 +773,11 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
@@ -764,12 +796,16 @@ void ConsolidationFx::read_sparse_unordered_full() {
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
                                 3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t max_buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
   int rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, SPARSE_ARRAY_NAME, subarray, attributes, 4, &max_buffer_sizes[0]);
+      ctx_, array, subarray, attributes, 4, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
@@ -811,7 +847,11 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
+  // Close array
+  tiledb_array_close(ctx_, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   free(buffer_a1);
   free(buffer_a2);
