@@ -275,6 +275,14 @@ bool overlap(const T* a, const T* b, unsigned dim_num);
 bool starts_with(const std::string& value, const std::string& prefix);
 
 /**
+ * Checks if a string ends with a certain suffix.
+ * @param value The base string.
+ * @param suffix The suffix to be tested.
+ * @return *true* if *value* ends with the *suffix*, and *false* otherwise.
+ */
+bool ends_with(const std::string& value, const std::string& suffix);
+
+/**
  * Returns a dimension's tile extent in string form.
  *
  * @param tile_extent The tile extent of a single dimension.

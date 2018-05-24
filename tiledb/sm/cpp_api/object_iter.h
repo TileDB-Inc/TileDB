@@ -82,6 +82,17 @@ class ObjectIter {
    * iterator will iterate only over the children of `root`. It will
    * also retrieve only TileDB-related objects.
    *
+   * **Example:**
+   * @code{.cpp}
+   * // List the TileDB objects in an S3 bucket.
+   * tiledb::Context ctx;
+   * tiledb::ObjectIter obj_it(ctx, "s3://bucket-name");
+   * for (auto it = obj_it.begin(), ite = obj_it.end(); it != ite; ++it) {
+   *   const tiledb::Object &obj = *it;
+   *   std::cout << obj << std::endl;
+   * }
+   * @endcode
+   *
    * @param ctx The TileDB context.
    * @param root The root directory where the iteration will begin.
    */

@@ -102,6 +102,9 @@ Object Management
 .. doxygenclass:: tiledb::Object
     :project: TileDB-C++
     :members:
+.. doxygenclass:: tiledb::ObjectIter
+    :project: TileDB-C++
+    :members:
 
 VFS
 ---

@@ -788,25 +788,38 @@ Status StorageManager::load_fragment_metadata(
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
-  bool is_array;
-  RETURN_NOT_OK(this->is_array(uri, &is_array));
-  if (is_array) {
-    *type = ObjectType::ARRAY;
-    return Status::Ok();
+  URI dir_uri = uri;
+  if (uri.is_s3()) {
+    // Always add a trailing '/' in the S3 case so that listing the URI as a
+    // directory will work as expected. Listing a non-directory object is not an
+    // error for S3.
+    auto uri_str = uri.to_string();
+    dir_uri = URI(utils::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+  } else {
+    // For non-S3, listing a non-directory is an error.
+    bool is_dir = false;
+    RETURN_NOT_OK(vfs_->is_dir(uri, &is_dir));
+    if (!is_dir) {
+      *type = ObjectType::INVALID;
+      return Status::Ok();
+    }
   }
 
-  bool is_kv;
-  RETURN_NOT_OK(this->is_kv(uri, &is_kv));
-  if (is_kv) {
-    *type = ObjectType::KEY_VALUE;
-    return Status::Ok();
-  }
+  std::vector<URI> child_uris;
+  RETURN_NOT_OK(vfs_->ls(dir_uri, &child_uris));
 
-  bool is_group;
-  RETURN_NOT_OK(this->is_group(uri, &is_group));
-  if (is_group) {
-    *type = ObjectType::GROUP;
-    return Status::Ok();
+  for (const auto& child_uri : child_uris) {
+    auto uri_str = child_uri.to_string();
+    if (utils::ends_with(uri_str, constants::group_filename)) {
+      *type = ObjectType::GROUP;
+      return Status::Ok();
+    } else if (utils::ends_with(uri_str, constants::kv_schema_filename)) {
+      *type = ObjectType::KEY_VALUE;
+      return Status::Ok();
+    } else if (utils::ends_with(uri_str, constants::array_schema_filename)) {
+      *type = ObjectType::ARRAY;
+      return Status::Ok();
+    }
   }
 
   *type = ObjectType::INVALID;
