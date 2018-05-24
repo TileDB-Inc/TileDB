@@ -92,18 +92,22 @@ ExternalProject_Add(tiledb
 )
 
 ############################################################
-# "make check" target
+# Convenience superbuild targets that invoke TileDB targets
 ############################################################
 
+# make install-tiledb
+add_custom_target(install-tiledb
+  COMMAND ${CMAKE_COMMAND} --build . --target install --config ${CMAKE_BUILD_TYPE}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+)
+
+# make check
 add_custom_target(check
   COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
-############################################################
-# "make examples" target
-############################################################
-
+# make examples
 add_custom_target(examples
   COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
