@@ -95,7 +95,7 @@ Status KVIter::init(
 
 Status KVIter::finalize() {
   RETURN_NOT_OK(finalize_read_query());
-  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
+  RETURN_NOT_OK(kv_->finalize());
   clear();
 
   return Status::Ok();

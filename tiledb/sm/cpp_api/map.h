@@ -772,8 +772,8 @@ class Map {
     return iter_end_;
   }
 
-  /** Finalize the map. */
-  void finalize() {
+  /** Close the map. */
+  void close() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
     iter_.finalize();

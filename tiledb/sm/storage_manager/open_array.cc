@@ -59,7 +59,7 @@ OpenArray::~OpenArray() {
 /*               API              */
 /* ****************************** */
 
-const ArraySchema* OpenArray::array_schema() const {
+ArraySchema* OpenArray::array_schema() const {
   return array_schema_;
 }
 
@@ -112,7 +112,7 @@ void OpenArray::mtx_unlock() {
   mtx_.unlock();
 }
 
-void OpenArray::set_array_schema(const ArraySchema* array_schema) {
+void OpenArray::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 

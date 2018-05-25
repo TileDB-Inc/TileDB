@@ -109,6 +109,16 @@ class ArraySchema : public Schema {
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   };
 
+  /**
+   * Loads the schema of an existing array with the input C array
+   * schema object.
+   */
+  ArraySchema(const Context& ctx, tiledb_array_schema_t* schema)
+      : Schema(ctx) {
+    schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
+  };
+
+  ArraySchema() = default;
   ArraySchema(const ArraySchema&) = default;
   ArraySchema(ArraySchema&& o) = default;
   ArraySchema& operator=(const ArraySchema&) = default;

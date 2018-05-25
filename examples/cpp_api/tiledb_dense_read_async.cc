@@ -52,8 +52,7 @@ int main() {
 
   // Calcuate maximum buffer sizes for the query results per attribute
   const std::vector<uint64_t> subarray = {1, 4, 1, 4};
-  auto max_sizes =
-      tiledb::Array::max_buffer_elements(ctx, "my_dense_array", subarray);
+  auto max_sizes = array.max_buffer_elements(subarray);
 
   // Prepare cell buffers
   std::vector<int> a1_buff(max_sizes["a1"].second);

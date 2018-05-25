@@ -2131,6 +2131,19 @@ TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
 TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
 
 /**
+ * Retrieves the schem of an array.
+ *
+ * @param ctx The TileDB context.
+ * @param array The open array.
+ * @param array_schema The array schema to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_get_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_array_schema_t** array_schema);
+
+/**
  * Creates a new TileDB array given an input schema.
  *
  * **Example:**

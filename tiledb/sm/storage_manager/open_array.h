@@ -64,7 +64,7 @@ class OpenArray {
   /* ********************************* */
 
   /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
+  ArraySchema* array_schema() const;
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -97,7 +97,7 @@ class OpenArray {
   void mtx_unlock();
 
   /** Sets an array schema. */
-  void set_array_schema(const ArraySchema* array_schema);
+  void set_array_schema(ArraySchema* array_schema);
 
   /** Sets the fragment metadata. */
   void set_fragment_metadata(const std::vector<FragmentMetadata*>& metadata);
@@ -108,7 +108,7 @@ class OpenArray {
   /* ********************************* */
 
   /** The array schema. */
-  const ArraySchema* array_schema_;
+  ArraySchema* array_schema_;
 
   /** The array URI. */
   URI array_uri_;

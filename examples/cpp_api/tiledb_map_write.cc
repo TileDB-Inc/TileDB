@@ -91,7 +91,7 @@ int main() {
     }
 
     // Finalize map
-    map.finalize();
+    map.close();
   }
 
   // Consolidate fragments (optional)

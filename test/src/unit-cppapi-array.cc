@@ -130,10 +130,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     }
 
     {
+      Array array(ctx, "cpp_unit_array");
       std::vector<std::string> attrs = {"a1"};
       std::vector<size_t> buffer_el = {1};
-      auto parts = Array::partition_subarray<int>(
-          ctx, "cpp_unit_array", subarray, attrs, buffer_el, TILEDB_ROW_MAJOR);
+      auto parts = array.partition_subarray<int>(
+          subarray, attrs, buffer_el, TILEDB_ROW_MAJOR);
       CHECK(parts.size() == 2);
       CHECK(parts[0][0] == 0);
       CHECK(parts[0][1] == 0);
@@ -143,6 +144,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(parts[1][1] == 1);
       CHECK(parts[1][2] == 0);
       CHECK(parts[1][3] == 0);
+      array.close();
     }
 
     {
@@ -157,8 +159,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
           Point{{0, 0, 0}, 0});
       std::fill(std::begin(a5), std::end(a5), Point{{0, 0, 0}, 0});
 
-      auto buff_el =
-          Array::max_buffer_elements(ctx, "cpp_unit_array", subarray);
+      Array array(ctx, "cpp_unit_array");
+
+      auto buff_el = array.max_buffer_elements(subarray);
       CHECK(buff_el.count("a1"));
       CHECK(buff_el.count("a2"));
       CHECK(buff_el.count("a3"));
@@ -175,7 +178,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(buff_el["a5"].first == 0);
       CHECK(buff_el["a5"].second >= 2);
 
-      Array array(ctx, "cpp_unit_array");
       Query query(ctx, array, TILEDB_READ);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
@@ -246,6 +248,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     for (size_t i = 0; i < num_dummies; i++) {
       a1.push_back(0);
     }
+
     Array array(ctx, "cpp_unit_array");
     Query query(ctx, array, TILEDB_WRITE);
     query.set_subarray(subarray);
@@ -253,14 +256,16 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     query.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
     REQUIRE_NOTHROW(query.finalize());
+    array.close();
 
-    auto non_empty =
-        tiledb::Array::non_empty_domain<int>(ctx, "cpp_unit_array");
+    Array array_read(ctx, "cpp_unit_array");
+    auto non_empty = array_read.non_empty_domain<int>();
+    REQUIRE(non_empty.size() == 2);
     CHECK(non_empty[0].second.first == 0);
     CHECK(non_empty[0].second.second == d1_tile - 1);
     CHECK(non_empty[1].second.first == 0);
     CHECK(non_empty[1].second.second == d2_tile - 1);
-    array.close();
+    array_read.close();
   }
 
   SECTION("Global order write - no dummy values") {

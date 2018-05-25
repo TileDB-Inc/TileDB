@@ -116,6 +116,12 @@ struct tiledb_attribute_t {
 
 struct tiledb_array_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
+  // This variable determines whether to delete `array_schema_` or not.
+  // If this struct object was created with `tiledb_array_schema_create`,
+  // `should_delete` must is set to `true`. If it was created with
+  // `tiledb_array_get_schema`, then `should_delete` is set to `false`,
+  // since `array_schema_` is borrowed in this case from the open array.
+  bool should_delete_;
 };
 
 struct tiledb_dimension_t {
@@ -1213,13 +1219,16 @@ int tiledb_array_schema_create(
     return TILEDB_OOM;
   }
 
+  (*array_schema)->should_delete_ = true;
+
   // Success
   return TILEDB_OK;
 }
 
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   if (array_schema != nullptr && *array_schema != nullptr) {
-    delete (*array_schema)->array_schema_;
+    if ((*array_schema)->should_delete_)
+      delete (*array_schema)->array_schema_;
     delete *array_schema;
     *array_schema = nullptr;
   }
@@ -1804,6 +1813,30 @@ void tiledb_array_free(tiledb_array_t** array) {
     delete *array;
     *array = nullptr;
   }
+}
+
+int tiledb_array_get_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_array_schema_t** array_schema) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB array schema");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  (*array_schema)->array_schema_ = array->open_array_->array_schema();
+  (*array_schema)->should_delete_ = false;
+
+  return TILEDB_OK;
 }
 
 int tiledb_array_create(

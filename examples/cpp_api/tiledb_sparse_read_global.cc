@@ -48,8 +48,7 @@ int main() {
   tiledb::Array array(ctx, "my_sparse_array");
 
   // Print non-empty domain
-  auto domain =
-      tiledb::Array::non_empty_domain<uint64_t>(ctx, "my_sparse_array");
+  auto domain = array.non_empty_domain<uint64_t>();
   std::cout << "Non empty domain:\n";
   for (const auto& d : domain) {
     std::cout << d.first << ": (" << d.second.first << ", " << d.second.second
@@ -58,8 +57,7 @@ int main() {
 
   // Print maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {1, 4, 1, 4};
-  auto max_sizes =
-      tiledb::Array::max_buffer_elements(ctx, "my_sparse_array", subarray);
+  auto max_sizes = array.max_buffer_elements(subarray);
   std::cout << "\nMaximum buffer elements:\n";
   for (const auto& e : max_sizes) {
     std::cout << e.first << ": (" << e.second.first << ", " << e.second.second

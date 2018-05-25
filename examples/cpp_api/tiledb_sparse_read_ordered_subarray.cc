@@ -51,8 +51,7 @@ int main() {
 
   // Calculate maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};
-  auto max_sizes =
-      tiledb::Array::max_buffer_elements(ctx, "my_sparse_array", subarray);
+  auto max_sizes = array.max_buffer_elements(subarray);
 
   // Prepare cell buffers
   std::vector<int> a1_buff(max_sizes["a1"].second);
