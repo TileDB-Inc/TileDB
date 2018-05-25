@@ -215,12 +215,28 @@ TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
+  map.close();
 
+  // Check reopening
+  map.open(ctx, "cpp_unit_map");
+  CHECK(map[0]["val"].get<std::string>() == "0");
+  CHECK(map[1]["val"].get<std::string>() == "12");
+  CHECK(map[2].get<std::string>() == "123");  // implicit
+
+  // Check opening without closing
+  map.open(ctx, "cpp_unit_map");
+  CHECK(map[0]["val"].get<std::string>() == "0");
+  CHECK(map[1]["val"].get<std::string>() == "12");
+  CHECK(map[2].get<std::string>() == "123");  // implicit
   map.close();
 }
 
 TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map iter", "[cppapi]") {
   Map map(ctx, "cpp_unit_map");
+
+  // Test closing and reopening
+  map.close();
+  map.open(ctx, "cpp_unit_map");
 
   std::vector<std::string> vals;
   for (auto& item : map) {

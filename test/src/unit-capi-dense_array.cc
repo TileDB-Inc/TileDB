@@ -1211,12 +1211,15 @@ void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
     buffers.push_back(new int[buffer_sizes.back()[0] / sizeof(int)]);
   }
 
+  // TODO: open an array here
+
   // Write multiple subarrays in parallel with a shared context.
   for (int i = 0; i < nthreads; i++) {
     threads.emplace_back([&, i]() {
       const int writes_per_thread = 5;
       for (int j = 0; j < writes_per_thread; j++) {
         write_dense_subarray_2D(
+            // TODO: pass open array here
             array_name,
             subarrays[i].data(),
             TILEDB_WRITE,
@@ -1230,6 +1233,8 @@ void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
   for (auto& t : threads) {
     t.join();
   }
+
+  // TODO: close the array here
 
   for (int* buffer : buffers) {
     delete[] buffer;

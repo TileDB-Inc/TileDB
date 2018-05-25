@@ -95,11 +95,10 @@ Status StorageManager::array_close(const URI& array_uri) {
   // Find the open array entry
   auto it = open_arrays_.find(array_uri.to_string());
 
-  // Sanity check
+  // Do nothing if array is closed
   if (it == open_arrays_.end()) {
     open_array_mtx_.unlock();
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot close array; Open array entry not found"));
+    return Status::Ok();
   }
 
   // For easy reference
@@ -177,6 +176,9 @@ Status StorageManager::array_open(
   }
 
   // Get fragment metadata in the case of reads, if not fetched already
+
+  // TODO: proper care for this, when we have multiple reads/writes
+
   if ((*open_array)->fragment_metadata_empty()) {
     auto st = load_fragment_metadata(*open_array);
     if (!st.ok()) {

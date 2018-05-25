@@ -112,6 +112,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
 
     try {
       Array array(ctx, "cpp_unit_array");
+
+      // Close and reopen
+      array.close();
+      array.open(ctx, "cpp_unit_array");
+
       Query query(ctx, array, TILEDB_WRITE);
       query.set_subarray(subarray);
       query.set_buffer("a1", a1);

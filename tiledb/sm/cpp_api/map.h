@@ -612,6 +612,7 @@ class Map {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
+    is_open_ = true;
   }
 
   Map(const Map&) = default;
@@ -772,11 +773,25 @@ class Map {
     return iter_end_;
   }
 
+  void open(const Context& ctx, const std::string& uri) {
+    if (is_open_)
+      close();
+    schema_ = MapSchema(ctx, uri);
+    uri_ = uri;
+    tiledb_kv_t* kv;
+    ctx.handle_error(tiledb_kv_open(ctx, &kv, uri.c_str(), nullptr, 0));
+    kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
+    iter_ = MapIter(*this);
+    iter_end_ = MapIter(*this, true);
+    is_open_ = true;
+  }
+
   /** Close the map. */
   void close() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
     iter_.finalize();
+    is_open_ = false;
   }
 
   /* ********************************* */
@@ -834,6 +849,9 @@ class Map {
 
   /** Closes the map on destruction. **/
   impl::Deleter deleter_;
+
+  /** True if the map is open. */
+  bool is_open_;
 
   /** URI **/
   std::string uri_;
