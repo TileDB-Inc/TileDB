@@ -49,6 +49,7 @@ Status init_openssl() {
 #else
 
 #include <openssl/crypto.h>
+#include <openssl/opensslv.h>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -56,6 +57,10 @@ Status init_openssl() {
 namespace tiledb {
 namespace sm {
 namespace global_state {
+
+// OpenSSL older than 1.1.0 needs lock callbacks to be set.
+#if ((OPENSSL_VERSION_NUMBER & 0xff000000) >> 24 < 0x10) || \
+    ((OPENSSL_VERSION_NUMBER & 0x00ff0000) >> 16 < 0x10)
 
 /** Vector of lock objects for use by OpenSSL. */
 static std::vector<std::unique_ptr<std::mutex>> openssl_locks;
@@ -87,6 +92,14 @@ Status init_openssl() {
   CRYPTO_set_locking_callback(openssl_lock_cb);
   return Status::Ok();
 }
+
+#else  // OpenSSL >= 1.1.0
+
+Status init_openssl() {
+  return Status::Ok();
+}
+
+#endif
 
 }  // namespace global_state
 }  // namespace sm
