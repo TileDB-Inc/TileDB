@@ -274,9 +274,14 @@ void AsyncFx::write_dense_async() {
   };
   // clang-format on
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -303,7 +308,12 @@ void AsyncFx::write_dense_async() {
   // Check correct execution of callback
   CHECK(callback_made == 1);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -338,10 +348,15 @@ void AsyncFx::write_sparse_async() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -365,10 +380,15 @@ void AsyncFx::write_sparse_async() {
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Check correct execution of callback
   CHECK(callback_made == 1);
 
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -403,10 +423,15 @@ void AsyncFx::write_sparse_async_cancelled() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -452,20 +477,26 @@ void AsyncFx::write_sparse_async_cancelled() {
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
 void AsyncFx::read_dense_async() {
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
 
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
   uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
-  int rc = tiledb_array_compute_max_read_buffer_sizes(
+  rc = tiledb_array_compute_max_read_buffer_sizes(
       ctx_, array, subarray, attributes, 3, &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
@@ -478,7 +509,7 @@ void AsyncFx::read_dense_async() {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -527,7 +558,8 @@ void AsyncFx::read_dense_async() {
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Close array
-  tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
@@ -537,13 +569,14 @@ void AsyncFx::read_dense_async() {
 void AsyncFx::read_sparse_async() {
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
 
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   uint64_t buffer_sizes[5];
   uint64_t subarray[] = {1, 4, 1, 4};
-  int rc = tiledb_array_compute_max_read_buffer_sizes(
+  rc = tiledb_array_compute_max_read_buffer_sizes(
       ctx_, array, subarray, attributes, 4, &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
 
@@ -558,7 +591,7 @@ void AsyncFx::read_sparse_async() {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -614,7 +647,8 @@ void AsyncFx::read_sparse_async() {
   CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
   // Close array
-  tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

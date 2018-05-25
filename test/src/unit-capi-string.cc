@@ -169,10 +169,15 @@ void StringFx::write_array(const std::string& array_name) {
                              4 * sizeof(uint64_t),
                              sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
 
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -186,7 +191,12 @@ void StringFx::write_array(const std::string& array_name) {
   rc = tiledb_query_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
@@ -202,7 +212,8 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -228,7 +239,7 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx, query, attributes, 3, buffers, buffer_sizes);
@@ -266,7 +277,8 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(buffer_a3_offsets[3] == UTF16_OFFSET_3);
 
   // Close array
-  tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

@@ -115,6 +115,11 @@ void AnyFx::write_array(const std::string& array_name) {
   int rc = tiledb_ctx_create(&ctx, NULL);
   REQUIRE(rc == TILEDB_OK);
 
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Prepare buffers
   uint64_t buffer_a1_offsets[4];
   char buffer_a1[28];
@@ -145,7 +150,7 @@ void AnyFx::write_array(const std::string& array_name) {
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1"};
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -161,7 +166,12 @@ void AnyFx::write_array(const std::string& array_name) {
   rc = tiledb_query_finalize(ctx, query);  // Second time must create no problem
   REQUIRE(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
@@ -174,7 +184,8 @@ void AnyFx::read_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
 
   // Get maximum buffer sizes
   const char* attributes[] = {"a1"};
@@ -191,7 +202,7 @@ void AnyFx::read_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx, query, attributes, 1, buffers, buffer_sizes);
@@ -228,7 +239,8 @@ void AnyFx::read_array(const std::string& array_name) {
       !std::memcmp(&buffer_a1[buffer_a1_offsets[3] + 1], &C4, sizeof(double)));
 
   // Close array
-  tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

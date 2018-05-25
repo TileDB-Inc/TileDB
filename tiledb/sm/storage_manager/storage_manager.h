@@ -457,7 +457,7 @@ class StorageManager {
    * Creates a query.
    *
    * @param query The query to initialize.
-   * @param array_name The name of the array the query targets at.
+   * @param open_array An opened array.
    * @param type The query type.
    * @param fragment_uri This is applicable only to write queries. This is
    *     to indicate that the new fragment created by a write will have
@@ -468,7 +468,7 @@ class StorageManager {
    */
   Status query_create(
       Query** query,
-      const char* array_name,
+      OpenArray* open_array,
       QueryType type,
       URI fragment_uri = URI(""));
 

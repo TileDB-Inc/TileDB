@@ -1588,7 +1588,7 @@ int tiledb_array_schema_get_attribute_from_name(
 int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
-    const char* array_uri,
+    tiledb_array_t* array,
     tiledb_query_type_t type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -1609,7 +1609,7 @@ int tiledb_query_create(
           ctx,
           ctx->storage_manager_->query_create(
               &((*query)->query_),
-              array_uri,
+              array->open_array_,
               static_cast<tiledb::sm::QueryType>(type)))) {
     delete (*query)->query_;
     delete *query;

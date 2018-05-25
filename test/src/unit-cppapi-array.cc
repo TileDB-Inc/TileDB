@@ -83,7 +83,8 @@ struct CPPArrayFx {
 
 TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
   SECTION("Make Buffer") {
-    Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+    Array array(ctx, "cpp_unit_array");
+    Query query(ctx, array, TILEDB_WRITE);
     CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
     CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
     std::vector<int> subarray = {0, 5, 0, 5};
@@ -93,6 +94,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     // and we won't be able to delete the array in between tests on Windows
     // (which has stricter file removal rules).
     query.finalize();
+    array.close();
   }
 
   SECTION("Read/Write") {
@@ -109,7 +111,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     std::vector<int> subarray = {0, 1, 0, 0};
 
     try {
-      Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+      Array array(ctx, "cpp_unit_array");
+      Query query(ctx, array, TILEDB_WRITE);
       query.set_subarray(subarray);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
@@ -121,6 +124,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       query.finalize();
+      array.close();
     } catch (std::exception& e) {
       std::cout << e.what() << std::endl;
     }
@@ -171,7 +175,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(buff_el["a5"].first == 0);
       CHECK(buff_el["a5"].second >= 2);
 
-      Query query(ctx, "cpp_unit_array", TILEDB_READ);
+      Array array(ctx, "cpp_unit_array");
+      Query query(ctx, array, TILEDB_READ);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3);
@@ -186,6 +191,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       query.finalize();
+      array.close();
 
       auto ret = query.result_buffer_elements();
       REQUIRE(ret.size() == 5);
@@ -240,8 +246,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     for (size_t i = 0; i < num_dummies; i++) {
       a1.push_back(0);
     }
-
-    Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+    Array array(ctx, "cpp_unit_array");
+    Query query(ctx, array, TILEDB_WRITE);
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
     query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -254,17 +260,20 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     CHECK(non_empty[0].second.second == d1_tile - 1);
     CHECK(non_empty[1].second.first == 0);
     CHECK(non_empty[1].second.second == d2_tile - 1);
+    array.close();
   }
 
   SECTION("Global order write - no dummy values") {
     std::vector<int> a1 = {1, 2};
     std::vector<int> subarray = {0, 1, 0, 0};
-    Query query(ctx, "cpp_unit_array", TILEDB_WRITE);
+    Array array(ctx, "cpp_unit_array");
+    Query query(ctx, array, TILEDB_WRITE);
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
     query.set_layout(TILEDB_GLOBAL_ORDER);
     // Incorrect subarray for global order
     REQUIRE_THROWS(query.submit());
     query.finalize();
+    array.close();
   }
 }

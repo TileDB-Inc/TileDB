@@ -69,6 +69,10 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, "my_dense_array", &array);
+
   // Prepare cell buffers. Notice that this time we prepare a buffer only for
   // `a1` (as we will not be querying the rest of the attributes) and we assign
   // space that **will not** be able to hold the entire result.
@@ -82,7 +86,7 @@ int main() {
   tiledb_query_t* query;
   const char* attributes[] = {"a1"};
   uint64_t subarray[] = {3, 4, 2, 4};
-  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
+  tiledb_query_create(ctx, &query, array, TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffers(ctx, query, attributes, 1, buffers, buffer_sizes);
@@ -114,7 +118,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 

@@ -1074,22 +1074,12 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_finalize(Query* query) {
-  auto array_uri = query->array_schema()->array_uri();
-  auto st_query = query->finalize();
-  auto st_array = array_close(array_uri);
-
-  if (!st_query.ok())
-    return st_query;
-  if (!st_array.ok())
-    return st_array;
-  return Status::Ok();
+  return query->finalize();
 }
 
 Status StorageManager::query_create(
-    Query** query, const char* array_name, QueryType type, URI fragment_uri) {
-  // Open the array
-  auto open_array = (OpenArray*)nullptr;
-  RETURN_NOT_OK(array_open(URI(array_name), &open_array));
+    Query** query, OpenArray* open_array, QueryType type, URI fragment_uri) {
+  // For easy reference
   auto array_schema = open_array->array_schema();
   auto metadata = open_array->fragment_metadata();
 

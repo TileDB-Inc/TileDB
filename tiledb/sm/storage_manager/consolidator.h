@@ -125,7 +125,7 @@ class Consolidator {
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
    * @param write_subarray The subarray to write into.
-   * @param array_name The array name.
+   * @param open_array The opened array.
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param fragment_num The number of fragments to be retrieved.
@@ -135,7 +135,7 @@ class Consolidator {
       Query** query_r,
       Query** query_w,
       void* write_subarray,
-      const char* array_name,
+      OpenArray* open_array,
       void** buffers,
       uint64_t* buffer_sizes,
       unsigned int* fragment_num);

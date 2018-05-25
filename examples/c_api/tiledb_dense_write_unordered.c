@@ -51,6 +51,10 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx, NULL);
 
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_open(ctx, "my_dense_array", &array);
+
   // We prepare buffers to write 4 cells on all three attributes. Observe
   // that now we need to prepare an extra buffer to specify the coordinates
   // of these cells, as TileDB otherwise would not know which (scattered)
@@ -75,7 +79,7 @@ int main() {
   // we are writing random cells.
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
+  tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
 
@@ -85,7 +89,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 

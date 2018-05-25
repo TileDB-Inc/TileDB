@@ -47,6 +47,9 @@ int main() {
   // Create TileDB context
   tiledb::Context ctx;
 
+  // Open array
+  tiledb::Array array(ctx, "my_dense_array");
+
   // Calcuate maximum buffer sizes for the query results per attribute
   const std::vector<uint64_t> subarray = {1, 4, 1, 4};
   auto max_sizes =
@@ -59,7 +62,7 @@ int main() {
   std::vector<float> a3_buff(max_sizes["a3"].second);
 
   // Create query
-  tiledb::Query query(ctx, "my_dense_array", TILEDB_READ);
+  tiledb::Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_buffer("a1", a1_buff);
   query.set_buffer("a2", a2_offsets, a2_data);
@@ -93,6 +96,9 @@ int main() {
               << std::string(a2[i].data(), a2[i].size()) << std::setw(10)
               << a3[i][0] << std::setw(10) << a3[i][1] << '\n';
   }
+
+  // Close array
+  array.close();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

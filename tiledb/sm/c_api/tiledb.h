@@ -1820,13 +1820,15 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
  * **Example:**
  *
  * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_open(ctx, "file:///my_array", &array);
  * tiledb_query_t* query;
- * tiledb_query_create(ctx, &query, "file:///my_array", TILEDB_READ);
+ * tiledb_query_create(ctx, &query, array, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param query The query object to be created.
- * @param array_uri The name of the array the query will focus on.
+ * @param array An opened array object.
  * @param type The query type, which must be one of the following:
  *    - `TILEDB_WRITE`
  *    - `TILEDB_READ`
@@ -1835,7 +1837,7 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
 TILEDB_EXPORT int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
-    const char* array_uri,
+    tiledb_array_t* array,
     tiledb_query_type_t type);
 
 /**

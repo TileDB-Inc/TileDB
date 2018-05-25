@@ -94,10 +94,11 @@ Status KVIter::init(
 }
 
 Status KVIter::finalize() {
-  auto st = finalize_read_query();
+  RETURN_NOT_OK(finalize_read_query());
+  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
   clear();
 
-  return st;
+  return Status::Ok();
 }
 
 Status KVIter::next() {
@@ -128,9 +129,11 @@ void KVIter::clear() {
 }
 
 Status KVIter::init_read_query() {
+  auto open_array = kv_->open_array();
+
   // Create and init query
-  RETURN_NOT_OK(storage_manager_->query_create(
-      &query_, kv_uri_.c_str(), QueryType::READ));
+  RETURN_NOT_OK(
+      storage_manager_->query_create(&query_, open_array, QueryType::READ));
 
   // Set buffers
   read_buffers_[0] = new (std::nothrow) uint64_t[2 * max_item_num_];

@@ -222,12 +222,17 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   const char* attributes[] = {ATTR_NAME};
 
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   int64_t buffer_val[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   // Write array
   void* write_buffers[] = {buffer_val};
   uint64_t write_buffer_sizes[] = {sizeof(buffer_val)};
   tiledb_query_t* write_query;
-  rc = tiledb_query_create(ctx_, &write_query, path.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &write_query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, write_query, attributes, 1, write_buffers, write_buffer_sizes);
@@ -238,6 +243,13 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, write_query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&write_query);
 }
 
@@ -251,7 +263,12 @@ void DenseVectorFx::check_read(
   tiledb_query_t* read_query = nullptr;
   const char* attributes[] = {ATTR_NAME};
 
-  int rc = tiledb_query_create(ctx_, &read_query, path.c_str(), TILEDB_READ);
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_create(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
@@ -264,11 +281,18 @@ void DenseVectorFx::check_read(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_query_free(&read_query);
 
   CHECK(buffer[0] == 0);
   CHECK(buffer[1] == 1);
   CHECK(buffer[2] == 2);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&read_query);
 }
 
 void DenseVectorFx::check_update(const std::string& path) {
@@ -278,9 +302,14 @@ void DenseVectorFx::check_update(const std::string& path) {
   void* update_buffers[] = {update_buffer};
   uint64_t update_buffer_sizes[] = {sizeof(update_buffer)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Update
   tiledb_query_t* update_query;
-  int rc = tiledb_query_create(ctx_, &update_query, path.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &update_query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, update_query, attributes, 1, update_buffers, update_buffer_sizes);
@@ -293,14 +322,25 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, update_query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&update_query);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
 
   // Read
   int64_t buffer[] = {0, 0, 0};
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
   tiledb_query_t* read_query = nullptr;
-  rc = tiledb_query_create(ctx_, &read_query, path.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
@@ -313,12 +353,24 @@ void DenseVectorFx::check_update(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&read_query);
 
   CHECK((buffer[0] == 9 && buffer[1] == 8 && buffer[2] == 7));
 }
 
 void DenseVectorFx::check_duplicate_coords(const std::string& path) {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   const int64_t num_writes = 5;
   for (int64_t write_num = 0; write_num < num_writes; write_num++) {
     const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
@@ -330,8 +382,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
 
     // Update
     tiledb_query_t* update_query;
-    int rc =
-        tiledb_query_create(ctx_, &update_query, path.c_str(), TILEDB_WRITE);
+    rc = tiledb_query_create(ctx_, &update_query, array, TILEDB_WRITE);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_buffers(
         ctx_, update_query, attributes, 2, update_buffers, update_buffer_sizes);
@@ -345,6 +396,17 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
     tiledb_query_free(&update_query);
   }
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Read
   uint64_t subarray[] = {7, 9};
   const char* attributes[] = {ATTR_NAME};
@@ -352,7 +414,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
   tiledb_query_t* read_query = nullptr;
-  int rc = tiledb_query_create(ctx_, &read_query, path.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
@@ -365,6 +427,13 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, read_query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&read_query);
 
   CHECK(

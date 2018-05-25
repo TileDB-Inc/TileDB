@@ -376,14 +376,15 @@ int* SparseArrayFx::read_sparse_array_2D(
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
 
   // Subset over a specific attribute
   const char* attributes[] = {ATTR_NAME};
 
   // Prepare the buffers that will store the result
   uint64_t max_buffer_sizes[1];
-  int rc = tiledb_array_compute_max_read_buffer_sizes(
+  rc = tiledb_array_compute_max_read_buffer_sizes(
       ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
@@ -394,7 +395,7 @@ int* SparseArrayFx::read_sparse_array_2D(
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_create(ctx_, &query, array_name.c_str(), query_type);
+  rc = tiledb_query_create(ctx_, &query, array, query_type);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -407,13 +408,16 @@ int* SparseArrayFx::read_sparse_array_2D(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
-  tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 
-  // Free/finalize query
+  // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
@@ -448,9 +452,14 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
   // Set attributes
   const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 2, buffers, buffer_sizes);
@@ -461,10 +470,17 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
-  // Free/finalize query
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Clean up
@@ -627,6 +643,8 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
 
   // Clean up
   tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
@@ -664,10 +682,15 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -678,10 +701,17 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
+
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -730,10 +760,15 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -747,7 +782,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
@@ -797,10 +837,15 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -814,7 +859,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean WRITE up
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -831,8 +881,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
                                sizeof(r_buffer_a3),
                                sizeof(r_buffer_coords)};
 
+  // Open array
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create READ query
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
@@ -845,9 +899,6 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
-
-  // Clean READ up
-  tiledb_query_free(&query);
 
   // Check correctness
   int c_buffer_a1[] = {0, 1, 2, 3, 6, 7, 5};
@@ -874,6 +925,13 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   CHECK(!memcmp(r_buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   CHECK(!memcmp(r_buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
 
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
 
@@ -922,10 +980,15 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -939,7 +1002,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean WRITE up
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -956,8 +1024,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
                                sizeof(r_buffer_a3),
                                sizeof(r_buffer_coords)};
 
+  // Open array
+  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create READ query
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
@@ -971,7 +1043,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean READ up
+  // Close array
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Check correctness
@@ -1020,10 +1097,15 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -1037,7 +1119,12 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1086,10 +1173,15 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -1100,10 +1192,17 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
   // Submit query - this is unsafe but it should be passing
   rc = tiledb_query_submit(ctx, query);
   CHECK(rc == TILEDB_OK);
+
+  // Finalize query
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
@@ -1153,10 +1252,15 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -1170,7 +1274,12 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean WRITE up
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -1187,8 +1296,12 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
                                sizeof(r_buffer_a3),
                                sizeof(r_buffer_coords)};
 
+  // Open array
+  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create READ query
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -1199,10 +1312,17 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   // Submit READ query
   rc = tiledb_query_submit(ctx, query);
   CHECK(rc == TILEDB_OK);
+
+  // Finalize query
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean READ up
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Check correctness
@@ -1279,10 +1399,15 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -1296,7 +1421,12 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean WRITE up
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -1313,8 +1443,12 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
                                sizeof(r_buffer_a3),
                                sizeof(r_buffer_coords)};
 
+  // Open array
+  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create READ query
-  rc = tiledb_query_create(ctx, &query, array_name.c_str(), TILEDB_READ);
+  rc = tiledb_query_create(ctx, &query, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -1328,7 +1462,12 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
-  // Clean READ up
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Check correctness
@@ -1395,10 +1534,15 @@ void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
                              sizeof(buffer_a3),
                              sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, array_name.c_str(), TILEDB_WRITE);
+  rc = tiledb_query_create(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
@@ -1412,7 +1556,12 @@ void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 

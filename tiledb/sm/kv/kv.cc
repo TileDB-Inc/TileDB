@@ -57,10 +57,11 @@ KV::KV(StorageManager* storage_manager)
   read_buffers_ = nullptr;
   read_buffer_sizes_ = nullptr;
   read_buffer_num_ = 0;
+  open_array_ = nullptr;
 }
 
 KV::~KV() {
-  finalize();
+  clear();
 }
 
 /* ********************************* */
@@ -73,8 +74,10 @@ Status KV::init(
     unsigned attribute_num,
     bool include_keys) {
   kv_uri_ = URI(kv_uri);
-  RETURN_NOT_OK(storage_manager_->load_array_schema(
-      kv_uri_, ObjectType::KEY_VALUE, &schema_));
+  // Open the array
+  if (open_array_ == nullptr)
+    RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array_));
+  schema_ = open_array_->array_schema();
 
   if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
     write_good_ = true;
@@ -119,17 +122,19 @@ void KV::clear() {
   read_attribute_var_sizes_.clear();
   read_attribute_types_.clear();
   write_attribute_var_sizes_.clear();
-  delete schema_;
   schema_ = nullptr;
   kv_uri_ = URI("");
 
   clear_items();
   clear_query_attributes();
   clear_query_buffers();
+
+  open_array_ = nullptr;
 }
 
 Status KV::finalize() {
-  RETURN_NOT_OK(flush());
+  RETURN_NOT_OK(flush(false));
+  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
   clear();
 
   return Status::Ok();
@@ -217,6 +222,9 @@ Status KV::get_item(
 }
 
 Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
+  // Take the lock
+  std::unique_lock<std::mutex> lck(mtx_);
+
   // Create key-value item
   *kv_item = new (std::nothrow) KVItem();
   if (*kv_item == nullptr)
@@ -313,23 +321,22 @@ Status KV::has_key(
   return Status::Ok();
 }
 
-Status KV::flush() {
+Status KV::flush(bool reopen_array) {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
   // No items to flush
-  if (items_.empty()) {
+  if (items_.empty())
     return Status::Ok();
-  }
 
-  auto st = prepare_write_buffers();
-  if (!st.ok()) {
-    return st;
-  }
+  RETURN_NOT_OK(prepare_write_buffers());
 
-  st = submit_write_query();
-  if (st.ok())
+  auto st = submit_write_query();
+  if (st.ok()) {
     clear_items();
+    if (reopen_array)
+      RETURN_NOT_OK(this->reopen_array());
+  }
 
   return st;
 }
@@ -338,6 +345,10 @@ void KV::clear_items() {
   for (auto& i : items_)
     delete i.second;
   items_.clear();
+}
+
+OpenArray* KV::open_array() const {
+  return open_array_;
 }
 
 Status KV::set_max_buffered_items(uint64_t max_items) {
@@ -611,18 +622,13 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[2] = hash.second;
   subarray[3] = hash.second;
 
-  auto open_array = (OpenArray*)nullptr;
-  RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array));
-
   // Compute max buffer sizes
   RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
-      open_array,
+      open_array_,
       subarray,
       (const char**)read_attributes_,
       read_attribute_num_,
       read_buffer_sizes_));
-
-  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
 
   // Potentially reallocate read buffers
   RETURN_NOT_OK(realloc_read_buffers());
@@ -654,11 +660,18 @@ Status KV::realloc_read_buffers() {
   return Status::Ok();
 }
 
+Status KV::reopen_array() {
+  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
+  RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array_));
+  schema_ = open_array_->array_schema();
+  return Status::Ok();
+}
+
 Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
-      storage_manager_->query_create(&query, kv_uri_.c_str(), QueryType::READ));
+      storage_manager_->query_create(&query, open_array_, QueryType::READ));
   RETURN_NOT_OK_ELSE(
       query->set_buffers(
           (const char**)read_attributes_,
@@ -670,7 +683,6 @@ Status KV::submit_read_query(const uint64_t* subarray) {
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
-
   delete query;
 
   return Status::Ok();
@@ -678,8 +690,8 @@ Status KV::submit_read_query(const uint64_t* subarray) {
 
 Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
-  RETURN_NOT_OK(storage_manager_->query_create(
-      &query, kv_uri_.c_str(), QueryType::WRITE));
+  RETURN_NOT_OK(
+      storage_manager_->query_create(&query, open_array_, QueryType::WRITE));
   RETURN_NOT_OK_ELSE(
       query->set_buffers(
           (const char**)write_attributes_,
@@ -689,6 +701,7 @@ Status KV::submit_write_query() {
       delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
+  delete query;
 
   return Status::Ok();
 }

@@ -119,7 +119,7 @@ int main() {
   // for the query, which means that we wish to get all the array cells.
   tiledb_query_t* query;
 
-  tiledb_query_create(ctx, &query, "my_sparse_array", TILEDB_READ);
+  tiledb_query_create(ctx, &query, array, TILEDB_READ);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 4, buffers, buffer_sizes);
 

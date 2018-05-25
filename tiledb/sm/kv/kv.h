@@ -77,8 +77,14 @@ class KV {
   /** Adds a key-value item to the store. */
   Status add_item(const KVItem* kv_item);
 
-  /** Flushes the buffered written items to persistent storage. */
-  Status flush();
+  /**
+   * Flushes the buffered written items to persistent storage.
+   *
+   * @param reopen_array If `true`, the array will be reopened (eg to
+   *     continue writing or reading).
+   * @return Status
+   */
+  Status flush(bool reopen_array = true);
 
   /**
    * Gets a key-value item from the key-value store. This function first
@@ -144,6 +150,9 @@ class KV {
    */
   Status finalize();
 
+  /** The open array used for dispatching queries. */
+  OpenArray* open_array() const;
+
   /** Sets the number of maximum written items buffered before being flushed. */
   Status set_max_buffered_items(uint64_t max_items);
 
@@ -157,6 +166,9 @@ class KV {
    * Note that these exclude the special key attributes and coordinates.
    */
   std::vector<std::string> attributes_;
+
+  /** The array object that will receive the queries. */
+  OpenArray* open_array_;
 
   /**
    * Indicates whether an attribute is variable-sized or not.
@@ -247,7 +259,7 @@ class KV {
   uint64_t max_items_;
 
   /** The key-value store schema. */
-  ArraySchema* schema_;
+  const ArraySchema* schema_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
@@ -329,6 +341,11 @@ class KV {
    * read query.
    */
   Status realloc_read_buffers();
+
+  /**
+   * After each flush to the disk, `open_array_` must be closed and re-opened.
+   */
+  Status reopen_array();
 
   /** Submits a read query. */
   Status submit_read_query(const uint64_t* subarray);

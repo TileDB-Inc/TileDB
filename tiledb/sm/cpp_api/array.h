@@ -51,6 +51,46 @@ namespace tiledb {
 class Array {
  public:
   /**
+   * Constructor.
+   *
+   * @param array_uri The array URI.
+   */
+  Array(const Context& ctx, const std::string& array_uri)
+      : ctx_(ctx)
+      , uri_(array_uri) {
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_open(ctx, array_uri.c_str(), &array));
+    array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+  }
+
+  Array(const Array&) = default;
+  Array(Array&& array) = default;
+  Array& operator=(const Array&) = default;
+  Array& operator=(Array&& o) = default;
+
+  /** Returns the array URI. */
+  std::string uri() const {
+    return uri_;
+  }
+
+  /** Returns a shared pointer to the C TileDB array object. */
+  std::shared_ptr<tiledb_array_t> ptr() const {
+    return array_;
+  }
+
+  /** Auxiliary operator for getting the underlying C TileDB object. */
+  operator tiledb_array_t*() const {
+    return array_.get();
+  }
+
+  /** Closes the array. */
+  void close() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_close(ctx, array_.get()));
+    array_ = nullptr;
+  }
+
+  /**
    * Consolidates the fragments of an array into a single fragment.
    *
    * You must first finalize all queries to the array before consolidation can
@@ -337,6 +377,19 @@ class Array {
 
     return ret;
   }
+
+ private:
+  /** The TileDB context. */
+  std::reference_wrapper<const Context> ctx_;
+
+  /** Deleter wrapper. */
+  impl::Deleter deleter_;
+
+  /** Pointer to the TileDB C array object. */
+  std::shared_ptr<tiledb_array_t> array_;
+
+  /** The array URI. */
+  std::string uri_;
 };
 
 }  // namespace tiledb
