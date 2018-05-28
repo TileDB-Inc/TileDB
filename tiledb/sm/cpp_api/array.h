@@ -61,8 +61,8 @@ class Array {
       , uri_(array_uri) {
     tiledb_array_t* array;
     ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
-    ctx.handle_error(tiledb_array_open(ctx, array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+    ctx.handle_error(tiledb_array_open(ctx, array));
 
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));

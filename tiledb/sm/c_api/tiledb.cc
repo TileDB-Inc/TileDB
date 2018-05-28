@@ -140,10 +140,19 @@ struct tiledb_query_t {
 
 struct tiledb_kv_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
+  // This variable determines whether to delete `kv_schema_` or not.
+  // If this struct object was created with `tiledb_kv_schema_create`,
+  // `should_delete` must is set to `true`. If it was created with
+  // `tiledb_kv_get_schema`, then `should_delete` is set to `false`,
+  // since `kv_schema_` is borrowed in this case from the open array
+  // of the kv object.
+  bool should_delete_;
 };
 
 struct tiledb_kv_t {
   tiledb::sm::KV* kv_;
+  tiledb::sm::URI kv_uri_;
+  bool is_open_;
 };
 
 struct tiledb_kv_item_t {
@@ -2142,13 +2151,16 @@ int tiledb_kv_schema_create(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
     return TILEDB_ERR;
   }
 
+  (*kv_schema)->should_delete_ = true;
+
   // Success
   return TILEDB_OK;
 }
 
 void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema) {
   if (kv_schema != nullptr && *kv_schema != nullptr) {
-    delete (*kv_schema)->array_schema_;
+    if ((*kv_schema)->should_delete_)
+      delete (*kv_schema)->array_schema_;
     delete *kv_schema;
     *kv_schema = nullptr;
   }
@@ -2584,12 +2596,7 @@ int tiledb_kv_set_max_buffered_items(
   return TILEDB_OK;
 }
 
-int tiledb_kv_open(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_t** kv,
-    const char* kv_uri,
-    const char** attributes,
-    unsigned int attribute_num) {
+int tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2603,6 +2610,7 @@ int tiledb_kv_open(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+  (*kv)->kv_ = nullptr;
 
   // Create a new key-value store object
   (*kv)->kv_ = new tiledb::sm::KV(ctx->storage_manager_);
@@ -2615,10 +2623,30 @@ int tiledb_kv_open(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+  (*kv)->kv_uri_ = tiledb::sm::URI(kv_uri);
+  (*kv)->is_open_ = false;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_open(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    const char** attributes,
+    unsigned int attribute_num) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // If the kv object is already open, do nothing
+  if (kv->is_open_)
+    return TILEDB_OK;
 
   // Prepare the key-value store
-  if (save_error(ctx, (*kv)->kv_->init(kv_uri, attributes, attribute_num)))
+  if (save_error(ctx, kv->kv_->init(kv->kv_uri_, attributes, attribute_num)))
     return TILEDB_ERR;
+
+  kv->is_open_ = true;
 
   return TILEDB_OK;
 }
@@ -2627,8 +2655,14 @@ int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // If the kv object is already closed, do nothing
+  if (!kv->is_open_)
+    return TILEDB_OK;
+
   if (save_error(ctx, kv->kv_->finalize()))
     return TILEDB_ERR;
+
+  kv->is_open_ = false;
 
   return TILEDB_OK;
 }
@@ -2639,6 +2673,26 @@ void tiledb_kv_free(tiledb_kv_t** kv) {
     delete *kv;
     *kv = nullptr;
   }
+}
+
+int tiledb_kv_get_schema(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_schema_t** kv_schema) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  *kv_schema = new (std::nothrow) tiledb_kv_schema_t;
+  if (*kv_schema == nullptr) {
+    auto st = tiledb::sm::Status::Error("Failed to allocate TileDB kv schema");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  (*kv_schema)->array_schema_ = kv->kv_->open_array()->array_schema();
+  (*kv_schema)->should_delete_ = false;
+
+  return TILEDB_OK;
 }
 
 int tiledb_kv_add_item(
@@ -2667,13 +2721,9 @@ int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
 /*          KEY-VALUE ITER        */
 /* ****************************** */
 
-int tiledb_kv_iter_create(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_iter_t** kv_iter,
-    const char* kv_uri,
-    const char** attributes,
-    unsigned int attribute_num) {
-  if (sanity_check(ctx) == TILEDB_ERR)
+int tiledb_kv_iter_alloc(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_iter_t** kv_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create KVIter struct
@@ -2698,25 +2748,13 @@ int tiledb_kv_iter_create(
   }
 
   // Initialize KVIter object
-  if (save_error(
-          ctx, (*kv_iter)->kv_iter_->init(kv_uri, attributes, attribute_num))) {
+  if (save_error(ctx, (*kv_iter)->kv_iter_->init(kv->kv_))) {
     delete (*kv_iter)->kv_iter_;
     delete (*kv_iter);
     return TILEDB_ERR;
   }
 
   // Success
-  return TILEDB_OK;
-}
-
-int tiledb_kv_iter_finalize(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, kv_iter) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (save_error(ctx, kv_iter->kv_iter_->finalize()))
-    return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 

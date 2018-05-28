@@ -77,14 +77,8 @@ class KV {
   /** Adds a key-value item to the store. */
   Status add_item(const KVItem* kv_item);
 
-  /**
-   * Flushes the buffered written items to persistent storage.
-   *
-   * @param reopen_array If `true`, the array will be reopened (eg to
-   *     continue writing or reading).
-   * @return Status
-   */
-  Status flush(bool reopen_array = true);
+  /** Flushes the buffered written items to persistent storage. */
+  Status flush();
 
   /**
    * Gets a key-value item from the key-value store. This function first
@@ -128,18 +122,13 @@ class KV {
    * @param attributes The attributes of the key-value store schema to focus on.
    *     Use `nullptr` to indicate **all** attributes.
    * @param attribute_num The number of attributes.
-   * @param include_keys If `true` the special key attributes will be included.
    * @return Status
    *
    * @note If the key-value store will be used for writes, `attributes` **must**
    *     be set to `nullptr`, indicating that all attributes will participate in
    *     the write.
    */
-  Status init(
-      const std::string& uri,
-      const char** attributes,
-      unsigned attribute_num,
-      bool include_keys = false);
+  Status init(const URI& uri, const char** attributes, unsigned attribute_num);
 
   /** Clears the key-value store. */
   void clear();
@@ -341,11 +330,6 @@ class KV {
    * read query.
    */
   Status realloc_read_buffers();
-
-  /**
-   * After each flush to the disk, `open_array_` must be closed and re-opened.
-   */
-  Status reopen_array();
 
   /** Submits a read query. */
   Status submit_read_query(const uint64_t* subarray);

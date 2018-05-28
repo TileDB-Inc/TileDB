@@ -77,26 +77,10 @@ Status KVIter::here(KVItem** kv_item) const {
   return kv_->get_item(hash, kv_item);
 }
 
-Status KVIter::init(
-    const std::string& kv_uri,
-    const char** attributes,
-    unsigned attribute_num) {
-  kv_uri_ = URI(kv_uri);
-  kv_ = new (std::nothrow) KV(storage_manager_);
-  if (kv_ == nullptr)
-    return LOG_STATUS(Status::KVIterError(
-        "Cannot initialize key-value iterator; Memory allocation failed"));
-  RETURN_NOT_OK(kv_->init(kv_uri, attributes, attribute_num, true));
+Status KVIter::init(KV* kv) {
+  kv_ = kv;
   RETURN_NOT_OK(init_read_query());
   RETURN_NOT_OK(submit_read_query());
-
-  return Status::Ok();
-}
-
-Status KVIter::finalize() {
-  RETURN_NOT_OK(finalize_read_query());
-  RETURN_NOT_OK(kv_->finalize());
-  clear();
 
   return Status::Ok();
 }
@@ -115,7 +99,6 @@ Status KVIter::next() {
 /* ********************************* */
 
 void KVIter::clear() {
-  delete kv_;
   kv_ = nullptr;
   delete query_;
   query_ = nullptr;
@@ -158,16 +141,6 @@ Status KVIter::submit_read_query() {
   item_num_ = read_buffer_sizes_[0] / (2 * sizeof(uint64_t));
 
   return Status::Ok();
-}
-
-Status KVIter::finalize_read_query() {
-  if (query_ == nullptr)
-    return Status::Ok();
-
-  auto st = storage_manager_->query_finalize(query_);
-  delete query_;
-  query_ = nullptr;
-  return st;
 }
 
 }  // namespace sm

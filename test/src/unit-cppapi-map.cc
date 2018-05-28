@@ -62,7 +62,7 @@ struct CPPMapFx {
   VFS vfs;
 };
 
-TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
+TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
 
   int simple_key = 10;
@@ -77,7 +77,10 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   CHECK_THROWS(map.add_item(i1));
   i1["a1"] = 1;
   map.add_item(i1);
+
   map.flush();
+  map.close();
+  map.open();
 
   using my_cell_t = std::tuple<int, std::string, std::array<double, 2>>;
 
@@ -92,6 +95,9 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
   map[compound_key][{"a1", "a2", "a3"}] = my_cell_t(2, "aaa", {{4.2, 1}});
 
   map.flush();
+  map.close();
+  map.open();
+
   CHECK(map.has_key(simple_key));
   CHECK(map.has_key(compound_key));
   CHECK(!map.has_key(3453463));
@@ -119,7 +125,7 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi]") {
 TEST_CASE_METHOD(
     CPPMapFx,
     "C++ API: Map Issue 606 segault in Reader::zero_out_buffer_sizes()",
-    "[cppapi]") {
+    "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
 
   int simple_key = 1;
@@ -137,7 +143,12 @@ TEST_CASE_METHOD(
 
   // Add the item
   map.add_item(i1);
+
+  // Flush and reopen
   map.flush();
+  map.close();
+  map.open();
+
   CHECK(map.has_key(simple_key));
 
   // Validate item is now on map
@@ -175,11 +186,16 @@ struct CPPMapFx1A {
   VFS vfs;
 };
 
-TEST_CASE_METHOD(CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi]") {
+TEST_CASE_METHOD(
+    CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
-
   map[10] = 1;
+
+  // Flush and reopen
   map.flush();
+  map.close();
+  map.open();
+
   assert(int(map[10]) == 1);
 
   map.close();
@@ -210,7 +226,8 @@ struct CPPMapFromMapFx {
   VFS vfs;
 };
 
-TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
+TEST_CASE_METHOD(
+    CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
@@ -218,25 +235,26 @@ TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi]") {
   map.close();
 
   // Check reopening
-  map.open(ctx, "cpp_unit_map");
+  map.open();
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
 
   // Check opening without closing
-  map.open(ctx, "cpp_unit_map");
+  map.open();
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
   map.close();
 }
 
-TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map iter", "[cppapi]") {
+TEST_CASE_METHOD(
+    CPPMapFromMapFx, "C++ API: Map iter", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
 
   // Test closing and reopening
   map.close();
-  map.open(ctx, "cpp_unit_map");
+  map.open();
 
   std::vector<std::string> vals;
   for (auto& item : map) {
@@ -261,7 +279,5 @@ TEST_CASE_METHOD(CPPMapFromMapFx, "C++ API: Map iter", "[cppapi]") {
   CHECK(std::count(vals.begin(), vals.end(), "12") == 1);
   CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
 
-  // don't need to finalize end since init() not called
-  iter.finalize();
   map.close();
 }

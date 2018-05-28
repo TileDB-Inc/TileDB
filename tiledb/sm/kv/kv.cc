@@ -69,11 +69,8 @@ KV::~KV() {
 /* ********************************* */
 
 Status KV::init(
-    const std::string& kv_uri,
-    const char** attributes,
-    unsigned attribute_num,
-    bool include_keys) {
-  kv_uri_ = URI(kv_uri);
+    const URI& kv_uri, const char** attributes, unsigned attribute_num) {
+  kv_uri_ = kv_uri;
   // Open the array
   if (open_array_ == nullptr)
     RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array_));
@@ -82,25 +79,27 @@ Status KV::init(
   if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
     write_good_ = true;
     auto attr_num = schema_->attribute_num();
-    unsigned i = (include_keys) ? 0 : 2;
-    for (; i < attr_num; ++i) {
+    attributes_.emplace_back(constants::coords);
+    types_.emplace_back(Datatype::UINT64);
+    for (unsigned i = 0; i < attr_num; ++i) {
       attributes_.emplace_back(schema_->attribute_name(i));
       types_.emplace_back(schema_->type(i));
     }
   } else {  // Load input attributes
     write_good_ = false;
-    if (include_keys) {
-      attributes_.emplace_back(constants::key_attr_name);
-      types_.emplace_back(constants::key_attr_type);
-      attributes_.emplace_back(constants::key_type_attr_name);
-      types_.emplace_back(constants::key_type_attr_type);
-    }
-    unsigned attr_id;
+    attributes_.emplace_back(constants::coords);
+    types_.emplace_back(Datatype::UINT64);
+    attributes_.emplace_back(constants::key_attr_name);
+    types_.emplace_back(constants::key_attr_type);
+    attributes_.emplace_back(constants::key_type_attr_name);
+    types_.emplace_back(constants::key_type_attr_type);
     for (unsigned i = 0; i < attribute_num; ++i) {
-      auto attr_name = attributes[i];
-      RETURN_NOT_OK(schema_->attribute_id(attr_name, &attr_id));
-      attributes_.emplace_back(attr_name);
-      types_.emplace_back(schema_->type(attr_id));
+      if (attributes[i] == constants::coords ||
+          attributes[i] == constants::key_type_attr_name ||
+          attributes[i] == constants::key_attr_name)
+        continue;
+      attributes_.emplace_back(attributes[i]);
+      types_.emplace_back(schema_->type(attributes[i]));
     }
   }
 
@@ -119,6 +118,7 @@ Status KV::init(
 
 void KV::clear() {
   attributes_.clear();
+  types_.clear();
   read_attribute_var_sizes_.clear();
   read_attribute_types_.clear();
   write_attribute_var_sizes_.clear();
@@ -133,7 +133,7 @@ void KV::clear() {
 }
 
 Status KV::finalize() {
-  RETURN_NOT_OK(flush(false));
+  RETURN_NOT_OK(flush());
   RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
   clear();
 
@@ -321,7 +321,7 @@ Status KV::has_key(
   return Status::Ok();
 }
 
-Status KV::flush(bool reopen_array) {
+Status KV::flush() {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
@@ -330,15 +330,11 @@ Status KV::flush(bool reopen_array) {
     return Status::Ok();
 
   RETURN_NOT_OK(prepare_write_buffers());
+  RETURN_NOT_OK(submit_write_query());
 
-  auto st = submit_write_query();
-  if (st.ok()) {
-    clear_items();
-    if (reopen_array)
-      RETURN_NOT_OK(this->reopen_array());
-  }
+  clear_items();
 
-  return st;
+  return Status::Ok();
 }
 
 void KV::clear_items() {
@@ -484,7 +480,6 @@ Status KV::populate_write_buffers() {
     assert(key != nullptr);
     RETURN_NOT_OK(add_key(*key));
     unsigned bid = 4;  // Skip the buffers of the first 3 attributes
-
     for (unsigned aid = 3; aid < write_attribute_num_; ++aid) {
       auto value = (item.second)->value(write_attributes_[aid]);
       assert(value != nullptr);
@@ -552,13 +547,12 @@ Status KV::prepare_read_attributes() {
   read_attribute_var_sizes_.resize(read_attribute_num_);
   read_attribute_types_.resize(read_attribute_num_);
 
-  unsigned int i = 0, aid;
+  unsigned int i = 0;
   for (const auto& attr : attributes_) {
     read_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
     strcpy(read_attributes_[i], attr.data());
-    RETURN_NOT_OK(schema_->attribute_id(attr, &aid));
-    read_attribute_types_[i] = schema_->attribute(aid)->type();
-    read_attribute_var_sizes_[i++] = schema_->var_size(aid);
+    read_attribute_types_[i] = schema_->type(attr);
+    read_attribute_var_sizes_[i++] = schema_->var_size(attr);
   }
 
   return Status::Ok();
@@ -566,47 +560,17 @@ Status KV::prepare_read_attributes() {
 
 Status KV::prepare_write_attributes() {
   // +3 because of the two special key attributes and coordinates
-  write_attribute_num_ = (unsigned)attributes_.size() + 3;
+  write_attribute_num_ = (unsigned)attributes_.size();
   write_attributes_ = new (std::nothrow) char*[write_attribute_num_];
   if (write_attributes_ == nullptr)
     return LOG_STATUS(Status::KVItemError(
         "Cannot prepare write attributes; Memory allocation failed"));
   write_attribute_var_sizes_.resize(write_attribute_num_);
-
-  // Coords
-  write_attributes_[0] =
-      new (std::nothrow) char[constants::coords.length() + 1];
-  if (write_attributes_[0] == nullptr)
-    return LOG_STATUS(Status::KVItemError(
-        "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[0], constants::coords.c_str());
-  write_attribute_var_sizes_[0] = false;
-
-  // Key
-  write_attributes_[1] =
-      new (std::nothrow) char[constants::key_attr_name.length() + 1];
-  if (write_attributes_[1] == nullptr)
-    return LOG_STATUS(Status::KVItemError(
-        "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[1], constants::key_attr_name.c_str());
-  write_attribute_var_sizes_[1] = true;
-
-  // Key type
-  write_attributes_[2] =
-      new (std::nothrow) char[constants::key_type_attr_name.length() + 1];
-  if (write_attributes_[2] == nullptr)
-    return LOG_STATUS(Status::KVItemError(
-        "Cannot prepare write attributes; Memory allocation failed"));
-  strcpy(write_attributes_[2], constants::key_type_attr_name.c_str());
-  write_attribute_var_sizes_[2] = false;
-
-  // User attributes
-  unsigned int i = 3, aid;
+  unsigned i = 0;
   for (const auto& attr : attributes_) {
     write_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
     strcpy(write_attributes_[i], attr.data());
-    RETURN_NOT_OK(schema_->attribute_id(attr, &aid));
-    write_attribute_var_sizes_[i++] = schema_->var_size(aid);
+    write_attribute_var_sizes_[i++] = schema_->var_size(attr);
   }
 
   return Status::Ok();
@@ -660,13 +624,6 @@ Status KV::realloc_read_buffers() {
   return Status::Ok();
 }
 
-Status KV::reopen_array() {
-  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_));
-  RETURN_NOT_OK(storage_manager_->array_open(kv_uri_, &open_array_));
-  schema_ = open_array_->array_schema();
-  return Status::Ok();
-}
-
 Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = (Query*)nullptr;
@@ -692,6 +649,7 @@ Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
       storage_manager_->query_create(&query, open_array_, QueryType::WRITE));
+
   RETURN_NOT_OK_ELSE(
       query->set_buffers(
           (const char**)write_attributes_,

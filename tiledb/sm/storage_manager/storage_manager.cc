@@ -166,12 +166,12 @@ Status StorageManager::array_open(
   (*open_array)->mtx_lock();
   (*open_array)->cnt_incr();
 
-  // Unlock mutex
-  open_array_mtx_.unlock();
-
   // Get a (shared) filelock
   if (!was_open)
     RETURN_NOT_OK((*open_array)->file_lock(vfs_));
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
@@ -184,16 +184,11 @@ Status StorageManager::array_open(
   }
 
   // Get fragment metadata in the case of reads, if not fetched already
-
-  // TODO: proper care for this, when we have multiple reads/writes
-
-  if ((*open_array)->fragment_metadata_empty()) {
-    auto st = load_fragment_metadata(*open_array);
-    if (!st.ok()) {
-      (*open_array)->mtx_unlock();
-      array_close((*open_array)->array_uri());
-      return st;
-    }
+  auto st = load_fragment_metadata(*open_array);
+  if (!st.ok()) {
+    (*open_array)->mtx_unlock();
+    array_close((*open_array)->array_uri());
+    return st;
   }
 
   // Unlock the array mutex

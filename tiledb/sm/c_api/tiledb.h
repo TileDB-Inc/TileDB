@@ -2834,30 +2834,48 @@ TILEDB_EXPORT int tiledb_kv_set_max_buffered_items(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items);
 
 /**
+ * Creates a key-value store object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_uri The URI of the key-value store.
+ * @param kv The key-value store object to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_alloc(
+    tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv);
+
+/**
  * Prepares a key-value store for reading/writing.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
  * const char* attributes[] = {"attr_1", "attr_2"};
- * tiledb_kv_open(ctx, &kv, "my_kv", attributes, 2);
- * // Make sure to close the kv in the end
+ * tiledb_kv_open(ctx, kv, attributes, 2);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param kv The key-value store.
- * @param kv_uri The URI of the key-value store.
+ * @param kv An opened key-value store object.
  * @param attributes The attributes to focus on. `NULL` indicates all
  *     attributes. If the key-value object is used for writing key-value
  *     items, **all** attributes must be specified.
  * @param attribute_num The number of `attributes`.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the kv object is already open, this function has no effect.
  */
 TILEDB_EXPORT int tiledb_kv_open(
     tiledb_ctx_t* ctx,
-    tiledb_kv_t** kv,
-    const char* kv_uri,
+    tiledb_kv_t* kv,
     const char** attributes,
     unsigned int attribute_num);
 
@@ -2874,6 +2892,8 @@ TILEDB_EXPORT int tiledb_kv_open(
  * @param ctx The TileDB context.
  * @param kv The key-value store to be closed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the kv object is already closed, this function has no effect.
  */
 TILEDB_EXPORT int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
@@ -2883,6 +2903,26 @@ TILEDB_EXPORT int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
  * @param kv The key-value store object to be freed.
  */
 TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
+
+/**
+ * Retrieves the schema of a kv object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_schema_t* kv_schema;
+ * tiledb_kv_get_schema(ctx, &kv_schema);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The open kv.
+ * @param kv_schema The kv schema to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @note The user must free the kv schema with `tiledb_kv_schema_free`.
+ */
+TILEDB_EXPORT int tiledb_kv_get_schema(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_schema_t** kv_schema);
 
 /**
  * Adds a key-value item to a key-value store. The item is buffered
@@ -2979,37 +3019,21 @@ TILEDB_EXPORT int tiledb_kv_has_key(
  * **Example:**
  *
  * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * const char* attributes[] = {"attr_1", "attr_2"};
+ * tiledb_kv_open(ctx, kv, attributes, 2);
  * tiledb_kv_iter_t* kv_iter;
- * const char* attributes[] = {"attr_0", "attr_1"};
- * tiledb_kv_iter_create(ctx, &kv_iter, "my_kv", attributes, 2);
- * // Make sure to delete the kv iterator in the end
+ * tiledb_kv_iter_alloc(ctx, kv, &kv_iter);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param kv_iter The key-value store iterator to be created.
- * @param kv_uri The URI of the key-value store.
- * @param attributes The attributes to focus on. `NULL` indicates all
- *     attributes. If the key-value object is used for writing key-value
- *     items, **all** attributes must be specified.
- * @param attribute_num The number of `attributes`.
+ * @param kv The kv the iterator is associated with.
+ * @param kv_iter The kv iterator to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_kv_iter_create(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_iter_t** kv_iter,
-    const char* kv_uri,
-    const char** attributes,
-    unsigned int attribute_num);
-
-/**
- * Finalizes the key-value iterator.
- *
- * @param ctx The TileDB context.
- * @param kv_iter The key-value iterator to be finalized.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int tiledb_kv_iter_finalize(
-    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
+TILEDB_EXPORT int tiledb_kv_iter_alloc(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_iter_t** kv_iter);
 
 /**
  * Frees a key-value store iterator.

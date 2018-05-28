@@ -110,7 +110,8 @@ int main() {
 
   // Open the key-value store
   tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
+  tiledb_kv_alloc(ctx, "my_kv", &kv);
+  tiledb_kv_open(ctx, kv, NULL, 0);
 
   // We add items to a key-value store in the code snippets below. Note that
   // when an item is added to the key-value store, it is only buffered in

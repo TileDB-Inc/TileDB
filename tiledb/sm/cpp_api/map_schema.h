@@ -72,6 +72,15 @@ class MapSchema : public Schema {
     schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
   }
 
+  /**
+   * Loads the schema of an existing kv with the input C array
+   * schema object.
+   */
+  MapSchema(const Context& ctx, tiledb_kv_schema_t* schema)
+      : Schema(ctx) {
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+  }
+
   MapSchema(const MapSchema&) = default;
   MapSchema(MapSchema&& o) = default;
   MapSchema& operator=(const MapSchema&) = default;

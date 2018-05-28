@@ -40,10 +40,11 @@
 * Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
 * Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
-* Added `tiledb_kv_iter_finalize`, which must be called before freeing the kv iterator.
 * Added `tiledb_kv_free`.
 * Added `tiledb_array_{open, close, free}`.
 * Added `tiledb_array_alloc`
+* Added `tiledb_kv_alloc`
+* Added `tiledb_kv_iter_alloc` which takes as input a kv object
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -57,7 +58,6 @@
 * A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
 * Added `Array::partition_subarray` for computing subarray partitions based on memory budget.
 * Added `Map::has_key` to check for key presence.
-* Added `Map::finalize`.
 * `MapIter` can be used to create iterators for a map.
 * Added `Array::{open, close}`
 * Added `Map::{open, close}`
@@ -77,6 +77,8 @@
 * Changed signature of `tiledb_array_get_non_empty_domain`.
 * Changed signature of `tiledb_array_partition_subarray`.
 * Changed signature of `tiledb_array_compute_max_read_buffer_sizes`.
+* Changed signature of `tiledb_{array,kv}_open`.
+* Removed `tiledb_kv_iter_create`
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
