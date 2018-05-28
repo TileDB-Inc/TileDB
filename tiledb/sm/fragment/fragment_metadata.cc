@@ -89,8 +89,12 @@ FragmentMetadata::~FragmentMetadata() {
 }
 
 /* ****************************** */
-/*             ACCESSORS          */
+/*                API             */
 /* ****************************** */
+
+const URI& FragmentMetadata::array_uri() const {
+  return array_schema_->array_uri();
+}
 
 void FragmentMetadata::set_bounding_coords(
     uint64_t tile, const void* bounding_coords) {

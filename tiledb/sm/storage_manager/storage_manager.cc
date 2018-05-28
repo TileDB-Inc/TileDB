@@ -152,26 +152,23 @@ Status StorageManager::array_open(
   open_array_mtx_.lock();
 
   // Find the open array entry
-  bool was_open = false;
   auto it = open_arrays_.find(array_uri.to_string());
   if (it != open_arrays_.end()) {
     *open_array = it->second;
-    was_open = true;
   } else {  // Create a new entry
     *open_array = new OpenArray(array_uri);
     open_arrays_[array_uri.to_string()] = *open_array;
   }
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
 
   // Lock the mutex of the array and increment counter
   (*open_array)->mtx_lock();
   (*open_array)->cnt_incr();
 
   // Get a (shared) filelock
-  if (!was_open)
-    RETURN_NOT_OK((*open_array)->file_lock(vfs_));
-
-  // Unlock mutex
-  open_array_mtx_.unlock();
+  RETURN_NOT_OK((*open_array)->file_lock(vfs_));
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
@@ -1198,17 +1195,32 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
 }
 
 Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
+  // Find the corresponding open array
+  auto array_uri = metadata->array_uri();
+  auto open_array_it = open_arrays_.find(array_uri.to_string());
+  assert(open_array_it != open_arrays_.end());
+  auto open_array = open_array_it->second;
+
+  // Lock the open array
+  open_array->mtx_lock();
+
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
   bool is_dir;
   const URI& fragment_uri = metadata->fragment_uri();
   RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
-  if (!is_dir)
+  if (!is_dir) {
+    open_array->mtx_unlock();
     return Status::Ok();
+  }
 
   // Serialize
   auto buff = new Buffer();
-  RETURN_NOT_OK_ELSE(metadata->serialize(buff), delete buff);
+  auto st = metadata->serialize(buff);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    delete buff;
+  }
 
   // Write to file
   URI fragment_metadata_uri = fragment_uri.join_path(
@@ -1224,13 +1236,16 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
       false);
 
   auto tile_io = new TileIO(this, fragment_metadata_uri);
-  Status st = tile_io->write_generic(tile);
+  st = tile_io->write_generic(tile);
   if (st.ok())
     st = close_file(fragment_metadata_uri);
 
   delete tile;
   delete tile_io;
   delete buff;
+
+  // Unlock the array
+  open_array->mtx_unlock();
 
   return st;
 }
