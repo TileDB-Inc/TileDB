@@ -36,6 +36,7 @@
 
 #include <map>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -87,6 +88,15 @@ class OpenArray {
   /** Returns the fragment metadata. */
   const std::vector<FragmentMetadata*>& fragment_metadata() const;
 
+  /**
+   * Returns the fragment metadata object given a URI, or `nullptr` if
+   * the fragment metadata have not been loaded for that URI yet.
+   *
+   * @param fragment_uri The fragment URI.
+   * @return Status
+   */
+  FragmentMetadata* fragment_metadata_get(const URI& fragment_uri) const;
+
   /** Returns `true` if the fragment metadata is empty. */
   bool fragment_metadata_empty() const;
 
@@ -121,6 +131,9 @@ class OpenArray {
 
   /** The fragment metadata of the open array. */
   std::vector<FragmentMetadata*> fragment_metadata_;
+
+  /** A map from fragment URI to metadata object. */
+  std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_map_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

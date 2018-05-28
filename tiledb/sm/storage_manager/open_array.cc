@@ -100,6 +100,15 @@ const std::vector<FragmentMetadata*>& OpenArray::fragment_metadata() const {
   return fragment_metadata_;
 }
 
+FragmentMetadata* OpenArray::fragment_metadata_get(
+    const URI& fragment_uri) const {
+  auto it = fragment_metadata_map_.find(fragment_uri.to_string());
+  if (it == fragment_metadata_map_.end())
+    return nullptr;
+
+  return it->second;
+}
+
 bool OpenArray::fragment_metadata_empty() const {
   return fragment_metadata_.empty();
 }
@@ -119,6 +128,10 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
 void OpenArray::set_fragment_metadata(
     const std::vector<FragmentMetadata*>& metadata) {
   fragment_metadata_ = metadata;
+
+  fragment_metadata_map_.clear();
+  for (const auto& f : metadata)
+    fragment_metadata_map_[f->fragment_uri().to_string()] = f;
 }
 
 /* ****************************** */
