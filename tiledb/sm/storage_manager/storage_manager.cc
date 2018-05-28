@@ -840,7 +840,6 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_fragment_metadata(
     FragmentMetadata* fragment_metadata) {
   const URI& fragment_uri = fragment_metadata->fragment_uri();
-
   bool fragment_exists;
   RETURN_NOT_OK(is_fragment(fragment_uri, &fragment_exists));
   if (!fragment_exists)

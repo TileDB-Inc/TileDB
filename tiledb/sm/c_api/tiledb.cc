@@ -1852,6 +1852,16 @@ int tiledb_array_get_schema(
     return TILEDB_ERR;
   }
 
+  // Error if the array is not open
+  if (!array->is_open_) {
+    *array_schema = nullptr;
+    auto st =
+        tiledb::sm::Status::Error("Cannot get array schema; Array is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st =
@@ -2681,9 +2691,18 @@ int tiledb_kv_get_schema(
     return TILEDB_ERR;
   }
 
+  // Error if the kv is not open
+  if (!kv->is_open_) {
+    *kv_schema = nullptr;
+    auto st = tiledb::sm::Status::Error("Cannot get KV schema; KV is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   *kv_schema = new (std::nothrow) tiledb_kv_schema_t;
   if (*kv_schema == nullptr) {
-    auto st = tiledb::sm::Status::Error("Failed to allocate TileDB kv schema");
+    auto st = tiledb::sm::Status::Error("Failed to allocate TileDB KV schema");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
