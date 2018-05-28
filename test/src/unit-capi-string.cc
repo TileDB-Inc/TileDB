@@ -171,7 +171,9 @@ void StringFx::write_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -212,7 +214,9 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes

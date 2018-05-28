@@ -282,7 +282,9 @@ void IncompleteFx::write_dense_full() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -345,7 +347,9 @@ void IncompleteFx::write_sparse_full() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -411,7 +415,9 @@ void IncompleteFx::check_dense_incomplete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -468,7 +474,9 @@ void IncompleteFx::check_dense_until_complete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -540,7 +548,9 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -587,7 +597,9 @@ void IncompleteFx::check_dense_unsplittable_complete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -637,7 +649,9 @@ void IncompleteFx::check_dense_reset_buffers() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -717,7 +731,9 @@ void IncompleteFx::check_sparse_incomplete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -774,7 +790,9 @@ void IncompleteFx::check_sparse_until_complete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -846,7 +864,9 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -893,7 +913,9 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query

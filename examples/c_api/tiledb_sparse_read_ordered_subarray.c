@@ -68,7 +68,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_sparse_array", &array);
+  tiledb_array_alloc(ctx, "my_sparse_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Calculate maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};

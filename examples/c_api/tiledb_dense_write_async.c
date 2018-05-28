@@ -94,7 +94,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_dense_array", &array);
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Create query
   tiledb_query_t* query;

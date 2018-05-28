@@ -56,7 +56,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_dense_array", &array);
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Prepare cell buffers - #1
   // This time, we populate the buffers with only some portion of the

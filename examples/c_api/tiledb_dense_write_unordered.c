@@ -53,7 +53,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_dense_array", &array);
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // We prepare buffers to write 4 cells on all three attributes. Observe
   // that now we need to prepare an extra buffer to specify the coordinates

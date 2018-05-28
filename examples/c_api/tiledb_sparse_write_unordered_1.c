@@ -51,7 +51,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_sparse_array", &array);
+  tiledb_array_alloc(ctx, "my_sparse_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Prepare cell buffers
   int buffer_a1[] = {7, 5, 0, 6, 4, 3, 1, 2};

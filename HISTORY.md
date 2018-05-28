@@ -43,6 +43,7 @@
 * Added `tiledb_kv_iter_finalize`, which must be called before freeing the kv iterator.
 * Added `tiledb_kv_free`.
 * Added `tiledb_array_{open, close, free}`.
+* Added `tiledb_array_alloc`
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -58,6 +59,8 @@
 * Added `Map::has_key` to check for key presence.
 * Added `Map::finalize`.
 * `MapIter` can be used to create iterators for a map.
+* Added `Array::{open, close}`
+* Added `Map::{open, close}`
 
 ## Breaking changes
 

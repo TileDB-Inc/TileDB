@@ -376,7 +376,9 @@ int* SparseArrayFx::read_sparse_array_2D(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Subset over a specific attribute
@@ -454,7 +456,9 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -684,7 +688,9 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -762,7 +768,9 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -839,7 +847,9 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
@@ -864,7 +874,6 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -882,7 +891,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
                                sizeof(r_buffer_coords)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
@@ -982,7 +991,9 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
@@ -1007,7 +1018,6 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -1025,7 +1035,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
                                sizeof(r_buffer_coords)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
@@ -1099,7 +1109,9 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1175,7 +1187,9 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1254,7 +1268,9 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
@@ -1275,11 +1291,10 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -1297,7 +1312,7 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
                                sizeof(r_buffer_coords)};
 
   // Open array
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
@@ -1318,7 +1333,7 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1401,7 +1416,9 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
@@ -1422,11 +1439,10 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Prepare cell buffers for READ
@@ -1444,7 +1460,7 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
                                sizeof(r_buffer_coords)};
 
   // Open array
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
@@ -1463,7 +1479,7 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1492,8 +1508,11 @@ void SparseArrayFx::check_non_empty_domain(const std::string& path) {
 
   // Check empty domain
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   int is_empty;
   uint64_t domain[4];
   rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
@@ -1501,14 +1520,14 @@ void SparseArrayFx::check_non_empty_domain(const std::string& path) {
   CHECK(is_empty == 1);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
 
   // Write
   write_partial_sparse_array(array_name);
 
   // Check non-empty domain
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
+
   rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty == 0);
@@ -1536,7 +1555,9 @@ void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query

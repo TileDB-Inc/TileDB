@@ -497,7 +497,9 @@ int* DenseArrayFx::read_dense_array_2D(
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -579,7 +581,9 @@ void DenseArrayFx::update_dense_array_2D(
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -634,7 +638,9 @@ void DenseArrayFx::write_dense_array_by_tiles(
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -702,7 +708,9 @@ void DenseArrayFx::write_dense_subarray_2D(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -746,7 +754,9 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -881,7 +891,9 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Check out of bounds ubarray
@@ -1036,7 +1048,9 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Global order
@@ -1450,7 +1464,9 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1502,7 +1518,9 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1557,7 +1575,9 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -1652,7 +1672,9 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -1746,7 +1768,9 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -1843,7 +1867,9 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -1940,7 +1966,9 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2037,7 +2065,9 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2127,7 +2157,9 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
 
   // Check empty domain
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
   int is_empty;
   uint64_t domain[4];
@@ -2136,13 +2168,12 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
   CHECK(is_empty == 1);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
 
   // Write
   write_partial_dense_array(array_name);
 
   // Check non-empty domain
-  rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
   CHECK(rc == TILEDB_OK);
@@ -2158,7 +2189,9 @@ void DenseArrayFx::check_subarray_partitions_2_row(
     const std::string& array_name) {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Get subarray partitions
@@ -2208,7 +2241,9 @@ void DenseArrayFx::check_subarray_partitions_2_col(
     const std::string& array_name) {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Get subarray partitions
@@ -2257,7 +2292,9 @@ void DenseArrayFx::check_subarray_partitions_2_col(
 void DenseArrayFx::check_subarray_partitions_0(const std::string& array_name) {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Get subarray partitions

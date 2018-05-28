@@ -71,7 +71,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_dense_array", &array);
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Prepare cell buffers. Notice that this time we prepare a buffer only for
   // `a1` (as we will not be querying the rest of the attributes) and we assign

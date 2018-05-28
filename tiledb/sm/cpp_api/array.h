@@ -60,14 +60,13 @@ class Array {
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr))
       , uri_(array_uri) {
     tiledb_array_t* array;
-    ctx.handle_error(tiledb_array_open(ctx, array_uri.c_str(), &array));
+    ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
+    ctx.handle_error(tiledb_array_open(ctx, array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
 
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
-
-    is_open_ = true;
   }
 
   Array(const Array&) = default;
@@ -91,27 +90,18 @@ class Array {
   }
 
   /** Opens the array. */
-  void open(const Context& ctx, const std::string& array_uri) {
-    if (is_open_)
-      close();
-    ctx_ = ctx;
-    uri_ = array_uri;
-    tiledb_array_t* array;
-    ctx.handle_error(tiledb_array_open(ctx, array_uri.c_str(), &array));
-    array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
-
+  void open() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_open(ctx, array_.get()));
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
+    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
-    is_open_ = true;
   }
 
   /** Closes the array. */
   void close() {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_close(ctx, array_.get()));
-    array_ = nullptr;
-    is_open_ = false;
   }
 
   /**
@@ -321,9 +311,6 @@ class Array {
 
   /** Pointer to the TileDB C array object. */
   std::shared_ptr<tiledb_array_t> array_;
-
-  /** True if the array is open. */
-  bool is_open_;
 
   /** The array schema. */
   ArraySchema schema_;

@@ -276,7 +276,9 @@ void AsyncFx::write_dense_async() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -350,7 +352,9 @@ void AsyncFx::write_sparse_async() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -425,7 +429,9 @@ void AsyncFx::write_sparse_async_cancelled() {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -489,7 +495,9 @@ void AsyncFx::write_sparse_async_cancelled() {
 void AsyncFx::read_dense_async() {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, DENSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Calculate maximum buffer sizes for each attribute
@@ -569,7 +577,9 @@ void AsyncFx::read_dense_async() {
 void AsyncFx::read_sparse_async() {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, SPARSE_ARRAY_NAME, &array);
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Calculate maximum buffer sizes for each attribute

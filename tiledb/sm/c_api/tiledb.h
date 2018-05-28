@@ -2080,13 +2080,13 @@ TILEDB_EXPORT int tiledb_query_get_status(
 /* ********************************* */
 
 /**
- * Opens a TileDB array, creating an array object.
+ * Allocates a TileDB array object.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -2094,8 +2094,25 @@ TILEDB_EXPORT int tiledb_query_get_status(
  * @param array The array object to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_array_open(
+TILEDB_EXPORT int tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+
+/**
+ * Opens a TileDB array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be opened.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_open(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
  * Closes a TileDB array.
@@ -2104,13 +2121,17 @@ TILEDB_EXPORT int tiledb_array_open(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array);
  * tiledb_array_close(ctx, array);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param array The array object to be closed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the array object has already been closed, the function has
+ *     no effect.
  */
 TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
@@ -2121,7 +2142,8 @@ TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array);
  * tiledb_array_close(ctx, array);
  * tiledb_array_free(&array);
  * @endcode
@@ -2131,12 +2153,21 @@ TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
 TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
 
 /**
- * Retrieves the schem of an array.
+ * Retrieves the schema of an array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_get_schema(ctx, &array_schema);
+ * @endcode
  *
  * @param ctx The TileDB context.
  * @param array The open array.
  * @param array_schema The array schema to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @note The user must free the array schema with `tiledb_array_schema_free`.
  */
 TILEDB_EXPORT int tiledb_array_get_schema(
     tiledb_ctx_t* ctx,
@@ -2191,7 +2222,8 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * uint64_t domain[4]; // Assuming a 2D array, 2 [low, high] pairs
  * int is_empty;
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "my_array", &array);
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array);
  * tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
  * @endcode
  *
@@ -2213,7 +2245,8 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "my_array", &array);
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array);
  * uint64_t buffer_sizes[2];
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {10, 20, 10, 100};
@@ -2250,7 +2283,8 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "my_array", &array);
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array);
  * uint64_t buffer_sizes[] = {200, 200};
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {11, 20, 11, 20};

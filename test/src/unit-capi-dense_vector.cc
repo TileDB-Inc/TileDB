@@ -224,7 +224,9 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   int64_t buffer_val[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -265,7 +267,9 @@ void DenseVectorFx::check_read(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_create(ctx_, &read_query, array, TILEDB_READ);
@@ -304,7 +308,9 @@ void DenseVectorFx::check_update(const std::string& path) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Update
@@ -328,11 +334,10 @@ void DenseVectorFx::check_update(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_array_free(&array);
   tiledb_query_free(&update_query);
 
   // Open array
-  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Read
@@ -368,7 +373,9 @@ void DenseVectorFx::check_update(const std::string& path) {
 void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   const int64_t num_writes = 5;
@@ -400,11 +407,8 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
-  // Clean up
-  tiledb_array_free(&array);
-
   // Open array
-  rc = tiledb_array_open(ctx_, path.c_str(), &array);
+  rc = tiledb_array_open(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Read

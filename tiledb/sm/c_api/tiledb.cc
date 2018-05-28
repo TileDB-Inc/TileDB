@@ -87,6 +87,7 @@ void tiledb_version(int* major, int* minor, int* rev) {
 struct tiledb_array_t {
   tiledb::sm::URI array_uri_;
   tiledb::sm::OpenArray* open_array_;
+  bool is_open_;
 };
 
 struct tiledb_config_t {
@@ -1766,7 +1767,7 @@ int tiledb_query_get_status(
 /*              ARRAY             */
 /* ****************************** */
 
-int tiledb_array_open(
+int tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1783,18 +1784,30 @@ int tiledb_array_open(
 
   // Set array URI
   (*array)->array_uri_ = tiledb::sm::URI(array_uri);
+  (*array)->open_array_ = nullptr;
+  (*array)->is_open_ = false;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_open(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Do nothing if the array is already open
+  if (array->is_open_)
+    return TILEDB_OK;
 
   // Open array
   if (save_error(
           ctx,
           ctx->storage_manager_->array_open(
-              (*array)->array_uri_, &((*array)->open_array_)))) {
-    delete *array;
-    *array = nullptr;
+              array->array_uri_, &(array->open_array_))))
     return TILEDB_ERR;
-  }
 
-  // Success
+  array->is_open_ = true;
+
   return TILEDB_OK;
 }
 
@@ -1802,8 +1815,14 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Do nothing if the array is already closed
+  if (!array->is_open_)
+    return TILEDB_OK;
+
   if (save_error(ctx, ctx->storage_manager_->array_close(array->array_uri_)))
     return TILEDB_ERR;
+
+  array->is_open_ = false;
 
   return TILEDB_OK;
 }

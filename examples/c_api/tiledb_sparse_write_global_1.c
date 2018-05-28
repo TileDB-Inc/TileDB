@@ -52,7 +52,8 @@ int main() {
 
   // Open array
   tiledb_array_t* array;
-  tiledb_array_open(ctx, "my_sparse_array", &array);
+  tiledb_array_alloc(ctx, "my_sparse_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Prepare cell buffers. Recall that the user is responsible for populating
   // and providing her own buffers to TileDB. We need one buffer per
