@@ -448,18 +448,12 @@ class MapItemProxy {
 /** Iterate over items in a map. **/
 class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  public:
-  /**
-   * Construct a iterator for a given map. init() must be called
-   * for non-end iterators.
-   */
+  /** Construct a iterator for a given map. */
   explicit MapIter(Map& map, bool end = false);
   MapIter(const MapIter&) = delete;
   MapIter(MapIter&&) = default;
   MapIter& operator=(const MapIter&) = delete;
   MapIter& operator=(MapIter&&) = default;
-
-  /** Init iter. This must manually be invoked. **/
-  void init();
 
   /** Flush on iterator destruction. **/
   ~MapIter();
@@ -524,7 +518,7 @@ namespace impl {
 
 /**
  * A copy constructable reference to a MapIter.
- * Used for for (auto &i : map) style iteration.
+ * Used for (auto &i : map) style iteration.
  */
 class MapIterReference {
  public:
@@ -589,8 +583,6 @@ class MapIterReference {
  */
 class Map {
  public:
-  using iterator = MapIter;
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -603,9 +595,7 @@ class Map {
    */
   Map(const Context& ctx, const std::string& uri)
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
-      , uri_(uri)
-      , iter_(*this)
-      , iter_end_(*this, true) {
+      , uri_(uri) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
@@ -742,38 +732,6 @@ class Map {
     return uri_;
   }
 
-  /**
-   * Iterator to beginning of map.
-   *
-   * Note the iterator is global to the Map object.
-   * If multiple iterators are needed for concurrent use,
-   * then multiple Map objects or manually created MapIter objects are needed.
-   **/
-  impl::MapIterReference begin() {
-    iter_.init();
-    return iter_;
-  }
-
-  /**
-   * Iterate over keys of type T.
-   *
-   * Note the iterator is global to the Map object.
-   * If multiple iterators are needed for concurrent use,
-   * then multiple Map objects or manually created MapIter objects are needed.
-   * */
-  template <typename T>
-  impl::MapIterReference begin() {
-    iter_.limit_key_type<T>();
-    iter_.init();
-    return iter_;
-  }
-
-  /** Iterator to end of map. **/
-  impl::MapIterReference end() {
-    // Note this doesn't init, so we can return a new object.
-    return iter_end_;
-  }
-
   void open() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), nullptr, 0));
@@ -852,9 +810,6 @@ class Map {
 
   /** URI **/
   std::string uri_;
-
-  /** Object-global iterator */
-  iterator iter_, iter_end_;
 };
 
 /* ********************************* */
@@ -914,6 +869,13 @@ inline bool impl::MultiMapItemProxy::add_to_map() const {
 inline MapIter::MapIter(Map& map, bool end)
     : map_(&map)
     , done_((int)end) {
+  if (!end) {
+    auto& ctx = map_->context();
+    tiledb_kv_iter_t* kv_iter;
+    ctx.handle_error(tiledb_kv_iter_alloc(ctx, map_->ptr().get(), &kv_iter));
+    iter_ = std::shared_ptr<tiledb_kv_iter_t>(kv_iter, deleter_);
+    this->operator++();
+  }
 }
 
 inline MapIter::~MapIter() {
@@ -937,14 +899,6 @@ inline MapIter& MapIter::operator++() {
       operator++();
   }
   return *this;
-}
-
-inline void MapIter::init() {
-  auto& ctx = map_->context();
-  tiledb_kv_iter_t* kv_iter;
-  ctx.handle_error(tiledb_kv_iter_alloc(ctx, map_->ptr().get(), &kv_iter));
-  iter_ = std::shared_ptr<tiledb_kv_iter_t>(kv_iter, deleter_);
-  this->operator++();
 }
 
 }  // namespace tiledb

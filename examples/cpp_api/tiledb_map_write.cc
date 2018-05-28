@@ -65,8 +65,10 @@ int main() {
     // Add items to map
     map.add_item(item1).add_item(item2);
 
-    // Force-write the buffered items to the persistent storage
+    // Flush and reopen the map
     map.flush();
+    map.close();
+    map.open();
 
     // Write another item. These will be flushed on map destruction.
     map.add_item(item4);

@@ -256,19 +256,8 @@ TEST_CASE_METHOD(
   map.close();
   map.open();
 
-  std::vector<std::string> vals;
-  for (auto& item : map) {
-    vals.push_back(item.get<std::string>());
-  }
-
-  REQUIRE(vals.size() == 3);
-  CHECK(std::count(vals.begin(), vals.end(), "0") == 1);
-  CHECK(std::count(vals.begin(), vals.end(), "12") == 1);
-  CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
-
   MapIter iter(map), end(map, true);
-  iter.init();
-  vals = {};
+  std::vector<std::string> vals;
   while (iter != end) {
     vals.push_back(iter->get<std::string>());
     ++iter;
