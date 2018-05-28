@@ -160,15 +160,13 @@ Status StorageManager::array_open(
     open_arrays_[array_uri.to_string()] = *open_array;
   }
 
-  // Unlock mutex
-  open_array_mtx_.unlock();
-
-  // Lock the mutex of the array and increment counter
+  // Lock the array and increment counter
   (*open_array)->mtx_lock();
   (*open_array)->cnt_incr();
-
-  // Get a (shared) filelock
   RETURN_NOT_OK((*open_array)->file_lock(vfs_));
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
@@ -190,6 +188,8 @@ Status StorageManager::array_open(
 
   // Unlock the array mutex
   (*open_array)->mtx_unlock();
+
+  // Note that we retain the (shared) lock on the array filelock
 
   return Status::Ok();
 }
