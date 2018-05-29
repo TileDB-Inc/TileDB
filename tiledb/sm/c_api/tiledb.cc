@@ -118,7 +118,7 @@ struct tiledb_attribute_t {
 struct tiledb_array_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
   // This variable determines whether to delete `array_schema_` or not.
-  // If this struct object was created with `tiledb_array_schema_create`,
+  // If this struct object was created with `tiledb_array_schema_alloc`,
   // `should_delete` must is set to `true`. If it was created with
   // `tiledb_array_get_schema`, then `should_delete` is set to `false`,
   // since `array_schema_` is borrowed in this case from the open array.
@@ -140,7 +140,7 @@ struct tiledb_query_t {
 struct tiledb_kv_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
   // This variable determines whether to delete `kv_schema_` or not.
-  // If this struct object was created with `tiledb_kv_schema_create`,
+  // If this struct object was created with `tiledb_kv_schema_alloc`,
   // `should_delete` must is set to `true`. If it was created with
   // `tiledb_kv_get_schema`, then `should_delete` is set to `false`,
   // since `kv_schema_` is borrowed in this case from the open array
@@ -421,7 +421,7 @@ void tiledb_error_free(tiledb_error_t** err) {
 /*            CONFIG              */
 /* ****************************** */
 
-int tiledb_config_create(tiledb_config_t** config, tiledb_error_t** error) {
+int tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error) {
   // Create a new config struct
   *config = new (std::nothrow) tiledb_config_t;
   if (*config == nullptr) {
@@ -539,7 +539,7 @@ int tiledb_config_unset(
 /*           CONFIG ITER          */
 /* ****************************** */
 
-int tiledb_config_iter_create(
+int tiledb_config_iter_alloc(
     tiledb_config_t* config,
     tiledb_config_iter_t** config_iter,
     const char* prefix,
@@ -635,7 +635,7 @@ int tiledb_config_iter_done(
 /*            CONTEXT             */
 /* ****************************** */
 
-int tiledb_ctx_create(tiledb_ctx_t** ctx, tiledb_config_t* config) {
+int tiledb_ctx_alloc(tiledb_ctx_t** ctx, tiledb_config_t* config) {
   if (config != nullptr && config->config_ == nullptr)
     return TILEDB_ERR;
 
@@ -788,7 +788,7 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
 /*            ATTRIBUTE              */
 /* ********************************* */
 
-int tiledb_attribute_create(
+int tiledb_attribute_alloc(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t** attr,
     const char* name,
@@ -911,7 +911,7 @@ int tiledb_attribute_dump(
 /*              DOMAIN               */
 /* ********************************* */
 
-int tiledb_domain_create(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
+int tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -989,7 +989,7 @@ int tiledb_domain_dump(
 /*             DIMENSION             */
 /* ********************************* */
 
-int tiledb_dimension_create(
+int tiledb_dimension_alloc(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t** dim,
     const char* name,
@@ -1198,7 +1198,7 @@ int tiledb_domain_get_dimension_from_name(
 /*           ARRAY SCHEMA         */
 /* ****************************** */
 
-int tiledb_array_schema_create(
+int tiledb_array_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t** array_schema,
     tiledb_array_type_t array_type) {
@@ -1603,7 +1603,7 @@ int tiledb_array_schema_get_attribute_from_name(
 /*              QUERY             */
 /* ****************************** */
 
-int tiledb_query_create(
+int tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
     tiledb_array_t* array,
@@ -2122,7 +2122,7 @@ int tiledb_object_ls(
 /*         KEY-VALUE SCHEMA       */
 /* ****************************** */
 
-int tiledb_kv_schema_create(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
+int tiledb_kv_schema_alloc(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2346,7 +2346,7 @@ int tiledb_kv_schema_dump(
 /*          KEY-VALUE ITEM        */
 /* ****************************** */
 
-int tiledb_kv_item_create(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item) {
+int tiledb_kv_item_alloc(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2830,7 +2830,7 @@ int tiledb_kv_iter_done(
 /*        VIRTUAL FILESYSTEM      */
 /* ****************************** */
 
-int tiledb_vfs_create(
+int tiledb_vfs_alloc(
     tiledb_ctx_t* ctx, tiledb_vfs_t** vfs, tiledb_config_t* config) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;

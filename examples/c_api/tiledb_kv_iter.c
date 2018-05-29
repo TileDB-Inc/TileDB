@@ -67,7 +67,7 @@ void print(const void* v, tiledb_datatype_t type, uint64_t size);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Create key-value iterator
   const char* attributes[] = {"a1", "a2", "a3"};

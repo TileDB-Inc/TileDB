@@ -112,7 +112,7 @@ class Query {
       , schema_(ctx, array.uri())
       , uri_(array.uri()) {
     tiledb_query_t* q;
-    ctx.handle_error(tiledb_query_create(ctx, &q, array, type));
+    ctx.handle_error(tiledb_query_alloc(ctx, &q, array, type));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
     array_attributes_ = schema_.attributes();
   }

@@ -56,7 +56,7 @@ void print_upon_completion(void* s) {
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -99,7 +99,7 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, array, TILEDB_WRITE);
+  tiledb_query_alloc(ctx, &query, array, TILEDB_WRITE);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
 

@@ -464,7 +464,7 @@ class VFS {
   /** Creates a TileDB C VFS object, using the input config. */
   void create_vfs(tiledb_config_t* config) {
     tiledb_vfs_t* vfs;
-    int rc = tiledb_vfs_create(ctx_.get(), &vfs, config);
+    int rc = tiledb_vfs_alloc(ctx_.get(), &vfs, config);
     if (rc != TILEDB_OK)
       throw std::runtime_error(
           "[TileDB::C++API] Error: Failed to create VFS object");

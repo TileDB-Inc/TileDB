@@ -216,7 +216,7 @@ class MapItem {
       : ctx_(ctx)
       , map_(map) {
     tiledb_kv_item_t* p;
-    ctx.handle_error(tiledb_kv_item_create(ctx, &p));
+    ctx.handle_error(tiledb_kv_item_alloc(ctx, &p));
     ctx.handle_error(tiledb_kv_item_set_key(ctx, p, key, type, size));
     item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
   }

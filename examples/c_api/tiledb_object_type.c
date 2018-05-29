@@ -58,7 +58,7 @@ void print_object_type(tiledb_object_t type);
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Get object type for group
   tiledb_object_t type;

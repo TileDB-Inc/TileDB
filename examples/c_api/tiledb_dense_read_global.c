@@ -75,7 +75,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Open array
   tiledb_array_t* array;
@@ -124,7 +124,7 @@ int main() {
   // for the query, which means that we wish to get all the array cells.
 
   tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, array, TILEDB_READ);
+  tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 

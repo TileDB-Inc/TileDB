@@ -79,6 +79,7 @@
 * Changed signature of `tiledb_array_compute_max_read_buffer_sizes`.
 * Changed signature of `tiledb_{array,kv}_open`.
 * Removed `tiledb_kv_iter_create`
+* Renamed all C API functions that create TileDB objects from `tiledb_*_create` to `tiledb_*_alloc`.
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.

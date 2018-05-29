@@ -97,7 +97,7 @@ class ArraySchema : public Schema {
   explicit ArraySchema(const Context& ctx, tiledb_array_type_t type)
       : Schema(ctx) {
     tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_schema_create(ctx, &schema, type));
+    ctx.handle_error(tiledb_array_schema_alloc(ctx, &schema, type));
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   };
 
