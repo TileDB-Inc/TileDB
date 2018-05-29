@@ -90,9 +90,6 @@ class StorageManager {
     bool recursive_;
   };
 
-  /** Lock type (shared, exclusive). */
-  enum LockType { SLOCK, XLOCK };
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

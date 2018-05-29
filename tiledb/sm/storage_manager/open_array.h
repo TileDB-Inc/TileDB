@@ -51,6 +51,13 @@ namespace sm {
 class OpenArray {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Filelock type (shared, exclusive). */
+  enum FilelockType { SLOCK, XLOCK };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -79,8 +86,8 @@ class OpenArray {
   /** Increments the counter. */
   void cnt_incr();
 
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_lock(VFS* vfs);
+  /** Retrieves a shared or exclusive filelock for the array. */
+  Status file_lock(VFS* vfs, FilelockType lock_type);
 
   /** Retrieves a (shared) filelock for the array. */
   Status file_unlock(VFS* vfs);

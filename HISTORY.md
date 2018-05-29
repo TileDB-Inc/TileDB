@@ -64,6 +64,10 @@
 
 ## Breaking changes
 
+### Format
+
+* Renamed file `__lock.tdb` to `__array_lock.tdb` and added file `__metadata_lock.tdb`, needed to make opening an array process-safe.
+
 ### C API
 
 * `tiledb_query_finalize` must **always** be called before `tiledb_query_free` after global-order writes.

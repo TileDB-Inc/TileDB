@@ -79,16 +79,17 @@ void OpenArray::cnt_incr() {
   ++cnt_;
 }
 
-Status OpenArray::file_lock(VFS* vfs) {
-  auto uri = array_uri_.join_path(constants::filelock_name);
+Status OpenArray::file_lock(VFS* vfs, FilelockType lock_type) {
+  auto uri = array_uri_.join_path(constants::array_filelock);
+  auto lt = (lock_type == SLOCK) ? VFS::SLOCK : VFS::XLOCK;
   if (filelock_ == INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, true));
+    RETURN_NOT_OK(vfs->filelock_lock(uri, &filelock_, lt));
 
   return Status::Ok();
 }
 
 Status OpenArray::file_unlock(VFS* vfs) {
-  auto uri = array_uri_.join_path(constants::filelock_name);
+  auto uri = array_uri_.join_path(constants::array_filelock);
   if (filelock_ != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
   filelock_ = INVALID_FILELOCK;

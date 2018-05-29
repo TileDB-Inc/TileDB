@@ -83,7 +83,7 @@ StorageManager::~StorageManager() {
 
   for (auto& fl_it : xfilelocks_) {
     auto filelock = fl_it.second;
-    auto lock_uri = URI(fl_it.first).join_path(constants::filelock_name);
+    auto lock_uri = URI(fl_it.first).join_path(constants::array_filelock);
     if (filelock != INVALID_FILELOCK)
       vfs_->filelock_unlock(lock_uri, filelock);
   }
@@ -163,10 +163,12 @@ Status StorageManager::array_open(
   // Lock the array and increment counter
   (*open_array)->mtx_lock();
   (*open_array)->cnt_incr();
-  RETURN_NOT_OK((*open_array)->file_lock(vfs_));
 
   // Unlock mutex
   open_array_mtx_.unlock();
+
+  // Get a shared filelock for process-safety
+  RETURN_NOT_OK((*open_array)->file_lock(vfs_, OpenArray::SLOCK));
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
@@ -178,18 +180,25 @@ Status StorageManager::array_open(
     }
   }
 
+  // Filelock the metadata
+  auto filelock_uri = array_uri.join_path(constants::metadata_filelock);
+  filelock_t fl;
+  vfs_->filelock_lock(filelock_uri, &fl, VFS::SLOCK);
+
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(*open_array);
   if (!st.ok()) {
+    vfs_->filelock_unlock(filelock_uri, fl);
     (*open_array)->mtx_unlock();
     array_close((*open_array)->array_uri());
     return st;
   }
 
-  // Unlock the array mutex
+  // Unlock the array mutex and metadata filelock
+  vfs_->filelock_unlock(filelock_uri, fl);
   (*open_array)->mtx_unlock();
 
-  // Note that we retain the (shared) lock on the array filelock
+  // Note that we retain the (shared) array filelock
 
   return Status::Ok();
 }
@@ -450,8 +459,17 @@ Status StorageManager::array_create(
   }
 
   // Create array filelock
-  URI filelock_uri = array_uri.join_path(constants::filelock_name);
-  st = vfs_->touch(filelock_uri);
+  URI array_filelock_uri = array_uri.join_path(constants::array_filelock);
+  st = vfs_->touch(array_filelock_uri);
+  if (!st.ok()) {
+    vfs_->remove_file(array_uri);
+    object_create_mtx_.unlock();
+    return st;
+  }
+
+  // Create array filelock
+  URI meta_filelock_uri = array_uri.join_path(constants::metadata_filelock);
+  st = vfs_->touch(meta_filelock_uri);
   if (!st.ok()) {
     vfs_->remove_file(array_uri);
     object_create_mtx_.unlock();
@@ -544,8 +562,8 @@ Status StorageManager::array_xlock(const URI& array_uri) {
 
   // Retrieve filelock
   filelock_t filelock = INVALID_FILELOCK;
-  auto lock_uri = array_uri.join_path(constants::filelock_name);
-  RETURN_NOT_OK(vfs_->filelock_lock(lock_uri, &filelock, false));
+  auto lock_uri = array_uri.join_path(constants::array_filelock);
+  RETURN_NOT_OK(vfs_->filelock_lock(lock_uri, &filelock, VFS::XLOCK));
   xfilelocks_[array_uri.to_string()] = filelock;
 
   return Status::Ok();
@@ -561,7 +579,7 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
         "Cannot unlock array exclusive lock; Filelock not found"));
   auto filelock = it->second;
 
-  auto lock_uri = array_uri.join_path(constants::filelock_name);
+  auto lock_uri = array_uri.join_path(constants::array_filelock);
   if (filelock != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri, filelock));
   xfilelocks_.erase(it);
@@ -1199,12 +1217,18 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   // Lock the open array
   open_array->mtx_lock();
 
+  // Filelock the metadata
+  auto filelock_uri = array_uri.join_path(constants::metadata_filelock);
+  filelock_t fl;
+  vfs_->filelock_lock(filelock_uri, &fl, VFS::XLOCK);
+
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
   bool is_dir;
   const URI& fragment_uri = metadata->fragment_uri();
   RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
   if (!is_dir) {
+    vfs_->filelock_unlock(filelock_uri, fl);
     open_array->mtx_unlock();
     return Status::Ok();
   }
@@ -1213,6 +1237,7 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   auto buff = new Buffer();
   auto st = metadata->serialize(buff);
   if (!st.ok()) {
+    vfs_->filelock_unlock(filelock_uri, fl);
     open_array->mtx_unlock();
     delete buff;
   }
@@ -1239,7 +1264,8 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   delete tile_io;
   delete buff;
 
-  // Unlock the array
+  // Unlock the array and filelock
+  vfs_->filelock_unlock(filelock_uri, fl);
   open_array->mtx_unlock();
 
   return st;
