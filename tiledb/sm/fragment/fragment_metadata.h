@@ -39,7 +39,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/status.h"
 
-#include <zlib.h>
 #include <vector>
 
 namespace tiledb {

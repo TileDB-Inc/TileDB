@@ -31,6 +31,9 @@
 #   - BZIP2_FOUND, whether Bzip2 has been found
 #   - The Bzip2::Bzip2 imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(BZIP2_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -115,4 +118,9 @@ if (BZIP2_FOUND AND NOT TARGET Bzip2::Bzip2)
     IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
   )
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_USE_STATIC_BZIP2 AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Bzip2::Bzip2)
 endif()

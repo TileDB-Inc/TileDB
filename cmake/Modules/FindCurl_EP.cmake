@@ -31,6 +31,9 @@
 #   - CURL_FOUND, whether Curl has been found
 #   - The Curl::Curl imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -103,6 +106,9 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     DEPENDS ${DEPENDS}
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_curl)
+  list(APPEND FORWARD_EP_CMAKE_ARGS
+    -DTILEDB_CURL_EP_BUILT=TRUE
+  )
 endif()
 
 if (CURL_FOUND AND NOT TARGET Curl::Curl)
@@ -112,4 +118,9 @@ if (CURL_FOUND AND NOT TARGET Curl::Curl)
     IMPORTED_LOCATION "${CURL_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
   )
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_CURL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Curl::Curl)
 endif()

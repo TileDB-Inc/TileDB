@@ -30,6 +30,9 @@
 #   - ZLIB_FOUND, whether Zlib has been found
 #   - The Zlib::Zlib imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -79,6 +82,9 @@ if (NOT ZLIB_FOUND)
       LOG_INSTALL TRUE
     )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zlib)
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+      -DTILEDB_ZLIB_EP_BUILT=TRUE
+    )
   else()
     message(FATAL_ERROR "Unable to find Zlib")
   endif()
@@ -91,4 +97,9 @@ if (ZLIB_FOUND AND NOT TARGET Zlib::Zlib)
     IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
   )
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_ZLIB_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Zlib::Zlib)
 endif()

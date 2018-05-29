@@ -31,7 +31,7 @@ install:
 
     # Set up arguments for install-deps.sh and bootstrap.
     - deps_args="";
-      bootstrap_args="--enable=verbose";
+      bootstrap_args="--enable=verbose,static-tiledb";
       if [[ "$TILEDB_HDFS" == "ON" ]]; then
         deps_args="${deps_args} --enable-hdfs";
         bootstrap_args="${bootstrap_args} --enable-hdfs";
@@ -74,6 +74,13 @@ script:
         make check-format;
       fi
     - make check
+    - |
+      pushd $TRAVIS_BUILD_DIR/examples/cmake_project
+      mkdir build && cd build
+      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make
+      ./ExampleExe
+      ./ExampleExe_static
+      popd
     - |
       testfile=$(mktemp)
       mv $testfile $testfile.cc

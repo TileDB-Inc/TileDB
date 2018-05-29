@@ -6,46 +6,6 @@ TileDB to build and link against, you will need to specify the correct paths for
 the ``tiledb/tiledb.h`` (C API) or ``tiledb/tiledb`` (C++ API) files and linking to the
 ``libtiledb`` shared library.
 
-CMake
------
-
-TileDB now includes support for CMake's find_package(). To use find_package(TileDB) TileDB
-must be installed globally or ``CMAKE_MODULE_PATH`` must be set to the installation directory.
-
-For example if TileDB was build with ``./boostrap`` and no prefix is given then the
-``</path/to/TileDB>/dist/lib/cmake`` will contain the ``TileDBConfig.cmake`` file used for
-``find_package(TileDB)``. Set your CMAKE_MODULE_PATH like
-``list(APPEND CMAKE_MODULE_PATH "</path/to/TileDB>/dist/lib/cmake")``
-
-The usage of ``find_package`` can also be used in super-build configurations. That is where
-dependencies are build via CMake's ExternalProject_ADD functionality.
-
-Below is example usage of how to link to TileDB in a cmake project::
-
-    # Find TileDB
-    find_package(TileDB REQUIRED)
-    # Link to shared library, this will set header include directories also
-    target_link_libraries(myExecutable TileDB::tiledb_shared)
-
-TileDB can also be linked against a static library::
-
-    # Find TileDB
-    find_package(TileDB REQUIRED)
-    # Link to shared library, this will set header include directories also
-    target_link_libraries(myExecutable TileDB::tiledb_static)
-
-If linking against the static library all required dependencies must be linked also.
-The ``TileDB::tiledb_static`` will error if the required dependencies do not exists.
-
-For example if you link to the static library and are missing LZ4, you will get the following error::
-
-    Target "myExecutable" links to target "LZ4::LZ4" but the target was not found.
-    Perhaps a find_package() call is missing for an IMPORTED target
-
-This can be solved by calling ``find_package(LZ4)`` or using the shared library
-as it has as dependencies linked in statically.
-
-
 macOS or Linux
 --------------
 
@@ -124,3 +84,38 @@ You can do this in Visual Studio by adding ``PATH=C:\path\to\TileDB\bin`` to the
 
     > set PATH=%PATH%;C:\path\to\TileDB\bin
     > my_program.exe
+
+CMake
+-----
+
+TileDB includes support for CMake's ``find_package()``. To use, TileDB
+must be installed globally or ``CMAKE_PREFIX_PATH`` must be set to the TileDB installation directory.
+
+For example if TileDB was built with ``../bootstrap`` and no prefix was given then the
+``</path/to/TileDB>/dist/lib/cmake/TileDB`` directory will contain the ``TileDBConfig.cmake`` file used for
+``find_package(TileDB)``. In your project, you would set ``CMAKE_PREFIX_PATH`` like so::
+
+    list(APPEND CMAKE_PREFIX_PATH "</path/to/TileDB>/dist")
+
+You can also pass this like any other CMake variable on the command line when configuring your project, e.g.::
+
+    cmake -DCMAKE_PREFIX_PATH=</path/to/TileDB>/dist ..
+
+To link the executable ``MyExe`` in your project with the TileDB shared library, you would then use::
+
+    # Find TileDB
+    find_package(TileDB REQUIRED)
+    # Link to shared library, this will set header include directories also.
+    target_link_libraries(MyExe PRIVATE TileDB::tiledb_shared)
+
+While disabled by default, TileDB can also be built as a static library. To do this, use the ``--enable-static-tiledb``
+(macOS/Linux) or ``-EnableStaticTileDB`` (Windows) bootstrap flag when configuring TileDB, or use the CMake equivalent flag
+``-DTILEDB_STATIC=ON``. Then in your project simply link against the ``tiledb_static`` target instead::
+
+    # Find TileDB
+    find_package(TileDB REQUIRED)
+    # Link to static library, this will set header include directories also
+    target_link_libraries(MyExe PRIVATE TileDB::tiledb_static)
+
+You can see the `example CMake project <https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cmake_project>`__ in the
+TileDB source repository to see an example project structure that links against TileDB.
