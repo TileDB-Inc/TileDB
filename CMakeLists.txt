@@ -39,9 +39,11 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Only for Mac OS X warnings
 if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
+  # Use @rpath on macOS for building shared libraries.
+  set(CMAKE_MACOSX_RPATH ON)
+  # Don't allow macOS .frameworks to be used for dependencies.
+  set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
 # Set C++11 as required standard for all C++ targets.

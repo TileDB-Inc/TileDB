@@ -107,6 +107,41 @@ function(save_tbb_dir)
   endif()
 endfunction()
 
+#
+# Search and manually create a TBB::tbb target if possible.
+#
+function(backup_find_tbb)
+  if (NOT WIN32)
+    find_path(TBB_INCLUDE_DIR
+      NAMES tbb/tbb.h
+      PATH_SUFFIXES include
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    find_library(TBB_LIBRARIES
+      NAMES
+        tbb
+      PATH_SUFFIXES lib
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+
+    include(FindPackageHandleStandardArgs)
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(TBB
+      REQUIRED_VARS TBB_LIBRARIES TBB_INCLUDE_DIR
+    )
+
+    if (TBB_FOUND AND NOT TARGET TBB::tbb)
+      add_library(TBB::tbb SHARED IMPORTED)
+      set_target_properties(TBB::tbb PROPERTIES
+        IMPORTED_LOCATION_RELEASE "${TBB_LIBRARIES}"
+        IMPORTED_LOCATION_DEBUG "${TBB_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIR}"
+      )
+      set(TBB_IMPORTED_TARGETS TBB::tbb PARENT_SCOPE)
+    endif()
+  endif()
+endfunction()
+
 ############################################################
 # Regular superbuild EP setup.
 ############################################################
@@ -120,12 +155,9 @@ if (TILEDB_SUPERBUILD)
     find_package(TBB CONFIG QUIET)
   endif()
 else()
-  # Try finding a system TBB first.
   find_package(TBB CONFIG QUIET)
 
-  if (TBB_FOUND)
-    message(STATUS "Found system TBB: ${TBB_IMPORTED_TARGETS}")
-  else()
+  if (NOT TARGET TBB::tbb)
     # Build/setup the EP.
     build_tbb_ep()
 
@@ -134,8 +166,7 @@ else()
 
     # If we found TBB that was built by the EP, we now add it to the TileDB
     # installation manifest.
-    if (TBB_FOUND)
-      message(STATUS "Found EP TBB: ${TBB_IMPORTED_TARGETS}")
+    if (TARGET TBB::tbb)
       # Add TBB libraries to the TileDB installation manifest.
       install_tbb()
     endif()
@@ -145,9 +176,17 @@ else()
   save_tbb_dir()
 endif()
 
-if (NOT TBB_FOUND)
+# The TBB find_package() support is pretty spotty, and can fail e.g. with
+# Homebrew installed versions. Try a backup method here.
+if (NOT TARGET TBB::tbb)
+  backup_find_tbb()
+endif()
+
+if (TARGET TBB::tbb)
+  message(STATUS "Found TBB imported target: ${TBB_IMPORTED_TARGETS}")
+  set(TBB_FOUND TRUE)
+else()
   if (TILEDB_SUPERBUILD)
-    message(STATUS "Could NOT find TBB")
     message(STATUS "Adding TBB as an external project")
 
     if (WIN32)
