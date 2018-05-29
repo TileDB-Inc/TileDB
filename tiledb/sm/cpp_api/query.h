@@ -171,21 +171,9 @@ class Query {
   }
 
   /**
-   * Finalizes a TileDB query object, flushing all internal state.
-   *
-   * This function has two effects.
-   *
-   * (i) If the query was writing in global order, it flushes the internal
-   * state. It is **required** to finalize global-order write query objects in
-   * order to ensure correct execution.
-   *
-   * (ii) For any query, it "closes" the corresponding array. This causes the
-   * storage manager to decrement the reference count of the array. When the
-   * reference count reaches 0, the storage manager evicts the array metadata
-   * (schema and fragment metadata) from its in-memory cache, and releases all
-   * related locks. Therefore, it is advantageous to wait to finalize query
-   * objects on the same array until you are done issuing queries to that array
-   * or consolidation is needed.
+   * Flushes all internal state of a query object and finalizes the query.
+   * This is applicable only to global layout writes. It has no effect for
+   * any other query type.
    */
   void finalize() {
     auto& ctx = ctx_.get();

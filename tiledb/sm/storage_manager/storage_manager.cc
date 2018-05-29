@@ -1081,10 +1081,6 @@ Status StorageManager::object_iter_next_preorder(
   return Status::Ok();
 }
 
-Status StorageManager::query_finalize(Query* query) {
-  return query->finalize();
-}
-
 Status StorageManager::query_create(
     Query** query, OpenArray* open_array, QueryType type, URI fragment_uri) {
   // For easy reference

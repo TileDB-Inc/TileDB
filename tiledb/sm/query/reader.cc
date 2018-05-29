@@ -127,11 +127,6 @@ bool Reader::done() const {
   return read_state_.idx_ >= read_state_.subarray_partitions_.size();
 }
 
-Status Reader::finalize() {
-  clear_read_state();
-  return Status::Ok();
-}
-
 unsigned Reader::fragment_num() const {
   return (unsigned int)fragment_metadata_.size();
 }

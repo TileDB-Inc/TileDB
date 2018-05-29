@@ -150,9 +150,6 @@ class Consolidator {
    */
   Status delete_old_fragments(const std::vector<URI>& uris);
 
-  /** Finalizes the input queries. */
-  Status finalize_queries(Query* query_r, Query* query_w);
-
   /**
    * Frees the input buffers.
    *

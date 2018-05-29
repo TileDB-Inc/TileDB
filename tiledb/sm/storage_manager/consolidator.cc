@@ -120,7 +120,7 @@ Status Consolidator::consolidate(const char* array_name) {
   old_fragment_uris = query_r->fragment_uris();
 
   // Finalize both queries
-  st = finalize_queries(query_r, query_w);
+  st = query_w->finalize();
   if (!st.ok()) {
     storage_manager_->array_close(array_uri);
     clean_up(subarray, buffer_num, buffers, buffer_sizes, query_r, query_w);
@@ -295,12 +295,6 @@ Status Consolidator::delete_old_fragments(const std::vector<URI>& uris) {
   for (auto& uri : uris)
     RETURN_NOT_OK(storage_manager_->delete_fragment(uri));
 
-  return Status::Ok();
-}
-
-Status Consolidator::finalize_queries(Query* query_r, Query* query_w) {
-  RETURN_NOT_OK(storage_manager_->query_finalize(query_r));
-  RETURN_NOT_OK(storage_manager_->query_finalize(query_w));
   return Status::Ok();
 }
 

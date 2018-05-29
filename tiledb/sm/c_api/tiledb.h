@@ -1804,19 +1804,6 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
 /**
  * Creates a TileDB query object.
  *
- * When creating a query, the storage manager "opens" the array in read or write
- * mode based on the query type, incrementing the array's reference count and
- * loading the array metadata (schema and fragment metadata) into its
- * main-memory cache.
- *
- * The storage manager also acquires a **shared lock** on the array. This means
- * multiple read and write queries to the same array can be made concurrently
- * (in TileDB, only consolidation requires an exclusive lock for a short period
- * of time).
- *
- * To "close" an array, the user should call `tiledb_query_finalize` (see the
- * documentation of that function for more details).
- *
  * **Example:**
  *
  * @code{.c}
@@ -1942,21 +1929,9 @@ TILEDB_EXPORT int tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
- * Finalizes a TileDB query object, flushing all internal state.
- *
- * This function has two effects.
- *
- * (i) If the query was writing in global order, it flushes the internal state.
- * It is **required** to finalize global-order write query objects in order to
- * ensure correct execution.
- *
- * (ii) For any query, it "closes" the corresponding array. This causes the
- * storage manager to decrement the reference count of the array. When the
- * reference count reaches 0, the storage manager evicts the array metadata
- * (schema and fragment metadata) from its in-memory cache, and releases all
- * related locks. Therefore, it is advantageous to wait to finalize query
- * objects on the same array until you are done issuing queries to that array
- * or consolidation is needed.
+ * Flushes all internal state of a query object and finalizes the query.
+ * This is applicable only to global layout writes. It has no effect for
+ * any other query type.
  *
  * **Example:**
  *
@@ -1967,7 +1942,7 @@ TILEDB_EXPORT int tiledb_query_set_layout(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param query The query object to be finalized.
+ * @param query The query object to be flushed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_query_finalize(

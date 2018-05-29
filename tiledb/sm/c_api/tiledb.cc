@@ -135,7 +135,6 @@ struct tiledb_domain_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_;
-  bool finalized_;
 };
 
 struct tiledb_kv_schema_t {
@@ -1636,8 +1635,6 @@ int tiledb_query_create(
     return TILEDB_ERR;
   }
 
-  (*query)->finalized_ = false;
-
   // Success
   return TILEDB_OK;
 }
@@ -1693,17 +1690,15 @@ int tiledb_query_set_layout(
 
 int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
-  if (query == nullptr || query->finalized_)
+  if (query == nullptr)
     return TILEDB_OK;
-
-  query->finalized_ = true;
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Finalize query and check error
-  if (save_error(ctx, ctx->storage_manager_->query_finalize(query->query_)))
+  // Flush query
+  if (save_error(ctx, query->query_->finalize()))
     return TILEDB_ERR;
 
   return TILEDB_OK;

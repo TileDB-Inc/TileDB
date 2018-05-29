@@ -81,8 +81,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, properly finalizing and deleting the involved
-   * fragments.
+   * Finalizes the query, flushing all internal state. Applicable only to global
+   * layout writes. It has no effect for any other query type.
    */
   Status finalize();
 

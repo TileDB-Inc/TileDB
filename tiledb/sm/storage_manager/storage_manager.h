@@ -450,9 +450,6 @@ class StorageManager {
    */
   Status object_type(const URI& uri, ObjectType* type) const;
 
-  /** Finalizes a query. */
-  Status query_finalize(Query* query);
-
   /**
    * Creates a query.
    *

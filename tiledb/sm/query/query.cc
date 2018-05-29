@@ -73,7 +73,6 @@ Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();
 
-  RETURN_NOT_OK(reader_.finalize());
   RETURN_NOT_OK(writer_.finalize());
   status_ = QueryStatus::UNINITIALIZED;
   return Status::Ok();

@@ -639,7 +639,6 @@ Status KV::submit_read_query(const uint64_t* subarray) {
 
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
-  RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
   delete query;
 
   return Status::Ok();
@@ -658,7 +657,6 @@ Status KV::submit_write_query() {
           write_buffer_sizes_),
       delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
-  RETURN_NOT_OK_ELSE(storage_manager_->query_finalize(query), delete query);
   delete query;
 
   return Status::Ok();
