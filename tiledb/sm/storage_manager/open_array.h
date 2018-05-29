@@ -36,6 +36,7 @@
 
 #include <map>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -49,6 +50,13 @@ namespace sm {
 /** Stores information about an open array. */
 class OpenArray {
  public:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Filelock type (shared, exclusive). */
+  enum FilelockType { SLOCK, XLOCK };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -64,7 +72,7 @@ class OpenArray {
   /* ********************************* */
 
   /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
+  ArraySchema* array_schema() const;
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -78,14 +86,23 @@ class OpenArray {
   /** Increments the counter. */
   void cnt_incr();
 
-  /** Retrieves a (shared) filelock for the array. */
-  Status file_lock(VFS* vfs);
+  /** Retrieves a shared or exclusive filelock for the array. */
+  Status file_lock(VFS* vfs, FilelockType lock_type);
 
   /** Retrieves a (shared) filelock for the array. */
   Status file_unlock(VFS* vfs);
 
   /** Returns the fragment metadata. */
   const std::vector<FragmentMetadata*>& fragment_metadata() const;
+
+  /**
+   * Returns the fragment metadata object given a URI, or `nullptr` if
+   * the fragment metadata have not been loaded for that URI yet.
+   *
+   * @param fragment_uri The fragment URI.
+   * @return Status
+   */
+  FragmentMetadata* fragment_metadata_get(const URI& fragment_uri) const;
 
   /** Returns `true` if the fragment metadata is empty. */
   bool fragment_metadata_empty() const;
@@ -97,7 +114,7 @@ class OpenArray {
   void mtx_unlock();
 
   /** Sets an array schema. */
-  void set_array_schema(const ArraySchema* array_schema);
+  void set_array_schema(ArraySchema* array_schema);
 
   /** Sets the fragment metadata. */
   void set_fragment_metadata(const std::vector<FragmentMetadata*>& metadata);
@@ -108,7 +125,7 @@ class OpenArray {
   /* ********************************* */
 
   /** The array schema. */
-  const ArraySchema* array_schema_;
+  ArraySchema* array_schema_;
 
   /** The array URI. */
   URI array_uri_;
@@ -121,6 +138,9 @@ class OpenArray {
 
   /** The fragment metadata of the open array. */
   std::vector<FragmentMetadata*> fragment_metadata_;
+
+  /** A map from fragment URI to metadata object. */
+  std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_map_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

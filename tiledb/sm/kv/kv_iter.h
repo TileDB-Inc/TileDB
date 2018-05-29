@@ -70,17 +70,10 @@ class KVIter {
    * Initializes the key-value store iterator. The pointer is placed to the
    * first item in the store.
    *
-   * @param uri The URI of the key-value store.
-   * @param attributes The attributes of the key-value store schema to focus on.
-   *     Use `nullptr` to indicate **all** attributes.
-   * @param attribute_num The number of attributes.
+   * @param kv The kv the iterator is associated with.
    * @return Status
    */
-  Status init(
-      const std::string& uri, const char** attributes, unsigned attribute_num);
-
-  /** Finalizes the key-value store iterator and frees all memory. */
-  Status finalize();
+  Status init(KV* kv);
 
   /** Moves to the next key-value item. */
   Status next();
@@ -89,9 +82,6 @@ class KVIter {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The key-value URI.*/
-  URI kv_uri_;
 
   /** A key-value store that will help reading items one-by-one using a hash. */
   KV* kv_;
@@ -129,9 +119,6 @@ class KVIter {
 
   /** Initializes a read query. */
   Status init_read_query();
-
-  /** Finalizes a read query. */
-  Status finalize_read_query();
 
   /** Submits a read query, recording its status. */
   Status submit_read_query();

@@ -84,7 +84,7 @@ int main() {
   }
 
   // Finalize map
-  map.finalize();
+  map.close();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

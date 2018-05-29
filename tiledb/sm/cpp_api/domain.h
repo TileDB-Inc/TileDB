@@ -93,7 +93,7 @@ class Domain {
   explicit Domain(const Context& ctx)
       : ctx_(ctx) {
     tiledb_domain_t* domain;
-    ctx.handle_error(tiledb_domain_create(ctx, &domain));
+    ctx.handle_error(tiledb_domain_alloc(ctx, &domain));
     domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
   }
 

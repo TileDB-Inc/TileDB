@@ -124,7 +124,7 @@ ArraySchemaFx::ArraySchemaFx() {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
   if (supports_s3_) {
@@ -145,10 +145,10 @@ ArraySchemaFx::ArraySchemaFx() {
   }
 
   ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -181,7 +181,7 @@ ArraySchemaFx::~ArraySchemaFx() {
 
 void ArraySchemaFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -222,7 +222,7 @@ void ArraySchemaFx::delete_array(const std::string& path) {
 void ArraySchemaFx::create_array(const std::string& path) {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, ARRAY_TYPE);
+  int rc = tiledb_array_schema_alloc(ctx_, &array_schema, ARRAY_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
   // Set schema members
@@ -241,21 +241,21 @@ void ArraySchemaFx::create_array(const std::string& path) {
 
   // Create dimensions
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d1, DIM1_NAME, TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* d3;  // This will be an invalid dimension
   int dim_domain_int[] = {0, 10};
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d3, DIM2_NAME, TILEDB_INT32, dim_domain_int, &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* d4;  // This will be an invalid dimension
   int tile_extent = 10000;
-  rc = tiledb_dimension_create(  // This will not even be created
+  rc = tiledb_dimension_alloc(  // This will not even be created
       ctx_,
       &d4,
       DIM2_NAME,
@@ -266,7 +266,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -289,7 +289,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
 
   // Set invalid attribute
   tiledb_attribute_t* inv_attr;
-  rc = tiledb_attribute_create(ctx_, &inv_attr, "__foo", ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &inv_attr, "__foo", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, inv_attr);
   REQUIRE(rc == TILEDB_ERR);
@@ -297,7 +297,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
 
   // Set attribute
   tiledb_attribute_t* attr;
-  rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
@@ -573,18 +573,18 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create dimensions
   tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_create(
+  int rc = tiledb_dimension_alloc(
       ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, "d2", TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -616,18 +616,18 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create dimensions
   tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_create(
+  int rc = tiledb_dimension_alloc(
       ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, "", TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -656,18 +656,18 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  int rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -676,10 +676,10 @@ TEST_CASE_METHOD(
 
   // Set attribute
   tiledb_attribute_t* attr1;
-  rc = tiledb_attribute_create(ctx_, &attr1, "", ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &attr1, "", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_t* attr2;
-  rc = tiledb_attribute_create(ctx_, &attr2, "foo", ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &attr2, "foo", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
@@ -719,18 +719,18 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  int rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d1, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -739,10 +739,10 @@ TEST_CASE_METHOD(
 
   // Set attribute
   tiledb_attribute_t* attr1;
-  rc = tiledb_attribute_create(ctx_, &attr1, "", ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &attr1, "", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_t* attr2;
-  rc = tiledb_attribute_create(ctx_, &attr2, "", ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, &attr2, "", ATTR_TYPE);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
@@ -775,20 +775,20 @@ TEST_CASE_METHOD(
     "[capi], [array-schema]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  int rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
   tiledb_dimension_t* d1;
   double dim_domain[] = {0, 9};
   double tile_extent = 5;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d1, "", TILEDB_FLOAT64, dim_domain, &tile_extent);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
@@ -808,14 +808,14 @@ TEST_CASE_METHOD(
   // Create dimension with huge range and no tile extent - ok
   tiledb_dimension_t* d1;
   uint64_t dim_domain[] = {0, UINT64_MAX};
-  int rc = tiledb_dimension_create(
+  int rc = tiledb_dimension_alloc(
       ctx_, &d1, "d1", TILEDB_UINT64, dim_domain, nullptr);
   CHECK(rc == TILEDB_OK);
 
   // Create dimension with huge range and tile extent - error
   tiledb_dimension_t* d2;
   uint64_t tile_extent = 7;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, "d2", TILEDB_UINT64, dim_domain, &tile_extent);
   CHECK(rc == TILEDB_ERR);
 
@@ -823,7 +823,7 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* d3;
   dim_domain[1] = 10;
   tile_extent = 20;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d3, "d3", TILEDB_UINT64, dim_domain, &tile_extent);
   CHECK(rc == TILEDB_ERR);
 
@@ -831,7 +831,7 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* d4;
   dim_domain[0] = 10;
   dim_domain[1] = 1;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d4, "d4", TILEDB_UINT64, dim_domain, &tile_extent);
   CHECK(rc == TILEDB_ERR);
 

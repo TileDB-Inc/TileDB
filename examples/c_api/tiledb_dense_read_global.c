@@ -75,12 +75,17 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
+
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Print non-empty domain
   int is_empty = 0;
   uint64_t domain[4];
-  tiledb_array_get_non_empty_domain(ctx, "my_dense_array", domain, &is_empty);
+  tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
   printf("Non-empty domain:\n");
   printf(
       "d1: (%llu, %llu)\n",
@@ -96,7 +101,7 @@ int main() {
   uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
   tiledb_array_compute_max_read_buffer_sizes(
-      ctx, "my_dense_array", subarray, attributes, 3, &buffer_sizes[0]);
+      ctx, array, subarray, attributes, 3, &buffer_sizes[0]);
   printf("Maximum buffer sizes:\n");
   printf("a1: %llu\n", (unsigned long long)buffer_sizes[0]);
   printf(
@@ -119,7 +124,7 @@ int main() {
   // for the query, which means that we wish to get all the array cells.
 
   tiledb_query_t* query;
-  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_READ);
+  tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
@@ -147,7 +152,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   free(buffer_a1);

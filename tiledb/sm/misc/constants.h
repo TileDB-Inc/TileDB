@@ -53,8 +53,11 @@ extern const bool check_coord_dups;
 /** If `true`, this will deduplicate coordinates upon sparse writes. */
 extern const bool dedup_coords;
 
-/** The object filelock name. */
-extern const std::string filelock_name;
+/** The array filelock name. */
+extern const std::string array_filelock;
+
+/** The metadata filelock name. */
+extern const std::string metadata_filelock;
 
 /** The array schema file name. */
 extern const std::string array_schema_filename;

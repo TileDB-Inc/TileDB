@@ -43,10 +43,10 @@
 void remove_file(const std::string& filename) {
   // Remove file
   tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_create(&ctx, nullptr);
+  int rc = tiledb_ctx_alloc(&ctx, nullptr);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  REQUIRE(tiledb_vfs_create(ctx, &vfs, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx, &vfs, nullptr) == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
@@ -65,14 +65,14 @@ void check_load_correct_file() {
   // Set config from file
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_ctx_alloc(&ctx, config);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
   tiledb_config_free(&config);
@@ -91,7 +91,7 @@ void check_load_incorrect_file_cannot_open() {
   // Set config from file
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
@@ -118,7 +118,7 @@ void check_load_incorrect_file_missing_value() {
   // Set config from file
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
@@ -148,7 +148,7 @@ void check_load_incorrect_file_extra_word() {
   // Set config from file
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_load_from_file(config, "test_config.txt", &error);
@@ -166,7 +166,7 @@ void check_load_incorrect_file_extra_word() {
 void check_save_to_file() {
   tiledb_config_t* config;
   tiledb_error_t* error;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -217,7 +217,7 @@ void check_save_to_file() {
 TEST_CASE("C API: Test config", "[capi], [config]") {
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_create(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -226,7 +226,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_ctx_alloc(&ctx, config);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
   CHECK(ctx == nullptr);
@@ -245,7 +245,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(value == nullptr);
 
   // Check get config from context
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_ctx_alloc(&ctx, config);
   CHECK(rc == TILEDB_OK);
   tiledb_config_t* get_config = nullptr;
   rc = tiledb_ctx_get_config(ctx, &get_config);
@@ -261,7 +261,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_config_set(config, "sm.tile_cache_size", "+100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_ctx_create(&ctx, config);
+  rc = tiledb_ctx_alloc(&ctx, config);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
 
@@ -323,13 +323,13 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_create(&ctx, nullptr);
+  int rc = tiledb_ctx_alloc(&ctx, nullptr);
   REQUIRE(rc == TILEDB_OK);
 
   // Populate a config
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  rc = tiledb_config_create(&config, &error);
+  rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
@@ -426,7 +426,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
-  rc = tiledb_config_iter_create(config, &config_iter, nullptr, &error);
+  rc = tiledb_config_iter_alloc(config, &config_iter, nullptr, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   int done;
@@ -455,7 +455,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   CHECK(error == nullptr);
 
   // Create an iterator and iterate over vfs parameters
-  rc = tiledb_config_iter_create(config, &config_iter, "vfs.", &error);
+  rc = tiledb_config_iter_alloc(config, &config_iter, "vfs.", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_iter_done(config_iter, &done, &error);
@@ -481,7 +481,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_config_iter_free(&config_iter);
 
   // Create an iterator and iterate over s3 parameters
-  rc = tiledb_config_iter_create(config, &config_iter, "vfs.s3.", &error);
+  rc = tiledb_config_iter_alloc(config, &config_iter, "vfs.s3.", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_iter_done(config_iter, &done, &error);
@@ -524,7 +524,7 @@ TEST_CASE(
     "C API: Test boolean config values are normalized", "[capi][config]") {
   tiledb_error_t* err;
   tiledb_config_t* config = nullptr;
-  int rc = tiledb_config_create(&config, &err);
+  int rc = tiledb_config_alloc(&config, &err);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "TRUE", &err);
   CHECK(rc == TILEDB_OK);

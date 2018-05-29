@@ -49,11 +49,12 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Open a key-value store
   tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
+  tiledb_kv_alloc(ctx, "my_kv", &kv);
+  tiledb_kv_open(ctx, kv, NULL, 0);
 
   // Get key-value item
   int key = 100;

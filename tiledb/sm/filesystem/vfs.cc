@@ -312,8 +312,11 @@ Status VFS::remove_file(const URI& uri) const {
   STATS_FUNC_OUT(vfs_remove_file);
 }
 
-Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
+Status VFS::filelock_lock(
+    const URI& uri, filelock_t* fd, FilelockType lock_type) const {
   STATS_FUNC_IN(vfs_filelock_lock);
+
+  bool shared = (lock_type == SLOCK);
 
   // Hold the lock while updating counts and performing the lock.
   std::unique_lock<std::mutex> lck(filelock_mtx_);

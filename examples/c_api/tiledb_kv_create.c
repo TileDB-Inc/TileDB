@@ -99,26 +99,26 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Create attributes
   tiledb_attribute_t* a1;
-  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_alloc(ctx, &a1, "a1", TILEDB_INT32);
   tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC_LZ, -1);
   tiledb_attribute_set_cell_val_num(ctx, a1, 1);
   tiledb_attribute_t* a2;
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_alloc(ctx, &a2, "a2", TILEDB_CHAR);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
-  tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx, &a3, "a3", TILEDB_FLOAT32);
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Create kv schema
   const char* kv_uri = "my_kv";
   tiledb_kv_schema_t* kv_schema;
-  tiledb_kv_schema_create(ctx, &kv_schema);
+  tiledb_kv_schema_alloc(ctx, &kv_schema);
   tiledb_kv_schema_add_attribute(ctx, kv_schema, a1);
   tiledb_kv_schema_add_attribute(ctx, kv_schema, a2);
   tiledb_kv_schema_add_attribute(ctx, kv_schema, a3);

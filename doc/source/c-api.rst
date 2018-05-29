@@ -136,6 +136,12 @@ Error
 
 Array
 -----
+.. doxygenfunction:: tiledb_array_open
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_close
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_free
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_create
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate

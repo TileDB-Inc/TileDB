@@ -52,7 +52,12 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
+
+  // Open array
+  tiledb_array_t* array;
+  tiledb_array_alloc(ctx, "my_dense_array", &array);
+  tiledb_array_open(ctx, array);
 
   // Prepare cell buffers - #1
   // This time, we populate the buffers with only some portion of the
@@ -72,7 +77,7 @@ int main() {
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
-  tiledb_query_create(ctx, &query, "my_dense_array", TILEDB_WRITE);
+  tiledb_query_alloc(ctx, &query, array, TILEDB_WRITE);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
 
@@ -111,7 +116,11 @@ int main() {
   // Finalize query
   tiledb_query_finalize(ctx, query);
 
+  // Close array
+  tiledb_array_close(ctx, array);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 

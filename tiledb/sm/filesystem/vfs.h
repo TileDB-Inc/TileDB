@@ -66,6 +66,13 @@ namespace sm {
 class VFS {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Filelock type (shared, exclusive). */
+  enum FilelockType { SLOCK, XLOCK };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -165,11 +172,11 @@ class VFS {
    * @param uri The URI of the filelock.
    * @param lock A handle for the filelock (used in unlocking the
    *     filelock).
-   * @param shared *True* if it is a shared lock, *false* if it is an
-   *     exclusive lock.
+   * @param The lock type (shared or exclusive).
    * @return Status
    */
-  Status filelock_lock(const URI& uri, filelock_t* lock, bool shared) const;
+  Status filelock_lock(
+      const URI& uri, filelock_t* lock, FilelockType lock_type) const;
 
   /**
    * Unlocks a filelock.

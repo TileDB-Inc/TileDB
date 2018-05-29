@@ -49,8 +49,11 @@ int main() {
   // Prepare cell buffers
   std::vector<int> a1_data(3);
 
+  // Open array
+  tiledb::Array array(ctx, "my_sparse_array");
+
   // Create query
-  tiledb::Query query(ctx, "my_sparse_array", TILEDB_READ);
+  tiledb::Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_COL_MAJOR);
   query.set_subarray<uint64_t>({3, 4, 2, 4});
   query.set_buffer("a1", a1_data);
@@ -62,6 +65,9 @@ int main() {
   auto result_el = query.result_buffer_elements();
   for (unsigned i = 0; i < result_el["a1"].second; ++i)
     std::cout << a1_data[i] << "\n";
+
+  // Close array
+  array.close();
 
   // Nothing to clean up - all C++ objects are deleted when exiting scope
 

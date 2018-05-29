@@ -91,11 +91,14 @@ bool KVItem::good(
   if (key_.key_ == nullptr)
     return false;
 
-  if (values_.size() != attributes.size())
-    return false;
-
   auto attribute_num = attributes.size();
   for (unsigned i = 0; i < attribute_num; ++i) {
+    // Skip the special attributes
+    if (attributes[i] == constants::coords ||
+        attributes[i] == constants::key_attr_name ||
+        attributes[i] == constants::key_type_attr_name)
+      continue;
+
     auto it = values_.find(attributes[i]);
     if (it == values_.end())
       return false;
