@@ -95,9 +95,9 @@ Status Query::init() {
   // Only if the query has not been initialized before
   if (status_ == QueryStatus::UNINITIALIZED) {
     if (type_ == QueryType::READ) {
-      RETURN_NOT_OK_ELSE(reader_.init(), status_ = QueryStatus::FAILED);
+      RETURN_NOT_OK(reader_.init());
     } else {  // Write
-      RETURN_NOT_OK_ELSE(writer_.init(), status_ = QueryStatus::FAILED);
+      RETURN_NOT_OK(writer_.init());
     }
   }
 
@@ -164,21 +164,24 @@ Status Query::process() {
   return Status::Ok();
 }
 
-Status Query::set_buffers(
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes) {
+Status Query::set_buffer(
+    const char* attribute, void* buffer, uint64_t* buffer_size) {
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffers(
-        attributes, attribute_num, buffers, buffer_sizes);
-  return reader_.set_buffers(attributes, attribute_num, buffers, buffer_sizes);
+    return writer_.set_buffer(attribute, buffer, buffer_size);
+  return reader_.set_buffer(attribute, buffer, buffer_size);
 }
 
-Status Query::set_buffers(void** buffers, uint64_t* buffer_sizes) {
+Status Query::set_buffer(
+    const char* attribute,
+    uint64_t* buffer_off,
+    uint64_t* buffer_off_size,
+    void* buffer_val,
+    uint64_t* buffer_val_size) {
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffers(buffers, buffer_sizes);
-  return reader_.set_buffers(buffers, buffer_sizes);
+    return writer_.set_buffer(
+        attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+  return reader_.set_buffer(
+      attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
 void Query::set_callback(

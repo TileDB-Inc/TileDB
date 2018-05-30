@@ -174,10 +174,7 @@ class KV {
   std::vector<Datatype> read_attribute_types_;
 
   /** These are the attributes to be passed to a TileDB read query. */
-  char** read_attributes_;
-
-  /** The number of read query attributes. */
-  unsigned read_attribute_num_;
+  std::vector<std::string> read_attributes_;
 
   /** Buffers to be used in read queries. */
   void** read_buffers_;
@@ -208,10 +205,7 @@ class KV {
   std::vector<bool> write_attribute_var_sizes_;
 
   /** These are the attributes to be passed to a TileDB write query. */
-  char** write_attributes_;
-
-  /** The number of write query attributes. */
-  unsigned write_attribute_num_;
+  std::vector<std::string> write_attributes_;
 
   /** Buffers to be used in write queries. */
   void** write_buffers_;
@@ -330,6 +324,13 @@ class KV {
    * read query.
    */
   Status realloc_read_buffers();
+
+  /** Sets the query buffers for the input attributes. */
+  Status set_query_buffers(
+      Query* query,
+      const std::vector<std::string>& attributes,
+      void** buffers,
+      uint64_t* buffer_sizes) const;
 
   /** Submits a read query. */
   Status submit_read_query(const uint64_t* subarray);

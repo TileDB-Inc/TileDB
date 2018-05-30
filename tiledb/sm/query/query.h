@@ -105,30 +105,47 @@ class Query {
   Status process();
 
   /**
-   * Sets the buffers to the query for a set of attributes.
+   * Sets the buffer for a fixed-sized attribute.
    *
-   * @param attributes The attributes the query will focus on.
-   * @param attribute_num The number of attributes.
-   * @param buffers The buffers that either have the input data to be written,
-   *     or will hold the data to be read. Note that there is one buffer per
-   *     fixed-sized attribute, and two buffers for each variable-sized
-   *     attribute (the first holds the offsets, and the second the actual
-   *     values).
-   * @param buffer_sizes There must be an one-to-one correspondence with
-   *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
-   *     In the case of reads, they initially contain the allocated sizes of
-   *     *buffers*, but after the termination of the function they will contain
-   *     the sizes of the useful (read) data in the buffers.
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer The buffer that either have the input data to be written,
+   *     or will hold the data to be read.
+   * @param buffer_size In the case of writes, this is the size of `buffer`
+   *     in bytes. In the case of reads, this initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
    * @return Status
    */
-  Status set_buffers(
-      const char** attributes,
-      unsigned int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes);
+  Status set_buffer(const char* attribute, void* buffer, uint64_t* buffer_size);
 
-  /** Sets the query buffers. */
-  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
+  /**
+   * Sets the buffer for a var-sized attribute.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer_off The buffer that either have the input data to be written,
+   *     or will hold the data to be read. This buffer holds the starting
+   *     offsets of each cell value in `buffer_val`.
+   * @param buffer_off_size In the case of writes, it is the size of
+   *     `buffer_off` in bytes. In the case of reads, this initially contains
+   *     the allocated size of `buffer_off`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_off`.
+   * @param buffer_val The buffer that either have the input data to be written,
+   *     or will hold the data to be read. This buffer holds the actual
+   *     var-sized cell values.
+   * @param buffer_val_size In the case of writes, it is the size of
+   *     `buffer_val` in bytes. In the case of reads, this initially contains
+   *     the allocated size of `buffer_val`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_val`.
+   * @return Status
+   */
+  Status set_buffer(
+      const char* attribute,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      void* buffer_val,
+      uint64_t* buffer_val_size);
 
   /**
    * Sets the callback function and its data input that will be called

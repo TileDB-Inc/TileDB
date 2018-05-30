@@ -236,8 +236,12 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   tiledb_query_t* write_query;
   rc = tiledb_query_alloc(ctx_, &write_query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, write_query, attributes, 1, write_buffers, write_buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_,
+      write_query,
+      attributes[0],
+      write_buffers[0],
+      &write_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, write_query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -274,8 +278,8 @@ void DenseVectorFx::check_read(
 
   rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, layout);
   REQUIRE(rc == TILEDB_OK);
@@ -317,8 +321,12 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_query_t* update_query;
   rc = tiledb_query_alloc(ctx_, &update_query, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, update_query, attributes, 1, update_buffers, update_buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_,
+      update_query,
+      attributes[0],
+      update_buffers[0],
+      &update_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -347,8 +355,8 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_query_t* read_query = nullptr;
   rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -391,8 +399,19 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
     tiledb_query_t* update_query;
     rc = tiledb_query_alloc(ctx_, &update_query, array, TILEDB_WRITE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffers(
-        ctx_, update_query, attributes, 2, update_buffers, update_buffer_sizes);
+    rc = tiledb_query_set_buffer(
+        ctx_,
+        update_query,
+        attributes[0],
+        update_buffers[0],
+        &update_buffer_sizes[0]);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(
+        ctx_,
+        update_query,
+        attributes[1],
+        update_buffers[1],
+        &update_buffer_sizes[1]);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, update_query, TILEDB_UNORDERED);
     REQUIRE(rc == TILEDB_OK);
@@ -420,8 +439,8 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   tiledb_query_t* read_query = nullptr;
   rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, read_query, attributes, 1, read_buffers, read_buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, read_query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);

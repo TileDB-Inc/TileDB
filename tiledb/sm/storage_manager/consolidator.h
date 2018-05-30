@@ -169,6 +169,15 @@ class Consolidator {
    * consolidated fragments.
    */
   Status rename_new_fragment_uri(URI* uri) const;
+
+  /**
+   * Sets the buffers to the query, using all the attributes in the
+   * query schema. There is a 1-1 correspondence between the input `buffers`
+   * and the attributes in the schema, considering also the coordinates
+   * if the array is sparse in the end.
+   */
+  Status set_query_buffers(
+      Query* query, void** buffers, uint64_t* buffer_sizes) const;
 };
 
 }  // namespace sm

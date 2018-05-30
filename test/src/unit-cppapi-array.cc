@@ -87,13 +87,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     Query query(ctx, array, TILEDB_WRITE);
     CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
     CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
-    std::vector<int> subarray = {0, 5, 0, 5};
-    query.set_subarray(subarray);
-    // TODO: This is only required because the array is currently locked
-    // on query creation. If we don't finalize, the file won't be unlocked
-    // and we won't be able to delete the array in between tests on Windows
-    // (which has stricter file removal rules).
-    query.finalize();
     array.close();
   }
 

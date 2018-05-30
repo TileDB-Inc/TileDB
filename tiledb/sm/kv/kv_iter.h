@@ -90,10 +90,10 @@ class KVIter {
   StorageManager* storage_manager_;
 
   /** Buffer for storing coordinates (i.e., key hashes). */
-  uint64_t* read_buffers_[1];
+  uint64_t* coords_buffer_;
 
   /** The coordinates buffer size. */
-  uint64_t read_buffer_sizes_[1];
+  uint64_t coords_buffer_size_;
 
   /** The current item from the read ones. */
   uint64_t current_item_;
@@ -116,9 +116,6 @@ class KVIter {
 
   /** Clears the iterator. */
   void clear();
-
-  /** Initializes a read query. */
-  Status init_read_query();
 
   /** Submits a read query, recording its status. */
   Status submit_read_query();

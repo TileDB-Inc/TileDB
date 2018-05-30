@@ -45,11 +45,7 @@ namespace sm {
 
 KV::KV(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
-  read_attribute_num_ = 0;
-  read_attributes_ = nullptr;
   schema_ = nullptr;
-  write_attribute_num_ = 0;
-  write_attributes_ = nullptr;
   max_items_ = constants::kv_max_items;
   write_buffers_ = nullptr;
   write_buffer_sizes_ = nullptr;
@@ -105,13 +101,9 @@ Status KV::init(
 
   assert(attributes_.size() == types_.size());
   RETURN_NOT_OK(prepare_query_attributes());
-  RETURN_NOT_OK(schema_->buffer_num(
-      (const char**)read_attributes_, read_attribute_num_, &read_buffer_num_));
+  RETURN_NOT_OK(schema_->buffer_num(read_attributes_, &read_buffer_num_));
   RETURN_NOT_OK(init_read_buffers());
-  RETURN_NOT_OK(schema_->buffer_num(
-      (const char**)write_attributes_,
-      write_attribute_num_,
-      &write_buffer_num_));
+  RETURN_NOT_OK(schema_->buffer_num(write_attributes_, &write_buffer_num_));
 
   return Status::Ok();
 }
@@ -401,23 +393,8 @@ Status KV::add_value(const KVItem::Value& value, unsigned bid, bool var) {
 }
 
 void KV::clear_query_attributes() {
-  // Read attributes
-  if (read_attributes_ != nullptr) {
-    for (unsigned int i = 0; i < read_attribute_num_; ++i)
-      delete[] read_attributes_[i];
-    delete[] read_attributes_;
-    read_attributes_ = nullptr;
-    read_attribute_num_ = 0;
-  }
-
-  // Write attributes
-  if (write_attributes_ != nullptr) {
-    for (unsigned int i = 0; i < write_attribute_num_; ++i)
-      delete[] write_attributes_[i];
-    delete[] write_attributes_;
-    write_attributes_ = nullptr;
-    write_attribute_num_ = 0;
-  }
+  read_attributes_.clear();
+  write_attributes_.clear();
 }
 
 void KV::clear_query_buffers() {
@@ -475,12 +452,13 @@ Status KV::populate_write_buffers() {
     }
   }
 
+  auto write_attribute_num = write_attributes_.size();
   for (const auto& item : items_) {
     auto key = (item.second)->key();
     assert(key != nullptr);
     RETURN_NOT_OK(add_key(*key));
     unsigned bid = 4;  // Skip the buffers of the first 3 attributes
-    for (unsigned aid = 3; aid < write_attribute_num_; ++aid) {
+    for (unsigned aid = 3; aid < write_attribute_num; ++aid) {
       auto value = (item.second)->value(write_attributes_[aid]);
       assert(value != nullptr);
       RETURN_NOT_OK(add_value(*value, bid, write_attribute_var_sizes_[aid]));
@@ -539,18 +517,12 @@ Status KV::prepare_query_attributes() {
 }
 
 Status KV::prepare_read_attributes() {
-  read_attribute_num_ = (unsigned)attributes_.size();
-  read_attributes_ = new (std::nothrow) char*[read_attribute_num_];
-  if (read_attributes_ == nullptr)
-    return LOG_STATUS(Status::KVItemError(
-        "Cannot prepare read attributes; Memory allocation failed"));
-  read_attribute_var_sizes_.resize(read_attribute_num_);
-  read_attribute_types_.resize(read_attribute_num_);
+  read_attributes_ = attributes_;
+  read_attribute_var_sizes_.resize(read_attributes_.size());
+  read_attribute_types_.resize(read_attributes_.size());
 
   unsigned int i = 0;
   for (const auto& attr : attributes_) {
-    read_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
-    strcpy(read_attributes_[i], attr.data());
     read_attribute_types_[i] = schema_->type(attr);
     read_attribute_var_sizes_[i++] = schema_->var_size(attr);
   }
@@ -559,18 +531,11 @@ Status KV::prepare_read_attributes() {
 }
 
 Status KV::prepare_write_attributes() {
-  write_attribute_num_ = (unsigned)attributes_.size();
-  write_attributes_ = new (std::nothrow) char*[write_attribute_num_];
-  if (write_attributes_ == nullptr)
-    return LOG_STATUS(Status::KVItemError(
-        "Cannot prepare write attributes; Memory allocation failed"));
-  write_attribute_var_sizes_.resize(write_attribute_num_);
+  write_attributes_ = attributes_;
+  write_attribute_var_sizes_.resize(attributes_.size());
   unsigned i = 0;
-  for (const auto& attr : attributes_) {
-    write_attributes_[i] = new (std::nothrow) char[attr.size() + 1];
-    strcpy(write_attributes_[i], attr.data());
+  for (const auto& attr : attributes_)
     write_attribute_var_sizes_[i++] = schema_->var_size(attr);
-  }
 
   return Status::Ok();
 }
@@ -587,11 +552,13 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 
   // Compute max buffer sizes
   RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
-      open_array_,
-      subarray,
-      (const char**)read_attributes_,
-      read_attribute_num_,
-      read_buffer_sizes_));
+      open_array_, subarray, read_attributes_, read_buffer_sizes_));
+
+  // If the max buffer sizes are 0, the the item is not found
+  if (read_buffer_sizes_[0] == 0) {
+    *found = false;
+    return Status::Ok();
+  }
 
   // Potentially reallocate read buffers
   RETURN_NOT_OK(realloc_read_buffers());
@@ -623,19 +590,41 @@ Status KV::realloc_read_buffers() {
   return Status::Ok();
 }
 
+Status KV::set_query_buffers(
+    Query* query,
+    const std::vector<std::string>& attributes,
+    void** buffers,
+    uint64_t* buffer_sizes) const {
+  auto array_schema = query->array_schema();
+  unsigned bid = 0;
+  for (const auto& attr : attributes) {
+    if (!array_schema->var_size(attr)) {
+      RETURN_NOT_OK(
+          query->set_buffer(attr.c_str(), buffers[bid], &buffer_sizes[bid]));
+      ++bid;
+    } else {
+      RETURN_NOT_OK(query->set_buffer(
+          attr.c_str(),
+          (uint64_t*)buffers[bid],
+          &buffer_sizes[bid],
+          buffers[bid + 1],
+          &buffer_sizes[bid + 1]));
+      bid += 2;
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
       storage_manager_->query_create(&query, open_array_, QueryType::READ));
   RETURN_NOT_OK_ELSE(
-      query->set_buffers(
-          (const char**)read_attributes_,
-          read_attribute_num_,
-          read_buffers_,
-          read_buffer_sizes_),
+      set_query_buffers(
+          query, read_attributes_, read_buffers_, read_buffer_sizes_),
       delete query);
-
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   delete query;
@@ -647,13 +636,9 @@ Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
       storage_manager_->query_create(&query, open_array_, QueryType::WRITE));
-
   RETURN_NOT_OK_ELSE(
-      query->set_buffers(
-          (const char**)write_attributes_,
-          write_attribute_num_,
-          write_buffers_,
-          write_buffer_sizes_),
+      set_query_buffers(
+          query, write_attributes_, write_buffers_, write_buffer_sizes_),
       delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   delete query;
