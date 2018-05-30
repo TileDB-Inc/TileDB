@@ -60,7 +60,7 @@
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Delete a valid group and array
   tiledb_object_remove(ctx, "my_group");

@@ -360,7 +360,7 @@ class Dimension {
       const void* domain,
       const void* tile_extent) {
     tiledb_dimension_t* d;
-    ctx.handle_error(tiledb_dimension_create(
+    ctx.handle_error(tiledb_dimension_alloc(
         ctx, &d, name.c_str(), type, domain, tile_extent));
     return Dimension(ctx, d);
   }

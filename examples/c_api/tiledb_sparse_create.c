@@ -41,22 +41,22 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Create two dimensions with names `d1` and `d2`. They both have type
   // `uint64`, domain `[1,4]` and tile extent `2`.
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
-  tiledb_dimension_create(
+  tiledb_dimension_alloc(
       ctx, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
   tiledb_dimension_t* d2;
-  tiledb_dimension_create(
+  tiledb_dimension_alloc(
       ctx, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
 
   // Create domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx, &domain);
+  tiledb_domain_alloc(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
   tiledb_domain_add_dimension(ctx, domain, d2);
 
@@ -67,15 +67,15 @@ int main() {
   // compression levels are set to `-1`, which implies the default level for
   // each compressor.
   tiledb_attribute_t* a1;
-  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_alloc(ctx, &a1, "a1", TILEDB_INT32);
   tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC_LZ, -1);
   tiledb_attribute_set_cell_val_num(ctx, a1, 1);
   tiledb_attribute_t* a2;
-  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_alloc(ctx, &a2, "a2", TILEDB_CHAR);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
-  tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx, &a3, "a3", TILEDB_FLOAT32);
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
@@ -83,7 +83,7 @@ int main() {
   // and the cell and tile order to `row-major`. We set the data tile capacity
   // to `2`. We also assign the array domain and attributes we created above.
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, TILEDB_SPARSE);
+  tiledb_array_schema_alloc(ctx, &array_schema, TILEDB_SPARSE);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_capacity(ctx, array_schema, 2);

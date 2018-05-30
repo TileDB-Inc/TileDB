@@ -74,7 +74,7 @@ struct IncompleteFx {
 
 IncompleteFx::IncompleteFx() {
   ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_create(&ctx_, NULL) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(&ctx_, NULL) == TILEDB_OK);
 }
 
 IncompleteFx::~IncompleteFx() {
@@ -86,17 +86,17 @@ void IncompleteFx::create_dense_array() {
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_create(
+  int rc = tiledb_dimension_alloc(
       ctx_, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
   CHECK(rc == TILEDB_OK);
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
   CHECK(rc == TILEDB_OK);
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   CHECK(rc == TILEDB_OK);
@@ -105,7 +105,7 @@ void IncompleteFx::create_dense_array() {
 
   // Create attributes
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_INT32);
+  rc = tiledb_attribute_alloc(ctx_, &a1, "a1", TILEDB_INT32);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
@@ -113,7 +113,7 @@ void IncompleteFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_create(ctx_, &a2, "a2", TILEDB_CHAR);
+  rc = tiledb_attribute_alloc(ctx_, &a2, "a2", TILEDB_CHAR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
   CHECK(rc == TILEDB_OK);
@@ -121,7 +121,7 @@ void IncompleteFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_create(ctx_, &a3, "a3", TILEDB_FLOAT32);
+  rc = tiledb_attribute_alloc(ctx_, &a3, "a3", TILEDB_FLOAT32);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
@@ -130,7 +130,7 @@ void IncompleteFx::create_dense_array() {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
@@ -168,17 +168,17 @@ void IncompleteFx::create_sparse_array() {
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_create(
+  int rc = tiledb_dimension_alloc(
       ctx_, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
   CHECK(rc == TILEDB_OK);
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_create(
+  rc = tiledb_dimension_alloc(
       ctx_, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
   CHECK(rc == TILEDB_OK);
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_create(ctx_, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   CHECK(rc == TILEDB_OK);
@@ -187,21 +187,21 @@ void IncompleteFx::create_sparse_array() {
 
   // Create attributes
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_INT32);
+  rc = tiledb_attribute_alloc(ctx_, &a1, "a1", TILEDB_INT32);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
-  rc = tiledb_attribute_create(ctx_, &a2, "a2", TILEDB_CHAR);
+  rc = tiledb_attribute_alloc(ctx_, &a2, "a2", TILEDB_CHAR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
-  rc = tiledb_attribute_create(ctx_, &a3, "a3", TILEDB_FLOAT32);
+  rc = tiledb_attribute_alloc(ctx_, &a3, "a3", TILEDB_FLOAT32);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
@@ -210,7 +210,7 @@ void IncompleteFx::create_sparse_array() {
 
   // Create array schmea
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_create(ctx_, &array_schema, TILEDB_SPARSE);
+  rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_SPARSE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
@@ -280,9 +280,16 @@ void IncompleteFx::write_dense_full() {
   };
   // clang-format on
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -298,7 +305,12 @@ void IncompleteFx::write_dense_full() {
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -333,10 +345,17 @@ void IncompleteFx::write_sparse_full() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -352,7 +371,12 @@ void IncompleteFx::write_sparse_full() {
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -389,9 +413,16 @@ void IncompleteFx::check_dense_incomplete() {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -414,6 +445,13 @@ void IncompleteFx::check_dense_incomplete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Check buffer
@@ -434,9 +472,16 @@ void IncompleteFx::check_dense_until_complete() {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -478,6 +523,13 @@ void IncompleteFx::check_dense_until_complete() {
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -494,9 +546,16 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
   void* buffers[] = {buffer_a2, buffer_a2_var};
   uint64_t buffer_sizes[] = {sizeof(buffer_a2), sizeof(buffer_a2_var)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -510,9 +569,16 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -529,9 +595,16 @@ void IncompleteFx::check_dense_unsplittable_complete() {
   void* buffers[] = {buffer_a2, buffer_a2_var};
   uint64_t buffer_sizes[] = {sizeof(buffer_a2), sizeof(buffer_a2_var)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -549,9 +622,16 @@ void IncompleteFx::check_dense_unsplittable_complete() {
   char c_buffer_a2_var[2] = {'b', 'b'};
   CHECK(!memcmp(buffer_a2_var, c_buffer_a2_var, sizeof(c_buffer_a2_var)));
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -567,9 +647,16 @@ void IncompleteFx::check_dense_reset_buffers() {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, DENSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -617,9 +704,16 @@ void IncompleteFx::check_dense_reset_buffers() {
   CHECK(!memcmp(buffer_a1, c_buffer_a1_2, sizeof(c_buffer_a1_2)));
   CHECK(buffer_sizes[0] == 2 * sizeof(int));
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -635,9 +729,16 @@ void IncompleteFx::check_sparse_incomplete() {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -657,9 +758,16 @@ void IncompleteFx::check_sparse_incomplete() {
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_INCOMPLETE);
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
   // Check buffer
@@ -680,9 +788,16 @@ void IncompleteFx::check_sparse_until_complete() {
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -721,9 +836,16 @@ void IncompleteFx::check_sparse_until_complete() {
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(buffer_sizes[0] == sizeof(int));
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -740,9 +862,16 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   void* buffers[] = {buffer_a2, buffer_a2_var};
   uint64_t buffer_sizes[] = {sizeof(buffer_a2), sizeof(buffer_a2_var)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -756,9 +885,16 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -775,9 +911,16 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
   void* buffers[] = {buffer_a2, buffer_a2_var};
   uint64_t buffer_sizes[] = {sizeof(buffer_a2), sizeof(buffer_a2_var)};
 
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query;
-  int rc = tiledb_query_create(ctx_, &query, SPARSE_ARRAY_NAME, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffers(
       ctx_, query, attributes, 1, buffers, buffer_sizes);
@@ -795,9 +938,16 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
   char c_buffer_a2_var[2] = {'b', 'b'};
   CHECK(!memcmp(buffer_a2_var, c_buffer_a2_var, sizeof(c_buffer_a2_var)));
 
-  // Free/finalize query
+  // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 

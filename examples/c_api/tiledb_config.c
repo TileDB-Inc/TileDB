@@ -68,11 +68,11 @@ int main() {
   // Create a TileDB config
   tiledb_config_t* config;
   tiledb_error_t* error = NULL;
-  tiledb_config_create(&config, &error);
+  tiledb_config_alloc(&config, &error);
 
   // Create a TileDB config iterator
   tiledb_config_iter_t* config_iter;
-  tiledb_config_iter_create(config, &config_iter, NULL, &error);
+  tiledb_config_iter_alloc(config, &config_iter, NULL, &error);
 
   // Upon creating a TileDB config (and before setting any values to the
   // config parameters), the config contains the default settings. We can
@@ -113,8 +113,8 @@ int main() {
   // Assign a config object to a context and VFS
   tiledb_ctx_t* ctx;
   tiledb_vfs_t* vfs;
-  tiledb_ctx_create(&ctx, config);
-  tiledb_vfs_create(ctx, &vfs, config);
+  tiledb_ctx_alloc(&ctx, config);
+  tiledb_vfs_alloc(ctx, &vfs, config);
 
   // Clean up
   tiledb_config_free(&config);

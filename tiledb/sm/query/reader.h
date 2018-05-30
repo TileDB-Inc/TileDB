@@ -296,9 +296,6 @@ class Reader {
    */
   bool done() const;
 
-  /** Finalizes the reader. */
-  Status finalize();
-
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
 
@@ -320,7 +317,10 @@ class Reader {
   /** Performs a read query using its set members. */
   Status read();
 
-  /** Sets the array schema. */
+  /**
+   * Sets the array schema. If the array is a kv store, then this
+   * function also sets global order as the default layout.
+   */
   void set_array_schema(const ArraySchema* array_schema);
 
   /**

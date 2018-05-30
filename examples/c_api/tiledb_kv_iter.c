@@ -67,12 +67,19 @@ void print(const void* v, tiledb_datatype_t type, uint64_t size);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // Create key-value iterator
   const char* attributes[] = {"a1", "a2", "a3"};
+
+  // Open a kv
+  tiledb_kv_t* kv;
+  tiledb_kv_alloc(ctx, "my_kv", &kv);
+  tiledb_kv_open(ctx, kv, attributes, 3);
+
+  // Create a kv iterator
   tiledb_kv_iter_t* kv_iter;
-  tiledb_kv_iter_create(ctx, &kv_iter, "my_kv", attributes, 3);
+  tiledb_kv_iter_alloc(ctx, kv, &kv_iter);
 
   int done;
   tiledb_kv_iter_done(ctx, kv_iter, &done);
@@ -85,10 +92,11 @@ int main() {
     tiledb_kv_iter_done(ctx, kv_iter, &done);
   }
 
-  // Finalize
-  tiledb_kv_iter_finalize(ctx, kv_iter);
+  // Close the kv
+  tiledb_kv_close(ctx, kv);
 
   // Clean up
+  tiledb_kv_free(&kv);
   tiledb_kv_iter_free(&kv_iter);
   tiledb_ctx_free(&ctx);
 

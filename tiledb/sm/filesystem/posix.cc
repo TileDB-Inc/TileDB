@@ -238,7 +238,7 @@ Status Posix::filelock_lock(
   // Open the file
   *fd = ::open(filename.c_str(), O_RDWR);
   if (*fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
+    return LOG_STATUS(Status::IOError(
         "Cannot open filelock '" + filename + "'; " + strerror(errno)));
   }
   // Acquire the lock

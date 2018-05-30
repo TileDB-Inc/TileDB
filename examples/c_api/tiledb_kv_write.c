@@ -41,7 +41,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx, NULL);
+  tiledb_ctx_alloc(&ctx, NULL);
 
   // We first create some key-value items. Note that at this point these
   // are independent of the key-value store they will be inserted into.
@@ -54,7 +54,7 @@ int main() {
   const char* key1_a2 = "a";
   float key1_a3[] = {1.1f, 1.2f};
   tiledb_kv_item_t* kv_item1;
-  tiledb_kv_item_create(ctx, &kv_item1);
+  tiledb_kv_item_alloc(ctx, &kv_item1);
   tiledb_kv_item_set_key(ctx, kv_item1, &key1, TILEDB_INT32, sizeof(key1));
   tiledb_kv_item_set_value(
       ctx, kv_item1, "a1", &key1_a1, TILEDB_INT32, sizeof(key1_a1));
@@ -69,7 +69,7 @@ int main() {
   const char* key2_a2 = "bb";
   float key2_a3[] = {2.1f, 2.2f};
   tiledb_kv_item_t* kv_item2;
-  tiledb_kv_item_create(ctx, &kv_item2);
+  tiledb_kv_item_alloc(ctx, &kv_item2);
   tiledb_kv_item_set_key(ctx, kv_item2, &key2, TILEDB_FLOAT32, sizeof(key2));
   tiledb_kv_item_set_value(
       ctx, kv_item2, "a1", &key2_a1, TILEDB_INT32, sizeof(key2_a1));
@@ -84,7 +84,7 @@ int main() {
   const char* key3_a2 = "ccc";
   float key3_a3[] = {3.1f, 3.2f};
   tiledb_kv_item_t* kv_item3;
-  tiledb_kv_item_create(ctx, &kv_item3);
+  tiledb_kv_item_alloc(ctx, &kv_item3);
   tiledb_kv_item_set_key(ctx, kv_item3, &key3, TILEDB_FLOAT64, sizeof(key3));
   tiledb_kv_item_set_value(
       ctx, kv_item3, "a1", &key3_a1, TILEDB_INT32, sizeof(key3_a1));
@@ -99,7 +99,7 @@ int main() {
   const char* key4_a2 = "dddd";
   float key4_a3[] = {4.1f, 4.2f};
   tiledb_kv_item_t* kv_item4;
-  tiledb_kv_item_create(ctx, &kv_item4);
+  tiledb_kv_item_alloc(ctx, &kv_item4);
   tiledb_kv_item_set_key(ctx, kv_item4, &key4, TILEDB_CHAR, strlen(key4));
   tiledb_kv_item_set_value(
       ctx, kv_item4, "a1", &key4_a1, TILEDB_INT32, sizeof(key4_a1));
@@ -110,7 +110,8 @@ int main() {
 
   // Open the key-value store
   tiledb_kv_t* kv;
-  tiledb_kv_open(ctx, &kv, "my_kv", NULL, 0);
+  tiledb_kv_alloc(ctx, "my_kv", &kv);
+  tiledb_kv_open(ctx, kv, NULL, 0);
 
   // We add items to a key-value store in the code snippets below. Note that
   // when an item is added to the key-value store, it is only buffered in

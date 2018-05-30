@@ -34,6 +34,7 @@
 #define TILEDB_CONSOLIDATOR_H
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/storage_manager/open_array.h"
 
 #include <vector>
 
@@ -94,7 +95,6 @@ class Consolidator {
   /** Cleans up the inputs. */
   void clean_up(
       void* subarray,
-      ArraySchema* array_schema,
       unsigned buffer_num,
       void** buffers,
       uint64_t* buffer_sizes,
@@ -113,7 +113,7 @@ class Consolidator {
    * @return Status
    */
   Status create_buffers(
-      ArraySchema* array_schema,
+      const ArraySchema* array_schema,
       void*** buffers,
       uint64_t** buffer_sizes,
       unsigned int* buffer_num);
@@ -125,7 +125,7 @@ class Consolidator {
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
    * @param write_subarray The subarray to write into.
-   * @param array_name The array name.
+   * @param open_array The opened array.
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param fragment_num The number of fragments to be retrieved.
@@ -135,16 +135,13 @@ class Consolidator {
       Query** query_r,
       Query** query_w,
       void* write_subarray,
-      const char* array_name,
+      OpenArray* open_array,
       void** buffers,
       uint64_t* buffer_sizes,
       unsigned int* fragment_num);
 
   /** Creates the subarray that should represent the entire array domain. */
-  Status create_subarray(
-      const std::string& array_name,
-      const ArraySchema* array_schema,
-      void** subarray) const;
+  Status create_subarray(OpenArray* open_array, void** subarray) const;
 
   /**
    * Deletes the old fragments that got consolidated.
@@ -152,9 +149,6 @@ class Consolidator {
    * @return Status
    */
   Status delete_old_fragments(const std::vector<URI>& uris);
-
-  /** Finalizes the input queries. */
-  Status finalize_queries(Query* query_r, Query* query_w);
 
   /**
    * Frees the input buffers.

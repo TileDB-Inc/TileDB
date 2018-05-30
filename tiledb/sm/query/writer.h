@@ -153,7 +153,10 @@ class Writer {
   /** Returns the cell layout. */
   Layout layout() const;
 
-  /** Sets the array schema. */
+  /*
+   * Sets the array schema. If the array is a kv store, then this
+   * function also sets global order as the default layout.
+   */
   void set_array_schema(const ArraySchema* array_schema);
 
   /**

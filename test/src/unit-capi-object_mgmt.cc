@@ -99,7 +99,7 @@ ObjectMgmtFx::ObjectMgmtFx() {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_create(&config, &error) == TILEDB_OK);
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
   if (supports_s3_) {
@@ -119,10 +119,10 @@ ObjectMgmtFx::ObjectMgmtFx() {
 #endif
   }
 
-  REQUIRE(tiledb_ctx_create(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_create(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -155,7 +155,7 @@ ObjectMgmtFx::~ObjectMgmtFx() {
 
 void ObjectMgmtFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_create(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -182,7 +182,7 @@ void ObjectMgmtFx::remove_temp_dir(const std::string& path) {
 
 void ObjectMgmtFx::create_array(const std::string& path) {
   tiledb_attribute_t* a1;
-  tiledb_attribute_create(ctx_, &a1, "a1", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx_, &a1, "a1", TILEDB_FLOAT32);
 
   // Domain and tile extents
   int64_t dim_domain[2] = {1, 1};
@@ -190,17 +190,17 @@ void ObjectMgmtFx::create_array(const std::string& path) {
 
   // Create dimension
   tiledb_dimension_t* d1;
-  tiledb_dimension_create(
+  tiledb_dimension_alloc(
       ctx_, &d1, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0]);
 
   // Domain
   tiledb_domain_t* domain;
-  tiledb_domain_create(ctx_, &domain);
+  tiledb_domain_alloc(ctx_, &domain);
   tiledb_domain_add_dimension(ctx_, domain, d1);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx_, &array_schema, TILEDB_DENSE);
+  tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
   tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
 
