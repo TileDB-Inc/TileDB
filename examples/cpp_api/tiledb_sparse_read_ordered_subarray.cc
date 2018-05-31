@@ -47,7 +47,7 @@ int main() {
   tiledb::Context ctx;
 
   // Open array
-  tiledb::Array array(ctx, "my_sparse_array");
+  tiledb::Array array(ctx, "my_sparse_array", TILEDB_READ);
 
   // Calculate maximum buffer elements for the query results per attribute
   const std::vector<uint64_t> subarray = {3, 4, 2, 4};

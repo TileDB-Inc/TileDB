@@ -80,7 +80,7 @@ int main() {
   // Open array
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, "my_dense_array", &array);
-  tiledb_array_open(ctx, array);
+  tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Print non-empty domain
   int is_empty = 0;
@@ -124,7 +124,7 @@ int main() {
   // for the query, which means that we wish to get all the array cells.
 
   tiledb_query_t* query;
-  tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
+  tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_buffer(
       ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
   tiledb_query_set_buffer_var(

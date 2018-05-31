@@ -46,6 +46,8 @@
 * Added `tiledb_kv_alloc`
 * Added `tiledb_kv_iter_alloc` which takes as input a kv object
 * Added `tiledb_query_set_buffer` which sets a single attribute buffer
+* Added `tiledb_query_get_type`
+* Added `tiledb_array_get_query_type`
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -62,6 +64,8 @@
 * `MapIter` can be used to create iterators for a map.
 * Added `Array::{open, close}`
 * Added `Map::{open, close}`
+* Added `Array::query_type`
+* Added `Query::query_type`
 
 ## Breaking changes
 
@@ -83,6 +87,7 @@
 * Renamed all C API functions that create TileDB objects from `tiledb_*_create` to `tiledb_*_alloc`.
 * Removed `tiledb_query_set_buffers`
 * Removed `tiledb_query_reset_buffers`
+* Added query type argument to `tiledb_array_open`
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
@@ -98,6 +103,7 @@
 * Removed `tiledb::Query::reset_buffers`. Any previous usages can safely be removed.
 * `Map::begin` refers to the same iterator object. For multiple concurrent iterators, a `MapIter` should be manually constructed instead of using `Map::begin()` more than once.
 * Renamed `Domain::rank` to `Domain::ndim` to avoid confusion with matrix def of rank.
+* Added query type argument to `Array` constructor
 
 # TileDB v1.2.2 Release Notes
 

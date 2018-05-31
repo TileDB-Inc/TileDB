@@ -42,7 +42,7 @@ int main() {
   tiledb::Context ctx;
 
   // Open array
-  tiledb::Array array(ctx, "my_dense_array");
+  tiledb::Array array(ctx, "my_dense_array", TILEDB_WRITE);
 
   // Prepare cell buffers
   std::vector<int> a1_data = {

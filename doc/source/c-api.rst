@@ -148,6 +148,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_query_type
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_non_empty_domain
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_compute_max_read_buffer_sizes
@@ -274,6 +276,8 @@ Query
 .. doxygenfunction:: tiledb_query_submit_async
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_status
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_type
     :project: TileDB-C
 
 Group

@@ -224,6 +224,12 @@ extern const uint64_t tile_cache_size;
 /** Empty String reference **/
 extern const std::string empty_str;
 
+/** TILEDB_READ Query String **/
+extern const std::string query_type_read_str;
+
+/** TILEDB_WRITE Query String **/
+extern const std::string query_type_write_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 

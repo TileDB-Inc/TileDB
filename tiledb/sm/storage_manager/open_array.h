@@ -55,7 +55,7 @@ class OpenArray {
   /* ********************************* */
 
   /** Constructor. */
-  explicit OpenArray(const URI& array_uri);
+  explicit OpenArray(const URI& array_uri, QueryType query_type);
 
   /** Destructor. */
   ~OpenArray();
@@ -97,14 +97,14 @@ class OpenArray {
    */
   FragmentMetadata* fragment_metadata_get(const URI& fragment_uri) const;
 
-  /** Returns `true` if the fragment metadata is empty. */
-  bool fragment_metadata_empty() const;
-
   /** Locks the array mutex. */
   void mtx_lock();
 
   /** Unlocks the array mutex. */
   void mtx_unlock();
+
+  /** The query type the array was opened with. */
+  QueryType query_type() const;
 
   /** Sets an array schema. */
   void set_array_schema(ArraySchema* array_schema);
@@ -140,6 +140,9 @@ class OpenArray {
    * any fragment metadata structures from the disk.
    */
   std::mutex mtx_;
+
+  /** The query type the array was opened with. */
+  QueryType query_type_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

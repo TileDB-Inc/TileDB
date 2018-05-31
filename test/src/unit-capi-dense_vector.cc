@@ -226,7 +226,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   int64_t buffer_val[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -234,7 +234,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   void* write_buffers[] = {buffer_val};
   uint64_t write_buffer_sizes[] = {sizeof(buffer_val)};
   tiledb_query_t* write_query;
-  rc = tiledb_query_alloc(ctx_, &write_query, array, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &write_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_,
@@ -273,10 +273,10 @@ void DenseVectorFx::check_read(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
@@ -314,12 +314,12 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Update
   tiledb_query_t* update_query;
-  rc = tiledb_query_alloc(ctx_, &update_query, array, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &update_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_,
@@ -345,7 +345,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   tiledb_query_free(&update_query);
 
   // Open array
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Read
@@ -353,7 +353,7 @@ void DenseVectorFx::check_update(const std::string& path) {
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
   tiledb_query_t* read_query = nullptr;
-  rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
@@ -383,7 +383,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   const int64_t num_writes = 5;
@@ -397,7 +397,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
 
     // Update
     tiledb_query_t* update_query;
-    rc = tiledb_query_alloc(ctx_, &update_query, array, TILEDB_WRITE);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &update_query);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_buffer(
         ctx_,
@@ -427,7 +427,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Open array
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Read
@@ -437,7 +437,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
   tiledb_query_t* read_query = nullptr;
-  rc = tiledb_query_alloc(ctx_, &read_query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &read_query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, read_query, attributes[0], read_buffers[0], &read_buffer_sizes[0]);
