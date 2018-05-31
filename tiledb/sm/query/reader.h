@@ -324,28 +324,42 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffers to the query for a set of attributes.
+   * Sets the buffer for a fixed-sized attribute.
    *
-   * @param attributes The attributes the query will focus on.
-   * @param attribute_num The number of attributes.
-   * @param buffers The buffers that will hold the data to be read. Note
-   *     that there is one buffer per fixed-sized attribute, and two buffers
-   *     for each variable-sized attribute (the first holds the offsets, and
-   *     the second the actual values).
-   * @param buffer_sizes There must be an one-to-one correspondence with
-   *     *buffers*. They initially contain the allocated sizes of
-   *     *buffers*, but after the termination of the function they will contain
-   *     the sizes of the useful (read) data in the buffers.
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
    * @return Status
    */
-  Status set_buffers(
-      const char** attributes,
-      unsigned int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes);
+  Status set_buffer(const char* attribute, void* buffer, uint64_t* buffer_size);
 
-  /** Sets the query buffers. */
-  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
+  /**
+   * Sets the buffer for a var-sized attribute.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer_off The buffer that will hold the data to be read.
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_off_size This initially contains
+   *     the allocated size of `buffer_off`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_off`.
+   * @param buffer_val The buffer that will hold the data to be read.
+   *     This buffer holds the actual var-sized cell values.
+   * @param buffer_val_size This initially contains
+   *     the allocated size of `buffer_val`, but after the termination of the
+   *     function it will contain the size of the useful (read) data in
+   *     `buffer_val`.
+   * @return Status
+   */
+  Status set_buffer(
+      const char* attribute,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      void* buffer_val,
+      uint64_t* buffer_val_size);
 
   /** Sets the fragment metadata. */
   void set_fragment_metadata(
@@ -413,6 +427,9 @@ class Reader {
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
 
+  /** True if the reader has been initialized. */
+  bool initialized_;
+
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
@@ -428,22 +445,6 @@ class Reader {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /**
-   * In case the buffer sizes are reset while the query is incomplete and
-   * still in progress, a necessary check must be performed on the new
-   * (input) buffer sizes. Recall that when a read query is initialized,
-   * subarray partitions are computed based on the original buffer sizes,
-   * such that each partition results can fit in the user buffers. If the
-   * buffer sizes are reset, then the subarray partitions are effectively
-   * invalidated. To prevent this case, any buffer sizes to be reset
-   * must be at least as large as the initially set buffer sizes. This
-   * is the the check that this function performs.
-   *
-   * @param buffer_sizes The buffer sizes to be checked.
-   * @return Status.
-   */
-  Status check_reset_buffer_sizes(const uint64_t* buffer_sizes) const;
 
   /** Clears the read state. */
   void clear_read_state();

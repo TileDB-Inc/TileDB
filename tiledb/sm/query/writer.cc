@@ -53,6 +53,7 @@ namespace sm {
 Writer::Writer() {
   array_schema_ = nullptr;
   global_write_state_.reset(nullptr);
+  initialized_ = false;
   layout_ = Layout::ROW_MAJOR;
   storage_manager_ = nullptr;
   subarray_ = nullptr;
@@ -106,6 +107,7 @@ Status Writer::init() {
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ = (!strcmp(check_coord_dups, "true")) ? true : false;
   dedup_coords_ = (!strcmp(dedup_coords, "true")) ? true : false;
+  initialized_ = true;
 
   return Status::Ok();
 }
@@ -120,53 +122,97 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
     layout_ = Layout::UNORDERED;
 }
 
-Status Writer::set_buffers(
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes) {
-  if (buffers == nullptr || buffer_sizes == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffers; Buffers not provided"));
+Status Writer::set_buffer(
+    const char* attribute, void* buffer, uint64_t* buffer_size) {
+  // Check buffer
+  if (buffer == nullptr || buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; Buffer or buffer size is null"));
 
+  // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffers; Array schema not set"));
+        Status::WriterError("Cannot set buffer; Array schema not set"));
 
-  RETURN_NOT_OK(set_attributes(attributes, attribute_num));
-  set_buffers(buffers, buffer_sizes);
+  // Check that attribute exists
+  if (attribute == nullptr || (attribute != constants::coords &&
+                               array_schema_->attribute(attribute) == nullptr))
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Invalid attribute"));
+
+  // Check that attribute is fixed-sized
+  bool var_size =
+      (attribute != constants::coords && array_schema_->var_size(attribute));
+  if (var_size)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + attribute +
+        "' is var-sized"));
+
+  // Error if setting a new attribute after initialization
+  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
+  if (initialized_ && !attr_exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute '") + attribute +
+        "' after initialization"));
+
+  // Append to attributes only if buffer not set before
+  if (!attr_exists)
+    attributes_.push_back(std::string(attribute));
+
+  // Set attribute buffer
+  attr_buffers_.emplace(
+      attribute, AttributeBuffer(buffer, nullptr, buffer_size, nullptr));
 
   return Status::Ok();
 }
 
-Status Writer::set_buffers(void** buffers, uint64_t* buffer_sizes) {
-  if (buffers == nullptr || buffer_sizes == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffers; Buffers not provided"));
+Status Writer::set_buffer(
+    const char* attribute,
+    uint64_t* buffer_off,
+    uint64_t* buffer_off_size,
+    void* buffer_val,
+    uint64_t* buffer_val_size) {
+  // Check buffer
+  if (buffer_off == nullptr || buffer_off_size == nullptr ||
+      buffer_val == nullptr || buffer_val_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; Buffer or buffer size is null"));
 
+  // Array schema must exist
   if (array_schema_ == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffers; Array schema not set"));
+        Status::WriterError("Cannot set buffer; Array schema not set"));
 
-  attr_buffers_.clear();
-  unsigned bid = 0;
-  for (const auto& attr : attributes_) {
-    if (!array_schema_->var_size(attr)) {
-      attr_buffers_.emplace(
-          attr,
-          AttributeBuffer(buffers[bid], nullptr, &buffer_sizes[bid], nullptr));
-      ++bid;
-    } else {
-      attr_buffers_.emplace(
-          attr,
-          AttributeBuffer(
-              buffers[bid],
-              buffers[bid + 1],
-              &buffer_sizes[bid],
-              &buffer_sizes[bid + 1]));
-      bid += 2;
-    }
-  }
+  // Check that attribute exists
+  if (attribute == nullptr || (attribute != constants::coords &&
+                               array_schema_->attribute(attribute) == nullptr))
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Invalid attribute"));
+
+  // Check that attribute is var-sized
+  bool var_size =
+      (attribute != constants::coords && array_schema_->var_size(attribute));
+  if (!var_size)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + attribute +
+        "' is fixed-sized"));
+
+  // Error if setting a new attribute after initialization
+  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
+  if (initialized_ && !attr_exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute '") + attribute +
+        "' after initialization"));
+
+  // Append to attributes only if buffer not set before
+  if (!attr_exists)
+    attributes_.push_back(std::string(attribute));
+
+  // Set attribute buffer
+  attr_buffers_.emplace(
+      attribute,
+      AttributeBuffer(
+          buffer_off, buffer_val, buffer_off_size, buffer_val_size));
 
   return Status::Ok();
 }

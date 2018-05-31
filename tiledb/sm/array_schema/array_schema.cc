@@ -316,6 +316,19 @@ Status ArraySchema::check() const {
 }
 
 Status ArraySchema::check_attributes(
+    const std::vector<std::string>& attributes) const {
+  for (const auto& attr : attributes) {
+    if (attr == constants::coords)
+      continue;
+    if (attribute_map_.find(attr) == attribute_map_.end())
+      return LOG_STATUS(Status::ArraySchemaError(
+          "Attribute check failed; cannot find attribute"));
+  }
+
+  return Status::Ok();
+}
+
+Status ArraySchema::check_attributes(
     const char** attributes, unsigned attribute_num) const {
   for (unsigned i = 0; i < attribute_num; ++i) {
     if (attributes[i] == constants::coords)

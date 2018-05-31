@@ -160,26 +160,34 @@ class Writer {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffers to the query for a set of attributes.
+   * Sets the buffer for a fixed-sized attribute.
    *
-   * @param attributes The attributes the query will focus on.
-   * @param attribute_num The number of attributes.
-   * @param buffers The buffers that either have the input data to be written.
-   *     Note that there is one buffer per fixed-sized attribute, and two
-   *     buffers for each variable-sized attribute (the first holds the offsets,
-   *     and the second the actual values).
-   * @param buffer_sizes There must be an one-to-one correspondence with
-   *     *buffers*. They contain the sizes of *buffers*.
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffers(
-      const char** attributes,
-      unsigned int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes);
+  Status set_buffer(const char* attribute, void* buffer, uint64_t* buffer_size);
 
-  /** Sets the query buffers. */
-  Status set_buffers(void** buffers, uint64_t* buffer_sizes);
+  /**
+   * Sets the buffer for a var-sized attribute.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param buffer_off The buffer that has the input data to be written,
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_off_size The size of `buffer_off` in bytes.
+   * @param buffer_val The buffer that has the input data to be written.
+   *     This buffer holds the actual var-sized cell values.
+   * @param buffer_val_size The size of `buffer_val` in bytes.
+   * @return Status
+   */
+  Status set_buffer(
+      const char* attribute,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      void* buffer_val,
+      uint64_t* buffer_val_size);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
@@ -240,6 +248,9 @@ class Writer {
 
   /** The state associated with global writes. */
   std::unique_ptr<GlobalWriteState> global_write_state_;
+
+  /** True if the writer has been initialized. */
+  bool initialized_;
 
   /** The layout of the cells in the user buffers. */
   Layout layout_;

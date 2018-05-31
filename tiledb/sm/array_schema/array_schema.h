@@ -191,6 +191,15 @@ class ArraySchema {
   Status check_attributes(
       const char** attributes, unsigned attribute_num) const;
 
+  /**
+   * Throws an error if there is an attribute in the input that does not
+   * exist in the schema.
+   *
+   * @param attributes The attributes to be checked.
+   * @return Status
+   */
+  Status check_attributes(const std::vector<std::string>& attributes) const;
+
   /** Returns the compression type of the attribute with the input id. */
   Compressor compression(unsigned int attribute_id) const;
 

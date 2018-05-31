@@ -185,18 +185,18 @@ void Consolidator::clean_up(
 }
 
 Status Consolidator::create_buffers(
-    const ArraySchema* array_meta,
+    const ArraySchema* array_schema,
     void*** buffers,
     uint64_t** buffer_sizes,
     unsigned int* buffer_num) {
   // For easy reference
-  auto attribute_num = array_meta->attribute_num();
-  auto dense = array_meta->dense();
+  auto attribute_num = array_schema->attribute_num();
+  auto dense = array_schema->dense();
 
   // Calculate number of buffers
   *buffer_num = 0;
   for (unsigned int i = 0; i < attribute_num; ++i)
-    *buffer_num += (array_meta->var_size(i)) ? 2 : 1;
+    *buffer_num += (array_schema->var_size(i)) ? 2 : 1;
   *buffer_num += (dense) ? 0 : 1;
 
   // Create buffers
@@ -246,7 +246,7 @@ Status Consolidator::create_queries(
       storage_manager_->query_create(query_r, open_array, QueryType::READ));
   if (!(*query_r)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_r)->set_buffers(nullptr, 0, buffers, buffer_sizes));
+  RETURN_NOT_OK(set_query_buffers(*query_r, buffers, buffer_sizes));
 
   // Get fragment num and terminate with success if it is <=1
   *fragment_num = (*query_r)->fragment_num();
@@ -263,7 +263,7 @@ Status Consolidator::create_queries(
   if (!(*query_w)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->set_subarray(subarray));
-  RETURN_NOT_OK((*query_w)->set_buffers(nullptr, 0, buffers, buffer_sizes));
+  RETURN_NOT_OK(set_query_buffers(*query_w, buffers, buffer_sizes));
 
   return Status::Ok();
 }
@@ -321,6 +321,33 @@ Status Consolidator::rename_new_fragment_uri(URI* uri) const {
      << ms << "_" << timestamp_str;
 
   *uri = URI(ss.str());
+  return Status::Ok();
+}
+
+Status Consolidator::set_query_buffers(
+    Query* query, void** buffers, uint64_t* buffer_sizes) const {
+  auto dense = query->array_schema()->dense();
+  auto attributes = query->array_schema()->attributes();
+  unsigned bid = 0;
+  for (const auto& attr : attributes) {
+    if (!attr->var_size()) {
+      RETURN_NOT_OK(query->set_buffer(
+          attr->name().c_str(), buffers[bid], &buffer_sizes[bid]));
+      ++bid;
+    } else {
+      RETURN_NOT_OK(query->set_buffer(
+          attr->name().c_str(),
+          (uint64_t*)buffers[bid],
+          &buffer_sizes[bid],
+          buffers[bid + 1],
+          &buffer_sizes[bid + 1]));
+      bid += 2;
+    }
+  }
+  if (!dense)
+    RETURN_NOT_OK(query->set_buffer(
+        constants::coords.c_str(), buffers[bid], &buffer_sizes[bid]));
+
   return Status::Ok();
 }
 

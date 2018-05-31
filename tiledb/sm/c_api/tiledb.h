@@ -1852,48 +1852,80 @@ TILEDB_EXPORT int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 /**
- * Sets the buffers to the query, which will either hold the attribute
- * values to be written (if it is a write query), or will hold the
- * results from a read query.
+ * Sets the buffer for a fixed-sized attribute to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
  *
  * **Example:**
  *
  * @code{.c}
- * const char* attributes[] = {"attr_1", "attr_2"};
- * int attr_1[100];
- * float attr_2[100];
- * void* buffers[] = {attr_1, attr_2};
- * uint64_t buffer_sizes[] = {sizeof(attr_1), sizeof(attr_2)};
- * tiledb_query_set_buffers(ctx, query, attributes, 2, buffers, buffer_sizes);
+ * int a1[100];
+ * uint64_t a2_size = sizeof(a1);
+ * tiledb_query_set_buffer(ctx, query, "a1", a1, &a2_size);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param attributes A set of the array attributes the read/write will be
- *     constrained on. Note that the coordinates have special attribute name
- *     `TILEDB_COORDS`. If it is set to `NULL`, then this means **all**
- *     attributes, in the way they were defined upon the array creation,
- *     including the special attributes of coordinates and keys.
- * @param attribute_num The number of the input attributes.
- * @param buffers The buffers that either have the input data to be written,
- *     or will hold the data to be read. Note that there is one buffer per
- *     fixed-sized attribute, and two buffers for each variable-sized
- *     attribute (the first holds the offsets, and the second the actual
- *     values).
- * @param buffer_sizes There must be an one-to-one correspondence with
- *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
- *     In the case of reads, they initially contain the allocated sizes of
- *     *buffers*, but after the termination of the function they will contain
- *     the sizes of the useful (read) data in the buffers.
+ * @param attribute The attribute to set the buffer for. Note that the
+ *     coordinates have special attribute name `TILEDB_COORDS`.
+ * @param buffer The buffer that either have the input data to be written,
+ *     or will hold the data to be read.
+ * @param buffer_size In the case of writes, this is the size of `buffer`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer`, but after the termination of the function
+ *     it will contain the size of the useful (read) data in `buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_query_set_buffers(
+TILEDB_EXPORT int tiledb_query_set_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes);
+    const char* attribute,
+    void* buffer,
+    uint64_t* buffer_size);
+
+/**
+ * Sets the buffer for a var-sized attribute to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t a2_off[10];
+ * uint64_t a2_off_size = sizeof(a2_off);
+ * char a2_val[100];
+ * uint64_t a2_val_size = sizeof(a2_val);
+ * tiledb_query_set_buffer_var(
+ *     ctx, query, "a2", a2_off, &a2_off_size, a2_val, &a2_val_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param attribute The attribute to set the buffer for.
+ * @param buffer_off The buffer that either have the input data to be written,
+ *     or will hold the data to be read. This buffer holds the starting offsets
+ *     of each cell value in `buffer_val`.
+ * @param buffer_off_size In the case of writes, it is the size of `buffer_off`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer_off`, but after the termination of the function
+ *     it will contain the size of the useful (read) data in `buffer_off`.
+ * @param buffer_val The buffer that either have the input data to be written,
+ *     or will hold the data to be read. This buffer holds the actual var-sized
+ *     cell values.
+ * @param buffer_val_size In the case of writes, it is the size of `buffer_val`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer_val`, but after the termination of the function
+ *     it will contain the size of the useful (read) data in `buffer_val`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_query_set_buffer_var(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attribute,
+    uint64_t* buffer_off,
+    uint64_t* buffer_off_size,
+    void* buffer_val,
+    uint64_t* buffer_val_size);
 
 /**
  * Sets the layout of the cells to be written or read.
@@ -2009,27 +2041,6 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data);
-
-/**
- * Resets the query buffers.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_query_reset_buffers(ctx, query, buffers, buffer_sizes);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query whose buffers are to be se.
- * @param buffers The buffers to be set.
- * @param buffer_sizes The corresponding buffer sizes.
- * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
- */
-TILEDB_EXPORT int tiledb_query_reset_buffers(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void** buffers,
-    uint64_t* buffer_sizes);
 
 /**
  * Retrieves the status of a query.

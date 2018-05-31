@@ -290,8 +290,20 @@ void ConsolidationFx::write_dense_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -342,8 +354,20 @@ void ConsolidationFx::write_dense_subarray() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -392,10 +416,25 @@ void ConsolidationFx::write_dense_unordered() {
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
   rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 4, buffers, buffer_sizes);
-  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -460,8 +499,23 @@ void ConsolidationFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -512,8 +566,23 @@ void ConsolidationFx::write_sparse_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -583,8 +652,20 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -672,8 +753,20 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -752,8 +845,20 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 3, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -829,8 +934,23 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -907,8 +1027,23 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffers(
-      ctx_, query, attributes, 4, buffers, buffer_sizes);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query

@@ -263,7 +263,7 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_subarray
     :project: TileDB-C
-.. doxygenfunction:: tiledb_query_set_buffers
+.. doxygenfunction:: tiledb_query_set_buffer
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_layout
     :project: TileDB-C
@@ -272,8 +272,6 @@ Query
 .. doxygenfunction:: tiledb_query_submit
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_submit_async
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_reset_buffers
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_status
     :project: TileDB-C

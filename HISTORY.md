@@ -45,6 +45,7 @@
 * Added `tiledb_array_alloc`
 * Added `tiledb_kv_alloc`
 * Added `tiledb_kv_iter_alloc` which takes as input a kv object
+* Added `tiledb_query_set_buffer` which sets a single attribute buffer
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -80,6 +81,8 @@
 * Changed signature of `tiledb_{array,kv}_open`.
 * Removed `tiledb_kv_iter_create`
 * Renamed all C API functions that create TileDB objects from `tiledb_*_create` to `tiledb_*_alloc`.
+* Removed `tiledb_query_set_buffers`
+* Removed `tiledb_query_reset_buffers`
 
 ### C++ API
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.

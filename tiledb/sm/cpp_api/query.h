@@ -114,7 +114,6 @@ class Query {
     tiledb_query_t* q;
     ctx.handle_error(tiledb_query_alloc(ctx, &q, array, type));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
-    array_attributes_ = schema_.attributes();
   }
 
   Query(const Query&) = default;
@@ -144,7 +143,6 @@ class Query {
   /** Submits the query. Call will block until query is complete. */
   Status submit() {
     auto& ctx = ctx_.get();
-    prepare_submission();
     ctx.handle_error(tiledb_query_submit(ctx, query_.get()));
     return query_status();
   }
@@ -160,7 +158,6 @@ class Query {
   void submit_async(const Fn& callback) {
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
-    prepare_submission();
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
         ctx, query_.get(), &wrapper, nullptr));
   }
@@ -195,17 +192,18 @@ class Query {
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
     if (buff_sizes_.size() == 0)
       return {};  // Query hasn't been submitted
-    unsigned bid = 0;
-    for (const auto& attr : attrs_) {
+    for (const auto& b_it : buff_sizes_) {
+      auto attr_name = b_it.first;
+      auto size_pair = b_it.second;
       auto var =
-          (attr != TILEDB_COORDS &&
-           schema_.attribute(attr).cell_val_num() == TILEDB_VAR_NUM);
-      elements[attr] = (var) ? std::pair<uint64_t, uint64_t>(
-                                   buff_sizes_[bid] / sub_tsize_[bid],
-                                   buff_sizes_[bid + 1] / sub_tsize_[bid + 1]) :
-                               std::pair<uint64_t, uint64_t>(
-                                   0, buff_sizes_[bid] / sub_tsize_[bid]);
-      bid += (var) ? 2 : 1;
+          (attr_name != TILEDB_COORDS &&
+           schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM);
+      auto element_size = element_sizes_.find(attr_name)->second;
+      elements[attr_name] = (var) ? std::pair<uint64_t, uint64_t>(
+                                        size_pair.first / sizeof(uint64_t),
+                                        size_pair.second / element_size) :
+                                    std::pair<uint64_t, uint64_t>(
+                                        0, size_pair.second / element_size);
     }
     return elements;
   }
@@ -295,7 +293,7 @@ class Query {
    * @param size The number of elements in the coordinate array buffer
    * **/
   template <typename T>
-  void set_coordinates(const T* buf, uint64_t size) {
+  void set_coordinates(T* buf, uint64_t size) {
     set_buffer(TILEDB_COORDS, buf, size);
   }
 
@@ -317,32 +315,17 @@ class Query {
    *
    * @tparam Vec buffer. Should always be a vector type of the attribute type.
    * @param attr Attribute name
-   * @param buf Buffer array pointer with elements of the attribute type.
-   * @param size Number of array elements
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements
    **/
   template <typename T>
-  void set_buffer(const std::string& attr, const T* buf, uint64_t size) {
-    uint64_t element_size = 0;
-    if (array_attributes_.count(attr)) {
-      const auto& a = array_attributes_.at(attr);
-      impl::type_check<T>(a.type(), 0);
-      element_size = a.variable_sized() ? sizeof(T) : a.cell_size();
-    } else if (attr == TILEDB_COORDS) {
-      impl::type_check<T>(schema_.domain().type());
-      element_size = tiledb_datatype_size(schema_.domain().type());
-    } else {
-      throw AttributeError("Attribute does not exist: " + attr);
-    }
-    if (!attr_buffs_.count(attr)) {
-      if (!buffers_set_)
-        attrs_.emplace_back(attr);
-      else
-        throw TileDBError("Cannot add new attr after submitting query.");
-    }
-    attr_buffs_[attr] = std::make_tuple<uint64_t, uint64_t, void*>(
-        sizeof(T) * size,
-        std::move(element_size),
-        const_cast<void*>(reinterpret_cast<const void*>(buf)));
+  void set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
+    auto ctx = ctx_.get();
+    auto size = nelements * sizeof(T);
+    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
+    element_sizes_[attr] = sizeof(T);
+    ctx.handle_error(tiledb_query_set_buffer(
+        ctx, query_.get(), attr.c_str(), buff, &(buff_sizes_[attr].second)));
   }
 
   /**
@@ -367,26 +350,31 @@ class Query {
    * @param attr Attribute name
    * @param offsets Offsets array pointer where a new element begins in the data
    *buffer.
-   * @param offsets_size Number of elements in offsets buffer.
+   * @param offsets_nelements Number of elements in offsets buffer.
    * @param data Buffer array pointer with elements of the attribute type.
    *        For variable sized attributes, the buffer should be flattened.
-   * @param size Number of array elements in data buffer.
+   * @param data_nelements Number of array elements in data buffer.
    **/
   template <typename T>
   void set_buffer(
       const std::string& attr,
-      const uint64_t* offsets,
-      uint64_t offset_size,
-      const T* data,
-      uint64_t size) {
-    if (attr == TILEDB_COORDS) {
-      throw TileDBError("Cannot set coordinate buffer as variable sized.");
-    }
-    set_buffer(attr, data, size);
-    var_offsets_[attr] = std::tuple<uint64_t, uint64_t, void*>(
-        TILEDB_OFFSET_SIZE * offset_size,
-        TILEDB_OFFSET_SIZE,
-        const_cast<void*>(reinterpret_cast<const void*>(offsets)));
+      uint64_t* offsets,
+      uint64_t offset_nelements,
+      T* data,
+      uint64_t data_nelements) {
+    auto ctx = ctx_.get();
+    auto data_size = data_nelements * sizeof(T);
+    auto offset_size = offset_nelements * sizeof(uint64_t);
+    element_sizes_[attr] = sizeof(T);
+    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(offset_size, data_size);
+    ctx.handle_error(tiledb_query_set_buffer_var(
+        ctx,
+        query_.get(),
+        attr.c_str(),
+        offsets,
+        &(buff_sizes_[attr].first),
+        (void*)data,
+        &(buff_sizes_[attr].second)));
   }
 
   /**
@@ -403,7 +391,7 @@ class Query {
   template <typename Vec>
   void set_buffer(
       const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
-    set_buffer(attr, offsets.data(), offsets.size(), data.data(), data.size());
+    set_buffer(attr, offsets.data(), offsets.size(), &data[0], data.size());
   }
 
   /**
@@ -457,20 +445,21 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The buffers that will be passed to a TileDB C query. */
-  std::vector<void*> all_buff_;
+  /**
+   * The buffer sizes that were set along with the buffers to the TileDB
+   * query. It is a map from the attribute name to a pair of sizes.
+   * For var-sized attributes, the first element of the pair is the
+   * offsets size and the second is the var-sized values size. For
+   * fixed-sized attributes, the first is always 0, and the second is
+   * the values size. All sizes are in bytes.
+   */
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> buff_sizes_;
 
-  /** On init get the attributes of the underlying array schema. */
-  std::unordered_map<std::string, Attribute> array_attributes_;
-
-  /** Attribute names for buffers set by the user for this query. */
-  std::vector<std::string> attrs_;
-
-  /** The attribute names that will be passed to a TileDB C query. */
-  std::vector<const char*> attr_names_;
-
-  /** The buffer sizes that will be passed to a TileDB C query. */
-  std::vector<uint64_t> buff_sizes_;
+  /**
+   * Stores the size of a single element for the buffer set for a given
+   * attribute.
+   */
+  std::unordered_map<std::string, uint64_t> element_sizes_;
 
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
@@ -487,85 +476,12 @@ class Query {
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
   uint64_t subarray_cell_num_ = 0;
 
-  /**
-   * Keeps track the offsets buffer of a variable-sized attribute.
-   *
-   * Format:
-   * Size of the vector, size of vector::value_type, vector.data()
-   */
-  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>>
-      var_offsets_;
-
-  /**
-   * Keeps track the data buffer for an attribute.
-   *
-   * Format:
-   * Size of the vector, size of vector::value_type, vector.data()
-   */
-  std::unordered_map<std::string, std::tuple<uint64_t, uint64_t, void*>>
-      attr_buffs_;
-
-  /**
-   * Keeps track of buffer element sizes to convert at return. This is
-   * the datatype size * cell_num.
-   **/
-  std::vector<uint64_t> sub_tsize_;
-
   /** URI of array being queried. **/
   std::string uri_;
-
-  /** If true, use reset_buffers instead of set_buffers **/
-  bool buffers_set_ = false;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /** Collate buffers and attach them to the query. */
-  void prepare_submission() {
-    all_buff_.clear();
-    buff_sizes_.clear();
-    attr_names_.clear();
-    sub_tsize_.clear();
-
-    uint64_t bufsize;
-    size_t tsize;
-    void* ptr;
-
-    for (const auto& a : attrs_) {
-      if (attr_buffs_.count(a) == 0) {
-        throw AttributeError("No buffer for attribute " + a);
-      }
-      if (var_offsets_.count(a)) {
-        std::tie(bufsize, tsize, ptr) = var_offsets_[a];
-        all_buff_.push_back(ptr);
-        buff_sizes_.push_back(bufsize);
-        sub_tsize_.push_back(tsize);
-      }
-      std::tie(bufsize, tsize, ptr) = attr_buffs_[a];
-      all_buff_.push_back(ptr);
-      buff_sizes_.push_back(bufsize);
-      attr_names_.push_back(a.c_str());
-      sub_tsize_.push_back(tsize);
-    }
-
-    auto& ctx = ctx_.get();
-
-    // In the lifetime of the query, set_buffers should only be called once.
-    if (buffers_set_) {
-      ctx.handle_error(tiledb_query_reset_buffers(
-          ctx, query_.get(), all_buff_.data(), buff_sizes_.data()));
-    } else {
-      ctx.handle_error(tiledb_query_set_buffers(
-          ctx,
-          query_.get(),
-          attr_names_.data(),
-          (unsigned)attr_names_.size(),
-          all_buff_.data(),
-          buff_sizes_.data()));
-      buffers_set_ = true;
-    }
-  }
 };
 
 /* ********************************* */

@@ -125,7 +125,18 @@ int main() {
 
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
-  tiledb_query_set_buffers(ctx, query, attributes, 3, buffers, buffer_sizes);
+  tiledb_query_set_buffer(
+      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  tiledb_query_set_buffer_var(
+      ctx,
+      query,
+      attributes[1],
+      buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  tiledb_query_set_buffer(
+      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
 
   // Submit query

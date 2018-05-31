@@ -45,8 +45,8 @@ namespace sm {
 KVIter::KVIter(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
   query_ = nullptr;
-  read_buffers_[0] = nullptr;
-  read_buffer_sizes_[0] = 0;
+  coords_buffer_ = nullptr;
+  coords_buffer_size_ = 0;
   current_item_ = 0;
   kv_ = nullptr;
   status_ = QueryStatus::COMPLETED;
@@ -71,15 +71,23 @@ Status KVIter::here(KVItem** kv_item) const {
     return Status::Ok();
 
   KVItem::Hash hash;
-  hash.first = read_buffers_[0][2 * current_item_];
-  hash.second = read_buffers_[0][2 * current_item_ + 1];
+  hash.first = coords_buffer_[2 * current_item_];
+  hash.second = coords_buffer_[2 * current_item_ + 1];
 
   return kv_->get_item(hash, kv_item);
 }
 
 Status KVIter::init(KV* kv) {
   kv_ = kv;
-  RETURN_NOT_OK(init_read_query());
+
+  coords_buffer_ = new (std::nothrow) uint64_t[2 * max_item_num_];
+  if (coords_buffer_ == nullptr)
+    return LOG_STATUS(Status::KVIterError(
+        "Cannot initialize kv iterator; Memory allocation failed"));
+
+  RETURN_NOT_OK(storage_manager_->query_create(
+      &query_, kv_->open_array(), QueryType::READ));
+
   RETURN_NOT_OK(submit_read_query());
 
   return Status::Ok();
@@ -102,43 +110,26 @@ void KVIter::clear() {
   kv_ = nullptr;
   delete query_;
   query_ = nullptr;
-  delete[] read_buffers_[0];
-  read_buffers_[0] = nullptr;
-  read_buffer_sizes_[0] = 0;
+  delete[] coords_buffer_;
+  coords_buffer_ = nullptr;
+  coords_buffer_size_ = 0;
   current_item_ = 0;
   status_ = QueryStatus::INPROGRESS;
   max_item_num_ = 0;
   item_num_ = 0;
 }
 
-Status KVIter::init_read_query() {
-  auto open_array = kv_->open_array();
-
-  // Create and init query
-  RETURN_NOT_OK(
-      storage_manager_->query_create(&query_, open_array, QueryType::READ));
-
-  // Set buffers
-  read_buffers_[0] = new (std::nothrow) uint64_t[2 * max_item_num_];
-  if (read_buffers_[0] == nullptr)
-    return LOG_STATUS(Status::KVIterError(
-        "Cannot initialize read query; Memory allocation failed"));
-  const char* attributes[] = {constants::coords.c_str()};
-
-  return query_->set_buffers(
-      attributes, 1, (void**)read_buffers_, read_buffer_sizes_);
-}
-
 Status KVIter::submit_read_query() {
   // Always reset the size of the read buffer and offset
-  read_buffer_sizes_[0] = 2 * max_item_num_ * sizeof(uint64_t);
+  coords_buffer_size_ = 2 * max_item_num_ * sizeof(uint64_t);
   current_item_ = 0;
 
-  // Submit query
+  RETURN_NOT_OK(query_->set_buffer(
+      constants::coords.c_str(), coords_buffer_, &coords_buffer_size_));
   RETURN_NOT_OK(storage_manager_->query_submit(query_));
 
   status_ = query_->status();
-  item_num_ = read_buffer_sizes_[0] / (2 * sizeof(uint64_t));
+  item_num_ = coords_buffer_size_ / (2 * sizeof(uint64_t));
 
   return Status::Ok();
 }

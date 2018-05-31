@@ -1652,13 +1652,32 @@ int tiledb_query_set_subarray(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_buffers(
+int tiledb_query_set_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char** attributes,
-    unsigned int attribute_num,
-    void** buffers,
-    uint64_t* buffer_sizes) {
+    const char* attribute,
+    void* buffer,
+    uint64_t* buffer_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set attributes and buffers
+  if (save_error(
+          ctx, query->query_->set_buffer(attribute, buffer, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_set_buffer_var(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attribute,
+    uint64_t* buffer_off,
+    uint64_t* buffer_off_size,
+    void* buffer_val,
+    uint64_t* buffer_val_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1666,8 +1685,12 @@ int tiledb_query_set_buffers(
   // Set attributes and buffers
   if (save_error(
           ctx,
-          query->query_->set_buffers(
-              attributes, attribute_num, buffers, buffer_sizes)))
+          query->query_->set_buffer(
+              attribute,
+              buffer_off,
+              buffer_off_size,
+              buffer_val,
+              buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1736,23 +1759,6 @@ int tiledb_query_submit_async(
               query->query_, callback, callback_data)))
     return TILEDB_ERR;
 
-  return TILEDB_OK;
-}
-
-int tiledb_query_reset_buffers(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void** buffers,
-    uint64_t* buffer_sizes) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Reset buffers
-  if (save_error(ctx, query->query_->set_buffers(buffers, buffer_sizes)))
-    return TILEDB_ERR;
-
-  // Success
   return TILEDB_OK;
 }
 

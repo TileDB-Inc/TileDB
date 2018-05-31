@@ -204,6 +204,46 @@ Status StorageManager::array_open(
 Status StorageManager::array_compute_max_read_buffer_sizes(
     OpenArray* open_array,
     const void* subarray,
+    const std::vector<std::string>& attributes,
+    uint64_t* buffer_sizes) {
+  // Open the array
+  open_array->mtx_lock();
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata();
+  open_array->mtx_unlock();
+
+  // Check attributes
+  RETURN_NOT_OK(array_schema->check_attributes(attributes));
+
+  // Compute buffer sizes
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      buffer_sizes_tmp;
+  for (const auto& attr : attributes)
+    buffer_sizes_tmp[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+  RETURN_NOT_OK(array_compute_max_read_buffer_sizes(
+      array_schema, metadata, subarray, &buffer_sizes_tmp));
+
+  // Copy to input buffer sizes
+  unsigned bid = 0;
+  for (const auto& attr : attributes) {
+    auto it = buffer_sizes_tmp.find(attr);
+    if (!array_schema->var_size(attr)) {
+      buffer_sizes[bid] = it->second.first;
+      ++bid;
+    } else {
+      buffer_sizes[bid] = it->second.first;
+      buffer_sizes[bid + 1] = it->second.second;
+      bid += 2;
+    }
+  }
+
+  // Close array
+  return Status::Ok();
+}
+
+Status StorageManager::array_compute_max_read_buffer_sizes(
+    OpenArray* open_array,
+    const void* subarray,
     const char** attributes,
     unsigned attribute_num,
     uint64_t* buffer_sizes) {
