@@ -34,6 +34,9 @@
 #ifndef TILEDB_QUERY_TYPE_H
 #define TILEDB_QUERY_TYPE_H
 
+#include <cassert>
+#include "tiledb/sm/misc/constants.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -43,6 +46,19 @@ enum class QueryType : char {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
 };
+
+/** Returns the string representation of the input query type. */
+inline const std::string& query_type_str(QueryType query_type) {
+  switch (query_type) {
+    case QueryType::READ:
+      return constants::query_type_read_str;
+    case QueryType::WRITE:
+      return constants::query_type_write_str;
+    default:
+      assert(0);
+      return constants::empty_str;
+  }
+}
 
 }  // namespace sm
 }  // namespace tiledb

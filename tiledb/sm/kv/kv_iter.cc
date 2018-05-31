@@ -85,9 +85,8 @@ Status KVIter::init(KV* kv) {
     return LOG_STATUS(Status::KVIterError(
         "Cannot initialize kv iterator; Memory allocation failed"));
 
-  RETURN_NOT_OK(storage_manager_->query_create(
-      &query_, kv_->open_array(), QueryType::READ));
-
+  RETURN_NOT_OK(
+      storage_manager_->query_create(&query_, kv_->open_array_for_reads()));
   RETURN_NOT_OK(submit_read_query());
 
   return Status::Ok();

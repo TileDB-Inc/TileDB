@@ -45,7 +45,7 @@ int main() {
   tiledb::Context ctx;
 
   // Open array
-  tiledb::Array array(ctx, "my_dense_array");
+  tiledb::Array array(ctx, "my_dense_array", TILEDB_READ);
 
   // Print non-empty domain
   auto domain = array.non_empty_domain<uint64_t>();

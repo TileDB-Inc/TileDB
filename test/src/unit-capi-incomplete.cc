@@ -284,12 +284,12 @@ void IncompleteFx::write_dense_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -361,13 +361,13 @@ void IncompleteFx::write_sparse_full() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
@@ -444,12 +444,12 @@ void IncompleteFx::check_dense_incomplete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
@@ -503,12 +503,12 @@ void IncompleteFx::check_dense_until_complete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
@@ -577,12 +577,12 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx_,
@@ -632,12 +632,12 @@ void IncompleteFx::check_dense_unsplittable_complete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx_,
@@ -690,12 +690,12 @@ void IncompleteFx::check_dense_reset_buffers() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
@@ -763,12 +763,12 @@ void IncompleteFx::check_sparse_incomplete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
@@ -822,12 +822,12 @@ void IncompleteFx::check_sparse_until_complete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
@@ -896,12 +896,12 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx_,
@@ -951,12 +951,12 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, SPARSE_ARRAY_NAME, &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx_,

@@ -134,6 +134,7 @@ struct tiledb_domain_t {
 };
 
 struct tiledb_query_t {
+  tiledb_array_t* array_;  // The array the query was alloc'ed with
   tiledb::sm::Query* query_;
 };
 
@@ -319,7 +320,8 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
-  if (query == nullptr || query->query_ == nullptr) {
+  if (query == nullptr || query->query_ == nullptr ||
+      query->array_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB query object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -1605,18 +1607,42 @@ int tiledb_array_schema_get_attribute_from_name(
 
 int tiledb_query_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_query_t** query,
     tiledb_array_t* array,
-    tiledb_query_type_t type) {
+    tiledb_query_type_t query_type,
+    tiledb_query_t** query) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Error if array is not open
+  if (!array->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB query object; Input array is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Error is the query type and array query type do not match
+  auto _array_query_type = array->open_array_->query_type();
+  auto _query_type = static_cast<tiledb::sm::QueryType>(query_type);
+  if (_array_query_type != _query_type) {
+    std::stringstream errmsg;
+    errmsg << "Failed to allocate TileDB query object; "
+           << "Opened array query type does not match declared query type: "
+           << "(" << query_type_str(_array_query_type)
+           << " != " << query_type_str(_query_type) << ")";
+    auto st = tiledb::sm::Status::Error(errmsg.str());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
-    auto st =
-        tiledb::sm::Status::Error("Failed to allocate TileDB query object");
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB query object; Memory allocation failed");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
@@ -1626,14 +1652,14 @@ int tiledb_query_alloc(
   if (save_error(
           ctx,
           ctx->storage_manager_->query_create(
-              &((*query)->query_),
-              array->open_array_,
-              static_cast<tiledb::sm::QueryType>(type)))) {
+              &((*query)->query_), array->open_array_))) {
     delete (*query)->query_;
     delete *query;
     *query = nullptr;
     return TILEDB_ERR;
   }
+
+  (*query)->array_ = array;
 
   // Success
   return TILEDB_OK;
@@ -1736,8 +1762,33 @@ void tiledb_query_free(tiledb_query_t** query) {
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  // Check if the array got closed
+  if (query->array_ == nullptr || !query->array_->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to submit TileDB query; The associated array got closed");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Check if the array got re-opened with a different query type
+  auto array_query_type = query->array_->open_array_->query_type();
+  auto query_type = query->query_->type();
+  if (array_query_type != query_type) {
+    std::stringstream errmsg;
+    errmsg << "Failed to submit TileDB query; "
+           << "Opened array query type does not match declared query type: "
+           << "(" << query_type_str(array_query_type)
+           << " != " << query_type_str(query_type) << ")";
+    auto st = tiledb::sm::Status::Error(errmsg.str());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
     return TILEDB_ERR;
@@ -1750,8 +1801,34 @@ int tiledb_query_submit_async(
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data) {
+  // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  // Check if the array got closed
+  if (query->array_ == nullptr || !query->array_->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to submit TileDB query asynchronously; The associated array "
+        "got closed");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Check if the array got re-opened with a different query type
+  auto array_query_type = query->array_->open_array_->query_type();
+  auto query_type = query->query_->type();
+  if (array_query_type != query_type) {
+    std::stringstream errmsg;
+    errmsg << "Failed to submit TileDB query asynchronously; "
+           << "Opened array query type does not match declared query type: "
+           << "(" << query_type_str(array_query_type)
+           << " != " << query_type_str(query_type) << ")";
+    auto st = tiledb::sm::Status::Error(errmsg.str());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   if (save_error(
           ctx,
@@ -1769,6 +1846,17 @@ int tiledb_query_get_status(
     return TILEDB_ERR;
 
   *status = (tiledb_query_status_t)query->query_->status();
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_get_type(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
 
   return TILEDB_OK;
 }
@@ -1814,19 +1902,27 @@ int tiledb_array_alloc(
   return TILEDB_OK;
 }
 
-int tiledb_array_open(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+int tiledb_array_open(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Do nothing if the array is already open
-  if (array->is_open_)
-    return TILEDB_OK;
+  // Error if the array is already open
+  if (array->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create open TileDB array object; Array object already open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   // Open array
   if (save_error(
           ctx,
           ctx->storage_manager_->array_open(
-              array->array_uri_, &(array->open_array_))))
+              array->array_uri_,
+              static_cast<tiledb::sm::QueryType>(query_type),
+              &(array->open_array_))))
     return TILEDB_ERR;
 
   array->is_open_ = true;
@@ -1842,7 +1938,10 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (!array->is_open_)
     return TILEDB_OK;
 
-  if (save_error(ctx, ctx->storage_manager_->array_close(array->array_uri_)))
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_close(
+              array->array_uri_, array->open_array_->query_type())))
     return TILEDB_ERR;
 
   array->is_open_ = false;
@@ -1887,6 +1986,29 @@ int tiledb_array_get_schema(
 
   (*array_schema)->array_schema_ = array->open_array_->array_schema();
   (*array_schema)->should_delete_ = false;
+
+  return TILEDB_OK;
+}
+
+int tiledb_array_get_query_type(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Error if the array is not open
+  if (!array->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Cannot get the query type from array; Array is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  *query_type =
+      static_cast<tiledb_query_type_t>(array->open_array_->query_type());
 
   return TILEDB_OK;
 }
@@ -2738,7 +2860,7 @@ int tiledb_kv_get_schema(
     return TILEDB_OOM;
   }
 
-  (*kv_schema)->array_schema_ = kv->kv_->open_array()->array_schema();
+  (*kv_schema)->array_schema_ = kv->kv_->open_array_for_reads()->array_schema();
   (*kv_schema)->should_delete_ = false;
 
   return TILEDB_OK;

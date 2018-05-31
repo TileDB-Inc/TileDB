@@ -104,19 +104,32 @@ class StorageManager {
   /*                API                */
   /* ********************************* */
 
-  /** Closes an array. */
-  Status array_close(const URI& array_uri);
+  /**
+   * Closes an array.
+   *
+   * @param array_uri The array URI
+   * @param query_type The query type the array was opened with.
+   * @return Status
+   */
+  Status array_close(const URI& array_uri, QueryType query_type);
 
   /**
    * Opens an array, retrieving its schema and fragment metadata. If the
-   * array is exclusively locked with `array_xlock`, this function will
-   * wait until the array is unlocked with `array_xunlock`.
+   * array is opened in read mode and this array is exclusively locked
+   * with `array_xlock`, this function will wait until the array is
+   * unlocked with `array_xunlock`.
    *
    * @param array_uri The array URI.
+   * @param query_type The type of queries the array is opened for.
    * @param open_array The open array object to be retrieved.
    * @return Status
+   *
+   * @note The same array can be opened for both reads and writes. However,
+   *    two different `OpenArray` objects will be created and exist at the
+   *    storage manager; one for reads and one for writes.
    */
-  Status array_open(const URI& array_uri, OpenArray** open_array);
+  Status array_open(
+      const URI& array_uri, QueryType query_type, OpenArray** open_array);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
@@ -243,13 +256,20 @@ class StorageManager {
       OpenArray* open_array, void* domain, bool* is_empty);
 
   /**
-   * Exclusively locks an array. This function will wait on the array to
-   * be closed if it is already open. After an array is locked in this mode,
-   * any attempt to open an array will have to wait until the array is
-   * unlocked with `xunlock_array`.
+   * Exclusively locks an array preventing it from being opened in
+   * read mode. This function will wait on the array to
+   * be closed if it is already open (always in read mode). After an array
+   * is xlocked, any attempt to open an array in read mode will have to wait
+   * until the array is unlocked with `xunlock_array`.
    *
    * An array is exclusively locked only for a short time upon consolidation,
-   * during removing the old fragments that got consolidated.
+   * during removing the directories of the old fragments that got consolidated.
+   *
+   * @note Arrays that are opened in write mode need not be xlocked. The
+   *     reason is that the `OpenArray` objects created when opening
+   *     in write mode do not store any fragment metadata and, hence,
+   *     are not affected by a potentially concurrent consolidator deleting
+   *     fragment directories.
    */
   Status array_xlock(const URI& array_uri);
 
@@ -469,11 +489,10 @@ class StorageManager {
   Status object_type(const URI& uri, ObjectType* type) const;
 
   /**
-   * Creates a query.
+   * Creates a query. The query type is inferred from the input array.
    *
    * @param query The query to initialize.
    * @param open_array An opened array.
-   * @param type The query type.
    * @param fragment_uri This is applicable only to write queries. This is
    *     to indicate that the new fragment created by a write will have
    *     a specific URI. This is useful mainly in consolidation, where
@@ -482,10 +501,7 @@ class StorageManager {
    * @return Status
    */
   Status query_create(
-      Query** query,
-      OpenArray* open_array,
-      QueryType type,
-      URI fragment_uri = URI(""));
+      Query** query, OpenArray* open_array, URI fragment_uri = URI(""));
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
@@ -631,8 +647,11 @@ class StorageManager {
    */
   std::mutex open_array_mtx_;
 
-  /** Stores the currently open arrays. */
-  std::map<std::string, OpenArray*> open_arrays_;
+  /** Stores the currently open arrays for reads. */
+  std::map<std::string, OpenArray*> open_arrays_for_reads_;
+
+  /** Stores the currently open arrays for writes. */
+  std::map<std::string, OpenArray*> open_arrays_for_writes_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;
@@ -679,6 +698,41 @@ class StorageManager {
       unsigned dim_num,
       T* domain);
 
+  /**
+   * Computes an upper bound on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes.
+   *
+   * @tparam T The domain type
+   * @param array_schema The array schema
+   * @param fragment_metadata The fragment metadata of the array.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
+   *     from an attribute to a size pair. For fixed-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first size
+   *     is the offsets size, and the second size is the values size.
+   * @return Status
+   */
+  template <class T>
+  Status array_compute_max_read_buffer_sizes(
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          buffer_sizes);
+
+  /** Closes an array for reads. */
+  Status array_close_for_reads(const URI& array_uri);
+
+  /** Closes an array for writes. */
+  Status array_close_for_writes(const URI& array_uri);
+
+  /** Opens an array for reads. */
+  Status array_open_for_reads(const URI& array_uri, OpenArray** open_array);
+
+  /** Opens an array for writes. */
+  Status array_open_for_writes(const URI& array_uri, OpenArray** open_array);
+
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
@@ -716,29 +770,6 @@ class StorageManager {
    * ties using the process id.
    */
   void sort_fragment_uris(std::vector<URI>* fragment_uris) const;
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @tparam T The domain type
-   * @param array_schema The array schema
-   * @param fragment_metadata The fragment metadata of the array.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
-   *     from an attribute to a size pair. For fixed-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first size
-   *     is the offsets size, and the second size is the values size.
-   * @return Status
-   */
-  template <class T>
-  Status array_compute_max_read_buffer_sizes(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

@@ -139,8 +139,8 @@ class KV {
    */
   Status finalize();
 
-  /** The open array used for dispatching queries. */
-  OpenArray* open_array() const;
+  /** The open array used for dispatching read queries. */
+  OpenArray* open_array_for_reads() const;
 
   /** Sets the number of maximum written items buffered before being flushed. */
   Status set_max_buffered_items(uint64_t max_items);
@@ -156,8 +156,11 @@ class KV {
    */
   std::vector<std::string> attributes_;
 
-  /** The array object that will receive the queries. */
-  OpenArray* open_array_;
+  /** The array object that will receive the read queries. */
+  OpenArray* open_array_for_reads_;
+
+  /** The array object that will receive the write queries. */
+  OpenArray* open_array_for_writes_;
 
   /**
    * Indicates whether an attribute is variable-sized or not.

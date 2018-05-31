@@ -42,8 +42,9 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-OpenArray::OpenArray(const URI& array_uri)
-    : array_uri_(array_uri) {
+OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
+    : array_uri_(array_uri)
+    , query_type_(query_type) {
   array_schema_ = nullptr;
   cnt_ = 0;
   filelock_ = INVALID_FILELOCK;
@@ -109,16 +110,16 @@ FragmentMetadata* OpenArray::fragment_metadata_get(
   return it->second;
 }
 
-bool OpenArray::fragment_metadata_empty() const {
-  return fragment_metadata_.empty();
-}
-
 void OpenArray::mtx_lock() {
   mtx_.lock();
 }
 
 void OpenArray::mtx_unlock() {
   mtx_.unlock();
+}
+
+QueryType OpenArray::query_type() const {
+  return query_type_;
 }
 
 void OpenArray::set_array_schema(ArraySchema* array_schema) {

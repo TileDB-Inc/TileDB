@@ -1801,30 +1801,32 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
 /* ********************************* */
 
 /**
- * Creates a TileDB query object.
+ * Creates a TileDB query object. Note that the query object is associated
+ * with a specific array object. The query type (read or write) is inferred
+ * from the array object, which was opened with a specific query type.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_open(ctx, "file:///my_array", &array);
+ * tiledb_array_alloc(ctx, "file:///my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_WRITE);
  * tiledb_query_t* query;
- * tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
+ * tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param query The query object to be created.
  * @param array An opened array object.
- * @param type The query type, which must be one of the following:
- *    - `TILEDB_WRITE`
- *    - `TILEDB_READ`
+ * @param query_type The query type. This must comply with the query type
+ *     `array` was opened.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_query_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_query_t** query,
     tiledb_array_t* array,
-    tiledb_query_type_t type);
+    tiledb_query_type_t query_type,
+    tiledb_query_t** query);
 
 /**
  * Indicates that the query will write or read a subarray, and provides
@@ -2003,9 +2005,11 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  *
  * @param ctx The TileDB context.
  * @param query The query to be submitted.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note Always invoke `tiledb_query_finalize` after the query is completed.
+ * @note `tiledb_query_finalize` must be invoked after finish writing in
+ *     global layout (via repeated invocations of `tiledb_query_submit`),
+ *     in order to flush any internal state.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
@@ -2060,6 +2064,24 @@ TILEDB_EXPORT int tiledb_query_submit_async(
 TILEDB_EXPORT int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
 
+/**
+ * Retrieves the query type.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_type_t query_type;
+ * tiledb_query_get_status(ctx, query, &query_type);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param query_type The query type to be retrieved.
+ * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
+ */
+TILEDB_EXPORT int tiledb_query_get_type(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
@@ -2083,21 +2105,35 @@ TILEDB_EXPORT int tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
 
 /**
- * Opens a TileDB array.
+ * Opens a TileDB array. The array is opened using a query type as input.
+ * This is to indicate that queries created for this `tiledb_array_t`
+ * object will inherit the query type. In other words, `tiledb_array_t`
+ * objects are opened to receive only one type of queries.
+ * They can always be closed and be re-opened with another query type.
+ * Also there may be many different `tiledb_array_t`
+ * objects created and opened with different query types. For
+ * instance, one may create and open an array object `array_read` for
+ * reads and another one `array_write` for writes, and interleave
+ * creation and submission of queries for both these array objects.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param array The array object to be opened.
+ * @param query_type The type of queries the array object will be receiving.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the same array object is opened again without being closed,
+ *     an error will be thrown.
  */
-TILEDB_EXPORT int tiledb_array_open(tiledb_ctx_t* ctx, tiledb_array_t* array);
+TILEDB_EXPORT int tiledb_array_open(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
  * Closes a TileDB array.
@@ -2107,7 +2143,7 @@ TILEDB_EXPORT int tiledb_array_open(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_close(ctx, array);
  * @endcode
  *
@@ -2128,7 +2164,7 @@ TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_close(ctx, array);
  * tiledb_array_free(&array);
  * @endcode
@@ -2158,6 +2194,27 @@ TILEDB_EXPORT int tiledb_array_get_schema(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_array_schema_t** array_schema);
+
+/**
+ * Retrieves the query type with which the array was opened.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_query_type_t* query_type;
+ * tiledb_array_get_type(ctx, array, &query_type);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array.
+ * @param query_type The query type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_get_query_type(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type);
 
 /**
  * Creates a new TileDB array given an input schema.
@@ -2208,7 +2265,7 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * int is_empty;
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
  * @endcode
  *
@@ -2231,7 +2288,7 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * uint64_t buffer_sizes[2];
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {10, 20, 10, 100};
@@ -2269,7 +2326,7 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "my_array", &array);
- * tiledb_array_open(ctx, array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * uint64_t buffer_sizes[] = {200, 200};
  * const char* attributes[] = {"attr_1", "attr_2"};
  * uint64_t subarray[] = {11, 20, 11, 20};

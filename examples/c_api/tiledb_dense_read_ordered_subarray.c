@@ -71,7 +71,7 @@ int main() {
   // Open array
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, "my_dense_array", &array);
-  tiledb_array_open(ctx, array);
+  tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Compute maximum buffer sizes for each attribute
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -89,7 +89,7 @@ int main() {
 
   // Create query
   tiledb_query_t* query;
-  tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
+  tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_buffer(

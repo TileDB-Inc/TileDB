@@ -243,6 +243,12 @@ const uint64_t tile_cache_size = 10000000;
 /** Empty String **/
 const std::string empty_str = "";
 
+/** TILEDB_READ Query String **/
+const std::string query_type_read_str = "READ";
+
+/** TILEDB_WRITE Query String **/
+const std::string query_type_write_str = "WRITE";
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 

@@ -44,7 +44,7 @@ int main() {
   tiledb::Context ctx;
 
   // Open array
-  tiledb::Array array(ctx, "my_sparse_array");
+  tiledb::Array array(ctx, "my_sparse_array", TILEDB_WRITE);
 
   // Prepare cell buffers
   std::vector<int> a1_buff = {0, 1, 2, 3, 4, 5, 6, 7};

@@ -119,7 +119,7 @@ void AnyFx::write_array(const std::string& array_name) {
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array);
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Prepare buffers
@@ -152,7 +152,7 @@ void AnyFx::write_array(const std::string& array_name) {
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1"};
-  rc = tiledb_query_alloc(ctx, &query, array, TILEDB_WRITE);
+  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -194,7 +194,7 @@ void AnyFx::read_array(const std::string& array_name) {
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array);
+  rc = tiledb_array_open(ctx, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Get maximum buffer sizes
@@ -212,7 +212,7 @@ void AnyFx::read_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, &query, array, TILEDB_READ);
+  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx,
