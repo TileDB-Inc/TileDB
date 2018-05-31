@@ -56,7 +56,7 @@
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Create a group
   tiledb_group_create(ctx, "my_group");

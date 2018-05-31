@@ -41,7 +41,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // We first create some key-value items. Note that at this point these
   // are independent of the key-value store they will be inserted into.

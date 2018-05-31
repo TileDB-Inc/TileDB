@@ -543,8 +543,8 @@ int tiledb_config_unset(
 
 int tiledb_config_iter_alloc(
     tiledb_config_t* config,
-    tiledb_config_iter_t** config_iter,
     const char* prefix,
+    tiledb_config_iter_t** config_iter,
     tiledb_error_t** error) {
   if (sanity_check(config, error) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -637,7 +637,7 @@ int tiledb_config_iter_done(
 /*            CONTEXT             */
 /* ****************************** */
 
-int tiledb_ctx_alloc(tiledb_ctx_t** ctx, tiledb_config_t* config) {
+int tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
   if (config != nullptr && config->config_ == nullptr)
     return TILEDB_ERR;
 
@@ -792,9 +792,9 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
 
 int tiledb_attribute_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_attribute_t** attr,
     const char* name,
-    tiledb_datatype_t type) {
+    tiledb_datatype_t type,
+    tiledb_attribute_t** attr) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -993,11 +993,11 @@ int tiledb_domain_dump(
 
 int tiledb_dimension_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_dimension_t** dim,
     const char* name,
     tiledb_datatype_t type,
     const void* dim_domain,
-    const void* tile_extent) {
+    const void* tile_extent,
+    tiledb_dimension_t** dim) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1202,8 +1202,8 @@ int tiledb_domain_get_dimension_from_name(
 
 int tiledb_array_schema_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
-    tiledb_array_type_t array_type) {
+    tiledb_array_type_t array_type,
+    tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1346,8 +1346,8 @@ int tiledb_array_schema_check(
 
 int tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
-    const char* array_uri) {
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create array schema
@@ -2337,7 +2337,7 @@ int tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
 }
 
 int tiledb_kv_schema_load(
-    tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema, const char* kv_uri) {
+    tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create array schema
@@ -2624,10 +2624,10 @@ int tiledb_kv_item_get_value(
 int tiledb_kv_get_item(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
-    tiledb_kv_item_t** kv_item,
     const void* key,
     tiledb_datatype_t key_type,
-    uint64_t key_size) {
+    uint64_t key_size,
+    tiledb_kv_item_t** kv_item) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2988,7 +2988,7 @@ int tiledb_kv_iter_done(
 /* ****************************** */
 
 int tiledb_vfs_alloc(
-    tiledb_ctx_t* ctx, tiledb_vfs_t** vfs, tiledb_config_t* config) {
+    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 

@@ -52,7 +52,7 @@ void print_error(tiledb_ctx_t* ctx);
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Create a group. The code below creates a group `my_group` and prints a
   // message because (normally) it will succeed.

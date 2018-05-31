@@ -275,7 +275,7 @@ class Attribute {
   void init_from_type(const std::string& name, tiledb_datatype_t type) {
     tiledb_attribute_t* attr;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_attribute_alloc(ctx, &attr, name.c_str(), type));
+    ctx.handle_error(tiledb_attribute_alloc(ctx, name.c_str(), type, &attr));
     attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
 };

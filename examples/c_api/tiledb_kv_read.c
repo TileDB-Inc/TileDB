@@ -49,7 +49,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Open a key-value store
   tiledb_kv_t* kv;
@@ -61,7 +61,7 @@ int main() {
   tiledb_datatype_t key_type = TILEDB_INT32;
   uint64_t key_size = sizeof(int);
   tiledb_kv_item_t* kv_item = NULL;
-  tiledb_kv_get_item(ctx, kv, &kv_item, &key, key_type, key_size);
+  tiledb_kv_get_item(ctx, kv, &key, key_type, key_size, &kv_item);
 
   // Get values
   const void *a1, *a2, *a3;
@@ -86,7 +86,7 @@ int main() {
   // Try to get item that does not exist
   tiledb_kv_item_t* kv_item_2 = NULL;
   int key2 = 12345;
-  tiledb_kv_get_item(ctx, kv, &kv_item_2, &key2, key_type, key_size);
+  tiledb_kv_get_item(ctx, kv, &key2, key_type, key_size, &kv_item_2);
   if (kv_item_2 == NULL)
     printf("\nItem with key '%d' does not exist\n", key2);
 

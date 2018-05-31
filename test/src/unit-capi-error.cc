@@ -38,7 +38,7 @@
 
 TEST_CASE("C API: Test error and error message", "[capi], [error]") {
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, nullptr);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   CHECK(rc == TILEDB_OK);
 
   const char* bad_path = nullptr;

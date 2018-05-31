@@ -129,10 +129,10 @@ KVFx::KVFx() {
     REQUIRE(error == nullptr);
 #endif
   }
-  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -165,7 +165,7 @@ KVFx::~KVFx() {
 
 void KVFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -200,21 +200,21 @@ std::string KVFx::random_bucket_name(const std::string& prefix) {
 void KVFx::create_kv(const std::string& path) {
   // Create attributes
   tiledb_attribute_t* a1;
-  int rc = tiledb_attribute_alloc(ctx_, &a1, ATTR_1, TILEDB_INT32);
+  int rc = tiledb_attribute_alloc(ctx_, ATTR_1, TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
-  rc = tiledb_attribute_alloc(ctx_, &a2, ATTR_2, TILEDB_CHAR);
+  rc = tiledb_attribute_alloc(ctx_, ATTR_2, TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
-  rc = tiledb_attribute_alloc(ctx_, &a3, ATTR_3, TILEDB_FLOAT32);
+  rc = tiledb_attribute_alloc(ctx_, ATTR_3, TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
@@ -473,7 +473,7 @@ void KVFx::check_single_read(const std::string& path) {
 
   // Get key-value item #1
   tiledb_kv_item_t* kv_item1;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item1, &key1, key1_type, key1_size);
+  rc = tiledb_kv_get_item(ctx_, kv, &key1, key1_type, key1_size, &kv_item1);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item1, ATTR_1, &a1, &a1_type, &a1_size);
@@ -502,7 +502,7 @@ void KVFx::check_single_read(const std::string& path) {
   rc = tiledb_kv_has_key(ctx_, kv, &key2, key2_type, key2_size, &has_key);
   CHECK(rc == TILEDB_OK);
   CHECK(has_key == 1);
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item2, &key2, key2_type, key2_size);
+  rc = tiledb_kv_get_item(ctx_, kv, &key2, key2_type, key2_size, &kv_item2);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item2, ATTR_1, &a1, &a1_type, &a1_size);
@@ -525,7 +525,7 @@ void KVFx::check_single_read(const std::string& path) {
 
   // Get key-value item #3
   tiledb_kv_item_t* kv_item3;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item3, key3, key3_type, key3_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key3, key3_type, key3_size, &kv_item3);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item3, ATTR_1, &a1, &a1_type, &a1_size);
@@ -548,7 +548,7 @@ void KVFx::check_single_read(const std::string& path) {
 
   // Get key-value item #4
   tiledb_kv_item_t* kv_item4;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item4, key4, key4_type, key4_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key4, key4_type, key4_size, &kv_item4);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item4, ATTR_1, &a1, &a1_type, &a1_size);
@@ -571,7 +571,7 @@ void KVFx::check_single_read(const std::string& path) {
 
   // Invalid key
   tiledb_kv_item_t* kv_item5;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item5, key5, key5_type, key5_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key5, key5_type, key5_size, &kv_item5);
   REQUIRE(rc == TILEDB_OK);
   CHECK(kv_item5 == nullptr);
   rc = tiledb_kv_has_key(ctx_, kv, key5, key5_type, key5_size, &has_key);
@@ -624,7 +624,7 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
 
   // Get key-value item #1
   tiledb_kv_item_t* kv_item1;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item1, &key1, key1_type, key1_size);
+  rc = tiledb_kv_get_item(ctx_, kv, &key1, key1_type, key1_size, &kv_item1);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item1, ATTR_1, &a1, &a1_type, &a1_size);
@@ -640,7 +640,7 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
 
   // Get key-value item #2
   tiledb_kv_item_t* kv_item2;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item2, &key2, key2_type, key2_size);
+  rc = tiledb_kv_get_item(ctx_, kv, &key2, key2_type, key2_size, &kv_item2);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item2, ATTR_1, &a1, &a1_type, &a1_size);
@@ -651,7 +651,7 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
 
   // Get key-value item #3
   tiledb_kv_item_t* kv_item3;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item3, key3, key3_type, key3_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key3, key3_type, key3_size, &kv_item3);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item3, ATTR_1, &a1, &a1_type, &a1_size);
@@ -662,7 +662,7 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
 
   // Get key-value item #4
   tiledb_kv_item_t* kv_item4;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item4, key4, key4_type, key4_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key4, key4_type, key4_size, &kv_item4);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item4, ATTR_1, &a1, &a1_type, &a1_size);
@@ -673,7 +673,7 @@ void KVFx::check_read_on_attribute_subset(const std::string& path) {
 
   // Invalid key
   tiledb_kv_item_t* kv_item5;
-  rc = tiledb_kv_get_item(ctx_, kv, &kv_item5, key5, key4_type, key4_size);
+  rc = tiledb_kv_get_item(ctx_, kv, key5, key4_type, key4_size, &kv_item5);
   REQUIRE(rc == TILEDB_OK);
   CHECK(kv_item5 == nullptr);
 
@@ -730,7 +730,7 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   tiledb_datatype_t a1_type, a2_type, a3_type;
   uint64_t a1_size, a2_size, a3_size;
   rc = tiledb_kv_get_item(
-      ctx_, kv, &kv_item2, &new_key, TILEDB_INT32, sizeof(int));
+      ctx_, kv, &new_key, TILEDB_INT32, sizeof(int), &kv_item2);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item1, ATTR_1, &a1, &a1_type, &a1_size);
@@ -762,7 +762,7 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   // Read the new item again
   tiledb_kv_item_t* kv_item3;
   rc = tiledb_kv_get_item(
-      ctx_, kv, &kv_item3, &new_key, TILEDB_INT32, sizeof(int));
+      ctx_, kv, &new_key, TILEDB_INT32, sizeof(int), &kv_item3);
   REQUIRE(rc == TILEDB_OK);
   rc =
       tiledb_kv_item_get_value(ctx_, kv_item3, ATTR_1, &a1, &a1_type, &a1_size);

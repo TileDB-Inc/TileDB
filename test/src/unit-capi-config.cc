@@ -43,10 +43,10 @@
 void remove_file(const std::string& filename) {
   // Remove file
   tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(&ctx, nullptr);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx, &vfs, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx, nullptr, &vfs) == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
@@ -72,7 +72,7 @@ void check_load_correct_file() {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  rc = tiledb_ctx_alloc(&ctx, config);
+  rc = tiledb_ctx_alloc(config, &ctx);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
   tiledb_config_free(&config);
@@ -226,7 +226,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_alloc(&ctx, config);
+  rc = tiledb_ctx_alloc(config, &ctx);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
   CHECK(ctx == nullptr);
@@ -245,7 +245,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(value == nullptr);
 
   // Check get config from context
-  rc = tiledb_ctx_alloc(&ctx, config);
+  rc = tiledb_ctx_alloc(config, &ctx);
   CHECK(rc == TILEDB_OK);
   tiledb_config_t* get_config = nullptr;
   rc = tiledb_ctx_get_config(ctx, &get_config);
@@ -261,7 +261,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_config_set(config, "sm.tile_cache_size", "+100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_ctx_alloc(&ctx, config);
+  rc = tiledb_ctx_alloc(config, &ctx);
   CHECK(rc == TILEDB_OK);
   tiledb_ctx_free(&ctx);
 
@@ -323,7 +323,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, nullptr);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Populate a config
@@ -426,7 +426,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
-  rc = tiledb_config_iter_alloc(config, &config_iter, nullptr, &error);
+  rc = tiledb_config_iter_alloc(config, nullptr, &config_iter, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   int done;
@@ -455,7 +455,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   CHECK(error == nullptr);
 
   // Create an iterator and iterate over vfs parameters
-  rc = tiledb_config_iter_alloc(config, &config_iter, "vfs.", &error);
+  rc = tiledb_config_iter_alloc(config, "vfs.", &config_iter, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_iter_done(config_iter, &done, &error);
@@ -481,7 +481,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   tiledb_config_iter_free(&config_iter);
 
   // Create an iterator and iterate over s3 parameters
-  rc = tiledb_config_iter_alloc(config, &config_iter, "vfs.s3.", &error);
+  rc = tiledb_config_iter_alloc(config, "vfs.s3.", &config_iter, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_iter_done(config_iter, &done, &error);

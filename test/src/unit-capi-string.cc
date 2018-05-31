@@ -62,7 +62,7 @@ struct StringFx {
 void StringFx::create_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -70,7 +70,7 @@ void StringFx::create_array(const std::string& array_name) {
   uint64_t tile_extent = 2;
   tiledb_dimension_t* d1;
   rc = tiledb_dimension_alloc(
-      ctx, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent);
+      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create domain
@@ -82,14 +82,14 @@ void StringFx::create_array(const std::string& array_name) {
 
   // Create fixed-sized UTF-8 attribute
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_alloc(ctx, &a1, "a1", TILEDB_STRING_ASCII);
+  rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_STRING_ASCII, &a1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx, a1, 2);
   REQUIRE(rc == TILEDB_OK);
 
   // Create variable-sized UTF-8 attribute
   tiledb_attribute_t* a2;
-  rc = tiledb_attribute_alloc(ctx, &a2, "a2", TILEDB_STRING_UTF8);
+  rc = tiledb_attribute_alloc(ctx, "a2", TILEDB_STRING_UTF8, &a2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
@@ -98,7 +98,7 @@ void StringFx::create_array(const std::string& array_name) {
 
   // Create variable-sized UTF-16 attribute
   tiledb_attribute_t* a3;
-  rc = tiledb_attribute_alloc(ctx, &a3, "a3", TILEDB_STRING_UTF16);
+  rc = tiledb_attribute_alloc(ctx, "a3", TILEDB_STRING_UTF16, &a3);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx, a3, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
@@ -107,7 +107,7 @@ void StringFx::create_array(const std::string& array_name) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx, &array_schema, TILEDB_DENSE);
+  rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -143,7 +143,7 @@ void StringFx::create_array(const std::string& array_name) {
 void StringFx::write_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Prepare buffers
@@ -227,7 +227,7 @@ void StringFx::write_array(const std::string& array_name) {
 void StringFx::read_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Open array
@@ -334,7 +334,7 @@ void StringFx::read_array(const std::string& array_name) {
 void StringFx::delete_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Remove array

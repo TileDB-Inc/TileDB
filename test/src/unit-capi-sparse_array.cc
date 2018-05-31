@@ -213,10 +213,10 @@ SparseArrayFx::SparseArrayFx() {
     REQUIRE(error == nullptr);
 #endif
   }
-  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -262,7 +262,7 @@ SparseArrayFx::~SparseArrayFx() {
 
 void SparseArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -311,7 +311,7 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create attribute
   tiledb_attribute_t* a;
-  int rc = tiledb_attribute_alloc(ctx_, &a, ATTR_NAME, ATTR_TYPE);
+  int rc = tiledb_attribute_alloc(ctx_, ATTR_NAME, ATTR_TYPE, &a);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
   REQUIRE(rc == TILEDB_OK);
@@ -319,11 +319,11 @@ void SparseArrayFx::create_sparse_array_2D(
   // Create dimensions
   tiledb_dimension_t* d1;
   rc = tiledb_dimension_alloc(
-      ctx_, &d1, DIM1_NAME, TILEDB_INT64, &dim_domain[0], &tile_extent_0);
+      ctx_, DIM1_NAME, TILEDB_INT64, &dim_domain[0], &tile_extent_0, &d1);
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* d2;
   rc = tiledb_dimension_alloc(
-      ctx_, &d2, DIM2_NAME, TILEDB_INT64, &dim_domain[2], &tile_extent_1);
+      ctx_, DIM2_NAME, TILEDB_INT64, &dim_domain[2], &tile_extent_1, &d2);
   REQUIRE(rc == TILEDB_OK);
 
   // Create domain
@@ -337,7 +337,7 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx_, &array_schema, ARRAY_TYPE);
+  rc = tiledb_array_schema_alloc(ctx_, ARRAY_TYPE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, capacity);
   REQUIRE(rc == TILEDB_OK);
@@ -584,11 +584,11 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
   int rc = tiledb_dimension_alloc(
-      ctx_, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
+      ctx_, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
   CHECK(rc == TILEDB_OK);
   tiledb_dimension_t* d2;
   rc = tiledb_dimension_alloc(
-      ctx_, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
+      ctx_, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2);
   CHECK(rc == TILEDB_OK);
 
   // Create domain
@@ -602,20 +602,20 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
 
   // Create attributes
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_alloc(ctx_, &a1, "a1", TILEDB_INT32);
+  rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
-  rc = tiledb_attribute_alloc(ctx_, &a2, "a2", TILEDB_CHAR);
+  rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
-  rc = tiledb_attribute_alloc(ctx_, &a3, "a3", TILEDB_FLOAT32);
+  rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
@@ -624,7 +624,7 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_SPARSE);
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
@@ -752,7 +752,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
@@ -846,7 +846,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
@@ -1020,7 +1020,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
@@ -1261,7 +1261,7 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
@@ -1357,7 +1357,7 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
@@ -1535,7 +1535,7 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
   tiledb_config_free(&config);
 
