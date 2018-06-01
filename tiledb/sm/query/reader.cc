@@ -208,8 +208,13 @@ Status Reader::next_subarray_partition() {
 
     for (const auto& attr_it : buffer_sizes_map)
       max_buffer_sizes[attr_it.first] = std::pair<uint64_t, uint64_t>(0, 0);
-    RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
-        array_schema_, fragment_metadata_, next_partition, &max_buffer_sizes));
+    auto st = storage_manager_->array_compute_max_read_buffer_sizes(
+        array_schema_, fragment_metadata_, next_partition, &max_buffer_sizes);
+    if (!st.ok()) {
+      std::free(next_partition);
+      clear_read_state();
+      return st;
+    }
 
     // Handle case of no results
     auto no_results = true;
@@ -221,6 +226,7 @@ Status Reader::next_subarray_partition() {
     }
     if (no_results) {
       std::free(next_partition);
+      next_partition = nullptr;
       continue;
     }
 
@@ -239,10 +245,13 @@ Status Reader::next_subarray_partition() {
     }
     if (must_split) {
       void *subarray_1 = nullptr, *subarray_2 = nullptr;
-      RETURN_NOT_OK_ELSE(
-          domain->split_subarray(
-              next_partition, layout_, &subarray_1, &subarray_2),
-          clear_read_state());
+      st = domain->split_subarray(
+          next_partition, layout_, &subarray_1, &subarray_2);
+      if (!st.ok()) {
+        std::free(next_partition);
+        clear_read_state();
+        return st;
+      }
 
       // Not splittable, return the original subarray as result
       if (subarray_1 == nullptr || subarray_2 == nullptr) {
@@ -269,6 +278,9 @@ Status Reader::next_subarray_partition() {
       read_state_.cur_subarray_ = nullptr;
     }
   }
+
+  if (next_partition != nullptr)
+    std::free(next_partition);
 
   return Status::Ok();
 }
