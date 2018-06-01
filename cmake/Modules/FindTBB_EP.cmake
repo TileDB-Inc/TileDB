@@ -40,7 +40,19 @@
 #
 macro(build_tbb_ep)
   set(TBB_SRC_DIR "${TILEDB_EP_BASE}/src/ep_tbb")
+  set(TBB_BUILD_DIR "${TILEDB_EP_BASE}/src/ep_tbb-build")
+  set(TBB_BUILD_PREFIX "")
   set(TBB_BUILD_CMAKE "${TBB_SRC_DIR}/cmake/TBBBuild.cmake")
+  set(TBB_MAKE_ARGS
+    "tbb_build_dir=${TBB_BUILD_DIR}"
+    "tbb_build_prefix=${TBB_BUILD_PREFIX}"
+  )
+
+  if (NOT TILEDB_TBB_SHARED)
+    # Adding big_iron.inc specifies that TBB should be built as a static lib.
+    list(APPEND TBB_MAKE_ARGS "extra_inc=big_iron.inc")
+  endif()
+
   # Check if the superbuild downloaded TBB.
   if (EXISTS "${TBB_BUILD_CMAKE}")
     include(${TBB_BUILD_CMAKE})
@@ -49,7 +61,10 @@ macro(build_tbb_ep)
       # search path appropriately.
       set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TBB_SRC_DIR}")
     else()
-      tbb_build(TBB_ROOT ${TBB_SRC_DIR} CONFIG_DIR TBB_DIR)
+      tbb_build(TBB_ROOT ${TBB_SRC_DIR}
+        CONFIG_DIR TBB_DIR
+        MAKE_ARGS ${TBB_MAKE_ARGS}
+      )
     endif()
   endif()
 endmacro()
@@ -64,7 +79,7 @@ function(install_tbb)
   # Get library directory for multiarch linux distros
   include(GNUInstallDirs)
 
-  if (WIN32)
+  if (WIN32 AND TILEDB_TBB_SHARED)
     # Install the DLLs to bin.
     if (CMAKE_BUILD_TYPE MATCHES "Release")
       install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -81,7 +96,8 @@ function(install_tbb)
       install(FILES ${TBB_LIBRARIES_IMPLIB_DEBUG} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     endif()
   else()
-    # Just install the libraries to lib.
+    # Just install the libraries to lib on non-Windows and on Windows if
+    # TBB is built as a static library.
     if (CMAKE_BUILD_TYPE MATCHES "Release")
       install(FILES ${TBB_LIBRARIES_RELEASE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
     else()
@@ -111,9 +127,16 @@ endfunction()
 # Search and manually create a TBB::tbb target if possible.
 #
 function(backup_find_tbb)
+  # Also search the TBB EP build tree for the include and library.
+  set(TBB_EXTRA_SEARCH_PATHS
+    ${TBB_SRC_DIR}
+    ${TBB_BUILD_DIR}/${TBB_BUILD_PREFIX}_release
+  )
+
   if (NOT WIN32)
     find_path(TBB_INCLUDE_DIR
       NAMES tbb/tbb.h
+      PATHS ${TBB_EXTRA_SEARCH_PATHS}
       PATH_SUFFIXES include
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
@@ -121,6 +144,8 @@ function(backup_find_tbb)
     find_library(TBB_LIBRARIES
       NAMES
         tbb
+        ${CMAKE_STATIC_LIBRARY_PREFIX}tbb${CMAKE_STATIC_LIBRARY_SUFFIX}
+      PATHS ${TBB_EXTRA_SEARCH_PATHS}
       PATH_SUFFIXES lib
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
@@ -162,13 +187,22 @@ else()
     build_tbb_ep()
 
     # Try finding again.
-    find_package(TBB CONFIG QUIET)
+    if (TILEDB_TBB_SHARED)
+      find_package(TBB CONFIG QUIET)
+    else()
+      # The TBB find module won't work for static TBB, so use our manual method.
+      backup_find_tbb()
+    endif()
 
-    # If we found TBB that was built by the EP, we now add it to the TileDB
-    # installation manifest.
+    # Install TBB libraries if:
+    # - Windows (always); or
+    # - TBB was built as a shared library; or
+    # - Both TileDB and TBB were built as static libraries
     if (TARGET TBB::tbb)
-      # Add TBB libraries to the TileDB installation manifest.
-      install_tbb()
+      if (WIN32 OR TILEDB_TBB_SHARED OR (TILEDB_INSTALL_STATIC_DEPS AND NOT TILEDB_TBB_SHARED))
+        # Add TBB libraries to the TileDB installation manifest.
+        install_tbb()
+      endif()
     endif()
   endif()
 
@@ -190,6 +224,7 @@ else()
     message(STATUS "Adding TBB as an external project")
 
     if (WIN32)
+      # On Windows we download pre-built binaries.
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
         URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_win.zip"
@@ -220,6 +255,9 @@ else()
     endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_tbb)
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+      -DTILEDB_TBB_EP_BUILT=TRUE
+    )
   else()
     message(FATAL_ERROR "Unable to find TBB")
   endif()

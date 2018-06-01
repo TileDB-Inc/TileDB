@@ -41,6 +41,7 @@ Configuration:
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
     --disable-tbb                   disables use of TBB for parallelization
+    --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|thread|undefined)
     --enable-debug                  enable debug build
@@ -78,6 +79,7 @@ tiledb_werror="ON"
 tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
 tiledb_tbb="ON"
+tiledb_static="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -89,6 +91,7 @@ while test $# != 0; do
     --disable-werror) tiledb_werror="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
     --disable-tbb) tiledb_tbb="OFF";;
+    --enable-static-tiledb) tiledb_static="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-debug) build_type="Debug";;
@@ -113,6 +116,7 @@ for en in "${enables[@]}"; do
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
     hdfs) tiledb_hdfs="ON";;
+    static-tiledb) tiledb_static="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
@@ -158,6 +162,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_TBB=${tiledb_tbb} \
+    -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER=${sanitizer} \
     ${source_dir} || die "failed to configure the project"

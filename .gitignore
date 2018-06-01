@@ -25,3 +25,4 @@ doc/venv
 doc/source/__pycache__
 doc/source/_build
 doc/source/_sidebar.rst.inc
+examples/cmake_project/build

@@ -32,6 +32,9 @@
 #   - ZSTD_FOUND, whether Zstd has been found
 #   - The Zstd::Zstd imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(ZSTD_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -105,4 +108,7 @@ if (ZSTD_FOUND AND NOT TARGET Zstd::Zstd)
   )
 endif()
 
-
+# If we built a static EP, install it if required.
+if (TILEDB_USE_STATIC_ZSTD AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Zstd::Zstd)
+endif()

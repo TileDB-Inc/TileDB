@@ -31,6 +31,9 @@
 #   - LZ4_FOUND, whether LZ4 has been found
 #   - The LZ4::LZ4 imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(LZ4_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -132,4 +135,9 @@ if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)
     IMPORTED_LOCATION "${LZ4_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${LZ4_INCLUDE_DIR}"
   )
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_USE_STATIC_LZ4 AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(LZ4::LZ4)
 endif()

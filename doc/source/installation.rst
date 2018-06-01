@@ -131,6 +131,16 @@ During the build process the following environmental variables must be set:
 
 Consult the `HDFS user guide <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html>`_ for installing, setting up, and using the distributed Hadoop file system.
 
+How Dependencies are Installed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If any dependencies are not found pre-installed on your system, the TileDB build process will download and build them automatically. Preferentially, any dependencies built by this process will be built as static libraries, which are statically linked against the TileDB shared library during the build. This simplifies usage of TileDB, as it results in a single binary object, e.g. ``libtiledb.so`` that contains all of the dependencies. When installing TileDB, only the TileDB include files and the dynamic object ``libtiledb.so`` will be copied into the installation prefix.
+
+If TileDB is itself built as a static library (using the ``TILEDB_STATIC=ON`` CMake variable or corresponding ``bootstrap`` flag), the dependency static libraries must be installed alongside the resulting static ``libtiledb.a`` object. This is because static libraries cannot be statically linked together into a single object (at least not in a portable way). Therefore, when installing TileDB all static dependency libraries will be copied into the installation prefix alongside ``libtiledb.a``.
+
+.. note::
+    The TBB dependency is also built as a static library by default (except on Windows). If you require a dynamically-linked TBB, use the ``TILEDB_TBB_SHARED=ON`` CMake variable. Note that the ``libtbb.so`` shared library will then be installed alongside ``libtiledb.so`` during installation.
+
 Building from Source
 --------------------
 
@@ -161,22 +171,23 @@ You can also use the CMake command directly::
 
 The flags for the bootstrap script and the CMake equivalents are as follows:
 
-=====================  ======================================================  ==============================
-**Flag**               **Description**                                         **CMake Equivalent**
----------------------  ------------------------------------------------------  ------------------------------
-``--help``             Prints command line flag options                        n/a
-``--prefix=PREFIX``    Install files in tree rooted at ``PREFIX``              CMAKE_INSTALL_PREFIX=<PREFIX>
-                       (defaults to ``TileDB/dist``)
-``--dependency=DIRs``  Colon separated list to binary dependencies             CMAKE_PREFIX_PATH=<DIRs>
-``--enable-debug``     Enable debug build                                      CMAKE_BUILD_TYPE=Debug
-``--enable-coverage``  Enable build with code coverage support                 CMAKE_BUILD_TYPE=Coverage
-``--enable-verbose``   Enable verbose status messages                          TILEDB_VERBOSE=ON
-``--enable-hdfs``      Enables building with HDFS storage backend support      TILEDB_HDFS=ON
-``--enable-s3``        Enables building with S3 storage backend support        TILEDB_S3=ON
-``--disable-werror``   Disables building with the ``-Werror`` flag             TILEDB_WERROR=OFF
-``--disable-cpp-api``  Disables building the TileDB C++ API                    TILEDB_CPP_API=OFF
-``--disable-tbb``      Disables use of TBB for parallelization                 TILEDB_TBB=OFF
-=====================  ======================================================  ==============================
+==========================   ======================================================  ==============================
+**Flag**                     **Description**                                         **CMake Equivalent**
+--------------------------   ------------------------------------------------------  ------------------------------
+``--help``                   Prints command line flag options                        n/a
+``--prefix=PREFIX``          Install files in tree rooted at ``PREFIX``              CMAKE_INSTALL_PREFIX=<PREFIX>
+                             (defaults to ``TileDB/dist``)
+``--dependency=DIRs``        Colon separated list to binary dependencies             CMAKE_PREFIX_PATH=<DIRs>
+``--enable-debug``           Enable debug build                                      CMAKE_BUILD_TYPE=Debug
+``--enable-coverage``        Enable build with code coverage support                 CMAKE_BUILD_TYPE=Coverage
+``--enable-verbose``         Enable verbose status messages                          TILEDB_VERBOSE=ON
+``--enable-hdfs``            Enables building with HDFS storage backend support      TILEDB_HDFS=ON
+``--enable-s3``              Enables building with S3 storage backend support        TILEDB_S3=ON
+``--enable-static-tiledb``   Enables building TileDB as a static library             TILEDB_STATIC=ON
+``--disable-werror``         Disables building with the ``-Werror`` flag             TILEDB_WERROR=OFF
+``--disable-cpp-api``        Disables building the TileDB C++ API                    TILEDB_CPP_API=OFF
+``--disable-tbb``            Disables use of TBB for parallelization                 TILEDB_TBB=OFF
+==========================   ======================================================  ==============================
 
 After configuring, run the generated make script::
 
@@ -236,24 +247,25 @@ You can also use the CMake command directly::
 
 The flags for the bootstrap script and the CMake equivalents are as follows:
 
-=====================  ================================================  ==============================
-**Flag**               **Description**                                   **CMake Equivalent**
----------------------  ------------------------------------------------  ------------------------------
-``-?``                 Display a usage message.                          n/a
-``-Prefix``            Install files in tree rooted at ``PREFIX``        CMAKE_INSTALL_PREFIX=<PREFIX>
-                       (defaults to ``TileDB\dist``)
-``-Dependency``        Semicolon separated list to binary dependencies.  CMAKE_PREFIX_PATH=<DIRs>
-``-CMakeGenerator``    Optionally specify the CMake generator string,    -G <generator>
-                       e.g. "Visual Studio 15 2017". Check
-                       'cmake --help' for a list of supported
-                       generators.
-``-EnableDebug``       Enable debug build                                CMAKE_BUILD_TYPE=Debug
-``-EnableVerbose``     Enable verbose status messages.                   TILEDB_VERBOSE=ON
-``-EnableS3``          Enables building with the S3 storage backend.     TILEDB_S3=ON
-``-DisableWerror``     Disables building with the ``/WX`` flag           TILEDB_WERROR=OFF
-``-DisableCppApi``     Disables building the TileDB C++ API              TILEDB_CPP_API=OFF
-``-DisableTBB``        Disables use of TBB for parallelization           TILEDB_TBB=OFF
-=====================  ================================================  ==============================
+=======================   ================================================  ==============================
+**Flag**                  **Description**                                   **CMake Equivalent**
+-----------------------   ------------------------------------------------  ------------------------------
+``-?``                    Display a usage message.                          n/a
+``-Prefix``               Install files in tree rooted at ``PREFIX``        CMAKE_INSTALL_PREFIX=<PREFIX>
+                          (defaults to ``TileDB\dist``)
+``-Dependency``           Semicolon separated list to binary dependencies.  CMAKE_PREFIX_PATH=<DIRs>
+``-CMakeGenerator``       Optionally specify the CMake generator string,    -G <generator>
+                          e.g. "Visual Studio 15 2017". Check
+                          'cmake --help' for a list of supported
+                          generators.
+``-EnableDebug``          Enable debug build                                CMAKE_BUILD_TYPE=Debug
+``-EnableVerbose``        Enable verbose status messages.                   TILEDB_VERBOSE=ON
+``-EnableS3``             Enables building with the S3 storage backend.     TILEDB_S3=ON
+``-EnableStaticTileDB``   Enables building TileDB as a static library       TILEDB_STATIC=ON
+``-DisableWerror``        Disables building with the ``/WX`` flag           TILEDB_WERROR=OFF
+``-DisableCppApi``        Disables building the TileDB C++ API              TILEDB_CPP_API=OFF
+``-DisableTBB``           Disables use of TBB for parallelization           TILEDB_TBB=OFF
+=======================   ================================================  ==============================
 
 Note that the HDFS storage backend is not yet supported on Windows.
 

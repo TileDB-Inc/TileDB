@@ -31,6 +31,9 @@
 #   - BLOSC_FOUND, whether Blosc has been found
 #   - The Blosc::Blosc imported target
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(BLOSC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -106,10 +109,16 @@ if (NOT BLOSC_FOUND)
   endif()
 endif()
 
+# Create the imported target for Blosc
 if (BLOSC_FOUND AND NOT TARGET Blosc::Blosc)
   add_library(Blosc::Blosc UNKNOWN IMPORTED)
   set_target_properties(Blosc::Blosc PROPERTIES
     IMPORTED_LOCATION "${BLOSC_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${BLOSC_INCLUDE_DIR}"
   )
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_USE_STATIC_BLOSC AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Blosc::Blosc)
 endif()

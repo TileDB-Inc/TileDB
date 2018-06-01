@@ -18,10 +18,10 @@ build_script:
     }
 
     if ($env:TILEDB_S3 -eq "true") {
-      ..\bootstrap.ps1 -EnableS3 -EnableVerbose
+      ..\bootstrap.ps1 -EnableS3 -EnableVerbose -EnableStaticTileDB
       ..\scripts\install-minio.ps1
     } else {
-      ..\bootstrap.ps1 -EnableVerbose
+      ..\bootstrap.ps1 -EnableVerbose -EnableStaticTileDB
     }
 
     if ($LastExitCode -ne 0) {
@@ -38,7 +38,7 @@ build_script:
 
 test_script:
 - ps: >-
-    cd tiledb
+    cd $env:APPVEYOR_BUILD_FOLDER\build\tiledb
 
     cmake --build . --target check --config Release -- /verbosity:minimal
 
@@ -89,7 +89,19 @@ test_script:
        $host.SetShouldExit($LastExitCode)
     }
 
-    cd ..
+    cd $env:APPVEYOR_BUILD_FOLDER\examples\cmake_project
+
+    mkdir build
+
+    cd build
+
+    cmake -A X64 -DCMAKE_PREFIX_PATH=$env:APPVEYOR_BUILD_FOLDER\dist ..
+
+    cmake --build . --config Release -- /verbosity:minimal
+
+    .\Release\ExampleExe.exe
+
+    cd $env:APPVEYOR_BUILD_FOLDER\build
 
     mkdir dist
 

@@ -31,6 +31,9 @@
 #   - OPENSSL_FOUND, whether OpenSSL has been found
 #   - The OpenSSL::SSL and OpenSSL::Crypto imported targets
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # Search the path set during the superbuild for the EP.
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -102,6 +105,9 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
   )
 
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_openssl)
+  list(APPEND FORWARD_EP_CMAKE_ARGS
+    -DTILEDB_OPENSSL_EP_BUILT=TRUE
+  )
 endif()
 
 if (OPENSSL_FOUND)
@@ -121,4 +127,10 @@ if (OPENSSL_FOUND)
       INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
       )
   endif()
+endif()
+
+# If we built a static EP, install it if required.
+if (TILEDB_OPENSSL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(OpenSSL::SSL)
+  install_target_libs(OpenSSL::Crypto)
 endif()

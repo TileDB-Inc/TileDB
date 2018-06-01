@@ -28,6 +28,9 @@
 # necessary. It then defines the imported targets AWSSDK::<component>, e.g.
 # AWSSDK::aws-cpp-sdk-s3 or AWSSDK::aws-cpp-sdk-core.
 
+# Include some common helper functions.
+include(TileDBCommon)
+
 # If the EP was built, it will install the AWSSDKConfig.cmake file, which we
 # can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
@@ -85,6 +88,9 @@ if (NOT AWSSDK_FOUND)
       DEPENDS ${DEPENDS}
     )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_awssdk)
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+      -DTILEDB_AWSSDK_EP_BUILT=TRUE
+    )
   else ()
     message(FATAL_ERROR "Could not find AWSSDK (required).")
   endif ()
@@ -107,5 +113,11 @@ if (AWSSDK_FOUND)
         INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
       )
     endif()
+
+    # If we built a static EP, install it if required.
+    if (TILEDB_AWSSDK_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+      install_target_libs(AWSSDK::${LIB})
+    endif()
+
   endforeach ()
 endif ()

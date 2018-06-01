@@ -292,6 +292,21 @@ if (NOT WIN32)
   )
 endif()
 
+# Win32 specific libraries
+if (WIN32)
+  set(WIN32_LIBS shlwapi rpcrt4)
+
+  if (TILEDB_S3)
+    list(APPEND WIN32_LIBS bcrypt winhttp wininet userenv version)
+  endif()
+
+  foreach (LIB ${WIN32_LIBS})
+    find_library(LIB_${LIB} ${LIB})
+    message(STATUS "Found Win32 lib ${LIB}: ${LIB_${LIB}}")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB_${LIB}})
+  endforeach()
+endif()
+
 # Copy over dependency info (e.g. include directories) to the core objects.
 target_compile_definitions(TILEDB_CORE_OBJECTS
   PRIVATE
@@ -303,10 +318,54 @@ target_include_directories(TILEDB_CORE_OBJECTS
 )
 
 ############################################################
+# Generated dependency information (for installation)
+############################################################
+
+# This section defines variables that will be used in the generation of the
+# TileDBConfig.cmake file, used for find_package(TileDB). This is only required
+# for static TileDB, as its dependencies are not embedded in the static object
+# (as they are for the shared object).
+if (TILEDB_STATIC)
+  # TILEDB_STATIC_DEP_STRING will be inserted literally into TileDBConfig.cmake.
+  set(TILEDB_STATIC_DEP_STRING)
+  # For get_installed_location().
+  include(TileDBCommon)
+
+  # Helper to generate CMake code
+  macro(append_dep_lib LIB_TARGET)
+    if (TARGET ${LIB_TARGET})
+      get_installed_location(LOC ${LIB_TARGET})
+      string(CONCAT TILEDB_STATIC_DEP_STRING
+        "${TILEDB_STATIC_DEP_STRING}"
+        "add_library(${LIB_TARGET} UNKNOWN IMPORTED)\n"
+        "set_target_properties(${LIB_TARGET} PROPERTIES IMPORTED_LOCATION ${LOC})\n"
+      )
+    endif()
+  endmacro()
+
+  append_dep_lib(Blosc::Blosc)
+  append_dep_lib(Bzip2::Bzip2)
+  append_dep_lib(Curl::Curl)
+  append_dep_lib(LZ4::LZ4)
+  append_dep_lib(TBB::tbb)
+  append_dep_lib(Zlib::Zlib)
+  append_dep_lib(Zstd::Zstd)
+  append_dep_lib(OpenSSL::SSL)
+  append_dep_lib(OpenSSL::Crypto)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+
+  # Spdlog is a special case because it is header-only.
+  string(CONCAT TILEDB_STATIC_DEP_STRING
+    "${TILEDB_STATIC_DEP_STRING}"
+    "add_library(Spdlog::Spdlog INTERFACE IMPORTED)"
+  )
+endif()
+
+############################################################
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
 # Target properties
@@ -314,41 +373,28 @@ set_target_properties(tiledb_shared
   PROPERTIES
     OUTPUT_NAME "tiledb"
 )
-set_target_properties(tiledb_static
-  PROPERTIES
-    OUTPUT_NAME "tiledb"
-)
 
 # Link the dependencies specified earlier
 target_link_libraries(tiledb_shared
   PRIVATE
-  $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
-)
-
-# Add INTERFACE_LINK_LIBRARIES for tiledb_static
-# this exports the required targets for usage of static library
-target_link_libraries(tiledb_static
-    PUBLIC
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
 )
 
-# Windows linker configuration
-if (WIN32)
-  set(WIN32_LIBS shlwapi rpcrt4)
-
-  if (TILEDB_S3)
-    list(APPEND WIN32_LIBS bcrypt winhttp wininet userenv version)
-  endif()
-
-  foreach (LIB ${WIN32_LIBS})
-    find_library(LIB_${LIB} ${LIB})
-    message(STATUS "Found Win32 lib ${LIB}: ${LIB_${LIB}}")
-    target_link_libraries(tiledb_static PUBLIC ${LIB_${LIB}})
-    target_link_libraries(tiledb_shared PUBLIC ${LIB_${LIB}})
-  endforeach()
+if (TILEDB_STATIC)
+  add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+  set_target_properties(tiledb_static
+    PROPERTIES
+      OUTPUT_NAME "tiledb"
+  )
+  target_link_libraries(tiledb_static
+    PRIVATE
+      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+  )
   # On Windows we must name the static library something else to avoid
   # name clash with the DLL's "import library" .lib file.
-  set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledbstatic")
+  if (WIN32)
+    set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledbstatic")
+  endif()
 endif()
 
 ############################################################
@@ -382,10 +428,12 @@ set_target_properties(tiledb_shared
   PROPERTIES
     PUBLIC_HEADER "${TILEDB_PUBLIC_HEADERS}"
 )
-set_target_properties(tiledb_static
-  PROPERTIES
-    PUBLIC_HEADER "${TILEDB_PUBLIC_HEADERS}"
-)
+if (TILEDB_STATIC)
+  set_target_properties(tiledb_static
+    PROPERTIES
+      PUBLIC_HEADER "${TILEDB_PUBLIC_HEADERS}"
+  )
+endif()
 
 ############################################################
 # Installation
@@ -404,48 +452,54 @@ if (NOT WIN32)
   )
 endif()
 
-# Set name for export target file
-set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+# List of targets to install.
+set(TILEDB_INSTALL_TARGETS
+  tiledb_shared
+)
+if (TILEDB_STATIC)
+  list(APPEND TILEDB_INSTALL_TARGETS
+    tiledb_static
+    TILEDB_CORE_OBJECTS_ILIB
+  )
+endif()
+
+# Set directory where TileDBConfig.cmake will be installed
+set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/TileDB")
+# Set name for export target file (will be installed to CONFIG_INSTALL_DIR)
+set(TARGETS_EXPORT_NAME "TileDBTargets")
 
 # Note on Windows, the DLL counts as "runtime" and should go into bin.
 install(
-  TARGETS tiledb_static tiledb_shared TILEDB_CORE_OBJECTS_ILIB
+  TARGETS ${TILEDB_INSTALL_TARGETS}
   EXPORT ${TARGETS_EXPORT_NAME}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tiledb
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-# Set directory where TileDBConfig.cmake will be installed
-set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
-
-# Set the generated dir for target cmake modules during build
-set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-
 # Path to generated cmake file
-set(PROJECT_CONFIG "${GENERATED_DIR}/${PROJECT_NAME}Config.cmake")
+set(PROJECT_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/TileDBConfig.cmake")
 
-# Configure '<PROJECT-NAME>Config.cmake'
-# Use variables:
+# Generate 'TileDBConfig.cmake'
+# This process requires these variables to be defined at this point:
 #   * TARGETS_EXPORT_NAME
 #   * PROJECT_NAME
+#   * TILEDB_STATIC_DEP_STRING
 configure_package_config_file(
   "${TILEDB_CMAKE_INPUTS_DIR}/Config.cmake.in"
   "${PROJECT_CONFIG}"
   INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
-# Config
-#   * <prefix>/lib/cmake/TileDB/TileDBConfig.cmake
-#   * <prefix>/lib/cmake/TileDB/TileDBConfigVersion.cmake
+# Install config file to <prefix>/lib/cmake/TileDB/TileDBConfig.cmake
 install(
   FILES "${PROJECT_CONFIG}"
   DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
-# Targets
-#   * <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
+# Install targets file to <prefix>/lib/cmake/TileDB/TileDBTargets.cmake
 install(
   EXPORT "${TARGETS_EXPORT_NAME}"
   NAMESPACE "${PROJECT_NAME}::"
