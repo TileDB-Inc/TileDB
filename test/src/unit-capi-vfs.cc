@@ -97,7 +97,7 @@ VFSFx::~VFSFx() {
 
 void VFSFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -165,9 +165,9 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
       TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
-  int rc = tiledb_vfs_alloc(ctx_, &vfs_, config);
+  int rc = tiledb_vfs_alloc(ctx_, config, &vfs_);
   REQUIRE(rc == TILEDB_OK);
   tiledb_config_free(&config);
 }
@@ -650,7 +650,7 @@ TEST_CASE_METHOD(
     "[capi], [vfs]") {
   if (!supports_s3_) {
     tiledb_vfs_t* vfs;
-    int rc = tiledb_vfs_alloc(ctx_, &vfs, nullptr);
+    int rc = tiledb_vfs_alloc(ctx_, nullptr, &vfs);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_vfs_create_bucket(ctx_, vfs, "s3://foo");
     REQUIRE(rc == TILEDB_ERR);
@@ -672,7 +672,7 @@ TEST_CASE_METHOD(
 
   // Create VFS
   tiledb_vfs_t* vfs;
-  rc = tiledb_vfs_alloc(ctx_, &vfs, config);
+  rc = tiledb_vfs_alloc(ctx_, config, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Get VFS config and check

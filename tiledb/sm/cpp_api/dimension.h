@@ -361,7 +361,7 @@ class Dimension {
       const void* tile_extent) {
     tiledb_dimension_t* d;
     ctx.handle_error(tiledb_dimension_alloc(
-        ctx, &d, name.c_str(), type, domain, tile_extent));
+        ctx, name.c_str(), type, domain, tile_extent, &d));
     return Dimension(ctx, d);
   }
 };

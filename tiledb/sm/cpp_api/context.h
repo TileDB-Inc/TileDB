@@ -74,7 +74,7 @@ class Context {
   /** Constructor. */
   Context() {
     tiledb_ctx_t* ctx;
-    if (tiledb_ctx_alloc(&ctx, nullptr) != TILEDB_OK)
+    if (tiledb_ctx_alloc(nullptr, &ctx) != TILEDB_OK)
       throw TileDBError("[TileDB::C++API] Error: Failed to create context");
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
@@ -83,7 +83,7 @@ class Context {
   /** Constructor with config paramters. */
   explicit Context(const Config& config) {
     tiledb_ctx_t* ctx;
-    if (tiledb_ctx_alloc(&ctx, config) != TILEDB_OK)
+    if (tiledb_ctx_alloc(config, &ctx) != TILEDB_OK)
       throw TileDBError("[TileDB::C++API] Error: Failed to create context");
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;

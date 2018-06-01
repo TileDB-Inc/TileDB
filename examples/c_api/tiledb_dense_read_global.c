@@ -75,7 +75,7 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Open array
   tiledb_array_t* array;

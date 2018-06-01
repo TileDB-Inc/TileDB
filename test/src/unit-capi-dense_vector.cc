@@ -108,10 +108,10 @@ DenseVectorFx::DenseVectorFx() {
     REQUIRE(error == nullptr);
 #endif
   }
-  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -144,7 +144,7 @@ DenseVectorFx::~DenseVectorFx() {
 
 void DenseVectorFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -187,19 +187,19 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* dim;
   rc = tiledb_dimension_alloc(
-      ctx_, &dim, DIM0_NAME, TILEDB_INT64, dim_domain, &tile_extent);
+      ctx_, DIM0_NAME, TILEDB_INT64, dim_domain, &tile_extent, &dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, dim);
   REQUIRE(rc == TILEDB_OK);
 
   // Create attribute
   tiledb_attribute_t* attr;
-  rc = tiledb_attribute_alloc(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
+  rc = tiledb_attribute_alloc(ctx_, ATTR_NAME, ATTR_TYPE, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);

@@ -68,7 +68,7 @@ class MapSchema : public Schema {
   MapSchema(const Context& ctx, const std::string& uri)
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
-    ctx.handle_error(tiledb_kv_schema_load(ctx, &schema, uri.c_str()));
+    ctx.handle_error(tiledb_kv_schema_load(ctx, uri.c_str(), &schema));
     schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
   }
 

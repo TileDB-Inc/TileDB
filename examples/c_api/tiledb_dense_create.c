@@ -45,17 +45,17 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Create dimensions
   uint64_t dim_domain[] = {1, 4, 1, 4};
   uint64_t tile_extents[] = {2, 2};
   tiledb_dimension_t* d1;
   tiledb_dimension_alloc(
-      ctx, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0]);
+      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
   tiledb_dimension_t* d2;
   tiledb_dimension_alloc(
-      ctx, &d2, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1]);
+      ctx, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2);
 
   // Create domain
   tiledb_domain_t* domain;
@@ -65,21 +65,21 @@ int main() {
 
   // Create attributes
   tiledb_attribute_t* a1;
-  tiledb_attribute_alloc(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_alloc(ctx, "a1", TILEDB_INT32, &a1);
   tiledb_attribute_set_compressor(ctx, a1, TILEDB_BLOSC_LZ, -1);
   tiledb_attribute_set_cell_val_num(ctx, a1, 1);
   tiledb_attribute_t* a2;
-  tiledb_attribute_alloc(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_alloc(ctx, "a2", TILEDB_CHAR, &a2);
   tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
   tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
-  tiledb_attribute_alloc(ctx, &a3, "a3", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx, "a3", TILEDB_FLOAT32, &a3);
   tiledb_attribute_set_compressor(ctx, a3, TILEDB_ZSTD, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_alloc(ctx, &array_schema, TILEDB_DENSE);
+  tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);

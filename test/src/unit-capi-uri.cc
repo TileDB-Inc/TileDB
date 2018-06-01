@@ -49,7 +49,7 @@ static const unsigned PLATFORM_PATH_MAX = PATH_MAX;
 TEST_CASE("C API: Test URI", "[capi], [uri]") {
   int rc;
   tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_alloc(&ctx, nullptr);
+  rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   char path[PLATFORM_PATH_MAX];

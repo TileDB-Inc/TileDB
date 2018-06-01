@@ -446,7 +446,7 @@ inline void ConfigIter::init(const Config& config) {
   tiledb_config_iter_t* iter;
   tiledb_error_t* err;
   const char* p = prefix_.size() ? prefix_.c_str() : nullptr;
-  tiledb_config_iter_alloc(config.ptr().get(), &iter, p, &err);
+  tiledb_config_iter_alloc(config.ptr().get(), p, &iter, &err);
   check_config_error(err);
 
   iter_ = std::shared_ptr<tiledb_config_iter_t>(iter, ConfigIter::free);

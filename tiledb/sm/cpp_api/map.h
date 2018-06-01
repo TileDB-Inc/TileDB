@@ -669,10 +669,10 @@ class Map {
     ctx.handle_error(tiledb_kv_get_item(
         ctx,
         kv_.get(),
-        &item,
         DataT::data(key),
         DataT::tiledb_type,
-        DataT::size(key) * sizeof(typename DataT::value_type)));
+        DataT::size(key) * sizeof(typename DataT::value_type),
+        &item));
 
     return MapItem(schema_.context(), &item, this);
   }
@@ -688,10 +688,10 @@ class Map {
     ctx.handle_error(tiledb_kv_get_item(
         ctx,
         kv_.get(),
-        &item,
         DataT::data(key),
         DataT::tiledb_type,
-        DataT::size(key) * sizeof(typename DataT::value_type)));
+        DataT::size(key) * sizeof(typename DataT::value_type),
+        &item));
 
     if (item == nullptr) {
       MapItem mapitem = create_item(schema_.context(), key);

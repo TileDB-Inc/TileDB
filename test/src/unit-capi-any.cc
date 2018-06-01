@@ -53,7 +53,7 @@ struct AnyFx {
 void AnyFx::create_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -61,7 +61,7 @@ void AnyFx::create_array(const std::string& array_name) {
   uint64_t tile_extent = 2;
   tiledb_dimension_t* d1;
   rc = tiledb_dimension_alloc(
-      ctx, &d1, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent);
+      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create domain
@@ -73,7 +73,7 @@ void AnyFx::create_array(const std::string& array_name) {
 
   // Create attribute with datatype `ANY`
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_alloc(ctx, &a1, "a1", TILEDB_ANY);
+  rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_ANY, &a1);
   REQUIRE(rc == TILEDB_OK);
 
   // The following is an error - `ANY` datatype is always variable-sized
@@ -82,7 +82,7 @@ void AnyFx::create_array(const std::string& array_name) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx, &array_schema, TILEDB_DENSE);
+  rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -112,7 +112,7 @@ void AnyFx::create_array(const std::string& array_name) {
 void AnyFx::write_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Open array
@@ -187,7 +187,7 @@ void AnyFx::write_array(const std::string& array_name) {
 void AnyFx::read_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Open array
@@ -269,7 +269,7 @@ void AnyFx::read_array(const std::string& array_name) {
 void AnyFx::delete_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(&ctx, NULL);
+  int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
   // Remove array

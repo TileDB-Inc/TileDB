@@ -119,10 +119,10 @@ ObjectMgmtFx::ObjectMgmtFx() {
 #endif
   }
 
-  REQUIRE(tiledb_ctx_alloc(&ctx_, config) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, &vfs_, config) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 
   // Connect to S3
@@ -155,7 +155,7 @@ ObjectMgmtFx::~ObjectMgmtFx() {
 
 void ObjectMgmtFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(&ctx, nullptr) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
@@ -182,7 +182,7 @@ void ObjectMgmtFx::remove_temp_dir(const std::string& path) {
 
 void ObjectMgmtFx::create_array(const std::string& path) {
   tiledb_attribute_t* a1;
-  tiledb_attribute_alloc(ctx_, &a1, "a1", TILEDB_FLOAT32);
+  tiledb_attribute_alloc(ctx_, "a1", TILEDB_FLOAT32, &a1);
 
   // Domain and tile extents
   int64_t dim_domain[2] = {1, 1};
@@ -191,7 +191,7 @@ void ObjectMgmtFx::create_array(const std::string& path) {
   // Create dimension
   tiledb_dimension_t* d1;
   tiledb_dimension_alloc(
-      ctx_, &d1, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0]);
+      ctx_, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0], &d1);
 
   // Domain
   tiledb_domain_t* domain;
@@ -200,7 +200,7 @@ void ObjectMgmtFx::create_array(const std::string& path) {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_alloc(ctx_, &array_schema, TILEDB_DENSE);
+  tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
   tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
 

@@ -43,11 +43,11 @@
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Create TileDB VFS
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, &vfs, NULL);
+  tiledb_vfs_alloc(ctx, NULL, &vfs);
 
   // Write binary data
   tiledb_vfs_fh_t* fh;

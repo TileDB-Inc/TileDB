@@ -73,7 +73,7 @@
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(&ctx, NULL);
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Rename a valid group and array
   tiledb_object_move(ctx, "my_group", "my_group_2");
