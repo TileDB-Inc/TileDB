@@ -179,6 +179,14 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       CHECK(buff_el["a5"].first == 0);
       CHECK(buff_el["a5"].second >= 2);
 
+      a1.resize(buff_el["a1"].second);
+      a2buf.first.resize(buff_el["a2"].first);
+      a2buf.second.resize(buff_el["a2"].second);
+      a1.resize(buff_el["a3"].second);
+      a4buf.first.resize(buff_el["a4"].first);
+      a4buf.second.resize(buff_el["a4"].second);
+      a1.resize(buff_el["a5"].second);
+
       Query query(ctx, array, TILEDB_READ);
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);

@@ -62,19 +62,22 @@ class Reader {
    * that the results of each partition can certainly fit in the user
    * buffers. The user can perform successive calls to `submit` in order
    * to incrementally perform each subarray partition. The query is
-   * "incomplete" until all partititions are processed.
+   * "incomplete" until all partitions are processed.
    *
    * The read state maintains a vector with all the subarray partitions,
    * along with an index `idx_` that indicates the parition to be processed
    * next.
    */
   struct ReadState {
-    /** The index to the partition to be processed next. */
-    size_t idx_;
+    /** The current subarray the query is constrained on. */
+    void* cur_subarray_;
     /** The original subarray set by the user. */
     void* subarray_;
-    /** The subarray partitions. */
-    std::vector<void*> subarray_partitions_;
+    /**
+     * A list of subarray partitions. The head of the list is the partition
+     * to be split next.
+     */
+    std::list<void*> subarray_partitions_;
   };
 
   /** Contains the buffer(s) and buffer size(s) for some attribute. */
@@ -311,8 +314,15 @@ class Reader {
   /** Returns the cell layout. */
   Layout layout() const;
 
-  /** Advances the read state to the next subarray partition. */
-  void next_subarray_partition();
+  /**
+   * Advances the read state to the next subarray partition. It splits the
+   * head of the subarray partition list (re-inserting at the front the
+   * potentially derived partitons) and copies the first partition that
+   * fits in the user buffers to `read_state_.cur_subarray_`. If there
+   * is no next subarray, `read_state_.cur_subarray_` is freed and
+   * set to `nullptr`.
+   */
+  Status next_subarray_partition();
 
   /** Performs a read query using its set members. */
   Status read();
@@ -438,9 +448,6 @@ class Reader {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
-
-  /** The current subarray the query is constrained on. */
-  void* cur_subarray_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -713,6 +720,9 @@ class Reader {
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
+
+  /** Initializes the read state. */
+  Status init_read_state();
 
   /**
    * Initializes a fixed-sized tile.
