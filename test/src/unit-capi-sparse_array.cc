@@ -103,6 +103,7 @@ struct SparseArrayFx {
   void check_sparse_array_global_with_all_duplicates_dedup(
       const std::string& array_name);
   void check_non_empty_domain(const std::string& path);
+  void check_invalid_offsets(const std::string& array_name);
   void write_partial_sparse_array(const std::string& array_name);
   void set_supported_fs();
   void create_temp_dir(const std::string& path);
@@ -1722,6 +1723,80 @@ void SparseArrayFx::check_non_empty_domain(const std::string& path) {
   tiledb_array_free(&array);
 }
 
+void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
+  const char* attributes[] = {"a2", TILEDB_COORDS};
+  uint64_t buffer_a2[] = {0, 4, 6};
+  char buffer_a2_var[] = "hhhhffa";
+  uint64_t buffer_coords[] = {3, 4, 4, 2, 3, 3};
+  void* buffers[] = {buffer_a2, buffer_a2_var, buffer_coords};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a2), sizeof(buffer_a2_var) - 1, sizeof(buffer_coords)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+
+  // Check duplicate offsets error
+  buffer_a2[0] = 0;
+  buffer_a2[1] = 4;
+  buffer_a2[2] = 4;
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      (uint64_t*)buffers[0],
+      &buffer_sizes[0],
+      buffers[1],
+      &buffer_sizes[1]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check non-ascending offsets error
+  buffer_a2[0] = 0;
+  buffer_a2[1] = 6;
+  buffer_a2[2] = 4;
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      (uint64_t*)buffers[0],
+      &buffer_sizes[0],
+      buffers[1],
+      &buffer_sizes[1]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check out-of-bounds offsets error
+  buffer_a2[0] = 0;
+  buffer_a2[1] = 4;
+  buffer_a2[2] = 7;
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      (uint64_t*)buffers[0],
+      &buffer_sizes[0],
+      buffers[1],
+      &buffer_sizes[1]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
   // Prepare cell buffers
   int buffer_a1[] = {7, 5, 0};
@@ -2093,4 +2168,13 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   check_non_empty_domain(temp_dir);
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, invalid offsets on write",
+    "[capi], [sparse], [invalid-offsets]") {
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "invalid_offs";
+  create_sparse_array(array_name);
+  check_invalid_offsets(array_name);
 }

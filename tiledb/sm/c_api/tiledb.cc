@@ -1708,6 +1708,14 @@ int tiledb_query_set_buffer_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // On writes, check the provided offsets for validity.
+  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
+      save_error(
+          ctx,
+          tiledb::sm::Query::check_var_attr_offsets(
+              buffer_off, buffer_off_size, buffer_val_size)))
+    return TILEDB_ERR;
+
   // Set attributes and buffers
   if (save_error(
           ctx,
