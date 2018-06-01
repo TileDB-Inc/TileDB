@@ -178,14 +178,7 @@ Status Query::process() {
   }
 
   // Check if the query is complete
-  bool completed = false;
-  if (type_ == QueryType::WRITE) {
-    completed = true;
-  } else {  // Read query - need to check subarray partitions
-    reader_.next_subarray_partition();
-    if (reader_.done())
-      completed = true;
-  }
+  bool completed = (type_ == QueryType::WRITE) ? true : !reader_.incomplete();
 
   // Handle callback and status
   if (completed) {

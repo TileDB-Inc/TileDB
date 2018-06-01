@@ -84,9 +84,11 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 Reader::Reader() {
   array_schema_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
+  read_state_.cur_subarray_partition_ = nullptr;
   read_state_.subarray_ = nullptr;
   storage_manager_ = nullptr;
   initialized_ = false;
+  overflowed_ = false;
 }
 
 Reader::~Reader() {
@@ -124,8 +126,8 @@ Status Reader::compute_subarray_partitions(
       subarray_partitions);
 }
 
-bool Reader::done() const {
-  return read_state_.idx_ >= read_state_.subarray_partitions_.size();
+bool Reader::incomplete() const {
+  return overflowed_ || read_state_.cur_subarray_partition_ != nullptr;
 }
 
 unsigned Reader::fragment_num() const {
@@ -158,14 +160,9 @@ Status Reader::init() {
   if (read_state_.subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
 
-  RETURN_NOT_OK(compute_subarray_partitions(
-      read_state_.subarray_, &read_state_.subarray_partitions_));
-  if (read_state_.subarray_partitions_.empty())
-    read_state_.subarray_partitions_.push_back(read_state_.subarray_);
+  if (!fragment_metadata_.empty())
+    RETURN_NOT_OK(init_read_state());
 
-  read_state_.idx_ = 0;
-  cur_subarray_ = read_state_.subarray_partitions_[0];
-  assert(cur_subarray_ != nullptr);
   initialized_ = true;
 
   return Status::Ok();
@@ -181,28 +178,153 @@ Layout Reader::layout() const {
   return layout_;
 }
 
-void Reader::next_subarray_partition() {
-  if (read_state_.idx_ >= read_state_.subarray_partitions_.size())
-    return;
+Status Reader::next_subarray_partition() {
+  if (read_state_.subarray_partitions_.empty()) {
+    if (read_state_.cur_subarray_partition_ != nullptr) {
+      std::free(read_state_.cur_subarray_partition_);
+      read_state_.cur_subarray_partition_ = nullptr;
+    }
+    return Status::Ok();
+  }
 
-  ++read_state_.idx_;
-  if (read_state_.idx_ >= read_state_.subarray_partitions_.size())
-    return;
+  // Prepare buffer sizes map
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      buffer_sizes_map;
+  for (const auto& it : attr_buffers_) {
+    buffer_sizes_map[it.first] = std::pair<uint64_t, uint64_t>(
+        it.second.original_buffer_size_, it.second.original_buffer_var_size_);
+  }
 
-  cur_subarray_ = read_state_.subarray_partitions_[read_state_.idx_];
+  // Loop until a new partition whose result fit in the buffers is found
+  std::unordered_map<std::string, std::pair<double, double>> est_buffer_sizes;
+  bool found = false;
+  void* next_partition = nullptr;
+  auto domain = array_schema_->domain();
+  do {
+    // Pop next partition
+    next_partition = read_state_.subarray_partitions_.front();
+    read_state_.subarray_partitions_.pop_front();
+
+    // Get estimated buffer sizes
+    for (const auto& attr_it : buffer_sizes_map)
+      est_buffer_sizes[attr_it.first] = std::pair<double, double>(0, 0);
+    auto st = storage_manager_->array_compute_est_read_buffer_sizes(
+        array_schema_, fragment_metadata_, next_partition, &est_buffer_sizes);
+
+    if (!st.ok()) {
+      std::free(next_partition);
+      clear_read_state();
+      return st;
+    }
+
+    // Handle case of no results
+    auto no_results = true;
+    for (auto& item : est_buffer_sizes) {
+      if (item.second.first != 0) {
+        no_results = false;
+        break;
+      }
+    }
+    if (no_results) {
+      std::free(next_partition);
+      next_partition = nullptr;
+      continue;
+    }
+
+    // Handle case of split
+    auto must_split = false;
+    for (auto& item : est_buffer_sizes) {
+      auto buffer_size = buffer_sizes_map.find(item.first)->second.first;
+      auto buffer_var_size = buffer_sizes_map.find(item.first)->second.second;
+      auto var_size = array_schema_->var_size(item.first);
+      if (uint64_t(round(item.second.first)) > buffer_size ||
+          (var_size && uint64_t(round(item.second.second)) > buffer_var_size)) {
+        must_split = true;
+        break;
+      }
+    }
+    if (must_split) {
+      void *subarray_1 = nullptr, *subarray_2 = nullptr;
+      st = domain->split_subarray(
+          next_partition, layout_, &subarray_1, &subarray_2);
+      if (!st.ok()) {
+        std::free(next_partition);
+        clear_read_state();
+        return st;
+      }
+
+      // Not splittable, return the original subarray as result
+      if (subarray_1 == nullptr || subarray_2 == nullptr) {
+        found = true;
+      } else {
+        read_state_.subarray_partitions_.push_front(subarray_2);
+        read_state_.subarray_partitions_.push_front(subarray_1);
+      }
+    } else {
+      found = true;
+    }
+  } while (!found && !read_state_.subarray_partitions_.empty());
+
+  // Set the current subarray
+  if (found) {
+    assert(read_state_.cur_subarray_partition_ != nullptr);
+    std::memcpy(
+        read_state_.cur_subarray_partition_,
+        next_partition,
+        2 * array_schema_->coords_size());
+  } else {
+    if (read_state_.cur_subarray_partition_ != nullptr) {
+      std::free(read_state_.cur_subarray_partition_);
+      read_state_.cur_subarray_partition_ = nullptr;
+    }
+  }
+
+  if (next_partition != nullptr)
+    std::free(next_partition);
+
+  return Status::Ok();
 }
 
 Status Reader::read() {
-  // Handle case of no fragments
-  if (fragment_metadata_.empty()) {
+  if (fragment_metadata_.empty() ||
+      read_state_.cur_subarray_partition_ == nullptr) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
-  // Perform dense or sparse read
-  if (array_schema_->dense())
-    return dense_read();
-  return sparse_read();
+  bool no_results = false;
+  overflowed_ = false;
+
+  // This is needed in case the buffers were reset with smaller sizes
+  RETURN_NOT_OK(calibrate_cur_partition());
+
+  do {
+    reset_buffer_sizes();
+
+    // Perform dense or sparse read if there are fragments
+    if (array_schema_->dense()) {
+      RETURN_NOT_OK(dense_read());
+    } else {
+      RETURN_NOT_OK(sparse_read());
+    }
+
+    // Return if the buffers could not fit the results.
+    // Do not advance to the next partition. This is equivalent to
+    // having no results.
+    if (overflowed_) {
+      zero_out_buffer_sizes();
+      return Status::Ok();
+    }
+
+    // Advance to the next subarray partition
+    RETURN_NOT_OK(next_subarray_partition());
+    no_results = this->no_results();
+  } while (no_results && read_state_.cur_subarray_partition_ != nullptr);
+
+  if (no_results)
+    zero_out_buffer_sizes();
+
+  return Status::Ok();
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -249,8 +371,8 @@ Status Reader::set_buffer(
     attributes_.emplace_back(attribute);
 
   // Set attribute buffer
-  attr_buffers_.emplace(
-      attribute, AttributeBuffer(buffer, nullptr, buffer_size, nullptr));
+  attr_buffers_[attribute] =
+      AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
 
   return Status::Ok();
 }
@@ -298,10 +420,8 @@ Status Reader::set_buffer(
     attributes_.emplace_back(attribute);
 
   // Set attribute buffer
-  attr_buffers_.emplace(
-      attribute,
-      AttributeBuffer(
-          buffer_off, buffer_val, buffer_off_size, buffer_val_size));
+  attr_buffers_[attribute] =
+      AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
 }
@@ -457,16 +577,36 @@ Status Reader::compute_subarray_partitions(
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void Reader::clear_read_state() {
-  for (auto p : read_state_.subarray_partitions_) {
-    if (p != nullptr && p != read_state_.subarray_)
-      std::free(p);
+Status Reader::calibrate_cur_partition() {
+  if (read_state_.cur_subarray_partition_ != nullptr) {
+    auto subarray_size = 2 * array_schema_->coords_size();
+    auto partition_to_push = std::malloc(subarray_size);
+    if (partition_to_push == nullptr)
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot calibrate current partition; Memory allocation failed"));
+    std::memcpy(
+        partition_to_push, read_state_.cur_subarray_partition_, subarray_size);
+
+    read_state_.subarray_partitions_.push_front(partition_to_push);
+    next_subarray_partition();
   }
+
+  return Status::Ok();
+}
+
+void Reader::clear_read_state() {
+  for (auto p : read_state_.subarray_partitions_)
+    std::free(p);
   read_state_.subarray_partitions_.clear();
 
   if (read_state_.subarray_ != nullptr) {
     std::free(read_state_.subarray_);
     read_state_.subarray_ = nullptr;
+  }
+
+  if (read_state_.cur_subarray_partition_ != nullptr) {
+    std::free(read_state_.cur_subarray_partition_);
+    read_state_.cur_subarray_partition_ = nullptr;
   }
 }
 
@@ -752,7 +892,7 @@ Status Reader::compute_overlapping_coords(
   auto dim_num = array_schema_->dim_num();
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
   auto coords_num = t.cell_num();
-  auto subarray = (T*)cur_subarray_;
+  auto subarray = (T*)read_state_.cur_subarray_partition_;
   auto c = (T*)t.data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
@@ -766,7 +906,7 @@ Status Reader::compute_overlapping_coords(
 template <class T>
 Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
   // For easy reference
-  auto subarray = (T*)cur_subarray_;
+  auto subarray = (T*)read_state_.cur_subarray_partition_;
   auto dim_num = array_schema_->dim_num();
   auto fragment_num = fragment_metadata_.size();
   bool full_overlap;
@@ -826,8 +966,7 @@ Status Reader::compute_tile_coordinates(
 }
 
 Status Reader::copy_cells(
-    const std::string& attribute,
-    const OverlappingCellRangeList& cell_ranges) const {
+    const std::string& attribute, const OverlappingCellRangeList& cell_ranges) {
   // Early exit for empty cell range list.
   if (cell_ranges.empty()) {
     zero_out_buffer_sizes();
@@ -840,8 +979,7 @@ Status Reader::copy_cells(
 }
 
 Status Reader::copy_fixed_cells(
-    const std::string& attribute,
-    const OverlappingCellRangeList& cell_ranges) const {
+    const std::string& attribute, const OverlappingCellRangeList& cell_ranges) {
   // For easy reference
   auto it = attr_buffers_.find(attribute);
   auto buffer = (unsigned char*)it->second.buffer_;
@@ -863,16 +1001,19 @@ Status Reader::copy_fixed_cells(
     buffer_offset += bytes_to_copy;
   }
 
+  // Handle overflow
+  if (buffer_offset > *buffer_size) {
+    overflowed_ = true;
+    return Status::Ok();
+  }
+
   // Copy cell ranges in parallel.
   auto statuses = parallel_for(0, num_cr, [&](uint64_t i) {
     const auto& cr = cell_ranges[i];
     uint64_t offset = cr_offsets[i];
     // Check for overflow
     auto bytes_to_copy = (cr.end_ - cr.start_ + 1) * cell_size;
-    if (offset + bytes_to_copy > *buffer_size)
-      return LOG_STATUS(Status::ReaderError(
-          std::string("Cannot copy cells for attribute '") + attribute +
-          "'; Result buffer overflowed"));
+    assert(offset + bytes_to_copy <= *buffer_size);
 
     // Copy
     if (cr.tile_ == nullptr) {  // Empty range
@@ -891,15 +1032,14 @@ Status Reader::copy_fixed_cells(
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
-  // Update buffer sizes
-  *buffer_size = buffer_offset;
+  // Update buffer offsets
+  *(attr_buffers_[attribute].buffer_size_) = buffer_offset;
 
   return Status::Ok();
 }
 
 Status Reader::copy_var_cells(
-    const std::string& attribute,
-    const OverlappingCellRangeList& cell_ranges) const {
+    const std::string& attribute, const OverlappingCellRangeList& cell_ranges) {
   // For easy reference
   auto it = attr_buffers_.find(attribute);
   auto buffer = (unsigned char*)it->second.buffer_;
@@ -919,24 +1059,31 @@ Status Reader::copy_var_cells(
   for (const auto& cr : cell_ranges) {
     auto cell_num_in_range = cr.end_ - cr.start_ + 1;
     // Check if offset buffers can fit the result
-    if (buffer_offset + cell_num_in_range * offset_size > *buffer_size)
-      return LOG_STATUS(Status::ReaderError(
-          std::string("Cannot copy cell offsets for var-sized attribute '") +
-          attribute + "'; Result buffer overflow"));
+    if (buffer_offset + cell_num_in_range * offset_size > *buffer_size) {
+      overflowed_ = true;
+      return Status::Ok();
+    }
 
     // Handle empty range
     if (cr.tile_ == nullptr) {
       // Check if result can fit in the buffer
-      if (buffer_var_offset + cell_num_in_range * fill_size > *buffer_var_size)
-        return LOG_STATUS(Status::ReaderError(
-            std::string("Cannot copy cell data for var-sized attribute '") +
-            attribute + "'; Result buffer overflowed"));
+      if (buffer_var_offset + cell_num_in_range * fill_size >
+          *buffer_var_size) {
+        overflowed_ = true;
+        return Status::Ok();
+      }
 
       // Fill with empty
       for (auto i = cr.start_; i <= cr.end_; ++i) {
         // Offsets
         std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
         buffer_offset += offset_size;
+
+        // Handle overflow
+        if (buffer_var_offset + fill_size > *buffer_var_size) {
+          overflowed_ = true;
+          return Status::Ok();
+        }
 
         // Values
         std::memcpy(buffer_var + buffer_var_offset, fill_value, fill_size);
@@ -965,10 +1112,10 @@ Status Reader::copy_var_cells(
                           offsets[i + 1] - offsets[i] :
                           tile_var_size - (offsets[i] - offsets[0]);
 
-      if (buffer_var_offset + cell_var_size > *buffer_var_size)
-        return LOG_STATUS(Status::ReaderError(
-            std::string("Cannot copy cell data for var-sized attribute '") +
-            attribute + "'; Result buffer overflowed"));
+      if (buffer_var_offset + cell_var_size > *buffer_var_size) {
+        overflowed_ = true;
+        return Status::Ok();
+      }
 
       // Copy variable-sized values
       std::memcpy(
@@ -979,9 +1126,9 @@ Status Reader::copy_var_cells(
     }
   }
 
-  // Update buffer sizes
-  *buffer_size = buffer_offset;
-  *buffer_var_size = buffer_var_offset;
+  // Update buffer offsets
+  *(attr_buffers_[attribute].buffer_size_) = buffer_offset;
+  *(attr_buffers_[attribute].buffer_var_size_) = buffer_var_offset;
 
   return Status::Ok();
 }
@@ -1043,7 +1190,7 @@ Status Reader::dense_read() {
   std::vector<T> subarray;
   subarray.resize(subarray_len);
   for (size_t i = 0; i < subarray_len; ++i)
-    subarray[i] = ((T*)cur_subarray_)[i];
+    subarray[i] = ((T*)read_state_.cur_subarray_partition_)[i];
 
   // Get overlapping sparse tile indexes
   OverlappingTileVec sparse_tiles;
@@ -1106,38 +1253,49 @@ Status Reader::dense_read() {
 
   // Copy cells
   for (const auto& attr : attributes_) {
+    if (overflowed_)
+      break;
+
     if (attr != constants::coords)  // Skip coordinates
       RETURN_CANCEL_OR_ERROR(copy_cells(attr, overlapping_cell_ranges));
   }
 
   // Fill coordinates if the user requested them
-  if (has_coords())
+  if (!overflowed_ && has_coords())
     RETURN_CANCEL_OR_ERROR(fill_coords<T>());
 
   return Status::Ok();
 }
 
 template <class T>
-Status Reader::fill_coords() const {
+Status Reader::fill_coords() {
   // For easy reference
   auto it = attr_buffers_.find(constants::coords);
   assert(it != attr_buffers_.end());
   auto coords_buff = it->second.buffer_;
   auto coords_buff_offset = (uint64_t)0;
-  auto coords_buff_size = it->second.buffer_size_;
+  auto coords_buff_size = *(it->second.buffer_size_);
   auto domain = array_schema_->domain();
   auto cell_order = array_schema_->cell_order();
   auto subarray_len = 2 * array_schema_->dim_num();
+  auto coords_size = array_schema_->coords_size();
   std::vector<T> subarray;
   subarray.resize(subarray_len);
   for (size_t i = 0; i < subarray_len; ++i)
-    subarray[i] = ((T*)cur_subarray_)[i];
+    subarray[i] = ((T*)read_state_.cur_subarray_partition_)[i];
 
   // Iterate over all coordinates, retrieved in cell slabs
   DenseCellRangeIter<T> cell_it(domain, subarray, layout_);
   RETURN_CANCEL_OR_ERROR(cell_it.begin());
   while (!cell_it.end()) {
     auto coords_num = cell_it.range_end() - cell_it.range_start() + 1;
+
+    // Check for overflow
+    if (coords_num * coords_size + coords_buff_offset > coords_buff_size) {
+      overflowed_ = true;
+      return Status::Ok();
+    }
+
     if (layout_ == Layout::ROW_MAJOR ||
         (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
       fill_coords_row_slab(
@@ -1149,7 +1307,7 @@ Status Reader::fill_coords() const {
   }
 
   // Update the coords buffer size
-  *coords_buff_size = coords_buff_offset;
+  *(it->second.buffer_size_) = coords_buff_offset;
 
   return Status::Ok();
 }
@@ -1280,6 +1438,39 @@ bool Reader::has_coords() const {
   return attr_buffers_.find(constants::coords) != attr_buffers_.end();
 }
 
+Status Reader::init_read_state() {
+  auto subarray_size = 2 * array_schema_->coords_size();
+  read_state_.cur_subarray_partition_ = std::malloc(subarray_size);
+  if (read_state_.cur_subarray_partition_ == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize read state; Memory allocation failed"));
+
+  auto first_partition = std::malloc(subarray_size);
+  if (first_partition == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize read state; Memory allocation failed"));
+
+  std::memcpy(first_partition, read_state_.subarray_, subarray_size);
+  read_state_.subarray_partitions_.push_back(first_partition);
+
+  RETURN_NOT_OK(next_subarray_partition());
+
+  // If there is no next subarray partition, then the original subarray is
+  // not splittable. Set the current subarray to the original subarray
+  if (read_state_.cur_subarray_partition_ == nullptr) {
+    read_state_.cur_subarray_partition_ = std::malloc(subarray_size);
+    if (read_state_.cur_subarray_partition_ == nullptr)
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot initialize read state; Memory allocation failed"));
+    std::memcpy(
+        read_state_.cur_subarray_partition_,
+        read_state_.subarray_,
+        subarray_size);
+  }
+
+  return Status::Ok();
+}
+
 Status Reader::init_tile(const std::string& attribute, Tile* tile) const {
   // For easy reference
   auto domain = array_schema_->domain();
@@ -1338,7 +1529,7 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   std::vector<T> subarray;
   subarray.resize(2 * dim_num);
   for (unsigned i = 0; i < 2 * dim_num; ++i)
-    subarray[i] = ((T*)cur_subarray_)[i];
+    subarray[i] = ((T*)read_state_.cur_subarray_partition_)[i];
 
   // Compute tile domain and current tile coords
   std::vector<T> tile_domain, tile_coords;
@@ -1401,6 +1592,14 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   }
 
   return Status::Ok();
+}
+
+bool Reader::no_results() const {
+  for (const auto& it : attr_buffers_) {
+    if (*(it.second.buffer_size_) != 0)
+      return false;
+  }
+  return true;
 }
 
 template <class T>
@@ -1530,36 +1729,12 @@ Status Reader::read_tiles(
   return Status::Ok();
 }
 
-Status Reader::set_attributes(
-    const char** attributes, unsigned int attribute_num) {
-  // Get attributes
-  std::vector<std::string> attributes_vec;
-  if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema_->attribute_names();
-    if (!array_schema_->dense())
-      attributes_vec.emplace_back(constants::coords);
-  } else {  // Custom attributes
-    // Get attributes
-    unsigned uri_max_len = constants::uri_max_len;
-    for (unsigned int i = 0; i < attribute_num; ++i) {
-      // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > uri_max_len)
-        return LOG_STATUS(Status::ReaderError("Invalid attribute name length"));
-      attributes_vec.emplace_back(attributes[i]);
-    }
-
-    // Sanity check on duplicates
-    if (utils::has_duplicates(attributes_vec))
-      return LOG_STATUS(
-          Status::ReaderError("Cannot set attributes; Duplicate attributes"));
+void Reader::reset_buffer_sizes() {
+  for (auto& it : attr_buffers_) {
+    *(it.second.buffer_size_) = it.second.original_buffer_size_;
+    if (it.second.buffer_var_size_ != nullptr)
+      *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
   }
-
-  // Set attribute names
-  attributes_.clear();
-  for (const auto& attr : attributes_vec)
-    attributes_.emplace_back(attr);
-
-  return Status::Ok();
 }
 
 template <class T>
@@ -1640,13 +1815,16 @@ Status Reader::sparse_read() {
   coords.clear();
 
   // Copy cells
-  for (const auto& attr : attributes_)
+  for (const auto& attr : attributes_) {
+    if (overflowed_)
+      break;
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
+  }
 
   return Status::Ok();
 }
 
-void Reader::zero_out_buffer_sizes() const {
+void Reader::zero_out_buffer_sizes() {
   for (auto& attr_buffer : attr_buffers_) {
     if (attr_buffer.second.buffer_size_ != nullptr)
       *(attr_buffer.second.buffer_size_) = 0;

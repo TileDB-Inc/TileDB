@@ -46,7 +46,7 @@ KVIter::KVIter(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
   query_ = nullptr;
   coords_buffer_ = nullptr;
-  coords_buffer_size_ = 0;
+  coords_buffer_alloced_size_ = 0;
   current_item_ = 0;
   kv_ = nullptr;
   status_ = QueryStatus::COMPLETED;
@@ -84,10 +84,13 @@ Status KVIter::init(KV* kv) {
   if (coords_buffer_ == nullptr)
     return LOG_STATUS(Status::KVIterError(
         "Cannot initialize kv iterator; Memory allocation failed"));
+  coords_buffer_alloced_size_ = 2 * max_item_num_ * sizeof(uint64_t);
 
   RETURN_NOT_OK(
       storage_manager_->query_create(&query_, kv_->open_array_for_reads()));
   RETURN_NOT_OK(submit_read_query());
+
+  max_item_num_ = kv->capacity();
 
   return Status::Ok();
 }
@@ -111,7 +114,7 @@ void KVIter::clear() {
   query_ = nullptr;
   delete[] coords_buffer_;
   coords_buffer_ = nullptr;
-  coords_buffer_size_ = 0;
+  coords_buffer_alloced_size_ = 0;
   current_item_ = 0;
   status_ = QueryStatus::INPROGRESS;
   max_item_num_ = 0;
@@ -119,16 +122,31 @@ void KVIter::clear() {
 }
 
 Status KVIter::submit_read_query() {
-  // Always reset the size of the read buffer and offset
-  coords_buffer_size_ = 2 * max_item_num_ * sizeof(uint64_t);
   current_item_ = 0;
+  uint64_t coords_buffer_size = coords_buffer_alloced_size_;
 
-  RETURN_NOT_OK(query_->set_buffer(
-      constants::coords.c_str(), coords_buffer_, &coords_buffer_size_));
-  RETURN_NOT_OK(storage_manager_->query_submit(query_));
+  do {
+    RETURN_NOT_OK(query_->set_buffer(
+        constants::coords.c_str(), coords_buffer_, &coords_buffer_size));
+    RETURN_NOT_OK(storage_manager_->query_submit(query_));
 
-  status_ = query_->status();
-  item_num_ = coords_buffer_size_ / (2 * sizeof(uint64_t));
+    status_ = query_->status();
+    item_num_ = coords_buffer_size / (2 * sizeof(uint64_t));
+
+    // If there are no results and the query is incomplete,
+    // expand the read buffer
+    if (item_num_ == 0 && status_ == QueryStatus::INCOMPLETE) {
+      coords_buffer_alloced_size_ *= 2;
+      delete[] coords_buffer_;
+      coords_buffer_ = new (std::nothrow)
+          uint64_t[coords_buffer_alloced_size_ / sizeof(uint64_t)];
+      if (coords_buffer_ == nullptr)
+        return LOG_STATUS(Status::KVIterError(
+            "Cannot resubmit read query; Memory allocation failed"));
+      coords_buffer_size = coords_buffer_alloced_size_;
+    }
+
+  } while (item_num_ == 0 && status_ != QueryStatus::COMPLETED);
 
   return Status::Ok();
 }

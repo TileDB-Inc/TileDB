@@ -283,6 +283,86 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   return Status::Ok();
 }
 
+Status StorageManager::array_compute_est_read_buffer_sizes(
+    const ArraySchema* array_schema,
+    const std::vector<FragmentMetadata*>& fragment_metadata,
+    const void* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
+  // Return if there are no metadata
+  if (fragment_metadata.empty())
+    return Status::Ok();
+
+  // Compute buffer sizes
+  switch (array_schema->coords_type()) {
+    case Datatype::INT32:
+      return array_compute_est_read_buffer_sizes<int>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const int*>(subarray),
+          buffer_sizes);
+    case Datatype::INT64:
+      return array_compute_est_read_buffer_sizes<int64_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const int64_t*>(subarray),
+          buffer_sizes);
+    case Datatype::FLOAT32:
+      return array_compute_est_read_buffer_sizes<float>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const float*>(subarray),
+          buffer_sizes);
+    case Datatype::FLOAT64:
+      return array_compute_est_read_buffer_sizes<double>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const double*>(subarray),
+          buffer_sizes);
+    case Datatype::INT8:
+      return array_compute_est_read_buffer_sizes<int8_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const int8_t*>(subarray),
+          buffer_sizes);
+    case Datatype::UINT8:
+      return array_compute_est_read_buffer_sizes<uint8_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const uint8_t*>(subarray),
+          buffer_sizes);
+    case Datatype::INT16:
+      return array_compute_est_read_buffer_sizes<int16_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const int16_t*>(subarray),
+          buffer_sizes);
+    case Datatype::UINT16:
+      return array_compute_est_read_buffer_sizes<uint16_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const uint16_t*>(subarray),
+          buffer_sizes);
+    case Datatype::UINT32:
+      return array_compute_est_read_buffer_sizes<uint32_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const uint32_t*>(subarray),
+          buffer_sizes);
+    case Datatype::UINT64:
+      return array_compute_est_read_buffer_sizes<uint64_t>(
+          array_schema,
+          fragment_metadata,
+          static_cast<const uint64_t*>(subarray),
+          buffer_sizes);
+    default:
+      return LOG_STATUS(
+          Status::StorageManagerError("Cannot compute estimate for read buffer "
+                                      "sizes; Invalid coordinates type"));
+  }
+
+  return Status::Ok();
+}
+
 Status StorageManager::array_compute_subarray_partitions(
     OpenArray* open_array,
     const void* subarray,
@@ -1085,6 +1165,7 @@ Status StorageManager::query_submit(Query* query) {
   increment_in_progress();
   auto st = query->process();
   decrement_in_progress();
+
   return st;
 }
 
@@ -1294,13 +1375,17 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   // Rectify bound for dense arrays
   if (array_schema->dense()) {
     auto cell_num = array_schema->domain()->cell_num(subarray);
-    for (auto& it : *buffer_sizes) {
-      if (array_schema->var_size(it.first)) {
-        it.second.first = cell_num * constants::cell_var_offset_size;
-        it.second.second +=
-            cell_num * datatype_size(array_schema->type(it.first));
-      } else {
-        it.second.first = cell_num * array_schema->cell_size(it.first);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *buffer_sizes) {
+        if (array_schema->var_size(it.first)) {
+          it.second.first = cell_num * constants::cell_var_offset_size;
+          it.second.second +=
+              cell_num * datatype_size(array_schema->type(it.first));
+        } else {
+          it.second.first = cell_num * array_schema->cell_size(it.first);
+        }
       }
     }
   }
@@ -1313,9 +1398,46 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
+        if (!array_schema->var_size(it.first)) {
+          // Check for overflow
+          uint64_t new_size = cell_num * array_schema->cell_size(it.first);
+          if (new_size / array_schema->cell_size((it.first)) != cell_num)
+            continue;
+
+          // Potentially rectify size
+          it.second.first = MIN(it.second.first, new_size);
+        }
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status StorageManager::array_compute_est_read_buffer_sizes(
+    const ArraySchema* array_schema,
+    const std::vector<FragmentMetadata*>& metadata,
+    const T* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
+  // Sanity check
+  assert(!metadata.empty());
+
+  // First we calculate a rough upper bound. Especially for dense
+  // arrays, this will not be accurate, as it accounts only for the
+  // non-empty regions of the subarray.
+  for (auto& meta : metadata)
+    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(subarray, buffer_sizes));
+
+  // Rectify bound for dense arrays
+  if (array_schema->dense()) {
+    auto cell_num = array_schema->domain()->cell_num(subarray);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *buffer_sizes) {
         if (!array_schema->var_size(it.first))
-          it.second.first = MIN(
-              it.second.first, cell_num * array_schema->cell_size(it.first));
+          it.second.first = cell_num * array_schema->cell_size(it.first);
       }
     }
   }

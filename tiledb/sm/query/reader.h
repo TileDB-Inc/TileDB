@@ -62,19 +62,22 @@ class Reader {
    * that the results of each partition can certainly fit in the user
    * buffers. The user can perform successive calls to `submit` in order
    * to incrementally perform each subarray partition. The query is
-   * "incomplete" until all partititions are processed.
+   * "incomplete" until all partitions are processed.
    *
    * The read state maintains a vector with all the subarray partitions,
    * along with an index `idx_` that indicates the parition to be processed
    * next.
    */
   struct ReadState {
-    /** The index to the partition to be processed next. */
-    size_t idx_;
+    /** The current subarray the query is constrained on. */
+    void* cur_subarray_partition_;
     /** The original subarray set by the user. */
     void* subarray_;
-    /** The subarray partitions. */
-    std::vector<void*> subarray_partitions_;
+    /**
+     * A list of subarray partitions. The head of the list is the partition
+     * to be split next.
+     */
+    std::list<void*> subarray_partitions_;
   };
 
   /** Contains the buffer(s) and buffer size(s) for some attribute. */
@@ -89,10 +92,36 @@ class Reader {
      * for fixed-sized attributes.
      */
     void* buffer_var_;
-    /** The size (in bytes) of `buffer_`. */
+    /**
+     * The size (in bytes) of `buffer_`. Note that this size may be altered by
+     * a read query to reflect the useful data written in the buffer.
+     */
     uint64_t* buffer_size_;
-    /** The size (in bytes) of `buffer_var_`. */
+    /**
+     * The size (in bytes) of `buffer_var_`. Note that this size may be altered
+     * by a read query to reflect the useful data written in the buffer.
+     */
     uint64_t* buffer_var_size_;
+    /**
+     * This is the original size (in bytes) of `buffer_` (before
+     * potentially altered by the query).
+     */
+    uint64_t original_buffer_size_;
+    /**
+     * This is the original size (in bytes) of `buffer_var_` (before
+     * potentially altered by the query).
+     */
+    uint64_t original_buffer_var_size_;
+
+    /** Constructor. */
+    AttributeBuffer() {
+      buffer_ = nullptr;
+      buffer_var_ = nullptr;
+      buffer_size_ = nullptr;
+      buffer_var_size_ = nullptr;
+      original_buffer_size_ = 0;
+      original_buffer_var_size_ = 0;
+    }
 
     /** Constructor. */
     AttributeBuffer(
@@ -104,6 +133,9 @@ class Reader {
         , buffer_var_(buffer_var)
         , buffer_size_(buffer_size)
         , buffer_var_size_(buffer_var_size) {
+      original_buffer_size_ = *buffer_size;
+      original_buffer_var_size_ =
+          (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
     }
   };
 
@@ -291,10 +323,11 @@ class Reader {
       void* subarray, std::vector<void*>* subarray_partitions) const;
 
   /**
-   * Returns `true` if all subarray partitions in the read state have been
-   * processed.
+   * Returns `true` if the query was incomplete, i.e., if all subarray
+   * partitions in the read state have not been processed or there
+   * was some buffer overflow.
    */
-  bool done() const;
+  bool incomplete() const;
 
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
@@ -311,8 +344,15 @@ class Reader {
   /** Returns the cell layout. */
   Layout layout() const;
 
-  /** Advances the read state to the next subarray partition. */
-  void next_subarray_partition();
+  /**
+   * Advances the read state to the next subarray partition. It splits the
+   * head of the subarray partition list (re-inserting at the front the
+   * potentially derived partitons) and copies the first partition that
+   * fits in the user buffers to `read_state_.cur_subarray_`. If there
+   * is no next subarray, `read_state_.cur_subarray_` is freed and
+   * set to `nullptr`.
+   */
+  Status next_subarray_partition();
 
   /** Performs a read query using its set members. */
   Status read();
@@ -433,18 +473,27 @@ class Reader {
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
+  /**
+   * `True` if the query produced results that could not fit in
+   * some buffer.
+   */
+  bool overflowed_;
+
   /** To handle incomplete read queries. */
   ReadState read_state_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;
 
-  /** The current subarray the query is constrained on. */
-  void* cur_subarray_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Re-checks if the current partition must be split, in case the user
+   * has reset the buffers with smaller sizes in between query submissions.
+   */
+  Status calibrate_cur_partition();
 
   /** Clears the read state. */
   void clear_read_state();
@@ -566,7 +615,7 @@ class Reader {
    */
   Status copy_cells(
       const std::string& attribute,
-      const OverlappingCellRangeList& cell_ranges) const;
+      const OverlappingCellRangeList& cell_ranges);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute and cell
@@ -578,7 +627,7 @@ class Reader {
    */
   Status copy_fixed_cells(
       const std::string& attribute,
-      const OverlappingCellRangeList& cell_ranges) const;
+      const OverlappingCellRangeList& cell_ranges);
 
   /**
    * Copies the cells for the input **var-sized** attribute and cell
@@ -590,7 +639,7 @@ class Reader {
    */
   Status copy_var_cells(
       const std::string& attribute,
-      const OverlappingCellRangeList& cell_ranges) const;
+      const OverlappingCellRangeList& cell_ranges);
 
   /**
    * Deduplicates the input coordinates, breaking ties giving preference
@@ -624,7 +673,7 @@ class Reader {
    * @return Status
    */
   template <class T>
-  Status fill_coords() const;
+  Status fill_coords();
 
   /**
    * Fills coordinates in the input buffer for a particular cell slab, following
@@ -714,6 +763,9 @@ class Reader {
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
 
+  /** Initializes the read state. */
+  Status init_read_state();
+
   /**
    * Initializes a fixed-sized tile.
    *
@@ -749,6 +801,9 @@ class Reader {
       std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
       std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
           overlapping_tile_idx_coords);
+
+  /** Returns `true` if no results were retrieved after a query. */
+  bool no_results() const;
 
   /**
    * Checks whether two hyper-rectangles overlap, and determines whether
@@ -789,8 +844,12 @@ class Reader {
   Status read_tiles(
       const std::string& attribute, OverlappingTileVec* tiles) const;
 
-  /** Sets the query attributes. */
-  Status set_attributes(const char** attributes, unsigned int attribute_num);
+  /**
+   * Resets the buffer sizes to the original buffer sizes. This is because
+   * the read query may alter the buffer sizes to reflect the size of
+   * the useful data (results) written in the buffers.
+   */
+  void reset_buffer_sizes();
 
   /**
    * Sorts the input coordinates according to the input layout.
@@ -814,8 +873,8 @@ class Reader {
   template <class T>
   Status sparse_read();
 
-  /** Sets the buffer sizes to zero. */
-  void zero_out_buffer_sizes() const;
+  /** Zeroes out the user buffer sizes, indicating an empty result. */
+  void zero_out_buffer_sizes();
 };
 
 }  // namespace sm

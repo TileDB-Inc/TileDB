@@ -485,6 +485,17 @@ bool overlap(const T* a, const T* b, unsigned dim_num) {
   return true;
 }
 
+template <class T>
+double coverage(const T* a, const T* b, unsigned dim_num) {
+  double c = 1.0;
+  for (unsigned i = 0; i < dim_num; ++i)
+    if (std::is_integral<T>::value)
+      c *= double(a[2 * i + 1] - a[2 * i] + 1) / (b[2 * i + 1] - b[2 * i] + 1);
+    else
+      c *= double(a[2 * i + 1] - a[2 * i]) / (b[2 * i + 1] - b[2 * i]);
+  return c;
+}
+
 bool starts_with(const std::string& value, const std::string& prefix) {
   if (prefix.size() > value.size())
     return false;
@@ -906,6 +917,26 @@ template bool overlap<uint64_t>(
     const uint64_t* a, const uint64_t* b, unsigned dim_num);
 template bool overlap<float>(const float* a, const float* b, unsigned dim_num);
 template bool overlap<double>(
+    const double* a, const double* b, unsigned dim_num);
+
+template double coverage<int8_t>(
+    const int8_t* a, const int8_t* b, unsigned dim_num);
+template double coverage<uint8_t>(
+    const uint8_t* a, const uint8_t* b, unsigned dim_num);
+template double coverage<int16_t>(
+    const int16_t* a, const int16_t* b, unsigned dim_num);
+template double coverage<uint16_t>(
+    const uint16_t* a, const uint16_t* b, unsigned dim_num);
+template double coverage<int>(const int* a, const int* b, unsigned dim_num);
+template double coverage<unsigned>(
+    const unsigned* a, const unsigned* b, unsigned dim_num);
+template double coverage<int64_t>(
+    const int64_t* a, const int64_t* b, unsigned dim_num);
+template double coverage<uint64_t>(
+    const uint64_t* a, const uint64_t* b, unsigned dim_num);
+template double coverage<float>(
+    const float* a, const float* b, unsigned dim_num);
+template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
 
 }  // namespace utils

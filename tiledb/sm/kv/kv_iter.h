@@ -92,8 +92,8 @@ class KVIter {
   /** Buffer for storing coordinates (i.e., key hashes). */
   uint64_t* coords_buffer_;
 
-  /** The coordinates buffer size. */
-  uint64_t coords_buffer_size_;
+  /** The allocared size for the coordinates buffer. */
+  uint64_t coords_buffer_alloced_size_;
 
   /** The current item from the read ones. */
   uint64_t current_item_;
@@ -104,7 +104,10 @@ class KVIter {
   /** The read query status. */
   QueryStatus status_;
 
-  /** Maximum number of items to be read at a time. */
+  /**
+   * Maximum number of items to be read at a time. This is
+   * set equal to tile capacity of the underlying KV in `init()`.
+   */
   uint64_t max_item_num_;
 
   /** Number of items read. */

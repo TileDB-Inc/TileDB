@@ -266,6 +266,13 @@ template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num);
 
 /**
+ * Returns the percentage of coverage of hyper-rectangle `a` in `b`.
+ * Note that the function assumes that `a` is fully contained in `b`.
+ */
+template <class T>
+double coverage(const T* a, const T* b, unsigned dim_num);
+
+/**
  * Checks if a string starts with a certain prefix.
  *
  * @param value The base string.

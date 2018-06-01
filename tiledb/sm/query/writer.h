@@ -72,6 +72,14 @@ class Writer {
     uint64_t* buffer_var_size_;
 
     /** Constructor. */
+    AttributeBuffer() {
+      buffer_ = nullptr;
+      buffer_var_ = nullptr;
+      buffer_size_ = nullptr;
+      buffer_var_size_ = nullptr;
+    }
+
+    /** Constructor. */
     AttributeBuffer(
         void* buffer,
         void* buffer_var,

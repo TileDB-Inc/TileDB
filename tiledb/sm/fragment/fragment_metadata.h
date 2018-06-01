@@ -134,6 +134,65 @@ class FragmentMetadata {
           buffer_sizes) const;
 
   /**
+   * Computes an estimate on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. Note that these upper
+   * bounds is added to those in `buffer_sizes`.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param buffer_sizes The upper bounds will be added to this map. The latter
+   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first is the
+   *     offsets size, whereas the second is the data size.
+   * @return Status
+   */
+  template <class T>
+  Status add_est_read_buffer_sizes(
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+      const;
+
+  /**
+   * Computes an estimate on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. Note that these upper
+   * bounds is added to those in `buffer_sizes`. Applicable only to the dense
+   * case.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param buffer_sizes The upper bounds will be added to this map. The latter
+   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first is the
+   *     offsets size, whereas the second is the data size.
+   * @return Status
+   */
+  template <class T>
+  Status add_est_read_buffer_sizes_dense(
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+      const;
+
+  /**
+   * Computes an estimate on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. Note that these upper
+   * bounds is added to those in `buffer_sizes`. Applicable only to the sparse
+   * case.
+   *
+   * @tparam T The coordinates type.
+   * @param subarray The targeted subarray.
+   * @param buffer_sizes The upper bounds will be added to this map. The latter
+   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first is the
+   *     offsets size, whereas the second is the data size.
+   * @return Status
+   */
+  template <class T>
+  Status add_est_read_buffer_sizes_sparse(
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+      const;
+
+  /**
    * Returns ture if the corresponding fragment is dense, and false if it
    * is sparse.
    */
@@ -452,9 +511,17 @@ class FragmentMetadata {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Returns the ids (positions) of the tiles overlapping `subarray. */
+  /** Returns the ids (positions) of the tiles overlapping `subarray`. */
   template <class T>
   std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
+
+  /**
+   * Returns the ids (positions) of the tiles overlapping `subarray`, along with
+   * with the coverage of the overlap.
+   */
+  template <class T>
+  std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
+      const T* subarray) const;
 
   /**
    * Retrieves the tile domain for the input `subarray` based on the expanded
