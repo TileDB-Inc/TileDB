@@ -46,6 +46,44 @@ class StorageManager;
 class TileIO {
  public:
   /* ********************************* */
+  /*       PUBLIC TYPE DEFINITIONS     */
+  /* ********************************* */
+
+  /**
+   * Header information for a generic tile. A generic tile is a tile residing
+   * together with its metadata in one contiguous byte region of a file. This is
+   * as opposed to a regular tile, where the metadata resides separately from
+   * the tile data itself.
+   */
+  struct GenericTileHeader {
+    /** Size, in bytes, of the serialized header. */
+    static const uint64_t SIZE =
+        3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(int);
+    /** Compressed size of the tile. */
+    uint64_t compressed_size;
+    /** Uncompressed size of the tile. */
+    uint64_t tile_size;
+    /** Datatype of the tile. */
+    char datatype;
+    /** Cell size of the tile. */
+    uint64_t cell_size;
+    /** Compressor of the tile. */
+    char compressor;
+    /** Compression level of the tile. */
+    int compression_level;
+
+    /** Constructor. */
+    GenericTileHeader()
+        : compressed_size(0)
+        , tile_size(0)
+        , datatype((char)Datatype::ANY)
+        , cell_size(0)
+        , compressor((char)Compressor::NO_COMPRESSION)
+        , compression_level(-1) {
+    }
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -80,6 +118,17 @@ class TileIO {
   uint64_t file_size() const;
 
   /**
+   * Checks whether the file at the given URI is a valid generic tile.
+   *
+   * @param sm StorageManager instance to use.
+   * @param uri The file URI.
+   * @param is_generic_tile Set to `true` iff the file is a valid generic tile.
+   * @return Status
+   */
+  static Status is_generic_tile(
+      const StorageManager* sm, const URI& uri, bool* is_generic_tile);
+
+  /**
    * Reads into a tile from the file.
    *
    * @param tile The tile to read into.
@@ -95,11 +144,14 @@ class TileIO {
       uint64_t tile_size);
 
   /**
-   * Reads a generic tile from the file. This means that there are not tile
-   * metadata kept anywhere except for the file. Therefore, the function
-   * first reads a small header to retrieve appropriate information about
-   * the tile, and then reads the tile data. Note that it creates a new
-   * Tile object.
+   * Reads a generic tile from the file. A generic tile is a tile residing
+   * together with its metadata in one contiguous byte region of a file. This is
+   * as opposed to a regular tile, where the metadata resides separately from
+   * the tile data itself.
+   *
+   * Therefore, this function first reads a small header to retrieve appropriate
+   * information about the tile, and then reads the tile data. Note that it
+   * creates a new Tile object with the header information.
    *
    * @param tile The tile that will hold the read data.
    * @param file_offset The offset in the file to read from.
@@ -108,23 +160,19 @@ class TileIO {
   Status read_generic(Tile** tile, uint64_t file_offset);
 
   /**
-   * Reads the generic tile header from the file. It also creates a new tile
-   * with the header information, and retrieves the tile original and
-   * compressed size.
+   * Reads the generic tile header from the file.
    *
-   * @param tile The tile to be created.
+   * @param sm The StorageManager instance to use for reading.
+   * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
-   * @param tile_size The original tile size to be retrieved.
-   * @param compressed_size The compressed tile size to be retrieved.
-   * @param header_size The size of the retrieved header.
+   * @param header The header to be retrieved.
    * @return Status
    */
-  Status read_generic_tile_header(
-      Tile** tile,
+  static Status read_generic_tile_header(
+      const StorageManager* sm,
+      const URI& uri,
       uint64_t file_offset,
-      uint64_t* tile_size,
-      uint64_t* compressed_size,
-      uint64_t* header_size);
+      GenericTileHeader* header);
 
   /**
    * Writes (appends) a tile into the file.

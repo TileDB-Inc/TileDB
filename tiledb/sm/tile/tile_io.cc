@@ -90,6 +90,29 @@ uint64_t TileIO::file_size() const {
   return file_size_;
 }
 
+Status TileIO::is_generic_tile(
+    const StorageManager* sm, const URI& uri, bool* is_generic_tile) {
+  *is_generic_tile = false;
+
+  bool is_file;
+  RETURN_NOT_OK(sm->vfs()->is_file(uri, &is_file));
+  if (!is_file)
+    return Status::Ok();
+
+  uint64_t file_size;
+  RETURN_NOT_OK(sm->vfs()->file_size(uri, &file_size));
+  if (file_size < GenericTileHeader::SIZE)
+    return Status::Ok();
+
+  GenericTileHeader header;
+  RETURN_NOT_OK(read_generic_tile_header(sm, uri, 0, &header));
+  if (file_size != GenericTileHeader::SIZE + header.compressed_size)
+    return Status::Ok();
+
+  *is_generic_tile = true;
+  return Status::Ok();
+}
+
 Status TileIO::read(
     Tile* tile,
     uint64_t file_offset,
@@ -124,58 +147,47 @@ Status TileIO::read(
 }
 
 Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
-  uint64_t tile_size;
-  uint64_t compressed_size;
-  uint64_t header_size;
+  GenericTileHeader header;
+  RETURN_NOT_OK(
+      read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
 
-  RETURN_NOT_OK(read_generic_tile_header(
-      tile, file_offset, &tile_size, &compressed_size, &header_size));
+  *tile = new Tile();
   RETURN_NOT_OK_ELSE(
-      read(*tile, file_offset + header_size, compressed_size, tile_size),
+      (*tile)->init(
+          (Datatype)header.datatype,
+          (Compressor)header.compressor,
+          header.cell_size,
+          0),
+      delete *tile);
+
+  RETURN_NOT_OK_ELSE(
+      read(
+          *tile,
+          file_offset + GenericTileHeader::SIZE,
+          header.compressed_size,
+          header.tile_size),
       delete *tile);
 
   return Status::Ok();
 }
 
 Status TileIO::read_generic_tile_header(
-    Tile** tile,
+    const StorageManager* sm,
+    const URI& uri,
     uint64_t file_offset,
-    uint64_t* tile_size,
-    uint64_t* compressed_size,
-    uint64_t* header_size) {
-  // Initializations
-  *header_size = 3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(int);
-  char datatype;
-  uint64_t cell_size;
-  char compressor;
-  int compression_level;
-
+    GenericTileHeader* header) {
   // Read header from file
-  auto header_buff = new Buffer();
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->read(uri_, file_offset, header_buff, *header_size),
-      delete header_buff);
+  std::unique_ptr<Buffer> header_buff(new Buffer());
+  RETURN_NOT_OK(
+      sm->read(uri, file_offset, header_buff.get(), GenericTileHeader::SIZE));
 
   // Read header individual values
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(compressed_size, sizeof(uint64_t)), delete header_buff);
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(tile_size, sizeof(uint64_t)), delete header_buff);
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(&datatype, sizeof(char)), delete header_buff);
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(&cell_size, sizeof(uint64_t)), delete header_buff);
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(&compressor, sizeof(char)), delete header_buff);
-  RETURN_NOT_OK_ELSE(
-      header_buff->read(&compression_level, sizeof(int)), delete header_buff);
-
-  delete header_buff;
-
-  *tile = new Tile();
-  RETURN_NOT_OK_ELSE(
-      (*tile)->init((Datatype)datatype, (Compressor)compressor, cell_size, 0),
-      delete tile);
+  RETURN_NOT_OK(header_buff->read(&header->compressed_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(char)));
+  RETURN_NOT_OK(header_buff->read(&header->cell_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(header_buff->read(&header->compressor, sizeof(char)));
+  RETURN_NOT_OK(header_buff->read(&header->compression_level, sizeof(int)));
 
   return Status::Ok();
 }
