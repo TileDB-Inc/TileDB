@@ -278,6 +278,9 @@ class VFS {
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 
+  /** Checks if the backend required to access the given URI is supported. */
+  bool supports_uri_scheme(const URI& uri) const;
+
   /**
    * Syncs (flushes) a file. Note that for S3 this is a noop.
    *

@@ -348,13 +348,15 @@ Status Dimension::check_tile_extent() const {
                                  "exceeds dimension domain range"));
   }
 
-  // Check if expanded domain exceeds type T's max limit
-  auto upper_ceil = (domain[1] / (*tile_extent)) * (*tile_extent);
-  if (upper_ceil != domain[1] &&
-      upper_ceil > std::numeric_limits<T>::max() - (*tile_extent))
-    return LOG_STATUS(
-        Status::DimensionError("Tile extent check failed; Tile extent "
-                               "exceeds domain type's maximum numeric limit"));
+  // In the worst case one tile_extent will be added to the upper domain,
+  // so check if the expanded domain will exceed type T's max limit.
+  auto upper_floor = (domain[1] / (*tile_extent)) * (*tile_extent);
+  if (upper_floor != domain[1] &&
+      upper_floor > std::numeric_limits<T>::max() - (*tile_extent))
+    return LOG_STATUS(Status::DimensionError(
+        "Tile extent check failed; domain max expanded to multiple of tile "
+        "extent exceeds max value representable by domain type. Reduce domain "
+        "max by 1 tile extent to allow for expansion."));
 
   return Status::Ok();
 }

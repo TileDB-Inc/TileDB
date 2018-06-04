@@ -49,6 +49,26 @@
 namespace tiledb {
 namespace sm {
 
+namespace {
+
+/**
+ * Return the exception name and error message from the given outcome object.
+ *
+ * @tparam R AWS result type
+ * @tparam E AWS error type
+ * @param outcome Outcome to retrieve error message from
+ * @return Error message string
+ */
+template <typename R, typename E>
+std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
+  return std::string("\nException:  ") +
+         outcome.GetError().GetExceptionName().c_str() +
+         std::string("\nError message:  ") +
+         outcome.GetError().GetMessage().c_str();
+}
+
+}  // namespace
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -151,10 +171,7 @@ Status S3::create_bucket(const URI& bucket) const {
   if (!create_bucket_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to create S3 bucket ") + bucket.to_string() +
-        std::string("\nException:  ") +
-        create_bucket_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        create_bucket_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(create_bucket_outcome)));
   }
 
   if (!wait_for_bucket_to_be_created(bucket)) {
@@ -177,10 +194,7 @@ Status S3::remove_bucket(const URI& bucket) const {
   if (!delete_bucket_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to remove S3 bucket ") + bucket.to_string() +
-        std::string("\nException:  ") +
-        delete_bucket_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        delete_bucket_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(delete_bucket_outcome)));
   }
   return Status::Ok();
 }
@@ -196,12 +210,7 @@ Status S3::disconnect() {
     if (!complete_multipart_upload_outcome.IsSuccess()) {
       return LOG_STATUS(Status::S3Error(
           std::string("Failed to disconnect and flush S3 objects. ") +
-          std::string("\nException:  ") +
-          complete_multipart_upload_outcome.GetError()
-              .GetExceptionName()
-              .c_str() +
-          std::string("\nError message:  ") +
-          complete_multipart_upload_outcome.GetError().GetMessage().c_str()));
+          outcome_error_message(complete_multipart_upload_outcome)));
     }
   }
   Aws::ShutdownAPI(options_);
@@ -279,12 +288,7 @@ Status S3::flush_object(const URI& uri) {
   if (!complete_multipart_upload_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to flush S3 object ") + uri.c_str() +
-        std::string("\nException:  ") +
-        complete_multipart_upload_outcome.GetError()
-            .GetExceptionName()
-            .c_str() +
-        std::string("\nError message:  ") +
-        complete_multipart_upload_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(complete_multipart_upload_outcome)));
   }
 
   return Status::Ok();
@@ -305,10 +309,7 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
   if (!list_objects_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to list s3 objects in bucket ") + bucket.c_str() +
-        std::string("\nException:  ") +
-        list_objects_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        list_objects_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(list_objects_outcome)));
   }
 
   *is_empty = list_objects_outcome.GetResult().GetContents().empty() &&
@@ -375,7 +376,8 @@ Status S3::ls(
   if (!list_objects_outcome.IsSuccess())
     return LOG_STATUS(Status::S3Error(
         std::string("Error while listing with prefix '") + prefix_str +
-        "' and delimiter '" + delimiter + "'"));
+        "' and delimiter '" + delimiter + "'" +
+        outcome_error_message(list_objects_outcome)));
 
   for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
     std::string file(object.GetKey().c_str());
@@ -425,7 +427,7 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   if (!list_objects_outcome.IsSuccess())
     return LOG_STATUS(Status::S3Error(
         "Cannot retrieve S3 object size; Error while listing file " +
-        uri.to_string()));
+        uri.to_string() + outcome_error_message(list_objects_outcome)));
   if (list_objects_outcome.GetResult().GetContents().empty())
     return LOG_STATUS(Status::S3Error(
         std::string("Cannot retrieve S3 object size; Not a file ") +
@@ -460,10 +462,7 @@ Status S3::read(
   if (!get_object_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to read S3 object ") + uri.c_str() +
-        std::string("\nException:  ") +
-        get_object_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        get_object_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(get_object_outcome)));
   }
   if ((uint64_t)get_object_outcome.GetResult().GetContentLength() != length) {
     return LOG_STATUS(Status::S3Error(
@@ -488,10 +487,7 @@ Status S3::remove_object(const URI& uri) const {
   if (!delete_object_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to delete S3 object '") + uri.c_str() +
-        std::string("'\nException:  ") +
-        delete_object_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        delete_object_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(delete_object_outcome)));
   }
 
   wait_for_object_to_be_deleted(
@@ -527,10 +523,7 @@ Status S3::touch(const URI& uri) const {
   if (!put_object_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Cannot touch object '") + uri.c_str() +
-        std::string("'\nException:  ") +
-        put_object_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        put_object_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(put_object_outcome)));
   }
 
   wait_for_object_to_propagate(
@@ -601,10 +594,7 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
   if (!copy_object_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to copy S3 object ") + old_uri.c_str() + " to " +
-        new_uri.c_str() + std::string("\nException:  ") +
-        copy_object_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        copy_object_outcome.GetError().GetMessage().c_str()));
+        new_uri.c_str() + outcome_error_message(copy_object_outcome)));
   }
 
   wait_for_object_to_propagate(
@@ -677,10 +667,7 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   if (!multipart_upload_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to create multipart request for object '") +
-        path_c_str + std::string("'\nException:  ") +
-        multipart_upload_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        multipart_upload_outcome.GetError().GetMessage().c_str()));
+        path_c_str + outcome_error_message(multipart_upload_outcome)));
   }
 
   multipart_upload_IDs_[path_c_str] =
@@ -866,10 +853,7 @@ Status S3::make_upload_part_req(
   if (!upload_part_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to upload part of S3 object '") + uri.c_str() +
-        std::string("'\nException:  ") +
-        upload_part_outcome.GetError().GetExceptionName().c_str() +
-        std::string("\nError message:  ") +
-        upload_part_outcome.GetError().GetMessage().c_str()));
+        outcome_error_message(upload_part_outcome)));
   }
 
   Aws::S3::Model::CompletedPart completed_part;

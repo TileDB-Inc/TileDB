@@ -248,10 +248,11 @@ namespace impl {
 /** Check an error, free, and throw if there is one. **/
 inline void check_config_error(tiledb_error_t* err) {
   if (err != nullptr) {
-    const char* msg;
-    tiledb_error_message(err, &msg);
+    const char* msg_cstr;
+    tiledb_error_message(err, &msg_cstr);
+    std::string msg = "Config Error: " + std::string(msg_cstr);
     tiledb_error_free(&err);
-    throw TileDBError("Config Iterator Error: " + std::string(msg));
+    throw TileDBError(msg);
   }
 }
 
