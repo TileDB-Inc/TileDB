@@ -1431,6 +1431,10 @@ Status StorageManager::array_close_for_writes(const URI& array_uri) {
 
 Status StorageManager::array_open_for_reads(
     const URI& array_uri, OpenArray** open_array) {
+  if (!vfs_->supports_uri_scheme(array_uri))
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot open array; URI scheme unsupported."));
+
   // Check if array exists
   ObjectType obj_type;
   RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
@@ -1494,6 +1498,10 @@ Status StorageManager::array_open_for_reads(
 
 Status StorageManager::array_open_for_writes(
     const URI& array_uri, OpenArray** open_array) {
+  if (!vfs_->supports_uri_scheme(array_uri))
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot open array; URI scheme unsupported."));
+
   // Check if array exists
   ObjectType obj_type;
   RETURN_NOT_OK(this->object_type(array_uri, &obj_type));

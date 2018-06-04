@@ -807,6 +807,16 @@ bool VFS::supports_fs(Filesystem fs) const {
   STATS_FUNC_OUT(vfs_supports_fs);
 }
 
+bool VFS::supports_uri_scheme(const URI& uri) const {
+  if (uri.is_s3()) {
+    return supports_fs(Filesystem::S3);
+  } else if (uri.is_hdfs()) {
+    return supports_fs(Filesystem::HDFS);
+  } else {
+    return true;
+  }
+}
+
 Status VFS::sync(const URI& uri) {
   STATS_FUNC_IN(vfs_sync);
 
