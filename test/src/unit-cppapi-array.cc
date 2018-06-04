@@ -283,3 +283,55 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     array.close();
   }
 }
+
+TEST_CASE(
+    "C++ API: Incorrect buffer size and offsets",
+    "[cppapi], [invalid-offsets]") {
+  const std::string array_name_1d = "cpp_unit_array_1d";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name_1d))
+    vfs.remove_dir(array_name_1d);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}));
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
+  Array::create(array_name_1d, schema);
+  Array array(ctx, array_name_1d, TILEDB_WRITE);
+
+  std::vector<int32_t> a, coord = {10, 20, 30};
+  std::vector<uint64_t> a_offset = {0, 0, 0};
+
+  // Test case where backing buffer for vector is non-null, but size is 0.
+  // For bug https://github.com/TileDB-Inc/TileDB/issues/590
+  {
+    a.reserve(10);
+    a = {};
+    Query q(ctx, array, TILEDB_WRITE);
+    q.set_layout(TILEDB_GLOBAL_ORDER);
+    q.set_coordinates(coord);
+    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
+  }
+
+  // Test case of non-ascending offsets
+  {
+    a = {0, 1, 2};
+    a_offset = {0, 2, 1};
+    Query q(ctx, array, TILEDB_WRITE);
+    q.set_layout(TILEDB_GLOBAL_ORDER);
+    q.set_coordinates(coord);
+    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
+
+    a = {0, 1, 2};
+    a_offset = {0, 1, 1};
+    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
+  }
+
+  array.close();
+
+  if (vfs.is_dir(array_name_1d))
+    vfs.remove_dir(array_name_1d);
+}

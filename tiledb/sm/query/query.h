@@ -81,6 +81,19 @@ class Query {
   Status cancel();
 
   /**
+   * Check the validity of the provided buffer offsets for a variable attribute.
+   *
+   * @param buffer_off Offset buffer
+   * @param buffer_off_size Pointer to size of offset buffer
+   * @param buffer_val_size Pointer to size of data buffer
+   * @return Status
+   */
+  static Status check_var_attr_offsets(
+      const uint64_t* buffer_off,
+      const uint64_t* buffer_off_size,
+      const uint64_t* buffer_val_size);
+
+  /**
    * Finalizes the query, flushing all internal state. Applicable only to global
    * layout writes. It has no effect for any other query type.
    */

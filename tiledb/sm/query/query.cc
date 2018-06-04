@@ -123,6 +123,41 @@ Status Query::cancel() {
   return Status::Ok();
 }
 
+Status Query::check_var_attr_offsets(
+    const uint64_t* buffer_off,
+    const uint64_t* buffer_off_size,
+    const uint64_t* buffer_val_size) {
+  if (buffer_off == nullptr || buffer_off_size == nullptr ||
+      buffer_val_size == nullptr)
+    return LOG_STATUS(Status::QueryError("Cannot use null offset buffers."));
+
+  auto num_offsets = *buffer_off_size / sizeof(uint64_t);
+  if (num_offsets == 0)
+    return Status::Ok();
+
+  uint64_t prev_offset = buffer_off[0];
+  if (prev_offset >= *buffer_val_size)
+    return LOG_STATUS(Status::QueryError(
+        "Invalid offsets; offset " + std::to_string(prev_offset) +
+        " specified for buffer of size " + std::to_string(*buffer_val_size)));
+
+  for (uint64_t i = 1; i < num_offsets; i++) {
+    if (buffer_off[i] <= prev_offset)
+      return LOG_STATUS(
+          Status::QueryError("Invalid offsets; offsets must be given in "
+                             "strictly ascending order."));
+
+    if (buffer_off[i] >= *buffer_val_size)
+      return LOG_STATUS(Status::QueryError(
+          "Invalid offsets; offset " + std::to_string(buffer_off[i]) +
+          " specified for buffer of size " + std::to_string(*buffer_val_size)));
+
+    prev_offset = buffer_off[i];
+  }
+
+  return Status::Ok();
+}
+
 Status Query::process() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return LOG_STATUS(
