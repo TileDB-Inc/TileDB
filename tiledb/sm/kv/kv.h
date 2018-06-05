@@ -148,6 +148,12 @@ class KV {
   /** Sets the number of maximum written items buffered before being flushed. */
   Status set_max_buffered_items(uint64_t max_items);
 
+  /**
+   * Returns the snapshot at which the underlying array got opened for
+   * reads.
+   */
+  uint64_t snapshot() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -199,6 +205,9 @@ class KV {
    * and the second for the actual variable data.
    */
   std::vector<Buffer*> read_buff_vec_;
+
+  /** The snapshot at which the `open_array_for_reads_` got opened. */
+  uint64_t snapshot_;
 
   /** The corresponding types of `attributes_`. */
   std::vector<Datatype> types_;

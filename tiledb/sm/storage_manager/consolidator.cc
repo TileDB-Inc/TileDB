@@ -67,17 +67,18 @@ Status Consolidator::consolidate(const char* array_name) {
   // Open array
   auto open_array_for_reads = (OpenArray*)nullptr;
   auto open_array_for_writes = (OpenArray*)nullptr;
+  uint64_t snapshot;
   RETURN_NOT_OK(storage_manager_->array_open(
-      array_uri, QueryType::READ, &open_array_for_reads));
+      array_uri, QueryType::READ, &open_array_for_reads, &snapshot));
   RETURN_NOT_OK_ELSE(
       storage_manager_->array_open(
-          array_uri, QueryType::WRITE, &open_array_for_writes),
+          array_uri, QueryType::WRITE, &open_array_for_writes, &snapshot),
       storage_manager_->array_close(array_uri, QueryType::READ));
   auto array_schema = open_array_for_reads->array_schema();
 
   // Create subarray
   void* subarray = nullptr;
-  auto st = create_subarray(open_array_for_reads, &subarray);
+  auto st = create_subarray(open_array_for_reads, snapshot, &subarray);
   if (!st.ok()) {
     storage_manager_->array_close(array_uri, QueryType::READ);
     storage_manager_->array_close(array_uri, QueryType::WRITE);
@@ -105,6 +106,7 @@ Status Consolidator::consolidate(const char* array_name) {
       subarray,
       open_array_for_reads,
       open_array_for_writes,
+      snapshot,
       buffers,
       buffer_sizes,
       &fragment_num);
@@ -257,11 +259,13 @@ Status Consolidator::create_queries(
     void* subarray,
     OpenArray* open_array_for_reads,
     OpenArray* open_array_for_writes,
+    uint64_t snapshot,
     void** buffers,
     uint64_t* buffer_sizes,
     unsigned int* fragment_num) {
   // Create read query
-  RETURN_NOT_OK(storage_manager_->query_create(query_r, open_array_for_reads));
+  RETURN_NOT_OK(
+      storage_manager_->query_create(query_r, open_array_for_reads, snapshot));
   if (!(*query_r)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(set_query_buffers(*query_r, buffers, buffer_sizes));
@@ -277,7 +281,7 @@ Status Consolidator::create_queries(
 
   // Create write query
   RETURN_NOT_OK(storage_manager_->query_create(
-      query_w, open_array_for_writes, new_fragment_uri));
+      query_w, open_array_for_writes, 0, new_fragment_uri));
   if (!(*query_w)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->set_subarray(subarray));
@@ -287,7 +291,7 @@ Status Consolidator::create_queries(
 }
 
 Status Consolidator::create_subarray(
-    OpenArray* open_array, void** subarray) const {
+    OpenArray* open_array, uint64_t snapshot, void** subarray) const {
   assert(open_array != nullptr);
   auto array_schema = open_array->array_schema();
 
@@ -300,7 +304,7 @@ Status Consolidator::create_subarray(
     bool is_empty;
     RETURN_NOT_OK_ELSE(
         storage_manager_->array_get_non_empty_domain(
-            open_array, *subarray, &is_empty),
+            open_array, snapshot, *subarray, &is_empty),
         std::free(subarray));
     assert(!is_empty);
     array_schema->domain()->expand_domain(*subarray);

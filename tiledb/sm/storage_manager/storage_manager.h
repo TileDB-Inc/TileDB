@@ -122,6 +122,12 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param query_type The type of queries the array is opened for.
    * @param open_array The open array object to be retrieved.
+   * @param snapshot A snapshot to be retrieved. This is a token needed to
+   *     retrieve the appropriate fragment metadata, so that the new
+   *     fragment metadata potentially loaded to the open array object
+   *     by another invocation of this function can be ignored (to comply
+   *     with the TileDB consistency model). This is used only when
+   *     opening array for reading.
    * @return Status
    *
    * @note The same array can be opened for both reads and writes. However,
@@ -129,13 +135,18 @@ class StorageManager {
    *    storage manager; one for reads and one for writes.
    */
   Status array_open(
-      const URI& array_uri, QueryType query_type, OpenArray** open_array);
+      const URI& array_uri,
+      QueryType query_type,
+      OpenArray** open_array,
+      uint64_t* snapshot);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
    * @param open_array The opened array.
+   * @param snapshot The snapshot that indicates which fragment metadata should
+   *     be loaded from `open_array`.
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param attributes The attributes to focus on.
@@ -148,6 +159,7 @@ class StorageManager {
    */
   Status array_compute_max_read_buffer_sizes(
       OpenArray* open_array,
+      uint64_t snapshot,
       const void* subarray,
       const std::vector<std::string>& attributes,
       uint64_t* buffer_sizes);
@@ -157,6 +169,8 @@ class StorageManager {
    * query, for a given subarray and set of attributes.
    *
    * @param open_array The opened array.
+   * @param snapshot The snapshot that indicates which fragment metadata should
+   *     be loaded from `open_array`.
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param attributes The attributes to focus on.
@@ -170,6 +184,7 @@ class StorageManager {
    */
   Status array_compute_max_read_buffer_sizes(
       OpenArray* open_array,
+      uint64_t snapshot,
       const void* subarray,
       const char** attributes,
       unsigned attribute_num,
@@ -180,6 +195,8 @@ class StorageManager {
    * buffer size budgets for a set of attributes.
    *
    * @param open_array The open array.
+   * @param snapshot The snapshot that indicates which fragment metadata should
+   *     be loaded from `open_array`.
    * @param subarray The subarray.
    * @param layout The layout in which the results are retrieved in the
    * subarray.
@@ -196,6 +213,7 @@ class StorageManager {
    */
   Status array_compute_subarray_partitions(
       OpenArray* open_array,
+      uint64_t snapshot,
       const void* subarray,
       Layout layout,
       const char** attributes,
@@ -267,13 +285,15 @@ class StorageManager {
    * non-empty domains of the array fragments.
    *
    * @param open_array An open array object (must be already open).
+   * @param snapshot The snapshot that indicates which fragment metadata should
+   *     be loaded from `open_array`.
    * @param domain The domain to be retrieved.
    * @param is_empty `ture` if the non-empty domain is empty (the array
    *     is empty).
    * @return Status
    */
   Status array_get_non_empty_domain(
-      OpenArray* open_array, void* domain, bool* is_empty);
+      OpenArray* open_array, uint64_t snapshot, void* domain, bool* is_empty);
 
   /**
    * Exclusively locks an array preventing it from being opened in
@@ -513,6 +533,12 @@ class StorageManager {
    *
    * @param query The query to initialize.
    * @param open_array An opened array.
+   * @param snapshot This indicates which fragment metadata to retrieve
+   *     from the open array and assigned to the query. This snapshot
+   *     should be the value retrieved upon opening the array when it
+   *     was intended to be assigned to the query. This safeguards against
+   *     new fragment metadata are loaded into `open_array` after `snapshot`,
+   *     which however must be ignored by the query being created.
    * @param fragment_uri This is applicable only to write queries. This is
    *     to indicate that the new fragment created by a write will have
    *     a specific URI. This is useful mainly in consolidation, where
@@ -521,7 +547,10 @@ class StorageManager {
    * @return Status
    */
   Status query_create(
-      Query** query, OpenArray* open_array, URI fragment_uri = URI(""));
+      Query** query,
+      OpenArray* open_array,
+      uint64_t snapshot,
+      URI fragment_uri = URI(""));
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
@@ -769,8 +798,20 @@ class StorageManager {
   /** Closes an array for writes. */
   Status array_close_for_writes(const URI& array_uri);
 
-  /** Opens an array for reads. */
-  Status array_open_for_reads(const URI& array_uri, OpenArray** open_array);
+  /**
+   * Opens an array for reads.
+   *
+   * @param array_uri The array URI.
+   * @param open_array The open array object to be created
+   * @param snapshot A snapshot to be retrieved. This is a token needed to
+   *     retrieve the appropriate fragment metadata, so that the new
+   *     fragment metadata potentially loaded to the open array object
+   *     by another invocation of this function can be ignored (to comply
+   *     with the TileDB consistency model).
+   * @return Status
+   */
+  Status array_open_for_reads(
+      const URI& array_uri, OpenArray** open_array, uint64_t* snapshot);
 
   /** Opens an array for writes. */
   Status array_open_for_writes(const URI& array_uri, OpenArray** open_array);
@@ -804,7 +845,13 @@ class StorageManager {
   Status load_array_schema(
       const URI& array_uri, ObjectType object_type, OpenArray* open_array);
 
-  /** Retrieves the fragment metadata of an open array for a given subarray. */
+  /**
+   * Retrieves the fragment metadata of an open array that are not already
+   * loaded.
+   *
+   * @param open_array The open array object.
+   * @return Status
+   */
   Status load_fragment_metadata(OpenArray* open_array);
 
   /**

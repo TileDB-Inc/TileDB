@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C API async queries.
+ * Tests the C API consolidation.
  */
 
 #include "catch.hpp"

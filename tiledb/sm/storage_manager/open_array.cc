@@ -52,8 +52,10 @@ OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
 
 OpenArray::~OpenArray() {
   delete array_schema_;
-  for (auto& fragment : fragment_metadata_)
-    delete fragment;
+  for (auto& fragment_vec : fragment_metadata_) {
+    for (auto& fragment : fragment_vec)
+      delete fragment;
+  }
 }
 
 /* ****************************** */
@@ -97,8 +99,22 @@ Status OpenArray::file_unlock(VFS* vfs) {
   return Status::Ok();
 }
 
-const std::vector<FragmentMetadata*>& OpenArray::fragment_metadata() const {
-  return fragment_metadata_;
+std::vector<FragmentMetadata*> OpenArray::fragment_metadata(
+    uint64_t snapshot) const {
+  if (query_type_ == QueryType::WRITE)
+    return std::vector<FragmentMetadata*>();
+
+  std::vector<FragmentMetadata*> ret;
+  for (uint64_t i = 0; i < fragment_metadata_.size(); ++i) {
+    if (snapshot <= i) {
+      for (auto& f : fragment_metadata_[i])
+        ret.push_back(f);
+    } else {
+      break;
+    }
+  }
+
+  return ret;
 }
 
 FragmentMetadata* OpenArray::fragment_metadata_get(
@@ -118,6 +134,10 @@ void OpenArray::mtx_unlock() {
   mtx_.unlock();
 }
 
+uint64_t OpenArray::next_snapshot() const {
+  return fragment_metadata_.size();
+}
+
 QueryType OpenArray::query_type() const {
   return query_type_;
 }
@@ -126,13 +146,11 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
-void OpenArray::set_fragment_metadata(
+void OpenArray::push_back_fragment_metadata(
     const std::vector<FragmentMetadata*>& metadata) {
-  fragment_metadata_ = metadata;
-
-  fragment_metadata_map_.clear();
   for (const auto& f : metadata)
     fragment_metadata_map_[f->fragment_uri().to_string()] = f;
+  fragment_metadata_.push_back(metadata);
 }
 
 /* ****************************** */

@@ -104,14 +104,19 @@ Status StorageManager::array_close(const URI& array_uri, QueryType query_type) {
 }
 
 Status StorageManager::array_open(
-    const URI& array_uri, QueryType query_type, OpenArray** open_array) {
+    const URI& array_uri,
+    QueryType query_type,
+    OpenArray** open_array,
+    uint64_t* snapshot) {
   if (query_type == QueryType::READ)
-    return array_open_for_reads(array_uri, open_array);
+    return array_open_for_reads(array_uri, open_array, snapshot);
+  *snapshot = 0;
   return array_open_for_writes(array_uri, open_array);
 }
 
 Status StorageManager::array_compute_max_read_buffer_sizes(
     OpenArray* open_array,
+    uint64_t snapshot,
     const void* subarray,
     const std::vector<std::string>& attributes,
     uint64_t* buffer_sizes) {
@@ -124,7 +129,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   // Get array schema and fragment metadata
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata();
+  auto metadata = open_array->fragment_metadata(snapshot);
   open_array->mtx_unlock();
 
   // Check attributes
@@ -158,6 +163,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
 
 Status StorageManager::array_compute_max_read_buffer_sizes(
     OpenArray* open_array,
+    uint64_t snapshot,
     const void* subarray,
     const char** attributes,
     unsigned attribute_num,
@@ -171,7 +177,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   // Get array schema and fragment metadata
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata();
+  auto metadata = open_array->fragment_metadata(snapshot);
   open_array->mtx_unlock();
 
   // Check attributes
@@ -365,6 +371,7 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
 
 Status StorageManager::array_compute_subarray_partitions(
     OpenArray* open_array,
+    uint64_t snapshot,
     const void* subarray,
     Layout layout,
     const char** attributes,
@@ -384,7 +391,7 @@ Status StorageManager::array_compute_subarray_partitions(
   // Open the array
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata();
+  auto metadata = open_array->fragment_metadata(snapshot);
   open_array->mtx_unlock();
 
   auto subarray_size = 2 * array_schema->coords_size();
@@ -518,7 +525,7 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_get_non_empty_domain(
-    OpenArray* open_array, void* domain, bool* is_empty) {
+    OpenArray* open_array, uint64_t snapshot, void* domain, bool* is_empty) {
   if (open_array == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get non-empty domain; Open array object is null"));
@@ -531,7 +538,7 @@ Status StorageManager::array_get_non_empty_domain(
   *is_empty = true;
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata();
+  auto metadata = open_array->fragment_metadata(snapshot);
   open_array->mtx_unlock();
 
   // Return if there are no metadata
@@ -1140,11 +1147,11 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_create(
-    Query** query, OpenArray* open_array, URI fragment_uri) {
+    Query** query, OpenArray* open_array, uint64_t snapshot, URI fragment_uri) {
   // For easy reference
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata();
+  auto metadata = open_array->fragment_metadata(snapshot);
   open_array->mtx_unlock();
 
   // Create query
@@ -1552,7 +1559,7 @@ Status StorageManager::array_close_for_writes(const URI& array_uri) {
 }
 
 Status StorageManager::array_open_for_reads(
-    const URI& array_uri, OpenArray** open_array) {
+    const URI& array_uri, OpenArray** open_array, uint64_t* snapshot) {
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
@@ -1601,6 +1608,8 @@ Status StorageManager::array_open_for_reads(
       return st;
     }
   }
+
+  *snapshot = (*open_array)->next_snapshot();
 
   // Get fragment metadata in the case of reads, if not fetched already
   st = load_fragment_metadata(*open_array);
@@ -1736,7 +1745,7 @@ Status StorageManager::load_fragment_metadata(OpenArray* open_array) {
       fragment_metadata.push_back(metadata);
     }
   }
-  open_array->set_fragment_metadata(fragment_metadata);
+  open_array->push_back_fragment_metadata(fragment_metadata);
 
   return Status::Ok();
 }

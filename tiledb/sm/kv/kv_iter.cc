@@ -86,8 +86,8 @@ Status KVIter::init(KV* kv) {
         "Cannot initialize kv iterator; Memory allocation failed"));
   coords_buffer_alloced_size_ = 2 * max_item_num_ * sizeof(uint64_t);
 
-  RETURN_NOT_OK(
-      storage_manager_->query_create(&query_, kv_->open_array_for_reads()));
+  RETURN_NOT_OK(storage_manager_->query_create(
+      &query_, kv_->open_array_for_reads(), kv->snapshot()));
   RETURN_NOT_OK(submit_read_query());
 
   max_item_num_ = kv->capacity();
