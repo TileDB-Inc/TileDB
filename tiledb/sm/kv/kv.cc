@@ -65,6 +65,10 @@ KV::~KV() {
 /*                API                */
 /* ********************************* */
 
+uint64_t KV::capacity() const {
+  return (schema_ != nullptr) ? schema_->capacity() : 0;
+}
+
 Status KV::init(
     const URI& kv_uri, const char** attributes, unsigned attribute_num) {
   kv_uri_ = kv_uri;

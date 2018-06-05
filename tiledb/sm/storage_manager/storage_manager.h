@@ -226,6 +226,26 @@ class StorageManager {
           buffer_sizes);
 
   /**
+   * Computes an estimate on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes.
+   *
+   * @param array_schema The array schema
+   * @param fragment_metadata The fragment metadata of the array.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
+   *     from an attribute to a size pair. For fixed-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first size
+   *     is the offsets size, and the second size is the values size.
+   * @return Status
+   */
+  Status array_compute_est_read_buffer_sizes(
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const void* subarray,
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
+
+  /**
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.
@@ -720,6 +740,28 @@ class StorageManager {
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
+
+  /**
+   * Computes an estimate on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes.
+   *
+   * @tparam T The domain type
+   * @param array_schema The array schema.
+   * @param fragment_metadata The fragment metadata of the array.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
+   *     from an attribute to a size pair. For fixed-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first size
+   *     is the offsets size, and the second size is the values size.
+   * @return Status
+   */
+  template <class T>
+  Status array_compute_est_read_buffer_sizes(
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /** Closes an array for reads. */
   Status array_close_for_reads(const URI& array_uri);

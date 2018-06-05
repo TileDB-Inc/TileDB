@@ -160,8 +160,8 @@ Status Writer::set_buffer(
     attributes_.push_back(std::string(attribute));
 
   // Set attribute buffer
-  attr_buffers_.emplace(
-      attribute, AttributeBuffer(buffer, nullptr, buffer_size, nullptr));
+  attr_buffers_[attribute] =
+      AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
 
   return Status::Ok();
 }
@@ -209,10 +209,8 @@ Status Writer::set_buffer(
     attributes_.push_back(std::string(attribute));
 
   // Set attribute buffer
-  attr_buffers_.emplace(
-      attribute,
-      AttributeBuffer(
-          buffer_off, buffer_val, buffer_off_size, buffer_val_size));
+  attr_buffers_[attribute] =
+      AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
 }

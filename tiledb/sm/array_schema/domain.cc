@@ -397,20 +397,22 @@ uint64_t Domain::cell_num(const T* domain) const {
   if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
     return 0;
 
-  uint64_t cell_num = 1, tmp;
+  uint64_t cell_num = 1, range, prod;
   for (unsigned i = 0; i < dim_num_; ++i) {
     // The code below essentially computes
     // cell_num *= domain[2 * i + 1] - domain[2 * i] + 1;
     // while performing overflow checks
-    tmp = domain[2 * i + 1] - domain[2 * i];
-    if (tmp == std::numeric_limits<uint64_t>::max())  // overflow
+    range = domain[2 * i + 1] - domain[2 * i];
+    if (range == std::numeric_limits<uint64_t>::max())  // overflow
       return 0;
-    ++tmp;
-    tmp *= cell_num;
-    if (tmp < cell_num)  // overflow
+    ++range;
+    prod = range * cell_num;
+    // TODO: this will probably not work for signed integers
+    if (prod / range != cell_num)  // Overflow
       return 0;
-    cell_num = tmp;
+    cell_num = prod;
   }
+
   return cell_num;
 }
 
@@ -738,6 +740,19 @@ template <class T>
 void Domain::get_tile_subarray(const T* tile_coords, T* tile_subarray) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
+  auto tile_extents = static_cast<const T*>(tile_extents_);
+
+  for (unsigned int i = 0; i < dim_num_; ++i) {
+    tile_subarray[2 * i] = tile_coords[i] * tile_extents[i] + domain[2 * i];
+    tile_subarray[2 * i + 1] =
+        (tile_coords[i] + 1) * tile_extents[i] - 1 + domain[2 * i];
+  }
+}
+
+template <class T>
+void Domain::get_tile_subarray(
+    const T* domain, const T* tile_coords, T* tile_subarray) const {
+  // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   for (unsigned int i = 0; i < dim_num_; ++i) {
@@ -2104,6 +2119,47 @@ template void Domain::get_tile_subarray<uint32_t>(
     const uint32_t* tile_coords, uint32_t* tile_subarray) const;
 template void Domain::get_tile_subarray<uint64_t>(
     const uint64_t* tile_coords, uint64_t* tile_subarray) const;
+template void Domain::get_tile_subarray<double>(
+    const double* tile_coords, double* tile_subarray) const;
+template void Domain::get_tile_subarray<float>(
+    const float* tile_coords, float* tile_subarray) const;
+
+template void Domain::get_tile_subarray<int>(
+    const int* domain, const int* tile_coords, int* tile_subarray) const;
+template void Domain::get_tile_subarray<int64_t>(
+    const int64_t* domain,
+    const int64_t* tile_coords,
+    int64_t* tile_subarray) const;
+template void Domain::get_tile_subarray<int8_t>(
+    const int8_t* domain,
+    const int8_t* tile_coords,
+    int8_t* tile_subarray) const;
+template void Domain::get_tile_subarray<uint8_t>(
+    const uint8_t* domain,
+    const uint8_t* tile_coords,
+    uint8_t* tile_subarray) const;
+template void Domain::get_tile_subarray<int16_t>(
+    const int16_t* domain,
+    const int16_t* tile_coords,
+    int16_t* tile_subarray) const;
+template void Domain::get_tile_subarray<uint16_t>(
+    const uint16_t* domain,
+    const uint16_t* tile_coords,
+    uint16_t* tile_subarray) const;
+template void Domain::get_tile_subarray<uint32_t>(
+    const uint32_t* domain,
+    const uint32_t* tile_coords,
+    uint32_t* tile_subarray) const;
+template void Domain::get_tile_subarray<uint64_t>(
+    const uint64_t* domain,
+    const uint64_t* tile_coords,
+    uint64_t* tile_subarray) const;
+template void Domain::get_tile_subarray<float>(
+    const float* domain, const float* tile_coords, float* tile_subarray) const;
+template void Domain::get_tile_subarray<double>(
+    const double* domain,
+    const double* tile_coords,
+    double* tile_subarray) const;
 
 template bool Domain::is_contained_in_tile_slab_col<int>(
     const int* range) const;

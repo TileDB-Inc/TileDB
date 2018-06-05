@@ -34,6 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
+#include <iostream>
 
 /**
  * Tests cases where a read query is incomplete or leads to a buffer
@@ -59,6 +60,7 @@ struct IncompleteFx {
   void write_sparse_full();
   void check_dense_incomplete();
   void check_dense_until_complete();
+  void check_dense_shrink_buffer_size();
   void check_dense_unsplittable_overflow();
   void check_dense_unsplittable_complete();
   void check_dense_reset_buffers();
@@ -560,6 +562,85 @@ void IncompleteFx::check_dense_until_complete() {
   tiledb_query_free(&query);
 }
 
+void IncompleteFx::check_dense_shrink_buffer_size() {
+  // Initialize a subarray
+  const uint64_t subarray[] = {1, 2, 1, 2};
+
+  // Subset over a specific attribute
+  const char* attributes[] = {"a1"};
+
+  // Prepare the buffers that will store the result
+  int buffer_a1[2];
+  void* buffers[] = {buffer_a1};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check buffer
+  int c_buffer_a1[2] = {0, 1};
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(buffer_sizes[0] == 2 * sizeof(int));
+
+  // Check status
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Shrink buffer size
+  buffer_sizes[0] = sizeof(int);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Resubmit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check status
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  // Check new buffer contents
+  int c_buffer_a1_2[1] = {2};
+  CHECK(!memcmp(buffer_a1, c_buffer_a1_2, sizeof(c_buffer_a1_2)));
+  CHECK(buffer_sizes[0] == sizeof(int));
+
+  // Free/finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void IncompleteFx::check_dense_unsplittable_overflow() {
   // Initialize a subarray
   const uint64_t subarray[] = {2, 2, 2, 2};
@@ -600,7 +681,13 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
+
+  // Get status
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_INCOMPLETE);
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
@@ -912,6 +999,7 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
       buffers[1],
       &buffer_sizes[1]);
   REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -919,7 +1007,12 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_INCOMPLETE);
+  CHECK(buffer_sizes[0] == 0);
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
@@ -1002,6 +1095,7 @@ TEST_CASE_METHOD(
   write_dense_full();
   check_dense_incomplete();
   check_dense_until_complete();
+  check_dense_shrink_buffer_size();
   check_dense_unsplittable_overflow();
   check_dense_unsplittable_complete();
   check_dense_reset_buffers();

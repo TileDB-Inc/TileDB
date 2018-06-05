@@ -465,6 +465,20 @@ class Domain {
   void get_tile_subarray(const T* tile_coords, T* tile_subarray) const;
 
   /**
+   * Gets the tile subarray for the input tile coordinates. The tile
+   * coordinates are with respect to the input `domain`.
+   *
+   * @tparam T The coordinates type.
+   * @param domain The domain `tile_coords` are in reference to.
+   * @param tile_coords The input tile coordinates.
+   * @param tile_subarray The output tile subarray.
+   * @return void.
+   */
+  template <class T>
+  void get_tile_subarray(
+      const T* domain, const T* tile_coords, T* tile_subarray) const;
+
+  /**
    * Initializes the domain.
    *
    * @param cell_order The cell order of the array the domain belongs to.

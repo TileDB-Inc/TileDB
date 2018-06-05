@@ -389,6 +389,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   uint64_t max_buffer_sizes[1];
   rc = tiledb_array_compute_max_read_buffer_sizes(
       ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
+
   CHECK(rc == TILEDB_OK);
   auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
   REQUIRE(buffer_a1 != nullptr);
@@ -412,6 +413,11 @@ int* SparseArrayFx::read_sparse_array_2D(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);

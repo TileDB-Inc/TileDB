@@ -77,6 +77,9 @@ class KV {
   /** Adds a key-value item to the store. */
   Status add_item(const KVItem* kv_item);
 
+  /** The tile capacity of the KV schema. */
+  uint64_t capacity() const;
+
   /** Flushes the buffered written items to persistent storage. */
   Status flush();
 

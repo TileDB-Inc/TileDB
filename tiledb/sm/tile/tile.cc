@@ -80,6 +80,7 @@ Tile::Tile(
 }
 
 Tile::Tile(const Tile& tile) {
+  owns_buff_ = false;
   *this = tile;
 }
 

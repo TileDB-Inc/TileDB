@@ -252,6 +252,71 @@ Status FragmentMetadata::add_max_read_buffer_sizes_sparse(
   return Status::Ok();
 }
 
+template <class T>
+Status FragmentMetadata::add_est_read_buffer_sizes(
+    const T* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const {
+  if (dense_)
+    return add_est_read_buffer_sizes_dense(subarray, buffer_sizes);
+  return add_est_read_buffer_sizes_sparse(subarray, buffer_sizes);
+}
+
+template <class T>
+Status FragmentMetadata::add_est_read_buffer_sizes_dense(
+    const T* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const {
+  // Calculate the ids and coverage of all tiles overlapping with subarray
+  auto tids_cov = compute_overlapping_tile_ids_cov(subarray);
+
+  // Compute buffer sizes
+  for (auto& tid_cov : tids_cov) {
+    auto tid = tid_cov.first;
+    auto cov = tid_cov.second;
+    for (auto& it : *buffer_sizes) {
+      if (array_schema_->var_size(it.first)) {
+        it.second.first += cov * tile_size(it.first, tid);
+        it.second.second += cov * tile_var_size(it.first, tid);
+      } else {
+        it.second.first += cov * tile_size(it.first, tid);
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
+    const T* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const {
+  bool overlap;
+  auto dim_num = array_schema_->dim_num();
+  auto subarray_overlap = new T[2 * dim_num];
+  unsigned tid = 0;
+  auto domain = array_schema_->domain();
+  for (auto& mbr : mbrs_) {
+    domain->subarray_overlap((T*)mbr, subarray, subarray_overlap, &overlap);
+    if (overlap) {
+      double cov = utils::coverage(subarray_overlap, (T*)mbr, dim_num);
+      for (auto& it : *buffer_sizes) {
+        if (array_schema_->var_size(it.first)) {
+          it.second.first += cov * tile_size(it.first, tid);
+          it.second.second += cov * tile_var_size(it.first, tid);
+        } else {
+          it.second.first += cov * tile_size(it.first, tid);
+        }
+      }
+    }
+    tid++;
+  }
+
+  delete[] subarray_overlap;
+  return Status::Ok();
+}
+
 bool FragmentMetadata::dense() const {
   return dense_;
 }
@@ -529,6 +594,54 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   // Clean up
   delete[] subarray_tile_domain;
   delete[] tile_coords;
+
+  return tids;
+}
+
+template <class T>
+std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
+  assert(dense_);
+  std::vector<std::pair<uint64_t, double>> tids;
+  auto dim_num = array_schema_->dim_num();
+  auto metadata_domain = static_cast<const T*>(domain_);
+
+  // Check if there is any overlap
+  if (!utils::overlap(subarray, metadata_domain, dim_num))
+    return tids;
+
+  // Initialize subarray tile domain
+  auto subarray_tile_domain = new T[2 * dim_num];
+  get_subarray_tile_domain(subarray, subarray_tile_domain);
+
+  auto tile_subarray = new T[2 * dim_num];
+  auto tile_overlap = new T[2 * dim_num];
+  bool overlap;
+  double cov;
+
+  // Initialize tile coordinates
+  auto tile_coords = new T[dim_num];
+  for (unsigned int i = 0; i < dim_num; ++i)
+    tile_coords[i] = subarray_tile_domain[2 * i];
+
+  // Walk through all tiles in subarray tile domain
+  auto domain = array_schema_->domain();
+  uint64_t tile_pos;
+  do {
+    domain->get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
+    domain->subarray_overlap(subarray, tile_subarray, tile_overlap, &overlap);
+    assert(overlap);
+    cov = utils::coverage(tile_overlap, tile_subarray, dim_num);
+    tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
+    tids.emplace_back(tile_pos, cov);
+    domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
+  } while (utils::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
+
+  // Clean up
+  delete[] subarray_tile_domain;
+  delete[] tile_coords;
+  delete[] tile_subarray;
+  delete[] tile_overlap;
 
   return tids;
 }
@@ -1166,6 +1279,47 @@ template Status FragmentMetadata::add_max_read_buffer_sizes<double>(
     const double* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
+
+template Status FragmentMetadata::add_est_read_buffer_sizes<int8_t>(
+    const int8_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<uint8_t>(
+    const uint8_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<int16_t>(
+    const int16_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<uint16_t>(
+    const uint16_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<int>(
+    const int* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<unsigned>(
+    const unsigned* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<int64_t>(
+    const int64_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<uint64_t>(
+    const uint64_t* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<float>(
+    const float* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
+template Status FragmentMetadata::add_est_read_buffer_sizes<double>(
+    const double* subarray,
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
+    const;
 
 template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
     const int8_t* tile_coords) const;

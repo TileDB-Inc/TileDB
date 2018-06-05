@@ -2012,6 +2012,17 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  * @note `tiledb_query_finalize` must be invoked after finish writing in
  *     global layout (via repeated invocations of `tiledb_query_submit`),
  *     in order to flush any internal state.
+ *
+ * @note For the case of reads, if the returned status is `TILEDB_INCOMPLETE`,
+ *    TileDB could not fit the entire result in the user's buffers. In this
+ *    case, the user should consume the read results (if any), optionally
+ *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
+ *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
+ *    after the termination of this function become 0, then this means that
+ *    **no** useful data was read into the buffers, implying that the larger
+ *    buffers are needed for the query to proceed. In this case, the user
+ *    must reallocate her buffers (increasing their size), reset the buffers
+ *    with `tiledb_query_set_buffer`, and resubmit the query.
  */
 TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
