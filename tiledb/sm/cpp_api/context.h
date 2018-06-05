@@ -71,7 +71,10 @@ class Context {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
+  /**
+   * Constructor.
+   * @throws TileDBError if construction fails
+   */
   Context() {
     tiledb_ctx_t* ctx;
     if (tiledb_ctx_alloc(nullptr, &ctx) != TILEDB_OK)
@@ -80,7 +83,10 @@ class Context {
     error_handler_ = default_error_handler;
   }
 
-  /** Constructor with config paramters. */
+  /**
+   * Constructor with config paramters.
+   * @throws TileDBError if construction fails
+   */
   explicit Context(const Config& config) {
     tiledb_ctx_t* ctx;
     if (tiledb_ctx_alloc(config, &ctx) != TILEDB_OK)
@@ -177,7 +183,10 @@ class Context {
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
 
-  /** The default error handler callback. */
+  /**
+   * The default error handler callback.
+   * @throws TileDBError with the error message
+   */
   static void default_error_handler(const std::string& msg) {
     throw TileDBError(msg);
   }

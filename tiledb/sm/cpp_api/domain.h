@@ -114,6 +114,7 @@ class Domain {
   /**
    * Returns the total number of cells in the domain. Throws an exception
    * if the domain type is `float32` or `float64`.
+   * @throws TileDBError if cell_num cannot be computed.
    */
   uint64_t cell_num() const {
     auto type = this->type();

@@ -618,6 +618,10 @@ class Map {
   Map& operator=(const Map&) = default;
   Map& operator=(Map&& o) = default;
 
+  ~Map() {
+    close();
+  }
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */

@@ -74,10 +74,16 @@ namespace impl {
 /** Checks if the input type complies with the template type. */
 template <typename T, typename Handler = TypeHandler<T>>
 inline void type_check(tiledb_datatype_t type, unsigned num = 0) {
-  if (Handler::tiledb_type != type ||
-      (num != 0 && num != TILEDB_VAR_NUM &&
-       Handler::tiledb_num != TILEDB_VAR_NUM && Handler::tiledb_num != num)) {
-    throw TypeError("Static type does not match expected type.");
+  if (Handler::tiledb_type != type) {
+    throw TypeError(
+        "Static type (" + impl::type_to_str(Handler::tiledb_type) +
+        ") does not match expected type (" + impl::type_to_str(type) + ")");
+  }
+  if (num != 0 && num != TILEDB_VAR_NUM &&
+      Handler::tiledb_num != TILEDB_VAR_NUM && Handler::tiledb_num != num) {
+    throw TypeError(
+        "Expected num of " + std::to_string(num) + ", static type has num of " +
+        std::to_string(Handler::tiledb_num));
   }
 }
 

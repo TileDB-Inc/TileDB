@@ -77,6 +77,10 @@ class Array {
   Array& operator=(const Array&) = default;
   Array& operator=(Array&& o) = default;
 
+  ~Array() {
+    close();
+  }
+
   /** Returns the array URI. */
   std::string uri() const {
     return uri_;
@@ -239,6 +243,8 @@ class Array {
    * @param buffer_sizes Buffer size limits
    * @param layout Layout of query
    * @return list of subarrays
+   * @throws AttributeError if an attribute does not exist
+   * @throws TileDBError if buffer size is inconsistant with schema
    */
   template <typename T>
   std::vector<std::vector<T>> partition_subarray(
