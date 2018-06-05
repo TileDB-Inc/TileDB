@@ -97,7 +97,10 @@ class Dimension {
     return std::pair<T, T>(d[0], d[1]);
   };
 
-  /** Returns a string representation of the domain. */
+  /**
+   * Returns a string representation of the domain.
+   * @throws TileDBError if the domain cannot be stringified (TILEDB_ANY)
+   */
   std::string domain_to_str() const {
     auto domain = _domain();
     auto type = this->type();
@@ -180,7 +183,10 @@ class Dimension {
     return *static_cast<T*>(_tile_extent());
   }
 
-  /** Returns a string representation of the extent. */
+  /**
+   * Returns a string representation of the extent.
+   * @throws TileDBError if the domain cannot be stringified (TILEDB_ANY)
+   */
   std::string tile_extent_to_str() const {
     auto tile_extent = _tile_extent();
     auto type = this->type();

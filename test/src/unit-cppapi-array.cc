@@ -81,7 +81,31 @@ struct CPPArrayFx {
   VFS vfs;
 };
 
+TEST_CASE("Config", "[cppapi]") {
+  // Primarily to instansiate operator[]/= template
+  tiledb::Config cfg;
+  cfg["vfs.s3.region"] = "us-east-1a";
+  cfg["vfs.s3.use_virtual_addressing"] = "true";
+  CHECK((std::string)cfg["vfs.s3.region"] == "us-east-1a");
+  CHECK((std::string)cfg["vfs.s3.use_virtual_addressing"] == "true");
+}
+
 TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
+  SECTION("Dimensions") {
+    ArraySchema schema(ctx, "cpp_unit_array");
+    CHECK(schema.domain().ndim() == 2);
+    auto a = schema.domain().dimensions()[0].domain<int>();
+    auto b = schema.domain().dimensions()[1].domain<int>();
+    CHECK_THROWS(schema.domain().dimensions()[0].domain<unsigned>());
+    CHECK(a.first == -100);
+    CHECK(a.second == 100);
+    CHECK(b.first == 0);
+    CHECK(b.second == 100);
+    CHECK_THROWS(schema.domain().dimensions()[0].tile_extent<unsigned>() == 10);
+    CHECK(schema.domain().dimensions()[0].tile_extent<int>() == 10);
+    CHECK(schema.domain().dimensions()[1].tile_extent<int>() == 5);
+    CHECK(schema.domain().cell_num() == 20301);
+  }
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
@@ -125,6 +149,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       query.finalize();
+      tiledb::Array::consolidate(ctx, "cpp_unit_array");
       array.close();
     } catch (std::exception& e) {
       std::cout << e.what() << std::endl;

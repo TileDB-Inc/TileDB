@@ -336,6 +336,7 @@ class Config {
    * Get a parameter from the configuration by key.
    * @param param Key
    * @return Value
+   * @throws TileDBError if the parameter does not exist
    */
   std::string get(const std::string& param) const {
     const char* val;
