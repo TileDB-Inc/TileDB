@@ -129,15 +129,14 @@ class KV {
    *
    * @param uri The URI of the key-value store.
    * @param attributes The attributes of the key-value store schema to focus on.
-   *     Use `nullptr` to indicate **all** attributes.
-   * @param attribute_num The number of attributes.
+   *     Use an empty vector to indicate **all** attributes.
    * @return Status
    *
    * @note If the key-value store will be used for writes, `attributes` **must**
-   *     be set to `nullptr`, indicating that all attributes will participate in
+   *     be empty, indicating that all attributes will participate in
    *     the write.
    */
-  Status init(const URI& uri, const char** attributes, unsigned attribute_num);
+  Status init(const URI& uri, const std::vector<std::string>& attributes);
 
   /** Clears the key-value store. */
   void clear();

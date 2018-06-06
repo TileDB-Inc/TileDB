@@ -193,14 +193,14 @@ Status Query::process() {
 }
 
 Status Query::set_buffer(
-    const char* attribute, void* buffer, uint64_t* buffer_size) {
+    const std::string& attribute, void* buffer, uint64_t* buffer_size) {
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(attribute, buffer, buffer_size);
   return reader_.set_buffer(attribute, buffer, buffer_size);
 }
 
 Status Query::set_buffer(
-    const char* attribute,
+    const std::string& attribute,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,

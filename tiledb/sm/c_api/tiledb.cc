@@ -858,7 +858,13 @@ int tiledb_attribute_get_name(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  *name = attr->attr_->name().c_str();
+
+  // Hide anonymous attribute name from user
+  if (attr->attr_->is_anonymous())
+    *name = "";
+  else
+    *name = attr->attr_->name().c_str();
+
   return TILEDB_OK;
 }
 
@@ -1689,9 +1695,17 @@ int tiledb_query_set_buffer(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Normalize name
+  std::string normalized_name;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &normalized_name)))
+    return TILEDB_ERR;
+
   // Set attributes and buffers
   if (save_error(
-          ctx, query->query_->set_buffer(attribute, buffer, buffer_size)))
+          ctx, query->query_->set_buffer(normalized_name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1717,11 +1731,19 @@ int tiledb_query_set_buffer_var(
               buffer_off, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
+  // Normalize name
+  std::string normalized_name;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &normalized_name)))
+    return TILEDB_ERR;
+
   // Set attributes and buffers
   if (save_error(
           ctx,
           query->query_->set_buffer(
-              attribute,
+              normalized_name,
               buffer_off,
               buffer_off_size,
               buffer_val,
@@ -2091,14 +2113,21 @@ int tiledb_array_compute_max_read_buffer_sizes(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Normalize attribute names
+  std::vector<std::string> attribute_names;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_names_normalized(
+              attributes, attribute_num, &attribute_names)))
+    return TILEDB_ERR;
+
   if (save_error(
           ctx,
           ctx->storage_manager_->array_compute_max_read_buffer_sizes(
               array->open_array_,
               array->snapshot_,
               subarray,
-              attributes,
-              attribute_num,
+              attribute_names,
               buffer_sizes)))
     return TILEDB_ERR;
 
@@ -2118,6 +2147,14 @@ int tiledb_array_partition_subarray(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Normalize attribute names
+  std::vector<std::string> attribute_names;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_names_normalized(
+              attributes, attribute_num, &attribute_names)))
+    return TILEDB_ERR;
+
   if (save_error(
           ctx,
           ctx->storage_manager_->array_compute_subarray_partitions(
@@ -2125,8 +2162,7 @@ int tiledb_array_partition_subarray(
               array->snapshot_,
               subarray,
               static_cast<tiledb::sm::Layout>(layout),
-              attributes,
-              attribute_num,
+              attribute_names,
               buffer_sizes,
               subarray_partitions,
               npartitions)))
@@ -2567,10 +2603,27 @@ int tiledb_kv_item_set_value(
       sanity_check(ctx, kv_item) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Check for null name
+  if (attribute == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to set key-value item value; Attribute cannot be null.");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Normalize name
+  std::string normalized_name;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &normalized_name)))
+    return TILEDB_ERR;
+
   if (save_error(
           ctx,
           kv_item->kv_item_->set_value(
-              attribute,
+              normalized_name,
               value,
               static_cast<tiledb::sm::Datatype>(value_type),
               value_size)))
@@ -2616,7 +2669,15 @@ int tiledb_kv_item_get_value(
     return TILEDB_ERR;
   }
 
-  auto value_ptr = kv_item->kv_item_->value(attribute);
+  // Normalize name
+  std::string normalized_name;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &normalized_name)))
+    return TILEDB_ERR;
+
+  auto value_ptr = kv_item->kv_item_->value(normalized_name);
   if (value_ptr == nullptr) {
     auto st = tiledb::sm::Status::Error(
         std::string("Failed to get key-value item value for attribute '") +
@@ -2816,8 +2877,16 @@ int tiledb_kv_open(
   if (kv->is_open_)
     return TILEDB_OK;
 
+  // Normalize attribute names
+  std::vector<std::string> attribute_names;
+  if (save_error(
+          ctx,
+          tiledb::sm::ArraySchema::attribute_names_normalized(
+              attributes, attribute_num, &attribute_names)))
+    return TILEDB_ERR;
+
   // Prepare the key-value store
-  if (save_error(ctx, kv->kv_->init(kv->kv_uri_, attributes, attribute_num)))
+  if (save_error(ctx, kv->kv_->init(kv->kv_uri_, attribute_names)))
     return TILEDB_ERR;
 
   kv->is_open_ = true;

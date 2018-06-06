@@ -74,8 +74,7 @@ bool KV::dirty() const {
   return !items_.empty();
 }
 
-Status KV::init(
-    const URI& kv_uri, const char** attributes, unsigned attribute_num) {
+Status KV::init(const URI& kv_uri, const std::vector<std::string>& attributes) {
   kv_uri_ = kv_uri;
 
   // Open the array for reads
@@ -91,7 +90,8 @@ Status KV::init(
 
   schema_ = open_array_for_reads_->array_schema();
 
-  if (attributes == nullptr || attribute_num == 0) {  // Load all attributes
+  auto attribute_num = attributes.size();
+  if (attribute_num == 0) {  // Load all attributes
     write_good_ = true;
     auto attr_num = schema_->attribute_num();
     attributes_.emplace_back(constants::coords);
@@ -108,7 +108,7 @@ Status KV::init(
     types_.emplace_back(constants::key_attr_type);
     attributes_.emplace_back(constants::key_type_attr_name);
     types_.emplace_back(constants::key_type_attr_type);
-    for (unsigned i = 0; i < attribute_num; ++i) {
+    for (size_t i = 0; i < attribute_num; ++i) {
       if (attributes[i] == constants::coords ||
           attributes[i] == constants::key_type_attr_name ||
           attributes[i] == constants::key_attr_name)

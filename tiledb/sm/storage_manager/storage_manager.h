@@ -178,32 +178,6 @@ class StorageManager {
       uint64_t* buffer_sizes);
 
   /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @param open_array The opened array.
-   * @param snapshot The snapshot that indicates which fragment metadata should
-   *     be loaded from `open_array`.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param attributes The attributes to focus on.
-   * @param attribute_num The number of attributes.
-   * @param buffer_sizes The buffer sizes to be retrieved. Note that one
-   *     buffer size corresponds to a fixed-sized attributes, and two
-   *     buffer sizes for a variable-sized attribute (the first is the
-   *     size of the offsets, whereas the second is the size of the
-   *     actual variable-sized cell values.
-   * @return Status
-   */
-  Status array_compute_max_read_buffer_sizes(
-      OpenArray* open_array,
-      uint64_t snapshot,
-      const void* subarray,
-      const char** attributes,
-      unsigned attribute_num,
-      uint64_t* buffer_sizes);
-
-  /**
    * Computes the partitions a given subarray must be decomposed into, given
    * buffer size budgets for a set of attributes.
    *
@@ -229,8 +203,7 @@ class StorageManager {
       uint64_t snapshot,
       const void* subarray,
       Layout layout,
-      const char** attributes,
-      unsigned attribute_num,
+      const std::vector<std::string>& attributes,
       const uint64_t* buffer_sizes,
       void*** subarray_partitions,
       uint64_t* npartitions);

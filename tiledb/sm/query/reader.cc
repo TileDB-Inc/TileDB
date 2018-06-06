@@ -334,7 +334,7 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
 }
 
 Status Reader::set_buffer(
-    const char* attribute, void* buffer, uint64_t* buffer_size) {
+    const std::string& attribute, void* buffer, uint64_t* buffer_size) {
   // Check buffer
   if (buffer == nullptr || buffer_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -346,8 +346,8 @@ Status Reader::set_buffer(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // Check that attribute exists
-  if (attribute == nullptr || (attribute != constants::coords &&
-                               array_schema_->attribute(attribute) == nullptr))
+  if (attribute != constants::coords &&
+      array_schema_->attribute(attribute) == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot set buffer; Invalid attribute"));
 
@@ -378,7 +378,7 @@ Status Reader::set_buffer(
 }
 
 Status Reader::set_buffer(
-    const char* attribute,
+    const std::string& attribute,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
@@ -395,8 +395,8 @@ Status Reader::set_buffer(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // Check that attribute exists
-  if (attribute == nullptr || (attribute != constants::coords &&
-                               array_schema_->attribute(attribute) == nullptr))
+  if (attribute != constants::coords &&
+      array_schema_->attribute(attribute) == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot set buffer; Invalid attribute"));
 

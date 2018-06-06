@@ -142,6 +142,33 @@ const std::string& ArraySchema::attribute_name(
   return attributes_[attribute_id]->name();
 }
 
+Status ArraySchema::attribute_name_normalized(
+    const char* attribute, std::string* normalized_name) {
+  if (attribute == nullptr)
+    return Status::AttributeError("Null attribute name");
+  *normalized_name =
+      attribute[0] == '\0' ? constants::default_attr_name : attribute;
+  return Status::Ok();
+}
+
+Status ArraySchema::attribute_names_normalized(
+    const char** attributes,
+    unsigned num_attributes,
+    std::vector<std::string>* normalized_names) {
+  normalized_names->clear();
+
+  if (attributes == nullptr || num_attributes == 0)
+    return Status::Ok();
+
+  for (unsigned i = 0; i < num_attributes; i++) {
+    std::string normalized;
+    RETURN_NOT_OK(attribute_name_normalized(attributes[i], &normalized));
+    normalized_names->push_back(normalized);
+  }
+
+  return Status::Ok();
+}
+
 Status ArraySchema::attribute_id(
     const std::string& attribute_name, unsigned int* id) const {
   bool anonymous = attribute_name.empty();
@@ -321,19 +348,6 @@ Status ArraySchema::check_attributes(
     if (attr == constants::coords)
       continue;
     if (attribute_map_.find(attr) == attribute_map_.end())
-      return LOG_STATUS(Status::ArraySchemaError(
-          "Attribute check failed; cannot find attribute"));
-  }
-
-  return Status::Ok();
-}
-
-Status ArraySchema::check_attributes(
-    const char** attributes, unsigned attribute_num) const {
-  for (unsigned i = 0; i < attribute_num; ++i) {
-    if (attributes[i] == constants::coords)
-      continue;
-    if (attribute_map_.find(attributes[i]) == attribute_map_.end())
       return LOG_STATUS(Status::ArraySchemaError(
           "Attribute check failed; cannot find attribute"));
   }

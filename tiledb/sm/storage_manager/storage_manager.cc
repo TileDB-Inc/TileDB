@@ -194,54 +194,6 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
 }
 
 Status StorageManager::array_compute_max_read_buffer_sizes(
-    OpenArray* open_array,
-    uint64_t snapshot,
-    const void* subarray,
-    const char** attributes,
-    unsigned attribute_num,
-    uint64_t* buffer_sizes) {
-  // Error if the array was not opened in read mode
-  if (open_array->query_type() != QueryType::READ)
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot compute maximum read buffer sizes; "
-                                    "Array was not opened in read mode"));
-
-  // Get array schema and fragment metadata
-  open_array->mtx_lock();
-  auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
-  open_array->mtx_unlock();
-
-  // Check attributes
-  RETURN_NOT_OK(array_schema->check_attributes(attributes, attribute_num));
-
-  // Compute buffer sizes
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      buffer_sizes_tmp;
-  for (unsigned i = 0; i < attribute_num; ++i)
-    buffer_sizes_tmp[attributes[i]] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK(array_compute_max_read_buffer_sizes(
-      array_schema, metadata, subarray, &buffer_sizes_tmp));
-
-  // Copy to input buffer sizes
-  unsigned bid = 0;
-  for (unsigned i = 0; i < attribute_num; ++i) {
-    auto it = buffer_sizes_tmp.find(attributes[i]);
-    if (!array_schema->var_size(attributes[i])) {
-      buffer_sizes[bid] = it->second.first;
-      ++bid;
-    } else {
-      buffer_sizes[bid] = it->second.first;
-      buffer_sizes[bid + 1] = it->second.second;
-      bid += 2;
-    }
-  }
-
-  // Close array
-  return Status::Ok();
-}
-
-Status StorageManager::array_compute_max_read_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     const void* subarray,
@@ -406,8 +358,7 @@ Status StorageManager::array_compute_subarray_partitions(
     uint64_t snapshot,
     const void* subarray,
     Layout layout,
-    const char** attributes,
-    unsigned attribute_num,
+    const std::vector<std::string>& attributes,
     const uint64_t* buffer_sizes,
     void*** subarray_partitions,
     uint64_t* npartitions) {
@@ -431,7 +382,8 @@ Status StorageManager::array_compute_subarray_partitions(
   // Compute buffer sizes map
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       buffer_sizes_map;
-  RETURN_NOT_OK(array_schema->check_attributes(attributes, attribute_num));
+  RETURN_NOT_OK(array_schema->check_attributes(attributes));
+  auto attribute_num = attributes.size();
   for (unsigned i = 0, bid = 0; i < attribute_num; ++i) {
     if (array_schema->var_size(attributes[i])) {
       buffer_sizes_map[attributes[i]] = std::pair<uint64_t, uint64_t>(
