@@ -141,6 +141,19 @@ class StorageManager {
       uint64_t* snapshot);
 
   /**
+   * Reopens an already open array, loading the fragment metadata of any new
+   * fragments and acquiring a new snapshot identifier.
+   * This is applicable only to arrays opened for reads.
+   * When the new snapshot snapshot is used in future queries, the queries
+   * will see the fragments in the array created at or before this snapshot.
+   *
+   * @param open_array The open array to be reopened.
+   * @param snapshot A new snapshot identifier retrieved.
+   * @return Status
+   */
+  Status array_reopen(OpenArray* open_array, uint64_t* snapshot);
+
+  /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *

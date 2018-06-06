@@ -70,6 +70,10 @@ uint64_t KV::capacity() const {
   return (schema_ != nullptr) ? schema_->capacity() : 0;
 }
 
+bool KV::dirty() const {
+  return !items_.empty();
+}
+
 Status KV::init(
     const URI& kv_uri, const char** attributes, unsigned attribute_num) {
   kv_uri_ = kv_uri;
@@ -151,11 +155,10 @@ Status KV::finalize() {
 
 Status KV::add_item(const KVItem* kv_item) {
   // Check if we are good for writes
-  if (!write_good_) {
+  if (!write_good_)
     return LOG_STATUS(
         Status::KVError("Cannot add item; Key-value store was not opened "
                         "properly for writes"));
-  }
 
   if (items_.size() >= max_items_)
     RETURN_NOT_OK(flush());
@@ -163,9 +166,7 @@ Status KV::add_item(const KVItem* kv_item) {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (!kv_item->good(attributes_, types_)) {
-    return LOG_STATUS(Status::KVError("Cannot add item; Invalid item"));
-  }
+  RETURN_NOT_OK(kv_item->good(attributes_, types_));
 
   auto new_item = new KVItem();
   *new_item = *kv_item;
@@ -342,6 +343,9 @@ Status KV::flush() {
   RETURN_NOT_OK(submit_write_query());
 
   clear_items();
+
+  RETURN_NOT_OK(
+      storage_manager_->array_reopen(open_array_for_reads_, &snapshot_));
 
   return Status::Ok();
 }
@@ -572,10 +576,9 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[3] = hash.second;
 
   // Compute max buffer sizes
-  // TODO: change the snapshot value - store it as private member...
   RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
       open_array_for_reads_,
-      0,
+      snapshot_,
       subarray,
       read_attributes_,
       read_buffer_sizes_));

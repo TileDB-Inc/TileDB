@@ -98,6 +98,7 @@ struct KVFx {
   void check_interleaved_read_write(const std::string& path);
   void check_write(const std::string& path);
   void create_kv(const std::string& path);
+  void check_kv_iter_with_dirty_kv(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
@@ -751,12 +752,8 @@ void KVFx::check_interleaved_read_write(const std::string& path) {
   CHECK(a3_type == TILEDB_FLOAT32);
   CHECK(a3_size == 2 * sizeof(float));
 
-  // Flush and reopen
+  // Flush
   rc = tiledb_kv_flush(ctx_, kv);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_close(ctx_, kv);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_open(ctx_, kv, nullptr, 0);
   REQUIRE(rc == TILEDB_OK);
 
   // Read the new item again
@@ -923,6 +920,45 @@ void KVFx::check_iter(const std::string& path) {
   tiledb_kv_iter_free(&kv_iter);
 }
 
+void KVFx::check_kv_iter_with_dirty_kv(const std::string& path) {
+  // Create a kv and add an item
+  tiledb_kv_t* kv;
+  int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_open(ctx_, kv, nullptr, 0);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Add an item
+  int new_key = 123;
+  tiledb_kv_item_t* kv_item1;
+  rc = tiledb_kv_item_alloc(ctx_, &kv_item1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_key(
+      ctx_, kv_item1, &new_key, TILEDB_INT32, sizeof(int));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item1, ATTR_1, &KEY1_A1, TILEDB_INT32, sizeof(int));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item1, ATTR_2, KEY1_A2, TILEDB_CHAR, strlen(KEY1_A2) + 1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(
+      ctx_, kv_item1, ATTR_3, KEY1_A3, TILEDB_FLOAT32, 2 * sizeof(float));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_item(ctx_, kv, kv_item1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a kv iter with the dirty kv - should error
+  tiledb_kv_iter_t* kv_iter;
+  rc = tiledb_kv_iter_alloc(ctx_, kv, &kv_iter);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Close and clean up
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+}
+
 TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
   std::string array_name;
 
@@ -936,6 +972,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
     check_read_on_attribute_subset(array_name);
     check_iter(array_name);
     check_interleaved_read_write(array_name);
+    check_kv_iter_with_dirty_kv(array_name);
     remove_temp_dir(S3_TEMP_DIR);
   } else if (supports_hdfs_) {
     create_temp_dir(HDFS_TEMP_DIR);
@@ -946,6 +983,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
     check_read_on_attribute_subset(array_name);
     check_iter(array_name);
     check_interleaved_read_write(array_name);
+    check_kv_iter_with_dirty_kv(array_name);
     remove_temp_dir(HDFS_TEMP_DIR);
   } else {
     // File
@@ -958,6 +996,7 @@ TEST_CASE_METHOD(KVFx, "C API: Test key-value", "[capi], [kv]") {
     check_read_on_attribute_subset(array_name);
     check_iter(array_name);
     check_interleaved_read_write(array_name);
+    check_kv_iter_with_dirty_kv(array_name);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
 }

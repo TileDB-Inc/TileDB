@@ -78,6 +78,12 @@ Status KVIter::here(KVItem** kv_item) const {
 }
 
 Status KVIter::init(KV* kv) {
+  // Error if kv is dirty
+  if (kv->dirty())
+    return LOG_STATUS(
+        Status::KVIterError("Cannot initialize kv iterator; The input kv is "
+                            "dirty - consider flushing the kv"));
+
   kv_ = kv;
 
   coords_buffer_ = new (std::nothrow) uint64_t[2 * max_item_num_];

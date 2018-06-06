@@ -83,13 +83,13 @@ void KVItem::clear() {
   values_.clear();
 }
 
-bool KVItem::good(
+Status KVItem::good(
     const std::vector<std::string>& attributes,
     const std::vector<Datatype>& types) const {
   assert(attributes.size() == types.size());
 
   if (key_.key_ == nullptr)
-    return false;
+    return LOG_STATUS(Status::KVItemError("Invalid item; The key is null"));
 
   auto attribute_num = attributes.size();
   for (unsigned i = 0; i < attribute_num; ++i) {
@@ -101,14 +101,21 @@ bool KVItem::good(
 
     auto it = values_.find(attributes[i]);
     if (it == values_.end())
-      return false;
+      return LOG_STATUS(Status::KVItemError(
+          std::string("Invalid item; ") + "Missing value on attribute " +
+          attributes[i]));
     if (it->second->value_ == nullptr)
-      return false;
+      return LOG_STATUS(Status::KVItemError(
+          std::string("Invalid item; Value on attribute ") + attributes[i] +
+          " is null"));
     if (it->second->value_type_ != types[i])
-      return false;
+      return LOG_STATUS(Status::KVItemError(
+          std::string("Invalid item; Type mismatch on attribute ") +
+          attributes[i] + ", " + datatype_str(it->second->value_type_) +
+          " != " + datatype_str(types[i])));
   }
 
-  return true;
+  return Status::Ok();
 }
 
 const KVItem::Hash& KVItem::hash() const {

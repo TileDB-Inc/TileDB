@@ -267,6 +267,8 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_buffer
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_var
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_layout
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_free

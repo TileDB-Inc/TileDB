@@ -114,6 +114,38 @@ Status StorageManager::array_open(
   return array_open_for_writes(array_uri, open_array);
 }
 
+Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
+  // Lock mutex
+  open_array_mtx_.lock();
+
+  // Find the open array entry
+  auto array_uri = open_array->array_uri();
+  auto it = open_arrays_for_reads_.find(array_uri.to_string());
+  if (it == open_arrays_for_reads_.end()) {
+    open_array_mtx_.unlock();
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot reopen array ") + array_uri.to_string() +
+        "; Array not open"));
+  }
+
+  // Lock the array
+  open_array->mtx_lock();
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
+  *snapshot = open_array->next_snapshot();
+
+  // Get fragment metadata in the case of reads, if not fetched already
+  RETURN_NOT_OK_ELSE(
+      load_fragment_metadata(open_array), open_array->mtx_unlock());
+
+  // Unlock the array mutex
+  open_array->mtx_unlock();
+
+  return Status::Ok();
+}
+
 Status StorageManager::array_compute_max_read_buffer_sizes(
     OpenArray* open_array,
     uint64_t snapshot,
