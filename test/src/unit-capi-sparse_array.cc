@@ -50,7 +50,7 @@
 
 struct SparseArrayFx {
   // Constant parameters
-  const char* ATTR_NAME = "a";
+  std::string ATTR_NAME = "a";
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
@@ -313,7 +313,7 @@ void SparseArrayFx::create_sparse_array_2D(
 
   // Create attribute
   tiledb_attribute_t* a;
-  int rc = tiledb_attribute_alloc(ctx_, ATTR_NAME, ATTR_TYPE, &a);
+  int rc = tiledb_attribute_alloc(ctx_, ATTR_NAME.c_str(), ATTR_TYPE, &a);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
   REQUIRE(rc == TILEDB_OK);
@@ -384,7 +384,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   CHECK(rc == TILEDB_OK);
 
   // Subset over a specific attribute
-  const char* attributes[] = {ATTR_NAME};
+  const char* attributes[] = {ATTR_NAME.c_str()};
 
   // Prepare the buffers that will store the result
   uint64_t max_buffer_sizes[1];
@@ -461,7 +461,7 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
   buffer_sizes[1] = 2 * cell_num * sizeof(int64_t);
 
   // Set attributes
-  const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
+  const char* attributes[] = {ATTR_NAME.c_str(), TILEDB_COORDS};
 
   // Open array
   tiledb_array_t* array;
@@ -2248,6 +2248,15 @@ TEST_CASE_METHOD(
   check_invalid_offsets(array_name);
 }
 
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, anonymous attribute",
+    "[capi], [sparse], [anon-attr]") {
+  ATTR_NAME = "";
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "anon_attr";
+  check_sorted_reads(
+      array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+}
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, no results",

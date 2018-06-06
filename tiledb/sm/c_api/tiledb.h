@@ -841,7 +841,8 @@ TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param name The attribute name.
+ * @param name The attribute name. Providing an empty string for the name
+ * creates an anonymous attribute.
  * @param type The attribute type.
  * @param attr The TileDB attribute to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.

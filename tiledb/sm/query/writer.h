@@ -175,7 +175,8 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
-  Status set_buffer(const char* attribute, void* buffer, uint64_t* buffer_size);
+  Status set_buffer(
+      const std::string& attribute, void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the buffer for a var-sized attribute.
@@ -191,7 +192,7 @@ class Writer {
    * @return Status
    */
   Status set_buffer(
-      const char* attribute,
+      const std::string& attribute,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,

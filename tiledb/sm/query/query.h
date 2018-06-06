@@ -129,7 +129,8 @@ class Query {
    *     it will contain the size of the useful (read) data in `buffer`.
    * @return Status
    */
-  Status set_buffer(const char* attribute, void* buffer, uint64_t* buffer_size);
+  Status set_buffer(
+      const std::string& attribute, void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the buffer for a var-sized attribute.
@@ -154,7 +155,7 @@ class Query {
    * @return Status
    */
   Status set_buffer(
-      const char* attribute,
+      const std::string& attribute,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,

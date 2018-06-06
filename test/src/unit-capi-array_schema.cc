@@ -653,7 +653,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema one anonymous attribute",
-    "[capi], [array-schema]") {
+    "[capi], [array-schema], [anon-attr]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
@@ -695,11 +695,21 @@ TEST_CASE_METHOD(
   CHECK(get_attr != nullptr);
   tiledb_attribute_free(&get_attr);
 
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, array_schema, 0, &get_attr);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_attr != nullptr);
+  const char* get_name = nullptr;
+  rc = tiledb_attribute_get_name(ctx_, get_attr, &get_name);
+  CHECK(rc == TILEDB_OK);
+  CHECK(get_name != nullptr);
+  CHECK_THAT(get_name, Catch::Equals(""));
+  tiledb_attribute_free(&get_attr);
+
   rc = tiledb_array_schema_get_attribute_from_name(
       ctx_, array_schema, "foo", &get_attr);
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
-  const char* get_name = nullptr;
   rc = tiledb_attribute_get_name(ctx_, get_attr, &get_name);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(get_name, Catch::Equals("foo"));
@@ -716,7 +726,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema multiple anonymous attributes",
-    "[capi], [array-schema]") {
+    "[capi], [array-schema], [anon-attr]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
