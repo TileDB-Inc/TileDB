@@ -47,7 +47,17 @@
 namespace tiledb {
 namespace sm {
 
-/** Stores information about an open array. */
+/**
+ * Stores information about an open array.
+ *
+ * Each time an open array object is opened, the potentially new fragment
+ * metadata (that did not exist before) are loaded and stored in the
+ * object. These metadata are stored separately in a different "snapshot".
+ * This class then enables retrieving all the metadata loaded before or
+ * at a given snapshot. This attributes flexibility to handling consistency
+ * of queries associated with open array objects at different times during
+ * the lifetime of these objects.
+ */
 class OpenArray {
  public:
   /* ********************************* */
@@ -85,8 +95,16 @@ class OpenArray {
   /** Retrieves a (shared) filelock for the array. */
   Status file_unlock(VFS* vfs);
 
-  /** Returns the fragment metadata. */
-  const std::vector<FragmentMetadata*>& fragment_metadata() const;
+  /**
+   * Returns the fragment metadata. In case the array was opened for writes,
+   * an empty vector is returned. In case of reads, all the fragment metadata
+   * loaded at or before `snapshot` will be returned.
+   *
+   * @param snapshot The snapshot at or before the result fragment metadata
+   *     got loaded into the open array.
+   * @return
+   */
+  std::vector<FragmentMetadata*> fragment_metadata(uint64_t snapshot) const;
 
   /**
    * Returns the fragment metadata object given a URI, or `nullptr` if
@@ -103,14 +121,26 @@ class OpenArray {
   /** Unlocks the array mutex. */
   void mtx_unlock();
 
+  /**
+   * Returns the next snapshot identifier. This is essentially equal to
+   * the size of `fragment_metadata_`, since it will be used to identify
+   * at which point new fragment metadata got loaded into the open array
+   * object.
+   */
+  uint64_t next_snapshot() const;
+
   /** The query type the array was opened with. */
   QueryType query_type() const;
 
   /** Sets an array schema. */
   void set_array_schema(ArraySchema* array_schema);
 
-  /** Sets the fragment metadata. */
-  void set_fragment_metadata(const std::vector<FragmentMetadata*>& metadata);
+  /**
+   * Pushes the fragment metadata at the end of the vector of
+   * fragment metadata snapshots.
+   */
+  void push_back_fragment_metadata(
+      const std::vector<FragmentMetadata*>& metadata);
 
  private:
   /* ********************************* */
@@ -129,8 +159,13 @@ class OpenArray {
   /** Filelock handle. */
   filelock_t filelock_;
 
-  /** The fragment metadata of the open array. */
-  std::vector<FragmentMetadata*> fragment_metadata_;
+  /**
+   * The fragment metadata of the open array. Each outer vector element is
+   * created when `push_back_fragment_metadata` is called, which effectively
+   * means that a new set of fragment metadata is loaded into the already
+   * open array.
+   */
+  std::vector<std::vector<FragmentMetadata*>> fragment_metadata_;
 
   /** A map from fragment URI to metadata object. */
   std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_map_;

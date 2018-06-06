@@ -88,6 +88,7 @@ struct tiledb_array_t {
   tiledb::sm::URI array_uri_;
   tiledb::sm::OpenArray* open_array_;
   bool is_open_;
+  uint64_t snapshot_;
 };
 
 struct tiledb_config_t {
@@ -1652,7 +1653,7 @@ int tiledb_query_alloc(
   if (save_error(
           ctx,
           ctx->storage_manager_->query_create(
-              &((*query)->query_), array->open_array_))) {
+              &((*query)->query_), array->open_array_, array->snapshot_))) {
     delete (*query)->query_;
     delete *query;
     *query = nullptr;
@@ -1930,7 +1931,8 @@ int tiledb_array_open(
           ctx->storage_manager_->array_open(
               array->array_uri_,
               static_cast<tiledb::sm::QueryType>(query_type),
-              &(array->open_array_))))
+              &(array->open_array_),
+              &(array->snapshot_))))
     return TILEDB_ERR;
 
   array->is_open_ = true;
@@ -2071,7 +2073,7 @@ int tiledb_array_get_non_empty_domain(
   if (save_error(
           ctx,
           ctx->storage_manager_->array_get_non_empty_domain(
-              array->open_array_, domain, &is_empty_b)))
+              array->open_array_, array->snapshot_, domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int)is_empty_b;
@@ -2093,6 +2095,7 @@ int tiledb_array_compute_max_read_buffer_sizes(
           ctx,
           ctx->storage_manager_->array_compute_max_read_buffer_sizes(
               array->open_array_,
+              array->snapshot_,
               subarray,
               attributes,
               attribute_num,
@@ -2119,6 +2122,7 @@ int tiledb_array_partition_subarray(
           ctx,
           ctx->storage_manager_->array_compute_subarray_partitions(
               array->open_array_,
+              array->snapshot_,
               subarray,
               static_cast<tiledb::sm::Layout>(layout),
               attributes,

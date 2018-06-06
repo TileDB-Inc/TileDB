@@ -129,6 +129,8 @@ class Consolidator {
    *     to be consolidated.
    * @param open_array_for_writes The opened array for writing the
    *     consolidated fragments.
+   * @param snapshot The snapshot at which `open_array_for_reads_` got
+   *     opened.
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param fragment_num The number of fragments to be retrieved.
@@ -140,12 +142,14 @@ class Consolidator {
       void* write_subarray,
       OpenArray* open_array_for_reads,
       OpenArray* open_array_for_writes,
+      uint64_t snapshot,
       void** buffers,
       uint64_t* buffer_sizes,
       unsigned int* fragment_num);
 
   /** Creates the subarray that should represent the entire array domain. */
-  Status create_subarray(OpenArray* open_array, void** subarray) const;
+  Status create_subarray(
+      OpenArray* open_array, uint64_t snapshot, void** subarray) const;
 
   /**
    * Deletes the old fragments that got consolidated.

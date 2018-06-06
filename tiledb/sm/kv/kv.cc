@@ -55,6 +55,7 @@ KV::KV(StorageManager* storage_manager)
   read_buffer_num_ = 0;
   open_array_for_reads_ = nullptr;
   open_array_for_writes_ = nullptr;
+  snapshot_ = 0;
 }
 
 KV::~KV() {
@@ -72,15 +73,17 @@ uint64_t KV::capacity() const {
 Status KV::init(
     const URI& kv_uri, const char** attributes, unsigned attribute_num) {
   kv_uri_ = kv_uri;
+
   // Open the array for reads
   if (open_array_for_reads_ == nullptr)
     RETURN_NOT_OK(storage_manager_->array_open(
-        kv_uri_, QueryType::READ, &open_array_for_reads_));
+        kv_uri_, QueryType::READ, &open_array_for_reads_, &snapshot_));
 
   // Open the array for writes
+  uint64_t snapshot;  // will be ignored for writes
   if (open_array_for_writes_ == nullptr)
     RETURN_NOT_OK(storage_manager_->array_open(
-        kv_uri_, QueryType::WRITE, &open_array_for_writes_));
+        kv_uri_, QueryType::WRITE, &open_array_for_writes_, &snapshot));
 
   schema_ = open_array_for_reads_->array_schema();
 
@@ -364,6 +367,10 @@ Status KV::set_max_buffered_items(uint64_t max_items) {
   return Status::Ok();
 }
 
+uint64_t KV::snapshot() const {
+  return snapshot_;
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */
@@ -565,8 +572,13 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[3] = hash.second;
 
   // Compute max buffer sizes
+  // TODO: change the snapshot value - store it as private member...
   RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
-      open_array_for_reads_, subarray, read_attributes_, read_buffer_sizes_));
+      open_array_for_reads_,
+      0,
+      subarray,
+      read_attributes_,
+      read_buffer_sizes_));
 
   // If the max buffer sizes are 0, the the item is not found
   if (read_buffer_sizes_[0] == 0) {
@@ -633,7 +645,8 @@ Status KV::set_query_buffers(
 Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = (Query*)nullptr;
-  RETURN_NOT_OK(storage_manager_->query_create(&query, open_array_for_reads_));
+  RETURN_NOT_OK(
+      storage_manager_->query_create(&query, open_array_for_reads_, snapshot_));
   RETURN_NOT_OK_ELSE(
       set_query_buffers(
           query, read_attributes_, read_buffers_, read_buffer_sizes_),
@@ -647,7 +660,8 @@ Status KV::submit_read_query(const uint64_t* subarray) {
 
 Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
-  RETURN_NOT_OK(storage_manager_->query_create(&query, open_array_for_writes_));
+  RETURN_NOT_OK(storage_manager_->query_create(
+      &query, open_array_for_writes_, snapshot_));
   RETURN_NOT_OK_ELSE(
       set_query_buffers(
           query, write_attributes_, write_buffers_, write_buffer_sizes_),
