@@ -43,7 +43,7 @@
 #include <thread>
 
 struct DenseVectorFx {
-  const char* ATTR_NAME = "val";
+  std::string ATTR_NAME = "val";
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT64;
   const char* DIM0_NAME = "dim0";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
@@ -194,7 +194,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
 
   // Create attribute
   tiledb_attribute_t* attr;
-  rc = tiledb_attribute_alloc(ctx_, ATTR_NAME, ATTR_TYPE, &attr);
+  rc = tiledb_attribute_alloc(ctx_, ATTR_NAME.c_str(), ATTR_TYPE, &attr);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array schema
@@ -220,7 +220,7 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   tiledb_dimension_free(&dim);
   tiledb_array_schema_free(&array_schema);
 
-  const char* attributes[] = {ATTR_NAME};
+  const char* attributes[] = {ATTR_NAME.c_str()};
 
   // Open array
   tiledb_array_t* array;
@@ -267,7 +267,7 @@ void DenseVectorFx::check_read(
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
   tiledb_query_t* read_query = nullptr;
-  const char* attributes[] = {ATTR_NAME};
+  const char* attributes[] = {ATTR_NAME.c_str()};
 
   // Open array
   tiledb_array_t* array;
@@ -305,7 +305,7 @@ void DenseVectorFx::check_read(
 
 void DenseVectorFx::check_update(const std::string& path) {
   uint64_t subarray[] = {0, 2};
-  const char* attributes[] = {ATTR_NAME};
+  const char* attributes[] = {ATTR_NAME.c_str()};
   int64_t update_buffer[] = {9, 8, 7};
   void* update_buffers[] = {update_buffer};
   uint64_t update_buffer_sizes[] = {sizeof(update_buffer)};
@@ -388,7 +388,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
 
   const int64_t num_writes = 5;
   for (int64_t write_num = 0; write_num < num_writes; write_num++) {
-    const char* attributes[] = {ATTR_NAME, TILEDB_COORDS};
+    const char* attributes[] = {ATTR_NAME.c_str(), TILEDB_COORDS};
     int64_t update_buffer[] = {write_num, write_num, write_num};
     int64_t coords_buffer[] = {7, 8, 9};
     void* update_buffers[] = {update_buffer, coords_buffer};
@@ -432,7 +432,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
 
   // Read
   uint64_t subarray[] = {7, 9};
-  const char* attributes[] = {ATTR_NAME};
+  const char* attributes[] = {ATTR_NAME.c_str()};
   int64_t buffer[3] = {0};
   void* read_buffers[] = {buffer};
   uint64_t read_buffer_sizes[] = {sizeof(buffer)};
@@ -499,4 +499,21 @@ TEST_CASE_METHOD(
     check_duplicate_coords(vector_name);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
+}
+
+TEST_CASE_METHOD(
+    DenseVectorFx,
+    "C API: Test 1d dense vector with anonymous attribute",
+    "[capi], [dense-vector]") {
+  ATTR_NAME = "";
+
+  std::string vector_name;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
+  create_dense_vector(vector_name);
+  check_read(vector_name, TILEDB_ROW_MAJOR);
+  check_read(vector_name, TILEDB_COL_MAJOR);
+  check_update(vector_name);
+  check_duplicate_coords(vector_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }

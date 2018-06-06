@@ -345,22 +345,29 @@ Status Reader::set_buffer(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
-  // Check that attribute exists
-  if (attribute == nullptr || (attribute != constants::coords &&
-                               array_schema_->attribute(attribute) == nullptr))
+  // Name cannot be null
+  if (attribute == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
+        Status::ReaderError("Cannot set buffer; Null attribute name"));
+
+  // Check that attribute exists
+  auto attr_in_schema = array_schema_->attribute(attribute);
+  if (attribute != constants::coords && attr_in_schema == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; Invalid attribute"));
+
+  // Get name of attribute in schema
+  std::string attribute_name =
+      attr_in_schema == nullptr ? constants::coords : attr_in_schema->name();
 
   // Check that attribute is fixed-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
-  if (var_size)
-    return LOG_STATUS(Status::WriterError(
+  if (array_schema_->var_size(attribute_name))
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + attribute +
         "' is var-sized"));
 
   // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
+  bool attr_exists = attr_buffers_.find(attribute_name) != attr_buffers_.end();
   if (initialized_ && !attr_exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute '") + attribute +
@@ -368,10 +375,10 @@ Status Reader::set_buffer(
 
   // Append to attributes only if buffer not set before
   if (!attr_exists)
-    attributes_.emplace_back(attribute);
+    attributes_.emplace_back(attribute_name);
 
   // Set attribute buffer
-  attr_buffers_[attribute] =
+  attr_buffers_[attribute_name] =
       AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
 
   return Status::Ok();
@@ -394,22 +401,29 @@ Status Reader::set_buffer(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
-  // Check that attribute exists
-  if (attribute == nullptr || (attribute != constants::coords &&
-                               array_schema_->attribute(attribute) == nullptr))
+  // Name cannot be null
+  if (attribute == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
+        Status::ReaderError("Cannot set buffer; Null attribute name"));
+
+  // Check that attribute exists
+  auto attr_in_schema = array_schema_->attribute(attribute);
+  if (attribute != constants::coords && attr_in_schema == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; Invalid attribute"));
+
+  // Get name of attribute in schema
+  std::string attribute_name =
+      attr_in_schema == nullptr ? constants::coords : attr_in_schema->name();
 
   // Check that attribute is var-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
-  if (!var_size)
-    return LOG_STATUS(Status::WriterError(
+  if (!array_schema_->var_size(attribute_name))
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + attribute +
         "' is fixed-sized"));
 
   // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
+  bool attr_exists = attr_buffers_.find(attribute_name) != attr_buffers_.end();
   if (initialized_ && !attr_exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute '") + attribute +
@@ -417,10 +431,10 @@ Status Reader::set_buffer(
 
   // Append to attributes only if buffer not set before
   if (!attr_exists)
-    attributes_.emplace_back(attribute);
+    attributes_.emplace_back(attribute_name);
 
   // Set attribute buffer
-  attr_buffers_[attribute] =
+  attr_buffers_[attribute_name] =
       AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
