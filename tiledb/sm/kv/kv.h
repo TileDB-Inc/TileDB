@@ -80,6 +80,12 @@ class KV {
   /** The tile capacity of the KV schema. */
   uint64_t capacity() const;
 
+  /**
+   * Returns `true` if the kv contains written unflushed items buffered
+   * in main memory.
+   */
+  bool dirty() const;
+
   /** Flushes the buffered written items to persistent storage. */
   Status flush();
 

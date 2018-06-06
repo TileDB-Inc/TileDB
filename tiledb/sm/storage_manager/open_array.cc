@@ -106,7 +106,7 @@ std::vector<FragmentMetadata*> OpenArray::fragment_metadata(
 
   std::vector<FragmentMetadata*> ret;
   for (uint64_t i = 0; i < fragment_metadata_.size(); ++i) {
-    if (snapshot <= i) {
+    if (snapshot >= i) {
       for (auto& f : fragment_metadata_[i])
         ret.push_back(f);
     } else {

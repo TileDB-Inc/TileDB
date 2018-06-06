@@ -99,8 +99,12 @@ class KVItem {
    * `attributes`, and have the same types as `types` (there is a one-to-one
    * correspondence. Returns `false` when the key is `nullptr`, or a set
    * value is `nullptr`.
+   *
+   * @param attributes The attributes to check.
+   * @param types The types to be checked.
+   * @return Status
    */
-  bool good(
+  Status good(
       const std::vector<std::string>& attributes,
       const std::vector<Datatype>& types) const;
 

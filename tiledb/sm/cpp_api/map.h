@@ -595,22 +595,32 @@ class Map {
    * @param ctx Context
    * @param uri URI of map.
    */
-  Map(const Context& ctx, const std::string& uri)
+  Map(const Context& ctx,
+      const std::string& uri,
+      const std::vector<std::string>& attributes = std::vector<std::string>())
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
-      , uri_(uri)
-      , iter_(*this)
-      , iter_end_(*this, true) {
+      , uri_(uri) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
-    ctx.handle_error(tiledb_kv_open(ctx, kv, nullptr, 0));
+
+    if (attributes.empty()) {
+      ctx.handle_error(tiledb_kv_open(ctx, kv, nullptr, 0));
+    } else {
+      auto attribute_num = (unsigned)attributes.size();
+      const char** c_attributes = new const char*[attribute_num];
+      for (unsigned i = 0; i < attribute_num; ++i)
+        c_attributes[i] = attributes[i].c_str();
+      auto rc = tiledb_kv_open(ctx, kv, c_attributes, attribute_num);
+      delete[] c_attributes;
+      ctx.handle_error(rc);
+    }
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
 
     is_closed_ = false;
-    iter_ = MapIter(*this);
   }
 
   Map(const Map&) = default;
@@ -743,13 +753,24 @@ class Map {
     return uri_;
   }
 
-  void open() {
+  void open(
+      const std::vector<std::string>& attributes = std::vector<std::string>()) {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), nullptr, 0));
+    if (attributes.empty()) {
+      ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), nullptr, 0));
+    } else {
+      auto attribute_num = (unsigned)attributes.size();
+      const char** c_attributes = new const char*[attribute_num];
+      for (unsigned i = 0; i < attribute_num; ++i)
+        c_attributes[i] = attributes[i].c_str();
+      auto rc = tiledb_kv_open(ctx, kv_.get(), c_attributes, attribute_num);
+      delete[] c_attributes;
+      ctx.handle_error(rc);
+    }
+
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
-    iter_ = MapIter(*this);
     is_closed_ = false;
   }
 
@@ -763,36 +784,6 @@ class Map {
   /** Returns a shared pointer to the C TileDB kv object. */
   std::shared_ptr<tiledb_kv_t> ptr() const {
     return kv_;
-  }
-
-  /**
-   * Iterator to beginning of map.
-   *
-   * Note the iterator is global to the Map object.
-   * If multiple iterators are needed for concurrent use,
-   * then multiple Map objects or manually created MapIter objects are needed.
-   **/
-  impl::MapIterReference begin() {
-    return !is_closed_ ? iter_ : iter_end_;
-  }
-
-  /**
-   * Iterate over keys of type T.
-   *
-   * Note the iterator is global to the Map object.
-   * If multiple iterators are needed for concurrent use,
-   * then multiple Map objects or manually created MapIter objects are needed.
-   * */
-  template <typename T>
-  impl::MapIterReference begin() {
-    iter_.limit_key_type<T>();
-    return iter_;
-  }
-
-  /** Iterator to end of map. **/
-  impl::MapIterReference end() {
-    // Note this doesn't init, so we can return a new object.
-    return iter_end_;
   }
 
   /* ********************************* */
@@ -857,9 +848,6 @@ class Map {
 
   /** URI **/
   std::string uri_;
-
-  /** Object-global iterator */
-  iterator iter_, iter_end_;
 };
 
 /* ********************************* */

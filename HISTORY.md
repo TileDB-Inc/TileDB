@@ -66,6 +66,7 @@
 * Added `Map::{open, close}`
 * Added `Array::query_type`
 * Added `Query::query_type`
+* Added optional attributes argument in `Map::Map` and `Map::open`
 
 ## Breaking changes
 
@@ -105,6 +106,7 @@
 * `Map::begin` refers to the same iterator object. For multiple concurrent iterators, a `MapIter` should be manually constructed instead of using `Map::begin()` more than once.
 * Renamed `Domain::rank` to `Domain::ndim` to avoid confusion with matrix def of rank.
 * Added query type argument to `Array` constructor
+* Removed iterator functionality from `Map`.
 
 # TileDB v1.2.2 Release Notes
 
