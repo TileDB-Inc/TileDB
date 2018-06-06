@@ -286,6 +286,9 @@ Status Reader::next_subarray_partition() {
 }
 
 Status Reader::read() {
+  // This is needed in case the buffers were reset with smaller sizes
+  RETURN_NOT_OK(calibrate_cur_partition());
+
   if (fragment_metadata_.empty() ||
       read_state_.cur_subarray_partition_ == nullptr) {
     zero_out_buffer_sizes();
@@ -294,9 +297,6 @@ Status Reader::read() {
 
   bool no_results = false;
   overflowed_ = false;
-
-  // This is needed in case the buffers were reset with smaller sizes
-  RETURN_NOT_OK(calibrate_cur_partition());
 
   do {
     reset_buffer_sizes();

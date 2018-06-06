@@ -102,6 +102,7 @@ struct SparseArrayFx {
       const std::string& array_name);
   void check_sparse_array_global_with_all_duplicates_dedup(
       const std::string& array_name);
+  void check_sparse_array_no_results(const std::string& array_name);
   void check_non_empty_domain(const std::string& path);
   void check_invalid_offsets(const std::string& array_name);
   void write_partial_sparse_array(const std::string& array_name);
@@ -1803,6 +1804,68 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
   tiledb_query_free(&query);
 }
 
+void SparseArrayFx::check_sparse_array_no_results(
+    const std::string& array_name) {
+  // Initialize a subarray
+  const int64_t subarray[] = {1, 2, 1, 2};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Subset over a specific attribute
+  const char* attributes[] = {"a1"};
+
+  // Prepare the buffers that will store the result
+  uint64_t max_buffer_sizes[1];
+  rc = tiledb_array_compute_max_read_buffer_sizes(
+      ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
+
+  CHECK(rc == TILEDB_OK);
+  auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
+  REQUIRE(buffer_a1 != nullptr);
+  void* buffers[] = {buffer_a1};
+  uint64_t buffer_size_a1 = max_buffer_sizes[0];
+  uint64_t buffer_sizes[] = {buffer_size_a1};
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {
   // Prepare cell buffers
   int buffer_a1[] = {7, 5, 0};
@@ -2183,4 +2246,14 @@ TEST_CASE_METHOD(
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "invalid_offs";
   create_sparse_array(array_name);
   check_invalid_offsets(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, no results",
+    "[capi], [sparse], [no-results]") {
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "no_results";
+  create_sparse_array(array_name);
+  write_partial_sparse_array(array_name);
+  check_sparse_array_no_results(array_name);
 }
