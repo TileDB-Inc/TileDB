@@ -78,6 +78,9 @@ class KVIter {
   /** Moves to the next key-value item. */
   Status next();
 
+  /** Resets the iterator, so that it can start iterating from the beginning. */
+  Status reset();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

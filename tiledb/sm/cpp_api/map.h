@@ -494,6 +494,8 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
 
   MapIter& operator++();
 
+  void reset();
+
  private:
   /** Base map. **/
   Map* map_;
@@ -774,6 +776,14 @@ class Map {
     is_closed_ = false;
   }
 
+  void reopen() {
+    auto& ctx = context();
+    ctx.handle_error(tiledb_kv_reopen(ctx, kv_.get()));
+    tiledb_kv_schema_t* kv_schema;
+    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    schema_ = MapSchema(ctx, kv_schema);
+  }
+
   /** Close the map. */
   void close() {
     auto& ctx = context();
@@ -784,6 +794,13 @@ class Map {
   /** Returns a shared pointer to the C TileDB kv object. */
   std::shared_ptr<tiledb_kv_t> ptr() const {
     return kv_;
+  }
+
+  bool is_dirty() {
+    int ret;
+    auto& ctx = context();
+    ctx.handle_error(tiledb_kv_is_dirty(ctx, kv_.get(), &ret));
+    return (bool)ret;
   }
 
   /* ********************************* */
@@ -934,6 +951,13 @@ inline MapIter& MapIter::operator++() {
       operator++();
   }
   return *this;
+}
+
+inline void MapIter::reset() {
+  done_ = false;
+  auto& ctx = map_->context();
+  ctx.handle_error(tiledb_kv_iter_reset(ctx, iter_.get()));
+  this->operator++();
 }
 
 }  // namespace tiledb

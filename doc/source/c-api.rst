@@ -140,6 +140,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_reopen
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_close
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_free
@@ -281,6 +283,8 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_type
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_has_results
+    :project: TileDB-C
 
 Group
 -----
@@ -299,6 +303,8 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_open
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_reopen
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_close
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_free
@@ -310,6 +316,8 @@ Key-value
 .. doxygenfunction:: tiledb_kv_get_item
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_has_key
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_is_dirty
     :project: TileDB-C
 
 
@@ -332,6 +340,10 @@ Key-value Schema
 .. doxygenfunction:: tiledb_kv_schema_get_attribute_from_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_dump
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_schema_set_capacity
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_schema_get_capacity
     :project: TileDB-C
 
 Key-value Item
@@ -362,6 +374,8 @@ Key-value Iterator
 .. doxygenfunction:: tiledb_kv_iter_next
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_done
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_iter_reset
     :project: TileDB-C
 
 Object Management

@@ -91,6 +91,12 @@ std::vector<URI> Query::fragment_uris() const {
   return reader_.fragment_uris();
 }
 
+bool Query::has_results() const {
+  if (status_ == QueryStatus::UNINITIALIZED || type_ == QueryType::WRITE)
+    return false;
+  return !reader_.no_results();
+}
+
 Status Query::init() {
   // Only if the query has not been initialized before
   if (status_ == QueryStatus::UNINITIALIZED) {

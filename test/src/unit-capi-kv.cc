@@ -232,6 +232,8 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_kv_schema_add_attribute(ctx_, kv_schema, a3);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_schema_set_capacity(ctx_, kv_schema, 10);
+  CHECK(rc == TILEDB_OK);
 
   // Check array schema
   rc = tiledb_kv_schema_check(ctx_, kv_schema);
@@ -245,6 +247,17 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_attribute_free(&a1);
   tiledb_attribute_free(&a2);
   tiledb_attribute_free(&a3);
+  tiledb_kv_schema_free(&kv_schema);
+
+  // Load schema
+  rc = tiledb_kv_schema_load(ctx_, path.c_str(), &kv_schema);
+  CHECK(rc == TILEDB_OK);
+  uint64_t capacity;
+  rc = tiledb_kv_schema_get_capacity(ctx_, kv_schema, &capacity);
+  CHECK(rc == TILEDB_OK);
+  CHECK(capacity == 10);
+
+  // Clean up again
   tiledb_kv_schema_free(&kv_schema);
 }
 
@@ -304,6 +317,12 @@ void KVFx::check_write(const std::string& path) {
   rc = tiledb_kv_open(ctx_, kv, nullptr, 0);
   REQUIRE(rc == TILEDB_OK);
 
+  // The kv is not dirty
+  int is_dirty;
+  rc = tiledb_kv_is_dirty(ctx_, kv, &is_dirty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_dirty == 0);
+
   // Add key-value item #1
   tiledb_kv_item_t* kv_item1;
   rc = tiledb_kv_item_alloc(ctx_, &kv_item1);
@@ -342,9 +361,19 @@ void KVFx::check_write(const std::string& path) {
   rc = tiledb_kv_add_item(ctx_, kv, kv_item2);
   CHECK(rc == TILEDB_OK);
 
+  // The kv is now dirty
+  rc = tiledb_kv_is_dirty(ctx_, kv, &is_dirty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_dirty == 1);
+
   // Flush
   rc = tiledb_kv_flush(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
+
+  // The kv is not dirty after the flush
+  rc = tiledb_kv_is_dirty(ctx_, kv, &is_dirty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_dirty == 0);
 
   // Add key-value item #3
   tiledb_kv_item_t* kv_item3;
@@ -447,7 +476,16 @@ void KVFx::check_single_read(const std::string& path) {
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
+
+  // Re-open should fail before open
+  rc = tiledb_kv_reopen(ctx_, kv);
+  REQUIRE(rc == TILEDB_ERR);
+
   rc = tiledb_kv_open(ctx_, kv, attributes, 3);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Re-open should succeed after open
+  rc = tiledb_kv_reopen(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);
 
   // For retrieving values
@@ -916,6 +954,14 @@ void KVFx::check_iter(const std::string& path) {
     rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
     REQUIRE(rc == TILEDB_OK);
   }
+  CHECK(done);
+
+  rc = tiledb_kv_iter_reset(ctx_, kv_iter);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_kv_iter_done(ctx_, kv_iter, &done);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(!done);
 
   rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);

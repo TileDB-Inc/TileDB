@@ -354,6 +354,9 @@ class Reader {
    */
   Status next_subarray_partition();
 
+  /** Returns `true` if no results were retrieved after a query. */
+  bool no_results() const;
+
   /** Performs a read query using its set members. */
   Status read();
 
@@ -802,9 +805,6 @@ class Reader {
       std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
       std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
           overlapping_tile_idx_coords);
-
-  /** Returns `true` if no results were retrieved after a query. */
-  bool no_results() const;
 
   /**
    * Checks whether two hyper-rectangles overlap, and determines whether

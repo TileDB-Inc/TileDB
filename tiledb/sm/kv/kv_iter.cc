@@ -85,6 +85,7 @@ Status KVIter::init(KV* kv) {
                             "dirty - consider flushing the kv"));
 
   kv_ = kv;
+  max_item_num_ = kv->capacity();
 
   coords_buffer_ = new (std::nothrow) uint64_t[2 * max_item_num_];
   if (coords_buffer_ == nullptr)
@@ -94,9 +95,8 @@ Status KVIter::init(KV* kv) {
 
   RETURN_NOT_OK(storage_manager_->query_create(
       &query_, kv_->open_array_for_reads(), kv->snapshot()));
-  RETURN_NOT_OK(submit_read_query());
 
-  max_item_num_ = kv->capacity();
+  RETURN_NOT_OK(submit_read_query());
 
   return Status::Ok();
 }
@@ -108,6 +108,12 @@ Status KVIter::next() {
     return submit_read_query();
 
   return Status::Ok();
+}
+
+Status KVIter::reset() {
+  auto kv = kv_;
+  clear();
+  return init(kv);
 }
 
 /* ********************************* */
@@ -122,7 +128,7 @@ void KVIter::clear() {
   coords_buffer_ = nullptr;
   coords_buffer_alloced_size_ = 0;
   current_item_ = 0;
-  status_ = QueryStatus::INPROGRESS;
+  status_ = QueryStatus::COMPLETED;
   max_item_num_ = 0;
   item_num_ = 0;
 }
@@ -133,7 +139,7 @@ Status KVIter::submit_read_query() {
 
   do {
     RETURN_NOT_OK(query_->set_buffer(
-        constants::coords.c_str(), coords_buffer_, &coords_buffer_size));
+        constants::coords, coords_buffer_, &coords_buffer_size));
     RETURN_NOT_OK(storage_manager_->query_submit(query_));
 
     status_ = query_->status();

@@ -148,15 +148,22 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
+      CHECK(!query.has_results());
+
       query.finalize();
-      tiledb::Array::consolidate(ctx, "cpp_unit_array");
       array.close();
+
+      tiledb::Array::consolidate(ctx, "cpp_unit_array");
     } catch (std::exception& e) {
       std::cout << e.what() << std::endl;
     }
 
     {
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
+
+      // Reopen should work
+      array.reopen();
+
       std::vector<std::string> attrs = {"a1"};
       std::vector<size_t> buffer_el = {1};
       auto parts = array.partition_subarray<int>(
@@ -212,7 +219,10 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       a4buf.second.resize(buff_el["a4"].second);
       a1.resize(buff_el["a5"].second);
 
-      Query query(ctx, array, TILEDB_READ);
+      Query query(ctx, array);
+
+      CHECK(!query.has_results());
+
       query.set_buffer("a1", a1);
       query.set_buffer("a2", a2buf);
       query.set_buffer("a3", a3);
@@ -225,6 +235,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       query.result_buffer_elements();
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+      CHECK(query.has_results());
 
       query.finalize();
       array.close();

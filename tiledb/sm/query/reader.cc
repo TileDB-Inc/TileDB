@@ -285,6 +285,14 @@ Status Reader::next_subarray_partition() {
   return Status::Ok();
 }
 
+bool Reader::no_results() const {
+  for (const auto& it : attr_buffers_) {
+    if (*(it.second.buffer_size_) != 0)
+      return false;
+  }
+  return true;
+}
+
 Status Reader::read() {
   // This is needed in case the buffers were reset with smaller sizes
   RETURN_NOT_OK(calibrate_cur_partition());
@@ -1592,14 +1600,6 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   }
 
   return Status::Ok();
-}
-
-bool Reader::no_results() const {
-  for (const auto& it : attr_buffers_) {
-    if (*(it.second.buffer_size_) != 0)
-      return false;
-  }
-  return true;
 }
 
 template <class T>

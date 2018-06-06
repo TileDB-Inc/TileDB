@@ -50,6 +50,7 @@ struct CPPMapFx {
 
     MapSchema schema(ctx);
     schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
+    schema.set_capacity(10);
     Map::create("cpp_unit_map", schema);
   }
 
@@ -64,6 +65,7 @@ struct CPPMapFx {
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map");
+  CHECK(!map.is_dirty());
 
   int simple_key = 10;
   std::vector<double> compound_key = {2.43, 214};
@@ -78,9 +80,17 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   i1["a1"] = 1;
   map.add_item(i1);
 
+  CHECK(map.is_dirty());
+
   map.flush();
+
+  CHECK(!map.is_dirty());
+
   map.close();
   map.open();
+
+  auto schema = map.schema();
+  CHECK(schema.capacity() == 10);
 
   using my_cell_t = std::tuple<int, std::string, std::array<double, 2>>;
 
@@ -241,7 +251,7 @@ TEST_CASE_METHOD(
   CHECK(map[2].get<std::string>() == "123");  // implicit
 
   // Check opening without closing
-  map.open();
+  REQUIRE_THROWS(map.open());
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
@@ -261,12 +271,13 @@ TEST_CASE_METHOD(
 
   // Check reopening
   map.open(attributes);
+  map.reopen();
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
 
   // Check opening without closing
-  map.open();
+  REQUIRE_THROWS(map.open());
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
@@ -284,6 +295,18 @@ TEST_CASE_METHOD(
   MapIter iter(map), end(map, true);
 
   std::vector<std::string> vals;
+  for (; iter != end; ++iter) {
+    vals.push_back(iter->get<std::string>());
+  }
+
+  REQUIRE(vals.size() == 3);
+  CHECK(std::count(vals.begin(), vals.end(), "0") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "12") == 1);
+  CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
+
+  // Reset the iterator and check again
+  iter.reset();
+  vals.clear();
   for (; iter != end; ++iter) {
     vals.push_back(iter->get<std::string>());
   }
