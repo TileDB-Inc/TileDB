@@ -27,9 +27,37 @@ Learn more and see examples and tutorials in the [official documentation](https:
 * **Key-value Store.** Store any persistent metadata with TileDB's key-value storage functionality. A TileDB key-value store is implemented as a TileDB sparse array and inherits all its benefits (such as compression, parallelism, and multiple backend support).
 * **Virtual Filesystem.** Add general file management and IO to your applications for any supported storage backend using TileDB's unified "virtual filesystem" (VFS) API.
 
-## Installation
+## Quickstart
 
-The [installation guide](https://docs.tiledb.io/en/latest/installation.html) will walk you through installing TileDB on your machine.
+First, grab a TileDB release for your system.
+
+* **Homebrew** (macOS): `brew install tiledb-inc/stable/tiledb`
+* **Docker** (Linux/macOS): `docker pull tiledb/tiledb && docker run -it tiledb/tiledb`
+* **Conda** (Linux/macOS/Windows): `conda install -c conda-forge tiledb`
+
+For Windows, you can also download the pre-built binaries from a release .zip file: https://github.com/TileDB-Inc/TileDB/releases. For more in-depth installation information, see the full [Installation](https://docs.tiledb.io/en/latest/installation.html) doc page.
+
+Next, save the [quickstart example program](https://github.com/TileDB-Inc/TileDB/blob/dev/examples/cpp_api/quickstart.cc) to a file `quickstart.cc`.
+
+The example program illustrates the three main TileDB operations: array creation (`create_array()` in the example code), writing data into the array (`write_array()`), and reading from the array (`read_array()`).
+
+It will first create the array with a simple sparse 2D schema where each cell can store a single character of data. Then, it will write data to 3 cells of the array. Finally, it will read back the cells using a spatial slice.
+
+Compile the example program: `g++ -std=c++11 quickstart.cc -o quickstart -ltiledb`.
+
+If you run into compilation issues, see the [Usage](https://docs.tiledb.io/en/latest/usage.html) page for more complete instructions on how to compile and link against TileDB. If you are on Windows, use the [Windows Usage](https://docs.tiledb.io/en/latest/usage.html#windows) instructions to create a Visual Studio project instead.
+
+Run the example, and you should see the following output:
+
+```
+$ ./quickstart
+Created array my_array
+Cell (0,0) has data 'a'
+Cell (1,1) has data 'b'
+Cell (2,3) has data 'c'
+```
+
+## Further reading
 
 The full TileDB documentation can be found at [docs.tiledb.io](https://docs.tiledb.io) and includes many tutorials and examples to get you started.
 
