@@ -194,17 +194,17 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 }
 
 template <class T>
-Status FragmentMetadata::add_max_read_buffer_sizes(
+Status FragmentMetadata::add_max_buffer_sizes(
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   if (dense_)
-    return add_max_read_buffer_sizes_dense(subarray, buffer_sizes);
-  return add_max_read_buffer_sizes_sparse(subarray, buffer_sizes);
+    return add_max_buffer_sizes_dense(subarray, buffer_sizes);
+  return add_max_buffer_sizes_sparse(subarray, buffer_sizes);
 }
 
 template <class T>
-Status FragmentMetadata::add_max_read_buffer_sizes_dense(
+Status FragmentMetadata::add_max_buffer_sizes_dense(
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
@@ -228,7 +228,7 @@ Status FragmentMetadata::add_max_read_buffer_sizes_dense(
 }
 
 template <class T>
-Status FragmentMetadata::add_max_read_buffer_sizes_sparse(
+Status FragmentMetadata::add_max_buffer_sizes_sparse(
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
@@ -1239,43 +1239,43 @@ template Status FragmentMetadata::set_mbr<float>(
 template Status FragmentMetadata::set_mbr<double>(
     uint64_t tile, const void* mbr);
 
-template Status FragmentMetadata::add_max_read_buffer_sizes<int8_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<int8_t>(
     const int8_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<uint8_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<uint8_t>(
     const uint8_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<int16_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<int16_t>(
     const int16_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<uint16_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<uint16_t>(
     const uint16_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<int>(
+template Status FragmentMetadata::add_max_buffer_sizes<int>(
     const int* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<unsigned>(
+template Status FragmentMetadata::add_max_buffer_sizes<unsigned>(
     const unsigned* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<int64_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<int64_t>(
     const int64_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<uint64_t>(
+template Status FragmentMetadata::add_max_buffer_sizes<uint64_t>(
     const uint64_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<float>(
+template Status FragmentMetadata::add_max_buffer_sizes<float>(
     const float* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
-template Status FragmentMetadata::add_max_read_buffer_sizes<double>(
+template Status FragmentMetadata::add_max_buffer_sizes<double>(
     const double* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;

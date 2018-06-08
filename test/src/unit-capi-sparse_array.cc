@@ -383,27 +383,21 @@ int* SparseArrayFx::read_sparse_array_2D(
   rc = tiledb_array_open(ctx_, array, query_type);
   CHECK(rc == TILEDB_OK);
 
-  // Subset over a specific attribute
-  const char* attributes[] = {ATTR_NAME.c_str()};
-
   // Prepare the buffers that will store the result
-  uint64_t max_buffer_sizes[1];
-  rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
+  uint64_t buffer_size;
+  rc = tiledb_array_max_buffer_size(
+      ctx_, array, ATTR_NAME.c_str(), subarray, &buffer_size);
 
   CHECK(rc == TILEDB_OK);
-  auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
-  REQUIRE(buffer_a1 != nullptr);
-  void* buffers[] = {buffer_a1};
-  uint64_t buffer_size_a1 = max_buffer_sizes[0];
-  uint64_t buffer_sizes[] = {buffer_size_a1};
+  auto buffer = new int[buffer_size / sizeof(int)];
+  REQUIRE(buffer != nullptr);
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, query_type, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+      ctx_, query, ATTR_NAME.c_str(), buffer, &buffer_size);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
@@ -433,7 +427,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   tiledb_query_free(&query);
 
   // Success - return the created buffer
-  return buffer_a1;
+  return buffer;
 }
 
 void SparseArrayFx::write_sparse_array_unsorted_2D(
@@ -1816,28 +1810,19 @@ void SparseArrayFx::check_sparse_array_no_results(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Subset over a specific attribute
-  const char* attributes[] = {"a1"};
-
   // Prepare the buffers that will store the result
-  uint64_t max_buffer_sizes[1];
-  rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx_, array, subarray, attributes, 1, &max_buffer_sizes[0]);
-
+  uint64_t buffer_size;
+  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", subarray, &buffer_size);
   CHECK(rc == TILEDB_OK);
-  auto buffer_a1 = new int[max_buffer_sizes[0] / sizeof(int)];
-  REQUIRE(buffer_a1 != nullptr);
-  void* buffers[] = {buffer_a1};
-  uint64_t buffer_size_a1 = max_buffer_sizes[0];
-  uint64_t buffer_sizes[] = {buffer_size_a1};
+
+  auto buffer = new int[buffer_size / sizeof(int)];
+  REQUIRE(buffer != nullptr);
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
-  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer, &buffer_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
@@ -2262,7 +2247,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, anonymous attribute",
-    "[capi], [sparse], [anon-attr]") {
+    "[capi], [sparse], [anon-attr], [sparse-anon-attr]") {
   ATTR_NAME = "";
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "anon_attr";
   check_sorted_reads(

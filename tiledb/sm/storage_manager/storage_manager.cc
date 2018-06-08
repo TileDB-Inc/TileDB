@@ -146,12 +146,13 @@ Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
   return Status::Ok();
 }
 
-Status StorageManager::array_compute_max_read_buffer_sizes(
+Status StorageManager::array_compute_max_buffer_sizes(
     OpenArray* open_array,
     uint64_t snapshot,
     const void* subarray,
     const std::vector<std::string>& attributes,
-    uint64_t* buffer_sizes) {
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        max_buffer_sizes_) {
   // Error if the array was not opened in read mode
   if (open_array->query_type() != QueryType::READ)
     return LOG_STATUS(
@@ -168,32 +169,46 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   RETURN_NOT_OK(array_schema->check_attributes(attributes));
 
   // Compute buffer sizes
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      buffer_sizes_tmp;
+  max_buffer_sizes_->clear();
   for (const auto& attr : attributes)
-    buffer_sizes_tmp[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK(array_compute_max_read_buffer_sizes(
-      array_schema, metadata, subarray, &buffer_sizes_tmp));
-
-  // Copy to input buffer sizes
-  unsigned bid = 0;
-  for (const auto& attr : attributes) {
-    auto it = buffer_sizes_tmp.find(attr);
-    if (!array_schema->var_size(attr)) {
-      buffer_sizes[bid] = it->second.first;
-      ++bid;
-    } else {
-      buffer_sizes[bid] = it->second.first;
-      buffer_sizes[bid + 1] = it->second.second;
-      bid += 2;
-    }
-  }
+    (*max_buffer_sizes_)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+  RETURN_NOT_OK(array_compute_max_buffer_sizes(
+      array_schema, metadata, subarray, max_buffer_sizes_));
 
   // Close array
   return Status::Ok();
 }
 
-Status StorageManager::array_compute_max_read_buffer_sizes(
+Status StorageManager::array_compute_max_buffer_sizes(
+    OpenArray* open_array,
+    uint64_t snapshot,
+    const void* subarray,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        max_buffer_sizes_) {
+  // Error if the array was not opened in read mode
+  if (open_array->query_type() != QueryType::READ)
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot compute maximum buffer sizes; "
+                                    "Array was not opened in read mode"));
+
+  // Get array schema and fragment metadata
+  open_array->mtx_lock();
+  auto array_schema = open_array->array_schema();
+  auto metadata = open_array->fragment_metadata(snapshot);
+  open_array->mtx_unlock();
+
+  // Get all attributes and coordinates
+  std::vector<std::string> attributes;
+  auto schema_attributes = array_schema->attributes();
+  for (const auto& attr : schema_attributes)
+    attributes.push_back(attr->name());
+  attributes.push_back(constants::coords);
+
+  return array_compute_max_buffer_sizes(
+      open_array, snapshot, subarray, attributes, max_buffer_sizes_);
+}
+
+Status StorageManager::array_compute_max_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     const void* subarray,
@@ -206,61 +221,61 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   // Compute buffer sizes
   switch (array_schema->coords_type()) {
     case Datatype::INT32:
-      return array_compute_max_read_buffer_sizes<int>(
+      return array_compute_max_buffer_sizes<int>(
           array_schema,
           fragment_metadata,
           static_cast<const int*>(subarray),
           buffer_sizes);
     case Datatype::INT64:
-      return array_compute_max_read_buffer_sizes<int64_t>(
+      return array_compute_max_buffer_sizes<int64_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int64_t*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT32:
-      return array_compute_max_read_buffer_sizes<float>(
+      return array_compute_max_buffer_sizes<float>(
           array_schema,
           fragment_metadata,
           static_cast<const float*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT64:
-      return array_compute_max_read_buffer_sizes<double>(
+      return array_compute_max_buffer_sizes<double>(
           array_schema,
           fragment_metadata,
           static_cast<const double*>(subarray),
           buffer_sizes);
     case Datatype::INT8:
-      return array_compute_max_read_buffer_sizes<int8_t>(
+      return array_compute_max_buffer_sizes<int8_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int8_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT8:
-      return array_compute_max_read_buffer_sizes<uint8_t>(
+      return array_compute_max_buffer_sizes<uint8_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint8_t*>(subarray),
           buffer_sizes);
     case Datatype::INT16:
-      return array_compute_max_read_buffer_sizes<int16_t>(
+      return array_compute_max_buffer_sizes<int16_t>(
           array_schema,
           fragment_metadata,
           static_cast<const int16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT16:
-      return array_compute_max_read_buffer_sizes<uint16_t>(
+      return array_compute_max_buffer_sizes<uint16_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT32:
-      return array_compute_max_read_buffer_sizes<uint32_t>(
+      return array_compute_max_buffer_sizes<uint32_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint32_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT64:
-      return array_compute_max_read_buffer_sizes<uint64_t>(
+      return array_compute_max_buffer_sizes<uint64_t>(
           array_schema,
           fragment_metadata,
           static_cast<const uint64_t*>(subarray),
@@ -349,88 +364,6 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
           Status::StorageManagerError("Cannot compute estimate for read buffer "
                                       "sizes; Invalid coordinates type"));
   }
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_compute_subarray_partitions(
-    OpenArray* open_array,
-    uint64_t snapshot,
-    const void* subarray,
-    Layout layout,
-    const std::vector<std::string>& attributes,
-    const uint64_t* buffer_sizes,
-    void*** subarray_partitions,
-    uint64_t* npartitions) {
-  if (open_array->query_type() != QueryType::READ)
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot compute subarray partitions; Array "
-                                    "was not opened in read mode"));
-
-  // Initialization
-  *npartitions = 0;
-  *subarray_partitions = nullptr;
-
-  // Open the array
-  open_array->mtx_lock();
-  auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
-  open_array->mtx_unlock();
-
-  auto subarray_size = 2 * array_schema->coords_size();
-
-  // Compute buffer sizes map
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      buffer_sizes_map;
-  RETURN_NOT_OK(array_schema->check_attributes(attributes));
-  auto attribute_num = attributes.size();
-  for (unsigned i = 0, bid = 0; i < attribute_num; ++i) {
-    if (array_schema->var_size(attributes[i])) {
-      buffer_sizes_map[attributes[i]] = std::pair<uint64_t, uint64_t>(
-          buffer_sizes[bid], buffer_sizes[bid + 1]);
-      bid += 2;
-    } else {
-      buffer_sizes_map[attributes[i]] =
-          std::pair<uint64_t, uint64_t>(buffer_sizes[bid], 0);
-      ++bid;
-    }
-  }
-
-  // Get partitions
-  std::vector<void*> subarray_partitions_vec;
-  RETURN_NOT_OK(Reader::compute_subarray_partitions(
-      this,
-      array_schema,
-      metadata,
-      subarray,
-      layout,
-      buffer_sizes_map,
-      &subarray_partitions_vec));
-
-  // Handle empty partitions
-  if (subarray_partitions_vec.empty())
-    return Status::Ok();
-
-  // Copy subarray partitions
-  *subarray_partitions =
-      (void**)std::malloc(subarray_partitions_vec.size() * sizeof(void*));
-  if (*subarray_partitions == nullptr)
-    return LOG_STATUS(Status::StorageManagerError(
-        "Failed to compute subarray partitions; memory allocation error"));
-  for (uint64_t i = 0; i < (uint64_t)subarray_partitions_vec.size(); ++i) {
-    (*subarray_partitions)[i] = std::malloc(subarray_size);
-    if ((*subarray_partitions)[i] == nullptr) {
-      for (uint64_t j = 0; j < i; ++j)
-        std::free((*subarray_partitions)[j]);
-      std::free(*subarray_partitions);
-      *subarray_partitions = nullptr;
-      return LOG_STATUS(Status::StorageManagerError(
-          "Failed to compute subarray partitions; memory allocation error"));
-    }
-    std::memcpy(
-        (*subarray_partitions)[i], subarray_partitions_vec[i], subarray_size);
-  }
-  *npartitions = (uint64_t)subarray_partitions_vec.size();
 
   return Status::Ok();
 }
@@ -1348,7 +1281,7 @@ Status StorageManager::write(const URI& uri, Buffer* buffer) const {
 /* ****************************** */
 
 template <class T>
-Status StorageManager::array_compute_max_read_buffer_sizes(
+Status StorageManager::array_compute_max_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
     const T* subarray,
@@ -1361,7 +1294,7 @@ Status StorageManager::array_compute_max_read_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : metadata)
-    RETURN_NOT_OK(meta->add_max_read_buffer_sizes(subarray, buffer_sizes));
+    RETURN_NOT_OK(meta->add_max_buffer_sizes(subarray, buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema->dense()) {

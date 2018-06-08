@@ -147,34 +147,6 @@ class ArraySchema {
   /** Returns the attributes. */
   const std::vector<Attribute*>& attributes() const;
 
-  /**
-   * Retrieves the number of buffers that correspond to the input attributes.
-   * The function counts one buffer per fixed-sized attribute and two buffers
-   * per variable-sized attribute.
-   *
-   * @param attributes The input attributes.
-   * @param attribute_num The number of attributes.
-   * @param buffer_num The number of buffers to be retrieved.
-   * @return Status
-   */
-  Status buffer_num(
-      const char** attributes,
-      unsigned int attribute_num,
-      unsigned int* buffer_num) const;
-
-  /**
-   * Retrieves the number of buffers that correspond to the input attributes
-   * The function counts one buffer per fixed-sized attribute and two
-   * buffersper variable-sized attribute.
-   *
-   * @param attributes The input attributes.
-   * @param buffer_num The number of buffers to be retrieved.
-   * @return Status
-   */
-  Status buffer_num(
-      const std::vector<std::string>& attributes,
-      unsigned int* buffer_num) const;
-
   /** Returns the capacity. */
   uint64_t capacity() const;
 

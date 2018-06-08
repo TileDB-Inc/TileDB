@@ -168,9 +168,9 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_non_empty_domain
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_compute_max_read_buffer_sizes
+.. doxygenfunction:: tiledb_array_max_buffer_size
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_partition_subarray
+.. doxygenfunction:: tiledb_array_max_buffer_size_var
     :project: TileDB-C
 
 Array Schema

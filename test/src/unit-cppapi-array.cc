@@ -62,7 +62,7 @@ struct CPPArrayFx {
         ctx, "a3");  // (char, sizeof(std::array<double,2>)
     auto a4 =
         Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
-    auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point)
+    auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point))
     a1.set_compressor({TILEDB_BLOSC_LZ, -1});
 
     ArraySchema schema(ctx, TILEDB_DENSE);
@@ -156,28 +156,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       tiledb::Array::consolidate(ctx, "cpp_unit_array");
     } catch (std::exception& e) {
       std::cout << e.what() << std::endl;
-    }
-
-    {
-      Array array(ctx, "cpp_unit_array", TILEDB_READ);
-
-      // Reopen should work
-      array.reopen();
-
-      std::vector<std::string> attrs = {"a1"};
-      std::vector<size_t> buffer_el = {1};
-      auto parts = array.partition_subarray<int>(
-          subarray, attrs, buffer_el, TILEDB_ROW_MAJOR);
-      CHECK(parts.size() == 2);
-      CHECK(parts[0][0] == 0);
-      CHECK(parts[0][1] == 0);
-      CHECK(parts[0][2] == 0);
-      CHECK(parts[0][3] == 0);
-      CHECK(parts[1][0] == 1);
-      CHECK(parts[1][1] == 1);
-      CHECK(parts[1][2] == 0);
-      CHECK(parts[1][3] == 0);
-      array.close();
     }
 
     {

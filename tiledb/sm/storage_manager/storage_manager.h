@@ -155,6 +155,29 @@ class StorageManager {
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
+   * query, for all array attributes plus coordinates.
+   *
+   * @param open_array The opened array.
+   * @param snapshot The snapshot that indicates which fragment metadata should
+   *     be loaded from `open_array`.
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
+   *     the attribute (or coordinates) name to a pair of sizes (in bytes).
+   *     For fixed-sized attributes, the second size is ignored. For var-sized
+   *     attributes, the first is the offsets size and the second is the
+   *     values size.
+   * @return Status
+   */
+  Status array_compute_max_buffer_sizes(
+      OpenArray* open_array,
+      uint64_t snapshot,
+      const void* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          max_buffer_sizes_);
+
+  /**
+   * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
    * @param open_array The opened array.
@@ -163,50 +186,20 @@ class StorageManager {
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param attributes The attributes to focus on.
-   * @param buffer_sizes The buffer sizes to be retrieved. Note that one
-   *     buffer size corresponds to a fixed-sized attributes, and two
-   *     buffer sizes for a variable-sized attribute (the first is the
-   *     size of the offsets, whereas the second is the size of the
-   *     actual variable-sized cell values.
+   * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
+   *     the attribute (or coordinates) name to a pair of sizes (in bytes).
+   *     For fixed-sized attributes, the second size is ignored. For var-sized
+   *     attributes, the first is the offsets size and the second is the
+   *     values size.
    * @return Status
    */
-  Status array_compute_max_read_buffer_sizes(
+  Status array_compute_max_buffer_sizes(
       OpenArray* open_array,
       uint64_t snapshot,
       const void* subarray,
       const std::vector<std::string>& attributes,
-      uint64_t* buffer_sizes);
-
-  /**
-   * Computes the partitions a given subarray must be decomposed into, given
-   * buffer size budgets for a set of attributes.
-   *
-   * @param open_array The open array.
-   * @param snapshot The snapshot that indicates which fragment metadata should
-   *     be loaded from `open_array`.
-   * @param subarray The subarray.
-   * @param layout The layout in which the results are retrieved in the
-   * subarray.
-   * @param attributes The attributes.
-   * @param attribute_num The number of attributes.
-   * @param buffer_sizes The buffer size budgets. There is one buffer size per
-   *     fixed-sized attribute, and two for var-sized attributes (the first is
-   *     for the offsets, the second for the actual values).
-   * @param subarray_partitions The subarray partitions to be retrieved.
-   * @param npartitions The number of the retrieved partitions.
-   * @return Status
-   *
-   * @note The user is responsible for freeing `subarray_partitions`.
-   */
-  Status array_compute_subarray_partitions(
-      OpenArray* open_array,
-      uint64_t snapshot,
-      const void* subarray,
-      Layout layout,
-      const std::vector<std::string>& attributes,
-      const uint64_t* buffer_sizes,
-      void*** subarray_partitions,
-      uint64_t* npartitions);
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          max_buffer_sizes_);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
@@ -222,7 +215,7 @@ class StorageManager {
    *     is the offsets size, and the second size is the values size.
    * @return Status
    */
-  Status array_compute_max_read_buffer_sizes(
+  Status array_compute_max_buffer_sizes(
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const void* subarray,
@@ -749,7 +742,7 @@ class StorageManager {
    * @return Status
    */
   template <class T>
-  Status array_compute_max_read_buffer_sizes(
+  Status array_compute_max_buffer_sizes(
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const T* subarray,

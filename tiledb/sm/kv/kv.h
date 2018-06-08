@@ -168,10 +168,13 @@ class KV {
   /* ********************************* */
 
   /**
-   * The attributes with which the key-value store is opened.
-   * Note that these exclude the special key attributes and coordinates.
+   * These are the attributes provided during opening the KV (or all
+   * the attributes in the array schema if no attributes were provided.
    */
   std::vector<std::string> attributes_;
+
+  /** These are the corresponding types of `attributes_`. */
+  std::vector<Datatype> attribute_types_;
 
   /** The array object that will receive the read queries. */
   OpenArray* open_array_for_reads_;
@@ -180,73 +183,54 @@ class KV {
   OpenArray* open_array_for_writes_;
 
   /**
-   * Indicates whether an attribute is variable-sized or not.
-   * There is a one-to-one correspondence with `read_attributes_`.
-   * This is a map (attribute) -> (`true` for var size or `false` otherwise)
+   * Buffers to be used in read queries. This is a map from the
+   * attribute (or coordinates) name to a pair of buffers. For fixed-sized
+   * attributes, the second buffer is ignored. For var-sized attributes, the
+   * first buffer is for the offsets the second for the values.
    */
-  std::vector<bool> read_attribute_var_sizes_;
+  std::unordered_map<std::string, std::pair<void*, void*>> read_buffers_;
 
   /**
-   * Types of `read_attributes_`. This is necessary when getting key-value
-   * items, since these should also store the types of each
-   * attribute value.
+   * The read buffer sizes. This is a map from the attribute (or coordinates)
+   * name to a pair of sizes (in bytes). For fixed-sized attributes, the
+   * second size is ignored. For var-sized attributes, the first is the
+   * offsets size and the second the values size.
+   *
+   * Note that these are different from `read_buffer_alloced_sizes_`.
+   * `read_buffer_sizes_` are used in the read queries and may be altered
+   * by the queries to reflect the useful data in the buffers.
    */
-  std::vector<Datatype> read_attribute_types_;
-
-  /** These are the attributes to be passed to a TileDB read query. */
-  std::vector<std::string> read_attributes_;
-
-  /** Buffers to be used in read queries. */
-  void** read_buffers_;
-
-  /** The read buffer sizes. */
-  uint64_t* read_buffer_sizes_;
-
-  /** The number of read buffers. */
-  unsigned read_buffer_num_;
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      read_buffer_sizes_;
 
   /**
-   * Buffers holding the actual data to be read across all attributes.
-   * The buffers are sorted in the order the attributes are sorted
-   * in `read_attributes_`. Note that a variable-sized attribute
-   * adds two adjacent buffers in the vector, the first is for offsets
-   * and the second for the actual variable data.
+   * The read buffer allocated sizes. This is a map from the attribute
+   * (or coordinates) name to a pair of sizes (in bytes). For fixed-sized
+   * attributes, the second size is ignored. For var-sized attributes,
+   * the first is the offsets size and the second the values size.
    */
-  std::vector<Buffer*> read_buff_vec_;
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      read_buffer_alloced_sizes_;
 
   /** The snapshot at which the `open_array_for_reads_` got opened. */
   uint64_t snapshot_;
 
-  /** The corresponding types of `attributes_`. */
-  std::vector<Datatype> types_;
+  /**
+   * Buffers to be used in write queries. This is a map from the
+   * attribute (or coordinates) name to a pair of buffers. For fixed-sized
+   * attributes, the second buffer is ignored. For var-sized attributes, the
+   * first buffer is for the offsets the second for the values.
+   */
+  std::unordered_map<std::string, std::pair<Buffer*, Buffer*>> write_buffers_;
 
   /**
-   * Indicates whether an attribute is variable-sized or not.
-   * There is a one-to-one correspondence with `write_attributes_`.
-   * This is a map (attribute) -> (`true` for var size or `false` otherwise)
+   * The write buffer sizes. This is a map from the attribute (or coordinates)
+   * name to a pair of sizes (in bytes). For fixed-sized attributes, the
+   * second size is ignored. For var-sized attributes, the first is the
+   * offsets size and the second the values size.
    */
-  std::vector<bool> write_attribute_var_sizes_;
-
-  /** These are the attributes to be passed to a TileDB write query. */
-  std::vector<std::string> write_attributes_;
-
-  /** Buffers to be used in write queries. */
-  void** write_buffers_;
-
-  /** The write buffer sizes. */
-  uint64_t* write_buffer_sizes_;
-
-  /** The number of write buffers. */
-  unsigned write_buffer_num_;
-
-  /**
-   * Buffers holding the actual data to be written across all attributes.
-   * The buffers are sorted in the order the attributes are sorted
-   * in `write_attributes_`. Note that a variable-sized attribute
-   * adds two adjacent buffers in the vector, the first is for offsets
-   * and the second for the actual variable data.
-   */
-  std::vector<Buffer*> write_buff_vec_;
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      write_buffer_sizes_;
 
   /**
    * `True` if the key-value store is good for writes. This happens when
@@ -283,51 +267,20 @@ class KV {
   /**
    * Adds a value to a write buffer.
    *
+   * @param attribute The attribute the value belongs to.
    * @param value The value to be stored.
-   * @param bid The index of the write buffer to store the value.
-   * @param var `True` if the attribute is variable-sized.
    * @return Status
    */
-  Status add_value(const KVItem::Value& value, unsigned bid, bool var);
+  Status add_value(const std::string& attribute, const KVItem::Value& value);
 
   /** Frees memory of items. */
   void clear_items();
 
-  /** It deletes the attributes passed in the read/write queries. */
-  void clear_query_attributes();
-
-  /** Clears the read/write query buffers. */
-  void clear_query_buffers();
-
-  /** Clears the read buffers. */
+  /** Clears the read buffers.*/
   void clear_read_buffers();
 
-  /** Clears the read buffer vector. */
-  void clear_read_buff_vec();
-
-  /** Clears the write buffers. */
+  /** Clears the write buffers.*/
   void clear_write_buffers();
-
-  /** Clears the write buffer vector. */
-  void clear_write_buff_vec();
-
-  /** Allocates space for the read buffers. */
-  Status init_read_buffers();
-
-  /** Prepares the attributes to be passed to the read/write TileDB queries. */
-  Status prepare_query_attributes();
-
-  /** Prepares the attributes to be passed to the read TileDB queries. */
-  Status prepare_read_attributes();
-
-  /** Prepares the buffers for reading. */
-  Status prepare_read_buffers();
-
-  /** Prepares the attributes to be passed to the write TileDB queries. */
-  Status prepare_write_attributes();
-
-  /** Prepares the buffers for writing. */
-  Status prepare_write_buffers();
 
   /** Populates the write buffers with the buffered key-value items. */
   Status populate_write_buffers();
@@ -348,12 +301,11 @@ class KV {
    */
   Status realloc_read_buffers();
 
-  /** Sets the query buffers for the input attributes. */
-  Status set_query_buffers(
-      Query* query,
-      const std::vector<std::string>& attributes,
-      void** buffers,
-      uint64_t* buffer_sizes) const;
+  /** Sets the read query buffers. */
+  Status set_read_query_buffers(Query* query);
+
+  /** Sets the write query buffers. */
+  Status set_write_query_buffers(Query* query);
 
   /** Submits a read query. */
   Status submit_read_query(const uint64_t* subarray);

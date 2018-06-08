@@ -238,51 +238,49 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
-  const char* attributes[] = {"a1", "a2", "a3"};
-  uint64_t max_buffer_sizes[5];
   uint64_t subarray[] = {1, 4};
-  rc = tiledb_array_compute_max_read_buffer_sizes(
-      ctx, array, subarray, attributes, 3, &max_buffer_sizes[0]);
+  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
+      buffer_a3_off_size, buffer_a3_val_size;
+  rc =
+      tiledb_array_max_buffer_size(ctx, array, "a1", subarray, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_max_buffer_size_var(
+      ctx, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_max_buffer_size_var(
+      ctx, array, "a3", subarray, &buffer_a3_off_size, &buffer_a3_val_size);
   CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
-  void* buffer_a1 = std::malloc(max_buffer_sizes[0]);
-  auto buffer_a2_offsets = (uint64_t*)std::malloc(max_buffer_sizes[1]);
-  void* buffer_a2 = std::malloc(max_buffer_sizes[2]);
-  auto buffer_a3_offsets = (uint64_t*)std::malloc(max_buffer_sizes[3]);
-  void* buffer_a3 = std::malloc(max_buffer_sizes[4]);
-  void* buffers[] = {
-      buffer_a1, buffer_a2_offsets, buffer_a2, buffer_a3_offsets, buffer_a3};
-  uint64_t buffer_sizes[] = {max_buffer_sizes[0],
-                             max_buffer_sizes[1],
-                             max_buffer_sizes[2],
-                             max_buffer_sizes[3],
-                             max_buffer_sizes[4]};
+  void* buffer_a1 = std::malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)std::malloc(buffer_a2_off_size);
+  void* buffer_a2_val = std::malloc(buffer_a2_val_size);
+  auto buffer_a3_off = (uint64_t*)std::malloc(buffer_a3_off_size);
+  void* buffer_a3_val = std::malloc(buffer_a3_val_size);
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  rc = tiledb_query_set_buffer(ctx, query, "a1", buffer_a1, &buffer_a1_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx,
       query,
-      attributes[1],
-      (uint64_t*)buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(
       ctx,
       query,
-      attributes[2],
-      (uint64_t*)buffers[3],
-      &buffer_sizes[3],
-      buffers[4],
-      &buffer_sizes[4]);
+      "a3",
+      buffer_a3_off,
+      &buffer_a3_off_size,
+      buffer_a3_val,
+      &buffer_a3_val_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -294,27 +292,27 @@ void StringFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
-  CHECK(buffer_sizes[0] == sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
-  CHECK(buffer_sizes[1] == 4 * sizeof(uint64_t));
-  CHECK(buffer_sizes[2] == sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
-  CHECK(buffer_sizes[3] == 4 * sizeof(uint64_t));
-  CHECK(buffer_sizes[4] == sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
+  CHECK(buffer_a1_size == sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
+  CHECK(buffer_a2_off_size == 4 * sizeof(uint64_t));
+  CHECK(buffer_a2_val_size == sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
+  CHECK(buffer_a3_off_size == 4 * sizeof(uint64_t));
+  CHECK(buffer_a3_val_size == sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
   CHECK(!std::memcmp(
       buffer_a1, UTF8_STRINGS, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE));
   CHECK(!std::memcmp(
-      buffer_a2, UTF8_STRINGS_VAR, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE));
-  CHECK(buffer_a2_offsets[0] == UTF8_OFFSET_0);
-  CHECK(buffer_a2_offsets[1] == UTF8_OFFSET_1);
-  CHECK(buffer_a2_offsets[2] == UTF8_OFFSET_2);
-  CHECK(buffer_a2_offsets[3] == UTF8_OFFSET_3);
+      buffer_a2_val, UTF8_STRINGS_VAR, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE));
+  CHECK(buffer_a2_off[0] == UTF8_OFFSET_0);
+  CHECK(buffer_a2_off[1] == UTF8_OFFSET_1);
+  CHECK(buffer_a2_off[2] == UTF8_OFFSET_2);
+  CHECK(buffer_a2_off[3] == UTF8_OFFSET_3);
   CHECK(!std::memcmp(
-      buffer_a3,
+      buffer_a3_val,
       UTF16_STRINGS_VAR,
       sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE));
-  CHECK(buffer_a3_offsets[0] == UTF16_OFFSET_0);
-  CHECK(buffer_a3_offsets[1] == UTF16_OFFSET_1);
-  CHECK(buffer_a3_offsets[2] == UTF16_OFFSET_2);
-  CHECK(buffer_a3_offsets[3] == UTF16_OFFSET_3);
+  CHECK(buffer_a3_off[0] == UTF16_OFFSET_0);
+  CHECK(buffer_a3_off[1] == UTF16_OFFSET_1);
+  CHECK(buffer_a3_off[2] == UTF16_OFFSET_2);
+  CHECK(buffer_a3_off[3] == UTF16_OFFSET_3);
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -325,10 +323,10 @@ void StringFx::read_array(const std::string& array_name) {
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
-  std::free(buffer_a2);
-  std::free(buffer_a2_offsets);
-  std::free(buffer_a3);
-  std::free(buffer_a3_offsets);
+  std::free(buffer_a2_off);
+  std::free(buffer_a2_val);
+  std::free(buffer_a3_off);
+  std::free(buffer_a3_val);
 }
 
 void StringFx::delete_array(const std::string& array_name) {

@@ -88,7 +88,7 @@ class FragmentMetadata {
    * @return Status
    */
   template <class T>
-  Status add_max_read_buffer_sizes(
+  Status add_max_buffer_sizes(
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;
@@ -108,7 +108,7 @@ class FragmentMetadata {
    * @return Status
    */
   template <class T>
-  Status add_max_read_buffer_sizes_dense(
+  Status add_max_buffer_sizes_dense(
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;
@@ -128,7 +128,7 @@ class FragmentMetadata {
    * @return Status
    */
   template <class T>
-  Status add_max_read_buffer_sizes_sparse(
+  Status add_max_buffer_sizes_sparse(
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;

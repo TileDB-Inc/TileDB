@@ -309,20 +309,6 @@ class Reader {
   const ArraySchema* array_schema() const;
 
   /**
-   * Computes a vector of `subarray_partitions`
-   * into which `subarray` must be partitioned,
-   * such that each subarray in `subarrays` can be safely answered by the
-   * query without a memory overflow.
-   *
-   * @param subarray The input subarray.
-   * @param subarray_partitions The vector of subarray partitions to be
-   * retrieved.
-   * @return Status
-   */
-  Status compute_subarray_partitions(
-      void* subarray, std::vector<void*>* subarray_partitions) const;
-
-  /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
    * partitions in the read state have not been processed or there
    * was some buffer overflow.
@@ -427,32 +413,6 @@ class Reader {
    * @return Status
    */
   Status set_subarray(const void* subarray);
-
-  /* ********************************* */
-  /*          STATIC FUNCTIONS         */
-  /* ********************************* */
-
-  /**
-   * Compute the partitions of a subarray given some buffer sizes budget.
-   *
-   * @param storage_manager The storage manager.
-   * @param array_schema The array schema.
-   * @param fragment_metadata The fragment metadata.
-   * @param subarray The subarray to compute the partitions on.
-   * @param layout The layout of the subarray query.
-   * @param buffer_sizes_map The buffer sizes budget for each attribute.
-   * @param subarray_partitions The subarray partitions result.
-   * @return Status
-   */
-  static Status compute_subarray_partitions(
-      StorageManager* storage_manager,
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      const void* subarray,
-      Layout layout,
-      const std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>&
-          buffer_sizes_map,
-      std::vector<void*>* subarray_partitions);
 
  private:
   /* ********************************* */
