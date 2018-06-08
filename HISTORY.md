@@ -48,6 +48,12 @@
 * Added `tiledb_query_set_buffer` which sets a single attribute buffer
 * Added `tiledb_query_get_type`
 * Added `tiledb_array_get_query_type`
+* Added `tiledb_kv_schema_{set,get}_capacity`.
+* Added `tiledb_query_has_results`
+* Added `tiledb_kv_is_dirty`
+* Added `tiledb_kv_iter_reset`
+* Added `tiledb_array_reopen`
+* Added `tiledb_kv_reopen`
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -67,6 +73,14 @@
 * Added `Array::query_type`
 * Added `Query::query_type`
 * Added optional attributes argument in `Map::Map` and `Map::open`
+* Added `MapSchema::set_capacity` and `MapSchema::capacity`
+* Added `Query::has_results`
+* Added `Map::is_dirty`
+* Added `MapIter::reset`
+* Added an extra `Query` constructor that omits the query type (this is inherited from the input array).
+* Changed the return type of the `Query` setters to return the object reference.
+* Added `Array::reopen`
+* Added `Map::reopen`
 
 ## Breaking changes
 

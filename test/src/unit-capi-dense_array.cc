@@ -514,9 +514,21 @@ int* DenseArrayFx::read_dense_array_2D(
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
 
+  // Check that the query has no results yet
+  int has_results;
+  rc = tiledb_query_has_results(ctx_, query, &has_results);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!has_results);
+
   // Read from array
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Now the query must have results
+  rc = tiledb_query_has_results(ctx_, query, &has_results);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_results);
+
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
   rc =
@@ -2689,7 +2701,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
 
   // Create and write dense array
-  std::string array_name = temp_dir + "dense_non_empty_domain";
+  std::string array_name = temp_dir + "dense_open_array";
   create_dense_array(array_name);
 
   // Allocate array
@@ -2776,6 +2788,100 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+
+  remove_temp_dir(temp_dir);
+}
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, reopen array checks",
+    "[capi], [dense], [dense-reopen-array-checks]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  create_temp_dir(temp_dir);
+
+  // Create and write dense array
+  std::string array_name = temp_dir + "dense_reopen_array";
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+
+  // Allocate array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Re-opening an array that is not open should fail
+  rc = tiledb_array_reopen(ctx_, array);
+  CHECK(rc == TILEDB_ERR);
+
+  // Open array for reads
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Write something in the meantime
+  write_partial_dense_array(array_name);
+
+  // Prepare buffer
+  const uint64_t subarray[] = {3, 3, 4, 4};
+  int a1_buffer[1];
+  uint64_t a1_buff_size = sizeof(a1_buffer);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit a read query
+  tiledb_query_t* query_1;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query_1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_1, "a1", &a1_buffer, &a1_buff_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query_1, &subarray[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_1);
+  CHECK(rc == TILEDB_OK);
+
+  // The read query should not see the second fragment
+  CHECK(a1_buffer[0] == 13);
+
+  // Reopen the array to see the new fragment
+  rc = tiledb_array_reopen(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit a new query
+  tiledb_query_t* query_2;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query_2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "a1", &a1_buffer, &a1_buff_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query_2, &subarray[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_2);
+  CHECK(rc == TILEDB_OK);
+
+  // The new query see the updated array
+  CHECK(a1_buffer[0] == 1);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query_1);
+  tiledb_query_free(&query_2);
+
+  // Open the array for writes
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Re-opening arrays for writes should fail
+  rc = tiledb_array_reopen(ctx_, array);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
 
   remove_temp_dir(temp_dir);
 }

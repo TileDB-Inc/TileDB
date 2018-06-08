@@ -116,6 +116,35 @@ class Query {
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   }
 
+  /**
+   * Creates a TileDB query object.
+   *
+   * When creating a query, the storage manager "opens" the array in read or
+   * write mode based on the query type, incrementing the array's reference
+   * count and loading the array metadata (schema and fragment metadata) into
+   * its main-memory cache.
+   *
+   * The storage manager also acquires a **shared lock** on the array. This
+   * means multiple read and write queries to the same array can be made
+   * concurrently (in TileDB, only consolidation requires an exclusive lock for
+   * a short period of time).
+   *
+   * To "close" an array, the user should call `Query::finalize()` (see the
+   * documentation of that function for more details).
+   *
+   * @param ctx TileDB context
+   * @param array_uri Array URI
+   */
+  Query(const Context& ctx, const Array& array)
+      : ctx_(ctx)
+      , schema_(ctx, array.uri())
+      , uri_(array.uri()) {
+    tiledb_query_t* q;
+    auto type = array.query_type();
+    ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
+    query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
+  }
+
   Query(const Query&) = default;
   Query(Query&& o) = default;
   Query& operator=(const Query&) = default;
@@ -146,6 +175,17 @@ class Query {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_get_status(ctx, query_.get(), &status));
     return to_status(status);
+  }
+
+  /**
+   * Returns `true` if the query has results. Applicable only to read
+   * queries (it returns `false` for write queries).
+   */
+  bool has_results() const {
+    int ret;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_has_results(ctx, query_.get(), &ret));
+    return (bool)ret;
   }
 
   /** Submits the query. Call will block until query is complete. */
@@ -228,7 +268,7 @@ class Query {
    * @param size The number of subarray elements.
    */
   template <typename T = uint64_t>
-  void set_subarray(const T* pairs, uint64_t size) {
+  Query& set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
     if (size != schema_.domain().ndim() * 2) {
@@ -241,6 +281,7 @@ class Query {
     for (unsigned i = 2; i < size - 1; i += 2) {
       subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
     }
+    return *this;
   }
 
   /**
@@ -253,8 +294,8 @@ class Query {
    * per dimension.
    */
   template <typename Vec>
-  void set_subarray(const Vec& pairs) {
-    set_subarray(pairs.data(), pairs.size());
+  Query& set_subarray(const Vec& pairs) {
+    return set_subarray(pairs.data(), pairs.size());
   }
 
   /**
@@ -266,8 +307,8 @@ class Query {
    * @param pairs List of [start, stop] coordinates per dimension.
    */
   template <typename T = uint64_t>
-  void set_subarray(const std::initializer_list<T>& l) {
-    set_subarray(std::vector<T>(l));
+  Query& set_subarray(const std::initializer_list<T>& l) {
+    return set_subarray(std::vector<T>(l));
   }
 
   /**
@@ -281,7 +322,7 @@ class Query {
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
-  void set_subarray(const std::vector<std::array<T, 2>>& pairs) {
+  Query& set_subarray(const std::vector<std::array<T, 2>>& pairs) {
     std::vector<T> buf;
     buf.reserve(pairs.size() * 2);
     std::for_each(
@@ -289,7 +330,7 @@ class Query {
           buf.push_back(p[0]);
           buf.push_back(p[1]);
         });
-    set_subarray(buf);
+    return set_subarray(buf);
   }
 
   /** Set the coordinate buffer for unordered queries
@@ -301,8 +342,8 @@ class Query {
    * @param size The number of elements in the coordinate array buffer
    * **/
   template <typename T>
-  void set_coordinates(T* buf, uint64_t size) {
-    set_buffer(TILEDB_COORDS, buf, size);
+  Query& set_coordinates(T* buf, uint64_t size) {
+    return set_buffer(TILEDB_COORDS, buf, size);
   }
 
   /** Set the coordinate buffer for unordered queries
@@ -312,8 +353,8 @@ class Query {
    * @param buf Coordinate vector
    * **/
   template <typename Vec>
-  void set_coordinates(Vec& buf) {
-    set_coordinates(buf.data(), buf.size());
+  Query& set_coordinates(Vec& buf) {
+    return set_coordinates(buf.data(), buf.size());
   }
 
   /**
@@ -327,13 +368,14 @@ class Query {
    * @param nelements Number of array elements
    **/
   template <typename T>
-  void set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
+  Query& set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
     auto ctx = ctx_.get();
     auto size = nelements * sizeof(T);
     buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
     element_sizes_[attr] = sizeof(T);
     ctx.handle_error(tiledb_query_set_buffer(
         ctx, query_.get(), attr.c_str(), buff, &(buff_sizes_[attr].second)));
+    return *this;
   }
 
   /**
@@ -344,7 +386,7 @@ class Query {
    * @param buf Buffer vector with elements of the attribute type.
    **/
   template <typename Vec>
-  void set_buffer(const std::string& attr, Vec& buf) {
+  Query& set_buffer(const std::string& attr, Vec& buf) {
     return set_buffer(attr, buf.data(), buf.size());
   }
 
@@ -364,7 +406,7 @@ class Query {
    * @param data_nelements Number of array elements in data buffer.
    **/
   template <typename T>
-  void set_buffer(
+  Query& set_buffer(
       const std::string& attr,
       uint64_t* offsets,
       uint64_t offset_nelements,
@@ -383,6 +425,7 @@ class Query {
         &(buff_sizes_[attr].first),
         (void*)data,
         &(buff_sizes_[attr].second)));
+    return *this;
   }
 
   /**
@@ -397,9 +440,10 @@ class Query {
    *        std::string, where the values of each cell are concatenated.
    **/
   template <typename Vec>
-  void set_buffer(
+  Query& set_buffer(
       const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
-    set_buffer(attr, offsets.data(), offsets.size(), &data[0], data.size());
+    return set_buffer(
+        attr, offsets.data(), offsets.size(), &data[0], data.size());
   }
 
   /**
@@ -410,9 +454,9 @@ class Query {
    * @param buf pair of offset, data buffers
    **/
   template <typename Vec>
-  void set_buffer(
+  Query& set_buffer(
       const std::string& attr, std::pair<std::vector<uint64_t>, Vec>& buf) {
-    set_buffer(attr, buf.first, buf.second);
+    return set_buffer(attr, buf.first, buf.second);
   }
 
   /* ********************************* */

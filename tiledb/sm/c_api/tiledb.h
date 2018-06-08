@@ -2074,6 +2074,26 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     void* callback_data);
 
 /**
+ * Checks if the query has returned any results. Applicable only to
+ * read queries; it sets `has_results` to `0 in the case of writes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int has_results;
+ * tiledb_query_has_results(ctx, query, &has_results);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param has_results Set to `1` if the query returned results and `0`
+ *     otherwise.
+ * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
+ */
+TILEDB_EXPORT int tiledb_query_has_results(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, int* has_results);
+
+/**
  * Retrieves the status of a query.
  *
  * **Example:**
@@ -2161,6 +2181,32 @@ TILEDB_EXPORT int tiledb_array_alloc(
  */
 TILEDB_EXPORT int tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
+
+/**
+ * Reopens a TileDB array (the array must be already open). This is useful
+ * when the array got updated after it got opened and the `tiledb_array_t`
+ * object got created. To sync-up with the updates, the user must either
+ * close the array and open with `tiledb_array_open`, or just use
+ * `tiledb_array_reopen` without closing. This function will be generally
+ * faster than the former alternative.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_array_reopen(ctx, array);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be re-opened.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This is applicable only to arrays opened for reads.
+ */
+TILEDB_EXPORT int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
  * Closes a TileDB array.
@@ -2583,6 +2629,23 @@ TILEDB_EXPORT int tiledb_kv_schema_add_attribute(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, tiledb_attribute_t* attr);
 
 /**
+ * Sets the tile capacity.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_schema_set_capacity(ctx, kv_schema, 10000);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_schema The kv schema.
+ * @param capacity The capacity to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_schema_set_capacity(
+    tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, uint64_t capacity);
+
+/**
  * Checks the correctness of the key-value schema.
  *
  * **Example:**
@@ -2618,6 +2681,24 @@ TILEDB_EXPORT int tiledb_kv_schema_check(
  */
 TILEDB_EXPORT int tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema);
+
+/**
+ * Retrieves the capacity.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t capacity;
+ * tiledb_kv_schema_get_capacity(ctx, kv_schema, &capacity);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_schema The kv schema.
+ * @param capacity The capacity to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_schema_get_capacity(
+    tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema, uint64_t* capacity);
 
 /**
  * Retrieves the number of array attributes.
@@ -2933,20 +3014,45 @@ TILEDB_EXPORT int tiledb_kv_alloc(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param kv An opened key-value store object.
+ * @param kv The key-value store object to be opened.
  * @param attributes The attributes to focus on. `NULL` indicates all
  *     attributes. If the key-value object is used for writing key-value
  *     items, **all** attributes must be specified.
  * @param attribute_num The number of `attributes`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note If the kv object is already open, this function has no effect.
+ * @note If the key-value store is already open, the function throws
+ *     an error.
  */
 TILEDB_EXPORT int tiledb_kv_open(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     const char** attributes,
     unsigned int attribute_num);
+
+/**
+ * Reopens a key-value store. This is useful when there were updates
+ * to the key-value store after it got opened. This function reopens
+ * the key-value store so that it can "see" the new fragments.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * const char* attributes[] = {"attr_1", "attr_2"};
+ * tiledb_kv_open(ctx, kv, attributes, 2);
+ * // Some code here
+ * tiledb_kv_reopen(ctx, kv);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv An opened key-value store object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note
+ */
+TILEDB_EXPORT int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
 /**
  * Closes a key-value store and frees all memory. All buffered written items
@@ -2980,7 +3086,7 @@ TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
  *
  * @code{.c}
  * tiledb_kv_schema_t* kv_schema;
- * tiledb_kv_get_schema(ctx, &kv_schema);
+ * tiledb_kv_get_schema(ctx, kv, &kv_schema);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -2992,6 +3098,27 @@ TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
  */
 TILEDB_EXPORT int tiledb_kv_get_schema(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_schema_t** kv_schema);
+
+/**
+ * Checks if the key-value store is dirty, i.e., if the user added items
+ * to the key-value store that are kept in main-memory and have not
+ * been flushed to persistent storage.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int is_dirty;
+ * tiledb_kv_is_dirty(ctx, kv, &is_dirty);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The open kv.
+ * @param is_dirty Set to `1` or `0` based on whether the key-value store
+ *     is dirty or not, respectively.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_is_dirty(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_dirty);
 
 /**
  * Adds a key-value item to a key-value store. The item is buffered
@@ -3170,6 +3297,22 @@ TILEDB_EXPORT int tiledb_kv_iter_next(
  */
 TILEDB_EXPORT int tiledb_kv_iter_done(
     tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int* done);
+
+/**
+ * Resets a key-value store iterator.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_iter_reset(ctx, kv_iter);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_iter The key-value store iterator to be reset.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_iter_reset(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
 
 /* ****************************** */
 /*        VIRTUAL FILESYSTEM      */

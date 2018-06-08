@@ -105,6 +105,15 @@ class Array {
     schema_ = ArraySchema(ctx, array_schema);
   }
 
+  /** Re-opens the array. */
+  void reopen() {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_reopen(ctx, array_.get()));
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+  }
+
   /** Closes the array. */
   void close() {
     auto& ctx = ctx_.get();

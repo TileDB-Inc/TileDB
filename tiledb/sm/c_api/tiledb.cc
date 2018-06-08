@@ -1870,6 +1870,17 @@ int tiledb_query_submit_async(
   return TILEDB_OK;
 }
 
+int tiledb_query_has_results(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, int* has_results) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *has_results = query->query_->has_results();
+
+  return TILEDB_OK;
+}
+
 int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // Sanity check
@@ -1941,7 +1952,7 @@ int tiledb_array_open(
   // Error if the array is already open
   if (array->is_open_) {
     auto st = tiledb::sm::Status::Error(
-        "Failed to create open TileDB array object; Array object already open");
+        "Failed to open TileDB array object; Array object already open");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -1958,6 +1969,29 @@ int tiledb_array_open(
     return TILEDB_ERR;
 
   array->is_open_ = true;
+
+  return TILEDB_OK;
+}
+
+int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Error if the array is not open
+  if (!array->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to re-open TileDB array object; Array object not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Re-open array
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->array_reopen(
+              array->open_array_, &(array->snapshot_))))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }
@@ -2373,6 +2407,15 @@ int tiledb_kv_schema_add_attribute(
   return TILEDB_OK;
 }
 
+int tiledb_kv_schema_set_capacity(
+    tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, uint64_t capacity) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  kv_schema->array_schema_->set_capacity(capacity);
+  return TILEDB_OK;
+}
+
 int tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
@@ -2410,6 +2453,17 @@ int tiledb_kv_schema_load(
     return TILEDB_ERR;
   }
 
+  return TILEDB_OK;
+}
+
+int tiledb_kv_schema_get_capacity(
+    tiledb_ctx_t* ctx,
+    const tiledb_kv_schema_t* kv_schema,
+    uint64_t* capacity) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *capacity = kv_schema->array_schema_->capacity();
   return TILEDB_OK;
 }
 
@@ -2873,9 +2927,15 @@ int tiledb_kv_open(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // If the kv object is already open, do nothing
-  if (kv->is_open_)
-    return TILEDB_OK;
+  // Error if the key-value store is already open
+  if (kv->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to open TileDB key-value store object; Key-value store already "
+        "open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   // Normalize attribute names
   std::vector<std::string> attribute_names;
@@ -2890,6 +2950,27 @@ int tiledb_kv_open(
     return TILEDB_ERR;
 
   kv->is_open_ = true;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Error if the kv is not open
+  if (!kv->is_open_) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to re-open TileDB key-value store object; Key-value store "
+        "object not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Re-open kv
+  if (save_error(ctx, kv->kv_->reopen()))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }
@@ -2943,6 +3024,15 @@ int tiledb_kv_get_schema(
 
   (*kv_schema)->array_schema_ = kv->kv_->open_array_for_reads()->array_schema();
   (*kv_schema)->should_delete_ = false;
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_is_dirty(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_dirty) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_dirty = (int)kv->kv_->dirty();
 
   return TILEDB_OK;
 }
@@ -3060,6 +3150,17 @@ int tiledb_kv_iter_done(
     return TILEDB_ERR;
 
   *done = kv_iter->kv_iter_->done();
+
+  return TILEDB_OK;
+}
+
+int tiledb_kv_iter_reset(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_iter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, kv_iter->kv_iter_->reset()))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }

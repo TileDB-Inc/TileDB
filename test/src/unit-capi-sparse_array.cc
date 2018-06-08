@@ -1844,9 +1844,20 @@ void SparseArrayFx::check_sparse_array_no_results(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
 
+  // Check that it has no results before submission
+  int has_results;
+  rc = tiledb_query_has_results(ctx_, query, &has_results);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!has_results);
+
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Check that it has no results also after submission
+  rc = tiledb_query_has_results(ctx_, query, &has_results);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!has_results);
 
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);

@@ -105,6 +105,12 @@ class Query {
   /** Returns a vector with the fragment URIs. */
   std::vector<URI> fragment_uris() const;
 
+  /**
+   * Returns `true` if the query has results. Applicable only to read
+   * queries (it returns `false` for write queries).
+   */
+  bool has_results() const;
+
   /** Initializes the query. */
   Status init();
 

@@ -165,6 +165,23 @@ class MapSchema : public Schema {
     return {ctx, attr};
   }
 
+  /** Sets the tile capacity. */
+  MapSchema& set_capacity(uint64_t capacity) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_kv_schema_set_capacity(ctx, schema_.get(), capacity));
+    return *this;
+  }
+
+  /** Returns the tile capacity. */
+  uint64_t capacity() const {
+    auto& ctx = ctx_.get();
+    uint64_t capacity;
+    ctx.handle_error(
+        tiledb_kv_schema_get_capacity(ctx, schema_.get(), &capacity));
+    return capacity;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

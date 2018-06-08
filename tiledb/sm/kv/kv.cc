@@ -146,6 +146,7 @@ void KV::clear() {
 
 Status KV::finalize() {
   RETURN_NOT_OK(flush());
+  std::unique_lock<std::mutex> lck(mtx_);
   RETURN_NOT_OK(storage_manager_->array_close(kv_uri_, QueryType::READ));
   RETURN_NOT_OK(storage_manager_->array_close(kv_uri_, QueryType::WRITE));
   clear();
@@ -373,6 +374,11 @@ Status KV::set_max_buffered_items(uint64_t max_items) {
 
 uint64_t KV::snapshot() const {
   return snapshot_;
+}
+
+Status KV::reopen() {
+  std::unique_lock<std::mutex> lck(mtx_);
+  return storage_manager_->array_reopen(open_array_for_reads_, &snapshot_);
 }
 
 /* ********************************* */

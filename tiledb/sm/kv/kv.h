@@ -147,6 +147,9 @@ class KV {
    */
   Status finalize();
 
+  /** Re-opens the key-value store for reads. */
+  Status reopen();
+
   /** The open array used for dispatching read queries. */
   OpenArray* open_array_for_reads() const;
 
