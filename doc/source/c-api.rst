@@ -5,6 +5,8 @@ TileDB C API Reference
 
 Types
 -----
+.. doxygentypedef:: tiledb_array_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_config_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_config_iter_t
@@ -24,6 +26,8 @@ Types
 .. doxygentypedef:: tiledb_query_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_t
+    :project: TileDB-C
+.. doxygentypedef:: tiledb_kv_schema_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_item_t
     :project: TileDB-C
@@ -51,11 +55,17 @@ Constants
     :project: TileDB-C
 .. doxygendefine:: TILEDB_MAX_PATH
     :project: TileDB-C
+.. doxygendefine:: TILEDB_OFFSET_SIZE
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_coords
     :project: TileDB-C
 .. doxygenfunction:: tiledb_var_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_max_path
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_datatype_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_offset_size
     :project: TileDB-C
 
 Enumerations
@@ -92,6 +102,8 @@ Context
 .. doxygenfunction:: tiledb_ctx_get_last_error
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_is_supported_fs
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_ctx_cancel_tasks
     :project: TileDB-C
 
 Config
@@ -150,6 +162,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_schema
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_query_type
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_non_empty_domain
@@ -176,6 +190,8 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_set_tile_order
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_set_coords_compressor
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_set_offsets_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_check
     :project: TileDB-C
@@ -221,6 +237,8 @@ Attribute
 .. doxygenfunction:: tiledb_attribute_get_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_cell_val_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_cell_size
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_dump
     :project: TileDB-C
@@ -275,6 +293,8 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_finalize
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_submit
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_submit_async
@@ -314,6 +334,8 @@ Key-value
 .. doxygenfunction:: tiledb_kv_flush
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_get_item
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_get_schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_has_key
     :project: TileDB-C
@@ -365,8 +387,6 @@ Key-value Iterator
 ------------------
 .. doxygenfunction:: tiledb_kv_iter_alloc
     :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_finalize
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_free
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_here
@@ -396,6 +416,8 @@ VFS
 .. doxygenfunction:: tiledb_vfs_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_get_config
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_create_bucket
     :project: TileDB-C
