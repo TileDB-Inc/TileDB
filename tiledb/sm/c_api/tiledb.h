@@ -2353,8 +2353,8 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int* is_empty);
 
 /**
- * Computes an upper bound on the buffer sizes required for a read
- * query, for a given subarray and set of attributes.
+ * Computes an upper bound on the buffer size (in bytes) required for a read
+ * query, for a given **fixed-sized* attribute and subarray.
  *
  * **Example:**
  *
@@ -2362,37 +2362,30 @@ TILEDB_EXPORT int tiledb_array_get_non_empty_domain(
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
- * uint64_t buffer_sizes[2];
- * const char* attributes[] = {"attr_1", "attr_2"};
+ * uint64_t buffer_size;
+ * const char* attribute = "attr_1";
  * uint64_t subarray[] = {10, 20, 10, 100};
- * tiledb_array_compute_max_read_buffer_sizes(
- *     ctx, array, subarray, attributes, 2, buffer_sizes);
+ * tiledb_array_max_buffer_size(ctx, array, attribute, subarray, buffer_size);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param array The array object (must be opened beforehand).
+ * @param attribute The fixed-sized attribute to focus on.
  * @param subarray The subarray to focus on. Note that it must have the same
  *     underlying type as the array domain.
- * @param attributes The attributes to focus on.
- * @param attribute_num The number of attributes.
- * @param buffer_sizes The buffer sizes to be retrieved. Note that one
- *     buffer size corresponds to a fixed-sized attributes, and two
- *     buffer sizes for a variable-sized attribute (the first is the
- *     size of the offsets, whereas the second is the size of the
- *     actual variable-sized cell values.
+ * @param buffer_size The buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
+TILEDB_EXPORT int tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    const char* attribute,
     const void* subarray,
-    const char** attributes,
-    unsigned attribute_num,
-    uint64_t* buffer_sizes);
+    uint64_t* buffer_size);
 
 /**
- * Computes the partitions a given subarray must be decomposed into, given
- * buffer size budgets for a set of attributes.
+ * Computes an upper bound on the buffer size (in bytes) required for a read
+ * query, for a given **var-sized* attribute and subarray.
  *
  * **Example:**
  *
@@ -2400,65 +2393,28 @@ TILEDB_EXPORT int tiledb_array_compute_max_read_buffer_sizes(
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
- * uint64_t buffer_sizes[] = {200, 200};
- * const char* attributes[] = {"attr_1", "attr_2"};
- * uint64_t subarray[] = {11, 20, 11, 20};
- * uint64_t npartitions;
- * void** subarray_partitions;
- * tiledb_array_partition_subarray(
- *     ctx,
- *     array,
- *     subarray,
- *     TILEDB_ROW_MAJOR,
- *     attributes,
- *     2,
- *     buffer_sizes,
- *     &subarray_partitions,
- *     &npartitions);
- *
- * // This is how you should free
- * if (subarray_partitions != nullptr) {
- *   for(uint64_t i=0; i<npartitions; ++i)
- *     free(subarray_partitions[i]);
- *   free(subarray_partitions);
- * }
+ * uint64_t buffer_off_size, buffer_val_size;
+ * const char* attribute = "attr_2";
+ * uint64_t subarray[] = {10, 20, 10, 100};
+ * tiledb_array_max_buffer_size_var(
+ *     ctx, array, attribute, subarray, buffer_off_size, buffer_val_size);
  * @endcode
- *
- * If `attr_1` and `attr_2` have type `int32`, then in the above example
- * `npartitions` will be set to `2`, and `subarray_partitions` to
- * `{ {11, 15, 11, 20}, {16, 20, 11, 20} }`. Note that the number of dimensions
- * and domain type are necessary for properly parsing `subarray_partitions`.
- *
- * If instead the layout was set to `TILEDB_COL_MAJOR`, then
- * `subarray_partitions` would be equalt to
- * `{ {11, 20, 11, 15}, {11, 20, 16, 20} }` instead (splitting by columns
- * instead of by rows).
  *
  * @param ctx The TileDB context.
  * @param array The array object (must be opened beforehand).
- * @param subarray The subarray.
- * @param layout The layout in which the results are retrieved in the subarray.
- * @param attributes The attributes.
- * @param attribute_num The number of attributes.
- * @param buffer_sizes The buffer size budgets. There is one buffer size per
- *     fixed-sized attribute, and two for var-sized attributes (the first is
- *     for the offsets, the second for the actual values).
- * @param subarray_partitions The subarray partitions to be retrieved.
- * @param npartitions The number of the retrieved partitions.
+ * @param attribute The var-sized attribute to focus on.
+ * @param subarray The subarray to focus on. Note that it must have the same
+ *     underlying type as the array domain.
+ * @param buffer_size The buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The user is responsible for freeing `subarray_partitions`.
  */
-TILEDB_EXPORT int tiledb_array_partition_subarray(
+TILEDB_EXPORT int tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    const char* attribute,
     const void* subarray,
-    tiledb_layout_t layout,
-    const char** attributes,
-    unsigned attribute_num,
-    const uint64_t* buffer_sizes,
-    void*** subarray_partitions,
-    uint64_t* npartitions);
+    uint64_t* buffer_off_size,
+    uint64_t* buffer_val_size);
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */

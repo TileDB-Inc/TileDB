@@ -47,12 +47,6 @@ KV::KV(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
   schema_ = nullptr;
   max_items_ = constants::kv_max_items;
-  write_buffers_ = nullptr;
-  write_buffer_sizes_ = nullptr;
-  write_buffer_num_ = 0;
-  read_buffers_ = nullptr;
-  read_buffer_sizes_ = nullptr;
-  read_buffer_num_ = 0;
   open_array_for_reads_ = nullptr;
   open_array_for_writes_ = nullptr;
   snapshot_ = 0;
@@ -90,55 +84,44 @@ Status KV::init(const URI& kv_uri, const std::vector<std::string>& attributes) {
 
   schema_ = open_array_for_reads_->array_schema();
 
-  auto attribute_num = attributes.size();
-  if (attribute_num == 0) {  // Load all attributes
+  // Get attributes
+  if (attributes.empty()) {  // Load all attributes
     write_good_ = true;
-    auto attr_num = schema_->attribute_num();
-    attributes_.emplace_back(constants::coords);
-    types_.emplace_back(Datatype::UINT64);
-    for (unsigned i = 0; i < attr_num; ++i) {
-      attributes_.emplace_back(schema_->attribute_name(i));
-      types_.emplace_back(schema_->type(i));
-    }
+    auto schema_attributes = schema_->attributes();
+    attributes_.push_back(constants::coords);
+    for (const auto& attr : schema_attributes)
+      attributes_.push_back(attr->name());
   } else {  // Load input attributes
     write_good_ = false;
-    attributes_.emplace_back(constants::coords);
-    types_.emplace_back(Datatype::UINT64);
-    attributes_.emplace_back(constants::key_attr_name);
-    types_.emplace_back(constants::key_attr_type);
-    attributes_.emplace_back(constants::key_type_attr_name);
-    types_.emplace_back(constants::key_type_attr_type);
-    for (size_t i = 0; i < attribute_num; ++i) {
-      if (attributes[i] == constants::coords ||
-          attributes[i] == constants::key_type_attr_name ||
-          attributes[i] == constants::key_attr_name)
+    attributes_.push_back(constants::coords);
+    attributes_.push_back(constants::key_attr_name);
+    attributes_.push_back(constants::key_type_attr_name);
+    for (const auto& attr : attributes) {
+      if (attr == constants::coords || attr == constants::key_type_attr_name ||
+          attr == constants::key_attr_name)
         continue;
-      attributes_.emplace_back(attributes[i]);
-      types_.emplace_back(schema_->type(attributes[i]));
+      attributes_.push_back(attr);
     }
   }
 
-  assert(attributes_.size() == types_.size());
-  RETURN_NOT_OK(prepare_query_attributes());
-  RETURN_NOT_OK(schema_->buffer_num(read_attributes_, &read_buffer_num_));
-  RETURN_NOT_OK(init_read_buffers());
-  RETURN_NOT_OK(schema_->buffer_num(write_attributes_, &write_buffer_num_));
+  // Prepare attribute types and read buffer sizes
+  for (const auto& attr : attributes_) {
+    attribute_types_.push_back(schema_->type(attr));
+    read_buffer_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+  }
 
   return Status::Ok();
 }
 
 void KV::clear() {
-  attributes_.clear();
-  types_.clear();
-  read_attribute_var_sizes_.clear();
-  read_attribute_types_.clear();
-  write_attribute_var_sizes_.clear();
   schema_ = nullptr;
   kv_uri_ = URI("");
+  attributes_.clear();
+  attribute_types_.clear();
 
   clear_items();
-  clear_query_attributes();
-  clear_query_buffers();
+  clear_read_buffers();
+  clear_write_buffers();
 
   open_array_for_reads_ = nullptr;
   open_array_for_writes_ = nullptr;
@@ -167,7 +150,7 @@ Status KV::add_item(const KVItem* kv_item) {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  RETURN_NOT_OK(kv_item->good(attributes_, types_));
+  RETURN_NOT_OK(kv_item->good(attributes_, attribute_types_));
 
   auto new_item = new KVItem();
   *new_item = *kv_item;
@@ -212,21 +195,19 @@ Status KV::get_item(
   }
 
   // Set values
-  unsigned bid = 0, aid = 0;
   const void* value = nullptr;
   uint64_t value_size = 0;
   for (const auto& attr : attributes_) {
-    auto var = read_attribute_var_sizes_[aid];
-    value = read_buffers_[bid + int(var)];
-    value_size = read_buffer_sizes_[bid + (int)var];
-    st = (*kv_item)->set_value(
-        attr, value, read_attribute_types_[aid++], value_size);
+    auto var = schema_->var_size(attr);
+    value = var ? read_buffers_[attr].second : read_buffers_[attr].first;
+    value_size =
+        var ? read_buffer_sizes_[attr].second : read_buffer_sizes_[attr].first;
+    st = (*kv_item)->set_value(attr, value, schema_->type(attr), value_size);
     if (!st.ok()) {
       delete *kv_item;
       *kv_item = nullptr;
       return st;
     }
-    bid += 1 + (int)var;
   }
 
   return Status::Ok();
@@ -252,7 +233,6 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
   }
 
   // Set key and values
-  unsigned bid = 0, aid = 0;
   const void* value = nullptr;
   const void* key = nullptr;
   uint64_t key_size = 0;
@@ -263,35 +243,30 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
   for (const auto& attr : attributes_) {
     // Set key
     if (attr == constants::key_attr_name) {
-      key = read_buffers_[bid + 1];
-      key_size = read_buffer_sizes_[bid + 1];
-      aid++;
-      bid += 2;
+      key = read_buffers_[attr].second;
+      key_size = read_buffer_sizes_[attr].second;
       key_found = true;
       continue;
     }
 
     // Set key type
     if (attr == constants::key_type_attr_name) {
-      key_type = static_cast<Datatype>(((char*)read_buffers_[bid])[0]);
-      aid++;
-      bid++;
+      key_type = static_cast<Datatype>(((char*)read_buffers_[attr].first)[0]);
       key_type_found = true;
       continue;
     }
 
     // Set values
-    auto var = read_attribute_var_sizes_[aid];
-    value = read_buffers_[bid + int(var)];
-    value_size = read_buffer_sizes_[bid + (int)var];
-    st = (*kv_item)->set_value(
-        attr, value, read_attribute_types_[aid++], value_size);
+    auto var = schema_->var_size(attr);
+    value = var ? read_buffers_[attr].second : read_buffers_[attr].first;
+    value_size =
+        var ? read_buffer_sizes_[attr].second : read_buffer_sizes_[attr].first;
+    st = (*kv_item)->set_value(attr, value, schema_->type(attr), value_size);
     if (!st.ok()) {
       delete *kv_item;
       *kv_item = nullptr;
       return st;
     }
-    bid += 1 + (int)var;
   }
 
   // Set key
@@ -340,7 +315,8 @@ Status KV::flush() {
   if (items_.empty())
     return Status::Ok();
 
-  RETURN_NOT_OK(prepare_write_buffers());
+  clear_write_buffers();
+  RETURN_NOT_OK(populate_write_buffers());
   RETURN_NOT_OK(submit_write_query());
 
   clear_items();
@@ -355,6 +331,26 @@ void KV::clear_items() {
   for (auto& i : items_)
     delete i.second;
   items_.clear();
+}
+
+void KV::clear_read_buffers() {
+  for (auto b_it : read_buffers_) {
+    if (b_it.second.first != nullptr)
+      std::free(b_it.second.first);
+    if (b_it.second.second != nullptr)
+      std::free(b_it.second.second);
+  }
+  read_buffers_.clear();
+  read_buffer_sizes_.clear();
+  read_buffer_alloced_sizes_.clear();
+}
+
+void KV::clear_write_buffers() {
+  for (auto b_it : write_buffers_) {
+    delete b_it.second.first;
+    delete b_it.second.second;
+  }
+  write_buffers_.clear();
 }
 
 OpenArray* KV::open_array_for_reads() const {
@@ -389,10 +385,10 @@ Status KV::add_key(const KVItem::Key& key) {
   assert(key.key_ != nullptr && key.key_size_ > 0);
 
   // Aliases
-  auto& buff_coords = *write_buff_vec_[0];
-  auto& buff_key_offsets = *write_buff_vec_[1];
-  auto& buff_keys = *write_buff_vec_[2];
-  auto& buff_key_types = *write_buff_vec_[3];
+  auto& buff_coords = *write_buffers_[constants::coords].first;
+  auto& buff_key_offsets = *write_buffers_[constants::key_attr_name].first;
+  auto& buff_keys = *write_buffers_[constants::key_attr_name].second;
+  auto& buff_key_types = *write_buffers_[constants::key_type_attr_name].first;
 
   RETURN_NOT_OK(buff_coords.write(&(key.hash_.first), sizeof(key.hash_.first)));
   RETURN_NOT_OK(
@@ -406,65 +402,16 @@ Status KV::add_key(const KVItem::Key& key) {
   return Status::Ok();
 }
 
-Status KV::add_value(const KVItem::Value& value, unsigned bid, bool var) {
-  assert(bid < write_buffer_num_);
-
-  auto idx = bid;
-
-  // Add offset only for variable-sized attributes
-  if (var) {
-    uint64_t offset = write_buff_vec_[idx + 1]->size();
-    RETURN_NOT_OK(write_buff_vec_[idx++]->write(&offset, sizeof(offset)));
-  }
-
-  // Add value
-  RETURN_NOT_OK(write_buff_vec_[idx]->write(value.value_, value.value_size_));
-
-  return Status::Ok();
-}
-
-void KV::clear_query_attributes() {
-  read_attributes_.clear();
-  write_attributes_.clear();
-}
-
-void KV::clear_query_buffers() {
-  clear_read_buffers();
-  clear_read_buff_vec();
-  clear_write_buffers();
-  clear_write_buff_vec();
-}
-
-void KV::clear_read_buff_vec() {
-  for (auto& buff : read_buff_vec_)
-    delete buff;
-  read_buff_vec_.clear();
-}
-
-void KV::clear_read_buffers() {
-  delete[] read_buffers_;
-  read_buffers_ = nullptr;
-  delete[] read_buffer_sizes_;
-  read_buffer_sizes_ = nullptr;
-}
-
-void KV::clear_write_buff_vec() {
-  for (auto& buff : write_buff_vec_)
-    delete buff;
-  write_buff_vec_.clear();
-}
-
-void KV::clear_write_buffers() {
-  delete[] write_buffers_;
-  write_buffers_ = nullptr;
-  delete[] write_buffer_sizes_;
-  write_buffer_sizes_ = nullptr;
-}
-
-Status KV::init_read_buffers() {
-  for (unsigned i = 0; i < read_buffer_num_; ++i) {
-    auto buff = new Buffer();
-    read_buff_vec_.emplace_back(buff);
+Status KV::add_value(const std::string& attribute, const KVItem::Value& value) {
+  if (schema_->var_size(attribute)) {
+    uint64_t offset = write_buffers_[attribute].second->size();
+    RETURN_NOT_OK(
+        write_buffers_[attribute].first->write(&offset, sizeof(offset)));
+    RETURN_NOT_OK(write_buffers_[attribute].second->write(
+        value.value_, value.value_size_));
+  } else {
+    RETURN_NOT_OK(write_buffers_[attribute].first->write(
+        value.value_, value.value_size_));
   }
 
   return Status::Ok();
@@ -472,108 +419,41 @@ Status KV::init_read_buffers() {
 
 Status KV::populate_write_buffers() {
   // Reset buffers
-  for (auto buff : write_buff_vec_)
-    buff->reset_size();
+  for (const auto& buff_it : write_buffers_) {
+    buff_it.second.first->reset_size();
+    if (buff_it.second.second != nullptr)
+      buff_it.second.second->reset_size();
+  }
 
-  // If this is the first time to populate the write buffers
-  if (write_buff_vec_.empty()) {
-    for (unsigned i = 0; i < write_buffer_num_; ++i) {
-      auto buff = new Buffer();
-      write_buff_vec_.emplace_back(buff);
+  // Create buffers if this is the first time to populate the write buffers
+  if (write_buffers_.empty()) {
+    for (const auto& attr : attributes_) {
+      auto var = schema_->var_size(attr);
+      auto buff_1 = new Buffer();
+      auto buff_2 = var ? new Buffer() : (Buffer*)nullptr;
+      write_buffers_[attr] = std::pair<Buffer*, Buffer*>(buff_1, buff_2);
     }
   }
 
-  auto write_attribute_num = write_attributes_.size();
   for (const auto& item : items_) {
     auto key = (item.second)->key();
     assert(key != nullptr);
     RETURN_NOT_OK(add_key(*key));
-    unsigned bid = 4;  // Skip the buffers of the first 3 attributes
-    for (unsigned aid = 3; aid < write_attribute_num; ++aid) {
-      auto value = (item.second)->value(write_attributes_[aid]);
+    for (const auto& attr : attributes_) {
+      // Skip the special attributes
+      if (attr == constants::coords || attr == constants::key_type_attr_name ||
+          attr == constants::key_attr_name)
+        continue;
+      auto value = (item.second)->value(attr);
       assert(value != nullptr);
-      RETURN_NOT_OK(add_value(*value, bid, write_attribute_var_sizes_[aid]));
-      bid += (write_attribute_var_sizes_[aid]) ? 2 : 1;
+      RETURN_NOT_OK(add_value(attr, *value));
     }
-    assert(bid == write_buff_vec_.size());
   }
-
-  return Status::Ok();
-}
-
-Status KV::prepare_read_buffers() {
-  if (read_buffers_ != nullptr)
-    return Status::Ok();
-
-  auto buffer_num = read_buff_vec_.size();
-  read_buffers_ = new (std::nothrow) void*[buffer_num];
-  read_buffer_sizes_ = new (std::nothrow) uint64_t[buffer_num];
-
-  if (read_buffers_ == nullptr || read_buffer_sizes_ == nullptr)
-    return LOG_STATUS(Status::KVError(
-        "Cannot prepare read buffers; Memory allocation failed"));
-
-  for (unsigned i = 0; i < buffer_num; ++i) {
-    read_buffers_[i] = read_buff_vec_[i]->data();
-    read_buffer_sizes_[i] = read_buff_vec_[i]->alloced_size();
-  }
-
-  return Status::Ok();
-}
-
-Status KV::prepare_write_buffers() {
-  clear_write_buffers();
-
-  RETURN_NOT_OK(populate_write_buffers());
-
-  auto buffer_num = write_buff_vec_.size();
-  write_buffers_ = new (std::nothrow) void*[buffer_num];
-  write_buffer_sizes_ = new (std::nothrow) uint64_t[buffer_num];
-
-  if (write_buffers_ == nullptr || write_buffer_sizes_ == nullptr)
-    return LOG_STATUS(Status::KVError(
-        "Cannot prepare read buffers; Memory allocation failed"));
-
-  for (unsigned i = 0; i < buffer_num; ++i) {
-    write_buffers_[i] = write_buff_vec_[i]->data();
-    write_buffer_sizes_[i] = write_buff_vec_[i]->size();
-  }
-
-  return Status::Ok();
-}
-
-Status KV::prepare_query_attributes() {
-  RETURN_NOT_OK(prepare_read_attributes());
-  return prepare_write_attributes();
-}
-
-Status KV::prepare_read_attributes() {
-  read_attributes_ = attributes_;
-  read_attribute_var_sizes_.resize(read_attributes_.size());
-  read_attribute_types_.resize(read_attributes_.size());
-
-  unsigned int i = 0;
-  for (const auto& attr : attributes_) {
-    read_attribute_types_[i] = schema_->type(attr);
-    read_attribute_var_sizes_[i++] = schema_->var_size(attr);
-  }
-
-  return Status::Ok();
-}
-
-Status KV::prepare_write_attributes() {
-  write_attributes_ = attributes_;
-  write_attribute_var_sizes_.resize(attributes_.size());
-  unsigned i = 0;
-  for (const auto& attr : attributes_)
-    write_attribute_var_sizes_[i++] = schema_->var_size(attr);
 
   return Status::Ok();
 }
 
 Status KV::read_item(const KVItem::Hash& hash, bool* found) {
-  RETURN_NOT_OK(prepare_read_buffers());
-
   // Prepare subarray
   uint64_t subarray[4];
   subarray[0] = hash.first;
@@ -582,15 +462,15 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[3] = hash.second;
 
   // Compute max buffer sizes
-  RETURN_NOT_OK(storage_manager_->array_compute_max_read_buffer_sizes(
+  RETURN_NOT_OK(storage_manager_->array_compute_max_buffer_sizes(
       open_array_for_reads_,
       snapshot_,
       subarray,
-      read_attributes_,
-      read_buffer_sizes_));
+      attributes_,
+      &read_buffer_sizes_));
 
-  // If the max buffer sizes are 0, the the item is not found
-  if (read_buffer_sizes_[0] == 0) {
+  // If the max buffer sizes are 0, then the item is not found
+  if (read_buffer_sizes_.begin()->second.first == 0) {
     *found = false;
     return Status::Ok();
   }
@@ -603,8 +483,8 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 
   // Check if item exists
   *found = true;
-  for (unsigned i = 0; i < read_buffer_num_; ++i) {
-    if (read_buffer_sizes_[i] == 0) {
+  for (const auto& s_it : read_buffer_sizes_) {
+    if (s_it.second.first == 0) {
       *found = false;
       break;
     }
@@ -614,37 +494,95 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 }
 
 Status KV::realloc_read_buffers() {
-  for (unsigned i = 0; i < read_buffer_num_; ++i) {
-    if (read_buffer_sizes_[i] > read_buff_vec_[i]->alloced_size()) {
-      RETURN_NOT_OK(read_buff_vec_[i]->realloc(read_buffer_sizes_[i]));
-      read_buffers_[i] = read_buff_vec_[i]->data();
-      read_buffer_sizes_[i] = read_buff_vec_[i]->alloced_size();
+  for (const auto& attr : attributes_) {
+    auto alloced_size_1 = read_buffer_alloced_sizes_[attr].first;
+    auto alloced_size_2 = read_buffer_alloced_sizes_[attr].second;
+    auto var = schema_->var_size(attr);
+    auto new_size_1 = read_buffer_sizes_[attr].first;
+    auto new_size_2 = read_buffer_sizes_[attr].second;
+
+    // First time the buffers are alloc'ed
+    if (alloced_size_1 == 0) {
+      auto buff_1 = std::malloc(new_size_1);
+      if (buff_1 == nullptr)
+        return LOG_STATUS(Status::KVError(
+            "Cannot reallocate read buffers; Memory allocation failed"));
+
+      auto buff_2 = (void*)nullptr;
+      if (var) {
+        buff_2 = std::malloc(new_size_2);
+        if (buff_2 == nullptr)
+          return LOG_STATUS(Status::KVError(
+              "Cannot reallocate read buffers; Memory allocation failed"));
+      }
+
+      read_buffers_[attr] = std::pair<void*, void*>(buff_1, buff_2);
+      read_buffer_alloced_sizes_[attr] =
+          std::pair<uint64_t, uint64_t>(new_size_1, new_size_2);
+
+      continue;
+    }
+
+    if (new_size_1 > alloced_size_1) {
+      std::free(read_buffers_[attr].first);
+      read_buffers_[attr].first = std::malloc(new_size_1);
+      if (read_buffers_[attr].first == nullptr)
+        return LOG_STATUS(Status::KVError(
+            "Cannot reallocate read buffers; Memory allocation failed"));
+      read_buffer_alloced_sizes_[attr].first = new_size_1;
+    }
+
+    if (var && new_size_2 > alloced_size_2) {
+      std::free(read_buffers_[attr].second);
+      read_buffers_[attr].second = std::malloc(new_size_2);
+      if (read_buffers_[attr].second == nullptr)
+        return LOG_STATUS(Status::KVError(
+            "Cannot reallocate read buffers; Memory allocation failed"));
+      read_buffer_alloced_sizes_[attr].second = new_size_2;
     }
   }
 
   return Status::Ok();
 }
 
-Status KV::set_query_buffers(
-    Query* query,
-    const std::vector<std::string>& attributes,
-    void** buffers,
-    uint64_t* buffer_sizes) const {
-  auto array_schema = query->array_schema();
-  unsigned bid = 0;
-  for (const auto& attr : attributes) {
-    if (!array_schema->var_size(attr)) {
-      RETURN_NOT_OK(
-          query->set_buffer(attr.c_str(), buffers[bid], &buffer_sizes[bid]));
-      ++bid;
+Status KV::set_read_query_buffers(Query* query) {
+  for (const auto& attr : attributes_) {
+    if (!schema_->var_size(attr)) {
+      RETURN_NOT_OK(query->set_buffer(
+          attr, read_buffers_[attr].first, &read_buffer_sizes_[attr].first));
     } else {
       RETURN_NOT_OK(query->set_buffer(
-          attr.c_str(),
-          (uint64_t*)buffers[bid],
-          &buffer_sizes[bid],
-          buffers[bid + 1],
-          &buffer_sizes[bid + 1]));
-      bid += 2;
+          attr,
+          (uint64_t*)read_buffers_[attr].first,
+          &read_buffer_sizes_[attr].first,
+          read_buffers_[attr].second,
+          &read_buffer_sizes_[attr].second));
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status KV::set_write_query_buffers(Query* query) {
+  for (const auto& attr : attributes_) {
+    if (!schema_->var_size(attr)) {
+      write_buffer_sizes_[attr] =
+          std::pair<uint64_t, uint64_t>(write_buffers_[attr].first->size(), 0);
+      RETURN_NOT_OK(query->set_buffer(
+          attr,
+          write_buffers_[attr].first->data(),
+          &write_buffer_sizes_[attr].first));
+    } else {
+      auto size_off = write_buffers_[attr].first->size();
+      auto size_val = write_buffers_[attr].second->size();
+      write_buffer_sizes_[attr] =
+          std::pair<uint64_t, uint64_t>(size_off, size_val);
+      RETURN_NOT_OK(query->set_buffer(
+          attr,
+          (uint64_t*)write_buffers_[attr].first->data(),
+          &write_buffer_sizes_[attr].first,
+          write_buffers_[attr].second->data(),
+          &write_buffer_sizes_[attr].second));
     }
   }
 
@@ -656,10 +594,7 @@ Status KV::submit_read_query(const uint64_t* subarray) {
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(
       storage_manager_->query_create(&query, open_array_for_reads_, snapshot_));
-  RETURN_NOT_OK_ELSE(
-      set_query_buffers(
-          query, read_attributes_, read_buffers_, read_buffer_sizes_),
-      delete query);
+  RETURN_NOT_OK_ELSE(set_read_query_buffers(query), delete query);
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   delete query;
@@ -671,10 +606,7 @@ Status KV::submit_write_query() {
   auto query = (Query*)nullptr;
   RETURN_NOT_OK(storage_manager_->query_create(
       &query, open_array_for_writes_, snapshot_));
-  RETURN_NOT_OK_ELSE(
-      set_query_buffers(
-          query, write_attributes_, write_buffers_, write_buffer_sizes_),
-      delete query);
+  RETURN_NOT_OK_ELSE(set_write_query_buffers(query), delete query);
   RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
   delete query;
 

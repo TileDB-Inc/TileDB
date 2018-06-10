@@ -39,7 +39,6 @@
 * Added `tiledb_ctx_cancel_tasks` function.
 * Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
 * Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
-* Added `tiledb_array_partition_subarray` for computing subarray partitions based on memory budget.
 * Added `tiledb_kv_free`.
 * Added `tiledb_array_{open, close, free}`.
 * Added `tiledb_array_alloc`
@@ -54,6 +53,7 @@
 * Added `tiledb_kv_iter_reset`
 * Added `tiledb_array_reopen`
 * Added `tiledb_kv_reopen`
+* Added `tiledb_array_max_buffer_size` and `tiledb_array_max_buffer_size_var`
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -65,7 +65,6 @@
 * Added `Context::cancel_tasks()` function.
 * `tiledb::Attribute` can now be constructed with an enumerated type (e.x. `TILEDB_CHAR`).
 * A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
-* Added `Array::partition_subarray` for computing subarray partitions based on memory budget.
 * Added `Map::has_key` to check for key presence.
 * `MapIter` can be used to create iterators for a map.
 * Added `Array::{open, close}`
@@ -95,8 +94,7 @@
 * Changed signature of `tiledb_kv_close` to take a `tiledb_kv_t*` argument instead of `tiledb_kv_t**`.
 * Renamed `tiledb_domain_get_rank` to `tiledb_domain_get_ndim` to avoid confusion with matrix def of rank.
 * Changed signature of `tiledb_array_get_non_empty_domain`.
-* Changed signature of `tiledb_array_partition_subarray`.
-* Changed signature of `tiledb_array_compute_max_read_buffer_sizes`.
+* Removed `tiledb_array_compute_max_read_buffer_sizes`.
 * Changed signature of `tiledb_{array,kv}_open`.
 * Removed `tiledb_kv_iter_create`
 * Renamed all C API functions that create TileDB objects from `tiledb_*_create` to `tiledb_*_alloc`.
@@ -121,6 +119,7 @@
 * Renamed `Domain::rank` to `Domain::ndim` to avoid confusion with matrix def of rank.
 * Added query type argument to `Array` constructor
 * Removed iterator functionality from `Map`.
+* Removed `Array::parition_subarray`.
 
 # TileDB v1.2.2 Release Notes
 

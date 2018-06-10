@@ -194,124 +194,39 @@ class Array {
     auto ctx = ctx_.get();
     impl::type_check<T>(schema_.domain().type(), 1);
 
-    std::vector<uint64_t> sizes;
-    auto attrs = schema_.attributes();
-    std::vector<const char*> names;
-
-    unsigned nbuffs = 0, attr_num = 0;
-    for (const auto& a : attrs) {
-      nbuffs += a.second.cell_val_num() == TILEDB_VAR_NUM ? 2 : 1;
-      ++attr_num;
-      names.push_back(a.first.c_str());
-    }
-    if (schema_.array_type() == TILEDB_SPARSE) {
-      ++nbuffs;
-      ++attr_num;
-      names.push_back(TILEDB_COORDS);
-    }
-
-    sizes.resize(nbuffs);
-    ctx.handle_error(tiledb_array_compute_max_read_buffer_sizes(
-        ctx,
-        array_.get(),
-        subarray.data(),
-        names.data(),
-        attr_num,
-        sizes.data()));
-
+    // Handle attributes
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
-    unsigned sid = 0;
-    for (const auto& a : attrs) {
+    auto schema_attrs = schema_.attributes();
+    uint64_t attr_size, type_size;
+    for (const auto& a : schema_attrs) {
       auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
-      ret[a.first] =
-          var ? std::pair<uint64_t, uint64_t>(
-                    sizes[sid] / TILEDB_OFFSET_SIZE,
-                    sizes[sid + 1] / tiledb_datatype_size(a.second.type())) :
-                std::pair<uint64_t, uint64_t>(
-                    0, sizes[sid] / tiledb_datatype_size(a.second.type()));
-      sid += var ? 2 : 1;
-    }
+      auto name = a.second.name();
+      type_size = tiledb_datatype_size(a.second.type());
 
-    if (schema_.array_type() == TILEDB_SPARSE)
-      ret[TILEDB_COORDS] = std::pair<uint64_t, uint64_t>(
-          0, sizes.back() / tiledb_datatype_size(schema_.domain().type()));
-
-    return ret;
-  }
-
-  /**
-   * Partitions a subarray into multiple subarrays to meet buffer
-   * size constraints. Layout is used to split the subarray by
-   * the optimal axis.
-   *
-   * @tparam T Domain type
-   * @param uri Array URI
-   * @param schema Array Schema
-   * @param subarray Subarray to be decomposed
-   * @param attrs Attributes being queried
-   * @param buffer_sizes Buffer size limits
-   * @param layout Layout of query
-   * @return list of subarrays
-   * @throws AttributeError if an attribute does not exist
-   * @throws TileDBError if buffer size is inconsistant with schema
-   */
-  template <typename T>
-  std::vector<std::vector<T>> partition_subarray(
-      const std::vector<T>& subarray,
-      const std::vector<std::string>& attrs,
-      const std::vector<size_t>& buffer_sizes,
-      tiledb_layout_t layout) {
-    impl::type_check<T>(schema_.domain().type());
-
-    const auto& schema_attrs = schema_.attributes();
-    std::vector<const char*> attrnames;
-    std::vector<uint64_t> buff_sizes_scaled;
-    unsigned expected_buff_cnt = 0;
-
-    for (auto& a : attrs) {
-      if (schema_attrs.count(a) == 0)
-        throw AttributeError("Attribute does not exist: " + a);
-      attrnames.push_back(a.data());
-      if (schema_attrs.at(a).variable_sized()) {
-        buff_sizes_scaled.push_back(
-            buffer_sizes[expected_buff_cnt] * TILEDB_OFFSET_SIZE);
-        ++expected_buff_cnt;
+      if (var) {
+        uint64_t size_off, size_val;
+        ctx.handle_error(tiledb_array_max_buffer_size_var(
+            ctx,
+            array_.get(),
+            name.c_str(),
+            subarray.data(),
+            &size_off,
+            &size_val));
+        ret[a.first] = std::pair<uint64_t, uint64_t>(
+            size_off / TILEDB_OFFSET_SIZE, size_val / type_size);
+      } else {
+        ctx.handle_error(tiledb_array_max_buffer_size(
+            ctx, array_.get(), name.c_str(), subarray.data(), &attr_size));
+        ret[a.first] = std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
       }
-      buff_sizes_scaled.push_back(
-          buffer_sizes[expected_buff_cnt] *
-          tiledb_datatype_size(schema_attrs.at(a).type()));
-      ++expected_buff_cnt;
     }
-    if (expected_buff_cnt != buffer_sizes.size())
-      throw TileDBError(
-          "buffer_sizes size does not match number of provided attributes.");
-    if (subarray.size() != schema_.domain().ndim() * 2)
-      throw TileDBError("Subarray should have array ndim * 2 values.");
 
-    auto& ctx = ctx_.get();
-    T** partition_buf;
-    uint64_t npartitions;
-
-    ctx.handle_error(tiledb_array_partition_subarray(
-        ctx,
-        array_.get(),
-        subarray.data(),
-        layout,
-        attrnames.data(),
-        (unsigned)attrnames.size(),
-        buff_sizes_scaled.data(),
-        (void***)&partition_buf,
-        &npartitions));
-
-    std::vector<std::vector<T>> ret;
-
-    if (partition_buf != nullptr) {
-      for (uint64_t i = 0; i < npartitions; ++i) {
-        ret.emplace_back(partition_buf[i], partition_buf[i] + subarray.size());
-        free(partition_buf[i]);
-      }
-      free(partition_buf);
-    }
+    // Handle coordinates
+    type_size = tiledb_datatype_size(schema_.domain().type());
+    ctx.handle_error(tiledb_array_max_buffer_size(
+        ctx, array_.get(), TILEDB_COORDS, subarray.data(), &attr_size));
+    ret[TILEDB_COORDS] =
+        std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
 
     return ret;
   }

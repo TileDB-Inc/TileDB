@@ -89,6 +89,8 @@ struct tiledb_array_t {
   tiledb::sm::OpenArray* open_array_;
   bool is_open_;
   uint64_t snapshot_;
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      max_buffer_sizes_;
 };
 
 struct tiledb_config_t {
@@ -1993,6 +1995,8 @@ int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
               array->open_array_, &(array->snapshot_))))
     return TILEDB_ERR;
 
+  array->max_buffer_sizes_.clear();
+
   return TILEDB_OK;
 }
 
@@ -2011,6 +2015,7 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
     return TILEDB_ERR;
 
   array->is_open_ = false;
+  array->max_buffer_sizes_.clear();
 
   return TILEDB_OK;
 }
@@ -2137,70 +2142,134 @@ int tiledb_array_get_non_empty_domain(
   return TILEDB_OK;
 }
 
-int tiledb_array_compute_max_read_buffer_sizes(
+int tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    const char* attribute,
     const void* subarray,
-    const char** attributes,
-    unsigned attribute_num,
-    uint64_t* buffer_sizes) {
+    uint64_t* buffer_size) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Normalize attribute names
-  std::vector<std::string> attribute_names;
+  // Check if attribute is null
+  if (attribute == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to get max buffer size; Attribute is null");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Compute max buffer sizes if they are not already computed
+  if (array->max_buffer_sizes_.empty()) {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_compute_max_buffer_sizes(
+                array->open_array_,
+                array->snapshot_,
+                subarray,
+                &array->max_buffer_sizes_)))
+      return TILEDB_ERR;
+  }
+
+  // Normalize attribute name
+  std::string norm_attribute;
   if (save_error(
           ctx,
-          tiledb::sm::ArraySchema::attribute_names_normalized(
-              attributes, attribute_num, &attribute_names)))
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &norm_attribute)))
     return TILEDB_ERR;
 
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_compute_max_read_buffer_sizes(
-              array->open_array_,
-              array->snapshot_,
-              subarray,
-              attribute_names,
-              buffer_sizes)))
+  // Check if attribute exists
+  auto it = array->max_buffer_sizes_.find(norm_attribute);
+  if (it == array->max_buffer_sizes_.end()) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to get max buffer size; Attribute '") +
+        norm_attribute + "' does not exist");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
+  }
+
+  // Check if attribute is fixed sized
+  if (array->open_array_->array_schema()->var_size(norm_attribute)) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to get max buffer size; Attribute '") +
+        norm_attribute + "' is var-sized");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Retrieve buffer size
+  *buffer_size = it->second.first;
 
   return TILEDB_OK;
 }
 
-int tiledb_array_partition_subarray(
+int tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    const char* attribute,
     const void* subarray,
-    tiledb_layout_t layout,
-    const char** attributes,
-    unsigned attribute_num,
-    const uint64_t* buffer_sizes,
-    void*** subarray_partitions,
-    uint64_t* npartitions) {
+    uint64_t* buffer_off_size,
+    uint64_t* buffer_val_size) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Normalize attribute names
-  std::vector<std::string> attribute_names;
+  // Check if attribute is null
+  if (attribute == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to get max buffer size; Attribute is null");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Compute max buffer sizes if they are not already computed
+  if (array->max_buffer_sizes_.empty()) {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_compute_max_buffer_sizes(
+                array->open_array_,
+                array->snapshot_,
+                subarray,
+                &array->max_buffer_sizes_)))
+      return TILEDB_ERR;
+  }
+
+  // Normalize attribute name
+  std::string norm_attribute;
   if (save_error(
           ctx,
-          tiledb::sm::ArraySchema::attribute_names_normalized(
-              attributes, attribute_num, &attribute_names)))
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attribute, &norm_attribute)))
     return TILEDB_ERR;
 
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_compute_subarray_partitions(
-              array->open_array_,
-              array->snapshot_,
-              subarray,
-              static_cast<tiledb::sm::Layout>(layout),
-              attribute_names,
-              buffer_sizes,
-              subarray_partitions,
-              npartitions)))
+  // Check if attribute exists
+  auto it = array->max_buffer_sizes_.find(norm_attribute);
+  if (it == array->max_buffer_sizes_.end()) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to get max buffer size; Attribute '") +
+        norm_attribute + "' does not exist");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
+  }
+
+  // Check if attribute is fixed sized
+  if (!array->open_array_->array_schema()->var_size(norm_attribute)) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to get max buffer size; Attribute '") +
+        norm_attribute + "' is fixed-sized");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Retrieve buffer sizes
+  *buffer_off_size = it->second.first;
+  *buffer_val_size = it->second.second;
 
   return TILEDB_OK;
 }

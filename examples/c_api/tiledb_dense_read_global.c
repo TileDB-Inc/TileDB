@@ -97,26 +97,28 @@ int main() {
       (unsigned long long)domain[3]);
 
   // Print maximum buffer sizes for each attribute
-  const char* attributes[] = {"a1", "a2", "a3"};
-  uint64_t buffer_sizes[4];
   uint64_t subarray[] = {1, 4, 1, 4};
-  tiledb_array_compute_max_read_buffer_sizes(
-      ctx, array, subarray, attributes, 3, &buffer_sizes[0]);
+  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
+      buffer_a3_size;
+  tiledb_array_max_buffer_size(ctx, array, "a1", subarray, &buffer_a1_size);
+  tiledb_array_max_buffer_size_var(
+      ctx, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
+  tiledb_array_max_buffer_size(ctx, array, "a3", subarray, &buffer_a3_size);
+
   printf("Maximum buffer sizes:\n");
-  printf("a1: %llu\n", (unsigned long long)buffer_sizes[0]);
+  printf("a1: %llu\n", (unsigned long long)buffer_a1_size);
   printf(
       "a2: (%llu, %llu)\n",
-      (unsigned long long)buffer_sizes[1],
-      (unsigned long long)buffer_sizes[2]);
-  printf("a3: %llu\n\n", (unsigned long long)buffer_sizes[3]);
+      (unsigned long long)buffer_a2_off_size,
+      (unsigned long long)buffer_a2_val_size);
+  printf("a3: %llu\n\n", (unsigned long long)buffer_a3_size);
 
   // Prepare cell buffers. Observe that we allocate space based on the
   // maximum buffer size/elements computed above (this is optional).
-  int* buffer_a1 = malloc(buffer_sizes[0]);
-  uint64_t* buffer_a2 = malloc(buffer_sizes[1]);
-  char* buffer_var_a2 = malloc(buffer_sizes[2]);
-  float* buffer_a3 = malloc(buffer_sizes[3]);
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  int* buffer_a1 = malloc(buffer_a1_size);
+  uint64_t* buffer_a2_off = malloc(buffer_a2_off_size);
+  char* buffer_a2_val = malloc(buffer_a2_val_size);
+  float* buffer_a3 = malloc(buffer_a3_size);
 
   // Create query
   // We create a read query, specifying the layout of the results as
@@ -125,38 +127,36 @@ int main() {
 
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  tiledb_query_set_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  tiledb_query_set_buffer(ctx, query, "a1", buffer_a1, &buffer_a1_size);
   tiledb_query_set_buffer_var(
       ctx,
       query,
-      attributes[1],
-      buffers[1],
-      &buffer_sizes[1],
-      buffers[2],
-      &buffer_sizes[2]);
-  tiledb_query_set_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
-  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
+  tiledb_query_set_buffer(ctx, query, "a3", buffer_a3, &buffer_a3_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
   // Print cell values (assumes all attributes are read). Notice the way
   // `result_num` is calculated. After `tiledb_query_submit` is executed,
-  // `buffer_sizes[0]` is updated to the size (in bytes) of the result
+  // `buffer_a1_size` is updated to the size (in bytes) of the result
   // data copied in buffer `buffer_a1` (which allows us to infer the
   // number of results).
-  uint64_t result_num = buffer_sizes[0] / sizeof(int);
+  uint64_t result_num = buffer_a1_size / sizeof(int);
   printf("Result num: %llu\n\n", (unsigned long long)result_num);
   printf("%5s%10s%10s%10s\n", "a1", "a2", "a3[0]", "a3[1]");
   printf("-----------------------------------------\n");
   for (uint64_t i = 0; i < result_num; ++i) {
     printf("%5d", buffer_a1[i]);
     uint64_t var_size = (i != result_num - 1) ?
-                            buffer_a2[i + 1] - buffer_a2[i] :
-                            buffer_sizes[2] - buffer_a2[i];
-    printf("%10.*s", (int)var_size, &buffer_var_a2[buffer_a2[i]]);
+                            buffer_a2_off[i + 1] - buffer_a2_off[i] :
+                            buffer_a2_val_size - buffer_a2_off[i];
+    printf("%10.*s", (int)var_size, &buffer_a2_val[buffer_a2_off[i]]);
     printf("%10.1f%10.1f\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
@@ -171,8 +171,8 @@ int main() {
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
   free(buffer_a1);
-  free(buffer_a2);
-  free(buffer_var_a2);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
   free(buffer_a3);
 
   return 0;

@@ -212,48 +212,6 @@ const std::vector<Attribute*>& ArraySchema::attributes() const {
   return attributes_;
 }
 
-Status ArraySchema::buffer_num(
-    const char** attributes,
-    unsigned int attribute_num,
-    unsigned int* buffer_num) const {
-  if (attributes == nullptr || attribute_num == 0)
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot retrieve number of buffers; Attributes not provided"));
-
-  *buffer_num = 0;
-  for (unsigned int i = 0; i < attribute_num; ++i) {
-    if (var_size(attributes[i]))
-      (*buffer_num) += 2;
-    else
-      ++(*buffer_num);
-  }
-
-  return Status::Ok();
-}
-
-Status ArraySchema::buffer_num(
-    const std::vector<std::string>& attributes,
-    unsigned int* buffer_num) const {
-  *buffer_num = 0;
-  for (const auto& attr : attributes) {
-    auto it = attribute_map_.find(attr);
-    if (it == attribute_map_.end()) {
-      if (attr == constants::coords) {
-        ++(*buffer_num);
-        continue;
-      }
-      return LOG_STATUS(Status::ArraySchemaError(
-          "Cannot compute number of buffers; Invalid attribute"));
-    }
-    if (it->second->var_size())
-      (*buffer_num) += 2;
-    else
-      ++(*buffer_num);
-  }
-
-  return Status::Ok();
-}
-
 uint64_t ArraySchema::capacity() const {
   return capacity_;
 }
