@@ -624,9 +624,6 @@ class Writer {
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
-  /** Sets the query attributes. */
-  Status set_attributes(const char** attributes, unsigned int attribute_num);
-
   /**
    * Sorts the coordinates of the user buffers, creating a vector with
    * the sorted positions.

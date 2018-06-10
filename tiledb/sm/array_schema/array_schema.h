@@ -93,9 +93,6 @@ class ArraySchema {
   /** Returns a constant pointer to the selected attribute (NULL if error). */
   const Attribute* attribute(std::string name) const;
 
-  /** Returns the name of the attribute with the input id. */
-  const std::string& attribute_name(unsigned id) const;
-
   /**
    * Returns the given attribute name as it would be stored in the schema. E.g.
    * if the argument is "" (empty string), this returns the default anonymous
@@ -135,12 +132,6 @@ class ArraySchema {
    */
   Status attribute_id(const std::string& attribute, unsigned int* id) const;
 
-  /** Returns the attribute names. */
-  std::vector<std::string> attribute_names() const;
-
-  /** Returns the attribute types. */
-  std::vector<Datatype> attribute_types() const;
-
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;
 
@@ -154,19 +145,10 @@ class ArraySchema {
   Layout cell_order() const;
 
   /** Returns the size of cell on the input attribute. */
-  uint64_t cell_size(unsigned int attribute_id) const;
-
-  /** Returns the size of cell on the input attribute. */
   uint64_t cell_size(const std::string& attribute) const;
 
   /** Returns the number of values per cell of the input attribute. */
-  unsigned int cell_val_num(unsigned int attribute_id) const;
-
-  /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(const std::string& attribute) const;
-
-  /** Returns the number of values per cell for all attributes. */
-  std::vector<unsigned int> cell_val_nums() const;
 
   /** Returns the compression type used for offsets of variable-sized cells. */
   Compressor cell_var_offsets_compression() const;
@@ -190,14 +172,8 @@ class ArraySchema {
    */
   Status check_attributes(const std::vector<std::string>& attributes) const;
 
-  /** Returns the compression type of the attribute with the input id. */
-  Compressor compression(unsigned int attribute_id) const;
-
   /** Returns the compression type of the input attribute. */
   Compressor compression(const std::string& compression) const;
-
-  /** Return the compression level of the attribute with the input id. */
-  int compression_level(unsigned int attribute_id) const;
 
   /** Return the compression level of the input attribute. */
   int compression_level(const std::string& attribute) const;
@@ -225,17 +201,6 @@ class ArraySchema {
 
   /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;
-
-  /**
-   * Gets the ids of the input attributes.
-   *
-   * @param attributes The name of the attributes whose ids will be retrieved.
-   * @param attribute_ids The ids that are retrieved by the function.
-   * @return Status
-   */
-  Status get_attribute_ids(
-      const std::vector<std::string>& attributes,
-      std::vector<unsigned int>& attribute_ids) const;
 
   /** Checks if the array is defined as a key-value store. */
   bool is_kv() const;
@@ -295,12 +260,6 @@ class ArraySchema {
   /** Sets an array URI. */
   void set_array_uri(const URI& array_uri);
 
-  /**
-   * Sets the array type. The function returns an error if the array has been
-   * defined as a key-value store (which by default is always sparse).
-   */
-  Status set_array_type(ArrayType array_type);
-
   /** Sets the variable cell offsets compressor. */
   void set_cell_var_offsets_compressor(Compressor compressor);
 
@@ -316,12 +275,7 @@ class ArraySchema {
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
-  /**
-   * Sets the cell order.
-   *
-   * @note For 1D arrays (vectors), the cell order will always be **row-major**,
-   *     (col-major is equivalent).
-   */
+  /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
 
   /**
@@ -330,12 +284,7 @@ class ArraySchema {
    */
   Status set_domain(Domain* domain);
 
-  /**
-   * Sets the tile order.
-   *
-   * @note For 1D arrays (vectors), the cell order will always be **row-major**,
-   *     (col-major is equivalent).
-   */
+  /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
 
  private:
