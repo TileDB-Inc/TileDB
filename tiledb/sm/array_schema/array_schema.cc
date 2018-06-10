@@ -135,13 +135,6 @@ const Attribute* ArraySchema::attribute(std::string name) const {
   return nullptr;
 }
 
-const std::string& ArraySchema::attribute_name(
-    unsigned int attribute_id) const {
-  assert(attribute_id < attribute_num_);
-
-  return attributes_[attribute_id]->name();
-}
-
 Status ArraySchema::attribute_name_normalized(
     const char* attribute, std::string* normalized_name) {
   if (attribute == nullptr)
@@ -190,22 +183,8 @@ Status ArraySchema::attribute_id(
       (anonymous ? "<anonymous>" : attribute_name)));
 }
 
-std::vector<std::string> ArraySchema::attribute_names() const {
-  std::vector<std::string> names;
-  for (auto& attr : attributes_)
-    names.emplace_back(attr->name());
-  return names;
-}
-
 unsigned int ArraySchema::attribute_num() const {
   return attribute_num_;
-}
-
-std::vector<Datatype> ArraySchema::attribute_types() const {
-  std::vector<Datatype> types;
-  for (auto& attr : attributes_)
-    types.emplace_back(attr->type());
-  return types;
 }
 
 const std::vector<Attribute*>& ArraySchema::attributes() const {
@@ -220,35 +199,16 @@ Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
-uint64_t ArraySchema::cell_size(unsigned int attribute_id) const {
-  // Special case for the search tile
-  if (attribute_id == attribute_num_ + 1)
-    attribute_id = attribute_num_;
-
-  return cell_sizes_[attribute_id];
-}
-
 uint64_t ArraySchema::cell_size(const std::string& attribute) const {
   unsigned attribute_id = 0;
   this->attribute_id(attribute, &attribute_id);
   return cell_sizes_[attribute_id];
 }
 
-unsigned int ArraySchema::cell_val_num(unsigned int attribute_id) const {
-  return attributes_[attribute_id]->cell_val_num();
-}
-
 unsigned int ArraySchema::cell_val_num(const std::string& attribute) const {
   auto it = attribute_map_.find(attribute);
   assert(it != attribute_map_.end());
   return it->second->cell_val_num();
-}
-
-std::vector<unsigned int> ArraySchema::cell_val_nums() const {
-  std::vector<unsigned int> cell_val_nums;
-  for (auto& attr : attributes_)
-    cell_val_nums.emplace_back(attr->cell_val_num());
-  return cell_val_nums;
 }
 
 Compressor ArraySchema::cell_var_offsets_compression() const {
@@ -313,15 +273,6 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
-Compressor ArraySchema::compression(unsigned int attr_id) const {
-  assert(attr_id <= attribute_num_ + 1);
-
-  if (attr_id == attribute_num_ || attr_id == attribute_num_ + 1)
-    return coords_compression_;
-
-  return attributes_[attr_id]->compressor();
-}
-
 Compressor ArraySchema::compression(const std::string& attribute) const {
   auto it = attribute_map_.find(attribute);
   if (it == attribute_map_.end()) {
@@ -332,15 +283,6 @@ Compressor ArraySchema::compression(const std::string& attribute) const {
   }
 
   return it->second->compressor();
-}
-
-int ArraySchema::compression_level(unsigned int attr_id) const {
-  assert(attr_id <= attribute_num_ + 1);
-
-  if (attr_id == attribute_num_ || attr_id == attribute_num_ + 1)
-    return coords_compression_level_;
-
-  return attributes_[attr_id]->compression_level();
 }
 
 int ArraySchema::compression_level(const std::string& attribute) const {
@@ -408,22 +350,6 @@ void ArraySchema::dump(FILE* out) const {
 
 bool ArraySchema::is_kv() const {
   return is_kv_;
-}
-
-Status ArraySchema::get_attribute_ids(
-    const std::vector<std::string>& attributes,
-    std::vector<unsigned int>& attribute_ids) const {
-  // Initialization
-  attribute_ids.clear();
-  auto attribute_num = (unsigned int)attributes.size();
-  unsigned int id;
-
-  // Get attribute ids
-  for (unsigned int i = 0; i < attribute_num; ++i) {
-    RETURN_NOT_OK(attribute_id(attributes[i], &id));
-    attribute_ids.push_back(id);
-  }
-  return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -678,17 +604,6 @@ void ArraySchema::set_array_uri(const URI& array_uri) {
   array_uri_ = array_uri;
 }
 
-Status ArraySchema::set_array_type(ArrayType array_type) {
-  // Check if the array is a key-value store
-  if (is_kv_)
-    return Status::ArraySchemaError(
-        "Cannot set array type; The array is defined as a key-value store");
-
-  array_type_ = array_type;
-
-  return Status::Ok();
-}
-
 void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
@@ -711,10 +626,7 @@ void ArraySchema::set_cell_var_offsets_compression_level(
 }
 
 void ArraySchema::set_cell_order(Layout cell_order) {
-  if (domain_ != nullptr && domain_->dim_num() == 1)
-    cell_order_ = Layout::ROW_MAJOR;
-  else
-    cell_order_ = cell_order;
+  cell_order_ = cell_order;
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
@@ -747,20 +659,11 @@ Status ArraySchema::set_domain(Domain* domain) {
       coords_compression_ == Compressor::DOUBLE_DELTA)
     coords_compression_ = constants::real_coords_compression;
 
-  // For 1D vectors, the cell/tile layout should always be row-major
-  if (domain_->dim_num() == 1) {
-    cell_order_ = Layout::ROW_MAJOR;
-    tile_order_ = Layout::ROW_MAJOR;
-  }
-
   return Status::Ok();
 }
 
 void ArraySchema::set_tile_order(Layout tile_order) {
-  if (domain_ != nullptr && domain_->dim_num() == 1)
-    tile_order_ = Layout::ROW_MAJOR;
-  else
-    tile_order_ = tile_order;
+  tile_order_ = tile_order;
 }
 
 /* ****************************** */

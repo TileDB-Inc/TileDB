@@ -1586,38 +1586,6 @@ Status Writer::prepare_tiles_var(
   return Status::Ok();
 }
 
-Status Writer::set_attributes(
-    const char** attributes, unsigned int attribute_num) {
-  // Get attributes
-  std::vector<std::string> attributes_vec;
-  if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema_->attribute_names();
-    if ((!array_schema_->dense() || layout_ == Layout::UNORDERED))
-      attributes_vec.emplace_back(constants::coords);
-  } else {  // Custom attributes
-    // Get attributes
-    unsigned uri_max_len = constants::uri_max_len;
-    for (unsigned int i = 0; i < attribute_num; ++i) {
-      // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > uri_max_len)
-        return LOG_STATUS(Status::WriterError("Invalid attribute name length"));
-      attributes_vec.emplace_back(attributes[i]);
-    }
-
-    // Sanity check on duplicates
-    if (utils::has_duplicates(attributes_vec))
-      return LOG_STATUS(
-          Status::WriterError("Cannot set attributes; Duplicate attributes"));
-  }
-
-  // Set attribute names
-  attributes_.clear();
-  for (const auto& attr : attributes_vec)
-    attributes_.emplace_back(attr);
-
-  return Status::Ok();
-}
-
 template <class T>
 Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
   // For easy reference

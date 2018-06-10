@@ -39,6 +39,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <iostream>
 #include <sstream>
 #include <thread>
 
@@ -73,7 +74,10 @@ struct DenseVectorFx {
   // Functions
   DenseVectorFx();
   ~DenseVectorFx();
-  void create_dense_vector(const std::string& path);
+  void create_dense_vector(
+      const std::string& path,
+      tiledb_layout_t cell_order,
+      tiledb_layout_t tile_order);
   void check_read(const std::string& path, tiledb_layout_t layout);
   void check_update(const std::string& path);
   void check_duplicate_coords(const std::string& path);
@@ -176,7 +180,10 @@ std::string DenseVectorFx::random_bucket_name(const std::string& prefix) {
   return ss.str();
 }
 
-void DenseVectorFx::create_dense_vector(const std::string& path) {
+void DenseVectorFx::create_dense_vector(
+    const std::string& path,
+    tiledb_layout_t cell_order,
+    tiledb_layout_t tile_order) {
   int rc;
   int64_t dim_domain[] = {0, 9};
   int64_t tile_extent = 10;
@@ -201,9 +208,9 @@ void DenseVectorFx::create_dense_vector(const std::string& path) {
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, cell_order);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, tile_order);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
@@ -472,7 +479,7 @@ TEST_CASE_METHOD(
     // S3
     create_temp_dir(S3_TEMP_DIR);
     vector_name = S3_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name);
+    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
@@ -482,7 +489,7 @@ TEST_CASE_METHOD(
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
     vector_name = HDFS_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name);
+    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
@@ -492,7 +499,7 @@ TEST_CASE_METHOD(
     // File
     create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
     vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name);
+    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_ROW_MAJOR);
     check_read(vector_name, TILEDB_COL_MAJOR);
     check_update(vector_name);
@@ -509,10 +516,34 @@ TEST_CASE_METHOD(
 
   std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  create_dense_vector(vector_name);
+  create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
   check_duplicate_coords(vector_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    DenseVectorFx,
+    "C API: Test 1d dense vector cell/tile layout",
+    "[capi], [dense-vector], [dense-vector-layout]") {
+  std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_dense_vector(vector_name, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+
+  // Check layout
+  tiledb_array_schema_t* array_schema;
+  tiledb_layout_t cell_order, tile_order;
+  int rc = tiledb_array_schema_load(ctx_, vector_name.c_str(), &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_cell_order(ctx_, array_schema, &cell_order);
+  CHECK(rc == TILEDB_OK);
+  CHECK(cell_order == TILEDB_COL_MAJOR);
+  rc = tiledb_array_schema_get_tile_order(ctx_, array_schema, &tile_order);
+  CHECK(rc == TILEDB_OK);
+  CHECK(tile_order == TILEDB_COL_MAJOR);
+  tiledb_array_schema_free(&array_schema);
+
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
