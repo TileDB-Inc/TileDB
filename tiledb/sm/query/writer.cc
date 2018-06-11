@@ -243,8 +243,10 @@ void Writer::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Writer::set_subarray(const void* subarray) {
-  uint64_t subarray_size = 2 * array_schema_->coords_size();
+  // Reset the writer (this will nuke the global write state)
+  reset();
 
+  uint64_t subarray_size = 2 * array_schema_->coords_size();
   if (subarray_ == nullptr)
     subarray_ = std::malloc(subarray_size);
   if (subarray_ == nullptr)
@@ -1040,6 +1042,13 @@ Status Writer::new_fragment_name(std::string* frag_uri) const {
   return Status::Ok();
 }
 
+void Writer::nuke_global_write_state() {
+  auto meta = global_write_state_->frag_meta_.get();
+  close_files(meta);
+  storage_manager_->vfs()->remove_dir(meta->fragment_uri());
+  global_write_state_.reset(nullptr);
+}
+
 Status Writer::ordered_write() {
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
@@ -1584,6 +1593,12 @@ Status Writer::prepare_tiles_var(
   }
 
   return Status::Ok();
+}
+
+void Writer::reset() {
+  if (global_write_state_ != nullptr)
+    nuke_global_write_state();
+  initialized_ = false;
 }
 
 template <class T>

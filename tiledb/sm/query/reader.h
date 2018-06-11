@@ -78,6 +78,13 @@ class Reader {
      * to be split next.
      */
     std::list<void*> subarray_partitions_;
+    /** True if the reader has been initialized. */
+    bool initialized_;
+    /**
+     * `True` if the query produced results that could not fit in
+     * some buffer.
+     */
+    bool overflowed_;
   };
 
   /** Contains the buffer(s) and buffer size(s) for some attribute. */
@@ -431,17 +438,8 @@ class Reader {
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
 
-  /** True if the reader has been initialized. */
-  bool initialized_;
-
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
-
-  /**
-   * `True` if the query produced results that could not fit in
-   * some buffer.
-   */
-  bool overflowed_;
 
   /** To handle incomplete read queries. */
   ReadState read_state_;

@@ -1852,6 +1852,14 @@ TILEDB_EXPORT int tiledb_query_alloc(
  *     for dense arrays, and specifically dense writes. Note that `subarray`
  *     must have the same type as the domain.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If you set the subarray of a completed, incomplete or in-progress
+ *     query, this function will clear the internal state and render it
+ *     as uninitialized. However, the potentially set layout and attribute
+ *     buffers will be retained. This is useful when the user wishes to
+ *     fix the attributes and layout, but explore different subarrays with
+ *     the same `tiledb_query_t` object (i.e., without having to created
+ *     a new object).
  */
 TILEDB_EXPORT int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
