@@ -318,9 +318,6 @@ class StorageManager {
   /** Creates an empty file with the input URI. */
   Status touch(const URI& uri);
 
-  /** Deletes a fragment directory. */
-  Status delete_fragment(const URI& uri) const;
-
   /**
    * Creates a TileDB group.
    *
@@ -665,15 +662,11 @@ class StorageManager {
   /** A fragment metadata cache. */
   LRUCache* fragment_metadata_cache_;
 
-  /**
-   * Mutex for managing OpenArray objects. Its purpose is threefold:
-   *
-   * - Protect `open_arrays_` during `array_{open, close} and
-   *   `array_{xlock, xunlock}`.
-   * - Protect `xfilelocks_` during `array_{xlock, xunlock}
-   * - Used by conditional variable `xlock_cv_`.
-   */
-  std::mutex open_array_mtx_;
+  /** Mutex for managing OpenArray objects for reads. */
+  std::mutex open_array_for_reads_mtx_;
+
+  /** Mutex for managing OpenArray objects for writes. */
+  std::mutex open_array_for_writes_mtx_;
 
   /** Stores the currently open arrays for reads. */
   std::map<std::string, OpenArray*> open_arrays_for_reads_;

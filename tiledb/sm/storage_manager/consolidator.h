@@ -120,7 +120,8 @@ class Consolidator {
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
-   * the number of fragments to be consolidated.
+   * the number of fragments to be consolidated and the URI of the
+   * new fragment to be created.
    *
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
@@ -134,6 +135,7 @@ class Consolidator {
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param fragment_num The number of fragments to be retrieved.
+   * @param new_fragment_uri The URI of the new fragment to be created.
    * @return Status
    */
   Status create_queries(
@@ -145,14 +147,25 @@ class Consolidator {
       uint64_t snapshot,
       void** buffers,
       uint64_t* buffer_sizes,
-      unsigned int* fragment_num);
+      unsigned int* fragment_num,
+      URI* new_fragment_uri);
 
   /** Creates the subarray that should represent the entire array domain. */
   Status create_subarray(
       OpenArray* open_array, uint64_t snapshot, void** subarray) const;
 
   /**
+   * Deletes the fragment metadata files of the old fragments that
+   * got consolidated. This renders the old fragments "invisible".
+   *
+   * @param uris The URIs of the old fragments.
+   * @return Status
+   */
+  Status delete_old_fragment_metadata(const std::vector<URI>& uris);
+
+  /**
    * Deletes the old fragments that got consolidated.
+   *
    * @param uris The URIs of the old fragments.
    * @return Status
    */
