@@ -272,9 +272,6 @@ bool Reader::no_results() const {
 }
 
 Status Reader::read() {
-  // This is needed in case the buffers were reset with smaller sizes
-  RETURN_NOT_OK(calibrate_cur_partition());
-
   if (fragment_metadata_.empty() ||
       read_state_.cur_subarray_partition_ == nullptr) {
     zero_out_buffer_sizes();
@@ -456,23 +453,6 @@ Status Reader::set_subarray(const void* subarray) {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
-
-Status Reader::calibrate_cur_partition() {
-  if (read_state_.cur_subarray_partition_ != nullptr) {
-    auto subarray_size = 2 * array_schema_->coords_size();
-    auto partition_to_push = std::malloc(subarray_size);
-    if (partition_to_push == nullptr)
-      return LOG_STATUS(Status::ReaderError(
-          "Cannot calibrate current partition; Memory allocation failed"));
-    std::memcpy(
-        partition_to_push, read_state_.cur_subarray_partition_, subarray_size);
-
-    read_state_.subarray_partitions_.push_front(partition_to_push);
-    next_subarray_partition();
-  }
-
-  return Status::Ok();
-}
 
 void Reader::clear_read_state() {
   for (auto p : read_state_.subarray_partitions_)

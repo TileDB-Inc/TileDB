@@ -624,9 +624,7 @@ void IncompleteFx::check_dense_shrink_buffer_size() {
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Check new buffer contents
-  int c_buffer_a1_2[1] = {2};
-  CHECK(!memcmp(buffer_a1, c_buffer_a1_2, sizeof(c_buffer_a1_2)));
-  CHECK(buffer_sizes[0] == sizeof(int));
+  CHECK(buffer_sizes[0] == 0);
 
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);

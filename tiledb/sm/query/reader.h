@@ -451,12 +451,6 @@ class Reader {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /**
-   * Re-checks if the current partition must be split, in case the user
-   * has reset the buffers with smaller sizes in between query submissions.
-   */
-  Status calibrate_cur_partition();
-
   /** Clears the read state. */
   void clear_read_state();
 
