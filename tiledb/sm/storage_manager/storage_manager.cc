@@ -116,13 +116,13 @@ Status StorageManager::array_open(
 
 Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
   // Lock mutex
-  open_array_mtx_.lock();
+  open_array_for_reads_mtx_.lock();
 
   // Find the open array entry
   auto array_uri = open_array->array_uri();
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
   if (it == open_arrays_for_reads_.end()) {
-    open_array_mtx_.unlock();
+    open_array_for_reads_mtx_.unlock();
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot reopen array ") + array_uri.to_string() +
         "; Array not open"));
@@ -132,18 +132,17 @@ Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
   open_array->mtx_lock();
 
   // Unlock mutex
-  open_array_mtx_.unlock();
+  open_array_for_reads_mtx_.unlock();
 
   *snapshot = open_array->next_snapshot();
 
   // Get fragment metadata in the case of reads, if not fetched already
-  RETURN_NOT_OK_ELSE(
-      load_fragment_metadata(open_array), open_array->mtx_unlock());
+  auto st = load_fragment_metadata(open_array);
 
-  // Unlock the array mutex
+  // Unlock the mutexes
   open_array->mtx_unlock();
 
-  return Status::Ok();
+  return st;
 }
 
 Status StorageManager::array_compute_max_buffer_sizes(
@@ -517,8 +516,8 @@ Status StorageManager::array_get_non_empty_domain(
 }
 
 Status StorageManager::array_xlock(const URI& array_uri) {
-  // Wait until the array is closed
-  std::unique_lock<std::mutex> lk(open_array_mtx_);
+  // Wait until the array is closed for reads
+  std::unique_lock<std::mutex> lk(open_array_for_reads_mtx_);
   xlock_cv_.wait(lk, [this, array_uri] {
     return open_arrays_for_reads_.find(array_uri.to_string()) ==
            open_arrays_for_reads_.end();
@@ -534,8 +533,6 @@ Status StorageManager::array_xlock(const URI& array_uri) {
 }
 
 Status StorageManager::array_xunlock(const URI& array_uri) {
-  open_array_mtx_.lock();
-
   // Get filelock if it exists
   auto it = xfilelocks_.find(array_uri.to_string());
   if (it == xfilelocks_.end())
@@ -547,9 +544,6 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
   if (filelock != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri, filelock));
   xfilelocks_.erase(it);
-
-  open_array_mtx_.unlock();
-  xlock_cv_.notify_all();
 
   return Status::Ok();
 }
@@ -622,17 +616,6 @@ void StorageManager::decrement_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_--;
   queries_in_progress_cv_.notify_all();
-}
-
-Status StorageManager::delete_fragment(const URI& uri) const {
-  bool exists;
-  RETURN_NOT_OK(is_fragment(uri, &exists));
-  if (!exists) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot delete fragment; '" + uri.to_string() +
-        "' is not a TileDB fragment"));
-  }
-  return vfs_->remove_dir(uri);
 }
 
 Status StorageManager::object_remove(const char* path) const {
@@ -1175,16 +1158,16 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
 
 Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   // For thread-safety while loading fragment metadata
-  open_array_mtx_.lock();
+  open_array_for_reads_mtx_.lock();
 
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
   bool is_dir;
   const URI& fragment_uri = metadata->fragment_uri();
   RETURN_NOT_OK_ELSE(
-      vfs_->is_dir(fragment_uri, &is_dir), open_array_mtx_.unlock());
+      vfs_->is_dir(fragment_uri, &is_dir), open_array_for_reads_mtx_.unlock());
   if (!is_dir) {
-    open_array_mtx_.unlock();
+    open_array_for_reads_mtx_.unlock();
     return Status::Ok();
   }
 
@@ -1192,7 +1175,7 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   auto buff = new Buffer();
   auto st = metadata->serialize(buff);
   if (!st.ok()) {
-    open_array_mtx_.unlock();
+    open_array_for_reads_mtx_.unlock();
     delete buff;
   }
 
@@ -1219,7 +1202,7 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   delete buff;
 
   // Unlock the mutex
-  open_array_mtx_.unlock();
+  open_array_for_reads_mtx_.unlock();
 
   return st;
 }
@@ -1397,14 +1380,14 @@ void StorageManager::array_get_non_empty_domain(
 
 Status StorageManager::array_close_for_reads(const URI& array_uri) {
   // Lock mutex
-  open_array_mtx_.lock();
+  open_array_for_reads_mtx_.lock();
 
   // Find the open array entry
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
 
   // Do nothing if array is closed
   if (it == open_arrays_for_reads_.end()) {
-    open_array_mtx_.unlock();
+    open_array_for_reads_mtx_.unlock();
     return Status::Ok();
   }
 
@@ -1421,7 +1404,7 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
     auto st = open_array->file_unlock(vfs_);
     if (!st.ok()) {
       open_array->mtx_unlock();
-      open_array_mtx_.unlock();
+      open_array_for_reads_mtx_.unlock();
       return st;
     }
 
@@ -1434,7 +1417,7 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
   }
 
   // Unlock mutex and notify condition on exclusive locks
-  open_array_mtx_.unlock();
+  open_array_for_reads_mtx_.unlock();
   xlock_cv_.notify_all();
 
   return Status::Ok();
@@ -1442,14 +1425,14 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
 
 Status StorageManager::array_close_for_writes(const URI& array_uri) {
   // Lock mutex
-  open_array_mtx_.lock();
+  open_array_for_writes_mtx_.lock();
 
   // Find the open array entry
   auto it = open_arrays_for_writes_.find(array_uri.to_string());
 
   // Do nothing if array is closed
   if (it == open_arrays_for_writes_.end()) {
-    open_array_mtx_.unlock();
+    open_array_for_writes_mtx_.unlock();
     return Status::Ok();
   }
 
@@ -1470,7 +1453,7 @@ Status StorageManager::array_close_for_writes(const URI& array_uri) {
   }
 
   // Unlock mutex
-  open_array_mtx_.unlock();
+  open_array_for_writes_mtx_.unlock();
 
   return Status::Ok();
 }
@@ -1490,7 +1473,7 @@ Status StorageManager::array_open_for_reads(
   }
 
   // Lock mutex
-  open_array_mtx_.lock();
+  open_array_for_reads_mtx_.lock();
 
   // Find the open array entry
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
@@ -1506,7 +1489,7 @@ Status StorageManager::array_open_for_reads(
   (*open_array)->cnt_incr();
 
   // Unlock mutex
-  open_array_mtx_.unlock();
+  open_array_for_reads_mtx_.unlock();
 
   // Acquire a shared filelock
   auto st = (*open_array)->file_lock(vfs_);
@@ -1559,7 +1542,7 @@ Status StorageManager::array_open_for_writes(
   }
 
   // Lock mutex
-  open_array_mtx_.lock();
+  open_array_for_writes_mtx_.lock();
 
   // Find the open array entry
   auto it = open_arrays_for_writes_.find(array_uri.to_string());
@@ -1575,7 +1558,7 @@ Status StorageManager::array_open_for_writes(
   (*open_array)->cnt_incr();
 
   // Unlock mutex
-  open_array_mtx_.unlock();
+  open_array_for_writes_mtx_.unlock();
 
   // No shared filelock needed to be acquired
 
