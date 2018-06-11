@@ -74,7 +74,7 @@ Status Query::finalize() {
     return Status::Ok();
 
   RETURN_NOT_OK(writer_.finalize());
-  status_ = QueryStatus::UNINITIALIZED;
+  status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
 
@@ -250,6 +250,8 @@ Status Query::set_subarray(const void* subarray) {
   } else {  // READ
     RETURN_NOT_OK(reader_.set_subarray(subarray));
   }
+
+  status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
 }

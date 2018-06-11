@@ -83,12 +83,12 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 
 Reader::Reader() {
   array_schema_ = nullptr;
+  storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   read_state_.cur_subarray_partition_ = nullptr;
   read_state_.subarray_ = nullptr;
-  storage_manager_ = nullptr;
-  initialized_ = false;
-  overflowed_ = false;
+  read_state_.initialized_ = false;
+  read_state_.overflowed_ = false;
 }
 
 Reader::~Reader() {
@@ -104,7 +104,8 @@ const ArraySchema* Reader::array_schema() const {
 }
 
 bool Reader::incomplete() const {
-  return overflowed_ || read_state_.cur_subarray_partition_ != nullptr;
+  return read_state_.overflowed_ ||
+         read_state_.cur_subarray_partition_ != nullptr;
 }
 
 unsigned Reader::fragment_num() const {
@@ -140,7 +141,7 @@ Status Reader::init() {
   if (!fragment_metadata_.empty())
     RETURN_NOT_OK(init_read_state());
 
-  initialized_ = true;
+  read_state_.initialized_ = true;
 
   return Status::Ok();
 }
@@ -281,7 +282,7 @@ Status Reader::read() {
   }
 
   bool no_results = false;
-  overflowed_ = false;
+  read_state_.overflowed_ = false;
 
   do {
     reset_buffer_sizes();
@@ -296,7 +297,7 @@ Status Reader::read() {
     // Return if the buffers could not fit the results.
     // Do not advance to the next partition. This is equivalent to
     // having no results.
-    if (overflowed_) {
+    if (read_state_.overflowed_) {
       zero_out_buffer_sizes();
       return Status::Ok();
     }
@@ -346,7 +347,7 @@ Status Reader::set_buffer(
 
   // Error if setting a new attribute after initialization
   bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (initialized_ && !attr_exists)
+  if (read_state_.initialized_ && !attr_exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute '") + attribute +
         "' after initialization"));
@@ -395,7 +396,7 @@ Status Reader::set_buffer(
 
   // Error if setting a new attribute after initialization
   bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (initialized_ && !attr_exists)
+  if (read_state_.initialized_ && !attr_exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute '") + attribute +
         "' after initialization"));
@@ -487,6 +488,9 @@ void Reader::clear_read_state() {
     std::free(read_state_.cur_subarray_partition_);
     read_state_.cur_subarray_partition_ = nullptr;
   }
+
+  read_state_.initialized_ = false;
+  read_state_.overflowed_ = false;
 }
 
 template <class T>
@@ -882,7 +886,7 @@ Status Reader::copy_fixed_cells(
 
   // Handle overflow
   if (buffer_offset > *buffer_size) {
-    overflowed_ = true;
+    read_state_.overflowed_ = true;
     return Status::Ok();
   }
 
@@ -939,7 +943,7 @@ Status Reader::copy_var_cells(
     auto cell_num_in_range = cr.end_ - cr.start_ + 1;
     // Check if offset buffers can fit the result
     if (buffer_offset + cell_num_in_range * offset_size > *buffer_size) {
-      overflowed_ = true;
+      read_state_.overflowed_ = true;
       return Status::Ok();
     }
 
@@ -948,7 +952,7 @@ Status Reader::copy_var_cells(
       // Check if result can fit in the buffer
       if (buffer_var_offset + cell_num_in_range * fill_size >
           *buffer_var_size) {
-        overflowed_ = true;
+        read_state_.overflowed_ = true;
         return Status::Ok();
       }
 
@@ -960,7 +964,7 @@ Status Reader::copy_var_cells(
 
         // Handle overflow
         if (buffer_var_offset + fill_size > *buffer_var_size) {
-          overflowed_ = true;
+          read_state_.overflowed_ = true;
           return Status::Ok();
         }
 
@@ -992,7 +996,7 @@ Status Reader::copy_var_cells(
                           tile_var_size - (offsets[i] - offsets[0]);
 
       if (buffer_var_offset + cell_var_size > *buffer_var_size) {
-        overflowed_ = true;
+        read_state_.overflowed_ = true;
         return Status::Ok();
       }
 
@@ -1132,7 +1136,7 @@ Status Reader::dense_read() {
 
   // Copy cells
   for (const auto& attr : attributes_) {
-    if (overflowed_)
+    if (read_state_.overflowed_)
       break;
 
     if (attr != constants::coords)  // Skip coordinates
@@ -1140,7 +1144,7 @@ Status Reader::dense_read() {
   }
 
   // Fill coordinates if the user requested them
-  if (!overflowed_ && has_coords())
+  if (!read_state_.overflowed_ && has_coords())
     RETURN_CANCEL_OR_ERROR(fill_coords<T>());
 
   return Status::Ok();
@@ -1171,7 +1175,7 @@ Status Reader::fill_coords() {
 
     // Check for overflow
     if (coords_num * coords_size + coords_buff_offset > coords_buff_size) {
-      overflowed_ = true;
+      read_state_.overflowed_ = true;
       return Status::Ok();
     }
 
@@ -1687,7 +1691,7 @@ Status Reader::sparse_read() {
 
   // Copy cells
   for (const auto& attr : attributes_) {
-    if (overflowed_)
+    if (read_state_.overflowed_)
       break;
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
   }

@@ -482,6 +482,12 @@ class Writer {
   Status new_fragment_name(std::string* frag_uri) const;
 
   /**
+   * This deletes the global write state and deletes the potentially
+   * partially written fragment.
+   */
+  void nuke_global_write_state();
+
+  /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
    * to dense arrays.
    */
@@ -623,6 +629,9 @@ class Writer {
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
+
+  /** Resets the writer object, rendering it incomplete. */
+  void reset();
 
   /**
    * Sorts the coordinates of the user buffers, creating a vector with
