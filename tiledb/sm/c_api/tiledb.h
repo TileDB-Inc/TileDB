@@ -2413,7 +2413,8 @@ TILEDB_EXPORT int tiledb_array_max_buffer_size(
  * @param attribute The var-sized attribute to focus on.
  * @param subarray The subarray to focus on. Note that it must have the same
  *     underlying type as the array domain.
- * @param buffer_size The buffer size (in bytes) to be retrieved.
+ * @param buffer_off_size The offsets buffer size (in bytes) to be retrieved.
+ * @param buffer_val_size The values buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_array_max_buffer_size_var(
