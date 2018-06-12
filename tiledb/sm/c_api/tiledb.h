@@ -1800,6 +1800,48 @@ TILEDB_EXPORT int tiledb_array_schema_get_attribute_from_name(
 TILEDB_EXPORT int tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
 
+/**
+ * Serializes the array schema to json
+ *
+ * **Example:**
+ *
+ * The following serializes the array schema to give json string.
+ *
+ * @code{.c}
+ * tiledb_array_schema_to_json(ctx, array_schema, &json_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param json_string char* pointer to store json string in
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_to_json(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    char** json_string);
+
+/**
+ * Serializes the array schema from json
+ *
+ * **Example:**
+ *
+ * The following de-serializes the array schema from a json string.
+ *
+ * @code{.c}
+ * tiledb_array_schema_to_json(ctx, &array_schema, json_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param json_string char* which stores the json string
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_from_json(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    const char* json_string);
+
 /* ********************************* */
 /*               QUERY               */
 /* ********************************* */

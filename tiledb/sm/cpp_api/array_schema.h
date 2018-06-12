@@ -497,6 +497,35 @@ class ArraySchema : public Schema {
     return "";
   }
 
+  /**
+   *
+   * @return json encoded string
+   */
+  std::string to_json() {
+    char* json_string;
+    auto& ctx = ctx_.get();
+    tiledb_array_schema_to_json(ctx, schema_.get(), &json_string);
+    return json_string;
+  }
+
+  /**
+   * Static function to create an ArraySchema from a json string
+   * @param ctx
+   * @param json_string
+   * @return ArraySchema* on success or nullptr on error
+   */
+  static ArraySchema* from_json(
+      const Context ctx, const std::string& json_string) {
+    tiledb_array_schema_t* array_schema;
+    auto st =
+        tiledb_array_schema_from_json(ctx, &array_schema, json_string.c_str());
+    if (st == TILEDB_OK) {
+      ArraySchema* tmp = new ArraySchema(ctx, array_schema);
+      return tmp;
+    }
+    return nullptr;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

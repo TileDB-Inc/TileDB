@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/rest/json/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/kv/kv.h"
@@ -1495,6 +1496,95 @@ int tiledb_array_schema_dump(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   array_schema->array_schema_->dump(out);
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_to_json(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    char** json_string) {
+  try {
+    nlohmann::json j = array_schema->array_schema_;
+    std::string json = j.dump();
+    char* cstr = new (std::nothrow) char[json.length() + 1];
+    if (cstr == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to allocate TileDB cstring for to json");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
+
+    strcpy(cstr, json.c_str());
+    *json_string = cstr;
+  } catch (nlohmann::json::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to encode json for array_schema: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  } catch (std::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to encode json for array_schema: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_from_json(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    const char* json_string) {
+  try {
+    nlohmann::json j = nlohmann::json::parse(json_string);
+    tiledb::sm::Status st = tiledb::sm::Status::Ok();
+    if (j.find("array_type") == j.end()) {
+      st = tiledb::sm::Status::Error(
+          "json object did not contain array_type for array schema "
+          "de-serialization");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+    // Create array schema struct
+    *array_schema = new (std::nothrow) tiledb_array_schema_t;
+    if (*array_schema == nullptr) {
+      st = tiledb::sm::Status::Error(
+          "Failed to allocate TileDB array schema object");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
+
+    // Clear existing schema if allocated
+    (*array_schema)->array_schema_ =
+        new tiledb::sm::ArraySchema(j.get<tiledb::sm::ArraySchema>());
+
+    st = (*array_schema)->array_schema_->check();
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } catch (nlohmann::json::exception e) {
+    delete *array_schema;
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to decode json for array_schema: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  } catch (std::exception e) {
+    delete *array_schema;
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to decode json for array_schema: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Success
   return TILEDB_OK;
 }
 
