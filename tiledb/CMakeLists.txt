@@ -274,6 +274,7 @@ find_package(Blosc_EP REQUIRED)
 find_package(Bzip2_EP REQUIRED)
 find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
+find_package(Nlohmann_json_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -282,6 +283,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Bzip2::Bzip2
     LZ4::LZ4
     Spdlog::Spdlog
+    nlohmann_json::nlohmann_json
     Zlib::Zlib
     Zstd::Zstd
 )
