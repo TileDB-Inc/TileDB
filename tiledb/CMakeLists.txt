@@ -274,6 +274,7 @@ find_package(Blosc_EP REQUIRED)
 find_package(Bzip2_EP REQUIRED)
 find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
+find_package(Nlohmann_json_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -282,6 +283,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Bzip2::Bzip2
     LZ4::LZ4
     Spdlog::Spdlog
+    nlohmann_json::nlohmann_json
     Zlib::Zlib
     Zstd::Zstd
 )
@@ -365,6 +367,13 @@ if (TILEDB_STATIC)
     "  add_library(Spdlog::Spdlog INTERFACE IMPORTED)\n"
     "endif()"
   )
+  # Nlohmann_json is a special case because it is header-only.
+  string(CONCAT TILEDB_STATIC_DEP_STRING
+          "${TILEDB_STATIC_DEP_STRING}"
+          "if (NOT TARGET nlohmann_json::nlohmann_json)\n"
+          "  add_library(nlohmann_json::nlohmann_json INTERFACE IMPORTED)\n"
+          "endif()"
+          )
 endif()
 
 ############################################################
