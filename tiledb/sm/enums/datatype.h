@@ -35,6 +35,7 @@
 #define TILEDB_DATATYPE_H
 
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/status.h"
 
 #include <cassert>
 
@@ -136,6 +137,51 @@ inline const std::string& datatype_str(Datatype type) {
       assert(0);
       return constants::empty_str;
   }
+}
+
+/** Returns the datatype given a string representation. */
+inline Status datatype_enum(
+    const std::string& datatype_str, Datatype* datatype) {
+  if (datatype_str == constants::int32_str)
+    *datatype = Datatype::INT32;
+  else if (datatype_str == constants::int64_str)
+    *datatype = Datatype::INT64;
+  else if (datatype_str == constants::float32_str)
+    *datatype = Datatype::FLOAT32;
+  else if (datatype_str == constants::float64_str)
+    *datatype = Datatype::FLOAT64;
+  else if (datatype_str == constants::char_str)
+    *datatype = Datatype::CHAR;
+  else if (datatype_str == constants::int8_str)
+    *datatype = Datatype::INT8;
+  else if (datatype_str == constants::uint8_str)
+    *datatype = Datatype::UINT8;
+  else if (datatype_str == constants::int16_str)
+    *datatype = Datatype::INT16;
+  else if (datatype_str == constants::uint16_str)
+    *datatype = Datatype::UINT16;
+  else if (datatype_str == constants::uint32_str)
+    *datatype = Datatype::UINT32;
+  else if (datatype_str == constants::uint64_str)
+    *datatype = Datatype::UINT64;
+  else if (datatype_str == constants::string_ascii_str)
+    *datatype = Datatype::STRING_ASCII;
+  else if (datatype_str == constants::string_utf8_str)
+    *datatype = Datatype::STRING_UTF8;
+  else if (datatype_str == constants::string_utf16_str)
+    *datatype = Datatype::STRING_UTF16;
+  else if (datatype_str == constants::string_utf32_str)
+    *datatype = Datatype::STRING_UTF32;
+  else if (datatype_str == constants::string_ucs2_str)
+    *datatype = Datatype::STRING_UCS2;
+  else if (datatype_str == constants::string_ucs4_str)
+    *datatype = Datatype::STRING_UCS4;
+  else if (datatype_str == constants::any_str)
+    *datatype = Datatype::ANY;
+  else {
+    return Status::Error("Invalid Datatype " + datatype_str);
+  }
+  return Status::Ok();
 }
 
 /** Returns true if the input datatype is a string type. */
