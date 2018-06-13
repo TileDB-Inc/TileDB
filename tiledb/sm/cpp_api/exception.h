@@ -42,6 +42,7 @@
 
 namespace tiledb {
 
+/** Exception indicating a TileDB error. */
 struct TileDBError : std::runtime_error {
   TileDBError(const std::string& msg)
       : std::runtime_error(msg) {

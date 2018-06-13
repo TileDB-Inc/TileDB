@@ -46,14 +46,42 @@
 namespace tiledb {
 
 /**
- * TileDB array class.
+ * Class representing a TileDB array object.
+ *
+ * @details
+ * An Array object represents array data in TileDB at some persisted location,
+ * e.g. on disk, in an S3 bucket, etc. Once an array has been opened for reading
+ * or writing, interact with the data through Query objects.
+ *
+ * **Example:**
+ *
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ *
+ * // Create an ArraySchema, add attributes, domain, etc.
+ * tiledb::ArraySchema schema(...);
+ *
+ * // Create empty array named "my_array" on persistent storage.
+ * tiledb::Array::create("my_array", schema);
+ * @endcode
  */
 class Array {
  public:
   /**
-   * Constructor.
+   * Constructor. This opens the array for the given query type. The destructor
+   * calls the `close()` method.
    *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for reading
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * @endcode
+   *
+   * @param ctx TileDB context.
    * @param array_uri The array URI.
+   * @param query_type Query type to open the array for.
    */
   Array(
       const Context& ctx,
@@ -77,6 +105,7 @@ class Array {
   Array& operator=(const Array&) = default;
   Array& operator=(Array&& o) = default;
 
+  /** Destructor; calls `close()`. */
   ~Array() {
     close();
   }
@@ -96,7 +125,30 @@ class Array {
     return array_.get();
   }
 
-  /** Opens the array. */
+  /**
+   * Opens the array. The array is opened using a query type as input.
+   * This is to indicate that queries created for this `Array`
+   * object will inherit the query type. In other words, `Array`
+   * objects are opened to receive only one type of queries.
+   * They can always be closed and be re-opened with another query type.
+   * Also there may be many different `Array`
+   * objects created and opened with different query types. For
+   * instance, one may create and open an array object `array_read` for
+   * reads and another one `array_write` for writes, and interleave
+   * creation and submission of queries for both these array objects.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_WRITE);
+   * // Close and open again for reading.
+   * array.close();
+   * array.open(TILEDB_READ);
+   * @endcode
+   *
+   * @param query_type The type of queries the array object will be receiving.
+   * @throws TileDBError if the array is already open or other error occurred.
+   */
   void open(tiledb_query_type_t query_type) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_open(ctx, array_.get(), query_type));
@@ -105,7 +157,24 @@ class Array {
     schema_ = ArraySchema(ctx, array_schema);
   }
 
-  /** Re-opens the array. */
+  /**
+   * Reopens the array (the array must be already open). This is useful
+   * when the array got updated after it got opened and the `Array`
+   * object got created. To sync-up with the updates, the user must either
+   * close the array and open with `open()`, or just use
+   * `reopen()` without closing. This function will be generally
+   * faster than the former alternative.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Open the array for reading
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * array.reopen();
+   * @endcode
+   *
+   * @throws TileDBError if the array was not already open or other error
+   * occurred.
+   */
   void reopen() {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_reopen(ctx, array_.get()));
@@ -114,7 +183,15 @@ class Array {
     schema_ = ArraySchema(ctx, array_schema);
   }
 
-  /** Closes the array. */
+  /**
+   * Closes the array. The destructor calls this automatically.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * array.close();
+   * @endcode
+   */
   void close() {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_close(ctx, array_.get()));
@@ -127,14 +204,29 @@ class Array {
    * begin (as consolidation temporarily acquires an exclusive lock on the
    * array).
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::consolidate(ctx, "s3://bucket-name/array-name");
+   * @endcode
+   *
    * @param ctx TileDB context
-   * @param uri Array URI
+   * @param array_uri The URI of the TileDB array to be consolidated.
    */
   static void consolidate(const Context& ctx, const std::string& uri) {
     ctx.handle_error(tiledb_array_consolidate(ctx, uri.c_str()));
   }
 
-  /** Creates an array on persistent storage from a schema definition. **/
+  /**
+   * Creates a new TileDB array given an input schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::create("s3://bucket-name/array-name", schema);
+   * @endcode
+   *
+   * @param uri URI where array will be created.
+   * @param schema The array schema.
+   */
   static void create(const std::string& uri, const ArraySchema& schema) {
     auto& ctx = schema.context();
     ctx.handle_error(tiledb_array_schema_check(ctx, schema));
@@ -142,8 +234,19 @@ class Array {
   }
 
   /**
-   * Get the non-empty domain of the array. This returns the bounding
-   * coordinates for each dimension.
+   * Retrieves the non-empty domain from the array. This is the union of the
+   * non-empty domains of the array fragments.
+   *
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * auto non_empty = array.non_empty_domain();
+   * std::cout << "Dimension named " << non_empty[0].first << " has cells in ["
+   *           << non_empty[0].second.first << ", " non_empty[0].second.second
+   *           << "]" << std::endl;
+   * @endcode
    *
    * @tparam T Domain datatype
    * @return Vector of dim names with a {lower, upper} pair. Inclusive.
@@ -177,16 +280,35 @@ class Array {
   /**
    * Compute an upper bound on the buffer elements needed to read a subarray.
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * std::vector<int> subarray = {0, 2, 0, 2};
+   * auto max_elements = array.max_buffer_elements(subarray);
+   *
+   * // For fixed-sized attributes, `.second` is the max number of elements
+   * // that can be read for the attribute. Use it to size the vector.
+   * std::vector<int> data_a1(max_elements["a1"].second);
+   *
+   * // In sparse reads, coords are also fixed-sized attributes.
+   * std::vector<int> coords(max_elements[TILEDB_COORDS].second);
+   *
+   * // In variable attributes, e.g. std::string type, need two buffers,
+   * // one for offsets and one for cell data.
+   * std::vector<uint64_t> offsets_a1(max_elements["a2"].first);
+   * std::vector<char> data_a1(max_elements["a2"].second);
+   * @endcode
+   *
    * @tparam T The domain datatype
-   * @param uri The array URI.
-   * @param schema The array schema
    * @param subarray Targeted subarray.
-   * @return The maximum number of elements for each array attribute (plus
-   *     coordinates for sparse arrays).
-   *     Note that two numbers are returned per attribute. The first
-   *     is the maximum number of elements in the offset buffer
-   *     (0 for fixed-sized attributes and coordinates),
-   *     and the second is the maximum number of elements of the value buffer.
+   * @return A map of attribute name (including `TILEDB_COORDS`) to
+   *     the maximum number of elements that can be read in the given subarray.
+   *     For each attribute, a pair of numbers are returned. The first,
+   *     for variable-length attributes, is the maximum number of offsets
+   *     for that attribute in the given subarray. For fixed-length attributes
+   *     and coordinates, the first is always 0. The second is the maximum
+   *     number of elements for that attribute in the given subarray.
    */
   template <typename T>
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>

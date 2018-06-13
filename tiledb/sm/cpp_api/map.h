@@ -52,7 +52,7 @@ class MultiMapItemProxy;
 class MapItemProxy;
 }  // namespace impl
 
-/** Object representing a Map key and its values. **/
+/** Object representing a Map key and its attribute values. **/
 class MapItem {
  public:
   /* ********************************* */
@@ -79,12 +79,37 @@ class MapItem {
   /**
    * Checks the goodness of the key-value item. Useful when
    * checking if a retrieved key-value item exists in a map.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Map map(ctx, "map_name");
+   * int key = 1;
+   * tiledb::MapItem item = map.get_item(key);
+   * bool item_exists = item.good();
+   * @endcode
    */
   bool good() const {
     return item_ != nullptr;
   }
 
-  /** Set an attribute to the given value **/
+  /**
+   * Sets an attribute to the given value for this item.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Load or create a map.
+   * tiledb::Map map(...);
+   * int key = 1;
+   * auto item = Map::create_item(ctx, key);
+   * item.set("attr", 123);
+   * @endcode
+   *
+   * @tparam T Attribute value type
+   * @param attr Attribute name
+   * @param val Attribute value
+   */
   template <typename T>
   void set(const std::string& attr, const T& val) {
     using DataT = typename impl::TypeHandler<T>;
@@ -99,7 +124,11 @@ class MapItem {
         DataT::size(val) * sizeof(typename DataT::value_type)));
   }
 
-  /** Get the key for the item. */
+  /**
+   * Returns the key for this item.
+   *
+   * @tparam T Key type
+   */
   template <typename T>
   T key() const {
     using DataT = typename impl::TypeHandler<T>;
@@ -118,7 +147,9 @@ class MapItem {
     return key;
   }
 
-  /** Get the key datatype and size **/
+  /**
+   * Returns a pair of the key datatype and size (in bytes) for this item.
+   */
   std::pair<tiledb_datatype_t, uint64_t> key_info() const {
     auto& ctx = ctx_.get();
     const void* key;
@@ -130,7 +161,7 @@ class MapItem {
   }
 
   /**
-   * Get the value for a given attribute.
+   * Returns the value for a given attribute for this item.
    *
    * @note
    * This does not check for the number of elements, but rather returns
@@ -153,7 +184,13 @@ class MapItem {
     return std::pair<const T*, uint64_t>(data, num);
   }
 
-  /** Get a attribute with a given return type. **/
+  /**
+   * Returns the value for an attribute of this item.
+   *
+   * @tparam T The value type
+   * @param attr The attribute
+   * @return The attribute value of this item
+   */
   template <typename T>
   T get(const std::string& attr) const {
     using DataT = typename impl::TypeHandler<T>;
@@ -167,11 +204,50 @@ class MapItem {
     return ret;
   }
 
-  /** Get a proxy to set/get with operator[] **/
+  /**
+   * Operator that enables setting/getting an attribute value of this item with
+   * `[]`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Load or create a map.
+   * tiledb::Map map(...);
+   * int key = 1;
+   * auto item = Map::create_item(ctx, key);
+   * item["attr"] = 123;
+   * // Equivalent to:
+   * // item.set("attr", 123);
+   * @endcode
+   *
+   * @param attr Attribute to get/set
+   * @return "Proxy" object supporting `operator[]`.
+   */
   impl::MapItemProxy operator[](const std::string& attr);
 
   impl::MapItemProxy operator[](const char* cstr);
 
+  /**
+   * Operator that enables setting/getting multiple attribute values of this
+   * item with `[]`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Load or create a map.
+   * tiledb::Map map(...);
+   * int key = 1;
+   * auto item = Map::create_item(ctx, key);
+   * // Assumes attribute types of a1 int, and a2 std::string.
+   * item[{"a1", "a2"}] = std::make_tuple(123, "abc");
+   * // Equivalent to:
+   * // item.set("a1", 123);
+   * // item.set("a2", "abc");
+   * @endcode
+   *
+   * @param attrs Attributes to get/set
+   * @return "Proxy" object supporting `operator[]`.
+   */
   impl::MultiMapItemProxy operator[](const std::vector<std::string>& attrs);
 
   /** Ptr to underlying object. **/
@@ -556,7 +632,7 @@ class MapIterReference {
 }  // namespace impl
 
 /**
- * A Key value store backed by a TileDB Sparse array. A Map
+ * A Map is a key-value store backed by a TileDB sparse array. A Map
  * supports multiple key types and the value is defined by the
  * set of attributes in a MapSchema.
  *
@@ -565,7 +641,9 @@ class MapIterReference {
  * @code{.cpp}
  * // Make the map
  * tiledb::MapSchema schema(ctx);
- * schema.add_attributes(...);
+ * schema.add_attribute(Attribute::create<int>(ctx, "a1"));
+ * schema.add_attribute(Attribute::create<std::string>(ctx, "a2"));
+ * schema.add_attribute(Attribute::create<std::array<float, 2>>(ctx, "a3"));
  * Map::create("my_map", schema);
  *
  * // Write to the map
@@ -581,6 +659,9 @@ class MapIterReference {
  *
  * // Read value from map
  * std::tuple<int, std::string, std::array<float, 2>> vals = map[key];
+ *
+ * // Close map
+ * map.close();
  * @endcode
  */
 class Map {
@@ -592,10 +673,12 @@ class Map {
   /* ********************************* */
 
   /**
-   * Load a map.
+   * Load an existing map for reading/writing.
    *
-   * @param ctx Context
-   * @param uri URI of map.
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param attributes If reading, the vector of attributes to read. If the
+   * vector is empty, read all attributes. If writing, must be an empty vector.
    */
   Map(const Context& ctx,
       const std::string& uri,
@@ -630,6 +713,9 @@ class Map {
   Map& operator=(const Map&) = default;
   Map& operator=(Map&& o) = default;
 
+  /**
+   * Destructor. Calls `close()` on this map.
+   */
   ~Map() {
     close();
   }
@@ -640,7 +726,14 @@ class Map {
 
   /**
    * Create a map item with the given key. Once populated with attributes,
-   * it can be added to a Map with map.add_item()
+   * it can be added to a Map with `map.add_item()`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * std::vector<double> key = {2345.1, 345.2};
+   * auto item = Map::create_item(ctx, key);
+   * item.set("a1", 123);
+   * @endcode
    */
   template <typename T>
   static MapItem create_item(const Context& ctx, const T& key) {
@@ -653,7 +746,21 @@ class Map {
         nullptr);
   }
 
-  /** Check if a key is in the map. */
+  /**
+   * Check if a key is in the map.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load a map
+   * tiledb::Map map(...);
+   * std::vector<double> key = {2345.1, 345.2};
+   * bool has_key = map.has_key(key);
+   * @endcode
+   *
+   * @tparam T Key type
+   * @param key Key to check
+   * @return True if the key is in the map.
+   */
   template <typename T>
   bool has_key(const T& key) {
     using DataT = typename impl::TypeHandler<T>;
@@ -672,8 +779,20 @@ class Map {
   }
 
   /**
-   * Get an item from the map given a key. Throws `TileDBError` on missing
-   * key.
+   * Returns a MapItem from the map corresponding to the given key.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load a map
+   * tiledb::Map map(...);
+   * std::vector<double> key = {2345.1, 345.2};
+   * auto item = map.get_item(key);
+   * @endcode
+   *
+   * @tparam T Key type
+   * @param key Key of item to retrieve
+   * @return The item
+   * @throws TileDBError if the map does not contain the key.
    */
   template <typename T>
   MapItem get_item(const T& key) {
@@ -693,7 +812,21 @@ class Map {
     return MapItem(schema_.context(), &item, this);
   }
 
-  /** Get an item with a given key. If the item doesn't exist; create it. */
+  /**
+   * Get an item with a given key. If the item doesn't exist, it is created.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load a map
+   * tiledb::Map map(...);
+   * std::vector<double> key = {2345.1, 345.2};
+   * auto item = map[key];
+   * @endcode
+   *
+   * @tparam T Key type
+   * @param key Item key
+   * @return The item
+   */
   template <typename T>
   MapItem operator[](const T& key) {
     using DataT = typename impl::TypeHandler<T>;
@@ -719,8 +852,12 @@ class Map {
   }
 
   /**
-   * Add an item to the map. This populates the map with the key and attribute
-   * values.
+   * Add the given item to the map. The item is buffered internally
+   * and periodically flushed to persistent storage. `Map::flush()` forces
+   * flushing the buffered items to storage.
+   *
+   * @param item
+   * @return Reference to this Map
    */
   Map& add_item(const MapItem& item) {
     auto& ctx = schema_.context();
@@ -728,13 +865,18 @@ class Map {
     return *this;
   }
 
-  /** Max number of items to buffer in memory before flushing to storage. **/
+  /**
+   * Sets the maximum number of items to buffer in memory before flushing to
+   * storage.
+   *
+   * @param num Max number of item to buffer
+   */
   void set_max_buffered_items(uint64_t num) {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_set_max_buffered_items(ctx, kv_.get(), num));
   }
 
-  /** Flush to storage. **/
+  /** Flush any buffered items to storage. **/
   void flush() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_flush(ctx, kv_.get()));
@@ -750,11 +892,18 @@ class Map {
     return schema_.context();
   }
 
-  /** URI **/
+  /** Get the map URI **/
   const std::string& uri() const {
     return uri_;
   }
 
+  /**
+   * Opens the Map, preparing it for reading/writing. This is called
+   * automatically by the constructor.
+   *
+   * @param attributes If reading, the vector of attributes to read. If the
+   * vector is empty, read all attributes. If writing, must be an empty vector.
+   */
   void open(
       const std::vector<std::string>& attributes = std::vector<std::string>()) {
     auto& ctx = context();
@@ -776,6 +925,19 @@ class Map {
     is_closed_ = false;
   }
 
+  /**
+   * Reopens the Map. This is useful when there were updates to the
+   * Map after it got opened. This function reopens the Map so that it can "see"
+   * the new fragments.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load a map
+   * tiledb::Map map(...);
+   * // Some updates to 'map' here, then reopen.
+   * map.reopen();
+   * @endcode
+   */
   void reopen() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_reopen(ctx, kv_.get()));
@@ -784,7 +946,10 @@ class Map {
     schema_ = MapSchema(ctx, kv_schema);
   }
 
-  /** Close the map. */
+  /**
+   * Close the map. All buffered written items will be flushed to persistent
+   * storage. This is called automatically by the Map destructor.
+   */
   void close() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
@@ -796,6 +961,11 @@ class Map {
     return kv_;
   }
 
+  /**
+   * Checks if the Map is dirty, i.e., if the user added items to
+   * the Map that are buffered in main-memory and have not been flushed
+   * to persistent storage.
+   */
   bool is_dirty() {
     int ret;
     auto& ctx = context();
@@ -807,7 +977,20 @@ class Map {
   /*               STATIC              */
   /* ********************************* */
 
-  /** Create a new map. */
+  /**
+   * Create a new empty map at the given URI with the given schema.
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Make the map
+   * tiledb::MapSchema schema(ctx);
+   * schema.add_attribute(Attribute::create<T>(...));
+   * Map::create("my_map", schema);
+   * @endcode
+   *
+   * @param uri URI where the map will be created
+   * @param schema Schema for the map
+   */
   static void create(const std::string& uri, const MapSchema& schema) {
     auto& ctx = schema.context();
     schema.check();
@@ -815,10 +998,30 @@ class Map {
   }
 
   /**
-   * Create a TileDB map from a std::map.
-   * The resulting tiledb map will be accessible as
-   * map[key][attr_name].
-   **/
+   * Create a TileDB map from a `std::map`. The resulting TileDB map will be
+   * accessible as map[key][attr_name].
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Create map
+   * std::map<int, std::string> map;
+   * map[0] = "0";
+   * map[1] = "12";
+   * Map::create(ctx, "map_name", map, "attr");
+   * // Load map and read items
+   * Map map2(ctx, "map_name");
+   * auto a = map2[0]["attr"].get<std::string>(); // "0"
+   * auto b = map2[1]["attr"].get<std::string>(); // "12"
+   * @endcode
+   *
+   * @tparam MapT `std::map` type
+   * @tparam Key Key type for `std::map`
+   * @tparam Value Value type for `std::map`
+   * @param ctx TileDB context
+   * @param uri URI of map to create
+   * @param map `std::map` instance to read from
+   * @param attr_name Name of attribute to create
+   */
   template <
       typename MapT,
       typename Key = typename MapT::key_type,
@@ -839,9 +1042,14 @@ class Map {
     m.close();
   }
 
-  /** Consolidate map fragments. **/
-  static void consolidate(const Context& ctx, const std::string& map) {
-    ctx.handle_error(tiledb_kv_consolidate(ctx, map.c_str()));
+  /**
+   * Consolidates the fragments of a Map into a single fragment.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map
+   */
+  static void consolidate(const Context& ctx, const std::string& uri) {
+    ctx.handle_error(tiledb_kv_consolidate(ctx, uri.c_str()));
   }
 
  private:

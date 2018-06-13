@@ -67,11 +67,16 @@ namespace tiledb {
  * **Example:**
  *
  * @code{.cpp}
- * Query query(ctx, "my_dense_array", TILEDB_WRITE);
+ * // Open the array for writing
+ * tiledb::Context ctx;
+ * tiledb::Array array(ctx, "my_dense_array", TILEDB_WRITE);
+ * Query query(ctx, array);
  * query.set_layout(TILEDB_GLOBAL_ORDER);
  * std::vector a1_data = {1, 2, 3};
  * query.set_buffer("a1", a1_data);
  * query.submit();
+ * query.finalize();
+ * array.close();
  * @endcode
  */
 class Query {
@@ -81,7 +86,18 @@ class Query {
   /* ********************************* */
 
   /** The query or query attribute status. */
-  enum class Status { FAILED, COMPLETE, INPROGRESS, INCOMPLETE, UNINITIALIZED };
+  enum class Status {
+    /** Query failed. */
+    FAILED,
+    /** Query completed (all data has been read) */
+    COMPLETE,
+    /** Query is in progress */
+    INPROGRESS,
+    /** Query completed (but not all data has been read) */
+    INCOMPLETE,
+    /** Query not initialized.  */
+    UNINITIALIZED
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -90,21 +106,25 @@ class Query {
   /**
    * Creates a TileDB query object.
    *
-   * When creating a query, the storage manager "opens" the array in read or
-   * write mode based on the query type, incrementing the array's reference
-   * count and loading the array metadata (schema and fragment metadata) into
-   * its main-memory cache.
+   * The query type (read or write) must be the same as the type used to open
+   * the array object.
    *
    * The storage manager also acquires a **shared lock** on the array. This
    * means multiple read and write queries to the same array can be made
    * concurrently (in TileDB, only consolidation requires an exclusive lock for
    * a short period of time).
    *
-   * To "close" an array, the user should call `Query::finalize()` (see the
-   * documentation of that function for more details).
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_WRITE);
+   * Query query(ctx, array, TILEDB_WRITE);
+   * @endcode
    *
    * @param ctx TileDB context
-   * @param array_uri Array URI
+   * @param array Open Array object
    * @param type The TileDB query type
    */
   Query(const Context& ctx, const Array& array, tiledb_query_type_t type)
@@ -119,21 +139,27 @@ class Query {
   /**
    * Creates a TileDB query object.
    *
-   * When creating a query, the storage manager "opens" the array in read or
-   * write mode based on the query type, incrementing the array's reference
-   * count and loading the array metadata (schema and fragment metadata) into
-   * its main-memory cache.
+   * The query type (read or write) is inferred from the array object, which was
+   * opened with a specific query type.
    *
    * The storage manager also acquires a **shared lock** on the array. This
    * means multiple read and write queries to the same array can be made
    * concurrently (in TileDB, only consolidation requires an exclusive lock for
    * a short period of time).
    *
-   * To "close" an array, the user should call `Query::finalize()` (see the
-   * documentation of that function for more details).
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the array for writing
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_WRITE);
+   * Query query(ctx, array);
+   * // Equivalent to:
+   * // Query query(ctx, array, TILEDB_WRITE);
+   * @endcode
    *
    * @param ctx TileDB context
-   * @param array_uri Array URI
+   * @param array Open Array object
    */
   Query(const Context& ctx, const Array& array)
       : ctx_(ctx)
@@ -154,7 +180,7 @@ class Query {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the query type. */
+  /** Returns the query type (read or write). */
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();
     tiledb_query_type_t query_type;
@@ -162,7 +188,27 @@ class Query {
     return query_type;
   }
 
-  /** Sets the data layout of the buffers.  */
+  /**
+   * Sets the layout of the cells to be written or read.
+   *
+   * @param layout For a write query, this specifies the order of the cells
+   *     provided by the user in the buffers. For a read query, this specifies
+   *     the order of the cells that will be retrieved as results and stored
+   *     in the user buffers. The layout can be one of the following:
+   *    - `TILEDB_COL_MAJOR`:
+   *      This means column-major order with respect to the subarray.
+   *    - `TILEDB_ROW_MAJOR`:
+   *      This means row-major order with respect to the subarray.
+   *    - `TILEDB_GLOBAL_ORDER`:
+   *      This means that cells are stored or retrieved in the array global
+   *      cell order.
+   *    - `TILEDB_UNORDERED`:
+   *      This is applicable only to writes for sparse arrays, or for sparse
+   *      writes to dense arrays. It specifies that the cells are unordered and,
+   *      hence, TileDB must sort the cells in the global cell order prior to
+   *      writing.
+   * @return Reference to this Query
+   */
   Query& set_layout(tiledb_layout_t layout) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_set_layout(ctx, query_.get(), layout));
@@ -188,7 +234,25 @@ class Query {
     return (bool)ret;
   }
 
-  /** Submits the query. Call will block until query is complete. */
+  /**
+   * Submits the query. Call will block until query is complete.
+   *
+   * @note
+   * `finalize()` must be invoked after finish writing in global
+   * layout (via repeated invocations of `submit()`), in order to
+   * flush any internal state. For the case of reads, if the returned status is
+   * `TILEDB_INCOMPLETE`, TileDB could not fit the entire result in the user's
+   * buffers. In this case, the user should consume the read results (if any),
+   * optionally reset the buffers with `set_buffer()`, and then
+   * resubmit the query until the status becomes `TILEDB_COMPLETED`. If all
+   * buffer sizes after the termination of this function become 0, then this
+   * means that **no** useful data was read into the buffers, implying that the
+   * larger buffers are needed for the query to proceed. In this case, the users
+   * must reallocate their buffers (increasing their size), reset the buffers
+   * with `set_buffer()`, and resubmit the query.
+   *
+   * @return Query status
+   */
   Status submit() {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_submit(ctx, query_.get()));
@@ -196,11 +260,19 @@ class Query {
   }
 
   /**
-   * Submit an async query, with callback.
+   * Submit an async query, with callback. Call returns immediately.
+   *
+   * @note Same notes apply as `Query::submit()`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Create query
+   * tiledb::Query query(...);
+   * // Submit with callback
+   * query.submit_async([]() { std::cout << "Callback: query completed.\n"; });
+   * @endcode
    *
    * @param callback Callback function.
-   * @param data Data to pass to callback.
-   * @return Status of submitted query.
    */
   template <typename Fn>
   void submit_async(const Fn& callback) {
@@ -210,7 +282,19 @@ class Query {
         ctx, query_.get(), &wrapper, nullptr));
   }
 
-  /** Submit an async query (non-blocking). */
+  /**
+   * Submit an async query, with no callback. Call returns immediately.
+   *
+   * @note Same notes apply as `Query::submit()`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Create query
+   * tiledb::Query query(...);
+   * // Submit with no callback
+   * query.submit_async();
+   * @endcode
+   */
   void submit_async() {
     submit_async([]() {});
   }
@@ -226,14 +310,48 @@ class Query {
   }
 
   /**
-   * Returns the number of elements in the result buffers. This is a map
-   * from the attribute name to a pair of values.
+   * Returns the number of elements in the result buffers from a read query.
+   * This is a map from the attribute name to a pair of values.
    *
    * The first is number of elements for var size attributes, and the second
    * is number of elements in the data buffer. For fixed sized attributes
    * (and coordinates), the first is always 0.
    *
+   * For variable sized attributes: the first value is the
+   * number of cells read, i.e. the number of offsets read for the attribute.
+   * The second value is the total number of elements in the data buffer. For
+   * example, a read query on a variable-length `float` attribute that reads
+   * three cells would return 3 for the first number in the pair. If the total
+   * amount of `floats` read across the three cells was 10, then the second
+   * number in the pair would be 10 (totaling `10*sizeof(float)` bytes of data).
+   *
+   * For fixed-length attributes, the first value is always 0. The second value
+   * is the total number of elements in the data buffer. For example, a read
+   * query on a single `float` attribute that reads three cells would return 3
+   * for the second value. A read query on a `float` attribute with cell_val_num
+   * 2 that reads three cells would return 3 * 2 = 6 for the second value.
+   *
    * If the query has not been submitted, an empty map is returned.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Submit a read query.
+   * query.submit();
+   * auto result_el = query.result_buffer_elements();
+   *
+   * // For fixed-sized attributes, `.second` is the number of elements
+   * // that were read for the attribute across all cells. Note: number of
+   * // elements
+   * auto num_a1_elements = result_el["a1"].second;
+   *
+   * // Coords are also fixed-sized.
+   * auto num_coords = result_el[TILEDB_COORDS].second;
+   *
+   * // In variable attributes, e.g. std::string type, need two buffers,
+   * // one for offsets and one for cell data ("elements").
+   * auto num_a2_offsets = result_el["a2"].first;
+   * auto num_a2_elements = result_el["a2"].second;
+   * @endcode
    */
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   result_buffer_elements() const {
@@ -258,11 +376,21 @@ class Query {
 
   /**
    * Sets a subarray, defined in the order dimensions were added.
-   * Coordinates are inclusive.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
    *
-   * @note set_subarray(std::vector) is preferred as it is safer.
+   * @note `set_subarray(std::vector<T>)` is preferred as it is safer.
    *
-   * @tparam T Array domain datatype
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * int subarray[] = {0, 3, 0, 3};
+   * Query query(ctx, array);
+   * query.set_subarray(subarray, 4);
+   * @endcode
+   *
+   * @tparam T Type of array domain.
    * @param pairs Subarray pointer defined as an array of [start, stop] values
    * per dimension.
    * @param size The number of subarray elements.
@@ -286,10 +414,19 @@ class Query {
 
   /**
    * Sets a subarray, defined in the order dimensions were added.
-   * Coordinates are inclusive.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
    *
-   * @tparam T Array domain datatype.  Should always be a vector of the domain
-   * type.
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * std::vector<int> subarray = {0, 3, 0, 3};
+   * Query query(ctx, array);
+   * query.set_subarray(subarray);
+   * @endcode
+   *
+   * @tparam Vec Vector datatype. Should always be a vector of the domain type.
    * @param pairs The subarray defined as a vector of [start, stop] coordinates
    * per dimension.
    */
@@ -300,10 +437,18 @@ class Query {
 
   /**
    * Sets a subarray, defined in the order dimensions were added.
-   * Coordinates are inclusive.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
    *
-   * @tparam T Array domain datatype.  Should always be a vector of the domain
-   * type.
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * Query query(ctx, array);
+   * query.set_subarray({0, 3, 0, 3});
+   * @endcode
+   *
+   * @tparam T Type of array domain.
    * @param pairs List of [start, stop] coordinates per dimension.
    */
   template <typename T = uint64_t>
@@ -317,8 +462,7 @@ class Query {
    *
    * @note set_subarray(std::vector) is preferred and avoids an extra copy.
    *
-   * @tparam T Array domain datatype.  Should always be a vector of the domain
-   * type.
+   * @tparam T Type of array domain.
    * @param pairs The subarray defined as pairs of [start, stop] per dimension.
    */
   template <typename T = uint64_t>
@@ -333,11 +477,22 @@ class Query {
     return set_subarray(buf);
   }
 
-  /** Set the coordinate buffer for unordered queries
+  /**
+   * Set the coordinate buffer.
    *
-   * @note set_coordinates(std::vector) is preferred as it is safer.
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * // Write to points (0,1) and (2,3) in a 2D array with int domain.
+   * int coords[] = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_layout(TILEDB_UNORDERED).set_coordinates(coords, 4);
+   * @endcode
    *
-   * @tparam T Array domain datatype
+   * @note set_coordinates(std::vector<T>) is preferred as it is safer.
+   *
+   * @tparam T Type of array domain.
    * @param buf Coordinate array buffer pointer
    * @param size The number of elements in the coordinate array buffer
    * **/
@@ -348,8 +503,17 @@ class Query {
 
   /** Set the coordinate buffer for unordered queries
    *
-   * @tparam Vec Array domain datatype. Should always be a vector of the domain
-   * type.
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * // Write to points (0,1) and (2,3) in a 2D array with int domain.
+   * std::vector<int> coords = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_layout(TILEDB_UNORDERED).set_coordinates(coords);
+   * @endcode
+   *
+   * @tparam Vec Vector datatype. Should always be a vector of the domain type.
    * @param buf Coordinate vector
    * **/
   template <typename Vec>
@@ -360,9 +524,18 @@ class Query {
   /**
    * Sets a buffer for a fixed-sized attribute.
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * int data_a1[] = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_buffer("a1", data_a1, 4);
+   * @endcode
+   *
    * @note set_buffer(std::string, std::vector) is preferred as it is safer.
    *
-   * @tparam Vec buffer. Should always be a vector type of the attribute type.
+   * @tparam T Attribute value type
    * @param attr Attribute name
    * @param buff Buffer array pointer with elements of the attribute type.
    * @param nelements Number of array elements
@@ -381,6 +554,15 @@ class Query {
   /**
    * Sets a buffer for a fixed-sized attribute.
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<int> data_a1 = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_buffer("a1", data_a1);
+   * @endcode
+   *
    * @tparam Vec buffer. Should always be a vector type of the attribute type.
    * @param attr Attribute name
    * @param buf Buffer vector with elements of the attribute type.
@@ -393,10 +575,20 @@ class Query {
   /**
    * Sets a buffer for a variable-sized attribute.
    *
-   * @note set_buffer(std::string, std::vector, std::vector) is preferred as it
-   *is safer.
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * int data_a1[] = {0, 1, 2, 3};
+   * uint64_t offsets_a1[] = {0, 8};
+   * Query query(ctx, array);
+   * query.set_buffer("a1", offsets_a1, 2, data_a1, 4);
+   * @endcode
    *
-   * @tparam Vec buffer type. Should always be a vector of the attribute type.
+   * @note set_buffer(std::string, std::vector, std::vector) is preferred as it
+   * is safer.
+   *
+   * @tparam T Attribute value type
    * @param attr Attribute name
    * @param offsets Offsets array pointer where a new element begins in the data
    *buffer.
@@ -431,6 +623,16 @@ class Query {
   /**
    * Sets a buffer for a variable-sized attribute.
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<int> data_a1 = {0, 1, 2, 3};
+   * std::vector<uint64_t> offsets_a1 = {0, 8};
+   * Query query(ctx, array);
+   * query.set_buffer("a1", offsets_a1, data_a1);
+   * @endcode
+   *
    * @tparam Vec buffer type. Should always be a vector of the attribute type.
    * @param attr Attribute name
    * @param offsets Offsets where a new element begins in the data buffer.
@@ -448,7 +650,7 @@ class Query {
 
   /**
    * Sets a buffer for a variable-sized attribute.
-   *
+
    * @tparam Vec buffer type. Should always be a vector of the attribute type.
    * @param attr Attribute name
    * @param buf pair of offset, data buffers

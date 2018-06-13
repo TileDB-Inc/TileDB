@@ -149,7 +149,7 @@ struct ConfigProxy {
  * **Example:**
  *
  * @code{.cpp}
- * Config conf();
+ * Config conf;
  * conf["vfs.s3.region"] = "us-east-1a";
  * conf["vfs.s3.use_virtual_addressing"] = "true";
  * Context ctx(conf);
@@ -171,12 +171,13 @@ class Config {
    * Constructor that takes as input a filename (URI) that stores the config
    * parameters. The file must have the following (text) format:
    *
-   * {parameter} {value}
+   * `{parameter} {value}`
    *
    * Anything following a `#` character is considered a comment and, thus, is
    * ignored.
    *
-   * See `set` for the various TileDB config parameters and allowed values.
+   * See `Config::set` for the various TileDB config parameters and allowed
+   * values.
    *
    * @param filename The name of the file where the parameters will be read
    *     from.
@@ -334,8 +335,8 @@ class Config {
 
   /**
    * Get a parameter from the configuration by key.
-   * @param param Key
-   * @return Value
+   * @param param Name of configuration parameter
+   * @return Value of configuration parameter
    * @throws TileDBError if the parameter does not exist
    */
   std::string get(const std::string& param) const {
@@ -350,10 +351,29 @@ class Config {
     return val;
   }
 
-  /** Enables setting parameters with `[]`. */
+  /**
+   * Operator that enables setting parameters with `[]`.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * Config conf;
+   * conf["vfs.s3.region"] = "us-east-1a";
+   * conf["vfs.s3.use_virtual_addressing"] = "true";
+   * Context ctx(conf);
+   * @endcode
+   *
+   * @param param Name of parameter to set
+   * @return "Proxy" object supporting assignment.
+   */
   impl::ConfigProxy operator[](const std::string& param);
 
-  /** Unsets a config parameter. */
+  /**
+   * Resets a config parameter to its default value.
+   *
+   * @param param Name of parameter
+   * @return Reference to this Config instance
+   */
   Config& unset(const std::string& param) {
     tiledb_error_t* err;
     tiledb_config_unset(config_.get(), param.c_str(), &err);
@@ -362,17 +382,42 @@ class Config {
     return *this;
   }
 
-  /** Iterate over params starting with a prefix **/
+  /**
+   * Iterate over params starting with a prefix.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Config config;
+   * for (auto it = config.begin("vfs"), ite = config.end(); it != ite; ++it) {
+   *   std::string name = it->first, value = it->second;
+   * }
+   * @endcode
+   *
+   * @param prefix Prefix to iterate over
+   * @return iterator
+   */
   iterator begin(const std::string& prefix) {
     return iterator{*this, prefix, false};
   }
 
-  /** Iterate over all params. **/
+  /**
+   * Iterate over all params.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Config config;
+   * for (auto it = config.begin(), ite = config.end(); it != ite; ++it) {
+   *   std::string name = it->first, value = it->second;
+   * }
+   * @endcode
+   *
+   * @return iterator
+   */
   iterator begin() {
     return iterator{*this, "", false};
   }
 
-  /** End iterator **/
+  /** End iterator. **/
   iterator end() {
     return iterator{*this, "", true};
   }

@@ -71,11 +71,11 @@ namespace tiledb {
  * auto d3 = tiledb::Dimension::create<int>(ctx, "d3", {-100, 100});
  *
  * domain.add_dimension(d1);
- * domain.add_dimension(d2);
- * domain.add_dimension(d3); // Invalid, all dims must be same type
+ * domain.add_dimension(d2); // Throws error, all dims must be same type
+ * domain.add_dimension(d3);
  *
  * domain.cell_num(); // (10 - -10 + 1) * (10 - 1 + 1) = 210 max cells
- * domain.type(); // TILEDB_UINT64, determined from the dimensions
+ * domain.type(); // TILEDB_INT32, determined from the dimensions
  * domain.rank(); // 2, d1 and d2
  *
  * tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
@@ -149,7 +149,11 @@ class Domain {
     return 0;
   }
 
-  /** Dumps the domain in an ASCII representation to an output. */
+  /**
+   * Dumps the domain in an ASCII representation to an output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   */
   void dump(FILE* out = stdout) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_domain_dump(ctx, domain_.get(), out));
@@ -163,7 +167,7 @@ class Domain {
     return type;
   }
 
-  /** Get the number of dimensions **/
+  /** Returns the number of dimensions. */
   unsigned ndim() const {
     auto& ctx = ctx_.get();
     unsigned n;
@@ -171,7 +175,7 @@ class Domain {
     return n;
   }
 
-  /** Returns the current set of dimensions in domain. */
+  /** Returns the current set of dimensions in the domain. */
   std::vector<Dimension> dimensions() const {
     auto& ctx = ctx_.get();
     unsigned int ndim;
@@ -186,14 +190,43 @@ class Domain {
     return dims;
   }
 
-  /** Adds a new dimension to the domain. */
+  /**
+   * Adds a new dimension to the domain.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Domain domain;
+   * auto d1 = tiledb::Dimension::create<int>(ctx, "d1", {-10, 10});
+   * domain.add_dimension(d1);
+   * @endcode
+   *
+   * @param d Dimension to add
+   * @return Reference to this Domain
+   */
   Domain& add_dimension(const Dimension& d) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_domain_add_dimension(ctx, domain_.get(), d));
     return *this;
   }
 
-  /** Add multiple Dimension's. **/
+  /**
+   * Adds multiple dimensions to the domain.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Domain domain;
+   * auto d1 = tiledb::Dimension::create<int>(ctx, "d1", {-10, 10});
+   * auto d2 = tiledb::Dimension::create<int>(ctx, "d2", {1, 10});
+   * auto d3 = tiledb::Dimension::create<int>(ctx, "d3", {-100, 100});
+   * domain.add_dimensions(d1, d2, d3);
+   * @endcode
+   *
+   * @tparam Args Variadic dimension datatype
+   * @param dims Dimensions to add
+   * @return Reference to this Domain.
+   */
   template <typename... Args>
   Domain& add_dimensions(Args... dims) {
     for (const auto& attr : {dims...}) {

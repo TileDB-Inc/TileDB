@@ -54,12 +54,22 @@ namespace tiledb {
  * Describes an attribute of an Array cell.
  *
  * @details
- * An attribute specifies a datatype for a particular parameter in each
+ * An attribute specifies a name and datatype for a particular value in each
  * array cell. There are 3 supported attribute types:
  *
- * - Fundamental types, such as char, int, double, uint64_t, etc..
- * - Fixed sized arrays: std::array<T, N> where T is fundamental
- * - Variable length data: std::string, std::vector<T> where T is fundamental
+ * - Fundamental types, such as `char`, `int`, `double`, `uint64_t`, etc..
+ * - Fixed sized arrays: `T[N]` or `std::array<T, N>`, where T is a fundamental
+ * type
+ * - Variable length data: `std::string`, `std::vector<T>` where T is a
+ * fundamental type
+ *
+ * Fixed-size array types using POD types like `std::array<T, N>` are internally
+ * converted to byte-array attributes. E.g. an attribute of type
+ * `std::array<float, 3>` will be created as an attribute of type `TILEDB_CHAR`
+ * with cell_val_num `sizeof(std::array<float, 3>)`.
+ *
+ * Therefore, for fixed-length attributes it is recommended to use C-style
+ * arrays instead, e.g. `float[3]` instead of `std::array<float, 3>`.
  *
  * **Example:**
  *
@@ -67,17 +77,13 @@ namespace tiledb {
  * tiledb::Context ctx;
  * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
  * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
- * auto a3 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a3");
+ * auto a3 = tiledb::Attribute::create<float[3]>(ctx, "a3");
  *
  * // Change compression scheme
  * a1.set_compressor({TILEDB_BLOSC, -1});
- * a1.cell_val_num(); // 1
- * a2.cell_val_num(); // Variable sized, TILEDB_VAR_NUM
- * a3.cell_val_num(); // sizeof(std::array<float, 3>), Objects stored as char
- * array a3.cell_size(); // same as cell_val_num since type is char
- * a3.type_size(); // sizeof(char)
  *
- * tiledb::ArraySchema schema(ctx);
+ * // Add attributes to a schema
+ * tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
  * schema.add_attributes(a1, a2, a3);
  * @endcode
  */
@@ -92,8 +98,14 @@ class Attribute {
     attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
 
-  /** Construct an attribute with a given enuemrated type. By default, cell_num
-   * is 1.*/
+  /**
+   * Construct an attribute with a name and enumerated type. `cell_val_num` will
+   * be set to 1.
+   *
+   * @param ctx TileDB context
+   * @param name Name of attribute
+   * @param type Enumerated type of attribute
+   */
   Attribute(const Context& ctx, const std::string& name, tiledb_datatype_t type)
       : ctx_(ctx) {
     init_from_type(name, type);
@@ -135,7 +147,23 @@ class Attribute {
     return type;
   }
 
-  /** Returns the size (in bytes) of one cell on this attribute. */
+  /**
+   * Returns the size (in bytes) of one cell on this attribute. For
+   * variable-sized attributes returns TILEDB_VAR_NUM.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+   * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+   * auto a3 = tiledb::Attribute::create<float[3]>(ctx, "a3");
+   * auto a4 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a4");
+   * a1.cell_size();    // Returns sizeof(int)
+   * a2.cell_size();    // Variable sized attribute, returns TILEDB_VAR_NUM
+   * a3.cell_size();    // Returns 3 * sizeof(float)
+   * a4.cell_size();    // Stored as byte array, returns sizeof(char).
+   * @endcode
+   */
   uint64_t cell_size() const {
     auto& ctx = ctx_.get();
     uint64_t cell_size;
@@ -145,9 +173,22 @@ class Attribute {
   }
 
   /**
-   * Returns the number of values stored in each cell.
-   * This is equal to the size of the attribute * sizeof(attr_type).
-   * For variable size attributes this is TILEDB_VAR_NUM.
+   * Returns number of values of one cell on this attribute. For variable-sized
+   * attributes returns TILEDB_VAR_NUM.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+   * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+   * auto a3 = tiledb::Attribute::create<float[3]>(ctx, "a3");
+   * auto a4 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a4");
+   * a1.cell_val_num();   // Returns 1
+   * a2.cell_val_num();   // Variable sized attribute, returns TILEDB_VAR_NUM
+   * a3.cell_val_num();   // Returns 3
+   * a4.cell_val_num();   // Stored as byte array, returns
+   *                         sizeof(std::array<float, 3>).
+   * @endcode
    */
   unsigned cell_val_num() const {
     auto& ctx = ctx_.get();
@@ -157,14 +198,21 @@ class Attribute {
   }
 
   /**
-   * Sets the number of attribute values per cell. This is
-   * inferred from from the attribute constructor, but can
-   * also be set manually. E.x. a1 and a2 are equivilant:
+   * Sets the number of attribute values per cell. This is inferred from
+   * the type parameter of the `Attribute::create<T>()` function, but can also
+   * be set manually.
    *
-   * a1 = Attribute::create<std::vector<int>>(...);
-   * a2 = Attribute::create<int>(...);
-   * a2.set_cel_val_num(TILEDB_VAR_NUM);
-   **/
+   * **Example:**
+   * @code{.cpp}
+   * // a1 and a2 are equivalent:
+   * auto a1 = Attribute::create<std::vector<int>>(...);
+   * auto a2 = Attribute::create<int>(...);
+   * a2.set_cell_val_num(TILEDB_VAR_NUM);
+   * @endcode
+   *
+   * @param num Cell val number to set.
+   * @return Reference to this Attribute
+   */
   Attribute& set_cell_val_num(unsigned num) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, attr_.get(), num));
@@ -176,7 +224,10 @@ class Attribute {
     return cell_val_num() == TILEDB_VAR_NUM;
   }
 
-  /** Returns the attribute compressor. */
+  /**
+   * Returns a copy of the attribute compressor. To change the
+   * attribute compressor, use `Attribute::set_compressor()`.
+   */
   Compressor compressor() const {
     auto& ctx = ctx_.get();
     tiledb_compressor_t compressor;
@@ -187,7 +238,12 @@ class Attribute {
     return cmp;
   }
 
-  /** Sets the attribute compressor. */
+  /**
+   * Sets the attribute compressor.
+   *
+   * @param c Compressor to set
+   * @return Reference to this Attribute
+   */
   Attribute& set_compressor(Compressor c) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_attribute_set_compressor(
@@ -205,7 +261,12 @@ class Attribute {
     return attr_.get();
   }
 
-  /** Dump information about the attribute to a FILE. **/
+  /**
+   * Dumps information about the attribute in an ASCII representation to an
+   * output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   */
   void dump(FILE* out = stdout) const {
     ctx_.get().handle_error(
         tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
@@ -217,6 +278,16 @@ class Attribute {
 
   /**
    * Factory function for creating a new attribute with datatype T.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+   * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+   * auto a3 = tiledb::Attribute::create<std::array<float, 3>>(ctx, "a3");
+   * auto a4 = tiledb::Attribute::create<std::vector<double>>(ctx, "a4");
+   * auto a5 = tiledb::Attribute::create<char[8]>(ctx, "a5");
+   * @endcode
    *
    * @tparam T Datatype of the attribute. Can either be arithmetic type,
    *         C-style array, std::string, std::vector, or any trivially
@@ -234,11 +305,18 @@ class Attribute {
   }
 
   /**
-   * Factory function for creating a new attribute with datatype T.
+   * Factory function for creating a new attribute with datatype T and
+   * a Compressor.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1", {TILEDB_BZIP2, -1});
+   * @endcode
    *
    * @tparam T Datatype of the attribute. Can either be arithmetic type,
-   *         C-style array, std::string, std::vector, or any trivially
-   *         copyable classes (defined by std::is_trivially_copyable).
+   *         C-style array, `std::string`, `std::vector`, or any trivially
+   *         copyable classes (defined by `std::is_trivially_copyable`).
    * @param ctx The TileDB context.
    * @param name The attribute name.
    * @param compressor Compressor to use for attribute

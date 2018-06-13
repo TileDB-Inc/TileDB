@@ -49,16 +49,20 @@
 namespace tiledb {
 
 /**
- * A TileDB context wraps a TileDB storage manager.
- * Most objects and functions will require a Context. Internal
- * error handling is also defined by the Context; by default
- * a TileDBError will be thrown.
+ * A TileDB context wraps a TileDB storage manager "instance."
+ * Most objects and functions will require a Context.
+ *
+ * Internal error handling is also defined by the Context; the default error
+ * handler throws a TileDBError with a specific message.
  *
  * **Example:**
  *
  * @code{.cpp}
- * Context ctx;
+ * tiledb::Context ctx;
+ * // Use ctx when creating other objects:
+ * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
  *
+ * // Set a custom error handler:
  * ctx.set_error_handler([](const std::string &msg) {
  *     std::cerr << msg << std::endl;
  * });
@@ -72,7 +76,7 @@ class Context {
   /* ********************************* */
 
   /**
-   * Constructor.
+   * Constructor. Creates a TileDB Context with default configuration.
    * @throws TileDBError if construction fails
    */
   Context() {
@@ -84,7 +88,7 @@ class Context {
   }
 
   /**
-   * Constructor with config paramters.
+   * Constructor. Creates a TileDB context with the given configuration.
    * @throws TileDBError if construction fails
    */
   explicit Context(const Config& config) {
@@ -103,7 +107,7 @@ class Context {
    * Error handler for the TileDB C API calls. Throws an exception
    * in case of error.
    *
-   * @param rc If != TILEDB_OK, call error handler
+   * @param rc If != TILEDB_OK, calls error handler
    */
   void handle_error(int rc) const {
     // Do nothing if there is not error
@@ -149,6 +153,9 @@ class Context {
    * Sets the error handler callback. If none is set, the
    * `default_error_handler` is used. The callback accepts an error
    * message.
+   *
+   * @param fn Error handler callback function
+   * @return Reference to this Context
    */
   Context& set_error_handler(
       const std::function<void(const std::string&)>& fn) {
@@ -156,7 +163,7 @@ class Context {
     return *this;
   }
 
-  /** Get the configuration of the context. **/
+  /** Returns a copy of the configuration of the context. **/
   Config config() const {
     tiledb_config_t* c;
     handle_error(tiledb_ctx_get_config(ctx_.get(), &c));
@@ -164,7 +171,15 @@ class Context {
   }
 
   /**
-   * Checks if the filesystem backend is supported.
+   * Return true if the given filesystem backend is supported.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * bool s3_supported = ctx.is_supported_fs(TILEDB_S3);
+   * @endcode
+   *
+   * @param fs Filesystem to check
    */
   bool is_supported_fs(tiledb_filesystem_t fs) const {
     int ret;

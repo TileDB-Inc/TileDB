@@ -59,14 +59,20 @@ namespace impl {
  * it is recommended to issue fewer, larger, writes.
  *
  * **Example:**
- *
  * @code{.cpp}
- *   tiledb::Context ctx;
- *   tiledb::VFS vfs(ctx);
- *   tiledb::VFSFilebuf buf(vfs);
- *   buf.open("file.txt", std::ios::out | std::ios::app);
- *   std::ostream os(&buf);
- *   os << "abcdefghijklmnopqrstuvwxyz";
+ * tiledb::Context ctx;
+ * tiledb::VFS vfs(ctx);
+ * tiledb::VFS::filebuf buff(vfs);
+ *
+ * buff.open("file.txt", std::ios::out);
+ * std::ostream os(&buff);
+ * if (!os.good()) throw std::runtime_error("Error opening file);
+ *
+ * std::string str = "This will be written to the file.";
+ *
+ * os.write(str.data(), str.size());
+ * os.flush();
+ * buff.close();
  * @endcode
  */
 class VFSFilebuf : public std::streambuf {
@@ -295,6 +301,30 @@ class VFS {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Stream buffer for Tiledb VFS.
+   *
+   * @details
+   * This is unbuffered; each write is directly dispatched to TileDB. As such
+   * it is recommended to issue fewer, larger, writes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::VFS vfs(ctx);
+   * tiledb::VFS::filebuf buff(vfs);
+   *
+   * buff.open("file.txt", std::ios::out);
+   * std::ostream os(&buff);
+   * if (!os.good()) throw std::runtime_error("Error opening file);
+   *
+   * std::string str = "This will be written to the file.";
+   *
+   * os.write(str.data(), str.size());
+   * os.flush();
+   * buff.close();
+   * @endcode
+   */
   using filebuf = impl::VFSFilebuf;
 
   /**
