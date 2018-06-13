@@ -28,7 +28,7 @@ cell subselection is called **slicing** and is the most fundamental operation
 for array data. Moreover, each cell may contain arbitrary information, beyond
 just an integer or a real number (e.g., a string, or a custom object).
 
-.. figure:: intro_arrays.png
+.. figure:: figures/intro_arrays.png
    :align: center
    :scale: 25 %
 
@@ -76,7 +76,7 @@ applications and the supported storage backend, exposing API bindings for a
 wide set of programming languages (e.g., C, C++, Python, Java and R).
 
 
-.. figure:: intro_architecture.png
+.. figure:: figures/intro_architecture.png
    :align: center
    :scale: 20 %
 
@@ -253,7 +253,7 @@ but this is not open-source/free.
 Modern Build System
 ^^^^^^^^^^^^^^^^^^^
 
-TileDB offers a modern build system that works on Linux, MacOS and Windows,
+TileDB offers a modern build system that works on Linux, macOS and Windows,
 with automatic installation of all dependencies. TileDB ships with all
 its compressors by default. This makes it easier to share compressed data,
 since they are all compressed using the same suit of compressors. In contrast,
@@ -297,3 +297,5 @@ was published in a
 `VLDB 2016 paper <https://people.csail.mit.edu/stavrosp/papers/vldb2017/VLDB17_TileDB.pdf>`_.
 `TileDB, Inc. <https://tiledb.io>`_ was founded in February 2017 to continue the
 further development and maintenance of the TileDB software.
+
+
