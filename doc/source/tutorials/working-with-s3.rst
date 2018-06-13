@@ -1,5 +1,5 @@
-Working with S3
-===============
+Tutorial: Working with S3
+=========================
 
 This is a simple guide that demonstrates how to use TileDB on S3-compatible
 backends. We will first explain how to set up an AWS account and configure

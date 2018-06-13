@@ -81,6 +81,12 @@ def generate_sidebar(conf, conf_api):
     endl()
 
     toctree('Tutorials')
+    write('Dense Arrays', 'tutorials/dense-arrays')
+    write('Sparse Arrays', 'tutorials/sparse-arrays')
+    write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
+    write('Variable-length Attributes', 'tutorials/variable-length-attributes')
+    write('Tiles', 'tutorials/tiles')
+    write('Dense data ingestion', 'tutorials/dense-data-ingestion')
     write('Working with S3', 'tutorials/working-with-s3')
     endl()
 
