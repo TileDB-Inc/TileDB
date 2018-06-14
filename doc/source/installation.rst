@@ -59,20 +59,26 @@ TileDB can be installed easily using the Homebrew package manager for macOS.
 Install instructions for Homebrew are provided on the
 `package manager's website <https://brew.sh/>`_.
 
-To install the latest stable version of TileDB::
+To install the latest stable version of TileDB
 
-    brew update
-    brew install tiledb-inc/stable/tiledb
+.. code-block:: console
+
+   $ brew update
+   $ brew install tiledb-inc/stable/tiledb
 
 HDFS and S3 backends are enabled by default. To disable one or more backends,
-use the ``--without-`` switch to disable them::
+use the ``--without-`` switch to disable them
 
-    brew install tiledb-inc/stable/tiledb --without-s3
-    brew install tiledb-inc/stable/tiledb --without-hdfs
+.. code-block:: console
 
-A full list of build options can be viewed with the ``info`` command::
+   $ brew install tiledb-inc/stable/tiledb --without-s3
+   $ brew install tiledb-inc/stable/tiledb --without-hdfs
 
-    brew info tiledb-inc/stable/tiledb
+A full list of build options can be viewed with the ``info`` command
+
+.. code-block:: console
+
+   $ brew info tiledb-inc/stable/tiledb
 
 Other helpful brew commands:
 
@@ -85,15 +91,19 @@ The Homebrew Tap is located at https://github.com/TileDB-Inc/homebrew.
 Docker
 ~~~~~~
 
-TileDB is available as a pre-built Docker image::
+TileDB is available as a pre-built Docker image
 
-    docker pull tiledb/tiledb
-    docker run -it tiledb/tiledb
+.. code-block:: console
 
-which uses the latest TileDB version, or::
+   $ docker pull tiledb/tiledb
+   $ docker run -it tiledb/tiledb
 
-    docker pull tiledb/tiledb:<version>
-    docker run -it tiledb/tiledb:<version>
+which uses the latest TileDB version, or
+
+.. code-block:: console
+
+   $ docker pull tiledb/tiledb:<version>
+   $ docker run -it tiledb/tiledb:<version>
 
 which uses a specific TileDB version (ex. ``<version>`` could be ``1.2.0``).
 
@@ -107,25 +117,31 @@ Conda
 A package for TileDB is available for the
 `Conda package manager <https://conda.io/docs/>`_. Conda makes it easy to
 install software into separate distinct environments on Windows, Linux, and
-macOS::
+macOS
 
-    conda create -n tiledb
-    conda activate tiledb
-    conda install -c conda-forge tiledb
+.. code-block:: console
+
+   $ conda create -n tiledb
+   $ conda activate tiledb
+   $ conda install -c conda-forge tiledb
 
 If you are compiling / linking against the TileDB conda package,
 you may need to explicity add the conda path after activating the environment
 with ``conda activate tiledb`` (``conda activate`` sets the ``CONDA_PREFIX``
-environment variable)::
+environment variable)
 
-    export CPATH=$CONDA_PREFIX/include
-    export LIBRARY_PATH=$CONDA_PREFIX/lib
-    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
+.. code-block:: console
+
+   $ export CPATH=$CONDA_PREFIX/include
+   $ export LIBRARY_PATH=$CONDA_PREFIX/lib
+   $ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 
 Or, instead of exporting those environment variables, you can pass them as
-command line flags during compilation::
+command line flags during compilation
 
-    g++ -std=c++11 example.cpp -o example -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -ltiledb
+.. code-block:: console
+
+   $ g++ -std=c++11 example.cpp -o example -I$CONDA_PREFIX/include -L$CONDA_PREFIX/lib -ltiledb
 
 Windows Binaries
 ~~~~~~~~~~~~~~~~
@@ -149,19 +165,23 @@ macOS/Linux
 Begin by downloading a
 `release tarball <https://github.com/TileDB-Inc/TileDB/releases>`_ or by cloning
 the TileDB GitHub repo and checking out a release tag (where ``<version>`` is
-the version you wish to use (e.g., ``1.2.0``)::
+the version you wish to use (e.g., ``1.2.0``)
 
-    git clone https://github.com/TileDB-Inc/TileDB
-    git checkout <version>
-    cd TileDB
+.. code-block:: console
 
-To **configure** TileDB, use the ``bootstrap`` script::
+   $ git clone https://github.com/TileDB-Inc/TileDB
+   $ git checkout <version>
+   $ cd TileDB
 
-    mkdir build
-    cd build
-    ../bootstap <flags>
-    # Or use CMake directly instead of bootstrap:
-    # cmake <flags> ..
+To **configure** TileDB, use the ``bootstrap`` script
+
+.. code-block:: console
+
+   $ mkdir build
+   $ cd build
+   $ ../bootstap <flags>
+   $ # Or use CMake directly instead of bootstrap:
+   $ # cmake <flags> ..
 
 The flags for the bootstrap script and the CMake equivalents are as follows:
 
@@ -169,27 +189,31 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 **Flag**                     **Description**                                         **CMake Equivalent**
 --------------------------   ------------------------------------------------------  ------------------------------
 ``--help``                   Prints command line flag options                        n/a
-``--prefix=PREFIX``          Install files in tree rooted at ``PREFIX``              CMAKE_INSTALL_PREFIX=<PREFIX>
+``--prefix=PREFIX``          Install files in tree rooted at ``PREFIX``              ``CMAKE_INSTALL_PREFIX=<PREFIX>``
                              (defaults to ``TileDB/dist``)
-``--dependency=DIRs``        Colon separated list to binary dependencies             CMAKE_PREFIX_PATH=<DIRs>
-``--enable-debug``           Enable debug build                                      CMAKE_BUILD_TYPE=Debug
-``--enable-coverage``        Enable build with code coverage support                 CMAKE_BUILD_TYPE=Coverage
-``--enable-verbose``         Enable verbose status messages                          TILEDB_VERBOSE=ON
-``--enable-hdfs``            Enables building with HDFS storage backend support      TILEDB_HDFS=ON
-``--enable-s3``              Enables building with S3 storage backend support        TILEDB_S3=ON
-``--enable-static-tiledb``   Enables building TileDB as a static library             TILEDB_STATIC=ON
-``--disable-werror``         Disables building with the ``-Werror`` flag             TILEDB_WERROR=OFF
-``--disable-cpp-api``        Disables building the TileDB C++ API                    TILEDB_CPP_API=OFF
-``--disable-tbb``            Disables use of TBB for parallelization                 TILEDB_TBB=OFF
+``--dependency=DIRs``        Colon separated list to binary dependencies             ``CMAKE_PREFIX_PATH=<DIRs>``
+``--enable-debug``           Enable debug build                                      ``CMAKE_BUILD_TYPE=Debug``
+``--enable-coverage``        Enable build with code coverage support                 ``CMAKE_BUILD_TYPE=Coverage``
+``--enable-verbose``         Enable verbose status messages                          ``TILEDB_VERBOSE=ON``
+``--enable-hdfs``            Enables building with HDFS storage backend support      ``TILEDB_HDFS=ON``
+``--enable-s3``              Enables building with S3 storage backend support        ``TILEDB_S3=ON``
+``--enable-static-tiledb``   Enables building TileDB as a static library             ``TILEDB_STATIC=ON``
+``--disable-werror``         Disables building with the ``-Werror`` flag             ``TILEDB_WERROR=OFF``
+``--disable-cpp-api``        Disables building the TileDB C++ API                    ``TILEDB_CPP_API=OFF``
+``--disable-tbb``            Disables use of TBB for parallelization                 ``TILEDB_TBB=OFF``
 ==========================   ======================================================  ==============================
 
-To **build** after configuration, run the generated make script::
+To **build** after configuration, run the generated make script
 
-    make -j <nprocs>
+.. code-block:: console
 
-To **install** to the configured prefix::
+   $ make -j <nprocs>
 
-    make install-tiledb
+To **install** to the configured prefix
+
+.. code-block:: console
+
+   $ make install-tiledb
 
 Other helpful makefile targets:
 
@@ -214,24 +238,30 @@ In addition, you will need to install
 `PowerShell <https://docs.microsoft.com/en-us/powershell/>`_ (free).
 
 To build and install TileDB, first open PowerShell and clone the TileDB
-repository::
+repository
+
+.. code-block:: console
 
     > git clone https://github.com/TileDB-Inc/TileDB
     > cd TileDB
 
-Next, ensure the CMake binaries are in your path. If you installed Visual Studio, execute::
+Next, ensure the CMake binaries are in your path. If you installed Visual Studio, execute
+
+.. code-block:: console
 
     > $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    # If you installed the build tools, instead execute:
-    # $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    > # If you installed the build tools, instead execute:
+    > # $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
 
-Create a build directory and **configure** TileDB::
+Create a build directory and **configure** TileDB
+
+.. code-block:: console
 
     > mkdir build
     > cd build
     > ..\bootstrap.ps1 <flags>
-    # Or use CMake directly:
-    # cmake <flags> ..
+    > # Or use CMake directly:
+    > # cmake <flags> ..
 
 The flags for the bootstrap script and the CMake equivalents are as follows:
 
@@ -239,27 +269,31 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 **Flag**                  **Description**                                   **CMake Equivalent**
 -----------------------   ------------------------------------------------  ------------------------------
 ``-?``                    Display a usage message.                          n/a
-``-Prefix``               Install files in tree rooted at ``PREFIX``        CMAKE_INSTALL_PREFIX=<PREFIX>
+``-Prefix``               Install files in tree rooted at ``PREFIX``        ``CMAKE_INSTALL_PREFIX=<PREFIX>``
                           (defaults to ``TileDB\dist``)
-``-Dependency``           Semicolon separated list to binary dependencies.  CMAKE_PREFIX_PATH=<DIRs>
-``-CMakeGenerator``       Optionally specify the CMake generator string,    -G <generator>
+``-Dependency``           Semicolon separated list to binary dependencies.  ``CMAKE_PREFIX_PATH=<DIRs>``
+``-CMakeGenerator``       Optionally specify the CMake generator string,    ``-G <generator>``
                           e.g. "Visual Studio 15 2017". Check
                           'cmake --help' for a list of supported
                           generators.
-``-EnableDebug``          Enable debug build                                CMAKE_BUILD_TYPE=Debug
-``-EnableVerbose``        Enable verbose status messages.                   TILEDB_VERBOSE=ON
-``-EnableS3``             Enables building with the S3 storage backend.     TILEDB_S3=ON
-``-EnableStaticTileDB``   Enables building TileDB as a static library       TILEDB_STATIC=ON
-``-DisableWerror``        Disables building with the ``/WX`` flag           TILEDB_WERROR=OFF
-``-DisableCppApi``        Disables building the TileDB C++ API              TILEDB_CPP_API=OFF
-``-DisableTBB``           Disables use of TBB for parallelization           TILEDB_TBB=OFF
+``-EnableDebug``          Enable debug build                                ``CMAKE_BUILD_TYPE=Debug``
+``-EnableVerbose``        Enable verbose status messages.                   ``TILEDB_VERBOSE=ON``
+``-EnableS3``             Enables building with the S3 storage backend.     ``TILEDB_S3=ON``
+``-EnableStaticTileDB``   Enables building TileDB as a static library       ``TILEDB_STATIC=ON``
+``-DisableWerror``        Disables building with the ``/WX`` flag           ``TILEDB_WERROR=OFF``
+``-DisableCppApi``        Disables building the TileDB C++ API              ``TILEDB_CPP_API=OFF``
+``-DisableTBB``           Disables use of TBB for parallelization           ``TILEDB_TBB=OFF``
 =======================   ================================================  ==============================
 
-To **build** after configuration::
+To **build** after configuration
+
+.. code-block:: console
 
     > cmake --build . --config Release
 
-To **install**::
+To **install**
+
+.. code-block:: console
 
     > cmake --build . --target install-tiledb --config Release
 
@@ -267,6 +301,19 @@ Other helpful build targets:
 
 * ``cmake --build . --target check --config Release``: Runs the tests
 * ``cmake --build . --target examples --config Release``: Builds the examples
+
+.. warning::
+
+   If you build ``libtiledb`` in ``Release`` mode (resp. ``Debug``), make sure
+   to build ``check`` and ``examples`` in ``Release`` mode as well (resp. ``Debug``),
+   otherwise the test and example executables will not run properly.
+
+.. warning::
+
+   Should you experience any problem with the build, it is
+   always a good idea to delete the ``build`` and ``dist`` directories in your TileDB
+   repo path and restart the process, as ``cmake``'s cached state could present some
+   unexpected problems.
 
 Build Requirements
 ------------------
@@ -323,7 +370,7 @@ During the build process the following environmental variables must be set:
 
 * ``JAVA_HOME``: Path to the location of the Java installation.
 * ``HADOOP_HOME``: Path to the location of the HDFS installation.
-* ``CLASSPATH``: The Hadoop jars must be added to the CLASSPATH before running interacting with libhdfs.
+* ``CLASSPATH``: The Hadoop jars must be added to the ``CLASSPATH`` before interacting with ``libhdfs``.
 
 Consult the `HDFS user guide <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html>`_
 for installing, setting up, and using the distributed Hadoop file system.
