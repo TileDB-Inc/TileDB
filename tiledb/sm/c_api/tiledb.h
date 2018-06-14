@@ -3769,7 +3769,7 @@ TILEDB_EXPORT int tiledb_vfs_touch(
  * @code{.c}
  * char path[TILEDB_MAX_PATH];
  * unsigned length;
- * tiledb_uri_to_path(ctx, kv, &kv_item, "file:///my_array", path, &length);
+ * tiledb_uri_to_path(ctx, "file:///my_array", path, &length);
  * // This will set "my_array" to `path`
  * @endcode
  *
