@@ -2853,3 +2853,16 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, URI ending in a slash",
+    "[capi], [dense], [uri-ending-slash]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "with_ending_slash/";
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+  read_dense_array_with_coords_full_global(array_name);
+  remove_temp_dir(temp_dir);
+}

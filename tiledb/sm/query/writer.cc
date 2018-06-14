@@ -624,9 +624,9 @@ Status Writer::create_fragment(
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
-    std::string uri_str;
-    RETURN_NOT_OK(new_fragment_name(&uri_str));
-    uri = URI(uri_str);
+    std::string new_fragment_str;
+    RETURN_NOT_OK(new_fragment_name(&new_fragment_str));
+    uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   *frag_meta = std::make_shared<FragmentMetadata>(array_schema_, dense, uri);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
@@ -1037,7 +1037,7 @@ Status Writer::new_fragment_name(std::string* frag_uri) const {
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << array_schema_->array_uri().to_string() << "/__" << uuid << "_" << ms;
+  ss << "/__" << uuid << "_" << ms;
   *frag_uri = ss.str();
   return Status::Ok();
 }
