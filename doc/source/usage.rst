@@ -8,22 +8,27 @@ This page contains instructions on how to build and link a program against TileD
 macOS or Linux
 --------------
 
-To use TileDB in a program, just ``#include <tiledb/tiledb.h>`` (C API) or
-``#include <tiledb/tiledb>`` (C++ API) and specify ``-ltiledb`` when
-compiling, e.g. ::
+To use TileDB C API in a program, just ``#include <tiledb/tiledb.h>``
+and specify ``-ltiledb`` when compiling, e.g.
 
-    gcc example.c -o example -ltiledb
+.. code-block:: console
 
-To use the C++ API, add ``#include <tiledb/tiledb>`` to your C++ project. The
-TileDB C++ API requires a compiler with C++11 support, so your project must
-be compiled using the C++11 standard, e.g.::
+   $ gcc example.c -o example -ltiledb
 
-    g++ -std=c++11 example.cpp -o example -ltiledb
+To use the C++ API, add ``#include <tiledb/tiledb>`` to your C++ project
+instead. The TileDB C++ API requires a compiler with C++11 support, so
+your project must be compiled using the C++11 standard, e.g.
+
+.. code-block:: console
+
+   $ g++ -std=c++11 example.cpp -o example -ltiledb
 
 If TileDB was installed in a non-default location on your system, use the ``-I``
-and ``-L`` options::
+and ``-L`` options
 
-    gcc example.c -o example -I<path/to/TileDB>/include -L<path/to/TileDB>/lib -ltiledb
+.. code-block:: console
+
+   $ gcc example.c -o example -I<path/to/TileDB>/include -L<path/to/TileDB>/lib -ltiledb
 
 At runtime, if TileDB is installed in a non-default location, you must
 make the linker aware of where the shared library resides by exporting an
@@ -49,9 +54,12 @@ environment variable:
 
 You can avoid the use of these environment variables by installing TileDB in
 a global (standard) location on your system, or hard-coding the path to the
-TileDB library at build time by configuring the ``rpath``, e.g.::
+TileDB library at build time by configuring the ``rpath``, e.g.
 
-    g++ -std=c++11 example.cpp -o example \
+
+.. code-block:: console
+
+   $ g++ -std=c++11 example.cpp -o example \
         -I<path/to/TileDB>/include \
         -L<path/to/TileDB>/lib \
         -Wl,-rpath,<path/to/TileDB>/lib \
@@ -66,17 +74,17 @@ environment variables.
 Windows
 -------
 
-To use TileDB from a Visual Studio C++ project, we need to add project properties telling the
-compiler and linker where to find the headers and libraries.
+To use TileDB from a Visual Studio C++ project, we need to add project properties
+telling the compiler and linker where to find the headers and libraries.
 
 Open your project's Property Pages. Under the General options for C/C++, edit
 the "Additional Include Directories"  property. Add a new entry pointing to
 your TileDB installation (either built from source or extracted from the
-binary release .zip file), e.g. ``C:\path\to\TileDB\include``.
+binary release .zip file), e.g. ``C:\path\to\TileDB\dist\include``.
 
 Under the General options for the Linker, edit the "Additional Library
 Directories" property. Add a new entry pointing to your TileDB installation,
-e.g. ``C:\path\to\TileDB\lib``. Under the Input options for Linker, edit
+e.g. ``C:\path\to\TileDB\dist\lib``. Under the Input options for Linker, edit
 "Additional Dependencies" and add ``tiledb.lib``.
 
 You should now be able to ``#include <tiledb/tiledb.h>`` (C API) or
@@ -88,10 +96,10 @@ You should now be able to ``#include <tiledb/tiledb.h>`` (C API) or
    configuration is selected. Because TileDB is currently only available as a
    64-bit library, applications that link with TileDB must also be 64-bit.
 
-At runtime, the directory containing the DLLs must be in your PATH
+At runtime, the directory containing the DLLs must be in your ``PATH``
 environment variable, or you will see error messages at startup that the
 TileDB library or its dependencies could not be located. You can do this in
-Visual Studio by adding ``PATH=C:\path\to\TileDB\bin`` to the "Environment"
+Visual Studio by adding ``PATH=C:\path\to\TileDB\dist\bin`` to the "Environment"
 setting under "Debugging" in the Property Pages. You can also do this from the
 Windows Control Panel, or at the command prompt like so:
 
@@ -102,7 +110,7 @@ Windows Control Panel, or at the command prompt like so:
 
       .. code-block:: console
 
-         > $env:Path += ";C:\path\to\TileDB\bin"
+         > $env:Path += ";C:\path\to\TileDB\dist\bin"
          > my_program.exe
 
    .. tab-container:: windowscmd
@@ -110,8 +118,16 @@ Windows Control Panel, or at the command prompt like so:
 
       .. code-block:: console
 
-         > set PATH=%PATH%;C:\path\to\TileDB\bin
+         > set PATH=%PATH%;C:\path\to\TileDB\dist\bin
          > my_program.exe
+
+.. warning::
+
+   Should you experience any problem with the usage (e.g., getting errors
+   about missing ``.dll`` files when running a program), it is always a good idea
+   to delete the ``build`` and ``dist`` directories in your TileDB repo
+   path and restart the build from scratch, as ``cmake``'s cached state could
+   present some unexpected problems.
 
 CMake
 -----
@@ -128,9 +144,11 @@ you would set ``CMAKE_PREFIX_PATH`` like so::
     list(APPEND CMAKE_PREFIX_PATH "</path/to/TileDB>/dist")
 
 You can also pass this like any other CMake variable on the command line when
-configuring your project, e.g.::
+configuring your project, e.g.
 
-    cmake -DCMAKE_PREFIX_PATH=</path/to/TileDB>/dist ..
+.. code-block:: console
+
+   $ cmake -DCMAKE_PREFIX_PATH=</path/to/TileDB>/dist ..
 
 To link the executable ``MyExe`` in your project with the TileDB shared library,
 you would then use::
