@@ -184,8 +184,20 @@ texinfo_documents = [
 import gensidebar
 gensidebar.generate_sidebar({'on_rtd': readthedocs, 'rtd_version': rtd_version}, 'tiledb')
 
+# Replace C/C++ source examples path
+def replaceText(app, docname, source):
+    result = source[0]
+    for key in app.config.text_replacements:
+        result = result.replace(key, app.config.text_replacements[key])
+    source[0] = result
+
+text_replacements = {
+    "{source_examples_path}" : "../../examples"
+}
 
 # -- Custom setup -----------------------------------------------------------
 
 def setup(app):
+    app.add_config_value('text_replacements', {}, True)
+    app.connect('source-read', replaceText)
     app.add_stylesheet('custom.css')

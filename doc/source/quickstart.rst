@@ -4,10 +4,10 @@ Quickstart
 ==========
 
 Welcome to TileDB! This quickstart will walk you through getting TileDB
-installed and reading/writing some simple data using the C++ API.
+installed and writing your first TileDB programs.
 
-1. Install TileDB
------------------
+Install TileDB
+--------------
 
 First, grab a TileDB release for your system:
 
@@ -50,166 +50,434 @@ First, grab a TileDB release for your system:
 
 For more in-depth installation information, see the :ref:`Installation <installation>` page.
 
-2. Write example program
-------------------------
+Compiling TileDB programs
+-------------------------
 
-The example program illustrates three main TileDB operations: 2D sparse array
-creation (``create_array()`` in the example code), writing data into the array
-(``write_array()``), and reading from the array (``read_array()``).
-
-We will first create the array with a simple sparse 2D schema where each cell can
-store a single character of data. Then, we'll write data to 3 cells of the array.
-Finally, we'll read back the cells using a spatial slice.
-
-Save the following program to a file ``quickstart.cc``:
-
-.. code-block:: c++
-
-   #include <iostream>
-   #include <tiledb/tiledb>
-   
-   using namespace tiledb;
-   
-   // Name of array.
-   std::string array_name("my_array");
-   
-   void create_array() {
-     Context ctx;
-     // If the array already exists on disk, return immediately.
-     if (Object::object(ctx, array_name).type() == Object::Type::Array)
-       return;
-   
-     // The array will be 2D with dimensions "x" and "y", with domain [0,4].
-     Domain domain(ctx);
-     domain.add_dimension(Dimension::create<int>(ctx, "x", {{0, 4}}, 2))
-         .add_dimension(Dimension::create<int>(ctx, "y", {{0, 4}}, 2));
-   
-     // The array will be sparse.
-     ArraySchema schema(ctx, TILEDB_SPARSE);
-     schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
-         .set_capacity(4)
-         .set_domain(domain);
-   
-     // Add a single attribute "a" so each (x,y) cell can store a character.
-     schema.add_attribute(Attribute::create<char>(ctx, "a"));
-   
-     // Create the (empty) array on disk.
-     Array::create(array_name, schema);
-   }
-   
-   
-   void write_array() {
-     Context ctx;
-     // Write some simple data to cells (0, 0), (1, 1) and (2, 3).
-     std::vector<int> coords = {0, 0, 1, 1, 2, 3};
-     std::vector<char> data = {'a', 'b', 'c'};
-   
-     // Open the array for writing and create the query.
-     Array array(ctx, array_name, TILEDB_WRITE);
-     Query query(ctx, array);
-     // "Unordered" means we provide the coordinates for each cell being written.
-     query.set_layout(TILEDB_UNORDERED)
-         .set_buffer("a", data)
-         .set_coordinates(coords);
-     // Perform the write and close the array.
-     query.submit();
-     query.finalize();
-     array.close();
-   }
-   
-   
-   void read_array() {
-     Context ctx;
-     Array array(ctx, array_name, TILEDB_READ);
-   
-     // Read using a spatial query with bounding box from (0, 0) to (3, 3).
-     const std::vector<int> subarray = {0, 3, 0, 3};
-     // Figure out how big our buffers need to be to hold the query result.
-     auto max_sizes = array.max_buffer_elements(subarray);
-     std::vector<char> data(max_sizes["a"].second);
-     std::vector<int> coords(max_sizes[TILEDB_COORDS].second);
-   
-     Query query(ctx, array);
-     // "Global order" read means TileDB won't sort the cells before returning.
-     query.set_subarray(subarray)
-         .set_layout(TILEDB_GLOBAL_ORDER)
-         .set_buffer("a", data)
-         .set_coordinates(coords);
-     // Submit the query and close the array.
-     query.submit();
-     query.finalize();
-     array.close();
-   
-     // Print out the results.
-     int num_cells_read = query.result_buffer_elements()["a"].second;
-     for (int i = 0; i < num_cells_read; i++) {
-       int x = coords[2 * i], y = coords[2 * i + 1];
-       char a = data[i];
-       std::cout << "Cell (" << x << "," << y << ") has data '" << a << "'"
-                 << std::endl;
-     }
-   }
-   
-   
-   int main(int argc, char **argv) {
-     create_array();
-     write_array();
-     read_array();
-     return 0;
-   }
-
-Compile the example program:
+In the remainder of this quickstart and the tutorials to follow, you will
+learn how to create TileDB programs using the language API of your choice.
+Suppose you write an awesome TileDB program called ``my_tiledb_program.cc``
+using the C++ API. You can simply compile and run it as follows:
 
 .. code-block:: bash
 
-   $ g++ -std=c++11 quickstart.cc -o quickstart -ltiledb
+   $ g++ -std=c++11 my_tiledb_program.cc -o my_tiledb_program -ltiledb
+   $ ./my_tiledb_program
 
 If you run into compilation issues, see the :ref:`Usage <usage>` page for more
 complete instructions on how to compile and link against TileDB.
 If you are on Windows, use the :ref:`Windows usage <windows-usage>` instructions
 to create a Visual Studio project instead.
 
-3. Run the example
-------------------
+A Simple Dense Array Example
+----------------------------
 
-Run the example, and you should see the following output:
+First let's create a simple ``4x4`` dense array, i.e., with two dimensions
+(called `rows` and `cols`), each with domain ``[1,4]``. This array has
+a single ``int`` attribute, i.e., it will store integer values in its cells.
 
-.. code-block:: none
+.. content-tabs::
 
-   $ ./quickstart
-   Created array my_array
-   Cell (0,0) has data 'a'
-   Cell (1,1) has data 'b'
-   Cell (2,3) has data 'c'
+   .. tab-container:: cpp
+      :title: C++
 
-The array we created has the following structure:
+      .. code-block:: c++
 
-.. figure:: quickstart_array.png
+         // Name of array.
+         std::string array_name("quickstart_dense");
+
+         void create_array() {
+           // Create a TileDB context.
+           Context ctx;
+
+           // If the array already exists on disk, return immediately.
+           if (Object::object(ctx, array_name).type() == Object::Type::Array)
+             return;
+
+           // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+           Domain domain(ctx);
+           domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+                 .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+
+           // The array will be dense.
+           ArraySchema schema(ctx, TILEDB_DENSE);
+           schema.set_domain(domain)
+                 .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
+
+           // Add a single attribute "a" so each (i,j) cell can store an integer.
+           schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+           // Create the (empty) array on disk.
+           Array::create(array_name, schema);
+         }
+
+Next we populate the array by writing some values to its cells, specifically
+``1``, ``2``, ..., ``16`` in a row-major layout (i.e., the columns of the first
+row will be populated first, then those of the second row, etc.).
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         void write_array() {
+           Context ctx;
+
+           // Prepare some data for the array
+           std::vector<int> data = {
+               1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+           // Open the array for writing and create the query.
+           Array array(ctx, array_name, TILEDB_WRITE);
+           Query query(ctx, array);
+           query.set_layout(TILEDB_ROW_MAJOR)
+                .set_buffer("a", data);
+
+           // Perform the write and close the array.
+           query.submit();
+           array.close();
+         }
+
+The resulting array is depicted in the figure below.
+Finally, we will read a portion of the array (called **slicing**) and
+simply output the contents of the selected cells on the screen.
+Suppose we wish to read subarray ``[1,2]``, ``[2,4]``, i.e.,
+focus on the cells in rows ``1``, ``2`` and columns ``2``, ``3``, ``4``.
+The result values should be ``2 3 4 6 7 8``, reading again in
+row-major order (i.e., first the three selected columns of row ``1``,
+then the three selected columns of row ``2``).
+
+.. figure:: figures/quickstart_dense.png
    :align: center
+   :scale: 40 %
 
-   Visualization of the example sparse array
+   A ``4x4`` dense array, highlighting subarray ``[1:2,2:4]``
 
-Because the array is sparse, only the cells that were actually written to are
-stored on disk (colored grey in the figure). The other empty cells (colored
-white in the figure) don't exist in the array on disk, and therefore don't take
-up any extra storage.
+.. content-tabs::
 
-**Troubleshooting**
+   .. tab-container:: cpp
+      :title: C++
 
-If you ran into compile or runtime issues with any of the above steps, the
-:ref:`Installation <installation>` and :ref:`Usage <usage>` pages contain more
-in-depth documentation to help.
+      .. code-block:: c++
 
-4. Further reading
-------------------
+         void read_array() {
+           Context ctx;
 
-This quickstart omits discussion of several important issues such as:
+           // Prepare the array for reading
+           Array array(ctx, array_name, TILEDB_READ);
 
-* How to choose tile sizes for your array (the example used a "space tile"
-  extent of 2 and a "data tile" capacity of 4).
-* How to choose row and tile ordering (the example used row-major for both).
-* The other types of read and write queries (the example used unordered writes
-  and global order reads).
+           // Slice only rows 1, 2 and cols 2, 3, 4
+           const std::vector<int> subarray = {1, 2, 2, 4};
 
-To learn more about these subjects, see the other documentation sections such as
-the Tutorials or Further Reading.
+           // Prepare the vector that will hold the result (of size 6 elements)
+           std::vector<int> data(6);
+
+           // Prepare the query
+           Query query(ctx, array);
+           query.set_subarray(subarray)
+                .set_layout(TILEDB_ROW_MAJOR)
+                .set_buffer("a", data);
+
+           // Submit the query and close the array.
+           query.submit();
+           array.close();
+
+           // Print out the results.
+           for (auto d : data)
+             std::cout << d << " ";
+           std::cout << "\n";
+         }
+
+.. toggle-header::
+    :header: **Full Code Listing**
+
+    .. content-tabs::
+
+       .. tab-container:: cpp
+          :title: C++
+
+          .. literalinclude:: {source_examples_path}/cpp_api/quickstart_dense.cc
+             :language: c++
+             :linenos:
+
+If you compile and run the example as shown below, you should see the following output:
+
+.. code-block:: bash
+
+   $ g++ -std=c++11 quickstart_dense.cc -o quickstart_dense -ltiledb
+   $ ./quickstart_dense
+   2 3 4 6 7 8
+
+
+A Simple Sparse Array Example
+-----------------------------
+
+First let's create a simple ``4x4`` sparse array, i.e., with two dimensions
+(called `rows` and `cols`), each with domain ``[1,4]``. This array has
+a single ``int`` attribute, i.e., it will store integer values in its cells.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         // Name of array.
+         std::string array_name("quickstart_sparse");
+
+         void create_array() {
+           // Create a TileDB context.
+           Context ctx;
+
+           // If the array already exists on disk, return immediately.
+           if (Object::object(ctx, array_name).type() == Object::Type::Array)
+             return;
+
+           // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+           Domain domain(ctx);
+           domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+                 .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+
+           // The array will be sparse.
+           ArraySchema schema(ctx, TILEDB_SPARSE);
+           schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+
+           // Add a single attribute "a" so each (i,j) cell can store an integer.
+           schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+           // Create the (empty) array on disk.
+           Array::create(array_name, schema);
+         }
+
+Next we populate the array by writing some values to its cells, specifically
+``1``, ``2``, and ``3`` at cells ``(1,1)``, ``(2,4)`` and  ``(2,3)``,
+respectively. Notice that, contrary to the dense case, here we specify
+the exact indices where the values will be written, i.e., we provide
+the cell **coordinates**. Do not worry about the "unordered" query
+layout for now, just know that it is important.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         void write_array() {
+           Context ctx;
+
+           // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+           std::vector<int> coords = {1, 1, 2, 4, 2, 3};
+           std::vector<int> data = {1, 2, 3};
+
+           // Open the array for writing and create the query.
+           Array array(ctx, array_name, TILEDB_WRITE);
+           Query query(ctx, array);
+           query.set_layout(TILEDB_UNORDERED)
+                .set_buffer("a", data)
+                .set_coordinates(coords);
+
+           // Perform the write and close the array.
+           query.submit();
+           array.close();
+         }
+
+The resulting array is depicted in the figure below.
+Similar to the dense array example, we read subarray
+``[1,2]``, ``[2,4]``, i.e., focus on the cells in rows
+``1``, ``2`` and columns ``2``, ``3``, ``4``.
+The result values should be ``3`` for cell ``(2,3)`` and
+``2`` for cell ``(2,4)`` reading again in row-major order.
+
+.. figure:: figures/quickstart_sparse.png
+   :align: center
+   :scale: 40 %
+
+   A ``4x4`` sparse array, highlighting subarray ``[1:2,2:4]``
+
+One of the most challenging issues is estimating how large
+the result of a read query on a sparse array is, so that you
+know how much space to allocate for your buffers, and how
+to parse the result (this was not an issue in the dense case).
+For now, just know that TileDB got you covered and read
+through the "Tutorial" sections for the details.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         void read_array() {
+           Context ctx;
+
+           // Prepare the array for reading
+           Array array(ctx, array_name, TILEDB_READ);
+
+           // Slice only rows 1, 2 and cols 2, 3, 4
+           const std::vector<int> subarray = {1, 2, 2, 4};
+
+           // Prepare the vector that will hold the result.
+           // We take an upper bound on the result size, as we do not
+           // know a priori how big it is (since the array is sparse)
+           auto max_el = array.max_buffer_elements(subarray);
+           std::vector<int> data(max_el["a"].second);
+           std::vector<int> coords(max_el[TILEDB_COORDS].second);
+
+           // Prepare the query
+           Query query(ctx, array);
+           query.set_subarray(subarray)
+                .set_layout(TILEDB_ROW_MAJOR)
+                .set_buffer("a", data)
+                .set_coordinates(coords);
+
+           // Submit the query and close the array.
+           query.submit();
+           array.close();
+
+           // Print out the results.
+           auto result_num = (int) query.result_buffer_elements()["a"].second;
+           for (int r = 0; r < result_num; r++) {
+             int i = coords[2 * r], j = coords[2 * r + 1];
+             int a = data[r];
+             std::cout << "Cell (" << i << "," << j << ") has data " << a << "\n";
+           }
+         }
+
+.. toggle-header::
+    :header: **Full Code Listing**
+
+    .. content-tabs::
+
+       .. tab-container:: cpp
+          :title: C++
+
+          .. literalinclude:: {source_examples_path}/cpp_api/quickstart_sparse.cc
+             :language: c++
+             :linenos:
+
+If you compile and run the example as shown below, you should see the following output:
+
+.. code-block:: bash
+
+   $ g++ -std=c++11 quickstart_sparse.cc -o quickstart_sparse -ltiledb
+   $ ./quickstart_sparse
+   Cell (2, 3) has data 3
+   Cell (2, 4) has data 2
+
+
+A Simple Key-Value Example
+--------------------------
+
+First let's create a simple map with a single integer attribute.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         // Name of map.
+         std::string map_name("quickstart_map");
+
+         void create_map() {
+           // Create TileDB context
+           tiledb::Context ctx;
+
+           // Create a map with a single integer attribute
+           tiledb::MapSchema schema(ctx);
+           tiledb::Attribute a = tiledb::Attribute::create<int>(ctx, "a");
+           schema.add_attribute(a);
+           tiledb::Map::create(map_name, schema);
+         }
+
+Next we populate the map with 3 key-value pairs: ``"key_1": 1``, ``"key_2": 2``
+and ``"key_3": 3``.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         void write_map() {
+           tiledb::Context ctx;
+
+           // Open the map
+           tiledb::Map map(ctx, map_name);
+
+           // Write some values
+           map["key_1"] = 1;
+           map["key_2"] = 2;
+           map["key_3"] = 3;
+
+           // Close the map
+           map.close();
+         }
+
+Finally, we read the data back using the keys and print them on the screen.
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+         void read_map() {
+           Context ctx;
+
+           // Open the map
+           tiledb::Map map(ctx, map_name);
+
+           // Read the keys
+           int a1 = map["key_1"];
+           int a2 = map["key_2"];
+           int a3 = map["key_3"];
+
+           // Print
+           std::cout << "key_1: " << a1 << "\n";
+           std::cout << "key_2: " << a2 << "\n";
+           std::cout << "key_3: " << a3 << "\n";
+
+           // Close the map
+           map.close();
+         }
+
+.. toggle-header::
+    :header: **Full Code Listing**
+
+    .. content-tabs::
+
+       .. tab-container:: cpp
+          :title: C++
+
+          .. literalinclude:: {source_examples_path}/cpp_api/quickstart_map.cc
+             :language: c++
+             :linenos:
+
+If you compile and run the example as shown below, you should see the following output:
+
+.. code-block:: bash
+
+   $ g++ -std=c++11 quickstart_map.cc -o quickstart_map -ltiledb
+   $ ./quickstart_map
+   key_1: 1
+   key_2: 2
+   key_3: 3
+
+Further reading
+---------------
+
+This quickstart omits discussion of several important concepts such as tiling,
+cell/tile layouts, types of write and read queries, memory management,
+and many more exciting topics. To learn more about these subjects, read through
+the "Tutorial" sections that cover all the TileDB concepts and functionality in
+great depth.
+
+
