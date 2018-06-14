@@ -84,8 +84,13 @@ ArraySchema::ArraySchema(ArrayType array_type)
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
-  attributes_ = array_schema->attributes_;
-  attribute_num_ = array_schema->attribute_num();
+  // Copy attributes using add_attribute
+  for (auto attribute : array_schema->attributes_)
+    add_attribute(attribute);
+  // Initialize domain_ to nullptr for safe delete in set_domain()
+  domain_ = nullptr;
+  // Set domain
+  set_domain(array_schema->domain_);
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_sizes_ = array_schema->cell_sizes_;
@@ -96,7 +101,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   coords_compression_level_ = array_schema->coords_compression_level_;
   coords_size_ = array_schema->coords_size_;
   is_kv_ = array_schema->is_kv_;
-  domain_ = array_schema->domain_;
   tile_order_ = array_schema->tile_order_;
   std::memcpy(version_, array_schema->version_, sizeof(version_));
 }
