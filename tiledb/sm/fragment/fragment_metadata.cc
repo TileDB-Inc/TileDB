@@ -65,9 +65,19 @@ FragmentMetadata::FragmentMetadata(
   tile_index_base_ = 0;
 
   auto attributes = array_schema_->attributes();
-  for (unsigned i = 0; i < attributes.size(); ++i)
-    attribute_idx_map_[attributes[i]->name()] = i;
+  for (unsigned i = 0; i < attributes.size(); ++i) {
+    auto attr_name = attributes[i]->name();
+    attribute_idx_map_[attr_name] = i;
+    attribute_uri_map_[attr_name] =
+        fragment_uri_.join_path(attr_name + constants::file_suffix);
+    if (attributes[i]->var_size())
+      attribute_var_uri_map_[attr_name] =
+          fragment_uri_.join_path(attr_name + "_var" + constants::file_suffix);
+  }
+
   attribute_idx_map_[constants::coords] = array_schema_->attribute_num();
+  attribute_uri_map_[constants::coords] =
+      fragment_uri_.join_path(constants::coords + constants::file_suffix);
 }
 
 FragmentMetadata::~FragmentMetadata() {
@@ -485,11 +495,11 @@ uint64_t FragmentMetadata::tile_num() const {
 }
 
 URI FragmentMetadata::attr_uri(const std::string& attribute) const {
-  return fragment_uri_.join_path(attribute + constants::file_suffix);
+  return attribute_uri_map_.at(attribute);
 }
 
 URI FragmentMetadata::attr_var_uri(const std::string& attribute) const {
-  return fragment_uri_.join_path(attribute + "_var" + constants::file_suffix);
+  return attribute_var_uri_map_.at(attribute);
 }
 
 uint64_t FragmentMetadata::file_offset(

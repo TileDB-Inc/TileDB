@@ -823,6 +823,11 @@ class Map {
    * auto item = map[key];
    * @endcode
    *
+   * @note For writing to the map, e.g. `map[key] = value`, it is usually much
+   * more efficient to instead use Map::create_item() to create a MapItem,
+   * set attribute values on the MapItem, and then Map::add_item to add
+   * the item to the map.
+   *
    * @tparam T Key type
    * @param key Item key
    * @return The item

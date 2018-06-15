@@ -61,9 +61,15 @@ void write_map() {
   tiledb::Map map(ctx, map_name);
 
   // Write some values
-  map["key_1"] = 1;
-  map["key_2"] = 2;
-  map["key_3"] = 3;
+  auto item1 = tiledb::Map::create_item(ctx, "key_1");
+  auto item2 = tiledb::Map::create_item(ctx, "key_2");
+  auto item3 = tiledb::Map::create_item(ctx, "key_3");
+  item1.set("a", 1);
+  item2.set("a", 2);
+  item3.set("a", 3);
+  map.add_item(item1);
+  map.add_item(item2);
+  map.add_item(item3);
 
   // Close the map
   map.close();
