@@ -977,7 +977,8 @@ TILEDB_EXPORT int tiledb_attribute_get_compressor(
     int* compression_level);
 
 /**
- * Retrieves the number of values per cell for the attribute.
+ * Retrieves the number of values per cell for the attribute. For variable-sized
+ * attributes result is TILEDB_VAR_NUM.
  *
  * **Example:**
  *
@@ -1211,7 +1212,8 @@ TILEDB_EXPORT int tiledb_domain_dump(
  * @param name The dimension name.
  * @param type The dimension type.
  * @param dim_domain The dimension domain.
- * @param tile_extent The dimension tile extent.
+ * @param tile_extent The dimension tile extent. This may be `NULL`, which is
+ * equivalent to the entire domain.
  * @param dim The dimension to be created.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -2028,7 +2030,7 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
  *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
  *    after the termination of this function become 0, then this means that
- *    **no** useful data was read into the buffers, implying that the larger
+ *    **no** useful data was read into the buffers, implying that larger
  *    buffers are needed for the query to proceed. In this case, the users
  *    must reallocate their buffers (increasing their size), reset the buffers
  *    with `tiledb_query_set_buffer`, and resubmit the query.
@@ -2070,7 +2072,7 @@ TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
  *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
  *    after the termination of this function become 0, then this means that
- *    **no** useful data was read into the buffers, implying that the larger
+ *    **no** useful data was read into the buffers, implying that larger
  *    buffers are needed for the query to proceed. In this case, the users
  *    must reallocate their buffers (increasing their size), reset the buffers
  *    with `tiledb_query_set_buffer`, and resubmit the query.

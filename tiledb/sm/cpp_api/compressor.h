@@ -43,7 +43,7 @@
 namespace tiledb {
 
 /**
- * Represents a compression scheme. Composed of a compression algo + a
+ * Represents a compression scheme. Composed of a compression algorithm + a
  * compression level. A compression level of -1 indicates the default
  * level.
  *
@@ -67,8 +67,11 @@ class Compressor {
   }
 
   /**
-   * Create a compressor with a given method and level.
-   * -1 for default.
+   * Create a compressor with a given algorithm and level.
+   *
+   * @param compressor Enumerated compression algorithm.
+   * @param level Compression level (-1 for the compression algorithm's
+   * default).
    */
   Compressor(tiledb_compressor_t compressor, int level)
       : compressor_(compressor)

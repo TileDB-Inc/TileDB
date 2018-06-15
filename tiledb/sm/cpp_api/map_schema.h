@@ -49,14 +49,32 @@
 
 namespace tiledb {
 
-/** Implements the array schema functionality. */
+/**
+ * Represents the schema of a Map (key-value store).
+ *
+ * **Example:**
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ * tiledb::MapSchema schema(ctx);
+ * schema.add_attribute(Attribute::create<int>(ctx, "a1"));
+ * schema.add_attribute(Attribute::create<std::string>(ctx, "a2"));
+ * schema.add_attribute(Attribute::create<std::array<float, 2>>(ctx, "a3"));
+ * // Create an empty map with the above schema.
+ * Map::create("my_map", schema);
+ * @endcode
+ *
+ */
 class MapSchema : public Schema {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Creates a new array schema. */
+  /**
+   * Creates a new empty map schema.
+   *
+   * @param ctx TileDB context
+   */
   explicit MapSchema(const Context& ctx)
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
@@ -64,7 +82,12 @@ class MapSchema : public Schema {
     schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
   }
 
-  /** Loads the schema of an existing array with the input URI. */
+  /**
+   * Loads the schema of an existing array with the given URI.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to load
+   */
   MapSchema(const Context& ctx, const std::string& uri)
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
@@ -95,13 +118,29 @@ class MapSchema : public Schema {
     return schema_.get();
   }
 
-  /** Dumps the array schema in an ASCII representation to an output. */
+  /**
+   * Dumps the map schema in an ASCII representation to an output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   */
   void dump(FILE* out = stdout) const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_kv_schema_dump(ctx, schema_.get(), out));
   }
 
-  /** Adds an attribute to the array. */
+  /**
+   * Adds an attribute to the schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::MapSchema schema(ctx);
+   * schema.add_attribute(Attribute::create<int>(ctx, "a1"));
+   * @endcode
+   *
+   * @param attr Attribute to add
+   * @return Reference to this MapSchema.
+   */
   MapSchema& add_attribute(const Attribute& attr) override {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -114,13 +153,35 @@ class MapSchema : public Schema {
     return schema_;
   }
 
-  /** Validates the schema. */
+  /**
+   * Validates the schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::MapSchema schema(ctx);
+   * // Add attributes etc...
+   *
+   * try {
+   *   schema.check();
+   * } catch (const tiledb::TileDBError& e) {
+   *   std::cout << e.what() << "\n";
+   *   exit(1);
+   * }
+   * @endcode
+   *
+   * @throws TileDBError if the schema is incorrect or invalid.
+   */
   void check() const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_kv_schema_check(ctx, schema_.get()));
   }
 
-  /** Gets all attributes in the array. */
+  /**
+   * Gets all attributes in the array.
+   *
+   * @return Map of attribute name to copy of Attribute instance.
+   */
   std::unordered_map<std::string, Attribute> attributes() const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attrptr;
@@ -138,7 +199,7 @@ class MapSchema : public Schema {
     return attrs;
   }
 
-  /** Number of attributes **/
+  /** Returns the number of attributes in the schema. **/
   unsigned attribute_num() const override {
     auto& ctx = context();
     unsigned num;
@@ -147,7 +208,12 @@ class MapSchema : public Schema {
     return num;
   }
 
-  /** Get an attribute by name. **/
+  /**
+   * Get a copy of an Attribute in the schema by name.
+   *
+   * @param name Name of attribute
+   * @return Attribute
+   */
   Attribute attribute(const std::string& name) const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;
@@ -155,8 +221,14 @@ class MapSchema : public Schema {
         ctx, schema_.get(), name.c_str(), &attr));
     return {ctx, attr};
   }
-
-  /** Get an attribute by index **/
+  /**
+   * Get a copy of an Attribute in the schema by index.
+   * Attributes are ordered the same way they were defined
+   * when constructing the schema.
+   *
+   * @param i Index of attribute
+   * @return Attribute
+   */
   Attribute attribute(unsigned int i) const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;
@@ -165,7 +237,12 @@ class MapSchema : public Schema {
     return {ctx, attr};
   }
 
-  /** Sets the tile capacity. */
+  /**
+   * Sets the tile capacity.
+   *
+   * @param capacity Capacity value to set.
+   * @return Reference to this MapSchema.
+   */
   MapSchema& set_capacity(uint64_t capacity) {
     auto& ctx = ctx_.get();
     ctx.handle_error(

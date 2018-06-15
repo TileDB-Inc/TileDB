@@ -51,6 +51,17 @@ namespace tiledb {
 /**
  * Enables listing TileDB objects in a directory or walking recursively an
  * entire directory tree.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * // List the TileDB objects in an S3 bucket.
+ * tiledb::Context ctx;
+ * tiledb::ObjectIter obj_it(ctx, "s3://bucket-name");
+ * for (auto it = obj_it.begin(), ite = obj_it.end(); it != ite; ++it) {
+ *   const tiledb::Object &obj = *it;
+ *   std::cout << obj << std::endl;
+ * }
+ * @endcode
  */
 class ObjectIter {
  public:

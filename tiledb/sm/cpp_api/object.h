@@ -46,7 +46,10 @@
 
 namespace tiledb {
 
-/** Represents a TileDB object: array, group, key-value, or none (invalid). */
+/**
+ * Represents a TileDB object: array, group, key-value (map), or none
+ * (invalid).
+ */
 class Object {
  public:
   /* ********************************* */
@@ -54,7 +57,16 @@ class Object {
   /* ********************************* */
 
   /** The object type. */
-  enum class Type { Array, Group, Invalid, KeyValue };
+  enum class Type {
+    /** TileDB array object. */
+    Array,
+    /** TileDB group object. */
+    Group,
+    /** Invalid or unknown object type. */
+    Invalid,
+    /** TileDB key-value (map) array object. */
+    KeyValue
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -146,17 +158,17 @@ class Object {
   }
 
   /**
-   * Deletes a tiledb object.
+   * Deletes a TileDB object at the given URI from disk/persistent storage.
    *
    * @param ctx The TileDB context
-   * @param uri The path to the object to be deleted.
+   * @param uri The path to the object to be removed.
    */
   static void remove(const Context& ctx, const std::string& uri) {
     ctx.handle_error(tiledb_object_remove(ctx, uri.c_str()));
   }
 
   /**
-   * Moves/renames a tiledb object.
+   * Moves/renames a TileDB object.
    *
    * @param old_uri The path to the old object.
    * @param new_uri The path to the new object.

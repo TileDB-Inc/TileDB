@@ -52,6 +52,14 @@ namespace tiledb {
  * Describes one dimension of an Array. The dimension consists
  * of a type, lower and upper bound, and tile-extent describing
  * the memory ordering. Dimensions are added to a Domain.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * tiledb::Context ctx;
+ * tiledb::Domain domain(ctx);
+ * // Create a dimension with inclusive domain [0,1000] and tile extent 100.
+ * domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 100));
+ * @endcode
  **/
 class Dimension {
  public:
@@ -89,7 +97,12 @@ class Dimension {
     return type;
   }
 
-  /** Returns the domain of the dimension. **/
+  /**
+   * Returns the domain of the dimension.
+   *
+   * @tparam T Domain datatype
+   * @return Pair of [lower, upper] inclusive bounds.
+   */
   template <typename T>
   std::pair<T, T> domain() const {
     impl::type_check<T>(type(), 1);
@@ -275,10 +288,18 @@ class Dimension {
   /**
    * Factory function for creating a new dimension with datatype T.
    *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Create a dimension with inclusive domain [0,1000] and tile extent 100.
+   * auto dim = Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 100);
+   * @endcode
+   *
    * @tparam T int, char, etc...
    * @param ctx The TileDB context.
    * @param name The dimension name.
-   * @param domain The dimension domain.
+   * @param domain The dimension domain. A pair [lower,upper] of inclusive
+   * bounds.
    * @param extent The tile extent on the dimension.
    * @return A new `Dimension` object.
    */
@@ -296,12 +317,23 @@ class Dimension {
   }
 
   /**
-   * Factory function for creating a new dimension with datatype T.
+   * Factory function for creating a new dimension with datatype T with no
+   * tile extent. TileDB uses a tile extent equal to the whole domain extent in
+   * this dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Create a dimension with inclusive domain [0,1000] and implicit
+   * // tile extent 1001.
+   * auto dim = Dimension::create<int32_t>(ctx, "d", {{0, 1000}});
+   * @endcode
    *
    * @tparam T int, char, etc...
    * @param ctx The TileDB context.
    * @param name The dimension name.
-   * @param domain The dimension domain.
+   * @param domain The dimension domain. A pair [lower,upper] of inclusive
+   * bounds.
    * @return A new `Dimension` object.
    */
   template <typename T>

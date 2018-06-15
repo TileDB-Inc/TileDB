@@ -82,8 +82,8 @@ namespace tiledb {
  * schema.set_cell_order(TILEDB_ROW_MAJOR);
  * schema.set_capacity(10); // For sparse, set capacity of each tile
  *
- * tiledb::Array::create(schema, "my_array"); // Make array with schema
- * auto s = tiledb::ArraySchema(ctx, "my_array"); // Load schema from array
+ * // Create the array on persistent storage with the schema.
+ * tiledb::Array::create("my_array", schema);
  *
  * @endcode
  */
@@ -93,7 +93,18 @@ class ArraySchema : public Schema {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Creates a new array schema. */
+  /**
+   * Creates a new array schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param type Array type, sparse or dense.
+   */
   explicit ArraySchema(const Context& ctx, tiledb_array_type_t type)
       : Schema(ctx) {
     tiledb_array_schema_t* schema;
@@ -101,7 +112,18 @@ class ArraySchema : public Schema {
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   };
 
-  /** Loads the schema of an existing array with the input URI. */
+  /**
+   * Loads the schema of an existing array.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri URI of array
+   */
   ArraySchema(const Context& ctx, const std::string& uri)
       : Schema(ctx) {
     tiledb_array_schema_t* schema;
@@ -112,6 +134,9 @@ class ArraySchema : public Schema {
   /**
    * Loads the schema of an existing array with the input C array
    * schema object.
+   *
+   * @param ctx TileDB context
+   * @param schema C API array schema object
    */
   ArraySchema(const Context& ctx, tiledb_array_schema_t* schema)
       : Schema(ctx) {
@@ -133,7 +158,11 @@ class ArraySchema : public Schema {
     return schema_.get();
   }
 
-  /** Dumps the array schema in an ASCII representation to an output. */
+  /**
+   * Dumps the array schema in an ASCII representation to an output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   */
   void dump(FILE* out = stdout) const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_dump(ctx, schema_.get(), out));
@@ -157,7 +186,12 @@ class ArraySchema : public Schema {
     return capacity;
   }
 
-  /** Sets the tile capacity. */
+  /**
+   * Sets the tile capacity.
+   *
+   * @param capacity Capacity value to set.
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_capacity(uint64_t capacity) {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -174,7 +208,12 @@ class ArraySchema : public Schema {
     return layout;
   }
 
-  /** Sets the tile order. */
+  /**
+   * Sets the tile order.
+   *
+   * @param layout Tile order to set.
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_tile_order(tiledb_layout_t layout) {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -183,9 +222,10 @@ class ArraySchema : public Schema {
   }
 
   /**
-   * Sets both the tile and cell layouts
+   * Sets both the tile and cell orders.
    *
-   * @param layout {Tile layout, Cell layout}
+   * @param layout Pair of {tile order, cell order}
+   * @return Reference to this `ArraySchema` instance.
    */
   ArraySchema& set_order(const std::array<tiledb_layout_t, 2>& p) {
     set_tile_order(p[0]);
@@ -202,7 +242,12 @@ class ArraySchema : public Schema {
     return layout;
   }
 
-  /** Sets the cell order. */
+  /**
+   * Sets the cell order.
+   *
+   * @param layout Cell order to set.
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_cell_order(tiledb_layout_t layout) {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -210,7 +255,12 @@ class ArraySchema : public Schema {
     return *this;
   }
 
-  /** Returns the compressor of the coordinates. */
+  /**
+   * Returns a copy of the Compressor of the coordinates. To change the
+   * coordinate compressor, use `set_coords_compressor()`.
+   *
+   * @return Copy of the coordinates Compressor.
+   */
   Compressor coords_compressor() const {
     auto& ctx = ctx_.get();
     tiledb_compressor_t compressor;
@@ -221,7 +271,19 @@ class ArraySchema : public Schema {
     return cmp;
   }
 
-  /** Sets the compressor for the coordinates. */
+  /**
+   * Sets the compressor for the coordinates.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * schema.set_coords_compressor({TILEDB_ZSTD, -1});
+   * @endcode
+   *
+   * @param c Compressor to use
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_coords_compressor(const Compressor& c) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_set_coords_compressor(
@@ -229,7 +291,12 @@ class ArraySchema : public Schema {
     return *this;
   }
 
-  /** Returns the compressor of the offsets. */
+  /**
+   * Returns a copy of the Compressor of the offsets for variable-length
+   * attributes. To change the compressor, use `set_offsets_compressor()`.
+   *
+   * @return Copy of the offsets Compressor.
+   */
   Compressor offsets_compressor() const {
     auto& ctx = ctx_.get();
     tiledb_compressor_t compressor;
@@ -240,7 +307,19 @@ class ArraySchema : public Schema {
     return cmp;
   }
 
-  /** Sets the compressor for the offsets. */
+  /**
+   * Sets the compressor for the offsets of variable-length attributes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * schema.set_offsets_compressor({TILEDB_ZSTD, -1});
+   * @endcode
+   *
+   * @param c Compressor to use
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_offsets_compressor(const Compressor& c) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_set_offsets_compressor(
@@ -248,7 +327,12 @@ class ArraySchema : public Schema {
     return *this;
   }
 
-  /** Retruns the array domain of array. */
+  /**
+   * Returns a copy of the schema's array Domain. To change the domain,
+   * use `set_domain()`.
+   *
+   * @return Copy of the array Domain
+   */
   Domain domain() const {
     auto& ctx = ctx_.get();
     tiledb_domain_t* domain;
@@ -257,7 +341,21 @@ class ArraySchema : public Schema {
     return Domain(ctx, domain);
   }
 
-  /** Sets the array domain. */
+  /**
+   * Sets the array domain.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * // Create a Domain
+   * tiledb::Domain domain(...);
+   * schema.set_domain(domain);
+   * @endcode
+   *
+   * @param domain Domain to use
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& set_domain(const Domain& domain) {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -265,7 +363,19 @@ class ArraySchema : public Schema {
     return *this;
   }
 
-  /** Adds an attribute to the array. */
+  /**
+   * Adds an Attribute to the array.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * schema.add_attribute(Attribute::create<int32_t>(ctx, "attr_name"));
+   * @endcode
+   *
+   * @param attr The Attribute to add
+   * @return Reference to this `ArraySchema` instance.
+   */
   ArraySchema& add_attribute(const Attribute& attr) override {
     auto& ctx = ctx_.get();
     ctx.handle_error(
@@ -278,13 +388,35 @@ class ArraySchema : public Schema {
     return schema_;
   }
 
-  /** Validates the schema. */
+  /**
+   * Validates the schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+   * // Add domain, attributes, etc...
+   *
+   * try {
+   *   schema.check();
+   * } catch (const tiledb::TileDBError& e) {
+   *   std::cout << e.what() << "\n";
+   *   exit(1);
+   * }
+   * @endcode
+   *
+   * @throws TileDBError if the schema is incorrect or invalid.
+   */
   void check() const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_check(ctx, schema_.get()));
   }
 
-  /** Gets all attributes in the array. */
+  /**
+   * Gets all attributes in the array.
+   *
+   * @return Map of attribute name to copy of Attribute instance.
+   */
   std::unordered_map<std::string, Attribute> attributes() const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attrptr;
@@ -302,7 +434,12 @@ class ArraySchema : public Schema {
     return attrs;
   }
 
-  /** Gets an attribute by name. **/
+  /**
+   * Get a copy of an Attribute in the schema by name.
+   *
+   * @param name Name of attribute
+   * @return Attribute
+   */
   Attribute attribute(const std::string& name) const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;
@@ -311,7 +448,7 @@ class ArraySchema : public Schema {
     return Attribute(ctx, attr);
   }
 
-  /** Number of attributes. **/
+  /** Returns the number of attributes in the schema. **/
   unsigned attribute_num() const override {
     auto& ctx = ctx_.get();
     unsigned num;
@@ -320,7 +457,14 @@ class ArraySchema : public Schema {
     return num;
   }
 
-  /** Get an attribute by index **/
+  /**
+   * Get a copy of an Attribute in the schema by index.
+   * Attributes are ordered the same way they were defined
+   * when constructing the array schema.
+   *
+   * @param i Index of attribute
+   * @return Attribute
+   */
   Attribute attribute(unsigned int i) const override {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;

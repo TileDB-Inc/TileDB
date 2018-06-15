@@ -90,6 +90,8 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(dims[0].domain<int>().second == 100);
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<int>() == 10);
+
+    CHECK(dense_domain.type() == TILEDB_INT32);
   }
 
   SECTION("Sparse Array Schema") {
@@ -127,6 +129,8 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(dims[0].domain<double>().second == 100.0);
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<double>() == 10.0);
+
+    CHECK(sparse_domain.type() == TILEDB_FLOAT64);
   }
 
   SECTION("Map Schema") {
@@ -149,5 +153,13 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
+  }
+
+  SECTION("Invalid dimension types") {
+    Domain dom(ctx);
+    dom.add_dimension(Dimension::create<int>(ctx, "d1", {{0, 10}}));
+    CHECK_THROWS_AS(
+        dom.add_dimension(Dimension::create<uint64_t>(ctx, "d2", {{0, 10}})),
+        TileDBError);
   }
 }

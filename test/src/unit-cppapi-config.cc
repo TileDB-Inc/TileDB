@@ -42,3 +42,13 @@ TEST_CASE("C++ API: Config", "[cppapi], [cppapi-config]") {
   auto readInvalidKey = [&config]() { std::string result2 = config["bar"]; };
   REQUIRE_THROWS_AS(readInvalidKey(), tiledb::TileDBError);
 }
+
+TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
+  tiledb::Config config;
+  std::vector<std::string> names;
+  for (auto it = config.begin("vfs"), ite = config.end(); it != ite; ++it) {
+    names.push_back(it->first);
+  }
+  // Check number of VFS params in default config object.
+  CHECK(names.size() == 21);
+}
