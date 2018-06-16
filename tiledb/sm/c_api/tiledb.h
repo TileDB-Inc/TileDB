@@ -2263,7 +2263,7 @@ TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_get_schema(ctx, &array_schema);
+ * tiledb_array_get_schema(ctx, array, &array_schema);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -2287,7 +2287,7 @@ TILEDB_EXPORT int tiledb_array_get_schema(
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
- * tiledb_query_type_t* query_type;
+ * tiledb_query_type_t query_type;
  * tiledb_array_get_type(ctx, array, &query_type);
  * @endcode
  *
