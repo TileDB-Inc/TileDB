@@ -2261,7 +2261,7 @@ TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_get_schema(ctx, &array_schema);
+ * tiledb_array_get_schema(ctx, array, &array_schema);
  * @endcode
  *
  * @param ctx The TileDB context.
