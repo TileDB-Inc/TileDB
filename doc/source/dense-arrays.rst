@@ -1,4 +1,4 @@
-Dense arrays
+Dense Arrays
 ============
 
 In this tutorial we will learn how to create, read, and write a simple dense
@@ -17,8 +17,8 @@ array in TileDB.
              :linenos:
 
 
-Basic concepts
---------------
+Basic concepts and definitions
+------------------------------
 
 .. toggle-header::
     :header: **Cell**, **Dimension**, **Domain**
@@ -111,6 +111,13 @@ the last argument when adding a dimension (tile extent).
         Domain domain(ctx);
         domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
               .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+
+.. note::
+
+   The order of the dimensions (as added to the domain) is important later when
+   specifying subarrays. For instance, in the above example, subarray
+   ``[1,2], [2,4]`` means slice the first two values in the ``rows`` dimension
+   domain, and values ``2,3,4`` in the ``cols`` dimension domain.
 
 Then, attach the domain to the schema, and configure a few other parameters
 (cell and tile ordering) that are explained in later tutorials:
