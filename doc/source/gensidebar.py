@@ -81,8 +81,8 @@ def generate_sidebar(conf, conf_api):
     endl()
 
     toctree('Tutorials')
-    write('Dense Arrays', 'tutorials/dense-arrays')
-    write('Sparse Arrays', 'tutorials/sparse-arrays')
+    write('Dense Arrays', 'dense-arrays')
+    write('Sparse Arrays', 'sparse-arrays')
     write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
     write('Variable-length Attributes', 'tutorials/variable-length-attributes')
     write('Tiles', 'tutorials/tiles')
@@ -91,7 +91,6 @@ def generate_sidebar(conf, conf_api):
     endl()
 
     toctree('Further Reading')
-    write('Data Model', 'futher-reading/data-model')
     write('Basic Concepts', 'futher-reading/basic-concepts')
     write('System Architecture', 'futher-reading/system-architecture')
     write('Physical Organization', 'futher-reading/physical-organization')

@@ -20,7 +20,7 @@ Dense case
 ----------
 
 :ref:`Figure 6 <figure-6>` shows the physical organization of the
-dense array of :ref:`Figure 1 <figure-1>`, assuming that it follows
+dense array, assuming that it follows
 the global cell order illustrated in the middle array of :ref:`Figure
 2 <figure-2>`. The cell values along the fixed-sized attribute ``a1``
 are stored in a file called ``a1.tdb``, always following the specified
@@ -65,7 +65,7 @@ Sparse case
 -----------
 
 :ref:`Figure 7 <figure-7>` illustrates the physical organization of
-the sparse array of :ref:`Figure 1 <figure-1>`, assuming that it
+the sparse array, assuming that it
 follows the global cell order of the middle array of :ref:`Figure 3
 <figure-3>`. The attribute files of sparse arrays are organized in the
 same manner as those of dense, except that they contain only
