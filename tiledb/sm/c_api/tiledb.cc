@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/rest/client.h"
 #include "tiledb/rest/json/array.h"
 #include "tiledb/rest/json/query.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -45,6 +46,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/config.h"
 
+#include <tiledb/rest/curl.h>
 #include <map>
 #include <sstream>
 
@@ -1355,16 +1357,46 @@ int tiledb_array_schema_load(
     return TILEDB_OOM;
   }
 
-  // Load array schema
-  auto storage_manager = ctx->storage_manager_;
-  if (save_error(
-          ctx,
-          storage_manager->load_array_schema(
-              tiledb::sm::URI(array_uri),
-              tiledb::sm::ObjectType::ARRAY,
-              &((*array_schema)->array_schema_)))) {
-    delete *array_schema;
+  // Check for REST server configuration
+  tiledb_config_t* config;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR)
     return TILEDB_ERR;
+  const char* rest_server;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // If we have configured a rest server address use it
+  if (rest_server != nullptr) {
+    char* json;
+    // Call helper function
+    auto st = get_array_schema_json_from_rest(rest_server, array_uri, &json);
+    if (save_error(ctx, st)) {
+      LOG_STATUS(st);
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+    // Error if we didn't get json or we can't convert to array schema
+    if (json == nullptr || (tiledb_array_schema_from_json(
+                                ctx, array_schema, json) == TILEDB_ERR)) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+  } else {
+    // Load array schema
+    auto storage_manager = ctx->storage_manager_;
+    if (save_error(
+            ctx,
+            storage_manager->load_array_schema(
+                tiledb::sm::URI(array_uri),
+                tiledb::sm::ObjectType::ARRAY,
+                &((*array_schema)->array_schema_)))) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
   }
 
   return TILEDB_OK;
@@ -2289,13 +2321,38 @@ int tiledb_array_create(
     save_error(ctx, st);
     return TILEDB_ERR;
   }
-
-  // Create the array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_create(
-              uri, array_schema->array_schema_)))
+  // Check for REST server configuration
+  tiledb_config_t* config;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR)
     return TILEDB_ERR;
+  const char* rest_server;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // If we have configured a rest server address use it
+  if (rest_server != nullptr) {
+    // Set URI
+    array_schema->array_schema_->set_array_uri(uri);
+    char* json;
+    if (tiledb_array_schema_to_json(ctx, array_schema, &json) == TILEDB_ERR)
+      return TILEDB_ERR;
+
+    // Call helper function
+    auto st = post_array_schema_json_to_rest(rest_server, array_uri, json);
+    if (save_error(ctx, st)) {
+      LOG_STATUS(st);
+      return TILEDB_ERR;
+    }
+  } else {
+    // Create the array
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_create(
+                uri, array_schema->array_schema_)))
+      return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }

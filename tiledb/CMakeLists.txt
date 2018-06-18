@@ -80,6 +80,8 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
@@ -133,8 +135,7 @@ set(TILEDB_CORE_SOURCES
 # 'External' source files included in the source tree.
 set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/include")
 set(TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -205,23 +206,24 @@ if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
 
+find_package(Curl_EP REQUIRED)
+if (NOT WIN32) # Need to handle windows without curl?
+  # No Curl required on Windows.
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      Curl::Curl
+  )
+endif()
+
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(Curl_EP REQUIRED)
   find_package(AWSSDK_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       AWSSDK::aws-cpp-sdk-s3
       AWSSDK::aws-cpp-sdk-core
   )
-  if (NOT WIN32)
-    # No Curl required on Windows.
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        Curl::Curl
-    )
-  endif()
   add_definitions(-DHAVE_S3)
 endif()
 
