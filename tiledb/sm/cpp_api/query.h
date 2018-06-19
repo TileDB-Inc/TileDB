@@ -576,6 +576,7 @@ class Query {
    * Sets a buffer for a variable-sized attribute.
    *
    * **Example:**
+   *
    * @code{.cpp}
    * tiledb::Context ctx;
    * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
@@ -591,7 +592,7 @@ class Query {
    * @tparam T Attribute value type
    * @param attr Attribute name
    * @param offsets Offsets array pointer where a new element begins in the data
-   *buffer.
+   *        buffer.
    * @param offsets_nelements Number of elements in offsets buffer.
    * @param data Buffer array pointer with elements of the attribute type.
    *        For variable sized attributes, the buffer should be flattened.
