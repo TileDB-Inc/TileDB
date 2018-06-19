@@ -99,7 +99,7 @@ class Statistics {
 #define STATS_REPORT_FUNC_STAT(function_name) \
   fprintf(                                    \
       out,                                    \
-      "%-30s%20" PRIu64 ",%20" PRIu64 "\n",   \
+      "%-60s%20" PRIu64 ",%20" PRIu64 "\n",   \
       "  " #function_name ",",                \
       (uint64_t)function_name##_call_count,   \
       (uint64_t)function_name##_total_ns);
@@ -112,12 +112,50 @@ class Statistics {
 #define STATS_REPORT_COUNTER_STAT(counter_name) \
   fprintf(                                      \
       out,                                      \
-      "%-30s%20" PRIu64 "\n",                   \
+      "%-60s%20" PRIu64 "\n",                   \
       "  " #counter_name ",",                   \
       (uint64_t)counter_##counter_name);
 #include "tiledb/sm/misc/stats_counters.h"
 #undef STATS_REPORT_COUNTER_STAT
   }
+
+  /** Dump a summary of read statistics. */
+  void dump_read_summary(FILE* out) const;
+
+  /** Dump a summary of write statistics. */
+  void dump_write_summary(FILE* out) const;
+
+  /**
+   * Helper function to pretty-print a ratio of integers as a "times" value.
+   *
+   * @param out Output file
+   * @param msg Message to print at the beginning
+   * @param unit Units for the numbers
+   * @param numerator Numerator
+   * @param denominator Denominator
+   */
+  void report_ratio(
+      FILE* out,
+      const char* msg,
+      const char* unit,
+      uint64_t numerator,
+      uint64_t denominator) const;
+
+  /**
+   * Helper function to pretty-print a ratio of integers as a percentage.
+   *
+   * @param out Output file
+   * @param msg Message to print at the beginning
+   * @param unit Units for the numbers
+   * @param numerator Numerator
+   * @param denominator Denominator
+   */
+  void report_ratio_pct(
+      FILE* out,
+      const char* msg,
+      const char* unit,
+      uint64_t numerator,
+      uint64_t denominator) const;
 };
 
 /**
@@ -175,6 +213,12 @@ extern Statistics all_stats;
 /** Adds a value to a counter stat. */
 #define STATS_COUNTER_ADD(counter_name, value)          \
   if (stats::all_stats.enabled()) {                     \
+    stats::all_stats.counter_##counter_name += (value); \
+  }
+
+/** Adds a value to a counter stat if the given condition is true. */
+#define STATS_COUNTER_ADD_IF(cond, counter_name, value) \
+  if (stats::all_stats.enabled() && (cond)) {           \
     stats::all_stats.counter_##counter_name += (value); \
   }
 

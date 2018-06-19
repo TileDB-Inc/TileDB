@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -74,6 +75,8 @@ void LRUCache::clear() {
 
 Status LRUCache::insert(
     const std::string& key, void* object, uint64_t size, bool overwrite) {
+  STATS_FUNC_IN(cache_lru_insert);
+
   // Do nothing if the object size is bigger than the cache maximum size
   if (size > max_size_)
     return Status::Ok();
@@ -133,7 +136,11 @@ Status LRUCache::insert(
   // Unlock mutex
   mtx_.unlock();
 
+  STATS_COUNTER_ADD(cache_lru_inserts, 1);
+
   return Status::Ok();
+
+  STATS_FUNC_OUT(cache_lru_insert);
 }
 
 uint64_t LRUCache::max_size() const {
@@ -141,6 +148,8 @@ uint64_t LRUCache::max_size() const {
 }
 
 Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
+  STATS_FUNC_IN(cache_lru_read);
+
   // Lock mutex
   mtx_.lock();
 
@@ -149,6 +158,7 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   if (item_it == item_map_.end()) {
     mtx_.unlock();
     *success = false;
+    STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
   }
 
@@ -165,7 +175,10 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   mtx_.unlock();
 
   *success = true;
+  STATS_COUNTER_ADD(cache_lru_read_hits, 1);
   return Status::Ok();
+
+  STATS_FUNC_OUT(cache_lru_read);
 }
 
 Status LRUCache::read(
@@ -174,6 +187,8 @@ Status LRUCache::read(
     uint64_t offset,
     uint64_t nbytes,
     bool* success) {
+  STATS_FUNC_IN(cache_lru_read_partial);
+
   // Lock mutex
   mtx_.lock();
 
@@ -182,6 +197,7 @@ Status LRUCache::read(
   if (item_it == item_map_.end()) {
     mtx_.unlock();
     *success = false;
+    STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
   }
 
@@ -203,7 +219,10 @@ Status LRUCache::read(
   mtx_.unlock();
 
   *success = true;
+  STATS_COUNTER_ADD(cache_lru_read_hits, 1);
   return Status::Ok();
+
+  STATS_FUNC_OUT(cache_lru_read_partial);
 }
 
 std::list<LRUCache::LRUCacheItem>::const_iterator LRUCache::item_iter_begin()
@@ -221,6 +240,8 @@ std::list<LRUCache::LRUCacheItem>::const_iterator LRUCache::item_iter_end()
 /* ****************************** */
 
 void LRUCache::evict() {
+  STATS_FUNC_VOID_IN(cache_lru_evict);
+
   assert(!item_ll_.empty());
 
   auto item = item_ll_.front();
@@ -231,6 +252,8 @@ void LRUCache::evict() {
   item_map_.erase(item.key_);
   size_ -= item.size_;
   item_ll_.pop_front();
+
+  STATS_FUNC_VOID_OUT(cache_lru_evict);
 }
 
 }  // namespace sm

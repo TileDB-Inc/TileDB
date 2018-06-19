@@ -40,6 +40,7 @@
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/stats.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -119,16 +120,21 @@ Status TileIO::read(
     uint64_t compressed_size,
     uint64_t tile_size,
     bool* cache_hit) {
+  STATS_FUNC_IN(tileio_read);
+
   // Try to read from cache
   RETURN_NOT_OK(storage_manager_->read_from_cache(
       uri_, file_offset, tile->buffer(), tile_size, cache_hit));
-  if (*cache_hit)
+  if (*cache_hit) {
+    STATS_COUNTER_ADD(tileio_read_cache_hits, 1);
     return Status::Ok();
+  }
 
   // No compression
   if (tile->compressor() == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(
         storage_manager_->read(uri_, file_offset, tile->buffer(), tile_size));
+    STATS_COUNTER_ADD(tileio_read_num_bytes_read, tile_size);
   } else {  // Compression
     RETURN_NOT_OK(
         storage_manager_->read(uri_, file_offset, buffer_, compressed_size));
@@ -140,10 +146,16 @@ Status TileIO::read(
     RETURN_NOT_OK(tile->realloc(tile_size));
     RETURN_NOT_OK(decompress_tile(tile));
     tile->reset_offset();
+
+    STATS_COUNTER_ADD(tileio_read_num_bytes_read, compressed_size);
   }
+
+  STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, tile->size());
 
   // Store tile in cache
   return (storage_manager_->write_to_cache(uri_, file_offset, tile->buffer()));
+
+  STATS_FUNC_OUT(tileio_read);
 }
 
 Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
@@ -191,10 +203,14 @@ Status TileIO::read_generic_tile_header(
   RETURN_NOT_OK(header_buff->read(&header->compressor, sizeof(char)));
   RETURN_NOT_OK(header_buff->read(&header->compression_level, sizeof(int)));
 
+  STATS_COUNTER_ADD(tileio_read_num_bytes_read, GenericTileHeader::SIZE);
+
   return Status::Ok();
 }
 
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
+  STATS_FUNC_IN(tileio_write);
+
   // Reset the tile and buffer offset
   tile->reset_offset();
   buffer_->reset_size();
@@ -212,7 +228,12 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
 
   RETURN_NOT_OK(storage_manager_->write(uri_, buffer));
 
+  STATS_COUNTER_ADD(tileio_write_num_input_bytes, tile->size());
+  STATS_COUNTER_ADD(tileio_write_num_bytes_written, *bytes_written);
+
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_write);
 }
 
 Status TileIO::write_generic(Tile* tile) {
@@ -231,6 +252,9 @@ Status TileIO::write_generic(Tile* tile) {
 
   RETURN_NOT_OK(write_generic_tile_header(tile, buffer->size()));
   RETURN_NOT_OK(storage_manager_->write(uri_, buffer));
+
+  STATS_COUNTER_ADD(tileio_write_num_input_bytes, tile->size());
+  STATS_COUNTER_ADD(tileio_write_num_bytes_written, buffer->size());
 
   return Status::Ok();
 }
@@ -256,6 +280,9 @@ Status TileIO::write_generic_tile_header(Tile* tile, uint64_t compressed_size) {
   // Write to file
   Status st = storage_manager_->write(uri_, buff);
 
+  STATS_COUNTER_ADD(tileio_write_num_input_bytes, buff->size());
+  STATS_COUNTER_ADD(tileio_write_num_bytes_written, buff->size());
+
   delete buff;
 
   return st;
@@ -273,6 +300,8 @@ bool TileIO::can_compress_nbytes(uint64_t nbytes) const {
 }
 
 Status TileIO::compress_tile(Tile* tile) {
+  STATS_FUNC_IN(tileio_compress_tile);
+
   // Simple case - No coordinates
   if (!tile->stores_coords())
     return compress_one_tile(tile);
@@ -303,9 +332,13 @@ Status TileIO::compress_tile(Tile* tile) {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_compress_tile);
 }
 
 Status TileIO::compress_one_tile(Tile* tile) {
+  STATS_FUNC_IN(tileio_compress_one_tile);
+
   // For easy reference
   auto level = tile->compression_level();
   auto type_size = datatype_size(tile->type());
@@ -452,6 +485,8 @@ Status TileIO::compress_one_tile(Tile* tile) {
   buffer_->advance_size(buffer_increase);
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_compress_one_tile);
 }
 
 Status TileIO::compute_chunking_info(
@@ -529,6 +564,8 @@ Status TileIO::compute_decompression_chunk_info(
 }
 
 Status TileIO::decompress_tile(Tile* tile) {
+  STATS_FUNC_IN(tileio_decompress_tile);
+
   // Simple case - No coordinates
   if (!tile->stores_coords())
     return decompress_one_tile(tile);
@@ -542,9 +579,13 @@ Status TileIO::decompress_tile(Tile* tile) {
   tile->zip_coordinates();
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_decompress_tile);
 }
 
 Status TileIO::decompress_one_tile(Tile* tile) {
+  STATS_FUNC_IN(tileio_decompress_one_tile);
+
   DecompressionChunkInfo info;
   RETURN_NOT_OK(compute_decompression_chunk_info(tile, &info));
 
@@ -611,6 +652,8 @@ Status TileIO::decompress_one_tile(Tile* tile) {
   tile->buffer()->advance_offset(info.total_decompressed_bytes_);
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_decompress_one_tile);
 }
 
 uint64_t TileIO::overhead(Tile* tile, uint64_t nbytes) const {

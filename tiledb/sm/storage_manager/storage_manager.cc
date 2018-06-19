@@ -37,6 +37,7 @@
 
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
@@ -98,9 +99,13 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 Status StorageManager::array_close(const URI& array_uri, QueryType query_type) {
+  STATS_FUNC_IN(sm_array_close);
+
   if (query_type == QueryType::READ)
     return array_close_for_reads(array_uri);
   return array_close_for_writes(array_uri);
+
+  STATS_FUNC_OUT(sm_array_close);
 }
 
 Status StorageManager::array_open(
@@ -108,10 +113,14 @@ Status StorageManager::array_open(
     QueryType query_type,
     OpenArray** open_array,
     uint64_t* snapshot) {
+  STATS_FUNC_IN(sm_array_open);
+
   if (query_type == QueryType::READ)
     return array_open_for_reads(array_uri, open_array, snapshot);
   *snapshot = 0;
   return array_open_for_writes(array_uri, open_array);
+
+  STATS_FUNC_OUT(sm_array_open);
 }
 
 Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
@@ -709,6 +718,8 @@ Status StorageManager::init(Config* config) {
   RETURN_NOT_OK(global_state.initialize(config));
   global_state.register_storage_manager(this);
 
+  STATS_COUNTER_ADD(sm_contexts_created, 1);
+
   return Status::Ok();
 }
 
@@ -1065,6 +1076,28 @@ Status StorageManager::query_create(
 }
 
 Status StorageManager::query_submit(Query* query) {
+  STATS_COUNTER_ADD_IF(
+      query->type() == QueryType::READ, sm_query_submit_read, 1);
+  STATS_COUNTER_ADD_IF(
+      query->type() == QueryType::WRITE, sm_query_submit_write, 1);
+  STATS_COUNTER_ADD_IF(
+      query->layout() == Layout::COL_MAJOR,
+      sm_query_submit_layout_col_major,
+      1);
+  STATS_COUNTER_ADD_IF(
+      query->layout() == Layout::ROW_MAJOR,
+      sm_query_submit_layout_row_major,
+      1);
+  STATS_COUNTER_ADD_IF(
+      query->layout() == Layout::GLOBAL_ORDER,
+      sm_query_submit_layout_global_order,
+      1);
+  STATS_COUNTER_ADD_IF(
+      query->layout() == Layout::UNORDERED,
+      sm_query_submit_layout_unordered,
+      1);
+  STATS_FUNC_IN(sm_query_submit);
+
   // Initialize query
   RETURN_NOT_OK(query->init());
 
@@ -1074,6 +1107,8 @@ Status StorageManager::query_submit(Query* query) {
   decrement_in_progress();
 
   return st;
+
+  STATS_FUNC_OUT(sm_query_submit);
 }
 
 Status StorageManager::query_submit_async(
@@ -1097,6 +1132,8 @@ Status StorageManager::read_from_cache(
     Buffer* buffer,
     uint64_t nbytes,
     bool* in_cache) const {
+  STATS_FUNC_IN(sm_read_from_cache);
+
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
   RETURN_NOT_OK(buffer->realloc(nbytes));
@@ -1106,6 +1143,8 @@ Status StorageManager::read_from_cache(
   buffer->reset_offset();
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(sm_read_from_cache);
 }
 
 Status StorageManager::read(
@@ -1227,6 +1266,8 @@ void StorageManager::wait_for_zero_in_progress() {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
+  STATS_FUNC_IN(sm_write_to_cache);
+
   // Do nothing if the object size is larger than the cache size
   uint64_t object_size = buffer->size();
   if (object_size > tile_cache_->max_size())
@@ -1253,6 +1294,8 @@ Status StorageManager::write_to_cache(
   RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size, false));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(sm_write_to_cache);
 }
 
 Status StorageManager::write(const URI& uri, Buffer* buffer) const {
