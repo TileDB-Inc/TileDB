@@ -337,8 +337,10 @@ if (TILEDB_STATIC)
       get_installed_location(LOC ${LIB_TARGET})
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
-        "add_library(${LIB_TARGET} UNKNOWN IMPORTED)\n"
-        "set_target_properties(${LIB_TARGET} PROPERTIES IMPORTED_LOCATION ${LOC})\n"
+        "if (NOT TARGET ${LIB_TARGET})\n"
+        "  add_library(${LIB_TARGET} UNKNOWN IMPORTED)\n"
+        "  set_target_properties(${LIB_TARGET} PROPERTIES IMPORTED_LOCATION ${LOC})\n"
+        "endif()\n"
       )
     endif()
   endmacro()
@@ -358,7 +360,9 @@ if (TILEDB_STATIC)
   # Spdlog is a special case because it is header-only.
   string(CONCAT TILEDB_STATIC_DEP_STRING
     "${TILEDB_STATIC_DEP_STRING}"
-    "add_library(Spdlog::Spdlog INTERFACE IMPORTED)"
+    "if (NOT TARGET Spdlog::Spdlog)\n"
+    "  add_library(Spdlog::Spdlog INTERFACE IMPORTED)\n"
+    "endif()"
   )
 endif()
 
