@@ -88,7 +88,7 @@ const Datatype cell_var_offset_type = Datatype::UINT64;
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
 /** The default compressor for the offsets of variable-sized cells. */
-Compressor cell_var_offsets_compression = Compressor::BLOSC_ZSTD;
+Compressor cell_var_offsets_compression = Compressor::ZSTD;
 
 /** The default compression level for the offsets of variable-sized cells. */
 int cell_var_offsets_compression_level = -1;
@@ -97,10 +97,10 @@ int cell_var_offsets_compression_level = -1;
 const std::string coords = "__coords";
 
 /** The default compressor for the coordinates. */
-Compressor coords_compression = Compressor::BLOSC_ZSTD;
+Compressor coords_compression = Compressor::ZSTD;
 
 /** The default compressor for real coordinates. */
-Compressor real_coords_compression = Compressor::BLOSC_ZSTD;
+Compressor real_coords_compression = Compressor::ZSTD;
 
 /** The default compression level for the coordinates. */
 int coords_compression_level = -1;
@@ -169,19 +169,16 @@ const std::string file_suffix = ".tdb";
 const Datatype generic_tile_datatype = Datatype::CHAR;
 
 /** Default compressor for a generic tile. */
-Compressor generic_tile_compressor = Compressor::BLOSC_ZSTD;
+Compressor generic_tile_compressor = Compressor::GZIP;
 
 /** Default compression level for a generic tile. */
-int generic_tile_compression_level = -1;
+int generic_tile_compression_level = 1;
 
 /** Default cell size for a generic tile. */
 uint64_t generic_tile_cell_size = sizeof(char);
 
 /** The group file name. */
 const std::string group_filename = "__tiledb_group.tdb";
-
-/** The initial internal buffer size for the case of sparse arrays. */
-const uint64_t internal_buffer_size = 10000000;
 
 /** The buffer size for each attribute used in consolidation. */
 const uint64_t consolidation_buffer_size = 50000000;
@@ -205,12 +202,6 @@ const unsigned uri_max_len = 256;
 #ifndef _WIN32
 const unsigned path_max_len = PATH_MAX;
 #endif
-
-/** The size of the buffer that holds the sorted cells. */
-const uint64_t sorted_buffer_size = 10000000;
-
-/** The size of the buffer that holds the sorted variable cells. */
-const uint64_t sorted_buffer_var_size = 10000000;
 
 /** Special value indicating a variable number of elements. */
 const unsigned int var_num = std::numeric_limits<unsigned int>::max();
@@ -386,10 +377,10 @@ const std::string key_type_attr_name = "__key_type";
 Datatype key_type_attr_type = Datatype::CHAR;
 
 /** The key attribute compressor. */
-Compressor key_attr_compressor = Compressor::BLOSC_ZSTD;
+Compressor key_attr_compressor = Compressor::ZSTD;
 
 /** The key type attribute compressor. */
-Compressor key_type_attr_compressor = Compressor::BLOSC_ZSTD;
+Compressor key_type_attr_compressor = Compressor::ZSTD;
 
 /**
  * The name of the first key dimension (recall that a key in a

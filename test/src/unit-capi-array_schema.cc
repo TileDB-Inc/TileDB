@@ -358,7 +358,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_array_schema_get_coords_compressor(
       ctx_, array_schema, &coords_compression, &coords_compression_level);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
+  CHECK(coords_compression == TILEDB_ZSTD);
   CHECK(coords_compression_level == -1);
 
   // Check attribute
@@ -490,7 +490,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
-      "- Coordinates compressor: BLOSC_ZSTD\n" +
+      "- Coordinates compressor: ZSTD\n" +
       "- Coordinates compression level: -1\n\n" +
       "=== Domain ===\n"
       "- Dimensions type: " +
