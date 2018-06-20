@@ -167,9 +167,6 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
-/** The initial internal buffer size for the case of sparse arrays. */
-extern const uint64_t internal_buffer_size;
-
 /** The buffer size for each attribute used in consolidation. */
 extern const uint64_t consolidation_buffer_size;
 
@@ -190,12 +187,6 @@ extern const unsigned uri_max_len;
 
 /** The maximum file path length (depending on platform). */
 extern const unsigned path_max_len;
-
-/** The size of the buffer that holds the sorted cells. */
-extern const uint64_t sorted_buffer_size;
-
-/** The size of the buffer that holds the sorted variable cells. */
-extern const uint64_t sorted_buffer_var_size;
 
 /** Special value indicating a variable number of elements. */
 extern const unsigned int var_num;
