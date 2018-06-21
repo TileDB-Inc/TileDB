@@ -80,6 +80,7 @@
 * Changed the return type of the `Query` setters to return the object reference.
 * Added `Array::reopen`
 * Added `Map::reopen`
+* Added `Stats` class (wraps C API `tiledb_stats_*` functions)
 
 ## Breaking changes
 

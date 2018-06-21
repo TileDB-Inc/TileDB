@@ -121,3 +121,9 @@ Version
 -------
 .. doxygenfunction:: tiledb::version
     :project: TileDB-C++
+
+Stats
+-----
+.. doxygenclass:: tiledb::Stats
+    :project: TileDB-C++
+    :members:
