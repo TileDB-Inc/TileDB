@@ -117,12 +117,12 @@ Status TileIO::read(
     Tile* tile,
     uint64_t file_offset,
     uint64_t compressed_size,
-    uint64_t tile_size) {
+    uint64_t tile_size,
+    bool* cache_hit) {
   // Try to read from cache
-  bool in_cache;
   RETURN_NOT_OK(storage_manager_->read_from_cache(
-      uri_, file_offset, tile->buffer(), tile_size, &in_cache));
-  if (in_cache)
+      uri_, file_offset, tile->buffer(), tile_size, cache_hit));
+  if (*cache_hit)
     return Status::Ok();
 
   // No compression
@@ -160,12 +160,14 @@ Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
           0),
       delete *tile);
 
+  bool cache_hit;
   RETURN_NOT_OK_ELSE(
       read(
           *tile,
           file_offset + GenericTileHeader::SIZE,
           header.compressed_size,
-          header.tile_size),
+          header.tile_size,
+          &cache_hit),
       delete *tile);
 
   return Status::Ok();

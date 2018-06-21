@@ -135,13 +135,15 @@ class TileIO {
    * @param file_offset The offset in the file to read from.
    * @param compressed_size The size of the compressed tile.
    * @param tile_size The size of the decompressed tile.
+   * @param cache_hit Set to true if the tile was read from the cache.
    * @return Status.
    */
   Status read(
       Tile* tile,
       uint64_t file_offset,
       uint64_t compressed_size,
-      uint64_t tile_size);
+      uint64_t tile_size,
+      bool* cache_hit);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
