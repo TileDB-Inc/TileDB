@@ -1556,6 +1556,7 @@ Status Reader::read_tiles(
     }
 
     // Read
+    bool t_cache_hit;
     RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
         &t,
         fragment_metadata_[tile->fragment_idx_]->file_offset(
@@ -1563,8 +1564,10 @@ Status Reader::read_tiles(
         fragment_metadata_[tile->fragment_idx_]->compressed_tile_size(
             attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->tile_size(
-            attribute, tile->tile_idx_)));
+            attribute, tile->tile_idx_),
+        &t_cache_hit));
     if (var_size) {
+      bool t_var_cache_hit;
       RETURN_NOT_OK(tile_io_var[tile->fragment_idx_]->read(
           &t_var,
           fragment_metadata_[tile->fragment_idx_]->file_var_offset(
@@ -1572,7 +1575,8 @@ Status Reader::read_tiles(
           fragment_metadata_[tile->fragment_idx_]->compressed_tile_var_size(
               attribute, tile->tile_idx_),
           fragment_metadata_[tile->fragment_idx_]->tile_var_size(
-              attribute, tile->tile_idx_)));
+              attribute, tile->tile_idx_),
+          &t_var_cache_hit));
     }
 
     return Status::Ok();
