@@ -35,12 +35,15 @@
 
 #include "tiledb/sm/compressors/lz4_compressor.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 namespace tiledb {
 namespace sm {
 
 Status LZ4::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  STATS_FUNC_IN(compressor_lz4_compress);
+
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -72,10 +75,14 @@ Status LZ4::compress(
   output_buffer->advance_offset(static_cast<uint64_t>(ret));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_lz4_compress);
 }
 
 Status LZ4::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+  STATS_FUNC_IN(compressor_lz4_decompress);
+
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -96,6 +103,8 @@ Status LZ4::decompress(
   output_buffer->advance_offset(static_cast<uint64_t>(ret));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_lz4_decompress);
 }
 
 uint64_t LZ4::overhead(uint64_t nbytes) {

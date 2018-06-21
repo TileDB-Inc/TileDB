@@ -35,12 +35,15 @@
 
 #include "tiledb/sm/compressors/rle_compressor.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 namespace tiledb {
 namespace sm {
 
 Status RLE::compress(
     uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
+  STATS_FUNC_IN(compressor_rle_compress);
+
   // Sanity check
   if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -92,12 +95,16 @@ Status RLE::compress(
   RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_rle_compress);
 }
 
 Status RLE::decompress(
     uint64_t value_size,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
+  STATS_FUNC_IN(compressor_rle_decompress);
+
   // Sanity check
   if (input_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -135,6 +142,8 @@ Status RLE::decompress(
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_rle_decompress);
 }
 
 uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {

@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/compressors/blosc_compressor.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 namespace tiledb {
 namespace sm {
@@ -45,6 +46,8 @@ Status Blosc::compress(
     int level,
     ConstBuffer* input_buffer,
     Buffer* output_buffer) {
+  STATS_FUNC_IN(compressor_blosc_compress);
+
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -73,10 +76,14 @@ Status Blosc::compress(
   output_buffer->advance_offset(uint64_t(rc));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_blosc_compress);
 }
 
 Status Blosc::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
+  STATS_FUNC_IN(compressor_blosc_decompress);
+
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -98,6 +105,8 @@ Status Blosc::decompress(
   output_buffer->advance_offset(uint64_t(rc));
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(compressor_blosc_decompress);
 }
 
 uint64_t Blosc::overhead(uint64_t nbytes) {
