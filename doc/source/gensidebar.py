@@ -85,6 +85,8 @@ def generate_sidebar(conf, conf_api):
     write('Sparse Arrays', 'sparse-arrays')
     write('Multi-attribute Arrays', 'multi-attribute-arrays')
     write('Variable-length Attributes', 'variable-length-attributes')
+    write('Tiling Dense Arrays', 'tiling-dense')
+    write('Tiling Sparse Arrays', 'tiling-sparse')
     write('Tiles', 'tutorials/tiles')
     write('Dense data ingestion', 'tutorials/dense-data-ingestion')
     write('Working with S3', 'tutorials/working-with-s3')

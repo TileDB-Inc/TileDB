@@ -55,7 +55,7 @@ The following snippet creates an empty array schema for a sparse array:
 
 Next, we define a 2D domain where the coordinates can be integer values
 from 1 to 4 (inclusive) along both dimensions. For now, you can ignore
-the last argument when adding a dimension (tile extent).
+the last argument in the dimension constructor (tile extent).
 
 .. content-tabs::
 
