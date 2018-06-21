@@ -41,7 +41,7 @@ invocation results in a series of sequential writes to the same fragment
 (i.e., **appends**), one write per attribute file.
 
 :ref:`Figure 8 <figure-8>` shows how the user can populate the entire
-dense array of the example of :ref:`Figure 6 <figure-6>` (i.e., the
+dense array (i.e., the
 write subarray is the entire domain). The user provides two items to
 the query submit API: ``buffers``, a vector of binary buffers storing
 the array data, and ``buffer_sizes``, a vector with the corresponding

@@ -32,7 +32,7 @@ Basic concepts and definitions
       dimension. The dimension domain could be of type ``int8``, ``uint8``,
       ``int16``, ``uint16``, ``int32``, ``uint32``, ``int64``, ``uint64``,
       ``float32``, or ``float64``. Notice that TileDB supports negative as well as
-      real dimensions domains, but for now will only focus on positive integer
+      real dimensions domains, but for now we will only focus on positive integer
       domains. The ordered set of dimensions comprise the array domain.
 
       .. note::
