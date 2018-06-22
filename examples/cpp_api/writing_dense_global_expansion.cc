@@ -1,5 +1,5 @@
 /**
- * @file   quickstart_sparse.cc
+ * @file   writing_dense_global_expansion.cc
  *
  * @section LICENSE
  *
@@ -28,11 +28,12 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/quickstart.html
+ *   https://docs.tiledb.io/en/latest/writing-dense.html
  *
- * When run, this program will create a simple 2D sparse array, write some data
- * to it, and read a slice of the data back.
- *
+ * When run, this program will create a simple 2D dense array, write some data
+ * to it in global layout, and read the entire array data back. Here we show
+ * how to handle the case where some tile extent does not divide the respective
+ * dimension domain (and, hence, internal domain expansion occurs).
  */
 
 #include <iostream>
@@ -41,7 +42,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_sparse");
+std::string array_name("writing_dense_global_expansion");
 
 void create_array() {
   // Create a TileDB context.
@@ -51,13 +52,14 @@ void create_array() {
   if (Object::object(ctx, array_name).type() == Object::Type::Array)
     return;
 
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4]
+  // and space tiles 2x2
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 3}}, 2));
 
-  // The array will be sparse.
-  ArraySchema schema(ctx, TILEDB_SPARSE);
+  // The array will be dense.
+  ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
   // Add a single attribute "a" so each (i,j) cell can store an integer.
@@ -67,21 +69,29 @@ void create_array() {
   Array::create(array_name, schema);
 }
 
-void write_array() {
+void write_array_global() {
+  std::vector<int> subarray = {1, 4, 1, 2};
   Context ctx;
-
-  // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  std::vector<int> coords = {1, 1, 2, 4, 2, 3};
-  std::vector<int> data = {1, 2, 3};
-
-  // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_UNORDERED)
+  std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8};
+  query.set_layout(TILEDB_GLOBAL_ORDER)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_subarray(subarray);
+  query.submit();
+  query.finalize();
+  array.close();
+}
 
-  // Perform the write and close the array.
+void write_array_row_major() {
+  std::vector<int> subarray = {1, 4, 3, 3};
+  Context ctx;
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  std::vector<int> data = {9, 10, 11, 12};
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", data)
+      .set_subarray(subarray);
   query.submit();
   array.close();
 }
@@ -92,39 +102,31 @@ void read_array() {
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  const std::vector<int> subarray = {1, 2, 2, 4};
+  // Read the entire array
+  const std::vector<int> subarray = {1, 4, 1, 3};
 
-  // Prepare the vector that will hold the result.
-  // We take an upper bound on the result size, as we do not
-  // know a priori how big it is (since the array is sparse)
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  // Prepare the vector that will hold the result (of size 12 elements)
+  std::vector<int> data(12);
 
   // Prepare the query
-  Query query(ctx, array, TILEDB_WRITE);
+  Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("a", data);
 
   // Submit the query and close the array.
   query.submit();
   array.close();
 
   // Print out the results.
-  auto result_num = (int)query.result_buffer_elements()["a"].second;
-  for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
-    int a = data[r];
-    std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
-  }
+  for (auto d : data)
+    std::cout << d << "\n";
 }
 
 int main() {
   create_array();
-  write_array();
+  write_array_global();
+  write_array_row_major();
   read_array();
   return 0;
 }

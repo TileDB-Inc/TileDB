@@ -1,3 +1,5 @@
+.. _dense-arrays:
+
 Dense Arrays
 ============
 

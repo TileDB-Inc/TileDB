@@ -1,5 +1,5 @@
 /**
- * @file   quickstart_sparse.cc
+ * @file   global_order_sparse.cc
  *
  * @section LICENSE
  *
@@ -31,7 +31,7 @@
  *   https://docs.tiledb.io/en/latest/quickstart.html
  *
  * When run, this program will create a simple 2D sparse array, write some data
- * to it, and read a slice of the data back.
+ * to it in global order, and read the data back.
  *
  */
 
@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_sparse");
+std::string array_name("global_order_sparse");
 
 void create_array() {
   // Create a TileDB context.
@@ -68,21 +68,30 @@ void create_array() {
 }
 
 void write_array() {
-  Context ctx;
-
-  // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  std::vector<int> coords = {1, 1, 2, 4, 2, 3};
-  std::vector<int> data = {1, 2, 3};
-
   // Open the array for writing and create the query.
+  Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data)
-      .set_coordinates(coords);
 
-  // Perform the write and close the array.
+  // Set layout to global
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+
+  // Submit first query
+  std::vector<int> coords_1 = {1, 1, 2, 4};
+  std::vector<int> data_1 = {1, 2};
+  query.set_buffer("a", data_1).set_coordinates(coords_1);
   query.submit();
+
+  // Submit second query
+  std::vector<int> coords_2 = {2, 3};
+  std::vector<int> data_2 = {3};
+  query.set_buffer("a", data_2).set_coordinates(coords_2);
+  query.submit();
+
+  // Finalize - IMPORTANT!
+  query.finalize();
+
+  // Close the array
   array.close();
 }
 
@@ -92,8 +101,8 @@ void read_array() {
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  const std::vector<int> subarray = {1, 2, 2, 4};
+  // Read the whole array
+  const std::vector<int> subarray = {1, 4, 1, 4};
 
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not
@@ -103,7 +112,7 @@ void read_array() {
   std::vector<int> coords(max_el[TILEDB_COORDS].second);
 
   // Prepare the query
-  Query query(ctx, array, TILEDB_WRITE);
+  Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", data)

@@ -1,5 +1,5 @@
 /**
- * @file   quickstart_sparse.cc
+ * @file   multiple_writes_sparse.cc
  *
  * @section LICENSE
  *
@@ -28,10 +28,10 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/quickstart.html
+ *   https://docs.tiledb.io/en/latest/writing-sparse.html
  *
  * When run, this program will create a simple 2D sparse array, write some data
- * to it, and read a slice of the data back.
+ * to it twice, and read all the data back.
  *
  */
 
@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_sparse");
+std::string array_name("multiple_writes_sparse");
 
 void create_array() {
   // Create a TileDB context.
@@ -68,21 +68,29 @@ void create_array() {
 }
 
 void write_array() {
+  // Open the array for writing
   Context ctx;
-
-  // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  std::vector<int> coords = {1, 1, 2, 4, 2, 3};
-  std::vector<int> data = {1, 2, 3};
-
-  // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array);
-  query.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data)
-      .set_coordinates(coords);
 
-  // Perform the write and close the array.
-  query.submit();
+  // First write
+  std::vector<int> coords_1 = {1, 1, 2, 4, 2, 3};
+  std::vector<int> data_1 = {1, 2, 3};
+  Query query_1(ctx, array);
+  query_1.set_layout(TILEDB_UNORDERED)
+      .set_buffer("a", data_1)
+      .set_coordinates(coords_1);
+  query_1.submit();
+
+  // Second write
+  std::vector<int> coords_2 = {4, 1, 2, 4};
+  std::vector<int> data_2 = {4, 20};
+  Query query_2(ctx, array);
+  query_2.set_layout(TILEDB_UNORDERED)
+      .set_buffer("a", data_2)
+      .set_coordinates(coords_2);
+  query_2.submit();
+
+  // Close the array
   array.close();
 }
 
@@ -92,18 +100,14 @@ void read_array() {
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  const std::vector<int> subarray = {1, 2, 2, 4};
-
-  // Prepare the vector that will hold the result.
-  // We take an upper bound on the result size, as we do not
-  // know a priori how big it is (since the array is sparse)
+  // Prepare the buffers
+  const std::vector<int> subarray = {1, 4, 1, 4};
   auto max_el = array.max_buffer_elements(subarray);
   std::vector<int> data(max_el["a"].second);
   std::vector<int> coords(max_el[TILEDB_COORDS].second);
 
   // Prepare the query
-  Query query(ctx, array, TILEDB_WRITE);
+  Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", data)
