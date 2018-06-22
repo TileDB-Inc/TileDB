@@ -36,8 +36,7 @@ first coordinates in the data tile, and expands as more coordinates are
 seen. For each data tile, TileDB stores its MBR and bounding coordinates
 into the fragment metadata.
 
-:ref:`Figure 11 <figure-11>` illustrates an example, using the same
-sparse array as :ref:`Figure 7 <figure-7>`, and assuming that the user
+:ref:`Figure 11 <figure-11>` illustrates an example, assuming that the user
 has specified the coordinates as the last attribute after ``a1`` and
 ``a2``. The figure shows the logical view of the array, as well as the
 contents of the buffers when the user populates the array with a
@@ -77,8 +76,7 @@ one-to-one correspondence between the coordinates and the cell values
 in the rest of the buffers. TileDB will internally sort all the values
 properly, prior to writing the data to the files. Eventually, the
 written data will correspond to the logical view of :ref:`Figure 11
-<figure-11>`, and the physical storage will be identical to that of
-:ref:`Figure 7 <figure-7>`.
+<figure-11>`.
 
 .. _figure-12:
 

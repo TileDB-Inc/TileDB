@@ -245,8 +245,7 @@ shape. However, *what happens in case the array domain cannot be decomposed
 into integral (i.e., full) space tiles?* Consider the following example
 of a ``3x4`` array with a ``2x2`` tiling. Since TileDB cannot handle "partial"
 space tiles, it internally **expands** the domain minimally so that it contains
-integral tiles. This is shown
-in the figure above. The cells in the expanded region of the array
+integral tiles. The cells in the expanded region of the array
 are filled internally with empty (dummy) values (along **all** attributes).
 
 .. figure:: figures/tiling_dense_domain_expansion.png
