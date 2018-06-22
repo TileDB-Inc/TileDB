@@ -33,6 +33,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <iostream>
@@ -1493,8 +1494,9 @@ void Domain::compute_tile_offsets() {
   tile_offsets_col_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned int i = 1; i < dim_num_; ++i) {
-      tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
-                 tile_extents[i - 1];
+      tile_num = utils::ceil(
+          domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1,
+          tile_extents[i - 1]);
       tile_offsets_col_.push_back(tile_offsets_col_.back() * tile_num);
     }
   }
@@ -1503,8 +1505,9 @@ void Domain::compute_tile_offsets() {
   tile_offsets_row_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned int i = dim_num_ - 2;; --i) {
-      tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
-                 tile_extents[i + 1];
+      tile_num = utils::ceil(
+          domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1,
+          tile_extents[i + 1]);
       tile_offsets_row_.push_back(tile_offsets_row_.back() * tile_num);
       if (i == 0)
         break;

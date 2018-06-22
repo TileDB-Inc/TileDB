@@ -242,7 +242,8 @@ class Array {
    * @code{.cpp}
    * tiledb::Context ctx;
    * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
-   * auto non_empty = array.non_empty_domain();
+   * // Specify the domain type (example uint32_t)
+   * auto non_empty = array.non_empty_domain<uint32_t>();
    * std::cout << "Dimension named " << non_empty[0].first << " has cells in ["
    *           << non_empty[0].second.first << ", " non_empty[0].second.second
    *           << "]" << std::endl;
