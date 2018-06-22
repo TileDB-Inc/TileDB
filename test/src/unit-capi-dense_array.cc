@@ -95,6 +95,7 @@ struct DenseArrayFx {
   void check_non_empty_domain(const std::string& path);
   void create_dense_array(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
+  void write_dense_array_missing_attributes(const std::string& array_name);
   void write_partial_dense_array(const std::string& array_name);
   void read_dense_array_with_coords_full_global(const std::string& array_name);
   void read_dense_array_with_coords_full_row(const std::string& array_name);
@@ -1513,6 +1514,83 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
   tiledb_query_free(&query);
 }
 
+void DenseArrayFx::write_dense_array_missing_attributes(
+    const std::string& array_name) {
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3"};
+
+  // Prepare cell buffers
+  // clang-format off
+  int buffer_a1[] = {
+      0,  1,  2,  3, 4,  5,  6,  7,
+      8,  9,  10, 11, 12, 13, 14, 15
+  };
+  uint64_t buffer_a2[] = {
+      0,  1,  3,  6, 10, 11, 13, 16,
+      20, 21, 23, 26, 30, 31, 33, 36
+  };
+  char buffer_var_a2[] =
+      "abbcccdddd"
+      "effggghhhh"
+      "ijjkkkllll"
+      "mnnooopppp";
+  float buffer_a3[] = {
+      0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
+      4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+      8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
+      12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+  };
+  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  uint64_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_a3)
+  };
+  // clang-format on
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+
+  // Observe we omit setting buffer for one of the attributes (a3)
+
+  // Submit query - this should fail
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -2784,13 +2862,24 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
 
-  int a1[4] = {100, 101, 102, 103};
+  int a1[] = {100, 101, 102, 103};
   uint64_t a1_size = sizeof(a1);
+  char a2_data[] = {'a', 'b', 'c', 'd'};
+  uint64_t a2_data_size = sizeof(a2_data);
+  uint64_t a2_off[] = {0, 1, 2, 3};
+  uint64_t a2_off_size = sizeof(a2_off);
   uint64_t subarray[] = {1, 2, 1, 2};
+  float a3[] = {1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f, 4.1f, 4.2f};
+  uint64_t a3_size = sizeof(a3);
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a1", a1, &a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", a2_off, &a2_off_size, a2_data, &a2_data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", a3, &a3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2864,5 +2953,17 @@ TEST_CASE_METHOD(
   create_dense_array(array_name);
   write_dense_array(array_name);
   read_dense_array_with_coords_full_global(array_name);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, missing attributes in writes",
+    "[capi], [dense], [dense-write-missing-attributes]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "dense_write_missing_attributes/";
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+  write_dense_array_missing_attributes(array_name);
   remove_temp_dir(temp_dir);
 }

@@ -267,16 +267,34 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
   SECTION("Global order write") {
     std::vector<int> subarray = {0, d1_tile - 1, 0, d2_tile - 1};
     std::vector<int> a1 = {1, 2};
+    std::vector<std::string> a2 = {"abc", "defg"};
+    std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
+    std::vector<std::vector<Point>> a4 = {
+        {{{{1, 2, 3}, 4.1}, {{2, 3, 4}, 5.2}}}, {{{{5, 6, 7}, 8.3}}}};
+    std::vector<Point> a5 = {{{5, 6, 7}, 8.3}, {{5, 6, 7}, 8.3}};
+
     // Pad out to tile multiple
     size_t num_dummies = d1_tile * d2_tile - a1.size();
     for (size_t i = 0; i < num_dummies; i++) {
       a1.push_back(0);
+      a2.push_back("-");
+      a3.push_back({{0.0, 0.0}});
+      a4.push_back({{{0, 0, 0}, 0.0}});
+      a5.push_back({{0, 0, 0}, 0.0});
     }
+
+    auto a2buf = ungroup_var_buffer(a2);
+    auto a4buf = ungroup_var_buffer(a4);
 
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2buf);
+    query.set_buffer("a3", a3);
+    query.set_buffer("a4", a4buf);
+    query.set_buffer("a5", a5);
+
     query.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
     REQUIRE_NOTHROW(query.finalize());

@@ -98,6 +98,7 @@ Status Writer::init() {
     RETURN_NOT_OK(set_subarray(nullptr));
   RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());
+  RETURN_NOT_OK(check_attributes());
 
   // Get configuration parameters
   const char* check_coord_dups;
@@ -265,8 +266,6 @@ Status Writer::set_subarray(const void* subarray) {
 Status Writer::write() {
   STATS_FUNC_IN(writer_write);
 
-  RETURN_NOT_OK(check_attributes());
-
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(ordered_write());
   } else if (layout_ == Layout::UNORDERED) {
@@ -288,19 +287,26 @@ Status Writer::write() {
 Status Writer::check_attributes() {
   // There should be no duplicate attributes
   std::set<std::string> unique_attributes;
-  for (const auto& attr : attributes_)
+  int has_coords = 0;
+  for (const auto& attr : attributes_) {
     unique_attributes.insert(attr);
+    if (attr == constants::coords)
+      has_coords = 1;
+  }
   if (unique_attributes.size() != attributes_.size())
     return LOG_STATUS(
         Status::WriterError("Check attributes failed; Duplicate attributes"));
 
-  // If it is an unordered write query, all attributes must be provided
-  if (layout_ == Layout::UNORDERED) {
-    if (attributes_.size() != array_schema_->attribute_num() + 1)
-      return LOG_STATUS(Status::WriterError(
-          "Check attributes failed; Unordered writes expect "
-          "all attributes (plus coordinates) to be set"));
-  }
+  // If the layout is unordered, the coordinates must be provided
+  if (layout_ == Layout::UNORDERED && !has_coords)
+    return LOG_STATUS(Status::WriterError(
+        "Unordered writes expect the coordinates of the cells to be written"));
+
+  // All attributes must be provided
+  if (attributes_.size() != array_schema_->attribute_num() + has_coords)
+    return LOG_STATUS(Status::WriterError(
+        "Check attributes failed; Writes expect "
+        "all attributes (plus coordinates for unordered writes) to be set"));
 
   return Status::Ok();
 }
