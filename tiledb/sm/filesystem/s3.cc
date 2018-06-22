@@ -371,23 +371,32 @@ Status S3::ls(
   list_objects_request.SetDelimiter(delimiter.c_str());
   if (max_paths != -1)
     list_objects_request.SetMaxKeys(max_paths);
-  auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
-  if (!list_objects_outcome.IsSuccess())
-    return LOG_STATUS(Status::S3Error(
-        std::string("Error while listing with prefix '") + prefix_str +
-        "' and delimiter '" + delimiter + "'" +
-        outcome_error_message(list_objects_outcome)));
+  bool is_done = false;
+  while (!is_done) {
+    auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
-  for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
-    std::string file(object.GetKey().c_str());
-    paths->push_back("s3://" + aws_auth + add_front_slash(file));
-  }
+    if (!list_objects_outcome.IsSuccess())
+      return LOG_STATUS(Status::S3Error(
+          std::string("Error while listing with prefix '") + prefix_str +
+          "' and delimiter '" + delimiter + "'" +
+          outcome_error_message(list_objects_outcome)));
 
-  for (const auto& object :
-       list_objects_outcome.GetResult().GetCommonPrefixes()) {
-    std::string file(object.GetPrefix().c_str());
-    paths->push_back("s3://" + aws_auth + add_front_slash(file));
+    for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
+      std::string file(object.GetKey().c_str());
+      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+    }
+
+    for (const auto& object :
+         list_objects_outcome.GetResult().GetCommonPrefixes()) {
+      std::string file(object.GetPrefix().c_str());
+      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+    }
+
+    is_done = !list_objects_outcome.GetResult().GetIsTruncated();
+    if (!is_done)
+      list_objects_request.SetMarker(
+          list_objects_outcome.GetResult().GetNextMarker());
   }
 
   return Status::Ok();

@@ -81,6 +81,7 @@ struct ObjectMgmtFx {
   void check_object_type(const std::string& path);
   void check_delete(const std::string& path);
   void check_move(const std::string& path);
+  void check_ls_1000(const std::string& path);
   void create_array(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
@@ -296,6 +297,26 @@ void ObjectMgmtFx::check_move(const std::string& path) {
   auto inv1 = path + "invalid_path";
   auto inv2 = path + "new_invalid_path";
   CHECK(tiledb_object_move(ctx_, inv1.c_str(), inv2.c_str()) == TILEDB_ERR);
+}
+
+void ObjectMgmtFx::check_ls_1000(const std::string& path) {
+  // Create a group
+  auto group = path + std::string("group/");
+  int rc = tiledb_group_create(ctx_, group.c_str());
+  CHECK(rc == TILEDB_OK);
+
+  // Create 1000 files inside the group
+  for (int i = 0; i < 1000; ++i) {
+    std::stringstream file;
+    file << group << i;
+    rc = tiledb_vfs_touch(ctx_, vfs_, file.str().c_str());
+    CHECK(rc == TILEDB_OK);
+  }
+
+  // Check type
+  tiledb_object_t type = TILEDB_INVALID;
+  CHECK(tiledb_object_type(ctx_, group.c_str(), &type) == TILEDB_OK);
+  CHECK(type == TILEDB_GROUP);
 }
 
 /**
@@ -541,4 +562,17 @@ TEST_CASE_METHOD(
     CHECK_THAT(golden_ls, Catch::Equals(ls_str));
     remove_temp_dir(FILE_FULL_TEMP_DIR);
   }
+}
+
+TEST_CASE_METHOD(
+    ObjectMgmtFx,
+    "C API: Test listing directory with >1000 objects on S3",
+    "[capi], [object], [ls-1000]") {
+  // Applicable only to S3
+  if (!supports_s3_)
+    return;
+
+  create_temp_dir(S3_TEMP_DIR);
+  check_ls_1000(S3_TEMP_DIR);
+  remove_temp_dir(S3_TEMP_DIR);
 }
