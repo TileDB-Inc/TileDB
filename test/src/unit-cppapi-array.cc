@@ -358,3 +358,70 @@ TEST_CASE(
   if (vfs.is_dir(array_name_1d))
     vfs.remove_dir(array_name_1d);
 }
+
+TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi], [dense]") {
+  const std::vector<tiledb_layout_t> tile_layouts = {TILEDB_ROW_MAJOR,
+                                                     TILEDB_COL_MAJOR},
+                                     cell_layouts = {TILEDB_ROW_MAJOR,
+                                                     TILEDB_COL_MAJOR};
+  const std::vector<int> tile_extents = {1, 2, 3, 4};
+
+  for (auto tile_layout : tile_layouts) {
+    for (auto cell_layout : cell_layouts) {
+      for (int tile_extent : tile_extents) {
+        const std::string array_name = "cpp_unit_array";
+        Context ctx;
+        VFS vfs(ctx);
+
+        if (vfs.is_dir(array_name))
+          vfs.remove_dir(array_name);
+
+        // Create
+        Domain domain(ctx);
+        domain
+            .add_dimension(
+                Dimension::create<int>(ctx, "rows", {{0, 3}}, tile_extent))
+            .add_dimension(
+                Dimension::create<int>(ctx, "cols", {{0, 3}}, tile_extent));
+        ArraySchema schema(ctx, TILEDB_DENSE);
+        schema.set_domain(domain).set_order({{tile_layout, cell_layout}});
+        schema.add_attribute(Attribute::create<int>(ctx, "a"));
+        Array::create(array_name, schema);
+
+        // Write
+        std::vector<int> data_w = {
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+        Array array_w(ctx, array_name, TILEDB_WRITE);
+        Query query_w(ctx, array_w);
+        query_w.set_subarray({0, 3, 0, 3})
+            .set_layout(TILEDB_ROW_MAJOR)
+            .set_buffer("a", data_w);
+        query_w.submit();
+        array_w.close();
+
+        // Read
+        Array array(ctx, array_name, TILEDB_READ);
+        Query query(ctx, array);
+        const std::vector<int> subarray = {0, 3, 0, 3};
+        std::vector<int> data(16);
+        query.set_subarray(subarray)
+            .set_layout(TILEDB_ROW_MAJOR)
+            .set_buffer("a", data);
+        query.submit();
+        array.close();
+
+        INFO(
+            "Tile layout " << ArraySchema::to_str(tile_layout)
+                           << ", cell layout "
+                           << ArraySchema::to_str(cell_layout)
+                           << ", tile extent " << tile_extent);
+        for (int i = 0; i < 16; i++) {
+          REQUIRE(data[i] == i + 1);
+        }
+
+        if (vfs.is_dir(array_name))
+          vfs.remove_dir(array_name);
+      }
+    }
+  }
+}
