@@ -576,7 +576,7 @@ Status Reader::compute_dense_cell_ranges(
     // The search needs to stop - add current range to result
     if (top.start_ > end) {
       dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
-      break;
+      return Status::Ok();
     }
 
     // At this point, there is intersection between the top of the
@@ -916,8 +916,9 @@ Status Reader::copy_fixed_cells(
     // Copy
     if (cr.tile_ == nullptr) {  // Empty range
       auto fill_num = bytes_to_copy / fill_size;
-      for (uint64_t i = 0; i < fill_num; ++i) {
+      for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value, fill_size);
+        offset += fill_size;
       }
     } else {  // Non-empty range
       const auto& tile = cr.tile_->attr_tiles_.find(attribute)->second.first;
