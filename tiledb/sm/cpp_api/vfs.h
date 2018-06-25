@@ -305,15 +305,17 @@ class VFS {
    * Stream buffer for Tiledb VFS.
    *
    * @details
-   * This is unbuffered; each write is directly dispatched to TileDB. As such
-   * it is recommended to issue fewer, larger, writes.
+   * This is unbuffered; each read/write is directly dispatched to TileDB. As
+   * such it is recommended to issue fewer, larger, operations.
    *
-   * **Example:**
+   * **Example** (write to file):
    * @code{.cpp}
+   * // Create the file buffer.
    * tiledb::Context ctx;
    * tiledb::VFS vfs(ctx);
    * tiledb::VFS::filebuf buff(vfs);
    *
+   * // Create new file, truncating it if it exists.
    * buff.open("file.txt", std::ios::out);
    * std::ostream os(&buff);
    * if (!os.good()) throw std::runtime_error("Error opening file);
@@ -321,7 +323,30 @@ class VFS {
    * std::string str = "This will be written to the file.";
    *
    * os.write(str.data(), str.size());
+   * // Alternatively:
+   * // os << str;
    * os.flush();
+   * buff.close();
+   * @endcode
+   *
+   * **Example** (read from file):
+   * @code{.cpp}
+   * // Create the file buffer.
+   * tiledb::Context ctx;
+   * tiledb::VFS vfs(ctx);
+   * tiledb::VFS::filebuf buff(vfs);
+   * std::string file_uri = "s3://bucket-name/file.txt";
+   *
+   * buff.open(file_uri, std::ios::in);
+   * std::istream is(&buff);
+   * if (!is.good()) throw std::runtime_error("Error opening file);
+   *
+   * // Read all contents from the file
+   * std::string contents;
+   * auto nbytes = vfs.file_size(file_uri);
+   * contents.resize(nbytes);
+   * vfs.read((char*)contents.data(), nbytes);
+   *
    * buff.close();
    * @endcode
    */
