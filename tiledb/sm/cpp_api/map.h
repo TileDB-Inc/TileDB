@@ -640,13 +640,14 @@ class MapIterReference {
  *
  * @code{.cpp}
  * // Make the map
- * tiledb::MapSchema schema(ctx);
+ * MapSchema schema(ctx);
  * schema.add_attribute(Attribute::create<int>(ctx, "a1"));
  * schema.add_attribute(Attribute::create<std::string>(ctx, "a2"));
  * schema.add_attribute(Attribute::create<std::array<float, 2>>(ctx, "a3"));
  * Map::create("my_map", schema);
  *
- * // Write to the map
+ * // Open the map and write to it.
+ * tiledb::Map map(ctx, "my_map");
  * std::vector<double> key = {2345.1, 345.2};
  *
  * // Attribute values

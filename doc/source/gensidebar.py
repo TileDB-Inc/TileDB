@@ -95,6 +95,7 @@ def generate_sidebar(conf, conf_api):
     toctree('Further Reading')
     write('Tiles', 'tutorials/tiles')
     write('Dense data ingestion', 'tutorials/dense-data-ingestion')
+    write('Sparse data ingestion', 'tutorials/sparse-data-ingestion')
     write('Working with S3', 'tutorials/working-with-s3')
     write('Writing', 'futher-reading/writing/index')
     write('Updating', 'futher-reading/updating')
