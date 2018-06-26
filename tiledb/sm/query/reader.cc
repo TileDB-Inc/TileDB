@@ -640,7 +640,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   // Prepare first range
   auto cr_it = dense_cell_ranges.begin();
   const OverlappingTile* cur_tile = nullptr;
-  const T* cur_tile_coords = nullptr;
+  const T* cur_tile_coords = cr_it->tile_coords_;
   if (cr_it->fragment_idx_ != -1) {
     auto tile_idx = fragment_metadata_[cr_it->fragment_idx_]->get_tile_pos(
         cr_it->tile_coords_);
@@ -650,7 +650,6 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
         (unsigned)cr_it->fragment_idx_, cr_it->tile_coords_)] =
         (uint64_t)tiles->size();
     cur_tile = cur_tile_ptr.get();
-    cur_tile_coords = cr_it->tile_coords_;
     tiles->push_back(std::move(cur_tile_ptr));
   }
   auto start = cr_it->start_;
@@ -695,7 +694,8 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
     }
 
     // Check if the range must be appended to the current one
-    if (tile == cur_tile && cr_it->start_ == end + 1) {
+    if (!memcmp(cur_tile_coords, cr_it->tile_coords_, coords_size) &&
+        cr_it->start_ == end + 1) {
       end = cr_it->end_;
       continue;
     }
@@ -1316,7 +1316,8 @@ Status Reader::handle_coords_in_dense_cell_range(
   while (*coords_it != coords_end &&
          !memcmp(&(*coords_tile_coords)[0], cur_tile_coords, coords_size) &&
          *coords_pos >= *start && *coords_pos <= end) {
-    if (*coords_fidx < cur_tile->fragment_idx_) {  // Skip coords
+    // Check if the coords must be skipped
+    if (cur_tile != nullptr && *coords_fidx < cur_tile->fragment_idx_) {
       *coords_it = skip_invalid_elements(++(*coords_it), coords_end);
       if (*coords_it != coords_end) {
         domain->get_tile_coords(
