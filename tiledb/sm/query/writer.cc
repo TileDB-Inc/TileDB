@@ -760,6 +760,8 @@ Status Writer::finalize_global_write_state() {
 }
 
 Status Writer::global_write() {
+  STATS_FUNC_IN(writer_global_write);
+
   // Applicable only to global write on dense/sparse arrays
   assert(layout_ == Layout::GLOBAL_ORDER);
 
@@ -793,12 +795,12 @@ Status Writer::global_write() {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(writer_global_write);
 }
 
 template <class T>
 Status Writer::global_write() {
-  STATS_FUNC_IN(writer_global_write);
-
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_)
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
@@ -866,8 +868,6 @@ Status Writer::global_write() {
   frag_meta->set_tile_index_base(new_num_tiles);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_global_write);
 }
 
 template <class T>
@@ -1099,6 +1099,8 @@ void Writer::nuke_global_write_state() {
 }
 
 Status Writer::ordered_write() {
+  STATS_FUNC_IN(writer_ordered_write);
+
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_->dense());
@@ -1127,12 +1129,12 @@ Status Writer::ordered_write() {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(writer_ordered_write);
 }
 
 template <class T>
 Status Writer::ordered_write() {
-  STATS_FUNC_IN(writer_ordered_write);
-
   // Create new fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
@@ -1180,8 +1182,6 @@ Status Writer::ordered_write() {
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_ordered_write);
 }
 
 Status Writer::prepare_full_tiles(
@@ -1701,6 +1701,8 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
 }
 
 Status Writer::unordered_write() {
+  STATS_FUNC_IN(writer_unordered_write);
+
   // Applicable only to unordered write on dense/sparse arrays
   assert(layout_ == Layout::UNORDERED);
 
@@ -1734,12 +1736,12 @@ Status Writer::unordered_write() {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(writer_unordered_write);
 }
 
 template <class T>
 Status Writer::unordered_write() {
-  STATS_FUNC_IN(writer_unordered_write);
-
   // Sort coordinates first
   std::vector<uint64_t> cell_pos;
   RETURN_CANCEL_OR_ERROR(sort_coords<T>(&cell_pos));
@@ -1803,8 +1805,6 @@ Status Writer::unordered_write() {
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_unordered_write);
 }
 
 Status Writer::write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const {
