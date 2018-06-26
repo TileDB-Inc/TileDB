@@ -168,21 +168,7 @@ class MapItem {
    * the size (in elements) retrieved.
    * */
   template <typename T>
-  std::pair<const T*, uint64_t> get_ptr(const std::string& attr) const {
-    using DataT = typename impl::TypeHandler<T>;
-    const Context& ctx = ctx_.get();
-
-    typename DataT::value_type* data;
-    tiledb_datatype_t type;
-    uint64_t size;
-
-    ctx.handle_error(tiledb_kv_item_get_value(
-        ctx, item_.get(), attr.c_str(), (const void**)&data, &type, &size));
-
-    auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
-    impl::type_check<T>(type);  // Just check type
-    return std::pair<const T*, uint64_t>(data, num);
-  }
+  std::pair<const T*, uint64_t> get_ptr(const std::string& attr) const;
 
   /**
    * Returns the value for an attribute of this item.
@@ -824,37 +810,15 @@ class Map {
    * auto item = map[key];
    * @endcode
    *
-   * @note For writing to the map, e.g. `map[key] = value`, it is usually much
-   * more efficient to instead use Map::create_item() to create a MapItem,
-   * set attribute values on the MapItem, and then Map::add_item to add
-   * the item to the map.
-   *
    * @tparam T Key type
    * @param key Item key
    * @return The item
    */
   template <typename T>
   MapItem operator[](const T& key) {
-    using DataT = typename impl::TypeHandler<T>;
-
-    auto& ctx = context();
-    tiledb_kv_item_t* item;
-
-    ctx.handle_error(tiledb_kv_get_item(
-        ctx,
-        kv_.get(),
-        DataT::data(key),
-        DataT::tiledb_type,
-        DataT::size(key) * sizeof(typename DataT::value_type),
-        &item));
-
-    if (item == nullptr) {
-      MapItem mapitem = create_item(schema_.context(), key);
-      mapitem.map_ = this;
-      return mapitem;
-    }
-
-    return MapItem(schema_.context(), &item, this);
+    MapItem mapitem = create_item(schema_.context(), key);
+    mapitem.map_ = this;
+    return mapitem;
   }
 
   /**
@@ -1091,6 +1055,32 @@ inline void MapItem::set(const T& v) {
     throw TileDBError(
         "Attribute name must be defined for maps with >1 attribute.");
   operator[](map_->schema_.attribute(0).name()) = v;
+}
+
+template <typename T>
+std::pair<const T*, uint64_t> MapItem::get_ptr(const std::string& attr) const {
+  using DataT = typename impl::TypeHandler<T>;
+  const Context& ctx = ctx_.get();
+
+  tiledb_kv_item_t* ret;
+  const void* key;
+  tiledb_datatype_t type;
+  uint64_t size;
+
+  ctx.handle_error(
+      tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+
+  ctx.handle_error(
+      tiledb_kv_get_item(ctx, map_->ptr().get(), key, type, size, &ret));
+
+  typename DataT::value_type* vdata;
+
+  ctx.handle_error(tiledb_kv_item_get_value(
+      ctx, ret, attr.c_str(), (const void**)&vdata, &type, &size));
+
+  auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
+  impl::type_check<T>(type);  // Just check type
+  return std::pair<const T*, uint64_t>(vdata, num);
 }
 
 template <typename T>
