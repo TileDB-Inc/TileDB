@@ -1174,13 +1174,9 @@ tile order}</string>
 			<array>
 				<dict>
 					<key>Bounds</key>
-					<string>{{268.33472797209924, 208.67275657913217}, {7, 14}}</string>
+					<string>{{268.33472797209924, 208.6727503011542}, {7, 13.999998585990639}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
-					<key>FitText</key>
-					<string>YES</string>
-					<key>Flow</key>
-					<string>Resize</string>
 					<key>FontInfo</key>
 					<dict>
 						<key>Font</key>
@@ -1230,13 +1226,9 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{221.46273168317836, 208.72007371716802}, {7, 14}}</string>
+					<string>{{221.46273168317836, 208.72006743441099}, {7, 13.999998585990639}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
-					<key>FitText</key>
-					<string>YES</string>
-					<key>Flow</key>
-					<string>Resize</string>
 					<key>FontInfo</key>
 					<dict>
 						<key>Font</key>
@@ -1286,13 +1278,9 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{268.33472797209924, 162.95241629416282}, {7, 14}}</string>
+					<string>{{268.33472797209924, 162.95241463396979}, {7, 13.999998585990639}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
-					<key>FitText</key>
-					<string>YES</string>
-					<key>Flow</key>
-					<string>Resize</string>
 					<key>FontInfo</key>
 					<dict>
 						<key>Font</key>
@@ -1342,13 +1330,9 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{221.46274804250808, 162.95241702785657}, {7, 14}}</string>
+					<string>{{221.46274804250808, 162.95241536766346}, {7, 13.999998585990639}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
-					<key>FitText</key>
-					<string>YES</string>
-					<key>Flow</key>
-					<string>Resize</string>
 					<key>FontInfo</key>
 					<dict>
 						<key>Font</key>
@@ -1398,7 +1382,7 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{201.52672635988685, 192.32994022545267}, {46.872016906738281, 46.780269622802734}}</string>
+					<string>{{201.52672635988685, 192.32993559811007}, {46.872016906738281, 46.780264897964223}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
 					<key>ID</key>
@@ -1426,7 +1410,7 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{248.39873460883916, 192.28262446220833}, {46.872016906738281, 46.780269622802734}}</string>
+					<string>{{248.39873460883916, 192.28261983964467}, {46.872016906738281, 46.780264897964223}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
 					<key>ID</key>
@@ -1454,7 +1438,7 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{201.52672953117278, 146.56228615677958}, {46.872016906738281, 46.780269622802734}}</string>
+					<string>{{201.52672953117278, 146.56228615200064}, {46.872016906738281, 46.780264897964223}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
 					<key>ID</key>
@@ -1482,7 +1466,7 @@ tile order}</string>
 				</dict>
 				<dict>
 					<key>Bounds</key>
-					<string>{{248.39873778012509, 146.51497039353524}, {46.872016906738281, 46.780269622802734}}</string>
+					<string>{{248.39873778012509, 146.51497039353524}, {46.872016906738281, 46.780264897964223}}</string>
 					<key>Class</key>
 					<string>ShapedGraphic</string>
 					<key>ID</key>
@@ -3588,7 +3572,7 @@ tile order}</string>
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2018-06-20 15:03:40 +0000</string>
+	<string>2018-06-25 18:19:23 +0000</string>
 	<key>Modifier</key>
 	<string>Stavros Papadopoulos</string>
 	<key>NotesVisible</key>

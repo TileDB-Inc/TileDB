@@ -1,3 +1,5 @@
+.. _sparse-arrays:
+
 Sparse Arrays
 =============
 
@@ -150,7 +152,7 @@ Next, open the array for writing, and create a query object:
 
         Context ctx;
         Array array(ctx, array_name, TILEDB_WRITE);
-        Query query(ctx, array);
+        Query query(ctx, array, TILEDB_WRITE);
 
 Then, set up the query. We set the buffers for attribute ``a`` and coordinates,
 and also set the layout of the cells in the buffer to "unordered". Although
