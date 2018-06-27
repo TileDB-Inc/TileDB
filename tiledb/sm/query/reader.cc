@@ -694,7 +694,11 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
     }
 
     // Check if the range must be appended to the current one
-    if (!memcmp(cur_tile_coords, cr_it->tile_coords_, coords_size) &&
+    // The second condition is to impose constraint "if both ranges
+    // are empty, then they should belong to the same dense tile".
+    if (tile == cur_tile &&
+        (tile != nullptr ||
+         !memcmp(cur_tile_coords, cr_it->tile_coords_, coords_size)) &&
         cr_it->start_ == end + 1) {
       end = cr_it->end_;
       continue;
@@ -754,7 +758,7 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_compute_dense_overlapping_tiles_and_cell_ranges);
-}
+}  // namespace sm
 
 template <class T>
 Status Reader::compute_overlapping_coords(
