@@ -33,6 +33,7 @@
 #include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <iostream>
@@ -373,9 +374,13 @@ Status Consolidator::rename_new_fragment_uri(URI* uri) const {
   // Get current time
   uint64_t ms = utils::timestamp_ms();
 
+  // Get uuid
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
   std::stringstream ss;
-  ss << uri->parent().to_string() << "/__" << std::this_thread::get_id() << "_"
-     << ms << "_" << timestamp_str;
+  ss << uri->parent().to_string() << "/__" << uuid << "_" << ms << "_"
+     << timestamp_str;
 
   *uri = URI(ss.str());
   return Status::Ok();
