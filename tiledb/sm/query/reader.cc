@@ -556,14 +556,14 @@ Status Reader::compute_dense_cell_ranges(
 
   // Iterate over the queue and create dense cell ranges
   while (!pq.empty()) {
-    // Get top range
-    const auto& top = pq.top();
+    // Pop top range, and get new top
+    auto popped = pq.top();
+    auto fidx = popped.fragment_idx_;
+    pq.pop();
 
-    // Top must be ignored and a new range must be fetched
-    if (top.end_ < start) {
-      auto fidx = top.fragment_idx_;
+    // Popped must be ignored and a new range must be fetched
+    if (popped.end_ < start) {
       ++frag_its[fidx];
-      pq.pop();
       if (!frag_its[fidx].end())
         pq.emplace(
             fidx,
@@ -573,37 +573,59 @@ Status Reader::compute_dense_cell_ranges(
       continue;
     }
 
-    // The search needs to stop - add current range to result
-    if (top.start_ > end) {
+    // The search needs to stop - add current range as empty result
+    if (popped.start_ > end) {
       dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
       return Status::Ok();
     }
 
-    // At this point, there is intersection between the top of the
-    // queue and the input range. We need to create dense range results.
-    if (top.start_ <= start) {
-      auto new_end = MIN(end, top.end_);
-      dense_cell_ranges->emplace_back(
-          top.fragment_idx_, tile_coords, start, new_end);
-      start = new_end + 1;
-      if (new_end == top.end_) {
-        auto fidx = top.fragment_idx_;
-        ++frag_its[fidx];
-        pq.pop();
-        if (!frag_its[fidx].end())
-          pq.emplace(
-              fidx,
-              tile_coords,
-              frag_its[fidx].range_start(),
-              frag_its[fidx].range_end());
-      }
-    } else {  // top.start_ > start
-      auto new_end = MIN(end, top.start_ - 1);
+    // ----------------------------------------------------------------
+    // At this point, there is intersection between popped
+    // and the input range. We need to create dense range results.
+    // ----------------------------------------------------------------
+
+    // Need to pad an empty range
+    if (popped.start_ > start) {
+      auto new_end = MIN(end, popped.start_ - 1);
       dense_cell_ranges->emplace_back(-1, tile_coords, start, new_end);
       start = new_end + 1;
+      if (start > end)
+        break;
     }
 
-    // Terminating condition
+    // Check if popped intersects with top.
+    // We must make partial result, and then split and re-insert popped to pq.
+    if (!pq.empty()) {
+      auto top = pq.top();
+      if (top.start_ <= end && top.start_ > popped.start_ &&
+          top.start_ <= popped.end_) {
+        auto new_end = top.start_ - 1;
+        dense_cell_ranges->emplace_back(fidx, tile_coords, start, new_end);
+        start = new_end + 1;
+        if (start > end)
+          break;
+        popped.start_ = top.start_;
+        pq.emplace(popped);
+        continue;
+      }
+    }
+
+    // Make result
+    auto new_end = MIN(end, popped.end_);
+    dense_cell_ranges->emplace_back(fidx, tile_coords, start, new_end);
+    start = new_end + 1;
+
+    // Check if a new range must be fetched in place of popped
+    if (new_end == popped.end_) {
+      ++frag_its[fidx];
+      if (!frag_its[fidx].end())
+        pq.emplace(
+            fidx,
+            tile_coords,
+            frag_its[fidx].range_start(),
+            frag_its[fidx].range_end());
+    }
+
     if (start > end)
       break;
   }
