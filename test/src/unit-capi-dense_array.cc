@@ -3110,7 +3110,7 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, read subarrays with empty areas around sparse "
     "cells",
-    "[capi], [dense], [dense-read-empty-sparse]") {
+    "[capi], [dense], [dense-read-empty], [dense-read-empty-sparse]") {
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_sparse/";
   create_temp_dir(temp_dir);
@@ -3189,6 +3189,87 @@ TEST_CASE_METHOD(
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
   CHECK(!memcmp(c_coords, read_coords, sizeof(c_coords)));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, read subarrays with empty areas, merging "
+    "adjacent cell ranges",
+    "[capi], [dense], [dense-read-empty], [dense-read-empty-merge]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "dense_read_empty_merge/";
+  create_temp_dir(temp_dir);
+
+  create_dense_array_1_attribute(array_name);
+
+  // Write a slice
+  // Write a slice
+  const char* attributes[] = {"a1"};
+  int write_a1[] = {1, 2, 3, 4};
+  uint64_t write_a1_size = sizeof(write_a1);
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], write_a1, &write_a1_size);
+  CHECK(rc == TILEDB_OK);
+  uint64_t subarray[] = {2, 3, 2, 3};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Read whole array
+  int c_a1[] = {INT_MIN,
+                INT_MIN,
+                INT_MIN,
+                INT_MIN,
+                INT_MIN,
+                1,
+                2,
+                INT_MIN,
+                INT_MIN,
+                3,
+                4,
+                INT_MIN,
+                INT_MIN,
+                INT_MIN,
+                INT_MIN,
+                INT_MIN};
+  int read_a1[16];
+  uint64_t read_a1_size = sizeof(read_a1);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], read_a1, &read_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
 }
