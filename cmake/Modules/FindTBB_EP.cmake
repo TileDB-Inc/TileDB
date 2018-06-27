@@ -255,9 +255,6 @@ else()
     endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_tbb)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_TBB_EP_BUILT=TRUE
-    )
   else()
     message(FATAL_ERROR "Unable to find TBB")
   endif()
