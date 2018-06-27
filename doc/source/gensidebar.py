@@ -97,6 +97,7 @@ def generate_sidebar(conf, conf_api):
     write('Tiles', 'tutorials/tiles')
     write('Dense data ingestion', 'tutorials/dense-data-ingestion')
     write('Sparse data ingestion', 'tutorials/sparse-data-ingestion')
+    write('Using TileDB statistics', 'tutorials/using-tiledb-statistics')
     write('Working with S3', 'tutorials/working-with-s3')
     write('Asynchronous I/O', 'futher-reading/asynchronous-io')
     write('Key-Value Store', 'futher-reading/key-value-store')
