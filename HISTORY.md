@@ -19,6 +19,7 @@
 * Sparse read performance improvements with parallelism (using TBB as a dependency).
 * Async queries now use a configurable number of background threads (default number of threads is 1).
 * Added checks for duplicate coordinates and option for coordinate deduplication.
+* Map usage via the C++ API `operator[]` is faster, similar to the `MapItem` path.
 
 ## Bug Fixes
 
