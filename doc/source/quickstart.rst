@@ -407,10 +407,10 @@ and ``"key_3": 3``.
 
          void write_map() {
            tiledb::Context ctx;
-         
+
            // Open the map
            tiledb::Map map(ctx, map_name);
-         
+
            // Write some values
            auto item1 = tiledb::Map::create_item(ctx, "key_1");
            auto item2 = tiledb::Map::create_item(ctx, "key_2");
@@ -421,7 +421,7 @@ and ``"key_3": 3``.
            map.add_item(item1);
            map.add_item(item2);
            map.add_item(item3);
-         
+
            // Close the map
            map.close();
          }
