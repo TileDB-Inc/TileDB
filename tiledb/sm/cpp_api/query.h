@@ -357,7 +357,9 @@ class Query {
   result_buffer_elements() const {
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
     if (buff_sizes_.size() == 0)
-      return {};  // Query hasn't been submitted
+      return std::unordered_map<
+          std::string,
+          std::pair<uint64_t, uint64_t>>();  // Query hasn't been submitted
     for (const auto& b_it : buff_sizes_) {
       auto attr_name = b_it.first;
       auto size_pair = b_it.second;
