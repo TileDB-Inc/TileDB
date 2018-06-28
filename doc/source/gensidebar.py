@@ -98,6 +98,7 @@ def generate_sidebar(conf, conf_api):
     write('Dense data ingestion', 'tutorials/dense-data-ingestion')
     write('Sparse data ingestion', 'tutorials/sparse-data-ingestion')
     write('Using TileDB statistics', 'tutorials/using-tiledb-statistics')
+    write('Performance factors', 'tutorials/performance-factors')
     write('Working with S3', 'tutorials/working-with-s3')
     write('Asynchronous I/O', 'futher-reading/asynchronous-io')
     write('Key-Value Store', 'futher-reading/key-value-store')
