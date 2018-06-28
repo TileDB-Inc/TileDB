@@ -90,6 +90,7 @@ def generate_sidebar(conf, conf_api):
     write('Compression', 'compression')
     write('Writing Sparse Arrays', 'writing-sparse')
     write('Writing Dense Arrays', 'writing-dense')
+    write('Fragments and Consolidation', 'fragments-consolidation')
     endl()
 
     toctree('Further Reading')
@@ -97,10 +98,6 @@ def generate_sidebar(conf, conf_api):
     write('Dense data ingestion', 'tutorials/dense-data-ingestion')
     write('Sparse data ingestion', 'tutorials/sparse-data-ingestion')
     write('Working with S3', 'tutorials/working-with-s3')
-    write('Writing', 'futher-reading/writing/index')
-    write('Updating', 'futher-reading/updating')
-    write('Consolidation', 'futher-reading/consolidation')
-    write('Reading', 'futher-reading/reading/index')
     write('Asynchronous I/O', 'futher-reading/asynchronous-io')
     write('Key-Value Store', 'futher-reading/key-value-store')
     write('Object Management', 'futher-reading/object-management')
