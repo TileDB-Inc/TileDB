@@ -1531,7 +1531,8 @@ T Domain::floor_to_tile(T value, unsigned dim_idx) const {
     return domain[2 * dim_idx];
 
   return ((value - domain[2 * dim_idx]) / tile_extents[dim_idx]) *
-         tile_extents[dim_idx];
+             tile_extents[dim_idx] +
+         domain[2 * dim_idx];
 }
 
 template <class T>
