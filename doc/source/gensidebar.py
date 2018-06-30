@@ -91,6 +91,7 @@ def generate_sidebar(conf, conf_api):
     write('Writing Sparse Arrays', 'writing-sparse')
     write('Writing Dense Arrays', 'writing-dense')
     write('Fragments and Consolidation', 'fragments-consolidation')
+    write('Reading Arrays', 'reading')
     endl()
 
     toctree('Further Reading')
