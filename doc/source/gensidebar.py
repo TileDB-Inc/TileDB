@@ -92,6 +92,7 @@ def generate_sidebar(conf, conf_api):
     write('Writing Dense Arrays', 'writing-dense')
     write('Fragments and Consolidation', 'fragments-consolidation')
     write('Reading Arrays', 'reading')
+    write('Asynchronous Queries', 'async')
     endl()
 
     toctree('Further Reading')
