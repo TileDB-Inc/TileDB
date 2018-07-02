@@ -594,10 +594,21 @@ Status Reader::compute_dense_cell_ranges(
     }
 
     // Check if popped intersects with top.
-    // We must make partial result, and then split and re-insert popped to pq.
     if (!pq.empty()) {
       auto top = pq.top();
-      if (top.start_ <= end && top.start_ > popped.start_ &&
+
+      // Keep on ingoring ranges that belong to older fragments
+      // and are fully contained in the popped range
+      while (popped.fragment_idx_ > top.fragment_idx_ &&
+             popped.start_ <= top.start_ && popped.end_ >= top.end_) {
+        pq.pop();
+        if (pq.empty())
+          break;
+        top = pq.top();
+      }
+
+      // Make partial result, and then split and re-insert popped to pq.
+      if (!pq.empty() && top.start_ <= end && top.start_ > popped.start_ &&
           top.start_ <= popped.end_) {
         auto new_end = top.start_ - 1;
         dense_cell_ranges->emplace_back(fidx, tile_coords, start, new_end);
