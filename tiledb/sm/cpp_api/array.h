@@ -115,6 +115,14 @@ class Array {
     return uri_;
   }
 
+  /** Get the ArraySchema for the array. **/
+  ArraySchema schema() const {
+    auto& ctx = ctx_.get();
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &schema));
+    return ArraySchema(ctx, schema);
+  }
+
   /** Returns a shared pointer to the C TileDB array object. */
   std::shared_ptr<tiledb_array_t> ptr() const {
     return array_;
