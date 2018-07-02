@@ -201,6 +201,13 @@ class Config {
   /*                API                */
   /* ********************************* */
 
+  /** Saves the config parameters to a (local) text file. */
+  void save_to_file(const std::string filename) {
+    tiledb_error_t* err;
+    tiledb_config_save_to_file(config_.get(), filename.c_str(), &err);
+    impl::check_config_error(err);
+  }
+
   /** Returns the pointer to the TileDB C config object. */
   std::shared_ptr<tiledb_config_t> ptr() const {
     return config_;

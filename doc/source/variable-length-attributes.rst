@@ -1,3 +1,5 @@
+.. _variable-length-attributes:
+
 Variable-length Attributes
 ==========================
 

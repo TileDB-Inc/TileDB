@@ -1,5 +1,5 @@
 /**
- * @file   quickstart_dense.cc
+ * @file   reading_dense_layouts.cc
  *
  * @section LICENSE
  *
@@ -28,10 +28,11 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/quickstart.html
+ *   https://docs.tiledb.io/en/latest/reading.html
  *
  * When run, this program will create a simple 2D dense array, write some data
- * to it, and read a slice of the data back.
+ * to it, and read a slice of the data back in the layout of the user's choice
+ * (passed as an argument to the program: "row", "col", or "global").
  *
  */
 
@@ -41,20 +42,16 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_dense");
+std::string array_name("reading_dense_layouts");
 
 void create_array() {
   // Create a TileDB context.
   Context ctx;
 
-  // If the array already exists on disk, return immediately.
-  if (Object::object(ctx, array_name).type() == Object::Type::Array)
-    return;
-
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+  // Create domain.
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 2));
 
   // The array will be dense.
   ArraySchema schema(ctx, TILEDB_DENSE);
@@ -76,45 +73,75 @@ void write_array() {
 
   // Open the array for writing and create the query.
   Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+  Query query(ctx, array);
+  query.set_layout(TILEDB_GLOBAL_ORDER).set_buffer("a", data);
 
   // Perform the write and close the array.
   query.submit();
+  query.finalize();
   array.close();
 }
 
-void read_array() {
+void read_array(tiledb_layout_t layout) {
   Context ctx;
 
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
+  // Print non-empty domain
+  auto non_empty_domain = array.non_empty_domain<int>();
+  std::cout << "Non-empty domain: ";
+  std::cout << "[" << non_empty_domain[0].second.first << ","
+            << non_empty_domain[0].second.second << "], ["
+            << non_empty_domain[1].second.first << ","
+            << non_empty_domain[1].second.second << "]\n";
+
   // Slice only rows 1, 2 and cols 2, 3, 4
   const std::vector<int> subarray = {1, 2, 2, 4};
 
-  // Prepare the vector that will hold the result (of size 6 elements)
+  // Prepare the vectors that will hold the results
   std::vector<int> data(6);
+  std::vector<int> coords(12);
 
   // Prepare the query
-  Query query(ctx, array, TILEDB_READ);
+  Query query(ctx, array);
   query.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", data);
+      .set_layout(layout)
+      .set_buffer("a", data)
+      .set_coordinates(coords);
 
   // Submit the query and close the array.
   query.submit();
   array.close();
 
   // Print out the results.
-  for (auto d : data)
-    std::cout << d << " ";
-  std::cout << "\n";
+  for (int r = 0; r < 6; r++) {
+    int i = coords[2 * r], j = coords[2 * r + 1];
+    int a = data[r];
+    std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
+  }
 }
 
-int main() {
-  create_array();
-  write_array();
-  read_array();
+int main(int argc, char* argv[]) {
+  Context ctx;
+
+  // Create and write the array only if it does not exist
+  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    create_array();
+    write_array();
+  }
+
+  // Choose a layout (default is row-major)
+  tiledb_layout_t layout = TILEDB_ROW_MAJOR;
+  if (argc > 1) {
+    if (argv[1] == std::string("row"))
+      layout = TILEDB_ROW_MAJOR;
+    else if (argv[1] == std::string("col"))
+      layout = TILEDB_COL_MAJOR;
+    else if (argv[1] == std::string("global"))
+      layout = TILEDB_GLOBAL_ORDER;
+  }
+
+  read_array(layout);
   return 0;
 }

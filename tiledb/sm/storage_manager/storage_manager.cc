@@ -1413,6 +1413,27 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
     }
   }
 
+  // Rectify bound for sparse arrays with integer domain
+  if (!array_schema->dense() &&
+      datatype_is_integer(array_schema->domain()->type())) {
+    auto cell_num = array_schema->domain()->cell_num(subarray);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *buffer_sizes) {
+        if (!array_schema->var_size(it.first)) {
+          // Check for overflow
+          uint64_t new_size = cell_num * array_schema->cell_size(it.first);
+          if (new_size / array_schema->cell_size((it.first)) != cell_num)
+            continue;
+
+          // Potentially rectify size
+          it.second.first = MIN(it.second.first, new_size);
+        }
+      }
+    }
+  }
+
   return Status::Ok();
 }
 
