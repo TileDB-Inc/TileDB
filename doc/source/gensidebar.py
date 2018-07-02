@@ -94,6 +94,7 @@ def generate_sidebar(conf, conf_api):
     write('Reading Arrays', 'reading')
     write('Asynchronous Queries', 'async')
     write('Catching Errors', 'errors')
+    write('Configuration Parameters', 'config')
     endl()
 
     toctree('Further Reading')

@@ -337,7 +337,8 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
- *    array writes. Note that ties during deduplication are arbitrary. <br>
+ *    array writes. Note that ties during deduplication are broken
+ *    arbitrarily. <br>
  *    **Default**: false
  * - `sm.check_coord_dups` <br>
  *    This is applicable only if `sm.dedup_coords` is `false`.
@@ -357,7 +358,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
  *    acceptable. <br>
  * - `sm.enable_signal_handlers` <br>
- *    Whether or not TileDB will install signal handlers. <br>
+ *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
  * - `sm.num_async_threads` <br>
  *    The number of threads allocated for async queries. <br>
@@ -375,7 +376,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.min_parallel_size` <br>
  *    The minimum number of bytes in a parallel VFS operation
  *    (except parallel S3 writes, which are controlled by
- *    `vfs.s3.multipart_part_size`.) <br>
+ *    `vfs.s3.multipart_part_size`). <br>
  *    **Default**: 10MB
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
@@ -410,27 +411,27 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The maximum tries for a connection. Any `long` value is acceptable. <br>
  *    **Default**: 5
  * - `vfs.s3.connect_scale_factor` <br>
- *    The scale factor for exponential backofff when connecting to S3.
+ *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
  *    **Default**: 25
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000
  * - `vfs.s3.proxy_host` <br>
- *    The proxy host. <br>
+ *    The S3 proxy host. <br>
  *    **Default**: ""
  * - `vfs.s3.proxy_port` <br>
- *    The proxy port. <br>
+ *    The S3 proxy port. <br>
  *    **Default**: 0
  * - `vfs.s3.proxy_scheme` <br>
- *    The proxy scheme. <br>
+ *    The S3 proxy scheme. <br>
  *    **Default**: "https"
  * - `vfs.s3.proxy_username` <br>
- *    The proxy username. Note: this parameter is not serialized by
+ *    The S3 proxy username. Note: this parameter is not serialized by
  *    `tiledb_config_save_to_file`. <br>
  *    **Default**: ""
  * - `vfs.s3.proxy_password` <br>
- *    The proxy password. Note: this parameter is not serialized by
+ *    The S3 proxy password. Note: this parameter is not serialized by
  *    `tiledb_config_save_to_file`. <br>
  *    **Default**: ""
  * - `vfs.hdfs.name_node"` <br>

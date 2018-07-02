@@ -82,6 +82,7 @@
 * Added `Array::reopen`
 * Added `Map::reopen`
 * Added `Stats` class (wraps C API `tiledb_stats_*` functions)
+* Added `Config::save_to_file`
 
 ## Breaking changes
 
