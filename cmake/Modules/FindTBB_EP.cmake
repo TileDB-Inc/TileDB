@@ -156,10 +156,11 @@ function(backup_find_tbb)
     )
 
     if (TBB_FOUND AND NOT TARGET TBB::tbb)
-      add_library(TBB::tbb SHARED IMPORTED)
+      add_library(TBB::tbb UNKNOWN IMPORTED)
       set_target_properties(TBB::tbb PROPERTIES
         IMPORTED_LOCATION_RELEASE "${TBB_LIBRARIES}"
         IMPORTED_LOCATION_DEBUG "${TBB_LIBRARIES}"
+        IMPORTED_LOCATION "${TBB_LIBRARIES}"
         INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIR}"
       )
       set(TBB_IMPORTED_TARGETS TBB::tbb PARENT_SCOPE)
