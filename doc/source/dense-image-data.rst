@@ -1,25 +1,37 @@
-Real-World Example: Dense image data
-====================================
+Dense Image Data
+================
 
-In this tutorial we will walk through a real-world example of ingesting and reading dense image data in a TileDB array. It's recommended to first read the tutorials on dense arrays and attributes.
-
+In this tutorial we will walk through a real-world example of ingesting and
+reading dense image data in a TileDB array. It is recommended to first
+read the tutorials on dense arrays and attributes. We built the code
+example of this tutorial in C++, but by now you are hopefully able to port
+this to other languages using the TileDB APIs.
 
 Project setup
 -------------
 
-For this tutorial we'll ingest dense image data into a TileDB array and perform some basic slices on it. We'll use the widely-available `libpng <https://sourceforge.net/projects/libpng/>`__ library for reading pixel data from png files. The tutorial will also assume you've already installed a TileDB release on your system (see the Installation documentation page for instructions on how to do that) as well as ``libpng``.
+For this tutorial we will ingest dense image data into a TileDB array and
+perform some basic slices and filters on it. We'll use the widely-available
+`libpng <https://sourceforge.net/projects/libpng/>`__ library for reading
+pixel data from PNG files. The tutorial will also assume you've already
+installed a TileDB release on your system (see the :ref:`installation`
+page for instructions on how to do that) as well as ``libpng``.
 
-To get started, it will be easiest to use the `example CMake project <https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cmake_project>`__ as a template that we will fill in, including linking the ingestor program with ``libpng``.
+To get started, it will be easiest to use the
+`example CMake project <https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cmake_project>`__
+as a template that we will fill in, including linking the ingestor
+program with ``libpng``.
 
-Clone the TileDB repository and copy the ``examples/cmake_project`` directory to where you want to store this ingestor project:
+Clone the TileDB repository and copy the ``examples/cmake_project`` directory to
+where you want to store this project:
 
 .. code-block:: bash
 
    $ git clone https://github.com/TileDB-Inc/TileDB.git
    $ mkdir ~/tiledb_projects
    $ cd TileDB
-   $ cp -R examples/cmake_project ~/tiledb_projects/png_ingestion
-   $ cd ~/tiledb_projects/png_ingestion
+   $ cp -R examples/cmake_project ~/tiledb_projects/png_example
+   $ cd ~/tiledb_projects/png_example
 
 
 Adding ``libpng``
@@ -39,7 +51,7 @@ First, edit the ``src/main.cc`` file and add the new include at the top:
          // include instead:
          // #include <libpng16/png.h>
 
-Next, edit ``CMakeLists.txt`` and add the commands to link the executable against libpng::
+Next, edit ``CMakeLists.txt`` and add the commands to link the executable against ``libpng``::
 
     # Find and link with libpng.
     find_package(PNG REQUIRED)
@@ -47,20 +59,26 @@ Next, edit ``CMakeLists.txt`` and add the commands to link the executable agains
     target_include_directories(ExampleExe PRIVATE "${PNG_INCLUDE_DIRS}")
     target_compile_definitions(ExampleExe PRIVATE "${PNG_DEFINITIONS}")
 
-You should now be able to build and run the example program (though it doesn't do anything yet):
+Then build the program as follows.
 
 .. code-block:: bash
 
    $ mkdir build
    $ cd build
    $ cmake .. && make
-   $ ./ExampleExe
 
+In the remainder of the tutorial, we will be building up ``src/main.cc``, which
+will eventually contain our full code example.
 
 Reading and writing PNG data with ``libpng``
 --------------------------------------------
 
-First we need to interface with ``libpng`` to be able to read and write pixel data to and from ``.png`` files on disk. Add the following two functions at the top of ``src/main.cc``. The first, ``read_png()``,  will read PNG pixel data from a given path, and normalize it such that there are always values for all four RGBA components:
+First we need to interface with ``libpng`` to be able to read/write pixel data
+from/to ``.png`` files on disk. Add the following two functions at the top
+of ``src/main.cc``. The first, ``read_png()``,  will read PNG pixel data from
+a given path, and normalize it such that there are always values for all
+four RGBA components. The second, ``write_png()``, will write pixel data to a
+new ``.png`` image at the given path.
 
 .. toggle-header::
    :header: **Click to see:** ``read_png()``
@@ -138,8 +156,6 @@ First we need to interface with ``libpng`` to be able to read and write pixel da
                return row_pointers;
              }
 
-The next, ``write_png()``, will write pixel data to a new .png image at the given path:
-
 .. toggle-header::
    :header: **Click to see:** ``write_png()``
 
@@ -209,11 +225,18 @@ The next, ``write_png()``, will write pixel data to a new .png image at the give
 The array schema
 ----------------
 
-Before ingesting data, we need to design an array schema to hold the data. In this case, the image data is two-dimensional and dense, so we'll ingest the data into a 2D dense array.
+Before ingesting data, we need to design an array schema to hold the data.
+In this case, the image data is two-dimensional and dense, so we will
+ingest the data into a 2D dense array.
 
-PNG pixel data typically has four component values for each pixel in the image: red, green, blue, and alpha (RGBA). We have several choices on how to store this data.
+PNG pixel data typically has four component values for each pixel in the
+image: *red*, *green*, *blue*, and *alpha* (RGBA). We have several choices
+on how to store this data.
 
-The most obvious would be to have each cell in the array (corresponding to each pixel in the image) hold a single ``uint32_t`` array with the RGBA value. This would correspond to an array schema with a single attribute named ``rgba`` of type ``uint32_t``, e.g.:
+One possible approach is to have each cell in the array (corresponding
+to each pixel in the image) hold a single ``uint32_t`` with the
+RGBA value. This would correspond to an array schema with a single
+attribute named ``rgba`` of type ``uint32_t``, e.g.:
 
 .. content-tabs::
 
@@ -225,7 +248,10 @@ The most obvious would be to have each cell in the array (corresponding to each 
          ArraySchema schema(ctx, TILEDB_DENSE);
          schema.add_attribute(Attribute::create<uint32_t>(ctx, "rgba"));
 
-Because the RGBA value is fundamentally made of four components, we can also store the components separately, where each cell has a separate red, green, blue and alpha value. This would correspond to an array schema with four attributes: ``red``, ``green``, ``blue``, and ``alpha``, all of type ``uint8_t``, e.g.:
+Because the RGBA value is fundamentally made of four components, we can also store
+the components separately, where each cell has a separate red, green, blue and alpha
+value. This would correspond to an array schema with four attributes:
+``red``, ``green``, ``blue``, and ``alpha``, all of type ``uint8_t``, e.g.:
 
 .. content-tabs::
 
@@ -241,13 +267,13 @@ Because the RGBA value is fundamentally made of four components, we can also sto
                .add_attribute(Attribute::create<uint8_t>(ctx, "blue"))
                .add_attribute(Attribute::create<uint8_t>(ctx, "alpha"));
 
-The choice of array schema depends on the type of read queries that will be issued to the array, and whether separate access to the RGBA components will be a common task. For the rest of this tutorial, we will use the second schema, with four attributes.
+The choice of array schema depends on the type of read queries that will be
+issued to the array, and whether separate access to the RGBA components will
+be a common task. For the rest of this tutorial, we will use the second
+schema, with four attributes.
 
-
-Ingesting PNG data
-------------------
-
-Once we have decided on a schema for the array to hold our data, we can write the function to create the empty array:
+Once we have decided on a schema for the array to hold our data, we
+can write the function to define the array:
 
 .. content-tabs::
 
@@ -286,11 +312,22 @@ Once we have decided on a schema for the array to hold our data, we can write th
            Array::create(array_path, schema);
          }
 
-The above array schema specifies that the domain of the array will be ``[0, width)`` and ``[0, height)`` in the x and y dimensions, respectively. Note that we have added the dimensions in an order such that ``x`` will be the innermost dimension, i.e. the column dimension. Conceptually, this corresponds to a traditional row-major ordering of pixel data, which will make it easier to interface with ``libpng`` (which returns pixel data already in row-major order).
+The above array schema specifies that the domain of the array will be
+``[0, height-1], [0, width-1]`` in the ``y`` and ``x`` dimensions, respectively. Notice that
+``y`` corresponds to the height/rows and ``x`` to the width/columns of the array.
+Conceptually, this corresponds to a traditional row-major ordering of pixel data, which
+will make it easier to interface with ``libpng`` (which returns pixel data already
+in row-major order).
 
-We've chosen a relatively small tile extent of 100x100; for very large (e.g. gigapixel) images it would make sense to increase this to 1000x1000 or even higher. We've also configured the array such that the red, green, blue, and alpha components will each be stored in separate ``uint8_t`` attributes, as discussed earlier.
+We've chosen a relatively small tile extent of ``100x100``; for very large (e.g. gigapixel)
+images it would make sense to increase this to ``1000x1000`` or even higher.
 
-All that's left to do for ingestion is to write the function that uses the ``read_png()`` function from earlier to retrieve pixel data from an image on disk, splits the pixel data into four attribute buffers (one per color channel), and issues a write query to TileDB:
+Ingesting PNG data
+------------------
+
+We will write a function that uses the ``read_png()`` function from earlier to
+retrieve pixel data from an image on disk, splits the pixel data into four
+attribute buffers (one per color channel), and issues a write query to TileDB:
 
 .. content-tabs::
 
@@ -345,7 +382,10 @@ All that's left to do for ingestion is to write the function that uses the ``rea
            array.close();
          }
 
-Now modify the ``main()`` function to call these functions with command-line arguments that specify the path of the input .png file and the output TileDB array, and we have a complete ingestion program:
+Next, we modify the ``main()`` function of ``src/main.cc`` to call
+these functions with command-line arguments that specify the path of the
+input ``.png`` file and the output TileDB array, and we have a complete
+ingestion program:
 
 .. content-tabs::
 
@@ -363,27 +403,35 @@ Now modify the ``main()`` function to call these functions with command-line arg
            return 0;
          }
 
-Build and run the program to ingest a .png file:
+Build and run the program to ingest a ``.png`` file:
 
 .. code-block:: bash
 
    $ make
    $ ./ExampleExe input.png my_array_name
 
-This will read the file ``input.png``, create a new array in the current directory named ``my_array_name``, and write the pixel data into it.
+This will read the file ``input.png``, create a new array in the current
+directory named ``my_array_name``, and write the pixel data into it.
 
 
 Slicing image data from the array
 ---------------------------------
 
-To complete the tutorial, we'll write a simple function that reads a "slice" (rectangular region) of image data from the TileDB array created by the ingestor, converts the sliced data to greyscale, and then writes the resulting image to a new .png file:
+To complete the tutorial, we will write a simple function that reads a
+"slice" (rectangular region) of image data from the TileDB array created
+by the ingestor, converts the sliced data to greyscale, and then writes
+the resulting image to a new ``.png`` file:
 
-.. figure:: ../figures/macaw-process.png
+.. figure:: figures/macaw-process.png
    :align: center
+   :scale: 60 %
 
    `Original image <https://commons.wikimedia.org/wiki/File:Scarlet-Macaw.jpg>`_ copyright Ben Lunsford, reproduced under CC-BY-SA-3.0-US.
 
-The following code snippet shows the beginning of the function ``slice_and_desaturate()``. First, we must open the array for reading, and use the utility function ``non_empty_domain()`` to calculate the width and height of the array.
+The following code snippet shows the beginning of function
+``slice_and_desaturate()``. First, we must open the array for reading,
+and use the utility function ``non_empty_domain()`` to calculate the
+width and height of the array.
 
 .. content-tabs::
 
@@ -412,7 +460,13 @@ The following code snippet shows the beginning of the function ``slice_and_desat
            auto array_height = array_y_max - array_y_min + 1,
                 array_width = array_x_max - array_x_min + 1;
 
-Note that the order of dimensions in the vector ``non_empty`` is the same as when we created the array schema (``y`` first to compute the height, then ``x``). Next, we can use the array width and height to compute the cell coordinates for the subarray we wish to read. The subarray selects rows ``[array_height / 2 : array_height - 1]`` (inclusive range) and columns ``[0 : array_width / 2]``, which corresponds to the lower-left quarter of the image:
+Note that the order of dimensions in the vector ``non_empty`` is the same
+as when we created the array schema (``y`` first to compute the height,
+then ``x`` for the width). Next, we can use the array width and height to
+compute the cell coordinates for the subarray we wish to read. The subarray
+selects rows ``[array_height / 2 : array_height - 1]`` (inclusive range) and
+columns ``[0 : array_width / 2]``, which corresponds to the lower-left
+quarter of the image:
 
 .. content-tabs::
 
@@ -426,7 +480,8 @@ Note that the order of dimensions in the vector ``non_empty`` is the same as whe
            auto output_height = subarray[1] - subarray[0] + 1,
                 output_width = subarray[3] - subarray[2] + 1;
 
-Once we've set up the subarray, we can allocate ``std::vector`` buffers that will hold the image data read from the array, and submit the read query to TileDB:
+Once we have set up the subarray, we can allocate ``std::vector`` buffers that
+will hold the image data read from the array, and submit the read query to TileDB:
 
 .. content-tabs::
 
@@ -452,7 +507,10 @@ Once we've set up the subarray, we can allocate ``std::vector`` buffers that wil
            query.finalize();
            array.close();
 
-We now have the image data in memory. We can now transform the pixel data however we like, and pack it into a buffer that ``libpng`` can use to create the new .png image. Here we are performing a simple desaturation process by changing the RGB value of each pixel to the average of the color components:
+We now have the image data in memory. We can now transform the pixel data
+however we like, and pack it into a buffer that ``libpng`` can use to
+create the new ``.png`` image. Here we are performing a simple desaturation
+process by changing the RGB value of each pixel to the average of the color components:
 
 .. content-tabs::
 
@@ -479,7 +537,8 @@ We now have the image data in memory. We can now transform the pixel data howeve
              }
            }
 
-Finally we just need to call into ``libpng`` to write the image, and clean up the buffers we allocated:
+Finally we just need to call into ``libpng`` to write the image,
+and clean up the buffers we allocated:
 
 .. content-tabs::
 
@@ -577,7 +636,8 @@ Here is the complete function definition:
                  std::free(desaturated[i]);
              }
 
-Modify the ``main()`` function to take a third argument for the name of the output image to create, and invoke the ``slice_and_desaturate()`` function:
+Modify the ``main()`` function to take a third argument for the name of the
+output image to create, and invoke the ``slice_and_desaturate()`` function:
 
 .. content-tabs::
 
@@ -608,7 +668,7 @@ Now build and run the example, removing the ingested array from previous steps (
 
 This will create ``output.png`` in the current directory containing the sliced, desaturated image:
 
-.. figure:: ../figures/macaw-sliced.png
+.. figure:: figures/macaw-sliced.png
    :align: center
 
 

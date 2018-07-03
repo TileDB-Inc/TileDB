@@ -101,9 +101,12 @@ def generate_sidebar(conf, conf_api):
     write('Configuration Parameters', 'config')
     endl()
 
+    toctree('Real-world Examples')
+    write('Dense Image Data', 'dense-image-data')
+    write('Sparse Geospatial Data', 'sparse-geospatial-data')
+    endl()
+
     toctree('Further Reading')
-    write('Dense data ingestion', 'tutorials/dense-data-ingestion')
-    write('Sparse data ingestion', 'tutorials/sparse-data-ingestion')
     write('Using TileDB statistics', 'tutorials/using-tiledb-statistics')
     write('Performance factors', 'tutorials/performance-factors')
     write('Storage Backends', 'futher-reading/storage-backends')
