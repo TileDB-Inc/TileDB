@@ -233,16 +233,11 @@ Status ArraySchema::check() const {
         "Array schema check failed; No dimensions provided"));
 
   if (array_type_ == ArrayType::DENSE) {
-    if (domain_->null_tile_extents()) {
-      return LOG_STATUS(
-          Status::ArraySchemaError("Array schema check failed; Dense arrays "
-                                   "can not have null tile extents"));
-    }
     if (domain_->type() == Datatype::FLOAT32 ||
         domain_->type() == Datatype::FLOAT64) {
       return LOG_STATUS(
           Status::ArraySchemaError("Array schema check failed; Dense arrays "
-                                   "can not have floating point domains"));
+                                   "cannot have floating point domains"));
     }
     if (attribute_num_ == 0) {
       return LOG_STATUS(Status::ArraySchemaError(
@@ -640,11 +635,8 @@ Status ArraySchema::set_domain(Domain* domain) {
         "Cannot set domain; The array is defined as a key-value store");
 
   if (array_type_ == ArrayType::DENSE) {
-    if (domain->null_tile_extents()) {
-      return LOG_STATUS(
-          Status::ArraySchemaError("Cannot set domain; Dense arrays "
-                                   "cannot have null tile extents"));
-    }
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+
     if (domain->type() == Datatype::FLOAT32 ||
         domain->type() == Datatype::FLOAT64) {
       return LOG_STATUS(

@@ -1301,15 +1301,13 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
  * **Example:**
  *
  * @code{.c}
- * uint64_t tile_extent;
+ * void* tile_extent;
  * tiledb_dimension_get_tile_extent(ctx, dim, &tile_extent);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param dim The dimension.
- * @param tile_extent The tile extent to be retrieved. Note that the defined
- * type of input `tile_extent` must be the same as the dimension type, otherwise
- *     the behavior is unpredictable (it will probably segfault).
+ * @param tile_extent The tile extent (pointer) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
