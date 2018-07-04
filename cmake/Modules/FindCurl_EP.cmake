@@ -78,8 +78,15 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   set(TILEDB_CURL_LIBS "-ldl -lpthread")
   configure_file(
     "${TILEDB_CMAKE_INPUTS_DIR}/configure-curl.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/configure-curl.sh"
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/configure-curl.sh"
     @ONLY
+  )
+  file(COPY
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/configure-curl.sh"
+    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+    FILE_PERMISSIONS
+      OWNER_READ OWNER_WRITE OWNER_EXECUTE
+      GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   )
 
   ExternalProject_Add(ep_curl
