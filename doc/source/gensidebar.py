@@ -101,16 +101,18 @@ def generate_sidebar(conf, conf_api):
     write('Configuration Parameters', 'config')
     endl()
 
+    toctree('Performance')
+    write('Introduction', 'performance/introduction')
+    write('Using TileDB statistics', 'performance/using-tiledb-statistics')
+    write('Performance factors', 'performance/performance-factors')
+    endl()
+
     toctree('Real-world Examples')
     write('Dense Image Data', 'dense-image-data')
     write('Sparse Geospatial Data', 'sparse-geospatial-data')
     endl()
 
     toctree('Further Reading')
-    write('Using TileDB statistics', 'tutorials/using-tiledb-statistics')
-    write('Performance factors', 'tutorials/performance-factors')
-    write('Storage Backends', 'futher-reading/storage-backends')
-    write('Language Bindings', 'futher-reading/language-bindings')
     write('Concurrency', 'futher-reading/concurrency')
     write('Consistency', 'futher-reading/consistency')
     endl()

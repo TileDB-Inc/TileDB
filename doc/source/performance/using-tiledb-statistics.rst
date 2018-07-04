@@ -1,9 +1,15 @@
+.. _using-tiledb-statistics:
+
 Using TileDB Statistics
 =======================
 
-A lot of performance optimization for TileDB programs involves **minimizing wasted work**. TileDB comes with an internal statistics reporting system that can help identify potential areas of performance improvement for your TileDB programs, including reducing wasted work.
+A lot of performance optimization for TileDB programs involves **minimizing wasted work**.
+TileDB comes with an internal statistics reporting system that can help identify potential
+areas of performance improvement for your TileDB programs, including reducing wasted work.
 
-The TileDB statistics can be enabled and disabled at runtime, and a report can be dumped at any point. A typical situation is to enable the statistics immediately before submitting a query, submit the query, and then immediately dump the report. This can be done like so:
+The TileDB statistics can be enabled and disabled at runtime, and a report can be dumped at
+any point. A typical situation is to enable the statistics immediately before submitting a query,
+submit the query, and then immediately dump the report. This can be done like so:
 
 .. content-tabs::
 
@@ -17,7 +23,10 @@ The TileDB statistics can be enabled and disabled at runtime, and a report can b
          tiledb::Stats::dump(stdout);
          tiledb::Stats::disable();
 
-With the ``dump`` call, a report containing the gathered statistics will be printed. The report prints values of many individual counters, followed by a high-level summary printed at the end of the report. Typically the high-level summary contains the necessary information to make high-level performance tuning decisions. An example summary is shown below:
+With the ``dump`` call, a report containing the gathered statistics will be printed. The
+report prints values of many individual counters, followed by a high-level summary printed
+at the end of the report. Typically the summary contains the necessary information
+to make high-level performance tuning decisions. An example summary is shown below:
 
 .. code-block:: none
 
@@ -38,32 +47,74 @@ With the ``dump`` call, a report containing the gathered statistics will be prin
 
 Each item is explained separately below.
 
-**Hardware concurrency**: The amount of available hardware-level concurrency (cores plus hardware threads).
+Hardware concurrency
+    The amount of available hardware-level concurrency (cores plus hardware threads).
 
-**Read query submits**: The number of times a read query submit call was made.
+Read query submits
+    The number of times a read query submit call was made.
 
-**Tile cache hit ratio**: Ratio expressing utilization of the tile cache. The denominator indicates how many tiles in total were fetched from disk to satisfy a read query. After a tile is fetched once, it is placed in the internal tile cache; the numerator indicates how many tiles were requested in order to satisfy a read query that were hits in the tile cache. In the above example summary, a single tile was fetched (which missed the cache because it was the first access to that tile). If the same tile was accessed again for a subsequent query, it may hit in the cache, increasing the ratio 1/2. Higher ratios are better.
+Tile cache hit ratio
+    Ratio expressing utilization of the tile cache. The denominator indicates how many
+    tiles in total were fetched from disk to satisfy a read query. After a tile is fetched
+    once, it is placed in the internal tile cache; the numerator indicates how many tiles
+    were requested in order to satisfy a read query that were hits in the tile cache.
+    In the above example summary, a single tile was fetched (which missed the cache because
+    it was the first access to that tile). If the same tile was accessed again for a
+    subsequent query, it could hit in the cache, increasing the ratio 1/2. Higher ratios
+    are better.
 
-**Fixed-length tile data copy-to-read ratio**: Ratio expressing a measurement of wasted work for reads of fixed-length attributes. The denominator is the total number of (uncompressed) bytes of fixed-length attribute data fetched from disk. The numerator is the number of those bytes that were actually copied into the query buffers to satisfy a read query. In the above example, 1000 bytes of fixed-length data were read from disk and only 4 of those bytes were used to satisfy a read query, indicating a large amount of wasted work. Higher ratios are better.
+Fixed-length tile data copy-to-read ratio
+    Ratio expressing a measurement of wasted work for reads of fixed-length attributes.
+    The denominator is the total number of (uncompressed) bytes of fixed-length
+    attribute data fetched from disk. The numerator is the number of those bytes that
+    were actually copied into the query buffers to satisfy a read query. In the above
+    example, 1000 bytes of fixed-length data were read from disk and only 4 of those
+    bytes were used to satisfy a read query, indicating a large amount of wasted work.
+    Higher ratios are better.
 
-**Var-length tile data copy-to-read ratio**: This ratio is the same as the previous, but for variable-length attribute data. This are tracked separately because variable-length attributes can often be read performance bottlenecks, as their size is by nature unpredictable. Higher ratios are better.
+Var-length tile data copy-to-read ratio
+    This ratio is the same as the previous, but for variable-length attribute data.
+    This is tracked separately because variable-length attributes can often be read
+    performance bottlenecks, as their size is by nature unpredictable.
+    Higher ratios are better.
 
-**Total tile data copy-to-read ratio**: The overall copy-to-read ratio, where the numerator is the sum of the fixed- and variable-length numerators, and the denominator is the sum of the fixed- and variable-length denominators.
+Total tile data copy-to-read ratio
+    The overall copy-to-read ratio, where the numerator is the sum of the fixed- and
+    variable-length numerators, and the denominator is the sum of the fixed- and
+    variable-length denominators.
 
-**Read compression ratio**: Ratio expressing the effective compression ratio of data read from disk. The numerator is the total number of bytes returned from disk reads after decompressing. The denominator is the total number of bytes read from disk, whether compressed or decompressed. This is different than the tile copy-to-read ratios due to extra read operations for array and fragment metadata.
+Read compression ratio
+    Ratio expressing the effective compression ratio of data read from disk. The numerator
+    is the total number of bytes returned from disk reads after decompressing. The
+    denominator is the total number of bytes read from disk, whether compressed or
+    decompressed. This is different than the tile copy-to-read ratios due to extra
+    read operations for array and fragment metadata.
 
-**Write query submits**: The number of times a write query submit call was made.
+Write query submits
+    The number of times a write query submit call was made.
 
-**Tiles written**: The total number of tiles written, over all write queries.
+Tiles written
+    The total number of tiles written, over all write queries.
 
-**Write compression ratio**: Ratio expressing the effective compression ratio of data written to disk. The numerator is the total number of uncompressed bytes requested to be written to disk. The denominator is the total number of bytes written from disk, after compression.
+Write compression ratio
+    Ratio expressing the effective compression ratio of data written to disk. The numerator
+    is the total number of uncompressed bytes requested to be written to disk. The
+    denominator is the total number of bytes written from disk, after compression.
 
-Example (reads)
----------------
+Read example
+------------
 
-As a simple example we will examine the effect of several array tiling configurations have different dense read queries. Intuitively, the closer the tile shape aligns with the shape of read queries to the array, the higher performance we expect to see (due to less wasted work). We'll use the statistics report to gain an exact understanding of the wasted work.
+As a simple example, we will examine the effect of different dense array tiling
+configurations on read queries. Intuitively, the closer the tile shape aligns with
+the shape of read queries to the array, the higher performance we expect to see. This
+is because TileDB fetches from storage only tiles overlapping with the subarray query.
+The bigger the overlap between the subarray query and the tile(s), the less the
+wasted work. We will use the statistics report to gain an exact understanding of
+the wasted work.
 
-For each of the following experiments, we'll read from a 2D dense array containing about 0.5GB of data. The array will be 12,000 rows by 12,000 columns with a single uncompressed ``int32_t`` attribute. The array is created as follows:
+For each of the following experiments, we will read from a 2D dense array containing about
+0.5GB of data. The array will be 12,000 rows by 12,000 columns with a single uncompressed
+``int32_t`` attribute. The array is created as follows:
 
 .. content-tabs::
 
@@ -86,7 +137,8 @@ For each of the following experiments, we'll read from a 2D dense array containi
 
 The total array size on disk then is 12000 * 12000 * 4 bytes, about 550 MB.
 
-As a first example, suppose we configured the schema such that the array is composed of a single tile, i.e.:
+As a first example, suppose we configured the schema such that the array is composed
+of a single tile, i.e.:
 
 .. content-tabs::
 
@@ -100,7 +152,10 @@ As a first example, suppose we configured the schema such that the array is comp
             .add_dimension(
                 Dimension::create<uint32_t>(ctx, "col", {{1, 12000}}, 12000));
 
-With this array schema, **the entire array is composed of a single tile**. Thus, any read query (regardless of the subarray) will fetch the entire array from disk. We'll issue a read query of the first 3,000 rows (subarray ``[1:3000, 1:12000]``) which is 25% of the cells in the array:
+With this array schema, **the entire array is composed of a single tile**. Thus, any
+read query (regardless of the subarray) will fetch the entire array from disk.
+We will issue a read query of the first 3,000 rows (subarray ``[1:3000, 1:12000]``)
+which is 25% of the cells in the array:
 
 .. content-tabs::
 
@@ -141,9 +196,16 @@ The report printed for this experiment is:
       Tiles written: 0
       Write compression ratio: 0 / 0 bytes
 
-We can see that during the time the statistics were being gathered, there was a single read query submitted (our read query). The denominator of the tile cache hit ratio tells us that the single read query accessed a single tile, as expected (since the entire array is a single tile).
+We can see that during the time the statistics were being gathered, there was a single read query
+submitted (our read query). The denominator of the tile cache hit ratio tells us that the single
+read query accessed a single tile, as expected (since the entire array is a single tile).
 
-The "fixed-length tile data copy-to-read ratio" metric expresses the "wasted work" measurement, namely the number of bytes copied into our query buffers to fulfill the read query, divided by the number of bytes read from disk. In this experiment, 144,000,000 bytes (the ``int32_t`` fixed-length attribute values for the subarray ``[1:3000, 1:12000]``) were copied to the query buffers, but we read 576,000,000 tile data bytes from disk (576,000,000 = 12000 * 12000 * 4 bytes). This copy-to-read ratio tells us 25% of the work done by TileDB to satisfy the read query was useful.
+The "fixed-length tile data copy-to-read ratio" metric expresses the "wasted work" measurement,
+namely the number of bytes copied into our query buffers to fulfill the read query, divided by
+the number of bytes read from disk. In this experiment, 144,000,000 bytes (the ``int32_t``
+fixed-length attribute values for the subarray ``[1:3000, 1:12000]``) were copied to the query
+buffers, but we read 576,000,000 tile data bytes from disk (576,000,000 = 12000 * 12000 * 4 bytes).
+This copy-to-read ratio tells us 25% of the work done by TileDB to satisfy the read query was useful.
 
 Now let's modify the array such that **each row corresponds to a single tile**, i.e.:
 
@@ -159,7 +221,8 @@ Now let's modify the array such that **each row corresponds to a single tile**, 
             .add_dimension(
                 Dimension::create<uint32_t>(ctx, "col", {{1, 12000}}, 12000));
 
-When reading the subarray ``[1:3000, 1:12000]`` as in the previous experiment, we see the following statistics:
+When reading the subarray ``[1:3000, 1:12000]`` as in the previous experiment, we see
+the following statistics:
 
 .. code-block:: none
 
@@ -172,11 +235,19 @@ When reading the subarray ``[1:3000, 1:12000]`` as in the previous experiment, w
       Read compression ratio: 144384213 / 144035239 bytes (1.0x)
 
 
-Now the denominator of the tile cache hit ratio tells us that 3,000 tiles were accessed, which is as expected because we requested 3,000 rows. Note also the difference in the copy-to-read ratio. We still copy 144,000,000 bytes (since the query is the same), but the amount of data is reduced from the entire array to only the tiles (rows) required, which is 12000 * 3000 * 4 = 144,000,000 bytes. This yields a 100% useful work (no wasted work) metric.
+Now the denominator of the tile cache hit ratio tells us that 3,000 tiles were accessed,
+which is as expected because we requested 3,000 rows. Note also the difference in the
+copy-to-read ratio. We still copy 144,000,000 bytes (since the query is the same), but the
+amount of data is reduced from the entire array to only the tiles (rows) required, which is
+12000 * 3000 * 4 = 144,000,000 bytes. This yields a 100% useful work (no wasted work) metric.
 
-You may notice the "read compression ratio" metric reports more bytes read and used than just the tile data. The difference is accounted for by the array and fragment metadata, which TileDB must also read in order to determine which tiles should be read and decompressed. Metadata reads are not included in the "copy-to-read" ratios.
+You may notice the "read compression ratio" metric reports more bytes read and used than just
+the tile data. The difference is accounted for by the array and fragment metadata,
+which TileDB must also read in order to determine which tiles should be read and decompressed.
+Metadata reads are not included in the "copy-to-read" ratios.
 
-Finally, we will issue two overlapping queries back-to-back, first the same ``[1:3000, 1:12000]`` subarray followed by subarray ``[2000:4000, 1:12000]``, i.e.:
+Finally, we will issue two overlapping queries back-to-back, first the same
+``[1:3000, 1:12000]`` subarray followed by subarray ``[2000:4000, 1:12000]``, i.e.:
 
 .. content-tabs::
 
@@ -213,7 +284,11 @@ This yields the following report:
       Total tile data copy-to-read ratio: 240048000 / 240000000 bytes (100.0%)
       Read compression ratio: 240384213 / 240035239 bytes (1.0x)
 
-Several things have changed, most notably now there was one hit in the tile cache out of the 5,001 tiles accessed. However, we may have expected that 1,001 tiles would hit in the cache, since the two queries overlapped on rows 2000--3000 (inclusive). The reason we do not see this in the statistics is that the default tile cache configuration does not allow many tiles to be cached. Let's increase the tile cache size to 100MB and repeat the experiment:
+Several things have changed, most notably now there was one hit in the tile cache out of the
+5,001 tiles accessed. However, we may have expected that 1,001 tiles would hit in the cache,
+since the two queries overlapped on rows 2000--3000 (inclusive). The reason we do not see
+this in the statistics is that the default tile cache configuration does not allow many tiles
+to be cached. Let's increase the tile cache size to 100MB and repeat the experiment:
 
 .. content-tabs::
 
@@ -252,13 +327,17 @@ The stats summary now reads:
       Total tile data copy-to-read ratio: 240048000 / 203952000 bytes (117.7%)
       Read compression ratio: 204336213 / 203987239 bytes (1.0x)
 
-We now have many more hits in the cache. Also notice that the copy-to-read ratio now exceeds 100%, because although the same number of bytes were copied into the query buffers, many of those bytes did not have to be read from disk twice (as they were hits in the cache).
+We now have many more hits in the cache. Also notice that the copy-to-read ratio now exceeds
+100%, because although the same number of bytes were copied into the query buffers, many
+of those bytes did not have to be read from disk twice (as they were hits in the cache).
 
 
-Example (writes)
-----------------
+Write example
+-------------
 
-The write statistics summary is less in-depth compared to the read summary. We'll take a look at the example of writing the above 12,000 by 12,000 array with synthetic attribute data when each row is a single tile:
+The write statistics summary is less in-depth compared to the read summary. We will take a
+look at the example of writing the above 12,000 by 12,000 array with synthetic attribute
+data when each row is a single tile:
 
 .. content-tabs::
 
@@ -288,9 +367,13 @@ With attribute ``a`` uncompressed as before, this gives the following report in 
       Tiles written: 12000
       Write compression ratio: 576384146 / 576035065 bytes (1.0x)
 
-As expected, because each row was a single tile, writing 12,000 rows causes 12,000 tiles to be written. Because ``a`` is uncompressed, the compression ratio is nearly exactly 1.0x (the small amount of difference is due to the array and fragment metadata being compressed independently of the attribute).
+As expected, because each row was a single tile, writing 12,000 rows causes 12,000 tiles to
+be written. Because ``a`` is uncompressed, the compression ratio is nearly exactly
+1.0x (the small amount of difference is due to the array and fragment metadata
+being compressed independently of the attribute).
 
-If we enable compression on the ``a`` attribute when creating the array schema, e.g. bzip2 at its default compression level, we see the change in the report:
+If we enable compression on the ``a`` attribute when creating the array schema,
+e.g. bzip2 at its default compression level, we see the change in the report:
 
 .. code-block:: none
 
@@ -299,12 +382,19 @@ If we enable compression on the ``a`` attribute when creating the array schema, 
       Tiles written: 12000
       Write compression ratio: 576384146 / 52992598 bytes (10.9x)
 
-Because our synthetic array data is very predictable, bzip2 does a good job compressing it, and this is reflected in the reported compression ratio.
+Because our synthetic array data is very predictable, bzip2 does a good job compressing
+it, and this is reflected in the reported compression ratio.
 
-Full Statistics Report
+Full statistics report
 ----------------------
 
-In general, the summary report may be enough to reveal potential sources of large performance flaws. In addition, accompanying every stats dump is a list of all of the individual internal performance counters that TileDB tracks. Each of the counter names is prefixed with the system it measures, e.g. ``vfs_*`` counters measure details of the TileDB VFS system, ``compressor_*`` measures details of the various compressors, etc. Some of these counters are self-explanatory, and others are intended primarily for TileDB developers to diagnose internal performance issues.
+In general, the summary report may be enough to reveal potential sources of large
+performance flaws. In addition, accompanying every stats dump is a list of all of
+the individual internal performance counters that TileDB tracks. Each of the counter
+names is prefixed with the system it measures, e.g. ``vfs_*`` counters measure
+details of the TileDB VFS system, ``compressor_*`` measures details of the various
+compressors, etc. Some of these counters are self-explanatory, and others are intended
+primarily for TileDB developers to diagnose internal performance issues.
 
 .. toggle-header::
    :header: **Example full statistics report**
@@ -444,6 +534,11 @@ In general, the summary report may be enough to reveal potential sources of larg
       vfs_s3_num_parts_written,                                                    0
       vfs_s3_write_num_parallelized,                                               0
 
-The "function statistics" report the number of calls and amount of time in nanoseconds for each instrumented function. It is important to note that the time reported for these counters is aggregated across all threads. For example, if 10 threads invoke ``vfs_write`` and each thread's call takes 100 ns, then the reported time for ``vfs_write`` will be 1000 ns, even though the average time was much less.
+The "function statistics" report the number of calls and amount of time in nanoseconds for
+each instrumented function. It is important to note that the time reported for these
+counters is aggregated across all threads. For example, if 10 threads invoke ``vfs_write``
+and each thread's call takes 100 ns, then the reported time for ``vfs_write``
+will be 1000 ns, even though the average time was much less.
 
-The "counter statistics" report the values of individual counters. The summary statistics are directly derived from these counter statistics.
+The "counter statistics" report the values of individual counters. The summary statistics
+are directly derived from these counter statistics.
