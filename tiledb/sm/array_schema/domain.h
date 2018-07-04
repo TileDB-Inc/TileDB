@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/status.h"
@@ -535,6 +536,12 @@ class Domain {
   Status serialize(Buffer* buff);
 
   /**
+   * For every dimension that has a null tile extent, it sets
+   * the tile extent to that dimension domain range.
+   */
+  Status set_null_tile_extents_to_range();
+
+  /**
    * Returns the type of overlap of the input subarrays.
    *
    * @tparam T The types of the subarrays.
@@ -568,27 +575,6 @@ class Domain {
       const T* subarray_b,
       T* overlap_subarray,
       bool* overlap) const;
-
-  /**
-   * Checks the order of the input coordinates. First the tile order is checked
-   * (which, in case of non-regular tiles, is always the same), breaking the
-   * tie by checking the cell order.
-   *
-   * @tparam T The coordinates type.
-   * @param coords_a The first input coordinates.
-   * @param coords_b The second input coordinates.
-   * @param tile_coords This is an auxiliary input that helps in calculating the
-   *     tile id. It is strongly advised that the caller initializes this
-   *     parameter once and calls the function many times with the same
-   *     auxiliary input to improve performance.
-   * @return One of the following:
-   *    - -1 if the first coordinates precede the second
-   *    -  0 if the two coordinates are identical
-   *    - +1 if the first coordinates succeed the second
-   */
-  template <class T>
-  int tile_cell_order_cmp(
-      const T* coords_a, const T* coords_b, T* tile_coords) const;
 
   /** Returns the tile extents. */
   const void* tile_extents() const;
@@ -649,25 +635,6 @@ class Domain {
    * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
-   * @param tile_coords This is an auxiliary input that helps in calculating the
-   *     tile id. It is strongly advised that the caller initializes this
-   *     parameter once and calls the function many times with the same
-   *     auxiliary input to improve performance.
-   * @return One of the following:
-   *    - -1 if the first coordinates precede the second on the tile order
-   *    -  0 if the two coordinates have the same tile order
-   *    - +1 if the first coordinates succeed the second on the tile order
-   */
-  template <class T>
-  int tile_order_cmp(
-      const T* coords_a, const T* coords_b, T* tile_coords) const;
-
-  /**
-   * Checks the tile order of the input coordinates.
-   *
-   * @tparam T The coordinates type.
-   * @param coords_a The first input coordinates.
-   * @param coords_b The second input coordinates.
    * @return One of the following:
    *    - -1 if the first coordinates precede the second on the tile order
    *    -  0 if the two coordinates have the same tile order
@@ -690,12 +657,6 @@ class Domain {
   template <class T>
   int tile_order_cmp_tile_coords(
       const T* tile_coords_a, const T* tile_coords_b) const;
-
-  /** Return the number of cells in a column tile slab of an input subarray. */
-  uint64_t tile_slab_col_cell_num(const void* subarray) const;
-
-  /** Return the number of cells in a row tile slab of an input subarray. */
-  uint64_t tile_slab_row_cell_num(const void* subarray) const;
 
   /** Returns the dimensions type. */
   Datatype type() const;

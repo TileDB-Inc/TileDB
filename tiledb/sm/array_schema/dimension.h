@@ -110,6 +110,21 @@ class Dimension {
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
 
+  /**
+   * If the tile extent is `null`, this function sets the
+   * the tile extent to the dimension domain range.
+   */
+  Status set_null_tile_extent_to_range();
+
+  /**
+   * If the tile extent is `null`, this function sets the
+   * the tile extent to the dimension domain range.
+   *
+   * @tparam T The dimension type.
+   */
+  template <class T>
+  Status set_null_tile_extent_to_range();
+
   /** Returns the tile extent. */
   void* tile_extent() const;
 

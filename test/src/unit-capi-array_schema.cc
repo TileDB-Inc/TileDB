@@ -837,13 +837,111 @@ TEST_CASE_METHOD(
       ctx_, "d3", TILEDB_UINT64, dim_domain, &tile_extent, &d3);
   CHECK(rc == TILEDB_ERR);
 
-  // Create dimension with invalud domain - error
+  // Create dimension with invalid domain - error
   tiledb_dimension_t* d4;
   dim_domain[0] = 10;
   dim_domain[1] = 1;
   rc = tiledb_dimension_alloc(
       ctx_, "d4", TILEDB_UINT64, dim_domain, &tile_extent, &d4);
   CHECK(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test dense array schema with null tile extent",
+    "[capi], [array-schema]") {
+  // Create dimension with null extent
+  tiledb_dimension_t* d1;
+  uint64_t dim_domain[] = {0, UINT64_MAX - 1};
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, dim_domain, nullptr, &d1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "", ATTR_TYPE, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Get domain
+  tiledb_domain_t* domain_get;
+  rc = tiledb_array_schema_get_domain(ctx_, array_schema, &domain_get);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get dimensions
+  tiledb_dimension_t* d1_get;
+  rc = tiledb_domain_get_dimension_from_index(ctx_, domain_get, 0, &d1_get);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get extent
+  void* tile_extent;
+  rc = tiledb_dimension_get_tile_extent(ctx_, d1_get, &tile_extent);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(*((uint64_t*)tile_extent) == UINT64_MAX);
+
+  // Clean up
+  tiledb_attribute_free(&attr1);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d1_get);
+  tiledb_domain_free(&domain);
+  tiledb_domain_free(&domain_get);
+  tiledb_array_schema_free(&array_schema);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test dense array schema with null tile extent with domain overflow",
+    "[capi], [array-schema]") {
+  // Create dimension with null extent
+  tiledb_dimension_t* d1;
+  uint64_t dim_domain[] = {0, UINT64_MAX};
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, dim_domain, nullptr, &d1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 
   // Clean up
   tiledb_dimension_free(&d1);

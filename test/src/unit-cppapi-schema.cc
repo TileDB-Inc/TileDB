@@ -162,4 +162,14 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
         dom.add_dimension(Dimension::create<uint64_t>(ctx, "d2", {{0, 10}})),
         TileDBError);
   }
+
+  SECTION("Dimensions without tile extent") {
+    Domain dom(ctx);
+    dom.add_dimension(Dimension::create<int>(ctx, "d1", {{0, 10}}));
+    ArraySchema schema(ctx, TILEDB_DENSE);
+    schema.set_domain(dom);
+
+    auto dom_get = schema.domain();
+    CHECK(dom_get.dimensions()[0].tile_extent<int>() == 11);
+  }
 }

@@ -241,6 +241,75 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
   return st;
 }
 
+Status Dimension::set_null_tile_extent_to_range() {
+  // Applicable only to null extents
+  if (tile_extent_ != nullptr)
+    return Status::Ok();
+
+  // Note: this is applicable only to dense array, which are allowed
+  // only integer domains
+
+  switch (type_) {
+    case Datatype::INT32:
+      return set_null_tile_extent_to_range<int>();
+    case Datatype::INT64:
+      return set_null_tile_extent_to_range<int64_t>();
+    case Datatype::INT8:
+      return set_null_tile_extent_to_range<int8_t>();
+    case Datatype::UINT8:
+      return set_null_tile_extent_to_range<uint8_t>();
+    case Datatype::INT16:
+      return set_null_tile_extent_to_range<int16_t>();
+    case Datatype::UINT16:
+      return set_null_tile_extent_to_range<uint16_t>();
+    case Datatype::UINT32:
+      return set_null_tile_extent_to_range<uint32_t>();
+    case Datatype::UINT64:
+      return set_null_tile_extent_to_range<uint64_t>();
+    default:
+      return LOG_STATUS(
+          Status::DimensionError("Cannot set null tile extent to domain range; "
+                                 "Invalid dimension domain type"));
+  }
+
+  assert(false);
+  return LOG_STATUS(
+      Status::DimensionError("Cannot set null tile extent to domain range; "
+                             "Unsupported dimension type"));
+}
+
+template <class T>
+Status Dimension::set_null_tile_extent_to_range() {
+  // Applicable only to null extents
+  if (tile_extent_ != nullptr)
+    return Status::Ok();
+
+  // Calculate new tile extent equal to domain range
+  auto domain = (T*)domain_;
+  T tile_extent = domain[1] - domain[0];
+
+  // Check overflow before adding 1
+  if (tile_extent == std::numeric_limits<T>::max())
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set null tile extent to domain range; "
+        "Domain range exceeds domain type max numeric limit"));
+  ++tile_extent;
+  // After this, tile_extent = domain[1] - domain[0] + 1, which is the correct
+  // domain range
+
+  // Allocate space
+  uint64_t type_size = sizeof(T);
+  tile_extent_ = std::malloc(type_size);
+  if (tile_extent_ == nullptr) {
+    return LOG_STATUS(
+        Status::DimensionError("Cannot set null tile extent to domain range; "
+                               "Memory allocation error"));
+  }
+  std::memcpy(tile_extent_, &tile_extent, type_size);
+
+  return Status::Ok();
+}
+
 void* Dimension::tile_extent() const {
   return tile_extent_;
 }

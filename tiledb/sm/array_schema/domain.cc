@@ -925,6 +925,12 @@ Status Domain::serialize(Buffer* buff) {
   return Status::Ok();
 }
 
+Status Domain::set_null_tile_extents_to_range() {
+  for (auto& d : dimensions_)
+    RETURN_NOT_OK(d->set_null_tile_extent_to_range());
+  return Status::Ok();
+}
+
 template <class T>
 void Domain::subarray_overlap(
     const T* subarray_a,
@@ -1008,18 +1014,6 @@ unsigned int Domain::subarray_overlap(
 
   // Return
   return overlap;
-}
-
-template <class T>
-int Domain::tile_cell_order_cmp(
-    const T* coords_a, const T* coords_b, T* tile_coords) const {
-  // Check tile order
-  int tile_cmp = tile_order_cmp(coords_a, coords_b, tile_coords);
-  if (tile_cmp)
-    return tile_cmp;
-
-  // Check cell order
-  return cell_order_cmp(coords_a, coords_b);
 }
 
 const void* Domain::tile_extent(unsigned int i) const {
@@ -1158,23 +1152,6 @@ uint64_t Domain::tile_num(const T* range) const {
 }
 
 template <class T>
-int Domain::tile_order_cmp(
-    const T* coords_a, const T* coords_b, T* tile_coords) const {
-  // Calculate tile ids
-  auto id_a = tile_id(coords_a, tile_coords);
-  auto id_b = tile_id(coords_b, tile_coords);
-
-  // Compare ids
-  if (id_a < id_b)
-    return -1;
-  if (id_a > id_b)
-    return 1;
-
-  // id_a == id_b
-  return 0;
-}
-
-template <class T>
 int Domain::tile_order_cmp(const T* coords_a, const T* coords_b) const {
   if (tile_extents_ == nullptr)
     return 0;
@@ -1242,86 +1219,6 @@ int Domain::tile_order_cmp_tile_coords(
     }
   }
 
-  return 0;
-}
-
-uint64_t Domain::tile_slab_col_cell_num(const void* subarray) const {
-  // Invoke the proper templated function
-  switch (type_) {
-    case Datatype::INT32:
-      return tile_slab_col_cell_num(static_cast<const int*>(subarray));
-    case Datatype::INT64:
-      return tile_slab_col_cell_num(static_cast<const int64_t*>(subarray));
-    case Datatype::FLOAT32:
-      return tile_slab_col_cell_num(static_cast<const float*>(subarray));
-    case Datatype::FLOAT64:
-      return tile_slab_col_cell_num(static_cast<const double*>(subarray));
-    case Datatype::INT8:
-      return tile_slab_col_cell_num(static_cast<const int8_t*>(subarray));
-    case Datatype::UINT8:
-      return tile_slab_col_cell_num(static_cast<const uint8_t*>(subarray));
-    case Datatype::INT16:
-      return tile_slab_col_cell_num(static_cast<const int16_t*>(subarray));
-    case Datatype::UINT16:
-      return tile_slab_col_cell_num(static_cast<const uint16_t*>(subarray));
-    case Datatype::UINT32:
-      return tile_slab_col_cell_num(static_cast<const uint32_t*>(subarray));
-    case Datatype::UINT64:
-      return tile_slab_col_cell_num(static_cast<const uint64_t*>(subarray));
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain types
-      assert(false);
-      return 0;
-  }
-
-  assert(false);
-  return 0;
-}
-
-uint64_t Domain::tile_slab_row_cell_num(const void* subarray) const {
-  // Invoke the proper templated function
-  switch (type_) {
-    case Datatype::INT32:
-      return tile_slab_row_cell_num(static_cast<const int*>(subarray));
-    case Datatype::INT64:
-      return tile_slab_row_cell_num(static_cast<const int64_t*>(subarray));
-    case Datatype::FLOAT32:
-      return tile_slab_row_cell_num(static_cast<const float*>(subarray));
-    case Datatype::FLOAT64:
-      return tile_slab_row_cell_num(static_cast<const double*>(subarray));
-    case Datatype::INT8:
-      return tile_slab_row_cell_num(static_cast<const int8_t*>(subarray));
-    case Datatype::UINT8:
-      return tile_slab_row_cell_num(static_cast<const uint8_t*>(subarray));
-    case Datatype::INT16:
-      return tile_slab_row_cell_num(static_cast<const int16_t*>(subarray));
-    case Datatype::UINT16:
-      return tile_slab_row_cell_num(static_cast<const uint16_t*>(subarray));
-    case Datatype::UINT32:
-      return tile_slab_row_cell_num(static_cast<const uint32_t*>(subarray));
-    case Datatype::UINT64:
-      return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain types
-      assert(false);
-      return 0;
-  }
-
-  assert(false);
   return 0;
 }
 
@@ -2296,39 +2193,6 @@ template void Domain::subarray_overlap<uint64_t>(
     const uint64_t* subarray_b,
     uint64_t* overlap_subarray,
     bool* in) const;
-
-template int Domain::tile_cell_order_cmp<int>(
-    const int* coords_a, const int* coords_b, int* tile_coords) const;
-template int Domain::tile_cell_order_cmp<int64_t>(
-    const int64_t* coords_a,
-    const int64_t* coords_b,
-    int64_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<float>(
-    const float* coords_a, const float* coords_b, float* tile_coords) const;
-template int Domain::tile_cell_order_cmp<double>(
-    const double* coords_a, const double* coords_b, double* tile_coords) const;
-template int Domain::tile_cell_order_cmp<int8_t>(
-    const int8_t* coords_a, const int8_t* coords_b, int8_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<uint8_t>(
-    const uint8_t* coords_a,
-    const uint8_t* coords_b,
-    uint8_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<int16_t>(
-    const int16_t* coords_a,
-    const int16_t* coords_b,
-    int16_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<uint16_t>(
-    const uint16_t* coords_a,
-    const uint16_t* coords_b,
-    uint16_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<uint32_t>(
-    const uint32_t* coords_a,
-    const uint32_t* coords_b,
-    uint32_t* tile_coords) const;
-template int Domain::tile_cell_order_cmp<uint64_t>(
-    const uint64_t* coords_a,
-    const uint64_t* coords_b,
-    uint64_t* tile_coords) const;
 
 template int Domain::tile_order_cmp<int8_t>(
     const int8_t* coords_a, const int8_t* coords_b) const;
