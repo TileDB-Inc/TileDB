@@ -68,7 +68,13 @@ TEST_CASE("C++ API: Utils", "[cppapi]") {
     auto grouped = group_by_cell(buf, 3);
     auto ungrouped = ungroup_var_buffer(grouped);
     CHECK(ungrouped.first.size() == 3);
+    CHECK(ungrouped.first[0] == 0);
+    CHECK(ungrouped.first[1] == 3);
+    CHECK(ungrouped.first[2] == 6);
     CHECK(ungrouped.second.size() == 9);
+    for (int i = 0; i < 9; i++) {
+      CHECK(ungrouped.second[i] == buf[i]);
+    }
   }
 
   SECTION("Flatten") {
