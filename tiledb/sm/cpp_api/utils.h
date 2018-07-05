@@ -44,19 +44,45 @@
 namespace tiledb {
 
 /**
- * Convert an (offset, data) vector pair into a single vector of vectors.
+ * Convert an (offset, data) vector pair into a single vector of vectors. Useful
+ * for "unpacking" variable-length attribute data from a read query result in
+ * offsets + data form to a vector of per-cell data.
  *
- * @tparam T underlying attribute datatype
- * @tparam E Cell type. usually std::vector<T> or std::string. Must be
- *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<uint64_t> offsets;
+ * std::vector<char> data;
+ * ...
+ * query.set_buffer("attr_name", offsets, data);
+ * query.submit();
+ * ...
+ * auto attr_results = query.result_buffer_elements()["attr_name"];
+ *
+ * // cell_vals length will be equal to the number of cells read by the query.
+ * // Each element is a std::vector<char> with each cell's data for "attr_name"
+ * auto cell_vals =
+ *   group_by_cell(offsets, data, attr_results.first, attr_results.second);
+ *
+ * // Reconstruct a std::string value for the first cell:
+ * std::string cell_val(cell_vals[0].data(), cell_vals[0].size());
+ * @endcode
+ *
+ * @note This function, and the other utility functions, copy all of the input
+ * data when constructing their return values. Thus, these may be expensive
+ * for large amounts of data.
+ *
+ * @tparam T Underlying attribute datatype
+ * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
+ *         constructable by ``{std::vector<T>::iterator,
+ *         std::vector<T>::iterator}``
  * @param offsets Offsets vector. This specifies the start offset of each
  *        cell in the data vector.
- * @param data Data vector. Flat data buffer will cell contents.
+ * @param data Data vector. Flat data buffer with cell contents.
  * @param num_offsets Number of offset elements populated by query. If the
- *        entire buffer is to be grouped, use offsets.size().
+ *        entire buffer is to be grouped, pass ``offsets.size()``.
  * @param num_data Number of data elements populated by query. If the
- *        entire buffer is to be grouped, use data.size().
- * @return std::vector<E>
+ *        entire buffer is to be grouped, pass ``data.size()``.
+ * @return ``std::vector<E>``
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
@@ -76,32 +102,38 @@ std::vector<E> group_by_cell(
 }
 
 /**
- * Convert an (offset, data) vector pair into a single vector of vectors.
- * Uses whole vectors.
+ * Convert an (offset, data) vector pair into a single vector of vectors. Useful
+ * for "unpacking" variable-length attribute data from a read query result in
+ * offsets + data form to a vector of per-cell data.
  *
- * @tparam T underlying attribute datatype
- * @tparam E Cell type. usually std::vector<T> or std::string. Must be
- *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
- * @param offsets Offsets vector
- * @param data Data vector
- * @return std::vector<E>
- */
-template <typename T, typename E = typename std::vector<T>>
-std::vector<E> group_by_cell(
-    const std::vector<uint64_t>& offsets, const std::vector<T>& data) {
-  return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
-}
-
-/**
- * Convert an (offset, data) vector pair into a single vector of vectors.
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<uint64_t> offsets;
+ * std::vector<char> data;
+ * ...
+ * query.set_buffer("attr_name", offsets, data);
+ * query.submit();
+ * ...
+ * auto attr_results = query.result_buffer_elements()["attr_name"];
  *
- * @tparam T underlying attribute datatype
- * @tparam E Cell type. usually std::vector<T> or std::string. Must be
- *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
- * @param buff pair<offset_vec, data_vec>
- * @param num_offsets Number of offset elements populated by query
+ * // cell_vals length will be equal to the number of cells read by the query.
+ * // Each element is a std::vector<char> with each cell's data for "attr_name"
+ * auto cell_vals =
+ *   group_by_cell(std::make_pair(offsets, data),
+ *                 attr_results.first, attr_results.second);
+ *
+ * // Reconstruct a std::string value for the first cell:
+ * std::string cell_val(cell_vals[0].data(), cell_vals[0].size());
+ * @endcode
+ *
+ * @tparam T Underlying attribute datatype
+ * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
+ *         constructable by ``{std::vector<T>::iterator,
+ * std::vector<T>::iterator}``
+ * @param buff Pair of (offset_vec, data_vec) to be grouped.
+ * @param num_offsets Number of offset elements populated by query.
  * @param num_data Number of data elements populated by query.
- * @return std::vector<E>
+ * @return ``std::vector<E>``
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
@@ -112,16 +144,56 @@ std::vector<E> group_by_cell(
 }
 
 /**
- * Group by cell at runtime.
+ * Convert a generic (offset, data) vector pair into a single vector of vectors.
  *
- * @tparam T underlying attribute datatype
- * @tparam E Cell type. usually std::vector<T> or std::string. Must be
- *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
- * @param buff data buffer
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * std::vector<uint64_t> offsets = {0, 5};
+ * auto grouped = group_by_cell<char, std::string>(offsets, buf);
+ * // grouped.size() == 2
+ * // grouped[0] == "abcde"
+ * // grouped[1] == "fghi"
+ * @endcode
+ *
+ * @tparam T Underlying attribute datatype
+ * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
+ *         constructable by ``{std::vector<T>::iterator,
+ * std::vector<T>::iterator}``
+ * @param offsets Offsets vector
+ * @param data Data vector
+ * @return ``std::vector<E>``
+ */
+template <typename T, typename E = typename std::vector<T>>
+std::vector<E> group_by_cell(
+    const std::vector<uint64_t>& offsets, const std::vector<T>& data) {
+  return group_by_cell<T, E>(offsets, data, offsets.size(), data.size());
+}
+
+/**
+ * Convert a vector of elements into a vector of fixed-length vectors.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * auto grouped = group_by_cell(buf, 3, buf.size());
+ * std::string grp1(grouped[0].begin(), grouped[0].end());  // "abc"
+ * std::string grp2(grouped[1].begin(), grouped[1].end());  // "def"
+ * std::string grp3(grouped[2].begin(), grouped[2].end());  // "ghi"
+ *
+ * // Throws an exception because buf.size() is not divisible by 2:
+ * // group_by_cell(buf, 2, buf.size());
+ * @endcode
+ *
+ * @tparam T Underlying attribute datatype
+ * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
+ *         constructable by ``{std::vector<T>::iterator,
+ * std::vector<T>::iterator}``
+ * @param buff Data buffer to group
  * @param el_per_cell Number of elements per cell to group together
  * @param num_buff Number of elements populated by query. To group whole buffer,
- *     use buff.size()
- * @return std::vector<E>
+ *     pass ``buff.size()``.
+ * @return ``std::vector<E>``
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(
@@ -139,14 +211,27 @@ std::vector<E> group_by_cell(
 }
 
 /**
- * Group by cell at runtime. Uses whole data buffer.
+ * Convert a vector of elements into a vector of fixed-length vectors.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * auto grouped = group_by_cell(buf, 3);
+ * std::string grp1(grouped[0].begin(), grouped[0].end());  // "abc"
+ * std::string grp2(grouped[1].begin(), grouped[1].end());  // "def"
+ * std::string grp3(grouped[2].begin(), grouped[2].end());  // "ghi"
+ *
+ * // Throws an exception because buf.size() is not divisible by 2:
+ * // group_by_cell(buf, 2);
+ * @endcode
  *
  * @tparam T Element type
- * @tparam E Cell type. usually std::vector<T> or std::string. Must be
- *         constructable by {std::vector<T>::iterator, std::vector<T>::iterator}
- * @param buff data buffer
+ * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
+ *         constructable by ``{std::vector<T>::iterator,
+ * std::vector<T>::iterator}``
+ * @param buff Data buffer to group
  * @param el_per_cell Number of elements per cell to group together
- * @return std::vector<E>
+ * @return ``std::vector<E>``
  */
 template <typename T, typename E = typename std::vector<T>>
 std::vector<E> group_by_cell(const std::vector<T>& buff, uint64_t el_per_cell) {
@@ -154,13 +239,25 @@ std::vector<E> group_by_cell(const std::vector<T>& buff, uint64_t el_per_cell) {
 }
 
 /**
- * Group a data vector into a a vector of arrays
+ * Convert a vector of elements into a vector of fixed-length arrays.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * auto grouped = group_by_cell<3>(buf, buf.size());
+ * std::string grp1(grouped[0].begin(), grouped[0].end());  // "abc"
+ * std::string grp2(grouped[1].begin(), grouped[1].end());  // "def"
+ * std::string grp3(grouped[2].begin(), grouped[2].end());  // "ghi"
+ *
+ * // Throws an exception because buf.size() is not divisible by 2:
+ * // group_by_cell<2>(buf, buf.size());
+ * @endcode
  *
  * @tparam N Elements per cell
  * @tparam T Array element type
- * @param buff data buff to group
+ * @param buff Data buffer to group
  * @param num_buff Number of elements in buff that were populated by the query.
- * @return std::vector<std::array<T,N>>
+ * @return ``std::vector<std::array<T,N>>``
  */
 template <uint64_t N, typename T>
 std::vector<std::array<T, N>> group_by_cell(
@@ -182,13 +279,24 @@ std::vector<std::array<T, N>> group_by_cell(
 }
 
 /**
- * Group a data vector into a a vector of arrays.
- * Uses whole data buffer.
+ * Convert a vector of elements into a vector of fixed-length arrays.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * auto grouped = group_by_cell<3>(buf);
+ * std::string grp1(grouped[0].begin(), grouped[0].end());  // "abc"
+ * std::string grp2(grouped[1].begin(), grouped[1].end());  // "def"
+ * std::string grp3(grouped[2].begin(), grouped[2].end());  // "ghi"
+ *
+ * // Throws an exception because buf.size() is not divisible by 2:
+ * // group_by_cell<2>(buf);
+ * @endcode
  *
  * @tparam N Elements per cell
  * @tparam T Array element type
  * @param buff data buff to group
- * @return std::vector<std::array<T,N>>
+ * @return ``std::vector<std::array<T,N>>``
  */
 template <uint64_t N, typename T>
 std::vector<std::array<T, N>> group_by_cell(const std::vector<T>& buff) {
@@ -198,11 +306,23 @@ std::vector<std::array<T, N>> group_by_cell(const std::vector<T>& buff) {
 /**
  * Unpack a vector of variable sized attributes into a data and offset buffer.
  *
- * @tparam T Vector type. T::value_type is considered the underlying data
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<char> buf = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+ * // For the sake of example, group buf into groups of 3 elements:
+ * auto grouped = group_by_cell(buf, 3);
+ * // Ungroup into offsets, data pair.
+ * auto p = ungroup_var_buffer(grouped);
+ * auto offsets = p.first;  // {0, 3, 6}
+ * auto data = p.second;   // {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'}
+ * @endcode
+ *
+ * @tparam T Vector type. ``T::value_type`` is considered the underlying data
  * element type. Should be vector or string.
- * @tparam R T::value_type, deduced
- * @param data data to unpack
- * @return pair where .first is the offset buffer, and .second is data buffer
+ * @tparam R ``T::value_type``, deduced
+ * @param data Data buffer to unpack
+ * @return pair where ``.first`` is the offset buffer, and ``.second`` is data
+ * buffer
  */
 
 template <typename T, typename R = typename T::value_type>
@@ -219,11 +339,22 @@ std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
 }
 
 /**
- * Take a vector-of-vectors and flatten it into a single vector.
+ * Convert a vector-of-vectors and flatten it into a single vector.
+ *
+ * **Example:**
+ * @code{.cpp}
+ * std::vector<std::string> v = {"a", "bb", "ccc"};
+ * auto flat_v = flatten(v);
+ * std::string s(flat_v.begin(), flat_v.end()); // "abbccc"
+ *
+ * std::vector<std::vector<double>> d = {{1.2, 2.1}, {2.3, 3.2}, {3.4, 4.3}};
+ * auto flat_d = flatten(d);  // {1.2, 2.1, 2.3, 3.2, 3.4, 4.3};
+ * @endcode
+ *
  * @tparam V Container type
  * @tparam T Return element type
- * @param vec
- * @return std::vector<T>
+ * @param vec Vector to flatten
+ * @return ``std::vector<T>``
  */
 template <typename V, typename T = typename V::value_type::value_type>
 std::vector<T> flatten(const V& vec) {
