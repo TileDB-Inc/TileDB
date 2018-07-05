@@ -75,10 +75,10 @@ test_script:
        $host.SetShouldExit($LastExitCode)
     }
 
-    rm -Recurse -Force my_dense_array
+    rm -Recurse -Force quickstart_dense
 
     try {
-      .\examples\cpp_api\Release\tiledb_dense_create_cpp.exe
+      .\examples\cpp_api\Release\quickstart_dense_cpp.exe
     } catch {
        Write-Host "C++ API example failed."
        $host.SetShouldExit(1)
