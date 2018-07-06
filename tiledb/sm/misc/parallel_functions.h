@@ -34,6 +34,7 @@
 #define TILEDB_PARALLEL_FUNCTIONS_H
 
 #include <algorithm>
+#include <cassert>
 
 #ifdef HAVE_TBB
 #include <tbb/parallel_for.h>
@@ -59,6 +60,22 @@ void parallel_sort(IterT begin, IterT end, CmpT cmp) {
   tbb::parallel_sort(begin, end, cmp);
 #else
   std::sort(begin, end, cmp);
+#endif
+}
+
+/**
+ * Sort the given iterator range, possibly in parallel.
+ *
+ * @tparam IterT Iterator type
+ * @param begin Beginning of range to sort (inclusive).
+ * @param end End of range to sort (exclusive).
+ */
+template <typename IterT>
+void parallel_sort(IterT begin, IterT end) {
+#ifdef HAVE_TBB
+  tbb::parallel_sort(begin, end);
+#else
+  std::sort(begin, end);
 #endif
 }
 
