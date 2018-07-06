@@ -3,8 +3,27 @@
 Installation
 ============
 
+TileDB is distributed in two main components: the **core TileDB library** and
+the **high-level APIs**. The core library implements all TileDB functionality,
+and the APIs define the interfaces to the core library for different programming
+languages.
+
+Depending on your intended use of TileDB, you will need to install the core
+TileDB library, or one of the high-level APIs such as for Python, or both. When
+installing a high-level TileDB API, the corresponding installation of the core
+library has been automated where possible.
+
 Quick Installation
 ------------------
+
+Apart from these quick installation steps, the rest of this page details how to
+configure and build custom installations of the core TileDB library itself from
+source or the pre-built packages.
+
+C or C++ APIs
+~~~~~~~~~~~~~
+
+To use TileDB with the `C or C++ <https://github.com/TileDB-Inc/TileDB>`_ APIs:
 
 .. content-tabs::
 
@@ -44,10 +63,24 @@ Quick Installation
          # https://github.com/TileDB-Inc/TileDB/releases
 
 Once you install TileDB, visit the :ref:`Usage <usage>` page for how to build
-and link your programs against TileDB. The rest of this page details how to
-configure and build custom installations of TileDB from source or the pre-built
-packages.
+and link your programs against TileDB.
 
+Python API
+~~~~~~~~~~
+
+To use TileDB with the `Python <https://github.com/TileDB-Inc/TileDB-Py>`_
+API:
+
+.. code-block:: bash
+
+    # Pip:
+    $ pip install tiledb
+
+    # Or Conda:
+    $ conda install -c conda-forge tiledb-py
+
+Both the Pip and Conda packages will automatically build and locally install
+the core library in addition to the Python interface.
 
 Pre-built Packages
 ------------------
@@ -55,8 +88,8 @@ Pre-built Packages
 Homebrew
 ~~~~~~~~
 
-TileDB can be installed easily using the Homebrew package manager for macOS.
-Install instructions for Homebrew are provided on the
+The core TileDB library can be installed easily using the Homebrew package
+manager for macOS. Install instructions for Homebrew are provided on the
 `package manager's website <https://brew.sh/>`_.
 
 To install the latest stable version of TileDB
@@ -404,8 +437,8 @@ installation prefix alongside ``libtiledb.a``.
    ``TILEDB_TBB_SHARED=ON`` CMake variable. Note that the ``libtbb.so`` shared
    library will then be installed alongside ``libtiledb.so`` during installation.
 
-Python Bindings
----------------
+Python API
+----------
 
-Build and install instructions for Python bindings can be found at the
+Full build and install instructions for the Python API can be found at the
 `TileDB-Inc/TileDB-Py <https://github.com/TileDB-Inc/TileDB-Py>`_ repo.

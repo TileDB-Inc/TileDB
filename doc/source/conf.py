@@ -71,9 +71,9 @@ copyright = '2018 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '1.2'
+version = '1.3'
 # The full version, including alpha/beta/rc tags.
-release = '1.2.0'
+release = '1.3.0'
 
 # Breathe extension configuration.
 tiledb_dir = '../../'
@@ -192,7 +192,9 @@ def replaceText(app, docname, source):
     source[0] = result
 
 text_replacements = {
-    "{source_examples_path}" : "../../examples"
+    "{source_examples_path}" : "../../examples",
+    "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/dev",
+    "{tiledb_py_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Py/blob/dev"
 }
 
 # -- Custom setup -----------------------------------------------------------
