@@ -26,7 +26,7 @@ recommended that you read the tutorials on sparse arrays and tiling first.
        .. tab-container:: cpp
           :title: C++
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/multiple_writes_sparse.cc
+          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_sparse_multiple.cc
              :language: c++
              :linenos:
 
