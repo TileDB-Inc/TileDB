@@ -3,7 +3,8 @@
 Usage
 =====
 
-This page contains instructions on how to build and link a program against TileDB.
+This page contains instructions on how to build and link a program against the
+core TileDB library to use the C or C++ API.
 
 macOS or Linux
 --------------
