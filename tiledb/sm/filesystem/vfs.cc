@@ -33,6 +33,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/config.h"
@@ -617,7 +618,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + parent.to_string()));
   }
-  std::sort(paths.begin(), paths.end());
+  parallel_sort(paths.begin(), paths.end());
   for (auto& path : paths) {
     uris->emplace_back(path);
   }
