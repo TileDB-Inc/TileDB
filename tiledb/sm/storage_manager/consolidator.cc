@@ -241,7 +241,7 @@ Status Consolidator::create_buffers(
   // Calculate number of buffers
   *buffer_num = 0;
   for (unsigned int i = 0; i < attribute_num; ++i)
-    *buffer_num += (array_schema->var_size(i)) ? 2 : 1;
+    *buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
   *buffer_num += (dense) ? 0 : 1;
 
   // Create buffers

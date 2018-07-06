@@ -122,16 +122,6 @@ class ArraySchema {
       unsigned num_attributes,
       std::vector<std::string>* normalized_names);
 
-  /**
-   * Returns the id of the input attribute.
-   *
-   * @param attribute The attribute name whose id will be retrieved.
-   * @param The attribute id if the input attribute exists.
-   * @return Status
-   *
-   */
-  Status attribute_id(const std::string& attribute, unsigned int* id) const;
-
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;
 
@@ -223,9 +213,6 @@ class ArraySchema {
   Datatype type(const std::string& attribute) const;
 
   /** Returns *true* if the indicated attribute has variable-sized values. */
-  bool var_size(unsigned int attribute_id) const;
-
-  /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(const std::string& attribute) const;
 
   /** Adds an attribute, copying the input. */
@@ -301,9 +288,6 @@ class ArraySchema {
   /** It maps each attribute name to the corresponding attribute object. */
   std::unordered_map<std::string, Attribute*> attribute_map_;
 
-  /** The number of attributes. */
-  unsigned int attribute_num_;
-
   /** The array attributes. */
   std::vector<Attribute*> attributes_;
   /**
@@ -318,8 +302,8 @@ class ArraySchema {
    */
   Layout cell_order_;
 
-  /** Stores the size of every attribute (plus coordinates in the end). */
-  std::vector<uint64_t> cell_sizes_;
+  /** Stores the size of every attribute (plus coordinates). */
+  std::unordered_map<std::string, uint64_t> cell_sizes_;
 
   /** The compression type used for offsets of variable-sized cells. */
   Compressor cell_var_offsets_compression_;
@@ -372,7 +356,7 @@ class ArraySchema {
   void clear();
 
   /** Computes and returns the size of an attribute (or coordinates). */
-  uint64_t compute_cell_size(unsigned int attribute_id) const;
+  uint64_t compute_cell_size(const std::string& attribute) const;
 
   /** Sets the special key-value attributes. */
   Status set_kv_attributes();

@@ -337,6 +337,7 @@ class Array {
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> ret;
     auto schema_attrs = schema_.attributes();
     uint64_t attr_size, type_size;
+
     for (const auto& a : schema_attrs) {
       auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
       auto name = a.second.name();

@@ -176,6 +176,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
 
       auto buff_el = array.max_buffer_elements(subarray);
+
       CHECK(buff_el.count("a1"));
       CHECK(buff_el.count("a2"));
       CHECK(buff_el.count("a3"));

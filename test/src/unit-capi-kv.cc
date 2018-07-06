@@ -1069,3 +1069,34 @@ TEST_CASE_METHOD(
   check_interleaved_read_write(array_name);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    KVFx,
+    "C API: Test key-value, get schema from opened kv",
+    "[capi], [kv], [kv-get-schema]") {
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_kv(array_name);
+
+  // Open kv
+  tiledb_kv_t* kv;
+  int rc = tiledb_kv_alloc(ctx_, array_name.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_open(ctx_, kv, nullptr, 0);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get schema
+  tiledb_kv_schema_t* kv_schema;
+  rc = tiledb_kv_get_schema(ctx_, kv, &kv_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_schema_check(ctx_, kv_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_kv_free(&kv);
+  tiledb_kv_schema_free(&kv_schema);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
