@@ -3371,3 +3371,36 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, check if open",
+    "[capi], [dense], [dense-is-open]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "dense_is_open/";
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  int is_open;
+  rc = tiledb_array_is_open(ctx_, array, &is_open);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_open == 0);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_is_open(ctx_, array, &is_open);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_open == 1);
+
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_is_open(ctx_, array, &is_open);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_open == 0);
+
+  remove_temp_dir(temp_dir);
+}

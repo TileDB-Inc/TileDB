@@ -1975,6 +1975,16 @@ int tiledb_array_open(
   return TILEDB_OK;
 }
 
+int tiledb_array_is_open(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, int* is_open) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_open = (int)array->is_open_;
+
+  return TILEDB_OK;
+}
+
 int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;

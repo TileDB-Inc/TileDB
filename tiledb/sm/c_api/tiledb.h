@@ -2192,6 +2192,17 @@ TILEDB_EXPORT int tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * Checks if the array is open.
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to be checked.
+ * @param is_open `1` if the array is open and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_is_open(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, int* is_open);
+
+/**
  * Reopens a TileDB array (the array must be already open). This is useful
  * when the array got updated after it got opened and the `tiledb_array_t`
  * object got created. To sync-up with the updates, the user must either

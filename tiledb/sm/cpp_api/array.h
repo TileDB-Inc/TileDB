@@ -110,6 +110,14 @@ class Array {
     close();
   }
 
+  /** Checks if the array is open. */
+  bool is_open() const {
+    auto& ctx = ctx_.get();
+    int open = 0;
+    ctx.handle_error(tiledb_array_is_open(ctx, array_.get(), &open));
+    return bool(open);
+  }
+
   /** Returns the array URI. */
   std::string uri() const {
     return uri_;
