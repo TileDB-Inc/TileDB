@@ -48,7 +48,6 @@ namespace sm {
 /* ****************************** */
 
 ArraySchema::ArraySchema() {
-  attribute_num_ = 0;
   array_uri_ = URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
@@ -66,7 +65,6 @@ ArraySchema::ArraySchema() {
 
 ArraySchema::ArraySchema(ArrayType array_type)
     : array_type_(array_type) {
-  attribute_num_ = 0;
   array_uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -84,13 +82,24 @@ ArraySchema::ArraySchema(ArrayType array_type)
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
-  // Copy attributes using add_attribute
-  for (auto attribute : array_schema->attributes_)
-    add_attribute(attribute);
-  // Initialize domain_ to nullptr for safe delete in set_domain()
+  is_kv_ = array_schema->is_kv_;
   domain_ = nullptr;
-  // Set domain
-  set_domain(array_schema->domain_);
+
+  if (is_kv_) {
+    set_kv_attributes();
+    set_kv_domain();
+  } else {
+    set_domain(array_schema->domain_);
+  }
+
+  for (auto attr : array_schema->attributes_) {
+    if (attr->name() != constants::key_attr_name &&
+        attr->name() != constants::key_type_attr_name)
+      add_attribute(attr);
+  }
+  for (const auto& attr : attributes_)
+    attribute_map_[attr->name()] = attr;
+
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_sizes_ = array_schema->cell_sizes_;
@@ -100,7 +109,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   coords_compression_ = array_schema->coords_compression_;
   coords_compression_level_ = array_schema->coords_compression_level_;
   coords_size_ = array_schema->coords_size_;
-  is_kv_ = array_schema->is_kv_;
   tile_order_ = array_schema->tile_order_;
   std::memcpy(version_, array_schema->version_, sizeof(version_));
 }
@@ -166,29 +174,8 @@ Status ArraySchema::attribute_names_normalized(
   return Status::Ok();
 }
 
-Status ArraySchema::attribute_id(
-    const std::string& attribute_name, unsigned int* id) const {
-  bool anonymous = attribute_name.empty();
-  // Special case - coordinates
-  if (attribute_name == constants::coords) {
-    *id = attribute_num_;
-    return Status::Ok();
-  }
-  for (unsigned int i = 0; i < attribute_num_; ++i) {
-    auto attr = attributes_[i];
-    if ((attr->name() == attribute_name) ||
-        (anonymous && attr->is_anonymous())) {
-      *id = i;
-      return Status::Ok();
-    }
-  }
-  return LOG_STATUS(Status::ArraySchemaError(
-      std::string("Attribute not found: ") +
-      (anonymous ? "<anonymous>" : attribute_name)));
-}
-
 unsigned int ArraySchema::attribute_num() const {
-  return attribute_num_;
+  return (unsigned)attributes_.size();
 }
 
 const std::vector<Attribute*>& ArraySchema::attributes() const {
@@ -204,9 +191,9 @@ Layout ArraySchema::cell_order() const {
 }
 
 uint64_t ArraySchema::cell_size(const std::string& attribute) const {
-  unsigned attribute_id = 0;
-  this->attribute_id(attribute, &attribute_id);
-  return cell_sizes_[attribute_id];
+  auto cell_size_it = cell_sizes_.find(attribute);
+  assert(cell_size_it != cell_sizes_.end());
+  return cell_size_it->second;
 }
 
 unsigned int ArraySchema::cell_val_num(const std::string& attribute) const {
@@ -239,7 +226,7 @@ Status ArraySchema::check() const {
           Status::ArraySchemaError("Array schema check failed; Dense arrays "
                                    "cannot have floating point domains"));
     }
-    if (attribute_num_ == 0) {
+    if (attributes_.size() == 0) {
       return LOG_STATUS(Status::ArraySchemaError(
           "Array schema check failed; No attributes provided"));
     }
@@ -398,7 +385,8 @@ Status ArraySchema::serialize(Buffer* buff) const {
   domain_->serialize(buff);
 
   // Write attributes
-  RETURN_NOT_OK(buff->write(&attribute_num_, sizeof(unsigned int)));
+  auto attribute_num = attributes_.size();
+  RETURN_NOT_OK(buff->write(&attribute_num, sizeof(unsigned int)));
   for (auto& attr : attributes_)
     RETURN_NOT_OK(attr->serialize(buff));
 
@@ -410,11 +398,12 @@ Layout ArraySchema::tile_order() const {
 }
 
 Datatype ArraySchema::type(unsigned int i) const {
-  if (i > attribute_num_) {
+  auto attribute_num = attributes_.size();
+  if (i > attribute_num) {
     LOG_ERROR("Cannot retrieve type; Invalid attribute id");
     assert(false);
   }
-  if (i < attribute_num_)
+  if (i < attribute_num)
     return attributes_[i]->type();
   return domain_->type();
 }
@@ -428,13 +417,6 @@ Datatype ArraySchema::type(const std::string& attribute) const {
     return Datatype::INT8;  // Return something ad hoc
   }
   return it->second->type();
-}
-
-bool ArraySchema::var_size(unsigned int attribute_id) const {
-  assert(attribute_id <= attribute_num_);
-  if (attribute_id < attribute_num_)
-    return attributes_[attribute_id]->cell_val_num() == constants::var_num;
-  return false;
 }
 
 bool ArraySchema::var_size(const std::string& attribute) const {
@@ -473,7 +455,6 @@ Status ArraySchema::add_attribute(const Attribute* attr) {
     new_attr = new Attribute(attr);
   }
   attributes_.emplace_back(new_attr);
-  ++attribute_num_;
   return Status::Ok();
 }
 
@@ -534,8 +515,9 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   RETURN_NOT_OK(domain_->deserialize(buff));
 
   // Load attributes
-  RETURN_NOT_OK(buff->read(&attribute_num_, sizeof(unsigned int)));
-  for (unsigned int i = 0; i < attribute_num_; ++i) {
+  unsigned attribute_num;
+  RETURN_NOT_OK(buff->read(&attribute_num, sizeof(unsigned int)));
+  for (unsigned int i = 0; i < attribute_num; ++i) {
     auto attr = new Attribute();
     attr->deserialize(buff);
     attributes_.emplace_back(attr);
@@ -559,17 +541,17 @@ Status ArraySchema::init() {
   // Initialize domain
   RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
 
-  // Set cell sizes
-  cell_sizes_.resize(attribute_num_ + 1);
-  for (unsigned int i = 0; i <= attribute_num_; ++i)
-    cell_sizes_[i] = compute_cell_size(i);
-
-  auto dim_num = domain_->dim_num();
-  coords_size_ = dim_num * datatype_size(coords_type());
-
   attribute_map_.clear();
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
+
+  // Set cell sizes
+  for (auto& attr : attributes_)
+    cell_sizes_[attr->name()] = compute_cell_size(attr->name());
+  cell_sizes_[constants::coords] = compute_cell_size(constants::coords);
+
+  auto dim_num = domain_->dim_num();
+  coords_size_ = dim_num * datatype_size(coords_type());
 
   // Success
   return Status::Ok();
@@ -631,8 +613,8 @@ void ArraySchema::set_cell_order(Layout cell_order) {
 Status ArraySchema::set_domain(Domain* domain) {
   // Check if the array is a key-value store
   if (is_kv_)
-    return Status::ArraySchemaError(
-        "Cannot set domain; The array is defined as a key-value store");
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set domain; The array is defined as a key-value store"));
 
   if (array_type_ == ArrayType::DENSE) {
     RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
@@ -673,7 +655,7 @@ bool ArraySchema::check_attribute_dimension_names() const {
     names.insert(attr->name());
   for (unsigned int i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension(i)->name());
-  return (names.size() == attribute_num_ + dim_num);
+  return (names.size() == attributes_.size() + dim_num);
 }
 
 bool ArraySchema::check_double_delta_compressor() const {
@@ -704,27 +686,32 @@ void ArraySchema::clear() {
   for (auto& attr : attributes_)
     delete attr;
   attributes_.clear();
-  attribute_num_ = 0;
 
   delete domain_;
   domain_ = nullptr;
 }
 
-uint64_t ArraySchema::compute_cell_size(unsigned int i) const {
-  assert(i <= attribute_num_);
+uint64_t ArraySchema::compute_cell_size(const std::string& attribute) const {
+  // Handle coordinates first
+  if (attribute == constants::coords) {
+    auto dim_num = domain_->dim_num();
+    auto type = coords_type();
+    return dim_num * datatype_size(type);
+  }
+
+  // Handle attributes
+  auto attr_it = attribute_map_.find(attribute);
+  assert(attr_it != attribute_map_.end());
+  auto attr = attr_it->second;
 
   // For easy reference
-  unsigned int cell_val_num =
-      (i < attribute_num_) ? attributes_[i]->cell_val_num() : 0;
-  Datatype type = (i < attribute_num_) ? attributes_[i]->type() : coords_type();
-  auto dim_num = domain_->dim_num();
+  auto cell_val_num = attr->cell_val_num();
+  auto type = attr->type();
 
   // Variable-sized cell
-  if (i < attribute_num_ && cell_val_num == constants::var_num)
-    return constants::var_size;
-
-  return (i < attribute_num_) ? cell_val_num * datatype_size(type) :
-                                dim_num * datatype_size(type);
+  return (cell_val_num == constants::var_num) ?
+             constants::var_size :
+             cell_val_num * datatype_size(type);
 }
 
 Status ArraySchema::set_kv_attributes() {
@@ -734,14 +721,12 @@ Status ArraySchema::set_kv_attributes() {
   key_attr->set_cell_val_num(constants::var_num);
   key_attr->set_compressor(constants::key_attr_compressor);
   attributes_.emplace_back(key_attr);
-  ++attribute_num_;
 
   // Add key type attribute
   auto key_type_attr = new Attribute(
       constants::key_type_attr_name, constants::key_type_attr_type);
   key_type_attr->set_compressor(constants::key_type_attr_compressor);
   attributes_.emplace_back(key_type_attr);
-  ++attribute_num_;
 
   return Status::Ok();
 }

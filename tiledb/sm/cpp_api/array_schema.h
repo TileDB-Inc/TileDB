@@ -110,7 +110,7 @@ class ArraySchema : public Schema {
     tiledb_array_schema_t* schema;
     ctx.handle_error(tiledb_array_schema_alloc(ctx, type, &schema));
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
-  };
+  }
 
   /**
    * Loads the schema of an existing array.
@@ -129,7 +129,7 @@ class ArraySchema : public Schema {
     tiledb_array_schema_t* schema;
     ctx.handle_error(tiledb_array_schema_load(ctx, uri.c_str(), &schema));
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
-  };
+  }
 
   /**
    * Loads the schema of an existing array with the input C array
@@ -141,7 +141,7 @@ class ArraySchema : public Schema {
   ArraySchema(const Context& ctx, tiledb_array_schema_t* schema)
       : Schema(ctx) {
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
-  };
+  }
 
   ArraySchema() = default;
   ArraySchema(const ArraySchema&) = default;

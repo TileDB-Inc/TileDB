@@ -3402,5 +3402,41 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(is_open == 0);
 
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, get schema from opened array",
+    "[capi], [dense], [dense-get-schema]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "dense_get_schema/";
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Get schema
+  tiledb_array_schema_t* schema;
+  rc = tiledb_array_get_schema(ctx_, array, &schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_check(ctx_, schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_array_schema_free(&schema);
+
   remove_temp_dir(temp_dir);
 }

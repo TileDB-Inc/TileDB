@@ -120,12 +120,6 @@ struct tiledb_attribute_t {
 
 struct tiledb_array_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
-  // This variable determines whether to delete `array_schema_` or not.
-  // If this struct object was created with `tiledb_array_schema_alloc`,
-  // `should_delete` must is set to `true`. If it was created with
-  // `tiledb_array_get_schema`, then `should_delete` is set to `false`,
-  // since `array_schema_` is borrowed in this case from the open array.
-  bool should_delete_;
 };
 
 struct tiledb_dimension_t {
@@ -143,13 +137,6 @@ struct tiledb_query_t {
 
 struct tiledb_kv_schema_t {
   tiledb::sm::ArraySchema* array_schema_;
-  // This variable determines whether to delete `kv_schema_` or not.
-  // If this struct object was created with `tiledb_kv_schema_alloc`,
-  // `should_delete` must is set to `true`. If it was created with
-  // `tiledb_kv_get_schema`, then `should_delete` is set to `false`,
-  // since `kv_schema_` is borrowed in this case from the open array
-  // of the kv object.
-  bool should_delete_;
 };
 
 struct tiledb_kv_t {
@@ -1239,16 +1226,13 @@ int tiledb_array_schema_alloc(
     return TILEDB_OOM;
   }
 
-  (*array_schema)->should_delete_ = true;
-
   // Success
   return TILEDB_OK;
 }
 
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   if (array_schema != nullptr && *array_schema != nullptr) {
-    if ((*array_schema)->should_delete_)
-      delete (*array_schema)->array_schema_;
+    delete (*array_schema)->array_schema_;
     delete *array_schema;
     *array_schema = nullptr;
   }
@@ -2065,8 +2049,8 @@ int tiledb_array_get_schema(
     return TILEDB_OOM;
   }
 
-  (*array_schema)->array_schema_ = array->open_array_->array_schema();
-  (*array_schema)->should_delete_ = false;
+  (*array_schema)->array_schema_ =
+      new tiledb::sm::ArraySchema(array->open_array_->array_schema());
 
   return TILEDB_OK;
 }
@@ -2458,16 +2442,13 @@ int tiledb_kv_schema_alloc(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
     return TILEDB_ERR;
   }
 
-  (*kv_schema)->should_delete_ = true;
-
   // Success
   return TILEDB_OK;
 }
 
 void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema) {
   if (kv_schema != nullptr && *kv_schema != nullptr) {
-    if ((*kv_schema)->should_delete_)
-      delete (*kv_schema)->array_schema_;
+    delete (*kv_schema)->array_schema_;
     delete *kv_schema;
     *kv_schema = nullptr;
   }
@@ -3101,8 +3082,8 @@ int tiledb_kv_get_schema(
     return TILEDB_OOM;
   }
 
-  (*kv_schema)->array_schema_ = kv->kv_->open_array_for_reads()->array_schema();
-  (*kv_schema)->should_delete_ = false;
+  (*kv_schema)->array_schema_ = new tiledb::sm::ArraySchema(
+      kv->kv_->open_array_for_reads()->array_schema());
 
   return TILEDB_OK;
 }
