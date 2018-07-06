@@ -55,6 +55,7 @@
 * Added `tiledb_array_reopen`
 * Added `tiledb_kv_reopen`
 * Added `tiledb_array_max_buffer_size` and `tiledb_array_max_buffer_size_var`
+* Added `tiledb_array_is_open`
 
 ### C++ API
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
@@ -83,6 +84,7 @@
 * Added `Map::reopen`
 * Added `Stats` class (wraps C API `tiledb_stats_*` functions)
 * Added `Config::save_to_file`
+* Added `Array::is_open`
 
 ## Breaking changes
 

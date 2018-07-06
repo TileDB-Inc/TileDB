@@ -130,10 +130,13 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     try {
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
       CHECK(array.query_type() == TILEDB_READ);
+      CHECK(array.is_open());
 
       // Close and reopen
       array.close();
+      CHECK(!array.is_open());
       array.open(TILEDB_WRITE);
+      CHECK(array.is_open());
       CHECK(array.query_type() == TILEDB_WRITE);
 
       Query query(ctx, array, TILEDB_WRITE);
