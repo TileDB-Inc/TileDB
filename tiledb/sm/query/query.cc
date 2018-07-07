@@ -51,6 +51,7 @@ Query::Query(
     : type_(type) {
   callback_ = nullptr;
   callback_data_ = nullptr;
+  layout_ = Layout::ROW_MAJOR;
   status_ = QueryStatus::UNINITIALIZED;
   set_storage_manager(storage_manager);
   set_array_schema(array_schema);
@@ -119,9 +120,7 @@ URI Query::last_fragment_uri() const {
 }
 
 Layout Query::layout() const {
-  if (type_ == QueryType::WRITE)
-    return writer_.layout();
-  return reader_.layout();
+  return layout_;
 }
 
 Status Query::cancel() {
@@ -231,6 +230,7 @@ void Query::set_fragment_uri(const URI& fragment_uri) {
 }
 
 Status Query::set_layout(Layout layout) {
+  layout_ = layout;
   if (type_ == QueryType::WRITE)
     return writer_.set_layout(layout);
   return reader_.set_layout(layout);

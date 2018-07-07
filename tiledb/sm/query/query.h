@@ -210,6 +210,9 @@ class Query {
   /** The data input to the callback function. */
   void* callback_data_;
 
+  /** The layout of the cells in the result of the subarray. */
+  Layout layout_;
+
   /** The query status. */
   QueryStatus status_;
 

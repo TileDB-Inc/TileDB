@@ -139,10 +139,10 @@ Status Reader::init() {
   if (read_state_.subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
 
+  optimize_layout_for_1D();
+
   if (!fragment_metadata_.empty())
     RETURN_NOT_OK(init_read_state());
-
-  read_state_.initialized_ = true;
 
   return Status::Ok();
 }
@@ -1427,6 +1427,8 @@ Status Reader::init_read_state() {
         subarray_size);
   }
 
+  read_state_.initialized_ = true;
+
   return Status::Ok();
 }
 
@@ -1555,6 +1557,11 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_init_tile_fragment_dense_cell_range_iters);
+}
+
+void Reader::optimize_layout_for_1D() {
+  if (array_schema_->dim_num() == 1)
+    layout_ = Layout::GLOBAL_ORDER;
 }
 
 template <class T>
