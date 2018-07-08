@@ -47,10 +47,6 @@ void create_array() {
   // Create a TileDB context.
   Context ctx;
 
-  // If the array already exists on disk, return immediately.
-  if (Object::object(ctx, array_name).type() == Object::Type::Array)
-    return;
-
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4]
   // and space tiles 2x2
   Domain domain(ctx);
@@ -98,9 +94,8 @@ void read_array() {
   const std::vector<int> subarray = {1, 4, 1, 4};
 
   // Prepare the buffers
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  std::vector<int> data(16);
+  std::vector<int> coords(32);
 
   // Prepare the query
   Query query(ctx, array);
@@ -114,8 +109,7 @@ void read_array() {
   array.close();
 
   // Print out the results.
-  auto result_num = (int)query.result_buffer_elements()["a"].second;
-  for (int r = 0; r < result_num; r++) {
+  for (int r = 0; r < 16; r++) {
     int i = coords[2 * r], j = coords[2 * r + 1];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
@@ -123,8 +117,13 @@ void read_array() {
 }
 
 int main() {
-  create_array();
-  write_array();
+  Context ctx;
+  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    create_array();
+    write_array();
+  }
+
   read_array();
+
   return 0;
 }

@@ -166,10 +166,6 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
            // Create a TileDB context.
            Context ctx;
 
-           // If the array already exists on disk, return immediately.
-           if (Object::object(ctx, array_name).type() == Object::Type::Array)
-             return;
-
            // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
            Domain domain(ctx);
            domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
@@ -551,10 +547,6 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
          void create_array() {
            // Create a TileDB context.
            Context ctx;
-
-           // If the array already exists on disk, return immediately.
-           if (Object::object(ctx, array_name).type() == Object::Type::Array)
-             return;
 
            // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
            Domain domain(ctx);
@@ -1000,12 +992,7 @@ First let's create a simple map with a single integer attribute.
              # Create a TileDB context
              ctx = tiledb.Ctx()
 
-             # Check if the array already exists.
-             if tiledb.object_type(ctx, array_name) == "kv":
-                 print("KV Array already exists.")
-                 sys.exit(0)
-
-             # The KV array will have a single attribute "a" storing a string.
+             # The KV store will have a single attribute "a" storing a string.
              schema = tiledb.KVSchema(ctx, attrs=[tiledb.Attr(ctx, name="a", dtype=bytes)])
 
              # Create the (empty) array on disk.

@@ -64,7 +64,7 @@ test_script:
     $env:Path += ";$env:APPVEYOR_BUILD_FOLDER\dist\bin;..\externals\install\bin"
 
     try {
-      .\examples\c_api\Release\tiledb_dense_create_c.exe
+      .\examples\c_api\Release\quickstart_dense_c.exe
     } catch {
        Write-Host "C API example failed."
        $host.SetShouldExit(1)

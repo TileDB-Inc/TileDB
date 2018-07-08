@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_vfs_write.c
+ * @file   vfs.c
  *
  * @section LICENSE
  *
@@ -27,20 +27,68 @@
  *
  * @section DESCRIPTION
  *
- * Write to a file with VFS.
+ * This is a part of the TileDB quickstart tutorial:
+ *   https://docs.tiledb.io/en/latest/vfs.html
  *
- * Simply run:
- *
- * ```
- * $ ./tiledb_vfs_write_c
- * ```
- *
+ * This program explores the various TileDB VFS tools.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <tiledb/tiledb.h>
 
-int main() {
+void dirs_files() {
+  // Create TileDB context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(NULL, &ctx);
+
+  // Create TileDB VFS
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, NULL, &vfs);
+
+  // Create directory
+  int is_dir = 0;
+  tiledb_vfs_is_dir(ctx, vfs, "dir_A", &is_dir);
+  if (!is_dir) {
+    tiledb_vfs_create_dir(ctx, vfs, "dir_A");
+    printf("Created 'dir_A'\n");
+  } else {
+    printf("'dir_A' already exists\n");
+  }
+
+  // Creating an (empty) file
+  int is_file = 0;
+  tiledb_vfs_is_file(ctx, vfs, "dir_A/file_A", &is_file);
+  if (!is_file) {
+    tiledb_vfs_touch(ctx, vfs, "dir_A/file_A");
+    printf("Created empty file 'dir_A/file_A'\n");
+  } else {
+    printf("'dir_A/file_A' already exists\n");
+  }
+
+  // Getting the file size
+  uint64_t file_size;
+  tiledb_vfs_file_size(ctx, vfs, "dir_A/file_A", &file_size);
+  printf("File size for 'dir_A/file_A': %llu\n", file_size);
+
+  // Moving files (moving directories is similar)
+  printf("Moving file 'dir_A/file_A' to 'dir_A/file_B'\n");
+  tiledb_vfs_move_file(ctx, vfs, "dir_A/file_A", "dir_A/file_B");
+
+  // Deleting files and directories. Note that, in the case of directories,
+  // the function will delete all the contents of the directory (i.e., it
+  // works even for non-empty directories).
+  printf("Deleting 'dir_A/file_B' and 'dir_A'\n");
+  tiledb_vfs_remove_file(ctx, vfs, "dir_A/file_B");
+  tiledb_vfs_remove_dir(ctx, vfs, "dir_A");
+
+  // Clean up
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
+}
+
+void write() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -78,6 +126,35 @@ int main() {
   // Clean up
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
+}
 
-  return 0;
+void read() {
+  // Create TileDB context
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(NULL, &ctx);
+
+  // Create TileDB VFS
+  tiledb_vfs_t* vfs;
+  tiledb_vfs_alloc(ctx, NULL, &vfs);
+
+  // Read binary data
+  tiledb_vfs_fh_t* fh;
+  tiledb_vfs_open(ctx, vfs, "tiledb_vfs.bin", TILEDB_VFS_READ, &fh);
+  float f1;
+  char s1[13];
+  s1[12] = '\0';
+  tiledb_vfs_read(ctx, fh, 0, &f1, sizeof(float));
+  tiledb_vfs_read(ctx, fh, sizeof(float), s1, 12);
+  printf("Binary read:\n%.1f\n%s\n", f1, s1);
+
+  // Clean up
+  tiledb_vfs_fh_free(&fh);
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
+}
+
+int main() {
+  dirs_files();
+  write();
+  read();
 }

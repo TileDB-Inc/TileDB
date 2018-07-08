@@ -1,5 +1,5 @@
 /**
- * @file   global_order_sparse.cc
+ * @file   writing_sparse_global.cc
  *
  * @section LICENSE
  *

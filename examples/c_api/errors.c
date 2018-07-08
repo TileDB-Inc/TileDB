@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_vfs_read.c
+ * @file   errors.c
  *
  * @section LICENSE
  *
@@ -27,44 +27,55 @@
  *
  * @section DESCRIPTION
  *
- * Read from a file with VFS.
+ * This is a part of the TileDB quickstart tutorial:
+ *   https://docs.tiledb.io/en/latest/errors.html
  *
- * You need to run the following to make it work:
- *
- * ```
- * $ ./tiledb_vfs_write_c
- * $ ./tiledb_vfs_read_c
- * Binary read:
- * 153.1
- * abcdefghijkl
- * ```
+ * This example shows how to catch errors in TileDB.
  */
 
+#include <stdio.h>
 #include <tiledb/tiledb.h>
+
+void print_error(tiledb_ctx_t* ctx);
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
 
-  // Create TileDB VFS
-  tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, NULL, &vfs);
+  // Create a group. The code below creates a group `my_group` and prints a
+  // message because (normally) it will succeed.
+  int rc = tiledb_group_create(ctx, "my_group");
+  if (rc == TILEDB_OK)
+    printf("Group created successfully!\n");
+  else if (rc == TILEDB_ERR)
+    print_error(ctx);
 
-  // Read binary data
-  tiledb_vfs_fh_t* fh;
-  tiledb_vfs_open(ctx, vfs, "tiledb_vfs.bin", TILEDB_VFS_READ, &fh);
-  float f1;
-  char s1[13];
-  s1[12] = '\0';
-  tiledb_vfs_read(ctx, fh, 0, &f1, sizeof(float));
-  tiledb_vfs_read(ctx, fh, sizeof(float), s1, 12);
-  printf("Binary read:\n%.1f\n%s\n", f1, s1);
+  // Create the same group again. f we attempt to create the same group
+  // `my_group` as shown below, TileDB will return an error and the example
+  // will call function `print_error`.
+  rc = tiledb_group_create(ctx, "my_group");
+  if (rc == TILEDB_OK)
+    printf("Group created successfully!\n");
+  else if (rc == TILEDB_ERR)
+    print_error(ctx);
 
   // Clean up
-  tiledb_vfs_fh_free(&fh);
-  tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 
   return 0;
+}
+
+void print_error(tiledb_ctx_t* ctx) {
+  // Retrieve the last error that occurred
+  tiledb_error_t* err = NULL;
+  tiledb_ctx_get_last_error(ctx, &err);
+
+  // Retrieve the error message by invoking `tiledb_error_message`.
+  const char* msg;
+  tiledb_error_message(err, &msg);
+  printf("%s\n", msg);
+
+  // Clean up
+  tiledb_error_free(&err);
 }

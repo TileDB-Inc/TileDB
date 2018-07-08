@@ -14,7 +14,7 @@ recommended that you read the tutorials on sparse arrays and tiling first.
   -----------------------------  -------------------------------------------------------------
   ``quickstart_sparse``          |quickstartsparsecpp| |quickstartsparsepy|
   ``writing_sparse_multiple``    |writingsparsemultiplecpp| |writingsparsemultiplepy|
-  ``global_order_sparse``        |globalordersparsecpp|
+  ``writing_sparse_global``      |writingsparseglobalcpp|
   =============================  =============================================================
 
 
@@ -38,10 +38,10 @@ recommended that you read the tutorials on sparse arrays and tiling first.
    :width: 25
    :target: {tiledb_py_src_root_url}/examples/writing_sparse_multiple.py
 
-.. |globalordersparsecpp| image:: ../figures/cpp.png
+.. |writingsparseglobalcpp| image:: ../figures/cpp.png
    :align: middle
    :width: 30
-   :target: {tiledb_src_root_url}/examples/cpp_api/global_order_sparse.cc
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_sparse_global.cc
 
 
 Basic concepts and definitions
@@ -263,7 +263,7 @@ You set the global layout simply as follows:
 
         query.set_layout(TILEDB_GLOBAL_ORDER);
 
-In the ``global_order_sparse`` example we show you how to slightly
+In the ``writing_sparse_global`` example we show you how to slightly
 modify ``quickstart_sparse``, such that
 you write in global layout instead of unordered, submitting
 two write queries instead of one. Here are the two write queries for the same
@@ -312,12 +312,12 @@ array directory:
 
 .. code-block:: bash
 
-   $ g++ -std=c++11 global_order_sparse.cc -o global_order_sparse_cpp -ltiledb
-   $ ./global_order_sparse_cpp
+   $ g++ -std=c++11 writing_sparse_global.cc -o writing_sparse_global_cpp -ltiledb
+   $ ./writing_sparse_global_cpp
    Cell (1, 1) has data 1
    Cell (2, 3) has data 3
    Cell (2, 4) has data 2
-   $ ls -l global_order_sparse/
+   $ ls -l writing_sparse_global/
    total 8
    drwx------  5 stavros  staff  170 Jun 22 16:29 __01b96bab96a64c3b86e06417c16b0618_1529699391758
    -rwx------  1 stavros  staff  115 Jun 22 16:29 __array_schema.tdb
