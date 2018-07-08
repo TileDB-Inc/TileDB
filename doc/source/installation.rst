@@ -68,8 +68,7 @@ and link your programs against TileDB.
 Python API
 ~~~~~~~~~~
 
-To use TileDB with the `Python <https://github.com/TileDB-Inc/TileDB-Py>`_
-API:
+To use TileDB with the `Python API <https://github.com/TileDB-Inc/TileDB-Py>`_:
 
 .. code-block:: bash
 
@@ -81,6 +80,29 @@ API:
 
 Both the Pip and Conda packages will automatically build and locally install
 the core library in addition to the Python interface.
+Full build and install instructions for the Python API can be found at the
+`TileDB-Inc/TileDB-Py <https://github.com/TileDB-Inc/TileDB-Py>`_ repo.
+
+R API
+------------------
+
+To use TileDB with the `R API <https://github.com/TileDB-Inc/TileDB-R>`_:
+
+  .. code-block:: r
+
+    > install.packages("devtools")
+    > library(devtools)
+    > devtools::install_github("TileDB-Inc/TileDB-R@latest")
+    ...
+    > library(tiledb)
+    > tiledb::libtiledb_version()
+    major minor patch
+    1     3     0
+
+TileDB needs to be installed beforehand (from a package or from source)
+for the TileDB-R package to build and link correctly.
+Full build and install instructions for the R API can be found at the
+`TileDB-Inc/TileDB-R <https://github.com/TileDB-Inc/TileDB-R>`_ repo.
 
 Pre-built Packages
 ------------------
@@ -436,9 +458,3 @@ installation prefix alongside ``libtiledb.a``.
    Windows). If you require a dynamically-linked TBB, use the
    ``TILEDB_TBB_SHARED=ON`` CMake variable. Note that the ``libtbb.so`` shared
    library will then be installed alongside ``libtiledb.so`` during installation.
-
-Python API
-----------
-
-Full build and install instructions for the Python API can be found at the
-`TileDB-Inc/TileDB-Py <https://github.com/TileDB-Inc/TileDB-Py>`_ repo.
