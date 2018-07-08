@@ -1263,13 +1263,14 @@ Status Writer::prepare_full_tiles_fixed(
 
     // Write all remaining cells one by one
     if (coord_dups.empty()) {
-      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
-           ++cell_idx, ++i) {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;) {
         if ((*tiles)[tile_idx].full())
           ++tile_idx;
 
-        RETURN_NOT_OK(
-            (*tiles)[tile_idx].write(buffer + cell_idx * cell_size, cell_size));
+        RETURN_NOT_OK((*tiles)[tile_idx].write(
+            buffer + cell_idx * cell_size, cell_size * cell_num_per_tile));
+        cell_idx += cell_num_per_tile;
+        i += cell_num_per_tile;
       }
     } else {
       for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
