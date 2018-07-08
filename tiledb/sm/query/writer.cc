@@ -100,6 +100,8 @@ Status Writer::init() {
   RETURN_NOT_OK(check_buffer_sizes());
   RETURN_NOT_OK(check_attributes());
 
+  optimize_layout_for_1D();
+
   // Get configuration parameters
   const char* check_coord_dups;
   const char* dedup_coords;
@@ -107,8 +109,8 @@ Status Writer::init() {
   RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
   RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ = (!strcmp(check_coord_dups, "true")) ? true : false;
-  dedup_coords_ = (!strcmp(dedup_coords, "true")) ? true : false;
+  check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  dedup_coords_ = !strcmp(dedup_coords, "true");
   initialized_ = true;
 
   return Status::Ok();
@@ -1096,6 +1098,12 @@ void Writer::nuke_global_write_state() {
   close_files(meta);
   storage_manager_->vfs()->remove_dir(meta->fragment_uri());
   global_write_state_.reset(nullptr);
+}
+
+void Writer::optimize_layout_for_1D() {
+  if (array_schema_->dim_num() == 1 && layout_ != Layout::GLOBAL_ORDER &&
+      layout_ != Layout::UNORDERED)
+    layout_ = array_schema_->cell_order();
 }
 
 Status Writer::ordered_write() {

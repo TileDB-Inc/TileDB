@@ -261,7 +261,11 @@ class Writer {
   /** True if the writer has been initialized. */
   bool initialized_;
 
-  /** The layout of the cells in the user buffers. */
+  /**
+   * The layout of the cells in the result of the subarray. Note
+   * that this may not be the same as what the user set to the
+   * query, as the Writer may calibrate it to boost performance.
+   */
   Layout layout_;
 
   /** The storage manager. */
@@ -486,6 +490,14 @@ class Writer {
    * partially written fragment.
    */
   void nuke_global_write_state();
+
+  /**
+   * Optimize the layout for 1D arrays. Specifically, if the array
+   * is 1D and the query layout is not global or unordered, the layout
+   * should be the same as the cell order of the array. This produces
+   * equivalent results offering faster processing.
+   */
+  void optimize_layout_for_1D();
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only

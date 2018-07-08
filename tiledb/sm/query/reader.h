@@ -438,7 +438,11 @@ class Reader {
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
 
-  /** The layout of the cells in the result of the subarray. */
+  /**
+   * The layout of the cells in the result of the subarray. Note
+   * that this may not be the same as what the user set to the
+   * query, as the Reader may calibrate it to boost performance.
+   */
   Layout layout_;
 
   /** To handle incomplete read queries. */
@@ -757,6 +761,13 @@ class Reader {
       std::vector<std::vector<DenseCellRangeIter<T>>>* iters,
       std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>*
           overlapping_tile_idx_coords);
+
+  /**
+   * Optimize the layout for 1D arrays. Specifically, if the array
+   * is 1D, the layout should be global order which produces
+   * equivalent results offering faster processing.
+   */
+  void optimize_layout_for_1D();
 
   /**
    * Checks whether two hyper-rectangles overlap, and determines whether
