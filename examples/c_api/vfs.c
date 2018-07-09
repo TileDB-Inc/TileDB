@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/vfs.html
+ * This is a part of the TileDB tutorial:
+ *   https://docs.tiledb.io/en/latest/tutorials/vfs.html
  *
  * This program explores the various TileDB VFS tools.
  */

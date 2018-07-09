@@ -1,5 +1,5 @@
 /**
- * @file   reading_sparse_layouts.c
+ * @file   using_tiledb_stats.c
  *
  * @section LICENSE
  *
@@ -28,30 +28,27 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/reading.html
+ *   https://docs.tiledb.io/en/latest/performance/using-tiledb-statistics.html
  *
- * When run, this program will create a simple 2D sparse array, write some data
- * to it, and read a slice of the data back in the layout of the user's choice
- * (passed as an argument to the program: "row", "col", or "global").
+ * When run, this program will create a 0.5GB dense array, and enable the
+ * TileDB statistics surrounding reads from the array.
  *
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "reading_sparse_layouts";
+const char* array_name = "stats_array";
 
-void create_array() {
+void create_array(uint32_t row_tile_extent, uint32_t col_tile_extent) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
 
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
-  int dim_domain[] = {1, 4, 1, 4};
-  int tile_extents[] = {2, 2};
+  int dim_domain[] = {1, 12000, 1, 12000};
+  int tile_extents[] = {row_tile_extent, col_tile_extent};
   tiledb_dimension_t* d1;
   tiledb_dimension_alloc(
       ctx, "rows", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &d1);
@@ -71,7 +68,7 @@ void create_array() {
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);
+  tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
   tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
@@ -99,35 +96,34 @@ void write_array() {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
-  // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  int coords[] = {1, 1, 1, 2, 2, 2, 1, 4, 2, 3, 2, 4};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5, 6};
-  uint64_t data_size = sizeof(data);
+  // Prepare some data for the array
+  uint64_t num_values = 12000 * 12000;
+  uint64_t data_size = num_values * sizeof(int32_t);
+  int* data = (int*)malloc(data_size);
+  for (uint64_t i = 0; i < num_values; i++) {
+    data[i] = i;
+  }
 
   // Create the query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
-  tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
-
-  // Finalize query (IMPORTANT)
-  tiledb_query_finalize(ctx, query);
 
   // Close array
   tiledb_array_close(ctx, array);
 
   // Clean up
+  free(data);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
 
-void read_array(tiledb_layout_t layout) {
+void read_array() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -137,62 +133,38 @@ void read_array(tiledb_layout_t layout) {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
-  // Print non-empty domain
-  int is_empty = 0;
-  int domain[4];
-  tiledb_array_get_non_empty_domain(ctx, array, domain, &is_empty);
-  printf(
-      "Non-empty domain: [%d,%d], [%d,%d]\n",
-      domain[0],
-      domain[1],
-      domain[2],
-      domain[3]);
+  // Read a slice of 3,000 rows.
+  int subarray[] = {1, 3000, 1, 12000};
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  int subarray[] = {1, 2, 2, 4};
-
-  // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
-  tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
-
-  // Prepare the vector that will hold the result (6 cells)
-  int* coords = (int*)malloc(coords_size);
+  // Prepare the vector that will hold the result.
+  uint64_t num_cells = 3000 * 12000;
+  uint64_t data_size = num_cells * sizeof(int32_t);
   int* data = (int*)malloc(data_size);
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_subarray(ctx, query, subarray);
-  tiledb_query_set_layout(ctx, query, layout);
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
 
-  // Submit query
+  // Enable the stats, submit the query, and print the report.
+  tiledb_stats_enable();
   tiledb_query_submit(ctx, query);
+  tiledb_stats_dump(stdout);
+  tiledb_stats_disable();
 
   // Close array
   tiledb_array_close(ctx, array);
 
-  // Print out the results.
-  int result_num = (int)(data_size / sizeof(int));
-  for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
-    int a = data[r];
-    printf("Cell (%d, %d) has data %d\n", i, j, a);
-  }
-
   // Clean up
-  free((void*)coords);
-  free((void*)data);
+  free(data);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
 }
 
-int main(int argc, char* argv[]) {
+int main() {
   // Get object type
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -201,21 +173,12 @@ int main(int argc, char* argv[]) {
   tiledb_ctx_free(&ctx);
 
   if (type != TILEDB_ARRAY) {
-    create_array();
+    // Create array with each row as a tile
+    create_array(1, 12000);
     write_array();
   }
 
-  // Choose a layout (default is row-major)
-  tiledb_layout_t layout = TILEDB_ROW_MAJOR;
-  if (argc > 1) {
-    if (!strcmp(argv[1], "row"))
-      layout = TILEDB_ROW_MAJOR;
-    else if (!strcmp(argv[1], "col"))
-      layout = TILEDB_COL_MAJOR;
-    else if (!strcmp(argv[1], "global"))
-      layout = TILEDB_GLOBAL_ORDER;
-  }
+  read_array();
 
-  read_array(layout);
   return 0;
 }

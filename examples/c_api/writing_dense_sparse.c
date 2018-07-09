@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/writing-dense.html
+ * This is a part of the TileDB tutorial:
+ *   https://docs.tiledb.io/en/latest/tutorials/writing-dense.html
  *
  * When run, this program will create a simple 2D dense array, write some sparse
  * cells to it in a way that some space is empty, and read the entire array data
