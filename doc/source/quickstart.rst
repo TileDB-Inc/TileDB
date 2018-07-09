@@ -85,20 +85,39 @@ to the Python bindings, so it may take a while.
 
 To use TileDB-Py in a program, simply import the TileDB Python module:
 
-.. content-tabs::
+.. code-block:: python
 
-   .. tab-container:: python
-      :title: Python
-
-      .. code-block:: python
-
-         import tiledb
+    import tiledb
 
 And run your program as usual:
 
 .. code-block:: bash
 
     $ python my_tiledb_program.py
+
+R API
+~~~~~
+TileDB needs to be installed.  After the core library is installed,
+the R source package can be installed and built with ``devtools``:
+
+.. code-block:: R
+    
+    install.packages("devtools")
+    library(devtools)
+    devtools::install_github("TileDB-Inc/TileDB-R@latest")
+
+To use the TileDB-R package, simply import the installed R library in your R script or REPL:
+
+.. code-block:: R
+
+   library(tiledb)
+
+To run a TileDB-R script:
+
+.. code-block:: bash
+
+    $ Rscript my_tiledb_program.R
+
 
 Golang API
 ~~~~~~~~~~
@@ -115,14 +134,9 @@ the core library.
 
 To use the TileDB Go API, simply import the installed Go library in your Go source file:
 
-.. content-tabs::
+.. code-block:: go
 
-   .. tab-container:: golang
-      :title: Golang
-
-      .. code-block:: go
-
-         import tiledb "github.com/TileDB/TileDB-Go"
+    import tiledb "github.com/TileDB/TileDB-Go"
 
 And run your program as usual:
 
@@ -181,31 +195,64 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
          import numpy as np
          import sys
          import tiledb
-         
+
          # Name of the array to create.
          array_name = "quickstart_dense"
 
          def create_array():
              # Create a TileDB context
              ctx = tiledb.Ctx()
-         
+
              # Check if the array already exists.
              if tiledb.object_type(ctx, array_name) == "array":
                  print("Array already exists.")
                  sys.exit(0)
-         
+
              # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
              dom = tiledb.Domain(ctx,
                                  tiledb.Dim(ctx, name="rows", domain=(1, 4), tile=4, dtype=np.int32),
                                  tiledb.Dim(ctx, name="cols", domain=(1, 4), tile=4, dtype=np.int32))
-         
+
              # The array will be dense with a single attribute "a" so each (i,j) cell can store an integer.
              schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
                                          attrs=[tiledb.Attr(ctx, name="a", dtype=np.int32)])
-         
+
              # Create the (empty) array on disk.
              tiledb.DenseArray.create(array_name, schema)
-             
+
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+
+         # Name of the array to create.
+         array_name = "quickstart_dense"
+
+         create_array <- function() {
+             # Create a TileDB context
+            ctx <- tiledb_ctx()
+
+            # Check if the array already exists.
+            if (tiledb_object_type(ctx, array_name) == "TILEDB_ARRAY") {
+                stop("Array already exists.")
+                quit(0)
+            }
+
+            # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+            dom <- tiledb_domain(ctx, 
+                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "TILEDB_INT32"),
+                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "TILEDB_INT32")))
+
+            # The array will be dense with a single attribute "a" so each (i,j) cell can store an integer.
+            schema <- tiledb_array_schema(ctx, 
+                        dom, attrs=c(tiledb_attr(ctx, "a", type = "TILEDB_INT32")))
+
+            # Create the (empty) array on disk.
+            tiledb_array_create(array_name, uri = schema)
+        }
+
    .. tab-container:: golang
       :title: Golang
 
@@ -282,6 +329,25 @@ row will be populated first, then those of the second row, etc.).
                                   [9, 10, 11, 12],
                                   [13, 14, 15, 16]))
                  A[:] = data
+   
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+         
+         write_array <- function() {
+             data <- array(c(c(1L, 5L, 9L, 13L), 
+                             c(2L, 6L, 10L, 14L),
+                             c(3L, 7L, 11L, 15L), 
+                             c(4L, 8L, 12L, 16L)), 
+                           dim = c(4,4))
+             # Open the array and write to it.
+             ctx <- tiledb_ctx()
+             A <- tiledb_dense(ctx, uri = array_name)
+             A[] <- data
+         }
 
    .. tab-container:: golang
       :title: Golang
@@ -370,6 +436,21 @@ then the three selected columns of row ``2``).
                  data = A[1:3, 2:5]
                  print(data["a"])
 
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+         
+         read_array <- function() {
+             ctx <- tiledb_ctx()
+             # Open the array and read from it.
+             A <- tiledb_dense(ctx, uri = array_name)
+             data <- A[1:2, 2:4]
+             show(data)
+         }
+
    .. tab-container:: golang
       :title: Golang
 
@@ -423,7 +504,17 @@ If you run the example, you should see the following output:
          $ python quickstart_dense.py
          [[2 3 4]
           [6 7 8]]
-          
+   
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: bash
+
+         $ Rscript quickstart_dense.R
+              [,1] [,2] [,3]
+         [1,]    2    3    4
+         [2,]    6    7    8
+
   .. tab-container:: golang
      :title: Golang
 
@@ -437,6 +528,7 @@ Link to full programs
 
 * `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_dense.cc>`__
 * `Python <{tiledb_py_src_root_url}/examples/quickstart_dense.py>`__
+* `R <{tiledb_R_src_root_url}/examples/quickstart_dense.R>`__
 * `Golang <{tiledb_go_src_root_url}/quickstart_dense_test.go>`__
 
 A Simple Sparse Array Example
@@ -512,6 +604,40 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
 
              # Create the (empty) array on disk.
              tiledb.SparseArray.create(array_name, schema)
+
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+
+         # Name of the array to create.
+         array_name = "sparse_sparse"
+
+         create_array <- function() {
+             # Create a TileDB context
+            ctx <- tiledb_ctx()
+
+            # Check if the array already exists.
+            if (tiledb_object_type(ctx, array_name) == "TILEDB_ARRAY") {
+                stop("Array already exists.")
+                quit(0)
+            }
+
+            # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+            dom <- tiledb_domain(ctx, 
+                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "TILEDB_INT32"),
+                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "TILEDB_INT32")))
+
+           # The array will be dense with a single attribute "a" so each (i,j) cell can store an integer.
+            schema <- tiledb_array_schema(ctx, 
+                        dom, attrs=c(tiledb_attr(ctx, "a", type = "TILEDB_INT32")), 
+                        sparse = TRUE)
+
+            # Create the (empty) array on disk.
+            tiledb_array_create(array_name, uri = schema)
+        }
 
    .. tab-container:: golang
       :title: Golang
@@ -592,6 +718,23 @@ layout for now, just know that it is important.
                  I, J = [1, 2, 2], [1, 4, 3]
                  data = np.array(([1, 2, 3]));
                  A[I, J] = data
+   
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+         
+         write_array <- function() {
+             I <- c(1L, 2L, 2L)
+             J <- c(1L, 4L, 3L)
+             data <- c(1L, 2L, 3L)
+             # Open the array and write to it.
+             ctx <- tiledb_ctx()
+             A <- tiledb_sparse(ctx, uri = array_name)
+             A[I, J] <- data
+         }
 
    .. tab-container:: golang
       :title: Golang
@@ -698,6 +841,28 @@ automatically.
                  for i, coord in enumerate(data["coords"]):
                      print("Cell (%d,%d) has data %d" % (coord[0], coord[1], a_vals[i]))
 
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: R
+         
+         library(tiledb)
+ 
+         read_array <- function() {
+             ctx = tiledb_ctx()
+             # Open the array and read from it.
+             A <- tiledb_dense(ctx, uri = array_name)
+             data <- A[1:2, 2:4]
+
+             coords <- data[["coords"]] 
+             a_vals <- data[["a"]]
+             for (i in seq_along(a_vals)) {
+                 i <- coords[((i - 1) * 2) + 1]
+                 j <- coords[((i - 1) * 2) + 2]
+                 cat(sprintf("Cell (%d,%d) has data %d\n", i, j, a_vals[i]))
+             }
+         }
+
    .. tab-container:: golang
       :title: Golang
 
@@ -762,6 +927,15 @@ If you run the example, you should see the following output:
          Cell (2,3) has data 3
          Cell (2,4) has data 2
 
+   .. tab-container:: R
+      :title: R
+
+      .. code-block:: bash
+
+         $ Rscript quickstart_dense.R
+         Cell (2,3) has data 3
+         Cell (2,4) has data 2
+
    .. tab-container:: golang
       :title: Golang
 
@@ -776,6 +950,7 @@ Link to full programs
 
 * `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_sparse.cc>`__
 * `Python <{tiledb_py_src_root_url}/examples/quickstart_sparse.py>`__
+* `R <{tiledb_R_src_root_url}/examples/quickstart_sparse.R>`__
 * `Golang <{tiledb_go_src_root_url}/quickstart_sparse_test.go>`__
 
 
@@ -813,22 +988,22 @@ First let's create a simple map with a single integer attribute.
          import numpy as np
          import sys
          import tiledb
-         
+
          # Name of the array to create.
          array_name = "quickstart_kv"
 
          def create_array():
              # Create a TileDB context
              ctx = tiledb.Ctx()
-         
+
              # Check if the array already exists.
              if tiledb.object_type(ctx, array_name) == "kv":
                  print("KV Array already exists.")
                  sys.exit(0)
-         
+
              # The KV array will have a single attribute "a" storing a string.
              schema = tiledb.KVSchema(ctx, attrs=[tiledb.Attr(ctx, name="a", dtype=bytes)])
-         
+
              # Create the (empty) array on disk.
              tiledb.KV.create(ctx, array_name, schema)
 
@@ -865,7 +1040,7 @@ and ``"key_3": 3``.
       :title: Python
 
       .. code-block:: python
-         
+
          def write_array():
              ctx = tiledb.Ctx()
              # Open the array and write to it.
