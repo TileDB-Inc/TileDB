@@ -12,19 +12,13 @@ write and read queries first.
 ====================================  =============================================================
 **Program**                           **Links**
 ------------------------------------  -------------------------------------------------------------
-``async``                             |asynccpp| |asyncpy|
+``async``                             |asynccpp|
 ====================================  =============================================================
-
 
 .. |asynccpp| image:: ../figures/cpp.png
    :align: middle
    :width: 30
    :target: {tiledb_src_root_url}/examples/cpp_api/async.cc
-
-.. |asyncpy| image:: ../figures/python.png
-   :align: middle
-   :width: 25
-   :target: {tiledb_py_src_root_url}/examples/async.py
 
 Basic concepts and definitions
 ------------------------------

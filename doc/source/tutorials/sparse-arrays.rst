@@ -224,7 +224,7 @@ the cell coordinates.
 
          I, J = [1, 2, 2], [1, 4, 3]
 
-      Finally, open the array for writing write the data to the array.
+      Finally, open the array for writing and write the data to the array.
 
       .. code-block:: python
 

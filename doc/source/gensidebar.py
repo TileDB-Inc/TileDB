@@ -63,6 +63,9 @@ def generate_sidebar(conf, conf_api):
             args = desc, rst_page
             lines.append('    %s API <%s>' % args)
 
+    def write_api_url(desc, url):
+        lines.append('    %s API <%s>' % (desc, url))
+
     #
     # Specify the sidebar contents here
     #
@@ -74,32 +77,40 @@ def generate_sidebar(conf, conf_api):
     write('Usage', 'usage')
     endl()
 
-    toctree('API Reference')
+    toctree('API References')
     write_api('tiledb', 'C', 'c-api')
     write_api('tiledb', 'C++', 'c++-api')
     write_api('tiledb-py', 'Python', 'python-api')
+    write_api_url('R', 'https://tiledb-inc.github.io/TileDB-R/reference/index.html')
+    write_api_url('Go', 'https://godoc.org/github.com/TileDB-Inc/TileDB-Go')
     endl()
 
-    toctree('Tutorials')
+    toctree('Tutorials – Beginner')
     write('Dense Arrays', 'tutorials/dense-arrays')
     write('Sparse Arrays', 'tutorials/sparse-arrays')
     write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
     write('Variable-length Attributes', 'tutorials/variable-length-attributes')
-    write('Tiling Dense Arrays', 'tutorials/tiling-dense')
-    write('Tiling Sparse Arrays', 'tutorials/tiling-sparse')
     write('Compression', 'tutorials/compression')
-    write('Writing Sparse Arrays', 'tutorials/writing-sparse')
-    write('Writing Dense Arrays', 'tutorials/writing-dense')
-    write('Fragments and Consolidation', 'tutorials/fragments-consolidation')
-    write('Reading Arrays', 'tutorials/reading')
-    write('Asynchronous Queries', 'tutorials/async')
-    write('Key-value Store', 'tutorials/kv')
-    write('Object Management', 'tutorials/object')
+    write('Catching Errors', 'tutorials/errors')
     write('Working with S3', 'tutorials/working-with-s3')
     write('Working with HDFS', 'tutorials/working-with-hdfs')
+    endl()
+
+    toctree('Tutorials – Intermediate')
+    write('Tiling Dense Arrays', 'tutorials/tiling-dense')
+    write('Tiling Sparse Arrays', 'tutorials/tiling-sparse')
+    write('Writing Sparse Arrays', 'tutorials/writing-sparse')
+    write('Writing Dense Arrays', 'tutorials/writing-dense')
+    write('Reading Arrays', 'tutorials/reading')
+    write('Key-value Store', 'tutorials/kv')
+    write('Object Management', 'tutorials/object')
     write('Virtual Filesystem', 'tutorials/vfs')
-    write('Catching Errors', 'tutorials/errors')
     write('Configuration Parameters', 'tutorials/config')
+    endl()
+
+    toctree('Tutorials – Advanced')
+    write('Fragments and Consolidation', 'tutorials/fragments-consolidation')
+    write('Asynchronous Queries', 'tutorials/async')
     write('Parallelism', 'tutorials/parallelism')
     write('Concurrency and Consistency', 'tutorials/concurrency-consistency')
     endl()
