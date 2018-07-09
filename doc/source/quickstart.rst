@@ -103,24 +103,24 @@ And run your program as usual:
 Golang API
 ~~~~~~~~~~
 
-TileDB needs to be installed. After the core library is installed the Golang
+TileDB needs to be installed. After the core library is installed the Go
 api can be installed with ``go get``:
 
 .. code-block:: bash
 
     $ go get -v github.com/TileDB/TileDB-Go
 
-This will automatically download and build the golang api bindings and link to
+This will automatically download and build the Go API bindings and link to
 the core library.
 
-To use TileDB-Go in a program, simply import the TileDB Python module:
+To use the TileDB Go API, simply import the installed Go library in your Go source file:
 
 .. content-tabs::
 
    .. tab-container:: golang
       :title: Golang
 
-      .. code-block:: golang
+      .. code-block:: go
 
          import tiledb "github.com/TileDB/TileDB-Go"
 
@@ -215,7 +215,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
          var arrayName = "quickstart_dense"
 
          func createDenseArray() {
-           // Create a TileDB context.
+                 // Create a TileDB context.
         	 ctx, _ := tiledb.NewContext(nil)
 
         	 // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
