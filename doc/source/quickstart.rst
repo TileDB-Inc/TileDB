@@ -519,13 +519,35 @@ If you run the example, you should see the following output:
         $ go test -v quickstart_dense.go
         [2 3 4 6 7 8]
 
-Link to full programs
-~~~~~~~~~~~~~~~~~~~~~
+Links to full programs
+~~~~~~~~~~~~~~~~~~~~~~
 
-* `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_dense.cc>`__
-* `Python <{tiledb_py_src_root_url}/examples/quickstart_dense.py>`__
-* `R <{tiledb_R_src_root_url}/examples/quickstart_dense.R>`__
-* `Golang <{tiledb_go_src_root_url}/quickstart_dense_test.go>`__
+====================================  ================================================================================
+**Program**                           **Links**
+------------------------------------  --------------------------------------------------------------------------------
+``quickstart_dense``                  |quickstartdensecpp| |quickstartdensepy| |quickstartdenser| |quickstartdensego|
+====================================  ================================================================================
+
+
+.. |quickstartdensecpp| image:: figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/quickstart_dense.cc
+
+.. |quickstartdensepy| image:: figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/quickstart_dense.py
+
+.. |quickstartdenser| image:: figures/r.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_R_src_root_url}/examples/quickstart_dense.R
+
+.. |quickstartdensego| image:: figures/golang.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_go_src_root_url}/quickstart_dense_test.go
 
 A Simple Sparse Array Example
 -----------------------------
@@ -937,13 +959,35 @@ If you run the example, you should see the following output:
          Cell (2, 3) has data 3
          Cell (2, 4) has data 2
 
-Link to full programs
-~~~~~~~~~~~~~~~~~~~~~
+Links to full programs
+~~~~~~~~~~~~~~~~~~~~~~
 
-* `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_sparse.cc>`__
-* `Python <{tiledb_py_src_root_url}/examples/quickstart_sparse.py>`__
-* `R <{tiledb_R_src_root_url}/examples/quickstart_sparse.R>`__
-* `Golang <{tiledb_go_src_root_url}/quickstart_sparse_test.go>`__
+====================================  ===================================================================================
+**Program**                           **Links**
+------------------------------------  -----------------------------------------------------------------------------------
+``quickstart_sparse``                 |quickstartsparsecpp| |quickstartsparsepy| |quickstartsparser| |quickstartsparsego|
+====================================  ===================================================================================
+
+
+.. |quickstartsparsecpp| image:: figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/quickstart_sparse.cc
+
+.. |quickstartsparsepy| image:: figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/quickstart_sparse.py
+
+.. |quickstartsparser| image:: figures/r.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_R_src_root_url}/examples/quickstart_sparse.R
+
+.. |quickstartsparsego| image:: figures/golang.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_go_src_root_url}/quickstart_sparse_test.go
 
 
 A Simple Key-Value Example
@@ -1108,11 +1152,26 @@ If you run the example, you should see the following output:
          key_2: 2
          key_3: 3
 
-Link to full programs
-~~~~~~~~~~~~~~~~~~~~~
 
-* `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_map.cc>`__
-* `Python <{tiledb_py_src_root_url}/examples/quickstart_kv.py>`__
+Links to full programs
+~~~~~~~~~~~~~~~~~~~~~~
+
+====================================  ================================================================================
+**Program**                           **Links**
+------------------------------------  --------------------------------------------------------------------------------
+``quickstart_kv``                     |quickstartkvcpp| |quickstartkvpy|
+====================================  ================================================================================
+
+
+.. |quickstartkvcpp| image:: figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/quickstart_map.cc
+
+.. |quickstartkvpy| image:: figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/quickstart_kv.py
 
 
 Further reading
