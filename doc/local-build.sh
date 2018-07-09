@@ -1,11 +1,18 @@
 #!/bin/bash
 
-#
 # Builds the ReadTheDocs documentation locally.
 # Usage. Execute in this directory:
 #   $ ./local-build.sh
 # This creates a Python virtual env 'venv' in the current directory.
 #
+# Conda Env:
+# To create an isolated conda environment for installing / running sphinx:
+#    $ conda env create -f source/conda-env.yaml
+#    $ source activate tiledb-env
+#    $ ./local build.sh
+#
+# **Note** If you get errors running the script,
+# try removing the local `venv` folder and re-running the script.
 
 # Choose the default directories
 source_dir="source"
@@ -15,9 +22,11 @@ tiledb_root_dir="../"
 cmake=`which cmake`
 
 make_jobs=1
-if [ -n "$(command nproc)" ]; then
-  make_jobs=`nproc`
-elif [ -n "$(command sysctl -n hw.logicalcpu)" ]; then
+if [[ $OSTYPE == linux* ]]; then
+  if [ -n "$(command nproc)" ]; then
+    make_jobs=`nproc`
+  fi
+elif [[ $OSTYPE == darwin* ]]; then
   make_jobs=`sysctl -n hw.logicalcpu`
 fi
 
@@ -61,11 +70,22 @@ build_site() {
         die "could not build sphinx site"
 }
 
+open_index() {
+  if [[ $OSTYPE == linux* ]]; then
+    xdg-open ${build_dir}/html/index.html
+  elif [[ $OSTYPE == darwin* ]]; then
+    open ${build_dir}/html/index.html
+  fi
+}
+
 run() {
   setup_venv
   run_doxygen
   build_site
-  echo "Build complete. Open '${build_dir}/html/index.html' in your browser."
+  # check if we are running on CI
+  if [[ -z $CI ]]; then
+    open_index
+  fi
 }
 
 run
