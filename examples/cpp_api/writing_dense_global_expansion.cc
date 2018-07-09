@@ -48,11 +48,7 @@ void create_array() {
   // Create a TileDB context.
   Context ctx;
 
-  // If the array already exists on disk, return immediately.
-  if (Object::object(ctx, array_name).type() == Object::Type::Array)
-    return;
-
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4]
+  // The array will be 4x3 with dimensions "rows" and "cols",
   // and space tiles 2x2
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
@@ -124,9 +120,14 @@ void read_array() {
 }
 
 int main() {
-  create_array();
-  write_array_global();
-  write_array_row_major();
+  Context ctx;
+  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    create_array();
+    write_array_global();
+    write_array_row_major();
+  }
+
   read_array();
+
   return 0;
 }

@@ -87,7 +87,7 @@ void write() {
   fbuf.open("tiledb_vfs.bin", std::ios::out);
   std::ostream os(&fbuf);
   if (!os.good()) {
-    std::cerr << "Error opening file `tiledb_vfs_bin'.\n";
+    std::cerr << "Error opening file  'tiledb_vfs_bin'.\n";
     return;
   }
   float f1 = 153.0;

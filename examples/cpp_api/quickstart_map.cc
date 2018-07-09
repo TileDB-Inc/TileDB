@@ -89,8 +89,14 @@ void read_map() {
 }
 
 int main() {
-  create_map();
-  write_map();
+  Context ctx;
+
+  if (Object::object(ctx, map_name).type() != Object::Type::KeyValue) {
+    create_map();
+    write_map();
+  }
+
   read_map();
+
   return 0;
 }

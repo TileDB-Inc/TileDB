@@ -1,5 +1,5 @@
 /**
- * @file   multiple_writes_sparse.cc
+ * @file   writing_sparse_multiple.cc
  *
  * @section LICENSE
  *
@@ -46,10 +46,6 @@ std::string array_name("multiple_writes_sparse");
 void create_array() {
   // Create a TileDB context.
   Context ctx;
-
-  // If the array already exists on disk, return immediately.
-  if (Object::object(ctx, array_name).type() == Object::Type::Array)
-    return;
 
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   Domain domain(ctx);
@@ -127,8 +123,13 @@ void read_array() {
 }
 
 int main() {
-  create_array();
-  write_array();
+  Context ctx;
+  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    create_array();
+    write_array();
+  }
+
   read_array();
+
   return 0;
 }
