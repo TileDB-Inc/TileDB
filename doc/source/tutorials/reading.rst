@@ -3,54 +3,53 @@ Reading Arrays
 
 In the previous tutorials we have provided a fair amount of examples on
 reading/slicing dense and sparse arrays. Specifically, we explained how
-to set your buffers to a read query in order to retrieve the results. We also
-showed that when reading sparse arrays you retrieve only results for the
-non-empty cells, whereas when reading dense arrays TileDB returns special
-fill values for any empty/non-populated cells. Finally, we demonstrated
-how to read only a subset of the array attributes, and also that you can
-even retrieve the coordinates of the result cells in the case of dense arrays.
+to slice and retrieve the results. We also showed that when reading sparse
+arrays you retrieve only results for the non-empty cells, whereas when
+reading dense arrays TileDB returns special fill values for any empty/non-populated
+cells. Finally, we demonstrated how to read only a subset of the array attributes,
+and also that you can even retrieve the coordinates of the result cells
+in the case of dense arrays.
 
 In this tutorial we will cover a few more important topics on reading,
 such as reading in different layouts, determining the memory you need
 to allocate to your buffers that will hold the results, how to retrieve
 the non-empty domain of your array, and the concept of "incomplete" queries.
 
-.. toggle-header::
-    :header: **Example Code Listing #1**
+.. table:: Full programs
+  :widths: auto
 
-    .. content-tabs::
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``reading_dense_layouts``             |readingdenselayoutscpp| |readingdenselayoutspy|
+  ``reading_sparse_layouts``            |readingsparselayoutscpp| |readingsparselayoutspy|
+  ``reading_incomplete``                |readingincompletecpp|
+  ====================================  =============================================================
 
-       .. tab-container:: cpp
-          :title: C++
+.. |readingdenselayoutscpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/reading_dense_layouts.cc
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/reading_dense_layouts.cc
-             :language: c++
-             :linenos:
+.. |readingdenselayoutspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/reading_dense_layouts.py
 
-.. toggle-header::
-    :header: **Example Code Listing #2**
+.. |readingsparselayoutscpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/reading_sparse_layouts.cc
 
-    .. content-tabs::
+.. |readingsparselayoutspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/reading_sparse_layouts.py
 
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/reading_sparse_layouts.cc
-             :language: c++
-             :linenos:
-
-.. toggle-header::
-    :header: **Example Code Listing #3**
-
-    .. content-tabs::
-
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/reading_incomplete.cc
-             :language: c++
-             :linenos:
-
+.. |readingincompletecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/reading_incomplete.cc
 
 Basic concepts and definitions
 ------------------------------
@@ -102,7 +101,7 @@ Reading in different layouts
 
 TileDB allows you to retrieve the results of a subarray/slicing query in various
 layouts *with repsect to your specified subarray*, namely row-major, column-major
-and global order. You can set the layout to the query object as follows.
+and global order. You can set the layout for reads as follows.
 
 .. content-tabs::
 
@@ -113,8 +112,26 @@ and global order. You can set the layout to the query object as follows.
 
         query.set_layout(TILEDB_ROW_MAJOR); // Can also be TILEDB_COL_MAJOR or TILEDB_GLOBAL_ORDER
 
-We demonstrate an example of a dense array using code listing #1 provided at
-the beginning of the tutorial. The figure below depicts the array contents and the
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        data = A.query(attrs=["a"], order=order, coords=True)[1:3, 2:5]
+
+      Observe that the read layout in Python is set in argument ``order`` using the
+      ``query`` syntax. Setting also ``coords=True`` allows you to get the coordinates
+      (even in the dense case). Recall that row-major (``order='C'``) is the default layout of the
+      returned numpy array. Setting ``order='F'`` (Fortran-order or column-major) will
+      return a numpy array with the same shape as the requested slice, but which
+      internally lays out the values in column-major order. Finally, setting
+      the global order (``order='G'``) *always returns a 1D array*, since retaining
+      the slice shape is meaningless when the cells are returned in global order
+      (you can see which value corresponds to which cell by explicitly retrieving
+      the coordinates).
+
+We demonstrate an example of a dense array using code example ``reading_dense_layouts``.
+The figure below depicts the array contents and the
 subarray read results for different query layouts. Notice that despite the global
 ordering of cells in the array, the read results are ordered with respect to the
 subarray of the query. Note that this is a ``4x4`` dense array with ``2x2``
@@ -124,41 +141,77 @@ space tiling. The cell values follow the global physical cell order.
    :align: center
    :scale: 40 %
 
-Compiling and running the program, you get the following output.
+Running the program, you get the following output.
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 reading_dense_layouts.cc -o reading_dense_layouts_cpp -ltiledb
-   $ ./reading_dense_layouts_cpp row
-   Non-empty domain: [1,4], [1,4]
-   Cell (1, 2) has data 2
-   Cell (1, 3) has data 5
-   Cell (1, 4) has data 6
-   Cell (2, 2) has data 4
-   Cell (2, 3) has data 7
-   Cell (2, 4) has data 8
-   $ ./reading_dense_layouts_cpp col
-   Non-empty domain: [1,4], [1,4]
-   Cell (1, 2) has data 2
-   Cell (2, 2) has data 4
-   Cell (1, 3) has data 5
-   Cell (2, 3) has data 7
-   Cell (1, 4) has data 6
-   Cell (2, 4) has data 8
-   $ ./reading_dense_layouts_cpp global
-   Non-empty domain: [1,4], [1,4]
-   Cell (1, 2) has data 2
-   Cell (2, 2) has data 4
-   Cell (1, 3) has data 5
-   Cell (1, 4) has data 6
-   Cell (2, 3) has data 7
-   Cell (2, 4) has data 8
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+       $ g++ -std=c++11 reading_dense_layouts.cc -o reading_dense_layouts_cpp -ltiledb
+       $ ./reading_dense_layouts_cpp row
+       Non-empty domain: [1,4], [1,4]
+       Cell (1, 2) has data 2
+       Cell (1, 3) has data 5
+       Cell (1, 4) has data 6
+       Cell (2, 2) has data 4
+       Cell (2, 3) has data 7
+       Cell (2, 4) has data 8
+       $ ./reading_dense_layouts_cpp col
+       Non-empty domain: [1,4], [1,4]
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 4
+       Cell (1, 3) has data 5
+       Cell (2, 3) has data 7
+       Cell (1, 4) has data 6
+       Cell (2, 4) has data 8
+       $ ./reading_dense_layouts_cpp global
+       Non-empty domain: [1,4], [1,4]
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 4
+       Cell (1, 3) has data 5
+       Cell (1, 4) has data 6
+       Cell (2, 3) has data 7
+       Cell (2, 4) has data 8
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+       $ python reading_dense_layouts.py row
+       Non-empty domain: ((1, 4), (1, 4))
+       Cell (1, 2) has data 2
+       Cell (1, 3) has data 5
+       Cell (1, 4) has data 6
+       Cell (2, 2) has data 4
+       Cell (2, 3) has data 7
+       Cell (2, 4) has data 8
+       $ python reading_dense_layouts.py col
+       Non-empty domain: ((1, 4), (1, 4))
+       NOTE: The following result array has col-major layout internally
+       Cell (1, 2) has data 2
+       Cell (1, 3) has data 5
+       Cell (1, 4) has data 6
+       Cell (2, 2) has data 4
+       Cell (2, 3) has data 7
+       Cell (2, 4) has data 8
+       $ python reading_dense_layouts.py global
+       Non-empty domain: ((1, 4), (1, 4))
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 4
+       Cell (1, 3) has data 5
+       Cell (1, 4) has data 6
+       Cell (2, 3) has data 7
+       Cell (2, 4) has data 8
 
 The read query layout specifies how the cell values will be stored in the buffers
 that will hold the results with respect to your subarray.
 
-The case of sparse arrays is similar. We use the example of code listing #2
-at the beginning of the tutorial, which creates a ``4x4`` array with ``2x2``
+The case of sparse arrays is similar. We use code example ``reading_sparse_layouts``,
+which creates a ``4x4`` array with ``2x2``
 space tiling as well. The figure below depicts the contents of the array
 and the different layouts of the retuned results. The cell values here also
 imply the global physical cell order.
@@ -167,35 +220,74 @@ imply the global physical cell order.
    :align: center
    :scale: 40 %
 
-Compiling and running the program, you get the following output.
+Running the program, you get the following output.
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 reading_sparse_layouts.cc -o reading_sparse_layouts_cpp -ltiledb
-   $ ./reading_sparse_layouts_cpp row
-   Non-empty domain: [1,2], [1,4]
-   Cell (1, 2) has data 2
-   Cell (1, 4) has data 4
-   Cell (2, 2) has data 3
-   Cell (2, 3) has data 5
-   Cell (2, 4) has data 6
-   $ ./reading_sparse_layouts_cpp col
-   Non-empty domain: [1,2], [1,4]
-   Cell (1, 2) has data 2
-   Cell (2, 2) has data 3
-   Cell (2, 3) has data 5
-   Cell (1, 4) has data 4
-   Cell (2, 4) has data 6
-   $ ./reading_sparse_layouts_cpp global
-   Non-empty domain: [1,2], [1,4]
-   Cell (1, 2) has data 2
-   Cell (2, 2) has data 3
-   Cell (1, 4) has data 4
-   Cell (2, 3) has data 5
-   Cell (2, 4) has data 6
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+       $ g++ -std=c++11 reading_sparse_layouts.cc -o reading_sparse_layouts_cpp -ltiledb
+       $ ./reading_sparse_layouts_cpp row
+       Non-empty domain: [1,2], [1,4]
+       Cell (1, 2) has data 2
+       Cell (1, 4) has data 4
+       Cell (2, 2) has data 3
+       Cell (2, 3) has data 5
+       Cell (2, 4) has data 6
+       $ ./reading_sparse_layouts_cpp col
+       Non-empty domain: [1,2], [1,4]
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 3
+       Cell (2, 3) has data 5
+       Cell (1, 4) has data 4
+       Cell (2, 4) has data 6
+       $ ./reading_sparse_layouts_cpp global
+       Non-empty domain: [1,2], [1,4]
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 3
+       Cell (1, 4) has data 4
+       Cell (2, 3) has data 5
+       Cell (2, 4) has data 6
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+       $ python reading_sparse_layouts.py row
+       Non-empty domain: ((1, 2), (1, 4))
+       Cell (1, 2) has data 2
+       Cell (1, 4) has data 4
+       Cell (2, 2) has data 3
+       Cell (2, 3) has data 5
+       Cell (2, 4) has data 6
+       $ python reading_sparse_layouts.py col
+       Non-empty domain: ((1, 2), (1, 4))
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 3
+       Cell (2, 3) has data 5
+       Cell (1, 4) has data 4
+       Cell (2, 4) has data 6
+       $ python reading_sparse_layouts.py global
+       Non-empty domain: ((1, 2), (1, 4))
+       Cell (1, 2) has data 2
+       Cell (2, 2) has data 3
+       Cell (1, 4) has data 4
+       Cell (2, 3) has data 5
+       Cell (2, 4) has data 6
+
 
 Allocating the result buffers
 -----------------------------
+
+.. note::
+
+   The Python API efficiently handles all buffer allocation internally.
+   Therefore, you can skip this section if you are using the Python API.
 
 Recall how the read queries work in TileDB: you allocate the
 buffers that will hold the results, you set the buffers to the
@@ -307,13 +399,21 @@ as follows:
                  << non_empty_domain[1].second.first << ","
                  << non_empty_domain[1].second.second << "]\n";
 
+
+   .. tab-container:: python
+       :title: Python
+
+       .. code-block:: python
+
+        print("Non-empty domain: {}".format(A.nonempty_domain()))
+
 For the dense array example the non-empty domain is ``[1,4], [1,4]``,
 whereas for the sparse one it is ``[1,2], [1,4]``. Note that the
 non-empty domain does *not* imply that every cell therein is non-empty.
 In contrast, it guarantees that *every cell outside the non-empty
 domain is empty*. The concept of the non-empty domain is
 equivalent in both dense and sparse arrays. The figure below illustrates
-the non-empty domain on some more array examples (non-empty cells
+the non-empty domain in some more array examples (non-empty cells
 are depicted in grey).
 
 .. figure:: ../figures/non_empty_domain.png
@@ -322,6 +422,10 @@ are depicted in grey).
 
 Incomplete queries
 ------------------
+
+.. warning::
+
+  Currently incomplete query handling is not supported in the Python API.
 
 There are scenarios where you may have a *specific memory budget* for
 your result buffers. As explained above, TileDB allows you to get an
@@ -347,8 +451,8 @@ in the next submission. TileDB is smart enough to continue from
 where it left off, without sacrificing performance by retrieving
 again the already reported results.
 
-We demonstrate this feature with code listing #3 at the beginning
-of the tutorial, which creates a very simple sparse array with
+We demonstrate this feature with code example ``reading_incomplete``,
+which creates a very simple sparse array with
 two attributes, an integer and a string. The figure below shows
 the array contents on both attributes.
 
@@ -474,5 +578,6 @@ Reading and performance
 
 There are numerous factors affecting the read performance, from the way the
 arrays were tiled and written, to the number of fragments, to the read query
-layout, to the level of internal concurrency, and more. We discuss these
-factors in more detail in a later tutorial.
+layout, to the level of internal concurrency, and more. See the
+:ref:`performance/introduction` tutorial for
+more information about the TileDB performance.

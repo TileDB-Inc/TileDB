@@ -83,9 +83,9 @@ run() {
   run_doxygen
   build_site
   # check if we are running on CI
-  if [[ -z $CI ]]; then
-    open_index
-  fi
+  # if [[ -z $CI ]]; then
+  #  open_index
+  # fi
 }
 
 run

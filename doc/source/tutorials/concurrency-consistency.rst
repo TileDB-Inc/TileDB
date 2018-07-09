@@ -30,24 +30,24 @@ in parallel. Moreover, defining the array is extremely lightweight
 bottleneck. Therefore, in this section we focus on concurrent
 queries.
 
-In TileDB, a *write operation* is the process of creating a write
-query object, submitting the query (potentially multiple times in
-the case of global writes) and finalizing the query object
-(important only in global writes). The code snippet shown below
-describes an **atomic write operation**, i.e., a block of functions
-that must be treated atomically by each thread. For example, do not
-attempt to prepare the
-query object with multiple threads, or have multiple threads
-invoke ``query.submit()`` for the same ``Query`` object ``query``.
-Instead, you can have multiple threads create *separate* ``Query`` objects
-(e.g., ``query_1``, ``query_2``) for the same array even sharing the
-same context, and prepare and submit them in parallel having each thread
-use the atomic block shown below.
-
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      In TileDB, a *write operation* is the process of creating a write
+      query object, submitting the query (potentially multiple times in
+      the case of global writes) and finalizing the query object
+      (important only in global writes). The code snippet shown below
+      describes an **atomic write operation**, i.e., a block of functions
+      that must be treated atomically by each thread. For example, do not
+      attempt to prepare the
+      query object with multiple threads, or have multiple threads
+      invoke ``query.submit()`` for the same ``Query`` object ``query``.
+      Instead, you can have multiple threads create *separate* ``Query`` objects
+      (e.g., ``query_1``, ``query_2``) for the same array even sharing the
+      same context, and prepare and submit them in parallel having each thread
+      use the atomic block shown below.
 
       .. code-block:: c++
 
@@ -60,10 +60,26 @@ use the atomic block shown below.
          query.finalize(); // Important only for global writes
          // If you opened the array in this block: array.close();
 
-Observe that you can optionally open the array in the atomic block.
-However, if you do open the array in this block, make sure to close it
-in this block as well. In general, for every array object
-creation/opening there should be a corresponding array closing.
+      Observe that you can optionally open the array in the atomic block.
+      However, if you do open the array in this block, make sure to close it
+      in this block as well. In general, for every array object
+      creation/opening there should be a corresponding array closing.
+
+   .. tab-container:: python
+      :title: Python
+
+      In TileDB, a *write operation* is the process of writing data to an
+      array slice. In the Python API all writes such as the one shown
+      in the snippet below are **atomic** (the same holds for both
+      dense and sparse arrays). Note that when creating a dense/sparse
+      array object, TileDB **opens** the array in the specified ``mode``.
+
+      .. code-block:: python
+
+        ### An atomic write operation ###
+        with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+            data = np.array(...)
+            A[:] = data
 
 Concurrent writes are achieved by having each thread or process create
 a **separate fragment** for each write operation. The fragment is
@@ -76,18 +92,18 @@ with a *unique name* (recall, using the unique per process/thread UUID
 and the current timestamp). Therefore, there are no conflicts even at the
 filesystem level.
 
-A *read opearation* is the process of creating a read
-query object and submitting the query (potentially multiple times in
-the case of incomplete queries) until the query is completed. The code
-snippet shown below describes an **atomic read operation**, i.e.,
-similar to writes, a set of functions that must be invoked by a single
-thread in sequence, but multiple threads can still create their own
-such blocks and invoke them in parallel.
-
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      A *read opearation* is the process of creating a read
+      query object and submitting the query (potentially multiple times in
+      the case of incomplete queries) until the query is completed. The code
+      snippet shown below describes an **atomic read operation**, i.e.,
+      similar to writes, a set of functions that must be invoked by a single
+      thread in sequence, but multiple threads can still create their own
+      such blocks and invoke them in parallel.
 
       .. code-block:: c++
 
@@ -100,21 +116,34 @@ such blocks and invoke them in parallel.
          query.finalize(); // Important only for global writes
          // If you opened the array in this block: array.close();
 
-Similar to writes you can optionally open the array in the atomic block.
-This function is both process- and thread-safe. During opening
-the array, TileDB loads the array schema and fragment metadata to main
-memory *once*, and share them across all ``Array`` objects referring to
-the same array. Therefore, for the multi-threading case,
-it is highly recommended that you open the array once *outside* the atomic
-block and have all threads create the query on the same array object.
-This is to prevent the scenario where a thread opens the array, then
-closes it before another thread opens the array again, and so on. TileDB
-internally employs a reference-count system, discarding the array schema
-and fragment metadata each time the array is closed and the reference
-count reaches zero (the schema and metadata are typically cached, but
-they still need to be deserialized in the above scenario). Having
-all concurrent queries use the same ``Array`` object eliminates the
-above problem.
+      Similar to writes you can optionally open the array in the atomic block.
+      This function is both process- and thread-safe. During opening
+      the array, TileDB loads the array schema and fragment metadata to main
+      memory *once*, and share them across all ``Array`` objects referring to
+      the same array. Therefore, for the multi-threading case,
+      it is highly recommended that you open the array once *outside* the atomic
+      block and have all threads create the query on the same array object.
+      This is to prevent the scenario where a thread opens the array, then
+      closes it before another thread opens the array again, and so on. TileDB
+      internally employs a reference-count system, discarding the array schema
+      and fragment metadata each time the array is closed and the reference
+      count reaches zero (the schema and metadata are typically cached, but
+      they still need to be deserialized in the above scenario). Having
+      all concurrent queries use the same ``Array`` object eliminates the
+      above problem.
+
+   .. tab-container:: python
+      :title: Python
+
+      A *read operation* is shown in the snippet below. All read operations
+      in the Python API are **atomic**. Note that when creating a dense/sparse
+      array object, TileDB **opens** the array in the specified ``mode``.
+
+      .. code-block:: python
+
+         ### An atomic read operation ###
+         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+             data = A[:]
 
 Reads in the multi-processing setting are completely independent
 and no locking is required. In the multi-threading scenario, locking
@@ -254,15 +283,44 @@ We illustrate an example using the code snippet below.
         // ... Process query
         // ... Print query results
 
-The figure below facilitates our explanation. The first array in the figure
-depicts the view when opening ``array_read``. All subsequent queries created
-for this array will see that view. Suppose a write happens *after*
-``array_read`` got opened (second array in the figure). ``query_1`` will
-not be able to see this update and, therefore, it will see the same view as
-that before the write happened (third array in the figure). Reopening array
-``array_read`` updates the array view to encompass the written cells.
-Therefore, a new query ``query_2`` created for the reopened array will
-finally see the update (fourth array in the figure).
+      The figure below facilitates our explanation. The first array in the figure
+      depicts the view when opening ``array_read``. All subsequent queries created
+      for this array will see that view. Suppose a write happens *after*
+      ``array_read`` got opened (second array in the figure). ``query_1`` will
+      not be able to see this update and, therefore, it will see the same view as
+      that before the write happened (third array in the figure). Reopening array
+      ``array_read`` updates the array view to encompass the written cells.
+      Therefore, a new query ``query_2`` created for the reopened array will
+      finally see the update (fourth array in the figure).
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        # Open the array for reads
+        A_r = tiledb.DenseArray(ctx, array_name, mode='r')
+
+        # Open the array for writes and write something
+        A_w = tiledb.DenseArray(ctx, array_name, mode='w')
+        data_w = np.array(...)
+        A_w[:] = data_w
+
+        # This will not be able to see the latest write
+        data_1 = A_r[:]
+
+        # You need to reopen the array for reads in order to see the latest write
+        A_r.reopen()
+        data_2 = A_r[:]
+
+      The figure below facilitates our explanation. The first array in the figure
+      depicts the view when opening ``A_r`. All subsequent queries created
+      for this array will see that view. Suppose a write happens *after*
+      ``A_r`` got created/opened (second array in the figure). ``data_1`` will
+      not include this update and, therefore, it will see the same view as
+      that before the write happened (third array in the figure). Reopening array
+      ``A_r`` updates the array view to encompass the written cells.
+      Therefore, ``data_2`` will include the update (fourth array in the figure).
 
 .. figure:: ../figures/consistency_array_open.png
    :align: center
@@ -288,18 +346,17 @@ is that the key-value writes (and creates a new fragment) *when it
 flushes*.
 
 The key-value store has an additional feature as compared to arrays:
-you can both read and write to the same key-value object (e.g.,
-``Map`` in C++). This is still *experimental* and should be used
+you can both read and write to the same key-value object. This is
+still *experimental* and should be used
 with caution. What complicates things here is flushing. If you
-write items to a ``Map`` object, you will also be able to read
-them form that object until *before* a flush. After the ``Map``
-object flushes the buffered items, you need to *reopen* it
-(as explained above for arrays) in order for these items
-to become visible again.
+write items to a key-value store, you will also be able to read
+them form that object until *before* a flush. After the buffered items
+are flushed, you need to *reopen* it (as explained above for arrays)
+in order for these items to become visible again.
 
 In general, for simplicity, we suggest you use the key-value store
-objects as you do with array objects; create a different ``Map``
-object for writes and a different one for reads, and then you can
-safely perform reads and writes concurrently similarly to arrays (always
+objects as you do with array objects, i.e., separate reads and writes
+to different key-value store objects. Then you can safely perform reads
+and writes concurrently similarly to arrays (always
 having the consistency issues we discussed above in mind).
 

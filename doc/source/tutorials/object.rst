@@ -11,18 +11,25 @@ We also discuss some auxiliary TileDB object management functions.
    This TileDB feature is experimental. Everything covered here works
    great, but the APIs might undergo changes in future versions.
 
+.. table:: Full programs
+  :widths: auto
 
-.. toggle-header::
-    :header: **Example Code Listing**
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``object``                            |objectcpp| |objectpy|
+  ====================================  =============================================================
 
-    .. content-tabs::
 
-       .. tab-container:: cpp
-          :title: C++
+.. |objectcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/object.cc
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/object.cc
-             :language: c++
-             :linenos:
+.. |objectpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/object.py
 
 
 TileDB groups
@@ -43,6 +50,14 @@ a group simply as follows:
 
         tiledb::Context ctx;
         tiledb::create_group(ctx, "my_group");
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+        tiledb.group_create(ctx, "my_group")
 
 Listing the ``my_group`` directory, you get the following:
 
@@ -73,6 +88,14 @@ marked as "invalid".
         tiledb::Context ctx;
         auto obj_type = Object::object(ctx, path).type();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       ctx = tiledb.Ctx()
+       type = tiledb.object_type(ctx, path)
+
 
 Listing the object hierarchy
 ----------------------------
@@ -89,7 +112,6 @@ every visited object. This is demonstrated in the code snippet below:
 
       .. code-block:: c++
 
-        // Create TileDB context
         tiledb::Context ctx;
 
         // List children
@@ -108,13 +130,8 @@ every visited object. This is demonstrated in the code snippet below:
         for (const auto& object : obj_iter)
           print_path(object.uri(), object.type());
 
-where the ``print_path`` callback takes as input a string path and an object
-type argument. This is how we defined it in our code example:
-
-.. content-tabs::
-
-   .. tab-container:: cpp
-      :title: C++
+      where the ``print_path`` callback takes as input a string path and an object
+      type argument. This is how we defined it in our code example:
 
       .. code-block:: c++
 
@@ -137,8 +154,25 @@ type argument. This is how we defined it in our code example:
           std::cout << "\n";
         }
 
-In the example code listing at the beginning of the section, we initially
-create the following hierarchy:
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+
+        # List children
+        print("\nListing hierarchy:")
+        tiledb.ls(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type))
+
+        # Walk in a path with a pre- and post-order traversal
+        print("\nPreorder traversal:")
+        tiledb.walk(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type))  # Default order is preorder
+
+        print("\nPostorder traversal:")
+        tiledb.walk(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type), "postorder")
+
+In the ``object`` code example, we initially create the following hierarchy:
 
 .. code-block:: bash
 
@@ -155,29 +189,61 @@ The code snippet we provided above would print out the following for this
 hierarchy (where ``<cwd>`` is the full path of your current working
 directory):
 
-.. code-block:: bash
+.. content-tabs::
 
-   Listing hierarchy:
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays GROUP
+   .. tab-container:: cpp
+      :title: C++
 
-   Preorder traversal:
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/dense_arrays/array_A ARRAY
-   file://<cwd>/my_group/dense_arrays/array_B ARRAY
-   file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
-   file://<cwd>/my_group/sparse_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays/array_C ARRAY
-   file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+      .. code-block:: bash
 
-   Postorder traversal:
-   file://<cwd>/my_group/dense_arrays/array_A ARRAY
-   file://<cwd>/my_group/dense_arrays/array_B ARRAY
-   file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays/array_C ARRAY
-   file://<cwd>/my_group/sparse_arrays/array_D ARRAY
-   file://<cwd>/my_group/sparse_arrays GROUP
+        Listing hierarchy:
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays GROUP
+
+        Preorder traversal:
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/dense_arrays/array_A ARRAY
+        file://<cwd>/my_group/dense_arrays/array_B ARRAY
+        file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+        file://<cwd>/my_group/sparse_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+        file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+
+        Postorder traversal:
+        file://<cwd>/my_group/dense_arrays/array_A ARRAY
+        file://<cwd>/my_group/dense_arrays/array_B ARRAY
+        file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+        file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+        file://<cwd>/my_group/sparse_arrays GROUP
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        Listing hierarchy:
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/sparse_arrays group
+
+        Preorder traversal:
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/dense_arrays/array_A array
+        file://<cwd>/my_group/dense_arrays/array_B array
+        file://<cwd>/my_group/dense_arrays/kv kv
+        file://<cwd>/my_group/sparse_arrays group
+        file://<cwd>/my_group/sparse_arrays/array_C array
+        file://<cwd>/my_group/sparse_arrays/array_D array
+
+        Postorder traversal:
+        file://<cwd>/my_group/dense_arrays/array_A array
+        file://<cwd>/my_group/dense_arrays/array_B array
+        file://<cwd>/my_group/dense_arrays/kv kv
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/sparse_arrays/array_C array
+        file://<cwd>/my_group/sparse_arrays/array_D array
+        file://<cwd>/my_group/sparse_arrays group
 
 Move/Remove objects
 -------------------
@@ -197,6 +263,12 @@ You can rename TileDB objects as follows:
 
         tiledb::Object::move(ctx, "my_group", "my_group_2");
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        tiledb.move(ctx, "my_group", "my_group_2")
 
 .. note::
 
@@ -215,48 +287,103 @@ You can remove TileDB objects as follows:
 
         tiledb::Object::remove(ctx, "my_group_2/dense_arrays");
 
-Compiling and running the example code of this tutorial, we get the
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        tiledb.remove(ctx, "my_group_2/dense_arrays")
+
+Running the ``object`` code example, we get the
 output shown below. Observe the listing after ``my_group`` got
 renamed to ``my_group_2`` and ``my_group_2/dense_arrays``,
 ``my_group_2/sparse_arrays/array_C`` got removed.
 
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ g++ -std=c++11 object.cc -o object_cpp -ltiledb
+        $ ./object_cpp
+
+        Listing hierarchy:
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays GROUP
+
+        Preorder traversal:
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/dense_arrays/array_A ARRAY
+        file://<cwd>/my_group/dense_arrays/array_B ARRAY
+        file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+        file://<cwd>/my_group/sparse_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+        file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+
+        Postorder traversal:
+        file://<cwd>/my_group/dense_arrays/array_A ARRAY
+        file://<cwd>/my_group/dense_arrays/array_B ARRAY
+        file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
+        file://<cwd>/my_group/dense_arrays GROUP
+        file://<cwd>/my_group/sparse_arrays/array_C ARRAY
+        file://<cwd>/my_group/sparse_arrays/array_D ARRAY
+        file://<cwd>/my_group/sparse_arrays GROUP
+
+        Listing hierarchy:
+        file://<cwd>/my_group_2/sparse_arrays GROUP
+
+        Preorder traversal:
+        file://<cwd>/my_group_2/sparse_arrays GROUP
+        file://<cwd>/my_group_2/sparse_arrays/array_D ARRAY
+
+        Postorder traversal:
+        file://<cwd>/my_group_2/sparse_arrays/array_D ARRAY
+        file://<cwd>/my_group_2/sparse_arrays GROUP
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python object.py
+
+        Listing hierarchy:
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/sparse_arrays group
+
+        Preorder traversal:
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/dense_arrays/array_A array
+        file://<cwd>/my_group/dense_arrays/array_B array
+        file://<cwd>/my_group/dense_arrays/kv kv
+        file://<cwd>/my_group/sparse_arrays group
+        file://<cwd>/my_group/sparse_arrays/array_C array
+        file://<cwd>/my_group/sparse_arrays/array_D array
+
+        Postorder traversal:
+        file://<cwd>/my_group/dense_arrays/array_A array
+        file://<cwd>/my_group/dense_arrays/array_B array
+        file://<cwd>/my_group/dense_arrays/kv kv
+        file://<cwd>/my_group/dense_arrays group
+        file://<cwd>/my_group/sparse_arrays/array_C array
+        file://<cwd>/my_group/sparse_arrays/array_D array
+        file://<cwd>/my_group/sparse_arrays group
+
+        Listing hierarchy:
+        file://<cwd>/my_group_2/sparse_arrays group
+
+        Preorder traversal:
+        file://<cwd>/my_group_2/sparse_arrays group
+        file://<cwd>/my_group_2/sparse_arrays/array_D array
+
+        Postorder traversal:
+        file://<cwd>/my_group_2/sparse_arrays/array_D array
+        file://<cwd>/my_group_2/sparse_arrays group
+
+
 .. code-block:: bash
-
-   $ g++ -std=c++11 object.cc -o object_cpp -ltiledb
-   $ ./object_cpp
-
-   Listing hierarchy:
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays GROUP
-
-   Preorder traversal:
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/dense_arrays/array_A ARRAY
-   file://<cwd>/my_group/dense_arrays/array_B ARRAY
-   file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
-   file://<cwd>/my_group/sparse_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays/array_C ARRAY
-   file://<cwd>/my_group/sparse_arrays/array_D ARRAY
-
-   Postorder traversal:
-   file://<cwd>/my_group/dense_arrays/array_A ARRAY
-   file://<cwd>/my_group/dense_arrays/array_B ARRAY
-   file://<cwd>/my_group/dense_arrays/kv KEY_VALUE
-   file://<cwd>/my_group/dense_arrays GROUP
-   file://<cwd>/my_group/sparse_arrays/array_C ARRAY
-   file://<cwd>/my_group/sparse_arrays/array_D ARRAY
-   file://<cwd>/my_group/sparse_arrays GROUP
-
-   Listing hierarchy:
-   file://<cwd>/my_group_2/sparse_arrays GROUP
-
-   Preorder traversal:
-   file://<cwd>/my_group_2/sparse_arrays GROUP
-   file://<cwd>/my_group_2/sparse_arrays/array_D ARRAY
-
-   Postorder traversal:
-   file://<cwd>/my_group_2/sparse_arrays/array_D ARRAY
-   file://<cwd>/my_group_2/sparse_arrays GROUP
 
    $ ls -l my_group_2/
    total 0

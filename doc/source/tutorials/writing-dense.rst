@@ -5,65 +5,55 @@ In this tutorial you will learn how to write to dense arrays. It is highly
 recommended that you read the tutorials on dense arrays and tiling first,
 as well as writing sparse arrays.
 
-.. toggle-header::
-    :header: **Example Code Listing #1**
+.. table:: Full programs
+  :widths: auto
 
-    .. content-tabs::
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``writing_dense_padding``             |writingdensepaddingcpp| |writingdensepaddingpy|
+  ``writing_dense_multiple``            |writingdensemultiplecpp| |writingdensemultiplepy|
+  ``writing_dense_sparse``              |writingdensesparsecpp|
+  ``writing_dense_global``              |writingdenseglobalcpp|
+  ``writing_dense_global_expansion``    |writingdenseglobalexpansioncpp|
+  ====================================  =============================================================
 
-       .. tab-container:: cpp
-          :title: C++
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_dense_padding.cc
-             :language: c++
-             :linenos:
+.. |writingdensepaddingcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_dense_padding.cc
 
-.. toggle-header::
-    :header: **Example Code Listing #2**
+.. |writingdensepaddingpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/writing_dense_padding.py
 
-    .. content-tabs::
+.. |writingdensemultiplecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_dense_multiple.cc
 
-       .. tab-container:: cpp
-          :title: C++
+.. |writingdensemultiplepy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/writing_dense_multiple.py
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_dense_multiple.cc
-             :language: c++
-             :linenos:
+.. |writingdensesparsecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_dense_sparse.cc
 
-.. toggle-header::
-    :header: **Example Code Listing #3**
+.. |writingdenseglobalcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_dense_global.cc
 
-    .. content-tabs::
+.. |writingdenseglobalexpansioncpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_dense_global_expansion.cc
 
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_dense_sparse.cc
-             :language: c++
-             :linenos:
-
-.. toggle-header::
-    :header: **Example Code Listing #4**
-
-    .. content-tabs::
-
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_dense_global.cc
-             :language: c++
-             :linenos:
-
-.. toggle-header::
-    :header: **Example Code Listing #5**
-
-    .. content-tabs::
-
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_dense_global_expansion.cc
-             :language: c++
-             :linenos:
 
 Basic concepts and definitions
 ------------------------------
@@ -91,7 +81,7 @@ Basic concepts and definitions
 Writing to a dense array
 ------------------------
 
-Let us revisit the ``quickstart_dense.cc`` example of tutorial :ref:`dense-arrays`.
+Let us revisit the ``quickstart_dense`` example of tutorial :ref:`dense-arrays`.
 Here is how we wrote to the array:
 
 .. content-tabs::
@@ -110,24 +100,32 @@ Here is how we wrote to the array:
        query.submit();
        array.close();
 
-This writes values ``1, 2, ...`` to the ``4x4`` dense TileDB array.
-The above code omits setting one more parameter to the query object,
-namely the subarray inside which the cell values will be written.
-TileDB understands that you will be writing to the entire domain,
-i.e., ``[1,4], [1,4]``. The result would be equivalent if we
-added the following lines before submitting the query:
-
-.. content-tabs::
-
-   .. tab-container:: cpp
-      :title: C++
+      The above code omits setting one more parameter to the query object,
+      namely the subarray inside which the cell values will be written.
+      TileDB understands that you will be writing to the entire domain,
+      i.e., ``[1,4], [1,4]``. The result would be equivalent if we
+      added the following lines before submitting the query:
 
       .. code-block:: c++
 
        std::vector<int> subarray = {1, 4, 1, 4};
        query.set_subarray(subarray);
 
-This implies that you can write to any subarray in a dense array,
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       ctx = tiledb.Ctx()
+       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+           data = np.array(([1, 2, 3, 4],
+                            [5, 6, 7, 8],
+                            [9, 10, 11, 12],
+                            [13, 14, 15, 16]))
+           A[:] = data
+
+This writes values ``1, 2, ..., 16`` to the ``4x4`` dense TileDB array.
+You can write to any subarray in a dense array,
 i.e., you do not have to populate the entire array at once
 (see also the section on multiple writes below). For instance,
 the code below would just populate only two rows of the above
@@ -152,26 +150,38 @@ array, i.e., subarray ``[1,2], [1,4]``:
        query.submit();
        array.close();
 
-Observe that the above code sets the query layout to **row-major**.
-This means that the values ``1, 2, 3, ...`` are laid out inside
-buffer ``data`` (provided to the query) in row-major order
-*with respect to the subarray query*. You can also set the layout
-to **column-major** or **global order** instead as well (we
-explain this in more detail below). TileDB
-knows how to efficiently re-organize the cells internally (if needed)
-and map them to the global order upon writing the values to disk.
+   .. tab-container:: python
+      :title: Python
 
-To better demonstrate the effect of the query layout in writes,
-let us create the same array as above, but now with ``2x2`` space
-tiling, and experiment with row-major, column-major and global
-query layout upon writing. Substitute the ``create_array``
-and ``write_array`` functions of ``quickstart_dense.cc`` with
-the ones provided below.
+      .. code-block:: python
+
+       ctx = tiledb.Ctx()
+       # Open the array and write to it.
+       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+           data = np.array(([1, 2, 3, 4],
+                            [5, 6, 7, 8]))
+           A[1:3, 1,5] = data
 
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      Observe that the above code sets the query layout to **row-major**.
+      This means that the values ``1, 2, 3, ..., 16`` are laid out inside
+      buffer ``data`` (provided to the query) in row-major order
+      *with respect to the subarray query*. You can also set the layout
+      to **column-major** or **global order** instead as well (we
+      explain this in more detail below). TileDB
+      knows how to efficiently re-organize the cells internally (if needed)
+      and map them to the global order upon writing the values to disk.
+
+      To better demonstrate the effect of the query layout in writes,
+      let us create the same array as above, but now with ``2x2`` space
+      tiling, and experiment with row-major, column-major and global
+      query layout upon writing. Substitute the ``create_array``
+      and ``write_array`` functions of ``quickstart_dense`` with
+      the ones provided below.
 
       .. code-block:: c++
 
@@ -198,30 +208,48 @@ the ones provided below.
          Context ctx;
          Array array(ctx, array_name, TILEDB_WRITE);
          Query query(ctx, array);
-         query.set_layout(TILEDB_ROW_MAJOR). // Try also with TILEDB_COL_MAJOR/TILEDB_GLOBAL_ORDER
+         query.set_layout(TILEDB_ROW_MAJOR) // Try also with TILEDB_COL_MAJOR/TILEDB_GLOBAL_ORDER
               .set_buffer("a", data)
               .set_subarray(subarray);
          query.submit();
          array.close();
        }
 
+   .. tab-container:: python
+      :title: Python
+
+      As explained above, we write to TileDB using numpy arrays. By default,
+      a numpy array lays out the cell values internally in row-major order
+      (or C-order). You can convert the layout of a numpy array ``x`` to
+      column-major (or Fortran-order) prior to writing it to a TileDB array
+      simply as follows:
+
+      .. code-block:: python
+
+       np.asfortranarray(x)
+
+      TileDB will check the layout of the numpy values and will write in
+      the corresponding layout.
+
+      .. warning::
+
+         Currently global writes are not supported in the Python API.
+
+
 The figure below depicts the array contents when varying the query layout.
 Observe that the layout is always specified with respect to the query
 subarray.
 
-
 .. figure:: ../figures/writing_dense_layout.png
    :align: center
    :scale: 40 %
-
 
 Empty space / Padding
 ---------------------
 
 Since TileDB allows you to write to any subarray of your array,
 *what happens if your array has empty areas?* We demonstrate
-with example ``writing_dense_padding.cc`` (see code listing #1
-at the beginning of the section). We first create a ``4x4`` array
+with example ``writing_dense_padding``. We first create a ``4x4`` array
 with ``2x2`` space tiling. We then write only subarray
 ``[2,3], [12]``, leaving the rest of the array unpopulated:
 
@@ -243,39 +271,68 @@ with ``2x2`` space tiling. We then write only subarray
        query.submit();
        array.close();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       ctx = tiledb.Ctx()
+       # Open the array and write to it.
+       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+           # Write to [2,3], [1,2]
+           data = np.array(([1, 2], [3, 4]))
+           A[2:4, 1:3] = data
+
 The array looks like in the figure below.
 
 .. figure:: ../figures/writing_dense_padding.png
    :align: center
    :scale: 40 %
 
-The example then reads the *entire* array (i.e., ``[1,2], [3,4]``)
+The example then reads the *entire* array (i.e., ``[1,4], [1,4]``)
 in row-major order and
 prints the cell values on the screen. Here is the output after
-compiling and running the program:
+running the program:
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 writing_dense_padding.cc -o writing_dense_padding_cpp -ltiledb
-   $ ./writing_dense_padding_cpp
-   -2147483648
-   -2147483648
-   -2147483648
-   -2147483648
-   1
-   2
-   -2147483648
-   -2147483648
-   3
-   4
-   -2147483648
-   -2147483648
-   -2147483648
-   -2147483648
-   -2147483648
-   -2147483648
+   .. tab-container:: cpp
+      :title: C++
 
-Observe that for every empty cell in ``[1,2], [3,4]``, TileDB returned value
+      .. code-block:: bash
+
+        $ g++ -std=c++11 writing_dense_padding.cc -o writing_dense_padding_cpp -ltiledb
+        $ ./writing_dense_padding_cpp
+        -2147483648
+        -2147483648
+        -2147483648
+        -2147483648
+        1
+        2
+        -2147483648
+        -2147483648
+        3
+        4
+        -2147483648
+        -2147483648
+        -2147483648
+        -2147483648
+        -2147483648
+        -2147483648
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python writing_dense_padding.py
+        [[-2147483648 -2147483648 -2147483648 -2147483648]
+         [          1           2 -2147483648 -2147483648]
+         [          3           4 -2147483648 -2147483648]
+         [-2147483648 -2147483648 -2147483648 -2147483648]]
+
+
+Observe that for every empty cell in ``[1,4], [1,4]``, TileDB returned value
 ``-2147483648``. This is the default **fill value**, which is is equal to
 the minumum value stored in an integer variable.
 The table below shows the default fill values for all supported
@@ -318,8 +375,7 @@ But you may wonder, *how does TileDB handles empty spaces at the physical level?
 
 Let us explain the above with our running example. The array has ``2x2`` space
 tiling, which means that we have two partially written tiles (the upper left
-and lower left in red), and two completely empty tiles (upper right and lower
-right in blue).
+and lower left), and two completely empty tiles (upper right and lower right).
 TileDB distinguishes between partially written tiles and completely empty tiles.
 We mentioned in an earlier tutorial that TileDB always writes integral tiles
 on the file, i.e., it cannot write just 2 out of 4 cells in our example.
@@ -353,7 +409,7 @@ As expected, there is a single fragment subdirectory. Observe the size of
 attribute file ``a.tdb``, which is 32 bytes. Given that the attribute type
 is ``int32`` (and since there is no compression), this implies that 8 cell
 values were written to the file, i.e., *two tiles*. This confirms that
-*padding* applies only to partially written files, whereas completely
+*padding* applies only to partially written tiles, whereas completely
 empty tiles are not materialized at all.
 
 
@@ -365,8 +421,8 @@ described for sparse arrays in an earlier tutorial. Each write in
 row-major or column-major layout creates a new subfolder/fragment
 in the array directory (we explain unordered and global layout in
 the subsections below). Consider the following two writes to the
-dense array we have been using in the examples above (see the full
-code listing #2 at the beginning of this tutorial):
+dense array we have been using in the examples above (see
+code example ``writing_dense_multiple``):
 
 .. content-tabs::
 
@@ -401,7 +457,24 @@ code listing #2 at the beginning of this tutorial):
           array.close();
         }
 
-The first function writes to subarray ``[1,2], [1,2]``, whereas the second
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       ctx = tiledb.Ctx()
+       # Open the array and write to it.
+       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+           # First write
+           data = np.array(([1, 2], [3, 4]))
+           A[1:3, 1:3] = data
+
+           # Second write
+           data = np.array(([5, 6, 7, 8],
+                            [9, 10, 11, 12]))
+           A[2:4, 1:5] = data
+
+The first writes to subarray ``[1,2], [1,2]``, whereas the second
 to ``[2,3], [1,4]``. The figure below depicts the two writes,
 as well as the collective logical view of the array after the second write.
 
@@ -409,13 +482,18 @@ as well as the collective logical view of the array after the second write.
    :align: center
    :scale: 40 %
 
-After compiling and running the program, we get the following
+After running the program, we get the following
 output. Observe that the full read (in row-major) order results in
 retrieving the cell values as depicted in the collective
 logical view of the array (again, retrieving the default
 fill values for the empty cells).
 
-.. code-block:: bash
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
 
        $ g++ -std=c++11 writing_dense_multiple.cc -o writing_dense_multiple_cpp -ltiledb
        $ ./writing_dense_multiple_cpp
@@ -436,6 +514,17 @@ fill values for the empty cells).
        -2147483648
        -2147483648
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+       $ python writing_dense_multiple.py
+       [[          1           2 -2147483648 -2147483648]
+        [          5           6           7           8]
+        [          9          10          11          12]
+        [-2147483648 -2147483648 -2147483648 -2147483648]]
+
 Listing the array directory, you can see that there are two
 subfolders/fragments created:
 
@@ -453,6 +542,10 @@ subfolders/fragments created:
 Writing sparse cells
 --------------------
 
+.. warning::
+
+   Currently sparse writes to dense arrays are not supported in the Python API.
+
 One exciting feature about dense arrays is that *you can write sparse cells
 to them*, i.e., you can write multiple cells that do not necessary fall in
 the same hyper-rectangular subarray in a single write query. The sparse writes
@@ -463,9 +556,8 @@ is where the unordered layout is relevant again. Everything discussed about
 writes in :ref:`writing-sparse` (e.g., even writing in global order) holds here
 as well.
 
-Let us demonstrate with an example (see full code listing #3 at the beginning
-of this tutorial). Here is how we write some sparse cells to the dense
-array of the previous examples:
+Let us demonstrate with code example ``writing_dense_sparse``. Here is how we write
+some sparse cells to the dense array of the previous examples:
 
 .. content-tabs::
 
@@ -549,6 +641,10 @@ tutorial.
 Writing in global layout
 ------------------------
 
+.. warning::
+
+   Currently writing in global layout is not supported in the Python API.
+
 TileDB allows you to write in global order similar to the case of sparse arrays.
 This generally leads to better performance, but comes at the expense of extra
 usage complexity.
@@ -556,8 +652,8 @@ The limitation with this layout is that you need to always write
 *integral* tiles, i.e., the subarray you set to the query (and write into)
 must not partially intersect tiles, but instead encompass them entirely.
 
-The following code writes to subarray ``[1,4], [1,2]`` (see full code
-listing #4 at the beginning of this tutorial). Observe that, similar
+The following code writes to subarray ``[1,4], [1,2]`` (see example
+``writing_dense_global``). Observe that, similar
 to the case of sparse arrays, we can submit the same query multiple
 times, effectively *appending* to the same fragment (list the contents
 of the resulting array to verify this). The difference here is that
@@ -605,7 +701,7 @@ global order would have failed (and the behavior can be unexpected).
    :align: center
    :scale: 40 %
 
-Writing in global order mode must done with extra care in case
+Writing in global order mode must be done with extra care in case
 some tile extent does not divide the respective dimension domain. As
 we have explained in an earlier tutorial, this results in internal
 *domain expansion*. Moreover, TileDB does not allow you to write
@@ -619,8 +715,8 @@ domain contains two entrire tiles (upper left and lower left)
 and two partial tiles (upper right and lower right). In this
 case, you can write in global order in subarray ``[1,4], [1,2]``,
 but choose another layout (e.g., row-major) for ``[1,4], [3,3]``.
-This is done in code listing #5 (see at beginning of this
-tutorial) in two writes, which are also shown in the figure below.
+This is done in code example ``writing_dense_global_expanison`` in two
+writes, which are also shown in the figure below.
 
 
 .. figure:: ../figures/writing_dense_global_expansion.png
@@ -632,6 +728,6 @@ Writing and performance
 -----------------------
 
 The writing performance can be affected by various factors, such as the
-tiling, compression and query layout. Due to the importance of this
-topic, we include an extensive discussion in a later tutorial
-dedicated on performance.
+tiling, compression and query layout. See the
+:ref:`performance/introduction` tutorial for
+more information about the TileDB performance.

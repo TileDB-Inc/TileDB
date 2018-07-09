@@ -22,9 +22,9 @@ Basic concepts and definitions
     :header: **Tile extent**
 
       This is the size of the space tile along some dimension. A space
-      tile can have a different extent on each dimension. However,
-      all space tiles must have the same tile extents on the same
-      dimension, since all space tiles must have the same shape.
+      tile can have a different extent on each dimension.
+      All space tiles will have the same tile extents on the same
+      dimension, i.e., all space tiles will have the same shape.
 
 .. toggle-header::
     :header: **Data tile**
@@ -80,14 +80,24 @@ suppose for the sake of demonstration that the compressed array consumes 10 GB.
 
       .. code-block:: c++
 
-        Context ctx;
-        Domain domain(ctx);
         domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 1000000}}, 1000000))
               .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 1000000}}, 1000000));
         ArraySchema schema(ctx, TILEDB_DENSE);
         schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
         schema.add_attribute(Attribute::create<int>(ctx, "a"));
-        Array::create(array_name, schema);
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       dom = tiledb.Domain(ctx,
+                           tiledb.Dim(ctx, name="rows", domain=(1, 1000000), tile=1000000, dtype=np.int32),
+                           tiledb.Dim(ctx, name="cols", domain=(1, 1000000), tile=1000000, dtype=np.int32))
+       schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
+                                   cell_order='row-major', tile_order='row-major',
+                                   attrs=[tiledb.Attr(ctx, name="a", dtype=np.int32)])
+       tiledb.DenseArray.create(array_name, schema)
 
 Now suppose we wish to read a tiny ``2x2`` subarray from this large array as shown in
 the figure below. Recall that the cell values of this array are written in a file
@@ -122,6 +132,15 @@ in the dimension constructor.
 
         domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 1000000}}, 3))
               .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 1000000}}, 2));
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+       dom = tiledb.Domain(ctx,
+                           tiledb.Dim(ctx, name="rows", domain=(1, 1000000), tile=3, dtype=np.int32),
+                           tiledb.Dim(ctx, name="cols", domain=(1, 1000000), tile=2, dtype=np.int32))
 
 This means that we define the **tile extent** for dimension ``rows`` to be equal to
 ``3`` (this used to be ``1000000``), and the tile extent for dimension ``cols`` to
@@ -172,6 +191,13 @@ is flexible to adjust the tile extents along each dimension).
       .. code-block:: c++
 
         schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        schema = tiledb.ArraySchema(..., cell_order='row-major', tile_order='row-major', ...)
 
 The figure below illustrates the two tile orders and two
 cell orders for a simple ``4x4`` array with a ``2x2`` space tiling.
@@ -276,10 +302,7 @@ Choosing the space tile shape and tile/cell order is a challenging task.
 The takeaway from this section is that these choices affect the
 layout of the cell values in the data files, which in turn greatly
 affect performance depending on the shapes and positions of the
-subarrays upon reading. Due to its importance, we cover this
-topic in great detail in a later tutorial on performance, where
-we provide hints that will hopefully help you design your arrays
-in a way that will maximize the TileDB performance for your
-application.
+subarrays upon reading. See :ref:`performance/introduction` for
+more details on TileDB performance and how to tune it.
 
 

@@ -11,7 +11,7 @@ distributed storage layer for the Hadoop stack.
    The HDFS backend currently only works on POSIX (Linux, OSX) platforms.
    Windows is currently not supported.
 
-TileDB integrates with HDFS though the ``libhdfs`` library
+TileDB integrates with HDFS through the ``libhdfs`` library
 (HDFS C-API). The HDFS backend is enabled by default and ``libhdfs`` loading
 happens **at runtime** based on environment variables:
 

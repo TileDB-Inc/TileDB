@@ -50,6 +50,15 @@ upon array creation:
         a.set_compressor({TILEDB_GZIP, -1});
         schema.add_attribute(a);
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+        attr = tiledb.Attr(ctx, name="a", dtype=np.int32, compressor=("gzip", -1))
+        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False, attrs=[attr])
+
 TileDB offers a variety of compressors to choose from (see below). Moreover,
 you can adjust the compression level (the second argument in the function
 setter above - ``-1`` means "default compression level"). If a compressor
@@ -74,6 +83,13 @@ tiles as follows (the default is ZSTD with default compression level):
 
         schema.set_coords_compressor({TILEDB_LZ4, -1});
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        schema = tiledb.ArraySchema(..., coords_compressor=("lz4", -1))
+
 To maximize the effect of compression on coordinates, TileDB first
 unzips the coordinates tuples and groups the coordinates along
 the dimensions. For instance, coordinates ``(1,2)``, ``(1,3)``, ``(1,5)``
@@ -97,6 +113,12 @@ data tiles (the default is ZSTD with default compression level):
 
         schema.set_offsets_compressor({TILEDB_BZIP2, -1});
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        schema = tiledb.ArraySchema(..., offsets_compressor=("bzip2", -1))
 
 Choosing a compressor
 ---------------------
@@ -156,6 +178,6 @@ is important for performance, but there is always a tradeoff between
 compression ratio and speed, which you need to adjust based on your
 application. Luckily for you, TileDB *parallelizes* internally both
 compression and decompression. However, parallelization takes effect
-when the data tile to be compressed/decompressed is large enough. Once
-again, we delegate a more extensive discussion on how compression
-affects performance to a later tutorial.
+when the data tile to be compressed/decompressed is large enough.
+See :ref:`performance/introduction` for more information on
+TileDB performance and how to tune it.

@@ -5,18 +5,26 @@ In this tutorial we explain asynchronous queries in TileDB.
 It is strongly recommended that you read the previous tutorials on
 write and read queries first.
 
-.. toggle-header::
-    :header: **Example Code Listing**
+.. warning::
 
-    .. content-tabs::
+  Currently asynchronous queries are not supported in the Python API.
 
-       .. tab-container:: cpp
-          :title: C++
+====================================  =============================================================
+**Program**                           **Links**
+------------------------------------  -------------------------------------------------------------
+``async``                             |asynccpp| |asyncpy|
+====================================  =============================================================
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/async.cc
-             :language: c++
-             :linenos:
 
+.. |asynccpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/async.cc
+
+.. |asyncpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/async.py
 
 Basic concepts and definitions
 ------------------------------
@@ -55,10 +63,9 @@ synchronous and asynchronous query execution.
    :align: center
    :scale: 20 %
 
-We include an example for writing and reading an array asynchronously
-in the code listing at the beginning of the tutorial. Submitting the
-query asynchronously is very simple; it is done as shown below.
-Observe that we pass a simple function to the query submission,
+We demonstrate using the ``async`` code example.
+Submitting the query asynchronously is very simple; it is done as shown
+below. Observe that we pass a simple function to the query submission,
 which simply prints a message on the screen (the function can be
 anything).
 
@@ -87,7 +94,7 @@ which is done by retrieving and checking the status as follows:
         } while (status == tiledb::Query::Status::INPROGRESS);
 
 
-Compiling and running the program, we get the following output:
+Running the program, we get the following output:
 
 .. code-block:: bash
 
