@@ -6,17 +6,25 @@ We will focus only on dense arrays, as everything you learn here applies to
 sparse arrays as well in a straightforward manner.
 It is recommended to read the tutorial on dense arrays first.
 
-.. toggle-header::
-    :header: **Example Code Listing**
 
-    .. content-tabs::
+.. table:: Full programs
+  :widths: auto
 
-       .. tab-container:: cpp
-          :title: C++
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``multi_attribute``                   |multiattrcpp| |multiattrpy|
+  ====================================  =============================================================
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/multi_attribute.cc
-             :language: c++
-             :linenos:
+.. |multiattrcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/multi_attribute.cc
+
+.. |multiattrpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/multi_attribute.py
 
 Basic concepts and definitions
 ------------------------------
@@ -79,6 +87,19 @@ however that ``a2`` is defined to store **two** float values per cell.
         schema.add_attribute(Attribute::create<char>(ctx, "a1"));
         schema.add_attribute(Attribute::create<float[2]>(ctx, "a2"));
 
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
+                                     attrs=[tiledb.Attr(ctx, name="a1", dtype=np.uint8),
+                                            tiledb.Attr(ctx, name="a2",
+                                                        dtype=np.dtype([("", np.float32), ("", np.float32)]))])
+
+      We use a ``np.uint8`` to store the character value in ``a1``.
+
 .. note::
 
  In the current version of TileDB, once an array has been created, you cannot modify
@@ -89,12 +110,12 @@ Writing to the array
 --------------------
 
 Writing is similar to the simple dense array example. The difference here is that
-we need to prepare two buffers (one for ``a1`` and one for ``a2``) and set them
-to the query object. Note that there should be a one-to-one correspondence
+we need to prepare two data buffers (one for ``a1`` and one for ``a2``).
+Note that there should be a one-to-one correspondence
 between the values of ``a1`` and ``a2`` in the buffers; for instance, value
-``1`` in ``data_a1`` is associated with value ``(1.1f,1.2f)`` in ``data_a2``
+``1`` in ``data_a1`` is associated with value ``(1.1, 1.2)`` in ``data_a2``
 (recall each cell stores two floats on ``a2``), ``2`` in ``data_a1``
-with ``(2.1f,2.2f)`` in ``data_a2``, etc.
+with ``(2.1, 2.2)`` in ``data_a2``, etc.
 
 .. content-tabs::
 
@@ -123,6 +144,22 @@ with ``(2.1f,2.2f)`` in ``data_a2``, etc.
         query.submit();
         array.close();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+             data_a1 = np.array((list(map(ord, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+                                                'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']))))
+             data_a2 = np.array(([(1.1, 1.2), (2.1, 2.2), (3.1, 3.2), (4.1, 4.2),
+                                  (5.1, 5.2), (6.1, 6.2), (7.1, 7.2), (8.1, 8.2),
+                                  (9.1, 9.2), (10.1, 10.2), (11.1, 11.2), (12.1, 12.2),
+                                  (13.1, 13.2), (14.1, 14.2), (15.1, 15.2), (16.1, 16.2)]),
+                                dtype=[("", np.float32), ("", np.float32)])
+             A[:, :] = {"a1": data_a1, "a2": data_a2}
+
 .. warning::
 
    During writing, you must provide a value for all attributes for the cells
@@ -139,16 +176,17 @@ Reading from the array
 ----------------------
 
 We focus on subarray ``[1,2], [2,4]``.
-Reading is similar to the simple dense array example. The difference here
-is that we need to allocate two buffers (one for ``a1`` and one for ``a2``)
-and set to the query object. Knowing that the result consists of 6 cells,
-we allocate 6 character elements for ``data_a1`` and 12 float elements for
-``data_a2``, since ``a2`` stores two floats per cell.
 
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      Reading is similar to the simple dense array example. The difference here
+      is that we need to allocate two buffers (one for ``a1`` and one for ``a2``)
+      and set to the query object. Knowing that the result consists of 6 cells,
+      we allocate 6 character elements for ``data_a1`` and 12 float elements for
+      ``data_a2``, since ``a2`` stores two floats per cell.
 
       .. code-block:: c++
 
@@ -165,33 +203,53 @@ we allocate 6 character elements for ``data_a1`` and 12 float elements for
         query.submit();
         array.close();
 
-Now ``data_a1`` holds the result cell values on attribute ``a1`` and
-``data_a2`` the results on ``a2``, which we can print simply like:
-
-.. content-tabs::
-
-   .. tab-container:: cpp
-      :title: C++
+      Now ``data_a1`` holds the result cell values on attribute ``a1`` and
+      ``data_a2`` the results on ``a2``, which we can print simply like:
 
       .. code-block:: c++
 
         for (int i = 0; i < 6; ++i)
-        std::cout << "a1: " << data_a1[i] << ", a2: (" << data_a2[2 * i] << ","
-                  << data_a2[2 * i + 1] << ")\n";
+            std::cout << "a1: " << data_a1[i] << ", a2: (" << data_a2[2 * i] << ","
+                      << data_a2[2 * i + 1] << ")\n";
+
+
+   .. tab-container:: python
+      :title: Python
+
+      Reading is similar to the simple dense array example.
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+             # Slice only rows 1, 2 and cols 2, 3, 4.
+             data = A[1:3, 2:5]
+
+
+      Now ``data["a1"]`` holds the result cell values on attribute ``a1`` and
+      ``data["a2"]`` the results on ``a2``, which we can print simply like:
+
+      .. code-block:: python
+
+         a1, a2 = data["a1"].flat, data["a2"].flat
+         for i, v in enumerate(a1):
+             print("a1: '%s', a2: (%.1f, %.1f)" % (chr(v), a2[i][0], a2[i][1]))
 
 Subselecting on attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-While you must provide buffers (values) for all attributes during writes, the same
-is not true during reads. If you submit a read query with buffers only for some of
-the attributes of an array, only those attributes will be read from disk. For example,
-if we wish to retrieve the values only on ``a1``, we set only buffer ``data_a1``
-to the query object (i.e., omitting ``data_a2``):
+While you must provide values for all attributes during writes, the same
+is not true during reads.
 
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      If you submit a read query with buffers only for some of
+      the attributes of an array, only those attributes will be read from disk. For example,
+      if we wish to retrieve the values only on ``a1``, we set only buffer ``data_a1``
+      to the query object (i.e., omitting ``data_a2``):
 
       .. code-block:: c++
 
@@ -206,29 +264,69 @@ to the query object (i.e., omitting ``data_a2``):
         query.submit();
         array.close();
 
+   .. tab-container:: python
+      :title: Python
+
+      If you submit a read query with the alternative ``.query()`` syntax, you can specify
+      a list of attribute names. Only those attributes will be read from disk. For example,
+      if we wish to retrieve the values only on ``a1``, we list only ``a1``
+      to the query method (i.e., omitting ``a2``):
+
+      .. code-block:: python
+
+          ctx = tiledb.Ctx()
+          with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+              data = A.query(attrs=["a1"])[1:3, 2:5]
+
 If you compile and run the example of this tutorial as shown below, you should
 see the following output:
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 multi_attribute.cc -o multi_attribute -ltiledb
-   $ ./multi_attribute
-   Reading both attributes a1 and a2:
-   a1: b, a2: (2.1,2.2)
-   a1: c, a2: (3.1,3.2)
-   a1: d, a2: (4.1,4.2)
-   a1: f, a2: (6.1,6.2)
-   a1: g, a2: (7.1,7.2)
-   a1: h, a2: (8.1,8.2)
+   .. tab-container:: cpp
+      :title: C++
 
-   Subselecting on attribute a1:
-   a1: b
-   a1: c
-   a1: d
-   a1: f
-   a1: g
-   a1: h
+      .. code-block:: bash
 
+         $ g++ -std=c++11 multi_attribute.cc -o multi_attribute -ltiledb
+         $ ./multi_attribute
+         Reading both attributes a1 and a2:
+         a1: b, a2: (2.1,2.2)
+         a1: c, a2: (3.1,3.2)
+         a1: d, a2: (4.1,4.2)
+         a1: f, a2: (6.1,6.2)
+         a1: g, a2: (7.1,7.2)
+         a1: h, a2: (8.1,8.2)
+
+         Subselecting on attribute a1:
+         a1: b
+         a1: c
+         a1: d
+         a1: f
+         a1: g
+         a1: h
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+         $ python multi_attribute.py
+         Reading both attributes a1 and a2:
+         a1: 'b', a2: (2.1, 2.2)
+         a1: 'c', a2: (3.1, 3.2)
+         a1: 'd', a2: (4.1, 4.2)
+         a1: 'f', a2: (6.1, 6.2)
+         a1: 'g', a2: (7.1, 7.2)
+         a1: 'h', a2: (8.1, 8.2)
+
+         Subselecting on attribute a1:
+         a1: 'b'
+         a1: 'c'
+         a1: 'd'
+         a1: 'f'
+         a1: 'g'
+         a1: 'h'
 
 On-disk structure
 -----------------

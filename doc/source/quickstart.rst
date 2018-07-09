@@ -957,6 +957,10 @@ Link to full programs
 A Simple Key-Value Example
 --------------------------
 
+.. warning::
+
+   Key-value arrays are not yet supported for the Go or R APIs.
+
 First let's create a simple map with a single integer attribute.
 
 .. content-tabs::

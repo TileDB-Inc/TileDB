@@ -7,6 +7,25 @@ A lot of performance optimization for TileDB programs involves **minimizing wast
 TileDB comes with an internal statistics reporting system that can help identify potential
 areas of performance improvement for your TileDB programs, including reducing wasted work.
 
+.. table:: Full programs
+  :widths: auto
+
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``using_tiledb_stats``                |statscpp| |statspy|
+  ====================================  =============================================================
+
+.. |statscpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/using_tiledb_stats.cc
+
+.. |statspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/using_tiledb_stats.py
+
 The TileDB statistics can be enabled and disabled at runtime, and a report can be dumped at
 any point. A typical situation is to enable the statistics immediately before submitting a query,
 submit the query, and then immediately dump the report. This can be done like so:
@@ -22,6 +41,17 @@ submit the query, and then immediately dump the report. This can be done like so
          query.submit();
          tiledb::Stats::dump(stdout);
          tiledb::Stats::disable();
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         tiledb.stats_enable()
+         data = A[:]
+         tiledb.stats_dump()
+         tiledb.stats_disable()
 
 With the ``dump`` call, a report containing the gathered statistics will be printed. The
 report prints values of many individual counters, followed by a high-level summary printed
@@ -114,7 +144,7 @@ the wasted work.
 
 For each of the following experiments, we will read from a 2D dense array containing about
 0.5GB of data. The array will be 12,000 rows by 12,000 columns with a single uncompressed
-``int32_t`` attribute. The array is created as follows:
+``int32`` attribute. The array is created as follows:
 
 .. content-tabs::
 
@@ -135,6 +165,22 @@ For each of the following experiments, we will read from a 2D dense array contai
                Attribute::create<int32_t>(ctx, "a", {TILEDB_NO_COMPRESSION, -1}));
            Array::create(array_uri, schema);
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         dom = tiledb.Domain(ctx,
+                            tiledb.Dim(ctx, name="rows", domain=(1, 12000), tile=row_tile_extent, dtype=np.int32),
+                            tiledb.Dim(ctx, name="cols", domain=(1, 12000), tile=col_tile_extent, dtype=np.int32))
+
+         schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
+                                    attrs=[tiledb.Attr(ctx, name="a", dtype=np.int32)])
+
+         # Create the (empty) array on disk.
+         tiledb.DenseArray.create(array_name, schema)
+
 The total array size on disk then is 12000 * 12000 * 4 bytes, about 550 MB.
 
 As a first example, suppose we configured the schema such that the array is composed
@@ -151,6 +197,15 @@ of a single tile, i.e.:
                Dimension::create<uint32_t>(ctx, "row", {{1, 12000}}, 12000))
             .add_dimension(
                 Dimension::create<uint32_t>(ctx, "col", {{1, 12000}}, 12000));
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         dom = tiledb.Domain(ctx,
+                            tiledb.Dim(ctx, name="rows", domain=(1, 12000), tile=12000, dtype=np.int32),
+                            tiledb.Dim(ctx, name="cols", domain=(1, 12000), tile=12000, dtype=np.int32))
 
 With this array schema, **the entire array is composed of a single tile**. Thus, any
 read query (regardless of the subarray) will fetch the entire array from disk.
@@ -176,6 +231,19 @@ which is 25% of the cells in the array:
          query.submit();
          Stats::dump(stdout);
          Stats::disable();
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+             # Read a slice of 3,000 rows.
+             tiledb.stats_enable()
+             data = A[1:3001, 1:12001]
+             tiledb.stats_dump()
+             tiledb.stats_disable()
 
 The report printed for this experiment is:
 
@@ -220,6 +288,15 @@ Now let's modify the array such that **each row corresponds to a single tile**, 
                Dimension::create<uint32_t>(ctx, "row", {{1, 12000}}, 1))
             .add_dimension(
                 Dimension::create<uint32_t>(ctx, "col", {{1, 12000}}, 12000));
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         dom = tiledb.Domain(ctx,
+                            tiledb.Dim(ctx, name="rows", domain=(1, 12000), tile=1, dtype=np.int32),
+                            tiledb.Dim(ctx, name="cols", domain=(1, 12000), tile=12000, dtype=np.int32))
 
 When reading the subarray ``[1:3000, 1:12000]`` as in the previous experiment, we see
 the following statistics:
@@ -272,6 +349,19 @@ Finally, we will issue two overlapping queries back-to-back, first the same
          Stats::dump(stdout);
          Stats::disable();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+             tiledb.stats_enable()
+             data1 = A[1:3001, 1:12001]
+             data2 = A[2000:4001, 1:12001]
+             tiledb.stats_dump()
+             tiledb.stats_disable()
+
 This yields the following report:
 
 .. code-block:: none
@@ -315,6 +405,19 @@ to be cached. Let's increase the tile cache size to 100MB and repeat the experim
          Stats::dump(stdout);
          Stats::disable();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx({'sm.tile_cache_size': 100 * 1024 * 1024})
+         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+             tiledb.stats_enable()
+             data1 = A[1:3001, 1:12001]
+             data2 = A[2000:4001, 1:12001]
+             tiledb.stats_dump()
+             tiledb.stats_disable()
+
 The stats summary now reads:
 
 .. code-block:: none
@@ -357,6 +460,21 @@ data when each row is a single tile:
          query.submit();
          Stats::dump(stdout);
          Stats::disable();
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         # Open the array and write to it.
+         with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+             data = np.arange(12000 * 12000)
+             tiledb.stats_enable()
+             A[:] = data
+             tiledb.stats_dump()
+             tiledb.stats_disable()
 
 With attribute ``a`` uncompressed as before, this gives the following report in the summary:
 
