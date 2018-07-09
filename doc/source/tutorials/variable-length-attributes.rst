@@ -6,17 +6,23 @@ Variable-length Attributes
 In this tutorial we will learn how to use variable-length attributes.
 It is recommended to read the tutorial on dense arrays first.
 
-.. toggle-header::
-    :header: **Example Code Listing**
+.. warning::
 
-    .. content-tabs::
+   Variable-length attributes are not yet supported in the Python API.
 
-       .. tab-container:: cpp
-          :title: C++
+.. table:: Full programs
+  :widths: auto
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/variable_length.cc
-             :language: c++
-             :linenos:
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``variable_length``                   |varlencpp|
+  ====================================  =============================================================
+
+.. |varlencpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/variable_length.cc
 
 Basic concepts and definitions
 ------------------------------

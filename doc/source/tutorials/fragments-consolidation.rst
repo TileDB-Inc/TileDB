@@ -6,18 +6,25 @@ fragments and introduce the feature of consolidation. It is strongly
 recommended that you read the tutorials on writing dense and sparse
 arrays first.
 
-.. toggle-header::
-    :header: **Example Code Listing**
 
-    .. content-tabs::
+.. table:: Full programs
+  :widths: auto
 
-       .. tab-container:: cpp
-          :title: C++
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``fragments_consolidation``           |fragscpp| |fragspy|
+  ====================================  =============================================================
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/fragments_consolidation.cc
-             :language: c++
-             :linenos:
+.. |fragscpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/fragments_consolidation.cc
 
+.. |fragspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/fragments_consolidation.py
 
 Basic concepts and definitions
 ------------------------------
@@ -57,33 +64,68 @@ view of the array.
 After compiling and running the program, we see that the array directory
 contains three subdirectories with weird names:
 
-.. code-block:: bash
+.. content-tabs::
 
-  $ g++ -std=c++11 fragments_consolidation.cc -o fragments_consolidation_cpp -ltiledb
-  $ ./fragments_consolidation_cpp
-  Cell (1, 1) has data 201
-  Cell (1, 2) has data 2
-  Cell (1, 3) has data 3
-  Cell (1, 4) has data 4
-  Cell (2, 1) has data 5
-  Cell (2, 2) has data 101
-  Cell (2, 3) has data 102
-  Cell (2, 4) has data 8
-  Cell (3, 1) has data -2147483648
-  Cell (3, 2) has data 103
-  Cell (3, 3) has data 104
-  Cell (3, 4) has data 202
-  Cell (4, 1) has data -2147483648
-  Cell (4, 2) has data -2147483648
-  Cell (4, 3) has data -2147483648
-  Cell (4, 4) has data -2147483648
-  $ ls -l fragments_consolidation/
-  total 8
-  drwx------  5 stavros  staff  170 Jun 27 13:56 __31372fdd407f448fb341dc81cfc37a2b_1530122217138
-  drwx------  4 stavros  staff  136 Jun 27 13:56 __967e8bc52f194928b8fb08ead588a1c9_1530122217123
-  -rwx------  1 stavros  staff  109 Jun 27 13:56 __array_schema.tdb
-  drwx------  4 stavros  staff  136 Jun 27 13:56 __ba566f83462e497fb9ad1af592dce1ba_1530122217131
-  -rwx------  1 stavros  staff    0 Jun 27 13:56 __lock.tdb
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ g++ -std=c++11 fragments_consolidation.cc -o fragments_consolidation_cpp -ltiledb
+        $ ./fragments_consolidation_cpp
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ ls -l fragments_consolidation/
+        total 8
+        drwx------  5 stavros  staff  170 Jun 27 13:56 __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+        drwx------  4 stavros  staff  136 Jun 27 13:56 __967e8bc52f194928b8fb08ead588a1c9_1530122217123
+        -rwx------  1 stavros  staff  109 Jun 27 13:56 __array_schema.tdb
+        drwx------  4 stavros  staff  136 Jun 27 13:56 __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+        -rwx------  1 stavros  staff    0 Jun 27 13:56 __lock.tdb
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+         $ python fragments_consolidation.py
+         Cell (1, 1) has data 201
+         Cell (1, 2) has data 2
+         Cell (1, 3) has data 3
+         Cell (1, 4) has data 4
+         Cell (2, 1) has data 5
+         Cell (2, 2) has data 101
+         Cell (2, 3) has data 102
+         Cell (2, 4) has data 8
+         Cell (3, 1) has data -2147483648
+         Cell (3, 2) has data 103
+         Cell (3, 3) has data 104
+         Cell (3, 4) has data 202
+         Cell (4, 1) has data -2147483648
+         Cell (4, 2) has data -2147483648
+         Cell (4, 3) has data -2147483648
+         Cell (4, 4) has data -2147483648
+         $ ls -l fragments_consolidation/
+         total 8
+         drwx------  5 stavros  staff  170 Jun 27 13:56 __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+         drwx------  4 stavros  staff  136 Jun 27 13:56 __967e8bc52f194928b8fb08ead588a1c9_1530122217123
+         -rwx------  1 stavros  staff  109 Jun 27 13:56 __array_schema.tdb
+         drwx------  4 stavros  staff  136 Jun 27 13:56 __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+         -rwx------  1 stavros  staff    0 Jun 27 13:56 __lock.tdb
 
 Each subdirectory corresponds to a **fragment**, i.e., to an array snapshot
 containing the cells written in a write operation. *How can we tell which
@@ -115,67 +157,138 @@ and TileDB will function properly as if the write that created that
 subdirectory never happened. Try out the code below, which checks
 what happens each time a different fragment is deleted:
 
-.. code-block:: bash
+.. content-tabs::
 
-  $ cp -R fragments_consolidation/ temp
-  $ rm -rf fragments_consolidation/__967e8bc52f194928b8fb08ead588a1c9_1530122217123
-  $ ./fragments_consolidation_cpp
-  Cell (1, 1) has data 201
-  Cell (1, 2) has data -2147483648
-  Cell (1, 3) has data -2147483648
-  Cell (1, 4) has data -2147483648
-  Cell (2, 1) has data -2147483648
-  Cell (2, 2) has data 101
-  Cell (2, 3) has data 102
-  Cell (2, 4) has data -2147483648
-  Cell (3, 1) has data -2147483648
-  Cell (3, 2) has data 103
-  Cell (3, 3) has data 104
-  Cell (3, 4) has data 202
-  Cell (4, 1) has data -2147483648
-  Cell (4, 2) has data -2147483648
-  Cell (4, 3) has data -2147483648
-  Cell (4, 4) has data -2147483648
-  $ rm -rf fragments_consolidation
-  $ cp -R temp fragments_consolidation
-  $ rm -rf __ba566f83462e497fb9ad1af592dce1ba_1530122217131
-  $ ./fragments_consolidation_cpp
-  Cell (1, 1) has data 201
-  Cell (1, 2) has data 2
-  Cell (1, 3) has data 3
-  Cell (1, 4) has data 4
-  Cell (2, 1) has data 5
-  Cell (2, 2) has data 6
-  Cell (2, 3) has data 7
-  Cell (2, 4) has data 8
-  Cell (3, 1) has data -2147483648
-  Cell (3, 2) has data -2147483648
-  Cell (3, 3) has data -2147483648
-  Cell (3, 4) has data 202
-  Cell (4, 1) has data -2147483648
-  Cell (4, 2) has data -2147483648
-  Cell (4, 3) has data -2147483648
-  Cell (4, 4) has data -2147483648
-  $ rm -rf fragments_consolidation
-  $ cp -R temp fragments_consolidation
-  $ rm -rf __31372fdd407f448fb341dc81cfc37a2b_1530122217138
-  $ ./fragments_consolidation_cpp
-  Cell (1, 1) has data 1
-  Cell (1, 2) has data 2
-  Cell (1, 3) has data 3
-  Cell (1, 4) has data 4
-  Cell (2, 1) has data 5
-  Cell (2, 2) has data 101
-  Cell (2, 3) has data 102
-  Cell (2, 4) has data 8
-  Cell (3, 1) has data -2147483648
-  Cell (3, 2) has data 103
-  Cell (3, 3) has data 104
-  Cell (3, 4) has data -2147483648
-  Cell (4, 1) has data -2147483648
-  Cell (4, 2) has data -2147483648
-  Cell (4, 3) has data -2147483648
-  Cell (4, 4) has data -2147483648
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ cp -R fragments_consolidation/ temp
+        $ rm -rf fragments_consolidation/__967e8bc52f194928b8fb08ead588a1c9_1530122217123
+        $ ./fragments_consolidation_cpp
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data -2147483648
+        Cell (1, 3) has data -2147483648
+        Cell (1, 4) has data -2147483648
+        Cell (2, 1) has data -2147483648
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data -2147483648
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ rm -rf fragments_consolidation
+        $ cp -R temp fragments_consolidation
+        $ rm -rf __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+        $ ./fragments_consolidation_cpp
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 6
+        Cell (2, 3) has data 7
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data -2147483648
+        Cell (3, 3) has data -2147483648
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ rm -rf fragments_consolidation
+        $ cp -R temp fragments_consolidation
+        $ rm -rf __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+        $ ./fragments_consolidation_cpp
+        Cell (1, 1) has data 1
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data -2147483648
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ cp -R fragments_consolidation/ temp
+        $ rm -rf fragments_consolidation/__967e8bc52f194928b8fb08ead588a1c9_1530122217123
+        $ python fragments_consolidation.py
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data -2147483648
+        Cell (1, 3) has data -2147483648
+        Cell (1, 4) has data -2147483648
+        Cell (2, 1) has data -2147483648
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data -2147483648
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ rm -rf fragments_consolidation
+        $ cp -R temp fragments_consolidation
+        $ rm -rf __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+        $ python fragments_consolidation.py
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 6
+        Cell (2, 3) has data 7
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data -2147483648
+        Cell (3, 3) has data -2147483648
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ rm -rf fragments_consolidation
+        $ cp -R temp fragments_consolidation
+        $ rm -rf __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+        $ python fragments_consolidation.py
+        Cell (1, 1) has data 1
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data -2147483648
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
 
 This is also illustrated in the figure below, which shows the array logical
 view after removing each of the three fragments.
@@ -196,7 +309,7 @@ A fragment can be *dense* or *sparse*. Simply stated, a sparse fragment
 stores the explicit coordinates of the non-empty cells in a file
 ``__coords.tdb``, whereas a dense fragment is missing this file.
 A dense array can have both dense and sparse fragments (since we
-explained in an earlier tutotial that you can submit sparse writes
+explained in an earlier tutorial that you can submit sparse writes
 to a dense array), whereas a sparse array can have only sparse fragments
 (there is no notion of a dense write in a sparse array). In the
 example above, the first two writes create dense fragments, whereas
@@ -229,37 +342,83 @@ as it is blocking by default):
         Context ctx;
         Array::consolidate(ctx, array_name);
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         tiledb.consolidate(ctx, array_name)
+
 Rerunning the above example as shown below (providing ``consolidate`` as input
 to the program) consolidates the three fragments into one before reading.
 
-.. code-block:: bash
+.. content-tabs::
 
-  $ ./fragments_consolidation_cpp consolidate
-  Cell (1, 1) has data 201
-  Cell (1, 2) has data 2
-  Cell (1, 3) has data 3
-  Cell (1, 4) has data 4
-  Cell (2, 1) has data 5
-  Cell (2, 2) has data 101
-  Cell (2, 3) has data 102
-  Cell (2, 4) has data 8
-  Cell (3, 1) has data -2147483648
-  Cell (3, 2) has data 103
-  Cell (3, 3) has data 104
-  Cell (3, 4) has data 202
-  Cell (4, 1) has data -2147483648
-  Cell (4, 2) has data -2147483648
-  Cell (4, 3) has data -2147483648
-  Cell (4, 4) has data -2147483648
-  $ ls -l fragments_consolidation
-  total 8
-  drwx------  4 stavros  staff  136 Jun 27 15:21 __d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383
-  -rwx------  1 stavros  staff  109 Jun 27 15:21 __array_schema.tdb
-  -rwx------  1 stavros  staff    0 Jun 27 15:21 __lock.tdb
-  $ ls -l fragments_consolidation/__d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383/
-  total 16
-  -rwx------  1 stavros  staff  108 Jun 27 15:21 __fragment_metadata.tdb
-  -rwx------  1 stavros  staff   64 Jun 27 15:21 a.tdb
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ ./fragments_consolidation_cpp consolidate
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ ls -l fragments_consolidation
+        total 8
+        drwx------  4 stavros  staff  136 Jun 27 15:21 __d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383
+        -rwx------  1 stavros  staff  109 Jun 27 15:21 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Jun 27 15:21 __lock.tdb
+        $ ls -l fragments_consolidation/__d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383/
+        total 16
+        -rwx------  1 stavros  staff  108 Jun 27 15:21 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff   64 Jun 27 15:21 a.tdb
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python fragments_consolidation.py consolidate
+        Cell (1, 1) has data 201
+        Cell (1, 2) has data 2
+        Cell (1, 3) has data 3
+        Cell (1, 4) has data 4
+        Cell (2, 1) has data 5
+        Cell (2, 2) has data 101
+        Cell (2, 3) has data 102
+        Cell (2, 4) has data 8
+        Cell (3, 1) has data -2147483648
+        Cell (3, 2) has data 103
+        Cell (3, 3) has data 104
+        Cell (3, 4) has data 202
+        Cell (4, 1) has data -2147483648
+        Cell (4, 2) has data -2147483648
+        Cell (4, 3) has data -2147483648
+        Cell (4, 4) has data -2147483648
+        $ ls -l fragments_consolidation
+        total 8
+        drwx------  4 stavros  staff  136 Jun 27 15:21 __d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383
+        -rwx------  1 stavros  staff  109 Jun 27 15:21 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Jun 27 15:21 __lock.tdb
+        $ ls -l fragments_consolidation/__d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383/
+        total 16
+        -rwx------  1 stavros  staff  108 Jun 27 15:21 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff   64 Jun 27 15:21 a.tdb
 
 As expected, the result is the same as before.
 However, listing the contents of the array we now see a single fragment.

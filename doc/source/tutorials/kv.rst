@@ -10,17 +10,24 @@ to TileDB arrays.
    This TileDB feature is experimental. Everything covered here works
    great, but the APIs might undergo changes in future versions.
 
-.. toggle-header::
-    :header: **Example Code Listing**
+.. table:: Full programs
+  :widths: auto
 
-    .. content-tabs::
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``kv``                                |kvcpp| |kvpy|
+  ====================================  =============================================================
 
-       .. tab-container:: cpp
-          :title: C++
+.. |kvcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/map.cc
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/map.cc
-             :language: c++
-             :linenos:
+.. |kvpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/kv.py
 
 Why a key-value store?
 ----------------------
@@ -83,13 +90,13 @@ We will probably replace MD5 with `BLAKE2 <https://blake2.net/>`_ in a subsequen
 Creating a KV store
 -------------------
 
-You can create a KV store similar to arrays, i.e., you create a schema, adding
-the attributes you like.
-
 .. content-tabs::
 
    .. tab-container:: cpp
       :title: C++
+
+      You can create a KV store similar to arrays, i.e., you create a schema, adding
+      the attributes you like.
 
       .. code-block:: c++
 
@@ -99,6 +106,23 @@ the attributes you like.
        auto a2 = tiledb::Attribute::create<float>(ctx, "a2");
        schema.add_attributes(a1, a2);
        tiledb::Map::create(map_name, schema);
+
+   .. tab-container:: python
+      :title: Python
+
+      You can create a KV store similar to arrays, i.e., you create a schema defining
+      the attribute name and type.
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         schema = tiledb.KVSchema(ctx, attrs=[tiledb.Attr(ctx, name="a1", dtype=bytes)])
+         tiledb.KV.create(ctx, array_name, schema)
+
+      .. warning::
+
+         The Python API for key-value stores does not currently support multiple attributes,
+         or attributes with non-string-typed values.
 
 Observe that, contrary to arrays, you cannot set a domain to a KV store. This
 is because, as explained above, the KV store has fixed domain
@@ -144,8 +168,22 @@ You can write to a TileDB KV store as follows:
         // Close the map
         map.close();
 
-Similar to arrays, you must write all attributes for every item you are adding
-to the KV store. Note that the KV store *buffers* the items you are writing,
+      Similar to arrays, you must write all attributes for every item you are adding
+      to the KV store.
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         A = tiledb.KV(ctx, array_name)
+         A["key_1"] = "1"
+         A["key_2"] = "2"
+         A["key_3"] = "3"
+         A.flush()
+
+Note that the KV store *buffers* the items you are writing,
 and *periodically flushes* the buffered items on the disk, by performing a sparse
 write operation. You can control the number of maximum buffered items as follows (in
 our example we limit it to ``2`` items):
@@ -159,7 +197,15 @@ our example we limit it to ``2`` items):
 
         map.set_max_buffered_items(2);
 
-Note that each flush creates a new fragment on the disk. Therefore, it is
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         A = tiledb.KV(ctx, array_name, buffered_items=2)
+
+Each flush creates a new fragment on the disk. Therefore, it is
 important to set the maximum buffered items to a reasobably large number,
 in order to avoid creating numerous fragments. You can always explicitly flush
 the buffered items as follows (note also that the KV store flushes automatically
@@ -174,6 +220,13 @@ upon being closed):
 
         map.flush();
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         A.flush()
+
 Similar to arrays, you can perform as many writes (or flushes) to the KV
 store as you wish. TileDB allows you to consolidate your KV
 store similar to arrays as follows:
@@ -186,6 +239,13 @@ store similar to arrays as follows:
       .. code-block:: c++
 
          Map::consolidate(ctx, "my_map");
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         A.consolidate()
 
 Reading a KV store
 ------------------
@@ -206,6 +266,17 @@ You can read from a KV store as follows:
        auto key3_item = map["key_3"];
        float key3_a2 = key3_item["a2"];
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         A = tiledb.KV(ctx, array_name)
+         print("key_1: %s" % A["key_1"])
+         print("key_2: %s" % A["key_2"])
+         print("key_3: %s" % A["key_3"])
+
 Similar to arrays, you can *subselect* over the
 attributes in case you wish to focus on a subset of KV store attributes
 instead of all the attributes. You can do that simply by opening
@@ -219,6 +290,14 @@ the KV store with the attribute set of your choice:
       .. code-block:: c++
 
        tiledb::Map map(ctx, map_name, {"a1"});
+
+   .. tab-container:: python
+      :title: Python
+
+      .. warning::
+
+         Multi-attribute KV stores are not yet supported in the Python API, and therefore
+         attribute subselection is not supported either.
 
 Finally, you can even iterate over the stored KV items, and print
 their keys and attribute values as follows (note that TileDB
@@ -243,28 +322,56 @@ retrieves the items in *random order*):
           std::cout << "key: " << key << ", a1: " << a1 << ", a2: " << a2 << "\n";
         }
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         ctx = tiledb.Ctx()
+         A = tiledb.KV(ctx, array_name)
+         for p in A:
+             print("key: '%s', value: '%s'" % (p[0], p[1]))
+
 Compiling and running the code in the example listing at the beginning
 of the tutorial, you get the following output:
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 map.cc -o map_cpp -ltiledb
-   $ ./map_cpp
-   Simple read
-   key_1, a1: 1
-   key_1, a2: 1.1
-   key_2: a1: 2
-   key_3: a2: 3.1
+   .. tab-container:: cpp
+      :title: C++
 
-   Subselecting over a1
-   key_1, a1: 1
-   key_2, a1: 2
-   key_3: a1: 3
+      .. code-block:: bash
 
-   Iterating over map items
-   key: key_3, a1: 3, a2: 3.1
-   key: key_2, a1: 2, a2: 2.1
-   key: key_1, a1: 1, a2: 1.1
+         $ g++ -std=c++11 map.cc -o map_cpp -ltiledb
+         $ ./map_cpp
+         Simple read
+         key_1, a1: 1
+         key_1, a2: 1.1
+         key_2: a1: 2
+         key_3: a2: 3.1
+
+         Subselecting over a1
+         key_1, a1: 1
+         key_2, a1: 2
+         key_3: a1: 3
+
+         Iterating over map items
+         key: key_3, a1: 3, a2: 3.1
+         key: key_2, a1: 2, a2: 2.1
+         key: key_1, a1: 1, a2: 1.1
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+         $ python kv.py
+         key_1: 1
+         key_2: 2
+         key_3: 3
+         key: 'key_1', value: '1'
+         key: 'key_3', value: '3'
+         key: 'key_2', value: '2'
 
 KV physical organization
 ------------------------
