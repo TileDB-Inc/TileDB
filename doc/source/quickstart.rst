@@ -100,6 +100,37 @@ And run your program as usual:
 
     $ python my_tiledb_program.py
 
+Golang API
+~~~~~~~~~~
+
+TileDB needs to be installed. After the core library is installed the Golang
+api can be installed with ``go get``:
+
+.. code-block:: bash
+
+    $ go get -v github.com/TileDB/TileDB-Go
+
+This will automatically download and build the golang api bindings and link to
+the core library.
+
+To use TileDB-Go in a program, simply import the TileDB Python module:
+
+.. content-tabs::
+
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: golang
+
+         import tiledb "github.com/TileDB/TileDB-Go"
+
+And run your program as usual:
+
+.. code-block:: bash
+
+    $ go run my_tiledb_program.go
+
+
 A Simple Dense Array Example
 ----------------------------
 
@@ -174,6 +205,39 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
          
              # Create the (empty) array on disk.
              tiledb.DenseArray.create(array_name, schema)
+             
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         // Name of array.
+         var arrayName = "quickstart_dense"
+
+         func createDenseArray() {
+           // Create a TileDB context.
+        	 ctx, _ := tiledb.NewContext(nil)
+
+        	 // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+        	 domain, _ := tiledb.NewDomain(ctx)
+        	 rowDim, _ := tiledb.NewDimension(ctx, "rows", []int32{1, 4}, int32(4))
+        	 colDim, _ := tiledb.NewDimension(ctx, "cols", []int32{1, 4}, int32(4))
+        	 domain.AddDimensions(rowDim, colDim)
+
+        	 // The array will be dense.
+        	 schema, _ := tiledb.NewArraySchema(ctx, tiledb.TILEDB_DENSE)
+        	 schema.SetDomain(domain)
+        	 schema.SetCellOrder(tiledb.TILEDB_ROW_MAJOR)
+        	 schema.SetTileOrder(tiledb.TILEDB_ROW_MAJOR)
+
+        	 // Add a single attribute "a" so each (i,j) cell can store an integer.
+        	 a, _ := tiledb.NewAttribute(ctx, "a", tiledb.TILEDB_INT32)
+        	 schema.AddAttributes(a)
+
+        	 // Create the (empty) array on disk.
+        	 array, _ := tiledb.NewArray(ctx, arrayName)
+        	 array.Create(schema)
+         }
 
 Next we populate the array by writing some values to its cells, specifically
 ``1``, ``2``, ..., ``16`` in a row-major layout (i.e., the columns of the first
@@ -218,6 +282,30 @@ row will be populated first, then those of the second row, etc.).
                                   [9, 10, 11, 12],
                                   [13, 14, 15, 16]))
                  A[:] = data
+
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         func writeDenseArray() {
+           ctx, _ := tiledb.NewContext(nil)
+
+           // Prepare some data for the array
+           data := []int32{
+             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+
+           // Open the array for writing and create the query.
+           array, _ := tiledb.NewArray(ctx, arrayName)
+           array.Open(tiledb.TILEDB_WRITE)
+           query, _ := tiledb.NewQuery(ctx, array)
+           query.SetLayout(tiledb.TILEDB_ROW_MAJOR)
+           query.SetBuffer("a", data)
+
+           // Perform the write and close the array.
+           query.Submit()
+           array.Close()
+         }
 
 The resulting array is depicted in the figure below.
 Finally, we will read a portion of the array (called **slicing**) and
@@ -282,6 +370,37 @@ then the three selected columns of row ``2``).
                  data = A[1:3, 2:5]
                  print(data["a"])
 
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         func readDenseArray() {
+           ctx, _ := tiledb.NewContext(nil)
+
+           // Prepare the array for reading
+           array, _ := tiledb.NewArray(ctx, arrayName)
+           array.Open(tiledb.TILEDB_READ)
+
+           // Slice only rows 1, 2 and cols 2, 3, 4
+           subArray := []int32{1, 2, 2, 4}
+
+           // Prepare the vector that will hold the result (of size 6 elements)
+           data := make([]int32, 6)
+
+           // Prepare the query
+           query, _ := tiledb.NewQuery(ctx, array)
+           query.SetSubArray(subArray)
+           query.SetLayout(tiledb.TILEDB_ROW_MAJOR)
+           query.SetBuffer("a", data)
+
+           // Submit the query and close the array.
+           query.Submit()
+           array.Close()
+
+           // Print out the results.
+           fmt.Println(data)
+         }
 
 If you run the example, you should see the following output:
 
@@ -304,12 +423,21 @@ If you run the example, you should see the following output:
          $ python quickstart_dense.py
          [[2 3 4]
           [6 7 8]]
+          
+  .. tab-container:: golang
+     :title: Golang
+
+     .. code-block:: bash
+
+        $ go test -v quickstart_dense.go
+        [2 3 4 6 7 8]
 
 Link to full programs
 ~~~~~~~~~~~~~~~~~~~~~
 
 * `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_dense.cc>`__
 * `Python <{tiledb_py_src_root_url}/examples/quickstart_dense.py>`__
+* `Golang <{tiledb_go_src_root_url}/quickstart_dense_test.go>`__
 
 A Simple Sparse Array Example
 -----------------------------
@@ -385,6 +513,39 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
              # Create the (empty) array on disk.
              tiledb.SparseArray.create(array_name, schema)
 
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         // Name of array.
+         var sparseArrayName = "quickstart_sparse"
+
+         func createSparseArray() {
+           // Create a TileDB context.
+           ctx, _ := tiledb.NewContext(nil)
+
+           // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+           domain, _ := tiledb.NewDomain(ctx)
+           rowDim, _ := tiledb.NewDimension(ctx, "rows", []int32{1, 4}, int32(4))
+           colDim, _ := tiledb.NewDimension(ctx, "cols", []int32{1, 4}, int32(4))
+           domain.AddDimensions(rowDim, colDim)
+
+           // The array will be dense.
+           schema, _ := tiledb.NewArraySchema(ctx, tiledb.TILEDB_SPARSE)
+           schema.SetDomain(domain)
+           schema.SetCellOrder(tiledb.TILEDB_ROW_MAJOR)
+           schema.SetTileOrder(tiledb.TILEDB_ROW_MAJOR)
+
+           // Add a single attribute "a" so each (i,j) cell can store an integer.
+           a, _ := tiledb.NewAttribute(ctx, "a", tiledb.TILEDB_INT32)
+           schema.AddAttributes(a)
+
+           // Create the (empty) array on disk.
+           array, _ := tiledb.NewArray(ctx, sparseArrayName)
+           array.Create(schema)
+          }
+
 Next we populate the array by writing some values to its cells, specifically
 ``1``, ``2``, and ``3`` at cells ``(1,1)``, ``(2,4)`` and  ``(2,3)``,
 respectively. Notice that, contrary to the dense case, here we specify
@@ -431,6 +592,32 @@ layout for now, just know that it is important.
                  I, J = [1, 2, 2], [1, 4, 3]
                  data = np.array(([1, 2, 3]));
                  A[I, J] = data
+
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         func writeSparseArray() {
+           ctx, _ := tiledb.NewContext(nil)
+
+           // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+           coords := []int32{1, 1, 2, 4, 2, 3}
+           data := []int32{1, 2, 3}
+
+           // Open the array for writing and create the query.
+           array, _ := tiledb.NewArray(ctx, sparseArrayName)
+           array.Open(tiledb.TILEDB_WRITE)
+           query, _ := tiledb.NewQuery(ctx, array)
+           query.SetLayout(tiledb.TILEDB_ROW_MAJOR)
+           query.SetBuffer("a", data)
+           query.SetCoordinates(coords)
+
+           // Perform the write and close the array.
+           query.Submit()
+           array.Close()
+         }
+
 
 The resulting array is depicted in the figure below.
 Similar to the dense array example, we read subarray
@@ -511,6 +698,47 @@ automatically.
                  for i, coord in enumerate(data["coords"]):
                      print("Cell (%d,%d) has data %d" % (coord[0], coord[1], a_vals[i]))
 
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: go
+
+         func readSparseArray() {
+           ctx, _ := tiledb.NewContext(nil)
+
+           // Prepare the array for reading
+           array, _ := tiledb.NewArray(ctx, sparseArrayName)
+           array.Open(tiledb.TILEDB_READ)
+
+           // Slice only rows 1, 2 and cols 2, 3, 4
+           subArray := []int32{1, 2, 2, 4}
+
+           // Prepare the vector that will hold the results
+           // We take the upper bound on the result size as we do not know how large
+           // a buffer is needed since the array is sparse
+           maxElements, _ := array.MaxBufferElements(subArray)
+           data := make([]int32, maxElements["a"][1])
+           coords := make([]int32, maxElements[tiledb.TILEDB_COORDS][1])
+
+           // Prepare the query
+           query, _ := tiledb.NewQuery(ctx, array)
+           query.SetSubArray(subArray)
+           query.SetLayout(tiledb.TILEDB_ROW_MAJOR)
+           query.SetBuffer("a", data)
+           query.SetCoordinates(coords)
+
+           // Submit the query and close the array.
+           query.Submit()
+           array.Close()
+
+           // Print out the results.
+           for r := 0; r < len(data); r++ {
+             i := coords[2*r]
+             j := coords[2*r+1]
+             fmt.Printf("Cell (%d, %d) has data %d\n", i, j, data[r])
+           }
+         }
+
 If you run the example, you should see the following output:
 
 .. content-tabs::
@@ -534,11 +762,21 @@ If you run the example, you should see the following output:
          Cell (2,3) has data 3
          Cell (2,4) has data 2
 
+   .. tab-container:: golang
+      :title: Golang
+
+      .. code-block:: bash
+
+         $ go test -v quickstart_sparse_test.go
+         Cell (2, 3) has data 3
+         Cell (2, 4) has data 2
+
 Link to full programs
 ~~~~~~~~~~~~~~~~~~~~~
 
 * `C++ <{tiledb_src_root_url}/examples/cpp_api/quickstart_sparse.cc>`__
 * `Python <{tiledb_py_src_root_url}/examples/quickstart_sparse.py>`__
+* `Golang <{tiledb_go_src_root_url}/quickstart_sparse_test.go>`__
 
 
 A Simple Key-Value Example
@@ -719,5 +957,3 @@ cell/tile layouts, types of write and read queries, memory management,
 and many more exciting topics. To learn more about these subjects, read through
 the "Tutorial" sections that cover all the TileDB concepts and functionality in
 great depth.
-
-

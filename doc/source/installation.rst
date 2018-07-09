@@ -105,6 +105,23 @@ for the TileDB-R package to build and link correctly.
 Full build and install instructions for the R API can be found at the
 `TileDB-Inc/TileDB-R <https://github.com/TileDB-Inc/TileDB-R>`_ repo.
 
+Golang API
+~~~~~~~~~~
+
+To use TileDB with the `Golang API <https://github.com/TileDB-Inc/TileDB-Go>`_:
+
+.. code-block:: bash
+
+    # Go Get
+    $ go get -v github.com/TileDB-Inc/TileDB-Go
+
+Go get will automatically build and locally install the Golang interface.
+
+TileDB needs to be installed beforehand (from a package or from source)
+for the TileDB-Go library to build and link correctly.
+Full build and install instructions for the Golang API can be found at the
+`TileDB-Inc/TileDB-Go <https://github.com/TileDB-Inc/TileDB-Go>`_ repo.
+
 Pre-built Packages
 ------------------
 
