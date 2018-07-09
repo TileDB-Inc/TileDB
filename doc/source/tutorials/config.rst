@@ -7,17 +7,22 @@ This tutorial demonstrates how to set and get the TileDB
 config parameters, and summarizes all current config parameters
 explaining their function.
 
-.. toggle-header::
-    :header: **Example Code Listing**
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``config``                            |configcpp| |configpy|
+  ====================================  =============================================================
 
-    .. content-tabs::
 
-       .. tab-container:: cpp
-          :title: C++
+.. |configcpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/config.cc
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/config.cc
-             :language: c++
-             :linenos:
+.. |configpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/config.py
 
 You can create a config object and pass it to either a TileDB
 context or VFS object as follows:
@@ -40,67 +45,145 @@ context or VFS object as follows:
         VFS vfs(ctx, config);
         Config config_vfs = vfs.config();
 
-Compiling and running the program example of this tutorial
-we get the output shown below. In the rest of the tutorial
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        # Create config object
+        config = tiledb.Config()
+
+        # Set/get config to/from ctx
+        ctx = tiledb.Ctx(config)
+        config_ctx = ctx.config()
+
+        # Set/get config to/from VFS
+        vfs = tiledb.VFS(ctx, config)
+        config_vfs = vfs.config()
+
+Running the ``vfs`` code example we get the output shown below.
+In the rest of the tutorial
 we will discuss the various ways we used the config objects
 in this program and explain the output.
 
+.. content-tabs::
 
-.. code-block:: bash
+   .. tab-container:: cpp
+      :title: C++
 
-   $ g++ -std=c++11 config.cc -o config_cpp -ltiledb
-   $ ./config_cpp
-   Tile cache size: 10000000
+      .. code-block:: bash
 
-   Default settings:
-   "sm.array_schema_cache_size" : "10000000"
-   "sm.check_coord_dups" : "true"
-   "sm.dedup_coords" : "false"
-   "sm.enable_signal_handlers" : "true"
-   "sm.fragment_metadata_cache_size" : "10000000"
-   "sm.num_async_threads" : "1"
-   "sm.num_tbb_threads" : "-1"
-   "sm.tile_cache_size" : "10000000"
-   "vfs.file.max_parallel_ops" : "8"
-   "vfs.hdfs.kerb_ticket_cache_path" : ""
-   "vfs.hdfs.name_node_uri" : ""
-   "vfs.hdfs.username" : ""
-   "vfs.min_parallel_size" : "10485760"
-   "vfs.num_threads" : "8"
-   "vfs.s3.connect_max_tries" : "5"
-   "vfs.s3.connect_scale_factor" : "25"
-   "vfs.s3.connect_timeout_ms" : "3000"
-   "vfs.s3.endpoint_override" : ""
-   "vfs.s3.max_parallel_ops" : "8"
-   "vfs.s3.multipart_part_size" : "5242880"
-   "vfs.s3.proxy_host" : ""
-   "vfs.s3.proxy_password" : ""
-   "vfs.s3.proxy_port" : "0"
-   "vfs.s3.proxy_scheme" : "https"
-   "vfs.s3.proxy_username" : ""
-   "vfs.s3.region" : "us-east-1"
-   "vfs.s3.request_timeout_ms" : "3000"
-   "vfs.s3.scheme" : "https"
-   "vfs.s3.use_virtual_addressing" : "true"
+        $ g++ -std=c++11 config.cc -o config_cpp -ltiledb
+        $ ./config_cpp
+        Tile cache size: 10000000
 
-   VFS S3 settings:
-   "connect_max_tries" : "5"
-   "connect_scale_factor" : "25"
-   "connect_timeout_ms" : "3000"
-   "endpoint_override" : ""
-   "max_parallel_ops" : "8"
-   "multipart_part_size" : "5242880"
-   "proxy_host" : ""
-   "proxy_password" : ""
-   "proxy_port" : "0"
-   "proxy_scheme" : "https"
-   "proxy_username" : ""
-   "region" : "us-east-1"
-   "request_timeout_ms" : "3000"
-   "scheme" : "https"
-   "use_virtual_addressing" : "true"
+        Default settings:
+        "sm.array_schema_cache_size" : "10000000"
+        "sm.check_coord_dups" : "true"
+        "sm.dedup_coords" : "false"
+        "sm.enable_signal_handlers" : "true"
+        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.num_async_threads" : "1"
+        "sm.num_tbb_threads" : "-1"
+        "sm.tile_cache_size" : "10000000"
+        "vfs.file.max_parallel_ops" : "8"
+        "vfs.hdfs.kerb_ticket_cache_path" : ""
+        "vfs.hdfs.name_node_uri" : ""
+        "vfs.hdfs.username" : ""
+        "vfs.min_parallel_size" : "10485760"
+        "vfs.num_threads" : "8"
+        "vfs.s3.connect_max_tries" : "5"
+        "vfs.s3.connect_scale_factor" : "25"
+        "vfs.s3.connect_timeout_ms" : "3000"
+        "vfs.s3.endpoint_override" : ""
+        "vfs.s3.max_parallel_ops" : "8"
+        "vfs.s3.multipart_part_size" : "5242880"
+        "vfs.s3.proxy_host" : ""
+        "vfs.s3.proxy_password" : ""
+        "vfs.s3.proxy_port" : "0"
+        "vfs.s3.proxy_scheme" : "https"
+        "vfs.s3.proxy_username" : ""
+        "vfs.s3.region" : "us-east-1"
+        "vfs.s3.request_timeout_ms" : "3000"
+        "vfs.s3.scheme" : "https"
+        "vfs.s3.use_virtual_addressing" : "true"
 
-   Tile cache size after loading from file: 0
+        VFS S3 settings:
+        "connect_max_tries" : "5"
+        "connect_scale_factor" : "25"
+        "connect_timeout_ms" : "3000"
+        "endpoint_override" : ""
+        "max_parallel_ops" : "8"
+        "multipart_part_size" : "5242880"
+        "proxy_host" : ""
+        "proxy_password" : ""
+        "proxy_port" : "0"
+        "proxy_scheme" : "https"
+        "proxy_username" : ""
+        "region" : "us-east-1"
+        "request_timeout_ms" : "3000"
+        "scheme" : "https"
+        "use_virtual_addressing" : "true"
+
+        Tile cache size after loading from file: 0
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python config.py
+        Tile cache size: 10000000
+
+        Default settings:
+        "sm.array_schema_cache_size" : "10000000"
+        "sm.check_coord_dups" : "true"
+        "sm.dedup_coords" : "false"
+        "sm.enable_signal_handlers" : "true"
+        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.num_async_threads" : "1"
+        "sm.num_tbb_threads" : "-1"
+        "sm.tile_cache_size" : "10000000"
+        "vfs.file.max_parallel_ops" : "8"
+        "vfs.hdfs.kerb_ticket_cache_path" : ""
+        "vfs.hdfs.name_node_uri" : ""
+        "vfs.hdfs.username" : ""
+        "vfs.min_parallel_size" : "10485760"
+        "vfs.num_threads" : "8"
+        "vfs.s3.connect_max_tries" : "5"
+        "vfs.s3.connect_scale_factor" : "25"
+        "vfs.s3.connect_timeout_ms" : "3000"
+        "vfs.s3.endpoint_override" : ""
+        "vfs.s3.max_parallel_ops" : "8"
+        "vfs.s3.multipart_part_size" : "5242880"
+        "vfs.s3.proxy_host" : ""
+        "vfs.s3.proxy_password" : ""
+        "vfs.s3.proxy_port" : "0"
+        "vfs.s3.proxy_scheme" : "https"
+        "vfs.s3.proxy_username" : ""
+        "vfs.s3.region" : "us-east-1"
+        "vfs.s3.request_timeout_ms" : "3000"
+        "vfs.s3.scheme" : "https"
+        "vfs.s3.use_virtual_addressing" : "true"
+
+        VFS S3 settings:
+        "connect_max_tries" : "5"
+        "connect_scale_factor" : "25"
+        "connect_timeout_ms" : "3000"
+        "endpoint_override" : ""
+        "max_parallel_ops" : "8"
+        "multipart_part_size" : "5242880"
+        "proxy_host" : ""
+        "proxy_password" : ""
+        "proxy_port" : "0"
+        "proxy_scheme" : "https"
+        "proxy_username" : ""
+        "region" : "us-east-1"
+        "request_timeout_ms" : "3000"
+        "scheme" : "https"
+        "use_virtual_addressing" : "true"
+
+        Tile cache size after loading from file: 0
 
 
 Setting/Getting config parameters
@@ -130,6 +213,20 @@ at the end of this tutorial.
         std::string tile_cache_size = config["sm.tile_cache_size"];
         std::cout << "Tile cache size: " << tile_cache_size << "\n\n";
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        config = tiledb.Config()
+
+        # Set value
+        config["vfs.s3.connect_timeout_ms"] = 5000
+
+        # Get value
+        tile_cache_size = config["sm.tile_cache_size"]
+        print("Tile cache size: %s" % str(tile_cache_size))
+
 The above code snippet produces the following output in our program:
 
 .. code-block:: bash
@@ -156,6 +253,16 @@ we iterate before setting any new parameter value.
        for (auto& p : config) {
          std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
        }
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        config = tiledb.Config()
+        print("\nDefault settings:")
+        for p in config.items():
+            print("\"%s\" : \"%s\"" % (p[0], p[1]))
 
 The corresponding output is (note that we ran this on a machine with
 8 cores):
@@ -213,6 +320,17 @@ with a certain *prefix* as follows:
           std::cout << "\"" << p.first << "\" : \"" << p.second << "\"\n";
         }
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        config = tiledb.Config()
+        # Print only the S3 settings.
+        print("\nVFS S3 settings:")
+        for p in config.items("vfs.s3."):
+            print("\"%s\" : \"%s\"" % (p[0], p[1]))
+
 The above produces the following output. Observe that the prefix
 is *stripped* from the retrieved parameter names.
 
@@ -259,6 +377,20 @@ file into a new TileDB config if needed as follows:
         std::string tile_cache_size = config_load["sm.tile_cache_size"];
         std::cout << "\nTile cache size after loading from file: " << tile_cache_size
                   << "\n";
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        # Save to file
+        config = tiledb.Config()
+        config["sm.tile_cache_size"] = 0
+        config.save("tiledb_config.txt")
+
+        # Load from file
+        config_load = tiledb.Config.load("tiledb_config.txt")
+        print("\nTile cache size after loading from file: %s" % str(config_load["sm.tile_cache_size"]))
 
 The above code creates a config object, changes the tile cache size to ``0``,
 and saves the entire configuration into a file. Next, it creates a new

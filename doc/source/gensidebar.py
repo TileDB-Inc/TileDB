@@ -105,7 +105,7 @@ def generate_sidebar(conf, conf_api):
     endl()
 
     toctree('Performance')
-    write('Introduction', 'performance/introduction')
+    write('Introduction to Performance', 'performance/introduction')
     write('Using TileDB statistics', 'performance/using-tiledb-statistics')
     write('Performance factors', 'performance/performance-factors')
     endl()

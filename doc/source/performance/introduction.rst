@@ -1,5 +1,7 @@
-Introduction
-============
+.. _performance/introduction:
+
+Introduction to Performance
+===========================
 
 TileDB is a powerful array storage manager that provides you with great
 flexibility to adapt it to your application. If tuned properly,

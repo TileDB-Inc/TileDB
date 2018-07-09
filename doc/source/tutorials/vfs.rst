@@ -1,7 +1,7 @@
 Virtual Filesystem
 ==================
 
-TileDB is architected such that all IO to/from the storage backends is
+TileDB is designed such that all IO to/from the storage backends is
 abstracted behind a **Virtual Filesystem** (VFS) module. This module supports
 simple operations, such as creating a file/directory, reading/writing to
 a file, etc. This abstraction enables us to easily plug in more storage
@@ -16,32 +16,59 @@ storage backends that TileDB supports.
 
 The following code example covers most of the TileDB VFS functionality.
 
-.. toggle-header::
-    :header: **Example Code Listing**
+  ====================================  =============================================================
+  **Program**                           **Links**
+  ------------------------------------  -------------------------------------------------------------
+  ``vfs``                               |vfscpp| |vfspy|
+  ====================================  =============================================================
 
-    .. content-tabs::
 
-       .. tab-container:: cpp
-          :title: C++
+.. |vfscpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/vfs.cc
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/vfs.cc
-             :language: c++
-             :linenos:
+.. |vfspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/vfs.py
 
-Compiling and running the above code, we get the following output:
 
-.. code-block:: bash
+Running the above code, we get the following output:
 
-   $ g++ -std=c++11 vfs.cc -o vfs_cpp -ltiledb
-   $ ./vfs_cpp
-   Created 'dir_A'
-   Created empty file 'dir_A/file_A'
-   Size of file 'dir_A/file_A': 0
-   Moving file 'dir_A/file_A' to 'dir_A/file_B'
-   Deleting 'dir_A/file_B' and 'dir_A'
-   Binary read:
-   153.1
-   abcdefghijkl
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ g++ -std=c++11 vfs.cc -o vfs_cpp -ltiledb
+        $ ./vfs_cpp
+        Created 'dir_A'
+        Created empty file 'dir_A/file_A'
+        Size of file 'dir_A/file_A': 0
+        Moving file 'dir_A/file_A' to 'dir_A/file_B'
+        Deleting 'dir_A/file_B' and 'dir_A'
+        Binary read:
+        153.1
+        abcdefghijkl
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python vfs.py
+        Created 'dir_A'
+        Created empty file 'dir_A/file_A'
+        Size of file 'dir_A/file_A': 0
+        Moving file 'dir_A/file_A' to 'dir_A/file_B'
+        Deleting 'dir_A/file_B' and 'dir_A'
+        Binary read:
+        153.10000610351562
+        abcdefghijkl
 
 Note that you cannot open an existing file for writing in append mode
 for S3. It is allowed to open a file in write mode and write an arbitrary
@@ -66,6 +93,20 @@ its VFS functionality, e.g.,
       :title: C++
 
       .. code-block:: c++
+
+        tiledb::Context ctx;
+        tiledb::VFS vfs(ctx);
+
+        vfs.create_bucket("s3://my_bucket");
+        vfs.remove_bucket("s3://my_bucket");
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+        vfs = tiledb.VFS(ctx)
 
         vfs.create_bucket("s3://my_bucket");
         vfs.remove_bucket("s3://my_bucket");

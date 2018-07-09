@@ -6,41 +6,43 @@ Writing Sparse Arrays
 In this tutorial you will learn how to write to sparse arrays. It is highly
 recommended that you read the tutorials on sparse arrays and tiling first.
 
-.. toggle-header::
-    :header: **Example Code Listing #1**
+.. table:: Full programs
+  :widths: auto
 
-    .. content-tabs::
+  =============================  =============================================================
+  **Program**                    **Links**
+  -----------------------------  -------------------------------------------------------------
+  ``quickstart_sparse``          |quickstartsparsecpp| |quickstartsparsepy|
+  ``writing_sparse_multiple``    |writingsparsemultiplecpp| |writingsparsemultiplepy|
+  ``global_order_sparse``        |globalordersparsecpp|
+  =============================  =============================================================
 
-       .. tab-container:: cpp
-          :title: C++
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/quickstart_sparse.cc
-             :language: c++
-             :linenos:
+.. |quickstartsparsecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/quickstart_sparse.cc
 
-.. toggle-header::
-    :header: **Example Code Listing #2**
+.. |quickstartsparsepy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/quickstart_sparse.py
 
-    .. content-tabs::
+.. |writingsparsemultiplecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/writing_sparse_multiple.cc
 
-       .. tab-container:: cpp
-          :title: C++
+.. |writingsparsemultiplepy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/writing_sparse_multiple.py
 
-          .. literalinclude:: ../{source_examples_path}/cpp_api/writing_sparse_multiple.cc
-             :language: c++
-             :linenos:
+.. |globalordersparsecpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/global_order_sparse.cc
 
-.. toggle-header::
-    :header: **Example Code Listing #3**
-
-    .. content-tabs::
-
-       .. tab-container:: cpp
-          :title: C++
-
-          .. literalinclude:: ../{source_examples_path}/cpp_api/global_order_sparse.cc
-             :language: c++
-             :linenos:
 
 Basic concepts and definitions
 ------------------------------
@@ -70,7 +72,7 @@ Basic concepts and definitions
 Writing to a sparse array
 -------------------------
 
-Let us revisit the ``quickstart_sparse.cc`` example of tutorial :ref:`sparse-arrays`.
+Let us revisit the ``quickstart_sparse`` example of tutorial :ref:`sparse-arrays`.
 Here is how we wrote to the array:
 
 .. content-tabs::
@@ -88,37 +90,62 @@ Here is how we wrote to the array:
         query.set_buffer("a", data)
              .set_coordinates(coords)
              .set_layout(TILEDB_UNORDERED);
-       query.submit();
-       array.close();
+        query.submit();
+        array.close();
 
-After preparing the cell values to be written,
-we construct an array object, effectively
-"opening" the array, i.e., preparing the array for writes (e.g., this
-load the array schema from persistent storage to main memory). Then we create
-a query, specifying that this query will perform writes. Notice that the
-query type must be the same in both the array and query object.
-(i.e., ``TILEDB_WRITE`` in both cases). Next, we set
-the buffers for attribute ``a`` and coordinates to the query. These will
-be dispatched to TileDB along with the query. Note that the coordinates
-are necessary, as these specify exactly in which cells you wish
-to write the values.
+      After preparing the cell values to be written,
+      we construct an array object, effectively
+      "opening" the array, i.e., preparing the array for writes (e.g., this
+      loads the array schema from persistent storage to main memory). Then we create
+      a query, specifying that this query will perform writes. Notice that the
+      query type must be the same in both the array and query object.
+      (i.e., ``TILEDB_WRITE`` in both cases). Next, we set
+      the buffers for attribute ``a`` and coordinates to the query. These will
+      be dispatched to TileDB along with the query. Note that the coordinates
+      are necessary, as these specify exactly in which cells you wish
+      to write the values.
 
-Subsequently, we set the **layout**;
-this specifies the order in which you stored the cell values in buffers
-``coords`` and ``data``. **Unordered** here means that the cells are not
-given in a particular order. TileDB needs this information in order to
-*sort* internally and then store the values along the *global
-cell order* (recall that TileDB always respects the global cell order
-when writing the array data in physical storage). In this example
-it happens for the given order (row-major) to be the same as the
-global order. We will see in later examples that this is not true
-in general. For instance, if we had specified a ``2x2`` space tiling
-for the above array, the global order would be ``(1,1), (2, 3), (2,4)``.
-Below we explain that
-TileDB enables you to write also directly in global order, avoiding
-the sorting and boosting performance. Finally, we submit the query
-and close the array.
+      Subsequently, we set the **layout**;
+      this specifies the order in which you stored the cell values in buffers
+      ``coords`` and ``data``. **Unordered** here means that the cells are not
+      given in a particular order. TileDB needs this information in order to
+      *sort* internally and then store the values along the *global
+      cell order* (recall that TileDB always respects the global cell order
+      when writing the array data in physical storage). In this example
+      it happens for the given order (row-major) to be the same as the
+      global order. We will see in later examples that this is not true
+      in general. For instance, if we had specified a ``2x2`` space tiling
+      for the above array, the global order would be ``(1,1), (2, 3), (2,4)``.
+      Below we explain that
+      TileDB enables you to write also directly in global order, avoiding
+      the sorting and boosting performance. Finally, we submit the query
+      and close the array.
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+        # Open the array and write to it.
+        with tiledb.SparseArray(ctx, array_name, mode='w') as A:
+            # Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+            I, J = [1, 2, 2], [1, 4, 3]
+            data = np.array(([1, 2, 3]));
+            A[I, J] = data
+
+      We first create a sparse array object, which "opens" the array
+      in write mode. This prepares the array for writes, e.g., it
+      loads the array schema from persistent storage to main memory.
+      Then we initialize two vectors ``I`` and ``J`` with the coordinates
+      we wish to write. Note that each vector holds the coordinates along
+      each dimension, i.e., ``I`` holds the row coordinates and ``J``
+      the column coordinates. The above code will write to cells
+      ``(1,1), (2, 3), (2,4)``. The coordinates do not need to be sorted
+      in any particular order, i.e., TileDB always considers the cell
+      layout as **unordered** in this example. TileDB will sort internally
+      the coordinates on the global physical cell layout prior to writing
+      the values on disk.
 
 Multiple writes / Updates
 -------------------------
@@ -129,41 +156,57 @@ the example in the figure below, where we perform two writes to the
 same array.
 
 
-.. figure:: ../figures/multiple_writes_sparse.png
+.. figure:: ../figures/writing_sparse_multiple.png
    :align: center
    :scale: 40 %
 
 When we read the array, as expected, we get the cells
 shown in the collective logical view produced by both writes,
 i.e., after cell ``(4,1)`` is added and cell ``(2,4)`` is modified
-in the second write. Compiling and running the example code listed
-at the beginning of this tutorial (listing #2), you get the following:
+in the second write. Running example ``writing_sparse_multiple``, you get
+the following:
 
-.. code-block:: bash
+.. content-tabs::
 
-   $ g++ -std=c++11 multiple_writes_sparse.cc -o multiple_writes_sparse_cpp -ltiledb
-   $ ./multiple_writes_sparse_cpp
-   Cell (1, 1) has data 1
-   Cell (2, 3) has data 3
-   Cell (2, 4) has data 20
-   Cell (4, 1) has data 4
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: bash
+
+        $ g++ -std=c++11 writing_sparse_multiple.cc -o writing_sparse_multiple_cpp -ltiledb
+        $ ./writing_sparse_multiple_cpp
+        Cell (1, 1) has data 1
+        Cell (2, 3) has data 3
+        Cell (2, 4) has data 20
+        Cell (4, 1) has data 4
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: bash
+
+        $ python writing_sparse_multiple.py
+        Cell (1, 1) has data 1
+        Cell (2, 3) has data 3
+        Cell (2, 4) has data 20
+        Cell (4, 1) has data 4
 
 Let us see how the array directory looks like after the execution of the program:
 
 .. code-block:: bash
 
-    $ ls -l multiple_writes_sparse/
+    $ ls -l writing_sparse_multiple/
     total 8
     drwx------  5 stavros  staff  170 Jun 22 15:27 __35a9e44618d34f68a20ec0b5a51d17eb_1529695666920
     drwx------  5 stavros  staff  170 Jun 22 15:27 __5f38614a64d94b97b607125965db3bdd_1529695666925
     -rwx------  1 stavros  staff  115 Jun 22 15:27 __array_schema.tdb
     -rwx------  1 stavros  staff    0 Jun 22 15:27 __lock.tdb
-    $ ls -l multiple_writes_sparse/__35a9e44618d34f68a20ec0b5a51d17eb_1529695666920
+    $ ls -l writing_sparse_multiple/__35a9e44618d34f68a20ec0b5a51d17eb_1529695666920
     total 24
     -rwx------  1 stavros  staff   90 Jun 22 15:27 __coords.tdb
     -rwx------  1 stavros  staff  110 Jun 22 15:27 __fragment_metadata.tdb
     -rwx------  1 stavros  staff   12 Jun 22 15:27 a.tdb
-    $ ls -l multiple_writes_sparse/__5f38614a64d94b97b607125965db3bdd_1529695666925
+    $ ls -l writing_sparse_multiple/__5f38614a64d94b97b607125965db3bdd_1529695666925
     total 24
     -rwx------  1 stavros  staff   82 Jun 22 15:27 __coords.tdb
     -rwx------  1 stavros  staff  104 Jun 22 15:27 __fragment_metadata.tdb
@@ -191,6 +234,10 @@ make available in a future release.
 Writing in global layout
 ------------------------
 
+.. warning::
+
+  Currently global writes are not supported in the Python API.
+
 So far we have been using the "unorderded" layout when providing the
 cells to TileDB for writing, which will be the most frequent layout
 you will use. However, *if* your cells are already laid out in the
@@ -216,10 +263,10 @@ You set the global layout simply as follows:
 
         query.set_layout(TILEDB_GLOBAL_ORDER);
 
-We will show how to slightly modify ``quickstart_sparse.cc``, such that
+In the ``global_order_sparse`` example we show you how to slightly
+modify ``quickstart_sparse``, such that
 you write in global layout instead of unordered, submitting
-two write queries instead of one (see listing #3 at the beginning
-of this tutorial). Here are the two write queries for the same
+two write queries instead of one. Here are the two write queries for the same
 three cells:
 
 .. content-tabs::
@@ -276,7 +323,7 @@ array directory:
    -rwx------  1 stavros  staff  115 Jun 22 16:29 __array_schema.tdb
    -rwx------  1 stavros  staff    0 Jun 22 16:29 __lock.tdb
 
-As expected, the array contains the same cells and values as ``quickstart_sparse.cc``.
+As expected, the array contains the same cells and values as ``quickstart_sparse``.
 Moreover, despite the fact that we submitted two write queries, only one
 subfolder/fragment got created. This confirms that successive write query
 submissions in global order append the cell values to the same
@@ -305,6 +352,6 @@ as writing in the unordered layout involves some
 internal sorting, which is avoided in the case of global order writes. Moreover,
 each write in the unordered layout produces
 a separate fragment. We will soon explain that numerous fragments may impact
-the read performance. We provide a more detailed discussion on fragments and performance
-considerations about writes in later tutorials.
+both the write and read performance. See the :ref:`performance/introduction` tutorial for
+more information about the TileDB performance.
 

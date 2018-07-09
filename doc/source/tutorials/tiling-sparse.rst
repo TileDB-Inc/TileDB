@@ -146,6 +146,13 @@ creation as shown below.
 
         schema.set_capacity(3);
 
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        schema = tiledb.ArraySchema(..., capacity=3, ...)
+
 
 .. note::
 
@@ -250,7 +257,7 @@ By now you must know that MBRs facilitate reads, as only data tiles with MBRs
 overlapping a query subarray will be fetched from the files. Moreover,
 you know that the space tiling, tile/cell order and capacity all
 affect the shape of the MBRs. Therefore, it is crucial to get these parameters
-right so that you maximize the TileDB performance for your application. Due to
-the importance of this topic, we cover it in detail in a later
-tutorial dedicated to performance issues.
+right so that you maximize the TileDB performance for your application.
+See :ref:`performance/introduction` for
+more details on TileDB performance and how to tune it.
 

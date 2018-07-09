@@ -9,7 +9,7 @@ set up and use `minio <https://minio.io>`_ locally.
 After setting up TileDB to work with AWS S3 or minio, your TileDB programs
 will function properly without any API change! All you need to
 do is, instead of using local file system paths when creating/accessing
-groups, arrays, maps, and VFS files, use URIs that start with ``s3://``.
+groups, arrays, key-value stores, and VFS files, use URIs that start with ``s3://``.
 For instance, if you wish to create (and subsequently write/read) an
 array on S3, you use URI ``s3://<your-bucket>/<your-array-name>``
 for the array name.
@@ -64,7 +64,7 @@ First, we need to set up an AWS account and generate access keys.
 Now you are ready to start writing TileDB programs! When creating a TileDB
 context or a VFS object, you need to set up a configuration object with the
 following parameters for AWS S3 (supposing that your S3 buckets are on region
-``us-east-1`` - you can use set an arbitrary region):
+``us-east-1`` - you can set an arbitrary region):
 
 .. table:: TileDB AWS S3 config settings
     :widths: auto
@@ -171,5 +171,10 @@ rather than downloading the entire file from the cloud. This results in
 extremely fast subarray reads, especially because of the array
 **tiling**. Recall that a tile (which groups cell values that are stored
 contiguously in the file) is **the atomic unit of IO**. The range GET
-API enables reading each tile from S3 in a single request.
+API enables reading each tile from S3 in a single request. Finally,
+TileDB performs all reads in parallel using multiple threads, which
+is a tunable configuration parameter.
+
+See :ref:`performance/introduction` for more information on TileDB
+performance and how to optimize it.
 
