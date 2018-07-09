@@ -200,7 +200,14 @@ text_replacements = {
 
 # -- Custom setup -----------------------------------------------------------
 
+def add_custom_js(app):
+    app.add_javascript('custom.js')
+
 def setup(app):
     app.add_config_value('text_replacements', {}, True)
     app.connect('source-read', replaceText)
     app.add_stylesheet('custom.css')
+
+    # Use this event so that our custom JS gets included *after* the ContentUI
+    # extension adds its JS, otherwise we can't override its behavior.
+    app.connect('builder-inited', add_custom_js)
