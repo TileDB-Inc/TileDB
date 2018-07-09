@@ -84,12 +84,13 @@ Full build and install instructions for the Python API can be found at the
 `TileDB-Inc/TileDB-Py <https://github.com/TileDB-Inc/TileDB-Py>`_ repo.
 
 R API
-------------------
+~~~~~
 
 To use TileDB with the `R API <https://github.com/TileDB-Inc/TileDB-R>`_:
 
   .. code-block:: r
-
+    
+    > # From the R REPL    
     > install.packages("devtools")
     > library(devtools)
     > devtools::install_github("TileDB-Inc/TileDB-R@latest")
