@@ -101,7 +101,7 @@ TileDB needs to be installed.  After the core library is installed,
 the R source package can be installed and built with ``devtools``:
 
 .. code-block:: R
-    
+
     install.packages("devtools")
     library(devtools)
     devtools::install_github("TileDB-Inc/TileDB-R@latest")
@@ -220,7 +220,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
 
          # Name of the array to create.
@@ -231,22 +231,22 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
             ctx <- tiledb_ctx()
 
             # Check if the array already exists.
-            if (tiledb_object_type(ctx, array_name) == "TILEDB_ARRAY") {
+            if (tiledb_object_type(ctx, array_name) == "ARRAY") {
                 stop("Array already exists.")
                 quit(0)
             }
 
             # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
-            dom <- tiledb_domain(ctx, 
-                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "TILEDB_INT32"),
-                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "TILEDB_INT32")))
+            dom <- tiledb_domain(ctx,
+                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "INT32"),
+                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "INT32")))
 
             # The array will be dense with a single attribute "a" so each (i,j) cell can store an integer.
-            schema <- tiledb_array_schema(ctx, 
-                        dom, attrs=c(tiledb_attr(ctx, "a", type = "TILEDB_INT32")))
+            schema <- tiledb_array_schema(ctx,
+                        dom, attrs=c(tiledb_attr(ctx, "a", type = "INT32")))
 
             # Create the (empty) array on disk.
-            tiledb_array_create(array_name, uri = schema)
+            tiledb_array_create(array_name, schema)
         }
 
    .. tab-container:: golang
@@ -325,19 +325,19 @@ row will be populated first, then those of the second row, etc.).
                                   [9, 10, 11, 12],
                                   [13, 14, 15, 16]))
                  A[:] = data
-   
+
    .. tab-container:: R
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
-         
+
          write_array <- function() {
-             data <- array(c(c(1L, 5L, 9L, 13L), 
+             data <- array(c(c(1L, 5L, 9L, 13L),
                              c(2L, 6L, 10L, 14L),
-                             c(3L, 7L, 11L, 15L), 
-                             c(4L, 8L, 12L, 16L)), 
+                             c(3L, 7L, 11L, 15L),
+                             c(4L, 8L, 12L, 16L)),
                            dim = c(4,4))
              # Open the array and write to it.
              ctx <- tiledb_ctx()
@@ -436,9 +436,9 @@ then the three selected columns of row ``2``).
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
-         
+
          read_array <- function() {
              ctx <- tiledb_ctx()
              # Open the array and read from it.
@@ -500,7 +500,7 @@ If you run the example, you should see the following output:
          $ python quickstart_dense.py
          [[2 3 4]
           [6 7 8]]
-   
+
    .. tab-container:: R
       :title: R
 
@@ -623,7 +623,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
 
          # Name of the array to create.
@@ -634,23 +634,23 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
             ctx <- tiledb_ctx()
 
             # Check if the array already exists.
-            if (tiledb_object_type(ctx, array_name) == "TILEDB_ARRAY") {
+            if (tiledb_object_type(ctx, array_name) == "ARRAY") {
                 stop("Array already exists.")
                 quit(0)
             }
 
             # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
-            dom <- tiledb_domain(ctx, 
-                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "TILEDB_INT32"),
-                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "TILEDB_INT32")))
+            dom <- tiledb_domain(ctx,
+                        dims = c(tiledb_dim(ctx, "rows", c(1L, 4L), 4L, "INT32"),
+                                 tiledb_dim(ctx, "cols", c(1L, 4L), 4L, "INT32")))
 
            # The array will be dense with a single attribute "a" so each (i,j) cell can store an integer.
-            schema <- tiledb_array_schema(ctx, 
-                        dom, attrs=c(tiledb_attr(ctx, "a", type = "TILEDB_INT32")), 
+            schema <- tiledb_array_schema(ctx,
+                        dom, attrs=c(tiledb_attr(ctx, "a", type = "INT32")),
                         sparse = TRUE)
 
             # Create the (empty) array on disk.
-            tiledb_array_create(array_name, uri = schema)
+            tiledb_array_create(array_name, schema)
         }
 
    .. tab-container:: golang
@@ -732,14 +732,14 @@ layout for now, just know that it is important.
                  I, J = [1, 2, 2], [1, 4, 3]
                  data = np.array(([1, 2, 3]));
                  A[I, J] = data
-   
+
    .. tab-container:: R
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
-         
+
          write_array <- function() {
              I <- c(1L, 2L, 2L)
              J <- c(1L, 4L, 3L)
@@ -859,16 +859,16 @@ automatically.
       :title: R
 
       .. code-block:: R
-         
+
          library(tiledb)
- 
+
          read_array <- function() {
              ctx = tiledb_ctx()
              # Open the array and read from it.
              A <- tiledb_dense(ctx, uri = array_name)
              data <- A[1:2, 2:4]
 
-             coords <- data[["coords"]] 
+             coords <- data[["coords"]]
              a_vals <- data[["a"]]
              for (i in seq_along(a_vals)) {
                  i <- coords[((i - 1) * 2) + 1]
