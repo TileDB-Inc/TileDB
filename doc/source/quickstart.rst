@@ -863,17 +863,17 @@ automatically.
          library(tiledb)
 
          read_array <- function() {
-             ctx = tiledb_ctx()
+             ctx <- tiledb_ctx()
              # Open the array and read from it.
              A <- tiledb_dense(ctx, uri = array_name)
              data <- A[1:2, 2:4]
 
              coords <- data[["coords"]]
              a_vals <- data[["a"]]
-             for (i in seq_along(a_vals)) {
-                 i <- coords[((i - 1) * 2) + 1]
-                 j <- coords[((i - 1) * 2) + 2]
-                 cat(sprintf("Cell (%d,%d) has data %d\n", i, j, a_vals[i]))
+             for (idx in seq_along(a_vals)) {
+                 i <- coords[((idx - 1) * 2) + 1]
+                 j <- coords[((idx - 1) * 2) + 2]
+                 cat(sprintf("Cell (%d,%d) has data %d\n", i, j, a_vals[idx]))
              }
          }
 
