@@ -33,6 +33,8 @@
 #ifndef TILEDB_STATS_H
 #define TILEDB_STATS_H
 
+#define __STDC_FORMAT_MACROS
+
 #include <inttypes.h>
 #include <atomic>
 #include <chrono>
