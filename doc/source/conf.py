@@ -193,10 +193,10 @@ def replaceText(app, docname, source):
 
 text_replacements = {
     "{source_examples_path}" : "../../examples",
-    "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/dev",
-    "{tiledb_py_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Py/blob/dev",
-    "{tiledb_R_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-R/blob/master",
-    "{tiledb_go_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Go/blob/master"
+    "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/1.3.0",
+    "{tiledb_py_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Py/blob/0.2.0",
+    "{tiledb_R_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-R/blob/0.1.0",
+    "{tiledb_go_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Go/blob/v0.1.0"
 }
 
 # -- Custom setup -----------------------------------------------------------

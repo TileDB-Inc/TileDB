@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/fragments-consolidation.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/fragments-consolidation.html
  *
  * When run, this program will create a simple 2D dense array, write some data
  * with three queries (creating three fragments), optionally consolidate

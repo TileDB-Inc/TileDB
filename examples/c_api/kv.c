@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/kv.html
+ *   https://docs.tiledb.io/en/1.3.0/kv.html
  *
  * This program shows the various ways you can use a TileDB map (key-value
  * store).

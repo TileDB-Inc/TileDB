@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/writing-dense.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/writing-dense.html
  *
  * When run, this program will create a simple 2D dense array, write some data
  * to it in global layout, and read the entire array data back.

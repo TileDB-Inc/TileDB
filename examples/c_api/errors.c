@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/errors.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/errors.html
  *
  * This example shows how to catch errors in TileDB.
  */

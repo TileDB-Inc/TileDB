@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/quickstart.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/quickstart.html
  *
  * When run, this program will create a simple 2D sparse array, write some data
  * to it in global order, and read the data back.

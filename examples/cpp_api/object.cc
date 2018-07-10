@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/object.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/object.html
  *
  * This program creates a hierarchy as shown below. Specificaly, it creates
  * groups `dense_arrays` and `sparse_arrays` in a group `my_group`, and

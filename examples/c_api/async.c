@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/async.html
+ *   https://docs.tiledb.io/en/1.3.0/tutorials/async.html
  *
  * This program creates a simple 2D sparse array and shows how to write and
  * read asynchronously.
