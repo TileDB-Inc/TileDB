@@ -34,6 +34,8 @@
 #ifndef TILEDB_ARRAY_METADATA_H
 #define TILEDB_ARRAY_METADATA_H
 
+#define __STDC_FORMAT_MACROS
+
 #include <string>
 #include <typeinfo>
 #include <unordered_map>
