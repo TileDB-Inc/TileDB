@@ -1,22 +1,31 @@
-# In Progress
+# TileDB v1.3.0 Release Notes
+
+Version 1.3.0 focused on performance, stability, documentation and API improvements/enhancements.
 
 ## New features
 
+* New guided tutorial series added to documentation.
+* Query times improved dramatically with internal parallelization using TBB (multiple PRs)
+* Optional deduplication pass on writes can be enabled (PR #636)
+* New internal statistics reporting system to aid in performance optimization (PR #736)
 * Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
 * Added `TILEDB_ANY` datatype (PR #446)
 * Added parallelized VFS read operations, enabled by default (PR #499)
+* SIGINT signals will cancel in-progress queries (PR #578)
 
 ## Improvements
 
-* Added parallel S3, POSIX, and Win32 writes, enabled by default.
-* Got rid of special S3 "directory objects"
+* Arrays must now be open and closed before issuing queries, which clarifies the TileDB consistency model.
+* Improved handling of incomplete queries and variable-length attribute data.
+* Added parallel S3, POSIX, and Win32 reads and writes, enabled by default.
+* Query performance improvements with parallelism (using TBB as a dependency).
+* Got rid of special S3 "directory objects."
 * Refactored sparse reads, making them simpler and more amenable to parallelization.
 * Refactored dense reads, making them simpler and more amenable to parallelization.
 * Refactored dense ordered writes, making them simpler and more amenable to parallelization.
 * Refactored unordered writes, making them simpler and more amenable to parallelization.
 * Refactored global writes, making them simpler and more amenable to parallelization.
 * Added ability to cancel pending background/async tasks. SIGINT signals now cancel pending tasks.
-* Sparse read performance improvements with parallelism (using TBB as a dependency).
 * Async queries now use a configurable number of background threads (default number of threads is 1).
 * Added checks for duplicate coordinates and option for coordinate deduplication.
 * Map usage via the C++ API `operator[]` is faster, similar to the `MapItem` path.
@@ -31,60 +40,64 @@
 
 ### C API
 
-* Added `tiledb_query_finalize` function. 
+* Added `tiledb_array_alloc`
+* Added `tiledb_array_{open, close, free}`
+* Added `tiledb_array_reopen`
+* Added `tiledb_array_is_open`
+* Added `tiledb_array_get_query_type`
+* Added `tiledb_array_get_schema`
+* Added `tiledb_array_max_buffer_size` and `tiledb_array_max_buffer_size_var`
+* Added `tiledb_query_finalize` function.
+* Added `tiledb_ctx_cancel_tasks` function.
+* Added `tiledb_query_set_buffer` and `tiledb_query_set_buffer_var` which sets a single attribute buffer
+* Added `tiledb_query_get_type`
+* Added `tiledb_query_has_results`
 * Added `tiledb_vfs_get_config` function.
+* Added `tiledb_stats_{enable,disable,reset,dump}` functions.
+* Added `tiledb_kv_alloc`
+* Added `tiledb_kv_reopen`
+* Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
+* Added `tiledb_kv_free`.
+* Added `tiledb_kv_iter_alloc` which takes as input a kv object
+* Added `tiledb_kv_schema_{set,get}_capacity`.
+* Added `tiledb_kv_is_dirty`
+* Added `tiledb_kv_iter_reset`
+* Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
+* Added `sm.check_dedup_coords` and `sm.dedup_coords` config parameters.
 * Added `vfs.num_threads` and `vfs.min_parallel_size` config parameters.
 * Added `vfs.{s3,file}.max_parallel_ops` config parameters.
 * Added `vfs.s3.multipart_part_size` config parameter.
 * Added `vfs.s3.proxy_{scheme,host,port,username,password}` config parameters.
-* Added `tiledb_ctx_cancel_tasks` function.
-* Added `sm.num_async_threads`, `sm.num_tbb_threads`, and `sm.enable_signal_handlers` config parameters.
-* Added `tiledb_kv_has_key` to check if a key exists in the key-value store.
-* Added `tiledb_kv_free`.
-* Added `tiledb_array_{open, close, free}`.
-* Added `tiledb_array_alloc`
-* Added `tiledb_kv_alloc`
-* Added `tiledb_kv_iter_alloc` which takes as input a kv object
-* Added `tiledb_query_set_buffer` which sets a single attribute buffer
-* Added `tiledb_query_get_type`
-* Added `tiledb_array_get_query_type`
-* Added `tiledb_kv_schema_{set,get}_capacity`.
-* Added `tiledb_query_has_results`
-* Added `tiledb_kv_is_dirty`
-* Added `tiledb_kv_iter_reset`
-* Added `tiledb_array_reopen`
-* Added `tiledb_kv_reopen`
-* Added `tiledb_array_max_buffer_size` and `tiledb_array_max_buffer_size_var`
-* Added `tiledb_array_is_open`
 
 ### C++ API
+
+* Added `Array::{open, close}`
+* Added `Array::reopen`
+* Added `Array::is_open`
+* Added `Array::query_type`
+* Added `Context::cancel_tasks()` function.
+* Added `Query::finalize()` function.
+* Added `Query::query_type`
+* Added `Query::has_results`
+* Changed the return type of the `Query` setters to return the object reference.
+* Added an extra `Query` constructor that omits the query type (this is inherited from the input array).
+* Added `Map::{open, close}`
+* Added `Map::reopen`
+* Added `Map::is_dirty`
+* Added `Map::has_key` to check for key presence.
+* A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
+* Added optional attributes argument in `Map::Map` and `Map::open`
+* `MapIter` can be used to create iterators for a map.
+* Added `MapIter::reset`
+* Added `MapSchema::set_capacity` and `MapSchema::capacity`
 * Support for trivially copyable objects, such as a custom data struct, was added. They will be backed by an `sizeof(T)` sized `char` attribute.
 * `Attribute::create<T>` can now be used with compound `T`, such as `std::string` and `std::vector<T>`, and other
   objects such as a simple data struct.
 * Added a `Dimension::create` factory function that does not take tile extent,
   which sets the tile extent to `NULL`.
-* Added `Query::finalize()` function.
-* Added `Context::cancel_tasks()` function.
 * `tiledb::Attribute` can now be constructed with an enumerated type (e.x. `TILEDB_CHAR`).
-* A `tiledb::Map` defined with only one attribute will allow implicit usage, e.x. `map[key] = val` instead of `map[key][attr] = val`.
-* Added `Map::has_key` to check for key presence.
-* `MapIter` can be used to create iterators for a map.
-* Added `Array::{open, close}`
-* Added `Map::{open, close}`
-* Added `Array::query_type`
-* Added `Query::query_type`
-* Added optional attributes argument in `Map::Map` and `Map::open`
-* Added `MapSchema::set_capacity` and `MapSchema::capacity`
-* Added `Query::has_results`
-* Added `Map::is_dirty`
-* Added `MapIter::reset`
-* Added an extra `Query` constructor that omits the query type (this is inherited from the input array).
-* Changed the return type of the `Query` setters to return the object reference.
-* Added `Array::reopen`
-* Added `Map::reopen`
 * Added `Stats` class (wraps C API `tiledb_stats_*` functions)
 * Added `Config::save_to_file`
-* Added `Array::is_open`
 
 ## Breaking changes
 
@@ -109,6 +122,7 @@
 * Changed argument order in `tiledb_config_iter_alloc`, `tiledb_ctx_alloc`, `tiledb_attribute_alloc`, `tiledb_dimension_alloc`, `tiledb_array_schema_alloc`, `tiledb_kv_schema_load`, `tiledb_kv_get_item`, `tiledb_vfs_alloc`
 
 ### C++ API
+
 * Fixes with `Array::max_buffer_elements` and `Query::result_buffer_elements` to comply with the API docs. `pair.first` is the number of elements of the offsets buffer. If `pair.first` is 0, it is a fixed-sized attribute or coordinates.
 * `std::array<T, N>` is backed by a `char` tiledb attribute since the size is not guaranteed.
 * Headers have the `tiledb_cpp_api_` prefix removed. For example, the include is now `#include <tiledb/attribute.h>`
