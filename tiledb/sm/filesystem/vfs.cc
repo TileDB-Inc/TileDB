@@ -80,7 +80,8 @@ VFS::VFS() {
 
 std::string VFS::abs_path(const std::string& path) {
   STATS_FUNC_IN(vfs_abs_path);
-
+  // workaround for older clang (llvm 3.5) compilers (issue #828)
+  std::string path_copy = path;
 #ifdef _WIN32
   if (Win::is_win_path(path))
     return Win::uri_from_path(Win::abs_path(path));
@@ -91,11 +92,11 @@ std::string VFS::abs_path(const std::string& path) {
     return Posix::abs_path(path);
 #endif
   if (URI::is_hdfs(path))
-    return path;
+    return path_copy;
   if (URI::is_s3(path))
-    return path;
+    return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
-  return path;
+  return path_copy;
 
   STATS_FUNC_OUT(vfs_abs_path);
 }
