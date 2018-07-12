@@ -32,7 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/rest/json.h"
+#include "tiledb/rest/json/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/kv/kv.h"
