@@ -363,6 +363,12 @@ class Reader {
    */
   Status set_subarray(const void* subarray);
 
+  /*
+   * Return the subarray
+   * @return subarray
+   */
+  void* subarray() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

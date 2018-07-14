@@ -183,6 +183,12 @@ class Writer {
    */
   Status set_subarray(const void* subarray);
 
+  /*
+   * Return the subarray
+   * @return subarray
+   */
+  void* subarray() const;
+
   /** Performs a write query using its set members. */
   Status write();
 

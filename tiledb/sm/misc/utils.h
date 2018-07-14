@@ -77,6 +77,14 @@ bool is_uint(const std::string& str);
 /* ********************************* */
 
 /**
+ * Check if a given type T is quivalent to the tiledb::sm::DataTtpe
+ * @tparam T
+ * @param datatype to compare T to
+ * @return Status indicating Ok() on equal data types else Status:Error()
+ */
+template <class T>
+Status check_template_type_to_datatype(Datatype datatype);
+/**
  * Checks if `coords` are inside `rect`.
  *
  * @tparam T The type of the cell and subarray.

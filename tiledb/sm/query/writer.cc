@@ -265,6 +265,10 @@ Status Writer::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+void* Writer::subarray() const {
+  return subarray_;
+}
+
 Status Writer::write() {
   STATS_FUNC_IN(writer_write);
 

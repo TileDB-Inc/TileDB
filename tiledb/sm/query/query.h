@@ -36,7 +36,9 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
@@ -192,6 +194,50 @@ class Query {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Return the query subarray
+   * @tparam T
+   * @return vector containing copy of the subarray
+   */
+  template <class T>
+  std::vector<T> subarray() const {
+    void* subarray = nullptr;
+    if (type_ == QueryType::WRITE) {
+      subarray = writer_.subarray();
+    } else {  // READ
+      subarray = reader_.subarray();
+    }
+
+    if (subarray == nullptr) {
+      LOG_STATUS(
+          Status::QueryError("Cannot get subarray; subarray is nullptr"));
+      return {};
+    }
+
+    auto array_schema = this->array_schema();
+    if (array_schema == nullptr) {
+      LOG_STATUS(
+          Status::QueryError("Cannot get subarray; Array schema not set"));
+      return {};
+    }
+
+    // Get subarray size
+    uint64_t subarray_size = 2 * array_schema->coords_size();
+    uint64_t subarray_length =
+        subarray_size / datatype_size(array_schema->coords_type());
+
+    // Check template matches datatype
+    if (!tiledb::sm::utils::check_template_type_to_datatype<T>(
+             array_schema->domain()->type())
+             .ok())
+      return {};
+    // Return a copy of the subarray using the iterator constructor for vector
+    // casting to templated type The templated type has already been validated
+    // in the above switch statement
+    return std::vector<T>(
+        static_cast<T*>(subarray), static_cast<T*>(subarray) + subarray_length);
+  };
 
   /** Returns the query status. */
   QueryStatus status() const;
