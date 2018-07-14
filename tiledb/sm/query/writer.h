@@ -37,6 +37,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
+#include "tiledb/sm/query/types.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <memory>
@@ -53,44 +54,6 @@ class Writer {
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
-
-  /** Contains the buffer(s) and buffer size(s) for some attribute. */
-  struct AttributeBuffer {
-    /**
-     * The attribute buffer. In case the attribute is var-sized, this is
-     * the offsets buffer.
-     */
-    void* buffer_;
-    /**
-     * For a var-sized attribute, this is the data buffer. It is `nullptr`
-     * for fixed-sized attributes.
-     */
-    void* buffer_var_;
-    /** The size (in bytes) of `buffer_`. */
-    uint64_t* buffer_size_;
-    /** The size (in bytes) of `buffer_var_`. */
-    uint64_t* buffer_var_size_;
-
-    /** Constructor. */
-    AttributeBuffer() {
-      buffer_ = nullptr;
-      buffer_var_ = nullptr;
-      buffer_size_ = nullptr;
-      buffer_var_size_ = nullptr;
-    }
-
-    /** Constructor. */
-    AttributeBuffer(
-        void* buffer,
-        void* buffer_var,
-        uint64_t* buffer_size,
-        uint64_t* buffer_var_size)
-        : buffer_(buffer)
-        , buffer_var_(buffer_var)
-        , buffer_size_(buffer_size)
-        , buffer_var_size_(buffer_var_size) {
-    }
-  };
 
   /**
    * State used only in global writes, where the user can "append"
