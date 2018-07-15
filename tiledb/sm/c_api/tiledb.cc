@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/rest/json/array.h"
+#include "tiledb/rest/json/query.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/kv/kv.h"
@@ -1976,6 +1977,108 @@ int tiledb_query_get_type(
 
   *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
 
+  return TILEDB_OK;
+}
+
+int tiledb_query_to_json(
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, char** json_string) {
+  try {
+    nlohmann::json j = query->query_;
+    std::string json = j.dump();
+    char* cstr = new (std::nothrow) char[json.length() + 1];
+    if (cstr == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to allocate TileDB cstring for to json");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
+
+    strcpy(cstr, json.c_str());
+    *json_string = cstr;
+  } catch (nlohmann::json::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to encode json for query: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  } catch (std::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to encode json for query: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_query_from_json(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_t** query,
+    const char* json_string) {
+  try {
+    nlohmann::json j = nlohmann::json::parse(json_string);
+
+    tiledb::sm::Status st;
+    if (j.find("type") == j.end()) {
+      st = tiledb::sm::Status::Error(
+          "json object did not contain type for query de-serialization");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+    // QueryType to parse, set default to avoid compiler uninitialized warnings
+    tiledb::sm::QueryType querytype = tiledb::sm::QueryType::READ;
+    st = tiledb::sm::query_type_enum(j.at("type"), &querytype);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    int rc =
+        tiledb_query_alloc(ctx, array, (tiledb_query_type_t)querytype, query);
+    if (rc != TILEDB_OK) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to allocate TileDB query from json");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return rc;
+    }
+
+    // Should have a safety check to make sure query array schema == passed
+    // array
+    // if(*((*query)->query_->array_schema()) !=
+    // *(array->open_array_->array_schema()))
+
+    // TODO: This needs cleanup, we need to build object correctly
+    tiledb::sm::Query q = j.get<tiledb::sm::Query>();
+    //*((*query)->query_) = q;
+
+    (*query)->query_->copy_json_wip(q);
+
+    st = (*query)->query_->array_schema()->check();
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } catch (nlohmann::json::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to decode json for query: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  } catch (std::exception e) {
+    auto st = tiledb::sm::Status::Error(
+        std::string("Failed to decode json for query: ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Success
   return TILEDB_OK;
 }
 
