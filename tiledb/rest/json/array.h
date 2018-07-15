@@ -551,5 +551,21 @@ struct adl_serializer<tiledb::sm::ArraySchema*> {
   }
 };
 
+template <>
+struct adl_serializer<const tiledb::sm::ArraySchema*> {
+  /*
+   * Implement json serialization for ArraySchema
+   *
+   * @param j json object to store serialized data in
+   * @param a ArraySchema pointer to serialize
+   */
+  static void to_json(json& j, const tiledb::sm::ArraySchema* a) {
+    if (a != nullptr)
+      j = *a;
+    else
+      j = nullptr;
+  }
+};
+
 }  // namespace nlohmann
 #endif  // TILEDB_JSON_ARRAY_H

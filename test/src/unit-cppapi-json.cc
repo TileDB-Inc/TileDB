@@ -32,7 +32,18 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/filesystem/posix.h"
 
+// Filesystem related
+#ifdef _WIN32
+const std::string FILE_URI_PREFIX = "";
+const std::string FILE_TEMP_DIR =
+    tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+#else
+const std::string FILE_URI_PREFIX = "file://";
+const std::string FILE_TEMP_DIR =
+    tiledb::sm::Posix::current_dir() + "/tiledb_test/";
+#endif
 TEST_CASE("C++ API: JSON", "[cppapi]") {
   using namespace tiledb;
   Context ctx;
@@ -128,4 +139,56 @@ TEST_CASE("C++ API: JSON", "[cppapi]") {
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<double>() == 10.0);
   }
+
+  /*SECTION("Query Serialization") {
+    std::string temp_dir = FILE_TEMP_DIR + "query_serialization_test";
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(sparse_domain_json);
+    schema.add_attribute(a1);
+    schema.add_attribute(a2);
+    schema.add_attribute(a3);
+    schema.add_attribute(a4);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_tile_order(TILEDB_COL_MAJOR);
+    schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
+    schema.set_coords_compressor({TILEDB_ZSTD, -1});
+
+    Array::create(temp_dir, schema);
+    Array array(ctx, FILE_TEMP_DIR, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+
+    std::string json = schema.to_json();
+    CHECK_THAT(
+        json,
+        Catch::Equals(
+            "{\"array_schema\":{\"array_type\":\"dense\","
+            "\"attributes\":[{\"cell_val_num\":1,\"compressor\":\"NO_"
+            "COMPRESSION\",\"compressor_level\":-1,\"name\":\"a1\","
+            "\"type\":\"INT32\"}],\"capacity\":10000,"
+            "\"cell_order\":\"row-major\",\"coords_compression\":"
+            "\"ZSTD\",\"coords_compression_"
+            "level\":-1,\"domain\":{\"cell_order\":\"row-major\","
+            "\"dimensions\":[{\"domain\":"
+            "[0,99],\"name\":\"d1\",\"null_tile_extent\":false,\"tile_"
+            "extent\":10,\"tile_extent_type\":\"INT64\",\"type\":\"INT64\"}],"
+            "\"tile_"
+            "order\":\"row-major\",\"type\":"
+            "\"INT64\"},\"offset_compression\":\"ZSTD\",\"offset_"
+            "compression_level\":-1,\"tile_order\":"
+            "\"row-major\",\"uri\":\"" +
+            temp_dir +
+            "query_test\",\"version\":[1,3,0]},\"buffers\":{\"a1\":{"
+            "\"buffer\":[1,2,3,4]}},"
+            "\"subarray\":[1,4],\"type\":\"WRITE\"}"));
+
+    Query* queryParsed = Query::from_json(ctx, array, json);
+
+    REQUIRE(queryParsed != nullptr);
+    REQUIRE(queryParsed->query_type() == TILEDB_WRITE);
+    auto resultBuffersMap = queryParsed->result_buffer_elements();
+    CHECK(resultBuffersMap.size() == 1);
+    auto a1Result = resultBuffersMap.find("a1");
+    REQUIRE(a1Result != resultBuffersMap.end());
+    CHECK(a1Result->second.second == 4);
+  }*/
 }
