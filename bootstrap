@@ -40,6 +40,7 @@ Configuration:
                                     already installed at system-level
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
+    --disable-tests                 disables building the TileDB tests
     --disable-tbb                   disables use of TBB for parallelization
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
@@ -76,6 +77,7 @@ tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
 tiledb_werror="ON"
+tiledb_tests="ON"
 tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
 tiledb_tbb="ON"
@@ -89,6 +91,7 @@ while test $# != 0; do
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
     --disable-werror) tiledb_werror="OFF";;
+    --disable-tests) tiledb_tests="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
     --disable-tbb) tiledb_tbb="OFF";;
     --enable-static-tiledb) tiledb_static="ON";;
@@ -163,6 +166,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_TBB=${tiledb_tbb} \
     -DTILEDB_STATIC=${tiledb_static} \
+    -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER=${sanitizer} \
     ${source_dir} || die "failed to configure the project"

@@ -29,13 +29,18 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_WERROR=${TILEDB_WERROR}
   -DTILEDB_CPP_API=${TILEDB_CPP_API}
   -DTILEDB_FORCE_ALL_DEPS=${TILEDB_FORCE_ALL_DEPS}
-  -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
   -DSANITIZER=${SANITIZER}
   -DTILEDB_EP_BASE=${TILEDB_EP_BASE}
   -DTILEDB_TBB=${TILEDB_TBB}
   -DTILEDB_TBB_SHARED=${TILEDB_TBB_SHARED}
   -DTILEDB_STATIC=${TILEDB_STATIC}
+  -DTILEDB_TESTS=${TILEDB_TESTS}
 )
+
+if (TILEDB_TESTS)
+  list(APPEND INHERITED_CMAKE_ARGS
+    -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG})
+ endif()
 
 if (WIN32)
   list(APPEND INHERITED_CMAKE_ARGS
@@ -56,7 +61,6 @@ endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBlosc_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindBzip2_EP.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindLZ4_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
@@ -77,6 +81,10 @@ endif()
 
 if (TILEDB_TBB)
   include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindTBB_EP.cmake)
+endif()
+
+if (TILEDB_TESTS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
 endif()
 
 ############################################################
@@ -104,17 +112,19 @@ add_custom_target(install-tiledb
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
-# make check
-add_custom_target(check
-  COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
-)
-
 # make examples
 add_custom_target(examples
   COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
+
+# make check
+if (TILEDB_TESTS)
+  add_custom_target(check
+    COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+  )
+endif()
 
 ############################################################
 # "make format" and "make check-format" targets
