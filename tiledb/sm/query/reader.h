@@ -258,6 +258,12 @@ class Reader {
   const ArraySchema* array_schema() const;
 
   /**
+   * Return list of attribtues for query
+   * @return vector of attributes for query
+   */
+  std::vector<std::string> attributes() const;
+
+  /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
    * partitions in the read state have not been processed or there
    * was some buffer overflow.

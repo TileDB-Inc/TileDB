@@ -70,6 +70,12 @@ const ArraySchema* Query::array_schema() const {
   return reader_.array_schema();
 }
 
+std::vector<std::string> Query::attributes() const {
+  if (type_ == QueryType::WRITE)
+    return writer_.attributes();
+  return reader_.attributes();
+}
+
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();

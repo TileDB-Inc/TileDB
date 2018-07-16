@@ -115,6 +115,12 @@ class Writer {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
+  /**
+   * Return list of attribtues for query
+   * @return vector of attributes for query
+   */
+  std::vector<std::string> attributes() const;
+
   /** Finalizes the reader. */
   Status finalize();
 

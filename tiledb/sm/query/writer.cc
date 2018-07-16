@@ -73,6 +73,10 @@ const ArraySchema* Writer::array_schema() const {
   return array_schema_;
 }
 
+std::vector<std::string> Writer::attributes() const {
+  return attributes_;
+}
+
 Status Writer::finalize() {
   if (global_write_state_ != nullptr)
     return finalize_global_write_state();
