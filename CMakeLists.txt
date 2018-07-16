@@ -73,6 +73,7 @@ option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets t
 option(TILEDB_TBB "Enables use of TBB for parallelization." ON)
 option(TILEDB_TBB_SHARED "If TBB is enabled, builds TBB as a shared library instead of static." OFF)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
+option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 
 if (WIN32 AND NOT TILEDB_TBB_SHARED)
   message(WARNING "Static TBB build not supported on Windows. Continuing with TILEDB_TBB_SHARED=ON.")
@@ -187,7 +188,9 @@ add_subdirectory(tiledb)
 add_subdirectory(examples)
 
 # Build unit tests
-add_subdirectory(test)
+if (TILEDB_TESTS)
+  add_subdirectory(test)
+endif()
 
 ###########################################################
 # Uninstall
