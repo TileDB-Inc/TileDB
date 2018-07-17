@@ -104,6 +104,10 @@ const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
 
+std::vector<std::string> Reader::attributes() const {
+  return attributes_;
+}
+
 bool Reader::incomplete() const {
   return read_state_.overflowed_ ||
          read_state_.cur_subarray_partition_ != nullptr;
