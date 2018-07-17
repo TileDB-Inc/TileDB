@@ -459,6 +459,10 @@ Status Reader::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+void* Reader::subarray() const {
+  return read_state_.subarray_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

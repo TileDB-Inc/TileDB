@@ -150,6 +150,100 @@ bool is_uint(const std::string& str) {
 /*           FUNCTIONS            */
 /* ****************************** */
 
+template <>
+Status check_template_type_to_datatype<int8_t>(Datatype datatype) {
+  if (datatype == Datatype::INT8)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type int8_t but datatype is not Datatype::INT8");
+}
+template <>
+Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
+  if (datatype == Datatype::UINT8)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_ASCII)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_UTF8)
+    return Status::Ok();
+
+  return Status::Error(
+      "Template of type uint8_t but datatype is not Datatype::UINT8 nor "
+      "Datatype::STRING_ASCII nor atatype::STRING_UTF8");
+}
+template <>
+Status check_template_type_to_datatype<int16_t>(Datatype datatype) {
+  if (datatype == Datatype::INT16)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type int16_t but datatype is not Datatype::INT16");
+}
+template <>
+Status check_template_type_to_datatype<uint16_t>(Datatype datatype) {
+  if (datatype == Datatype::UINT16)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_UTF16)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_UCS2)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type uint16_t but datatype is not Datatype::UINT16 nor "
+      "Datatype::STRING_UTF16 nor Datatype::STRING_UCS2");
+}
+template <>
+Status check_template_type_to_datatype<int32_t>(Datatype datatype) {
+  if (datatype == Datatype::INT32)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type int32_t but datatype is not Datatype::INT32");
+}
+template <>
+Status check_template_type_to_datatype<uint32_t>(Datatype datatype) {
+  if (datatype == Datatype::UINT32)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_UTF32)
+    return Status::Ok();
+  else if (datatype == Datatype::STRING_UCS4)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type uint32_t but datatype is not Datatype::UINT32 nor "
+      "Datatype::STRING_UTF32 nor Datatype::STRING_UCS4");
+}
+template <>
+Status check_template_type_to_datatype<int64_t>(Datatype datatype) {
+  if (datatype == Datatype::INT64)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type int64_t but datatype is not Datatype::INT64");
+}
+template <>
+Status check_template_type_to_datatype<uint64_t>(Datatype datatype) {
+  if (datatype == Datatype::UINT64)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type uint64_t but datatype is not Datatype::UINT64");
+}
+template <>
+Status check_template_type_to_datatype<float>(Datatype datatype) {
+  if (datatype == Datatype::FLOAT32)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type float but datatype is not Datatype::FLOAT32");
+}
+template <>
+Status check_template_type_to_datatype<double>(Datatype datatype) {
+  if (datatype == Datatype::FLOAT64)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type double but datatype is not Datatype::FLOAT64");
+}
+template <>
+Status check_template_type_to_datatype<char>(Datatype datatype) {
+  if (datatype == Datatype::CHAR)
+    return Status::Ok();
+  return Status::Error(
+      "Template of type char but datatype is not Datatype::CHAR");
+}
+
 template <class T>
 inline bool coords_in_rect(
     const T* coords, const T* rect, unsigned int dim_num) {
