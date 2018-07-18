@@ -121,6 +121,13 @@ class Writer {
    */
   std::vector<std::string> attributes() const;
 
+  /**
+   * Fetch AttributeBuffer for attribute
+   * @param attribute to fetch
+   * @return AttributeBuffer for attribute
+   */
+  AttributeBuffer buffer(const std::string& attribute) const;
+
   /** Finalizes the reader. */
   Status finalize();
 

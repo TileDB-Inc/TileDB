@@ -77,6 +77,13 @@ std::vector<std::string> Writer::attributes() const {
   return attributes_;
 }
 
+AttributeBuffer Writer::buffer(const std::string& attribute) const {
+  auto attrbuf = attr_buffers_.find(attribute);
+  if (attrbuf == attr_buffers_.end())
+    return AttributeBuffer{};
+  return attrbuf->second;
+}
+
 Status Writer::finalize() {
   if (global_write_state_ != nullptr)
     return finalize_global_write_state();
