@@ -33,7 +33,7 @@
 #include <catch.hpp>
 #include "tiledb/sm/misc/uri.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -41,7 +41,7 @@
 
 using namespace tiledb::sm;
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 static const char PATH_SEPARATOR = '\\';
 static std::string current_dir() {
   return Win::current_dir();
@@ -102,7 +102,7 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string().find("file:///") == 0);
   CHECK(uri.to_path() == current_dir() + PATH_SEPARATOR + "path1");
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(uri.to_string() == Win::uri_from_path(Win::current_dir()) + "/path1");
 #else
   CHECK(uri.to_string() == "file://" + Posix::current_dir() + "/path1");
@@ -115,7 +115,7 @@ TEST_CASE("URI: Test relative paths", "[uri]") {
 
 TEST_CASE("URI: Test URI to path", "[uri]") {
   URI uri = URI("file:///my/path");
-#ifdef _WIN32
+#ifdef _MSC_VER
   // Absolute paths with no drive letter are relative to the current working
   // directory's drive.
   CHECK(uri.to_path() == "\\my\\path");
@@ -124,7 +124,7 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
 #endif
 
   uri = URI("file:///my/path/../relative/path");
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(uri.to_path() == "\\my\\relative\\path");
 #else
   CHECK(uri.to_path() == "/my/path/../relative/path");
@@ -140,7 +140,7 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
   CHECK(uri.to_path() == "hdfs://relative/../path/on/hdfs");
 
   uri = URI("C:\\my\\path");
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(uri.to_string() == "file:///C:/my/path");
   CHECK(uri.to_path() == "C:\\my\\path");
 #else
@@ -151,14 +151,14 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
 #endif
 
   uri = URI("file:///C:/my/path");
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(uri.to_path() == "C:\\my\\path");
 #else
   CHECK(uri.to_path() == "/C:/my/path");
 #endif
 }
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 TEST_CASE("URI: Test Windows paths", "[uri]") {
   URI uri("C:\\path");

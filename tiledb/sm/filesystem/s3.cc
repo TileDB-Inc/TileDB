@@ -40,7 +40,7 @@
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <Windows.h>
 #endif
 

@@ -34,7 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -49,7 +49,7 @@ struct VFSFx {
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#ifdef _WIN32
+#ifdef _MSC_VER
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
 #else
@@ -707,7 +707,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
   } else {
     check_vfs(FILE_TEMP_DIR);
     CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
-#ifdef _WIN32
+#ifdef _MSC_VER
     CHECK(
         tiledb::sm::stats::all_stats.counter_vfs_win32_write_num_parallelized >
         0);

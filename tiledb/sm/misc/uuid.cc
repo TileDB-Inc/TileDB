@@ -35,7 +35,7 @@
 
 #include "tiledb/sm/misc/uuid.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <Rpc.h>
 #else
 #include <openssl/err.h>
@@ -50,7 +50,7 @@ namespace uuid {
 /** Mutex to guard UUID generation. */
 static std::mutex uuid_mtx;
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 /**
  * Generate a UUID using Win32 RPC API.
@@ -154,7 +154,7 @@ Status generate_uuid(std::string* uuid, bool hyphenate) {
     // OpenSSL is not threadsafe, so grab a lock here. We are locking in the
     // Windows case as well just to be careful.
     std::unique_lock<std::mutex> lck(uuid_mtx);
-#ifdef _WIN32
+#ifdef _MSC_VER
     RETURN_NOT_OK(generate_uuid_win32(&uuid_str));
 #else
     RETURN_NOT_OK(generate_uuid_openssl(&uuid_str));

@@ -32,7 +32,7 @@
 
 #include "tiledb/sm/global_state/openssl_state.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 namespace tiledb {
 namespace sm {

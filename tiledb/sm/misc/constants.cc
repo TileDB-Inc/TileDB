@@ -41,7 +41,7 @@
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include "tiledb/sm/misc/win_constants.h"
 #elif __APPLE__
 #include <sys/syslimits.h>
@@ -199,7 +199,7 @@ const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
 const unsigned uri_max_len = 256;
 
 /** The maximum file path length (depending on platform). */
-#ifndef _WIN32
+#ifndef _MSC_VER
 const unsigned path_max_len = PATH_MAX;
 #endif
 

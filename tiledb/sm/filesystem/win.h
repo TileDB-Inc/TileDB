@@ -33,7 +33,7 @@
 #ifndef TILEDB_WIN_FILESYSTEM_H
 #define TILEDB_WIN_FILESYSTEM_H
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 #include <sys/types.h>
 #include <string>
@@ -275,6 +275,6 @@ class Win {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // _WIN32
+#endif  // _MSC_VER
 
 #endif  // TILEDB_WIN_FILESYSTEM_H

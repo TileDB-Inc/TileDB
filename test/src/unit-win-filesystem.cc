@@ -30,7 +30,7 @@
  * Tests the Windows filesystem functionality.
  */
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 #include "catch.hpp"
 
@@ -219,4 +219,4 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(win_.is_file(URI(test_file_path + "2").to_path()));
 }
 
-#endif  // _WIN32
+#endif  // _MSC_VER

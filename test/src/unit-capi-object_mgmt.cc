@@ -32,7 +32,7 @@
 
 #include "catch.hpp"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -51,7 +51,7 @@ struct ObjectMgmtFx {
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#ifdef _WIN32
+#ifdef _MSC_VER
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
@@ -528,7 +528,7 @@ TEST_CASE_METHOD(
     // File
     remove_temp_dir(FILE_FULL_TEMP_DIR);
     create_hierarchy(FILE_FULL_TEMP_DIR);
-#ifdef _WIN32
+#ifdef _MSC_VER
     // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
     golden_walk =
         get_golden_walk(tiledb::sm::Win::uri_from_path(FILE_FULL_TEMP_DIR));
