@@ -125,6 +125,10 @@ bool Reader::incomplete() const {
          read_state_.cur_subarray_partition_ != nullptr;
 }
 
+std::vector<FragmentMetadata*> Reader::fragment_metadata() const {
+  return fragment_metadata_;
+}
+
 unsigned Reader::fragment_num() const {
   return (unsigned int)fragment_metadata_.size();
 }
@@ -473,6 +477,10 @@ Status Reader::set_subarray(const void* subarray) {
         subarray_size);
 
   return Status::Ok();
+}
+
+StorageManager* Reader::storage_manager() const {
+  return storage_manager_;
 }
 
 void* Reader::subarray() const {

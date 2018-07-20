@@ -283,6 +283,12 @@ class Reader {
    */
   bool incomplete() const;
 
+  /**
+   * Fetch fragment metadata, only valid for read query
+   * @return Vector of fragment metadata
+   */
+  std::vector<FragmentMetadata*> fragment_metadata() const;
+
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
 
@@ -381,6 +387,12 @@ class Reader {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Return storage manager
+   * @return storage_manager
+   */
+  StorageManager* storage_manager() const;
 
   /*
    * Return the subarray

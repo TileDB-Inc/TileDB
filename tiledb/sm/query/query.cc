@@ -58,6 +58,17 @@ Query::Query(
   set_fragment_metadata(fragment_metadata);
 }
 
+Query::Query(const Query& query) {
+  type_ = query.type();
+  callback_ = query.callback_;
+  callback_data_ = query.callback_data_;
+  layout_ = query.layout();
+  status_ = query.status();
+  set_storage_manager(query.storage_manager());
+  set_array_schema(query.array_schema());
+  set_fragment_metadata(query.fragment_metadata());
+}
+
 Query::~Query() = default;
 
 /* ****************************** */
@@ -90,6 +101,12 @@ Status Query::finalize() {
   RETURN_NOT_OK(writer_.finalize());
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
+}
+
+std::vector<FragmentMetadata*> Query::fragment_metadata() const {
+  if (type_ == QueryType::READ)
+    return reader_.fragment_metadata();
+  return {};
 }
 
 unsigned Query::fragment_num() const {
@@ -375,6 +392,12 @@ Status Query::set_subarray(const void* subarray) {
 
 QueryStatus Query::status() const {
   return status_;
+}
+
+StorageManager* Query::storage_manager() const {
+  if (type_ == QueryType::WRITE)
+    return writer_.storage_manager();
+  return reader_.storage_manager();
 }
 
 QueryType Query::type() const {

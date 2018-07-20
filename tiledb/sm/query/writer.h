@@ -202,6 +202,12 @@ class Writer {
    */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Return storage manager
+   * @return storage_manager
+   */
+  StorageManager* storage_manager() const;
+
   /*
    * Return the subarray
    * @return subarray

@@ -292,6 +292,10 @@ Status Writer::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+StorageManager* Writer::storage_manager() const {
+  return storage_manager_;
+}
+
 void* Writer::subarray() const {
   return subarray_;
 }
