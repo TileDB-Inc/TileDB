@@ -57,6 +57,9 @@ class Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Consturctor */
+  Query() = default;
+
   /** Constructor. */
   Query(
       StorageManager* storage_manager,
@@ -165,6 +168,9 @@ class Query {
       const uint64_t* buffer_off,
       const uint64_t* buffer_off_size,
       const uint64_t* buffer_val_size);
+
+  Status copy_buffers(const Query& query);
+  Status copy_json_wip(const Query& query);
 
   /**
    * Finalizes the query, flushing all internal state. Applicable only to global

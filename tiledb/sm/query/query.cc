@@ -176,6 +176,31 @@ Status Query::check_var_attr_offsets(
   return Status::Ok();
 }
 
+Status Query::copy_buffers(const Query& query) {
+  auto buffers = query.attribute_buffers();
+  for (auto& buffer : buffers) {
+    if (buffer.second.buffer_var_ != nullptr) {
+      set_buffer(
+          buffer.first,
+          static_cast<uint64_t*>(buffer.second.buffer_var_),
+          buffer.second.buffer_var_size_,
+          buffer.second.buffer_,
+          buffer.second.buffer_size_);
+    } else {
+      set_buffer(
+          buffer.first, buffer.second.buffer_, buffer.second.buffer_size_);
+    }
+  }
+  return Status::Ok();
+}
+
+Status Query::copy_json_wip(const Query& query) {
+  type_ = query.type();
+  status_ = query.status();
+
+  return copy_buffers(query);
+}
+
 Status Query::process() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return LOG_STATUS(
