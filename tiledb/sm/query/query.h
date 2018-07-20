@@ -57,7 +57,7 @@ class Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Consturctor */
+  /** Constructor. */
   Query() = default;
 
   /** Constructor. */
@@ -67,8 +67,23 @@ class Query {
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
+  /** Copy Constructor. */
+  Query(const Query& query);
+
   /** Destructor. */
   ~Query();
+
+  Query& operator=(Query query) {
+    type_ = query.type();
+    callback_ = query.callback_;
+    callback_data_ = query.callback_data_;
+    layout_ = query.layout();
+    status_ = query.status();
+    set_storage_manager(query.storage_manager());
+    set_array_schema(query.array_schema());
+    set_fragment_metadata(query.fragment_metadata());
+    return *this;
+  };
 
   /* ********************************* */
   /*                 API               */
@@ -195,6 +210,12 @@ class Query {
    * layout writes. It has no effect for any other query type.
    */
   Status finalize();
+
+  /**
+   * Fetch fragment metadata, only valid for read query
+   * @return Vector of fragment metadata
+   */
+  std::vector<FragmentMetadata*> fragment_metadata() const;
 
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
@@ -336,6 +357,12 @@ class Query {
 
   /** Returns the query status. */
   QueryStatus status() const;
+
+  /**
+   * Return storage manager
+   * @param storage_manager
+   */
+  StorageManager* storage_manager() const;
 
   /** Returns the query type. */
   QueryType type() const;
