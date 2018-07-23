@@ -169,7 +169,23 @@ class Query {
       const uint64_t* buffer_off_size,
       const uint64_t* buffer_val_size);
 
+  /**
+   * Copy all buffers from one query object to calling query object
+   * @param query
+   * @return status object, Ok() on success, error on failure of copying
+   */
   Status copy_buffers(const Query& query);
+
+  /**
+   * WIP function for copying data from a partial json object into current query
+   * object. The reason for needing this is when we de-serialize a json object
+   * ot a query object it is not a valid object since there is no storage
+   * manager and no open array. We have no storage manager because inside the
+   * nlohmann namespace we have no context to build the object. This will be
+   * true for ceral and other json libraries that could be used.
+   * @param query
+   * @return Status OK on success, Error if there is a failure
+   */
   Status copy_json_wip(const Query& query);
 
   /**
