@@ -178,17 +178,51 @@ Status Query::check_var_attr_offsets(
 
 Status Query::copy_buffers(const Query& query) {
   auto buffers = query.attribute_buffers();
+  auto existing_buffers = attribute_buffers();
+  // Loop through each buffer from query we are copying
   for (auto& buffer : buffers) {
-    if (buffer.second.buffer_var_ != nullptr) {
-      set_buffer(
-          buffer.first,
-          static_cast<uint64_t*>(buffer.second.buffer_var_),
-          buffer.second.buffer_var_size_,
+    // Check to see if the query already has said buffer
+    auto existing_buffer = existing_buffers.find(buffer.first);
+    if (existing_buffer != existing_buffers.end()) {
+      // If buffer sizes are different error
+      if (*existing_buffer->second.buffer_size_ !=
+          *buffer.second.buffer_size_) {
+        return Status::QueryError(
+            "Existing buffer in query object is different size (" +
+            std::to_string(*existing_buffer->second.buffer_size_) +
+            ") vs new query object buffer size (" +
+            std::to_string(*buffer.second.buffer_size_) + ")");
+      }
+      memcpy(
+          existing_buffer->second.buffer_,
           buffer.second.buffer_,
-          buffer.second.buffer_size_);
+          *buffer.second.buffer_size_);
+      if (buffer.second.buffer_var_ != nullptr) {
+        if (*existing_buffer->second.buffer_var_size_ !=
+            *buffer.second.buffer_var_size_) {
+          return Status::QueryError(
+              "Existing buffer_var_ in query object is different size (" +
+              std::to_string(*existing_buffer->second.buffer_var_size_) +
+              ") vs new query object buffer_var size (" +
+              std::to_string(*buffer.second.buffer_var_size_) + ")");
+        }
+        memcpy(
+            existing_buffer->second.buffer_var_,
+            buffer.second.buffer_var_,
+            *buffer.second.buffer_var_size_);
+      }
     } else {
-      set_buffer(
-          buffer.first, buffer.second.buffer_, buffer.second.buffer_size_);
+      if (buffer.second.buffer_var_ != nullptr) {
+        set_buffer(
+            buffer.first,
+            static_cast<uint64_t*>(buffer.second.buffer_var_),
+            buffer.second.buffer_var_size_,
+            buffer.second.buffer_,
+            buffer.second.buffer_size_);
+      } else {
+        set_buffer(
+            buffer.first, buffer.second.buffer_, buffer.second.buffer_size_);
+      }
     }
   }
   return Status::Ok();
@@ -197,7 +231,53 @@ Status Query::copy_buffers(const Query& query) {
 Status Query::copy_json_wip(const Query& query) {
   type_ = query.type();
   status_ = query.status();
+  set_layout(query.layout());
+  // set_array_schema(query.array_schema());
+  switch (array_schema()->domain()->type()) {
+    case tiledb::sm::Datatype::INT8:
+      set_subarray(query.subarray<int8_t>().data());
+      break;
 
+    case tiledb::sm::Datatype::UINT8:
+      set_subarray(query.subarray<uint8_t>().data());
+      break;
+    case tiledb::sm::Datatype::INT16:
+      set_subarray(query.subarray<int16_t>().data());
+      break;
+    case tiledb::sm::Datatype::UINT16:
+      set_subarray(query.subarray<uint16_t>().data());
+      break;
+    case tiledb::sm::Datatype::INT32:
+      set_subarray(query.subarray<int32_t>().data());
+      break;
+    case tiledb::sm::Datatype::UINT32:
+      set_subarray(query.subarray<uint32_t>().data());
+      break;
+    case tiledb::sm::Datatype::INT64:
+      set_subarray(query.subarray<int64_t>().data());
+      break;
+
+    case tiledb::sm::Datatype::UINT64:
+      set_subarray(query.subarray<uint64_t>().data());
+      break;
+    case tiledb::sm::Datatype::FLOAT32:
+      set_subarray(query.subarray<float>().data());
+      break;
+    case tiledb::sm::Datatype::FLOAT64:
+      set_subarray(query.subarray<double>().data());
+      break;
+    case tiledb::sm::Datatype::CHAR:
+    case tiledb::sm::Datatype::STRING_ASCII:
+    case tiledb::sm::Datatype::STRING_UTF8:
+    case tiledb::sm::Datatype::STRING_UTF16:
+    case tiledb::sm::Datatype::STRING_UTF32:
+    case tiledb::sm::Datatype::STRING_UCS2:
+    case tiledb::sm::Datatype::STRING_UCS4:
+    case tiledb::sm::Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      break;
+  }
   return copy_buffers(query);
 }
 
