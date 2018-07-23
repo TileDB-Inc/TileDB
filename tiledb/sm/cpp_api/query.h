@@ -500,6 +500,7 @@ class Query {
    * **/
   template <typename T>
   Query& set_coordinates(T* buf, uint64_t size) {
+    impl::type_check<T>(schema_.domain().type());
     return set_buffer(TILEDB_COORDS, buf, size);
   }
 
@@ -544,6 +545,9 @@ class Query {
    **/
   template <typename T>
   Query& set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
+    if (attr != TILEDB_COORDS) {
+      impl::type_check<T>(schema_.attribute(attr).type());
+    }
     auto ctx = ctx_.get();
     auto size = nelements * sizeof(T);
     buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
@@ -607,6 +611,7 @@ class Query {
       uint64_t offset_nelements,
       T* data,
       uint64_t data_nelements) {
+    impl::type_check<T>(schema_.attribute(attr).type());
     auto ctx = ctx_.get();
     auto data_size = data_nelements * sizeof(T);
     auto offset_size = offset_nelements * sizeof(uint64_t);
