@@ -1861,6 +1861,14 @@ TILEDB_EXPORT int tiledb_query_alloc(
  *     fix the attributes and layout, but explore different subarrays with
  *     the same `tiledb_query_t` object (i.e., without having to created
  *     a new object).
+ *
+ * @note Setting the subarray in sparse writes is meaningless and, thus,
+ *     this function will error in the following two cases, provided that
+ *     this is a write query:
+ *     (i) the array is sparse, and (ii) the array is dense and the
+ *     layout has been set to `TILEDB_UNORDERED`. In the second case,
+ *     if the user sets the layout to `TILEDB_UNORDERED` **after**
+ *     the subarray has been set, the subarray will simply be ignored.
  */
 TILEDB_EXPORT int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
