@@ -112,14 +112,14 @@ class Query {
     if (buffer.buffer_ == nullptr || buffer.buffer_size_ == nullptr) {
       LOG_STATUS(
           Status::QueryError("Cannot get buffer; buffer attribute is nullptr"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Get array schema, used for validating template type vs attribute datatype
     auto array_schema = this->array_schema();
     if (array_schema == nullptr) {
       LOG_STATUS(Status::QueryError("Cannot get buffer; Array schema not set"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Get attribute object
@@ -127,13 +127,15 @@ class Query {
     if (attr == nullptr) {
       LOG_STATUS(Status::QueryError(
           "Cannot get buffer; Attribute from Array schema is nullptr"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Validate template type matches attribute datatype
     if (!tiledb::sm::utils::check_template_type_to_datatype<T>(attr->type())
-             .ok())
-      return {{}, {}};
+             .ok()) {
+      LOG_STATUS(Status::QueryError("Template does not match attribute type"));
+      return {{nullptr, 0}, {nullptr, 0}};
+    }
 
     std::pair<uint64_t*, uint64_t> offset_buffer;
     if (buffer.buffer_var_ != nullptr && buffer.buffer_var_size_ != nullptr)
