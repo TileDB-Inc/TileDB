@@ -3440,3 +3440,52 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test sparse array, set subarray in sparse writes should error",
+    "[capi], [dense], [dense-set-subarray-sparse]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_set_subarray_sparse";
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+
+  // Create TileDB context
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create WRITE query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+
+  uint64_t subarray[] = {1, 1, 1, 1};
+
+  // Set some subarray BEFORE setting the layout to UNORDERED
+  rc = tiledb_query_set_subarray(ctx, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Set some subarray AFTER setting the layout to UNORDERED
+  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx, query, subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+
+  // Clean up
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_ctx_free(&ctx);
+
+  remove_temp_dir(temp_dir);
+}

@@ -745,7 +745,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
 
 void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
     const std::string& array_name) {
-  // Create TileDB context, setting
+  // Create TileDB context with config
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -2334,4 +2334,42 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array_missing_attributes(array_name);
   check_sparse_array_no_results(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, set subarray should error",
+    "[capi], [sparse], [sparse-set-subarray]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_set_subarray";
+  create_sparse_array(array_name);
+
+  // Create TileDB context
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create WRITE query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // Set some subarray
+  uint64_t subarray[] = {1, 1, 1, 1};
+  rc = tiledb_query_set_subarray(ctx, query, subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+
+  // Clean up
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_ctx_free(&ctx);
 }

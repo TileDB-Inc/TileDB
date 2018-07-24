@@ -258,6 +258,17 @@ void Writer::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Writer::set_subarray(const void* subarray) {
+  // Check
+  if (subarray != nullptr) {
+    if (!array_schema_->dense())  // Sparse arrays
+      return LOG_STATUS(Status::WriterError(
+          "Cannot set subarray when writing to sparse arrays"));
+    else if (layout_ == Layout::UNORDERED)  // Dense arrays
+      return LOG_STATUS(Status::WriterError(
+          "Cannot set subarray when performing sparse writes to dense arrays "
+          "(i.e., when writing in UNORDERED mode)"));
+  }
+
   // Reset the writer (this will nuke the global write state)
   reset();
 
