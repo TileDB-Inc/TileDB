@@ -108,6 +108,11 @@ std::vector<std::string> Reader::attributes() const {
   return attributes_;
 }
 
+std::unordered_map<std::string, AttributeBuffer> Reader::attribute_buffers()
+    const {
+  return attr_buffers_;
+}
+
 AttributeBuffer Reader::buffer(const std::string& attribute) const {
   auto attrbuf = attr_buffers_.find(attribute);
   if (attrbuf == attr_buffers_.end())
