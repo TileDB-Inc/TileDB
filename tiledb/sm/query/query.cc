@@ -76,6 +76,13 @@ std::vector<std::string> Query::attributes() const {
   return reader_.attributes();
 }
 
+std::unordered_map<std::string, AttributeBuffer> Query::attribute_buffers()
+    const {
+  if (type_ == QueryType::WRITE)
+    return writer_.attribute_buffers();
+  return reader_.attribute_buffers();
+}
+
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();

@@ -81,6 +81,12 @@ class Query {
   std::vector<std::string> attributes() const;
 
   /**
+   * Return all attribute buffers
+   * @return unordered_map of attribute buffers
+   */
+  std::unordered_map<std::string, AttributeBuffer> attribute_buffers() const;
+
+  /**
    * Return a copy of the buffer for a given attribute
    * @tparam T
    * @param attribute name of buffer to retrieve
