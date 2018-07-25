@@ -1,3 +1,16 @@
+# TileDB v1.3.1 Release Notes
+
+## Bug fixes
+* Add missing checks when setting subarray for sparse writes [#843](https://github.com/TileDB-Inc/TileDB/pull/843)
+* Fix dl linking build issue for C/C++ examples on Linux [#844](https://github.com/TileDB-Inc/TileDB/pull/844)
+* Add missing type checks for C++ api Query object [#845](https://github.com/TileDB-Inc/TileDB/pull/845)
+* Add missing check that coordinates are provided for sparse writes [#846](https://github.com/TileDB-Inc/TileDB/pull/846)
+
+## Improvements
+
+* Fixes to compile on llvm v3.5 [#831](https://github.com/TileDB-Inc/TileDB/pull/831)
+* Add option disable building unittests [#836](https://github.com/TileDB-Inc/TileDB/pull/836)
+
 # TileDB v1.3.0 Release Notes
 
 Version 1.3.0 focused on performance, stability, documentation and API improvements/enhancements.
@@ -6,12 +19,12 @@ Version 1.3.0 focused on performance, stability, documentation and API improveme
 
 * New guided tutorial series added to documentation.
 * Query times improved dramatically with internal parallelization using TBB (multiple PRs)
-* Optional deduplication pass on writes can be enabled (PR #636)
-* New internal statistics reporting system to aid in performance optimization (PR #736)
-* Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
-* Added `TILEDB_ANY` datatype (PR #446)
-* Added parallelized VFS read operations, enabled by default (PR #499)
-* SIGINT signals will cancel in-progress queries (PR #578)
+* Optional deduplication pass on writes can be enabled [#636](https://github.com/TileDB-Inc/TileDB/pull/636)
+* New internal statistics reporting system to aid in performance optimization [#736](https://github.com/TileDB-Inc/TileDB/pull/736)
+* Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 [#415](https://github.com/TileDB-Inc/TileDB/pull/415)
+* Added `TILEDB_ANY` datatype [#446](https://github.com/TileDB-Inc/TileDB/pull/446)
+* Added parallelized VFS read operations, enabled by default [#499](https://github.com/TileDB-Inc/TileDB/pull/499)
+* SIGINT signals will cancel in-progress queries [#578](https://github.com/TileDB-Inc/TileDB/pull/578)
 
 ## Improvements
 
@@ -161,17 +174,17 @@ Version 1.3.0 focused on performance, stability, documentation and API improveme
 
 ## Bug fixes
 
-* Fixed TileDB header includes for all examples (#409)
-* Fixed TileDB library dynamic linking problem for C++ API (#412)
-* Fixed VS2015 build errors (#424)
-* Bug fix in the sparse case (#434)
-* Bug fix for 1D vector query layout (#438)
+* Fixed TileDB header includes for all examples ([#409](https://github.com/TileDB-Inc/TileDB/pull/409))
+* Fixed TileDB library dynamic linking problem for C++ API ([#412](https://github.com/TileDB-Inc/TileDB/pull/412))
+* Fixed VS2015 build errors ([#424](https://github.com/TileDB-Inc/TileDB/pull/424))
+* Bug fix in the sparse case ([#434](https://github.com/TileDB-Inc/TileDB/pull/434))
+* Bug fix for 1D vector query layout ([#438](https://github.com/TileDB-Inc/TileDB/pull/438))
 
 ## Improvements
 
-* Added documentation to API and examples (#410, #414)
-* Migrated docs to Readthedocs (#418, #420, #422, #423, #425)
-* Added dimension domain/tile extent checks (#429)
+* Added documentation to API and examples ([#410](https://github.com/TileDB-Inc/TileDB/pull/410), [#414](https://github.com/TileDB-Inc/TileDB/pull/414))
+* Migrated docs to Readthedocs ([#418](https://github.com/TileDB-Inc/TileDB/pull/418), [#420](https://github.com/TileDB-Inc/TileDB/pull/420), [#422](https://github.com/TileDB-Inc/TileDB/pull/422), [#423](https://github.com/TileDB-Inc/TileDB/pull/423), [#425](https://github.com/TileDB-Inc/TileDB/pull/425))
+* Added dimension domain/tile extent checks ([#429](https://github.com/TileDB-Inc/TileDB/pull/429))
 
 
 # TileDB v1.2.0 Release Notes
