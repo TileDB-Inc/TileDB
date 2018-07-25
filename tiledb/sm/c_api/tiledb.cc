@@ -95,6 +95,7 @@ struct tiledb_array_t {
   uint64_t snapshot_;
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       max_buffer_sizes_;
+  bool is_remote_;
 };
 
 struct tiledb_config_t {
@@ -1906,32 +1907,72 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if the array got closed
-  if (query->array_ == nullptr || !query->array_->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to submit TileDB query; The associated array got closed");
-    LOG_STATUS(st);
-    save_error(ctx, st);
+  // Check for REST server configuration
+  tiledb_config_t* config;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR)
     return TILEDB_ERR;
-  }
+  const char* rest_server;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) == TILEDB_ERR)
+    return TILEDB_ERR;
 
-  // Check if the array got re-opened with a different query type
-  auto array_query_type = query->array_->open_array_->query_type();
-  auto query_type = query->query_->type();
-  if (array_query_type != query_type) {
-    std::stringstream errmsg;
-    errmsg << "Failed to submit TileDB query; "
-           << "Opened array query type does not match declared query type: "
-           << "(" << query_type_str(array_query_type)
-           << " != " << query_type_str(query_type) << ")";
-    auto st = tiledb::sm::Status::Error(errmsg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  // If we have configured a rest server address use it
+  if (rest_server != nullptr) {
+    // Set URI
+    query->array_->open_array_->array_schema()->set_array_uri(
+        query->array_->array_uri_);
+    char* json;
+    if (tiledb_query_to_json(ctx, query, &json) == TILEDB_ERR)
+      return TILEDB_ERR;
 
-  if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
-    return TILEDB_ERR;
+    // Call helper function
+    char* json_returned = nullptr;
+    LOG_STATUS(tiledb::sm::Status::Error(
+        "NOT ERROR, running query against rest server"));
+    auto st = submit_query_json_to_rest(
+        rest_server, query->array_->array_uri_.c_str(), json, &json_returned);
+    if (save_error(ctx, st)) {
+      LOG_STATUS(st);
+      return TILEDB_ERR;
+    }
+    if (json_returned != nullptr) {
+      LOG_STATUS(
+          tiledb::sm::Status::Error("NOT ERROR, data returned from rest api"));
+      tiledb_query_t* query_returned;
+      tiledb_query_from_json(
+          ctx, query->array_, &query_returned, json_returned);
+
+      query->query_->copy_json_wip(*query_returned->query_);
+    }
+  } else {
+    // Check if the array got closed
+    if (query->array_ == nullptr || !query->array_->is_open_) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to submit TileDB query; The associated array got closed");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    // Check if the array got re-opened with a different query type
+    auto array_query_type = query->array_->open_array_->query_type();
+    auto query_type = query->query_->type();
+    if (array_query_type != query_type) {
+      std::stringstream errmsg;
+      errmsg << "Failed to submit TileDB query; "
+             << "Opened array query type does not match declared query type: "
+             << "(" << query_type_str(array_query_type)
+             << " != " << query_type_str(query_type) << ")";
+      auto st = tiledb::sm::Status::Error(errmsg.str());
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
+      return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -2086,7 +2127,6 @@ int tiledb_query_from_json(
 
     // TODO: This needs cleanup, we need to build object correctly
     tiledb::sm::Query q = j.get<tiledb::sm::Query>();
-    //*((*query)->query_) = q;
 
     (*query)->query_->copy_json_wip(q);
 
@@ -2168,16 +2208,50 @@ int tiledb_array_open(
     save_error(ctx, st);
     return TILEDB_ERR;
   }
-
-  // Open array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_open(
-              array->array_uri_,
-              static_cast<tiledb::sm::QueryType>(query_type),
-              &(array->open_array_),
-              &(array->snapshot_))))
+  // Check for REST server configuration
+  tiledb_config_t* config;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR)
     return TILEDB_ERR;
+  const char* rest_server;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // If we have configured a rest server address use it
+  if (rest_server != nullptr) {
+    array->is_remote_ = true;
+    tiledb_array_schema_t* array_schema =
+        new (std::nothrow) tiledb_array_schema_t;
+    if (array_schema == nullptr) {
+      auto st =
+          tiledb::sm::Status::Error("Failed to allocate TileDB array schema");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
+
+    if (tiledb_array_schema_load(
+            ctx, array->array_uri_.c_str(), &array_schema) == TILEDB_ERR)
+      return TILEDB_ERR;
+
+    array->open_array_ = new tiledb::sm::OpenArray(
+        array->array_uri_, static_cast<tiledb::sm::QueryType>(query_type));
+    array->open_array_->set_array_schema(array_schema->array_schema_);
+    // Delete array_schema since it is not needed after setting the
+    // tiledb::sm::ArraySchema object
+    delete array_schema;
+  } else {
+    // Open array
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_open(
+                array->array_uri_,
+                static_cast<tiledb::sm::QueryType>(query_type),
+                &(array->open_array_),
+                &(array->snapshot_))))
+      return TILEDB_ERR;
+  }
 
   array->is_open_ = true;
 
@@ -2207,13 +2281,23 @@ int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
     return TILEDB_ERR;
   }
 
-  // Re-open array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_reopen(
-              array->open_array_, &(array->snapshot_))))
-    return TILEDB_ERR;
-
+  // If array is remote, re-call open to fetch array schema again
+  if (array->is_remote_) {
+    // delete open array if set
+    if (array->open_array_ != nullptr)
+      delete array->open_array_;
+    return tiledb_array_open(
+        ctx,
+        array,
+        static_cast<tiledb_query_type_t>(array->open_array_->query_type()));
+  } else {
+    // Re-open array
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_reopen(
+                array->open_array_, &(array->snapshot_))))
+      return TILEDB_ERR;
+  }
   array->max_buffer_sizes_.clear();
 
   return TILEDB_OK;
@@ -2227,11 +2311,14 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (!array->is_open_)
     return TILEDB_OK;
 
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_close(
-              array->array_uri_, array->open_array_->query_type())))
-    return TILEDB_ERR;
+  // Only close array if it is not remote
+  if (!array->is_remote_) {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_close(
+                array->array_uri_, array->open_array_->query_type())))
+      return TILEDB_ERR;
+  }
 
   array->is_open_ = false;
   array->max_buffer_sizes_.clear();
@@ -2373,8 +2460,16 @@ int tiledb_array_get_non_empty_domain(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_get_non_empty_domain not implemented for remote "
+        "arrays");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
   bool is_empty_b;
-
   if (save_error(
           ctx,
           ctx->storage_manager_->array_get_non_empty_domain(
@@ -2399,6 +2494,15 @@ int tiledb_array_max_buffer_size(
   if (attribute == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Failed to get max buffer size; Attribute is null");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_max_buffer_size not implemented for remote arrays");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -2460,6 +2564,15 @@ int tiledb_array_max_buffer_size_var(
     uint64_t* buffer_val_size) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_max_buffer_size_var not implemented for remote arrays");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   // Check if attribute is null
   if (attribute == nullptr) {
@@ -3240,7 +3353,8 @@ int tiledb_kv_open(
   // Error if the key-value store is already open
   if (kv->is_open_) {
     auto st = tiledb::sm::Status::Error(
-        "Failed to open TileDB key-value store object; Key-value store already "
+        "Failed to open TileDB key-value store object; Key-value store "
+        "already "
         "open");
     LOG_STATUS(st);
     save_error(ctx, st);

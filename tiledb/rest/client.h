@@ -40,21 +40,32 @@
  *
  * @param rest_server url
  * @param uri of array being loaded
- * @param jsonReturned string where json response is stored
+ * @param json_returned string where json response is stored
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status get_array_schema_json_from_rest(
-    std::string rest_server, std::string uri, char** jsonReturned);
+    std::string rest_server, std::string uri, char** json_returned);
 
 /**
  * Post a json array schema to rest server
  *
  * @param rest_server url
  * @param uri of array being created
- * @param jsonReturned string of json serialized array
+ * @param json string of json serialized array
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status post_array_schema_json_to_rest(
     std::string rest_server, std::string uri, char* json);
 
+/**
+ * Post a json query to rest server
+ *
+ * @param rest_server url
+ * @param uri of array being queried
+ * @param json string of json serialized query
+ * @param json_returned query json returned from api
+ * @return Status Ok() on success Error() on failures
+ */
+tiledb::sm::Status submit_query_json_to_rest(
+    std::string rest_server, std::string uri, char* json, char** json_returned);
 #endif  // TILEDB_CLIENT_H

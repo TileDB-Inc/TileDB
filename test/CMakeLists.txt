@@ -54,6 +54,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-sparse_array.cc
+  src/unit-capi-rest.cc
   src/unit-capi-string.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc

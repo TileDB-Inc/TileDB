@@ -54,9 +54,13 @@ size_t WriteMemoryCallback(
     return 0;
   }
 
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  // This is leading to extra bits at the end
+  /*memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
-  mem->memory[mem->size] = 0;
+  mem->memory[mem->size] = 0;*/
+  // We know only strings will be passed (for now) so just use strcpy
+  strcpy(mem->memory, (char*)contents);
+  mem->size = strlen((char*)contents) + sizeof(char);
 
   return realsize;
 }
