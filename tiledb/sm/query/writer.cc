@@ -325,6 +325,12 @@ Status Writer::check_attributes() {
     return LOG_STATUS(
         Status::WriterError("Check attributes failed; Duplicate attributes"));
 
+  // If the array is sparse, the coordinates must be provided
+  if (!array_schema_->dense() && !has_coords)
+    return LOG_STATUS(
+        Status::WriterError("Sparse array writes expect the coordinates of the "
+                            "cells to be written"));
+
   // If the layout is unordered, the coordinates must be provided
   if (layout_ == Layout::UNORDERED && !has_coords)
     return LOG_STATUS(Status::WriterError(
