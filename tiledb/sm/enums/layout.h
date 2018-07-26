@@ -35,6 +35,7 @@
 #define TILEDB_LAYOUT_H
 
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/status.h"
 
 #include <cassert>
 
@@ -63,6 +64,22 @@ inline const std::string& layout_str(Layout layout) {
       assert(0);
       return constants::empty_str;
   }
+}
+
+/** Returns the layout enum given a string representation. */
+inline Status layout_enum(const std::string& layout_str, Layout* layout) {
+  if (layout_str == constants::col_major_str)
+    *layout = Layout::COL_MAJOR;
+  else if (layout_str == constants::row_major_str)
+    *layout = Layout::ROW_MAJOR;
+  else if (layout_str == constants::global_order_str)
+    *layout = Layout::GLOBAL_ORDER;
+  else if (layout_str == constants::unordered_str)
+    *layout = Layout::UNORDERED;
+  else {
+    return Status::Error("Invalid Layout " + layout_str);
+  }
+  return Status::Ok();
 }
 
 }  // namespace sm

@@ -37,6 +37,7 @@
 #include <cassert>
 
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
@@ -59,6 +60,19 @@ inline const std::string& array_type_str(ArrayType array_type) {
       assert(0);
       return constants::empty_str;
   }
+}
+
+/** Returns the array type given a string representation. */
+inline Status array_type_enum(
+    const std::string& array_type_str, ArrayType* array_type_enum) {
+  if (array_type_str == constants::dense_str)
+    *array_type_enum = ArrayType::DENSE;
+  else if (array_type_str == constants::sparse_str)
+    *array_type_enum = ArrayType::SPARSE;
+  else {
+    return Status::Error("Invalid ArrayType " + array_type_str);
+  }
+  return Status::Ok();
 }
 
 }  // namespace sm
