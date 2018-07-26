@@ -264,6 +264,12 @@ class Reader {
   std::vector<std::string> attributes() const;
 
   /**
+   * Return all attribute buffers
+   * @return unordered_map of attribute buffers
+   */
+  std::unordered_map<std::string, AttributeBuffer> attribute_buffers() const;
+
+  /**
    * Fetch AttributeBuffer for attribute
    * @param attribute to fetch
    * @return AttributeBuffer for attribute
@@ -276,6 +282,12 @@ class Reader {
    * was some buffer overflow.
    */
   bool incomplete() const;
+
+  /**
+   * Fetch fragment metadata, only valid for read query
+   * @return Vector of fragment metadata
+   */
+  std::vector<FragmentMetadata*> fragment_metadata() const;
 
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
@@ -375,6 +387,12 @@ class Reader {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Return storage manager
+   * @return storage_manager
+   */
+  StorageManager* storage_manager() const;
 
   /*
    * Return the subarray

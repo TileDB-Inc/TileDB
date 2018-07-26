@@ -669,6 +669,37 @@ class Query {
     return set_buffer(attr, buf.first, buf.second);
   }
 
+  /**
+   *
+   * @return json encoded string
+   */
+  std::string to_json() {
+    char* json_string;
+    auto& ctx = ctx_.get();
+    tiledb_query_to_json(ctx, query_.get(), &json_string);
+    return json_string;
+  }
+
+  /**
+   * Static function to create an ArraySchema from a json string
+   * @param ctx
+   * @param array
+   * @param json_string
+   * @return Query* on success or nullptr on error
+   */
+  static Query* from_json(
+      const Context ctx, const Array array, const std::string& json_string) {
+    tiledb_query_t* query;
+    auto st = tiledb_query_from_json(
+        ctx, array.ptr().get(), &query, json_string.c_str());
+    if (st == TILEDB_OK) {
+      Query* tmp = new Query(ctx, array);
+      tmp->query_ = std::shared_ptr<tiledb_query_t>(query, tmp->deleter_);
+      return tmp;
+    }
+    return nullptr;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */

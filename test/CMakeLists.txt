@@ -50,6 +50,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_vector.cc
   src/unit-capi-error.cc
   src/unit-capi-incomplete.cc
+  src/unit-capi-json.cc
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-sparse_array.cc
@@ -74,6 +75,7 @@ if (TILEDB_CPP_API)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-cppapi-array.cc
     src/unit-cppapi-config.cc
+    src/unit-cppapi-json.cc
     src/unit-cppapi-map.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-type.cc

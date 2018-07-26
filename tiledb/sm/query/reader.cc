@@ -108,6 +108,11 @@ std::vector<std::string> Reader::attributes() const {
   return attributes_;
 }
 
+std::unordered_map<std::string, AttributeBuffer> Reader::attribute_buffers()
+    const {
+  return attr_buffers_;
+}
+
 AttributeBuffer Reader::buffer(const std::string& attribute) const {
   auto attrbuf = attr_buffers_.find(attribute);
   if (attrbuf == attr_buffers_.end())
@@ -118,6 +123,10 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
 bool Reader::incomplete() const {
   return read_state_.overflowed_ ||
          read_state_.cur_subarray_partition_ != nullptr;
+}
+
+std::vector<FragmentMetadata*> Reader::fragment_metadata() const {
+  return fragment_metadata_;
 }
 
 unsigned Reader::fragment_num() const {
@@ -468,6 +477,10 @@ Status Reader::set_subarray(const void* subarray) {
         subarray_size);
 
   return Status::Ok();
+}
+
+StorageManager* Reader::storage_manager() const {
+  return storage_manager_;
 }
 
 void* Reader::subarray() const {

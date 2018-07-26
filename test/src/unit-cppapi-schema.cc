@@ -47,6 +47,11 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   auto fd2 = Dimension::create<double>(ctx, "d2", {{-100.0, 100.0}}, 10.0);
   sparse_domain.add_dimensions(fd1, fd2);
 
+  Domain sparse_domain_json(ctx);
+  auto fdj1 = Dimension::create<double>(ctx, "d1", {{-100.0, 100.0}}, 10.0);
+  auto fdj2 = Dimension::create<double>(ctx, "d2", {{-100.0, 100.0}}, 10.0);
+  sparse_domain_json.add_dimensions(fdj1, fdj2);
+
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<std::string>(ctx, "a2");
   auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");

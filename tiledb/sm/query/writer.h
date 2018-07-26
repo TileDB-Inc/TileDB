@@ -122,6 +122,12 @@ class Writer {
   std::vector<std::string> attributes() const;
 
   /**
+   * Return all attribute buffers
+   * @return unordered_map of attribute buffers
+   */
+  std::unordered_map<std::string, AttributeBuffer> attribute_buffers() const;
+
+  /**
    * Fetch AttributeBuffer for attribute
    * @param attribute to fetch
    * @return AttributeBuffer for attribute
@@ -195,6 +201,12 @@ class Writer {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Return storage manager
+   * @return storage_manager
+   */
+  StorageManager* storage_manager() const;
 
   /*
    * Return the subarray

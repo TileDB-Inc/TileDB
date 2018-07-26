@@ -77,6 +77,11 @@ std::vector<std::string> Writer::attributes() const {
   return attributes_;
 }
 
+std::unordered_map<std::string, AttributeBuffer> Writer::attribute_buffers()
+    const {
+  return attr_buffers_;
+}
+
 AttributeBuffer Writer::buffer(const std::string& attribute) const {
   auto attrbuf = attr_buffers_.find(attribute);
   if (attrbuf == attr_buffers_.end())
@@ -285,6 +290,10 @@ Status Writer::set_subarray(const void* subarray) {
     std::memcpy(subarray_, subarray, subarray_size);
 
   return Status::Ok();
+}
+
+StorageManager* Writer::storage_manager() const {
+  return storage_manager_;
 }
 
 void* Writer::subarray() const {

@@ -58,14 +58,32 @@ class Query {
   /* ********************************* */
 
   /** Constructor. */
+  Query() = default;
+
+  /** Constructor. */
   Query(
       StorageManager* storage_manager,
       QueryType type,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
+  /** Copy Constructor. */
+  Query(const Query& query);
+
   /** Destructor. */
   ~Query();
+
+  Query& operator=(Query query) {
+    type_ = query.type();
+    callback_ = query.callback_;
+    callback_data_ = query.callback_data_;
+    layout_ = query.layout();
+    status_ = query.status();
+    set_storage_manager(query.storage_manager());
+    set_array_schema(query.array_schema());
+    set_fragment_metadata(query.fragment_metadata());
+    return *this;
+  };
 
   /* ********************************* */
   /*                 API               */
@@ -79,6 +97,12 @@ class Query {
    * @return attributes for query
    */
   std::vector<std::string> attributes() const;
+
+  /**
+   * Return all attribute buffers
+   * @return unordered_map of attribute buffers
+   */
+  std::unordered_map<std::string, AttributeBuffer> attribute_buffers() const;
 
   /**
    * Return a copy of the buffer for a given attribute
@@ -103,14 +127,14 @@ class Query {
     if (buffer.buffer_ == nullptr || buffer.buffer_size_ == nullptr) {
       LOG_STATUS(
           Status::QueryError("Cannot get buffer; buffer attribute is nullptr"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Get array schema, used for validating template type vs attribute datatype
     auto array_schema = this->array_schema();
     if (array_schema == nullptr) {
       LOG_STATUS(Status::QueryError("Cannot get buffer; Array schema not set"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Get attribute object
@@ -118,13 +142,15 @@ class Query {
     if (attr == nullptr) {
       LOG_STATUS(Status::QueryError(
           "Cannot get buffer; Attribute from Array schema is nullptr"));
-      return {{}, {}};
+      return {{nullptr, 0}, {nullptr, 0}};
     }
 
     // Validate template type matches attribute datatype
     if (!tiledb::sm::utils::check_template_type_to_datatype<T>(attr->type())
-             .ok())
-      return {{}, {}};
+             .ok()) {
+      LOG_STATUS(Status::QueryError("Template does not match attribute type"));
+      return {{nullptr, 0}, {nullptr, 0}};
+    }
 
     std::pair<uint64_t*, uint64_t> offset_buffer;
     if (buffer.buffer_var_ != nullptr && buffer.buffer_var_size_ != nullptr)
@@ -161,10 +187,35 @@ class Query {
       const uint64_t* buffer_val_size);
 
   /**
+   * Copy all buffers from one query object to calling query object
+   * @param query
+   * @return status object, Ok() on success, error on failure of copying
+   */
+  Status copy_buffers(const Query& query);
+
+  /**
+   * WIP function for copying data from a partial json object into current query
+   * object. The reason for needing this is when we de-serialize a json object
+   * ot a query object it is not a valid object since there is no storage
+   * manager and no open array. We have no storage manager because inside the
+   * nlohmann namespace we have no context to build the object. This will be
+   * true for ceral and other json libraries that could be used.
+   * @param query
+   * @return Status OK on success, Error if there is a failure
+   */
+  Status copy_json_wip(const Query& query);
+
+  /**
    * Finalizes the query, flushing all internal state. Applicable only to global
    * layout writes. It has no effect for any other query type.
    */
   Status finalize();
+
+  /**
+   * Fetch fragment metadata, only valid for read query
+   * @return Vector of fragment metadata
+   */
+  std::vector<FragmentMetadata*> fragment_metadata() const;
 
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
@@ -306,6 +357,12 @@ class Query {
 
   /** Returns the query status. */
   QueryStatus status() const;
+
+  /**
+   * Return storage manager
+   * @param storage_manager
+   */
+  StorageManager* storage_manager() const;
 
   /** Returns the query type. */
   QueryType type() const;

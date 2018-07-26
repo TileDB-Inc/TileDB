@@ -7,15 +7,44 @@ services: docker
 matrix:
   include:
     - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
 
     - os: linux
-      env: TILEDB_HDFS="ON"
+      env:
+      - TILEDB_HDFS="ON"
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
 
     - os: linux
-      env: TILEDB_S3="ON"
+      env:
+      - TILEDB_S3="ON"
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
 
     - os: osx
 
+before_install:
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 49;
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 49;
+        sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-4.9 49;
+        sudo update-alternatives --config gcc;
+        sudo update-alternatives --config g++;
+        sudo update-alternatives --config gcov;
+      fi
 install:
     # Install clangformat (v5.0)
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
