@@ -328,6 +328,10 @@ Status Query::set_sparse_mode(bool sparse_mode) {
   return reader_.set_sparse_mode(sparse_mode);
 }
 
+void Query::set_status(QueryStatus status) {
+  status_ = status;
+}
+
 Status Query::set_subarray(const void* subarray) {
   RETURN_NOT_OK(check_subarray(subarray));
   if (type_ == QueryType::WRITE) {
