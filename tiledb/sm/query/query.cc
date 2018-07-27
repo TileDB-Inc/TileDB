@@ -249,6 +249,10 @@ Status Query::set_layout(Layout layout) {
   return reader_.set_layout(layout);
 }
 
+void Query::set_status(QueryStatus status) {
+  status_ = status;
+}
+
 void Query::set_storage_manager(StorageManager* storage_manager) {
   if (type_ == QueryType::WRITE)
     writer_.set_storage_manager(storage_manager);
