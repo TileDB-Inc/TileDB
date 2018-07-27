@@ -62,7 +62,7 @@ Query::Query(const Query& query) {
   type_ = query.type();
   callback_ = query.callback_;
   callback_data_ = query.callback_data_;
-  layout_ = query.layout();
+  set_layout(query.layout());
   status_ = query.status();
   set_storage_manager(query.storage_manager());
   set_array_schema(query.array_schema());
@@ -369,6 +369,10 @@ Status Query::set_layout(Layout layout) {
   if (type_ == QueryType::WRITE)
     return writer_.set_layout(layout);
   return reader_.set_layout(layout);
+}
+
+void Query::set_status(QueryStatus status) {
+  status_ = status;
 }
 
 void Query::set_storage_manager(StorageManager* storage_manager) {
