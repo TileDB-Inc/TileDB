@@ -33,6 +33,7 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -45,6 +46,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <capnp/message.h>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -170,6 +172,12 @@ class Query {
   Status cancel();
 
   /**
+   *
+   * @return
+   */
+  Status capnp(::Query::Builder* queryBuilder) const;
+
+  /**
    * Check the validity of the provided buffer offsets for a variable attribute.
    *
    * @param buffer_off Offset buffer
@@ -217,6 +225,13 @@ class Query {
       uint64_t** buffer_off_size,
       void** buffer_val,
       uint64_t** buffer_val_size) const;
+
+  /**
+   *
+   * @param query
+   * @return
+   */
+  tiledb::sm::Status from_capnp(::Query::Reader* query);
 
   /**
    * Returns `true` if the query has results. Applicable only to read
@@ -299,6 +314,13 @@ class Query {
    * @return Status
    */
   Status set_sparse_mode(bool sparse_mode);
+
+  /**
+   * Set query status, needed for json deserialization
+   * @param status
+   * @return Status
+   */
+  void set_status(QueryStatus status);
 
   /**
    * Sets the query subarray. If it is null, then the subarray will be set to

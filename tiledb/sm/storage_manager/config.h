@@ -69,6 +69,24 @@ class Config {
     }
   };
 
+  struct RESTParams {
+    std::string server_address_;
+    std::string server_serialization_format_;
+    std::string username_;
+    std::string password_;
+    std::string token_;
+    std::string organization_;
+
+    RESTParams() {
+      server_address_ = "";
+      server_serialization_format_ = constants::serialization_default_format;
+      username_ = "";
+      password_ = "";
+      token_ = "";
+      organization_ = "";
+    }
+  };
+
   /** Storage manager parameters. */
   struct SMParams {
     bool enable_signal_handlers_;
@@ -203,6 +221,9 @@ class Config {
   /** Saves the config parameters to a configuration (local) file. */
   Status save_to_file(const std::string& filename);
 
+  /** Returns the rest interface parameters. */
+  RESTParams rest_params() const;
+
   /** Returns the storage manager parameters. */
   SMParams sm_params() const;
 
@@ -219,6 +240,19 @@ class Config {
    *
    * **Parameters**
    *
+   * - `rest.server_address` <br>
+   *   url for rest server
+   * - `rest.server_serialization_format` <br>
+   *   serialization format
+   * - `rest.username` <br>
+   *   username for rest server (can use token instead)
+   * - `rest.password` <br>
+   *   password for login to rest server
+   * - `rest.token` <br>
+   *   authentication token (used instead of username/password)
+   * - `rest.organization` <br>
+   *   organization to use for array
+   * <br>
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse array writes. Note that ties during deduplication are
@@ -416,6 +450,9 @@ class Config {
   /** Stores a map of param -> value. */
   std::map<std::string, std::string> param_values_;
 
+  /** The rest interface parameters. */
+  RESTParams rest_params_;
+
   /** The storage manager parameters. */
   SMParams sm_params_;
 
@@ -498,6 +535,24 @@ class Config {
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);
+
+  /** Set the rest server address */
+  Status set_rest_server_address(const std::string& value);
+
+  /** Set the rest server serialization format */
+  Status set_rest_server_serialization_format(const std::string& value);
+
+  /** Set the rest server username for auth */
+  Status set_rest_username(const std::string& value);
+
+  /** Set the rest server password for auth */
+  Status set_rest_password(const std::string& value);
+
+  /** Set the rest server token for auth */
+  Status set_rest_token(const std::string& value);
+
+  /** Set the rest server organization */
+  Status set_rest_organization(const std::string& value);
 
   /** Sets the number of VFS threads. */
   Status set_vfs_num_threads(const std::string& value);

@@ -329,6 +329,15 @@ const std::string no_encryption_str = "NO_ENCRYPTION";
 /** String describing AES_256_GCM. */
 const std::string aes_256_gcm_str = "AES_256_GCM";
 
+/** TILEDB_JSON **/
+const std::string serialization_type_json_str = "JSON";
+
+/** TILEDB_CAPNP **/
+const std::string serialization_type_capnp_str = "CAPNP";
+
+/** The default format for serialization. */
+const std::string serialization_default_format = serialization_type_capnp_str;
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 

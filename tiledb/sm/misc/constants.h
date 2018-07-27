@@ -279,6 +279,9 @@ extern const int num_tbb_threads;
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
+/** The default format for serialization. */
+extern const std::string serialization_default_format;
+
 /** Empty String reference **/
 extern const std::string empty_str;
 
@@ -311,6 +314,12 @@ extern const std::string no_encryption_str;
 
 /** String describing AES_256_GCM. */
 extern const std::string aes_256_gcm_str;
+
+/** TILEDB_JSON **/
+extern const std::string serialization_type_json_str;
+
+/** TILEDB_CAPNP **/
+extern const std::string serialization_type_capnp_str;
 
 /** String describing GZIP. */
 extern const std::string gzip_str;

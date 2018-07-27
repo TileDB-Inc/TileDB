@@ -82,6 +82,11 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/array.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/tiledb-rest.capnp.c++
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/curl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
@@ -262,10 +267,18 @@ if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
 
+find_package(Curl_EP REQUIRED)
+if (NOT WIN32)
+  # No Curl required on Windows.
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          Curl::Curl
+          )
+endif()
+
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(Curl_EP REQUIRED)
   find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -275,14 +288,6 @@ if (TILEDB_S3)
       AWSSDK::aws-checksums
       AWSSDK::aws-c-common
   )
-
-  if (NOT WIN32)
-    # No Curl required on Windows.
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        Curl::Curl
-    )
-  endif()
   add_definitions(-DHAVE_S3)
 endif()
 
@@ -336,6 +341,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Capnp_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -343,6 +349,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Spdlog::Spdlog
     Zlib::Zlib
     Zstd::Zstd
+    Capnp::capnp
+    Capnp::capnp-json
+    Capnp::kj
 )
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -419,6 +428,9 @@ if (TILEDB_STATIC)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(Zstd::Zstd)
+  append_dep_lib(Capnp::capnp)
+  append_dep_lib(Capnp::capnp-json)
+  append_dep_lib(Capnp::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)

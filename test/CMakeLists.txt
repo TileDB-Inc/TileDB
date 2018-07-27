@@ -48,6 +48,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-async.cc
   src/unit-capi-array.cc
   src/unit-capi-buffer.cc
+  src/unit-capi-capnp.cc
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
@@ -61,6 +62,9 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
+  src/unit-capi-rest.cc
+  src/unit-capi-rest-dense_array.cc
+  src/unit-capi-serialization-dense_array.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_array_2.cc
   src/unit-capi-sparse_neg.cc
@@ -102,6 +106,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-array.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-json.cc
     src/unit-cppapi-map.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc

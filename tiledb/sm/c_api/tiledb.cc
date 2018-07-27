@@ -30,8 +30,10 @@
  *
  * This file defines the C API of TileDB.
  */
-
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/rest/capnp/array.h"
+#include "tiledb/rest/capnp/query.h"
+#include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -121,6 +123,78 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   (*error)->errmsg_ = st.to_string();
 
   return true;
+}
+
+int get_ctx_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
+  *config = nullptr;
+  if (tiledb_ctx_get_config(ctx, config) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(config);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+const std::string get_rest_server(tiledb_ctx_t* ctx) {
+  tiledb_config_t* config = nullptr;
+  if (get_ctx_config(ctx, &config) != TILEDB_OK)
+    return "";
+
+  const char* rest_server = nullptr;
+  std::string rest_server_str;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(config, "rest.server_address", &rest_server, &error) ==
+      TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return "";
+  }
+  if (rest_server != nullptr)
+    rest_server_str = rest_server;
+  if (config != nullptr)
+    tiledb_config_free(&config);
+  return rest_server_str;
+}
+
+int get_rest_server_serialization_format(
+    tiledb_ctx_t* ctx, tiledb_serialization_type_t* serialization_type) {
+  tiledb_config_t* config = nullptr;
+  tiledb::sm::Status st = tiledb::sm::serialization_type_enum(
+      tiledb::sm::constants::serialization_default_format,
+      reinterpret_cast<tiledb::sm::SerializationType*>(serialization_type));
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  if (get_ctx_config(ctx, &config) != TILEDB_OK)
+    return TILEDB_ERR;
+
+  const char* config_serialization_type = nullptr;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config,
+          "rest.server_serialization_format",
+          &config_serialization_type,
+          &error) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return TILEDB_ERR;
+  }
+  if (config_serialization_type != nullptr) {
+    st = tiledb::sm::serialization_type_enum(
+        config_serialization_type,
+        reinterpret_cast<tiledb::sm::SerializationType*>(serialization_type));
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  }
+  if (config != nullptr)
+    tiledb_config_free(&config);
+  return TILEDB_OK;
 }
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
@@ -1727,30 +1801,63 @@ int32_t tiledb_array_schema_load_with_key(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
-  // Load array schema
-  auto storage_manager = ctx->ctx_->storage_manager();
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          storage_manager->load_array_schema(
-              tiledb::sm::URI(array_uri),
-              tiledb::sm::ObjectType::ARRAY,
-              key,
-              &((*array_schema)->array_schema_)))) {
-    delete *array_schema;
-    return TILEDB_ERR;
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get context config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    auto st = tiledb::rest::get_array_schema_from_rest(
+        config->config_,
+        rest_server,
+        array_uri,
+        static_cast<tiledb::sm::SerializationType>(serialization_type),
+        &(*array_schema)->array_schema_);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Load array schema
+    auto storage_manager = ctx->ctx_->storage_manager();
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            storage_manager->load_array_schema(
+                tiledb::sm::URI(array_uri),
+                tiledb::sm::ObjectType::ARRAY,
+                key,
+                &((*array_schema)->array_schema_)))) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
   }
-
   return TILEDB_OK;
 }
 
@@ -2011,6 +2118,65 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_serialize(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_serialization_type_t serialize_type,
+    char** serialized_string,
+    uint64_t* serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto st = tiledb::rest::array_schema_serialize(
+      array_schema->array_schema_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_deserialize(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    tiledb_serialization_type_t serialize_type,
+    const char* serialized_string,
+    const uint64_t serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema struct
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB array schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+  auto st = tiledb::rest::array_schema_deserialize(
+      &((*array_schema)->array_schema_),
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
   }
   return TILEDB_OK;
 }
@@ -2344,6 +2510,60 @@ int32_t tiledb_query_get_type(
   return TILEDB_OK;
 }
 
+int tiledb_query_serialize(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    char** serialized_string,
+    uint64_t* serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  tiledb::sm::Status st = tiledb::rest::query_serialize(
+      query->query_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_query_deserialize(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    const char* serialized_string,
+    const uint64_t serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  tiledb::sm::Status st = tiledb::rest::query_deserialize(
+      query->query_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout) {
   // Sanity check
@@ -2389,8 +2609,15 @@ int32_t tiledb_array_alloc(
   }
 
   // Allocate an array object
-  (*array)->array_ =
-      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  // Check if rest server is set, if so try to load remote array
+  std::string rest_server = get_rest_server(ctx);
+  if (rest_server != "") {
+    (*array)->array_ = new (std::nothrow)
+        tiledb::sm::Array(uri, ctx->ctx_->storage_manager(), true);
+  } else {
+    (*array)->array_ =
+        new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  }
   if ((*array)->array_ == nullptr) {
     delete *array;
     *array = nullptr;
@@ -2636,23 +2863,58 @@ int32_t tiledb_array_create_with_key(
     return TILEDB_ERR;
   }
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
 
-  // Create the array
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_create(
-              uri, array_schema->array_schema_, key)))
-    return TILEDB_ERR;
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get context config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    auto st = tiledb::rest::post_array_schema_to_rest(
+        config->config_,
+        rest_server,
+        array_uri,
+        static_cast<tiledb::sm::SerializationType>(serialization_type),
+        array_schema->array_schema_);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+    tiledb_config_free(&config);
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Create the array
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_create(
+                uri, array_schema->array_schema_, key)))
+      return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
@@ -2693,11 +2955,41 @@ int32_t tiledb_array_get_non_empty_domain(
 
   bool is_empty_b;
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_get_non_empty_domain(
-              array->array_, domain, &is_empty_b)))
-    return TILEDB_ERR;
+  // Log error for unimplemented remote functionality
+  if (array->array_->is_remote()) {
+    // Check for REST server configuration
+    std::string rest_server = get_rest_server(ctx);
+    if (!rest_server.empty()) {
+      tiledb_config_t* config;
+      if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+        auto st = tiledb::sm::Status::Error("Failed to get context config");
+        save_error(ctx, st);
+        return TILEDB_ERR;
+      }
+
+      if (save_error(
+              ctx,
+              tiledb::rest::get_array_non_empty_domain(
+                  config->config_,
+                  rest_server,
+                  array->array_,
+                  domain,
+                  &is_empty_b)))
+        return TILEDB_ERR;
+    } else {
+      auto st = tiledb::sm::Status::Error(
+          "Rest server not in config but array marked remote");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_get_non_empty_domain(
+                array->array_, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  }
 
   *is_empty = (int32_t)is_empty_b;
 
