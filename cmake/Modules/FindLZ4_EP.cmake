@@ -76,8 +76,8 @@ if (NOT LZ4_FOUND)
     if (WIN32)
       ExternalProject_Add(ep_lz4
         PREFIX "externals"
-        URL "https://github.com/lz4/lz4/releases/download/v1.8.1.2/lz4_v1_8_1_win64.zip"
-        URL_HASH SHA1=c0f50f59f4cf4ff861d9dffc64c735032e7778f9
+        URL "https://github.com/lz4/lz4/releases/download/v1.8.2/lz4_v1_8_2_win64.zip"
+        URL_HASH SHA1=330f97a88b91a4b9a15ddfe063321849a3a9e62d
         CONFIGURE_COMMAND ""
         BUILD_IN_SOURCE TRUE
         BUILD_COMMAND ""
@@ -90,7 +90,7 @@ if (NOT LZ4_FOUND)
             ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.lib
             ${TILEDB_EP_INSTALL_PREFIX}/bin &&
           ${CMAKE_COMMAND} -E copy_if_different
-            ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.so.1.8.1.dll
+            ${TILEDB_EP_BASE}/src/ep_lz4/dll/liblz4.so.1.8.2.dll
             ${TILEDB_EP_INSTALL_PREFIX}/bin/liblz4.dll &&
           ${CMAKE_COMMAND} -E copy_if_different
             ${TILEDB_EP_BASE}/src/ep_lz4/static/liblz4_static.lib
@@ -108,8 +108,8 @@ if (NOT LZ4_FOUND)
     else()
       ExternalProject_Add(ep_lz4
         PREFIX "externals"
-        URL "https://github.com/lz4/lz4/archive/v1.8.1.2.zip"
-        URL_HASH SHA1=6d89d448f976188b44abcdb9083cac4ebcfbb46c
+        URL "https://github.com/lz4/lz4/archive/v1.8.2.zip"
+        URL_HASH SHA1=ebf6c227965318ecd73820ade8f5dbd83d48b3e8
         CONFIGURE_COMMAND ""
         BUILD_IN_SOURCE TRUE
         INSTALL_COMMAND $(MAKE) PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
