@@ -221,6 +221,21 @@ extern const std::string query_type_read_str;
 /** TILEDB_WRITE Query String **/
 extern const std::string query_type_write_str;
 
+/** TILEDB_FAILED Query String **/
+extern const std::string query_status_failed_str;
+
+/** TILEDB_COMPLETE Query String **/
+extern const std::string query_status_completed_str;
+
+/** TILEDB_INPROGRESS Query String **/
+extern const std::string query_status_inprogress_str;
+
+/** TILEDB_INCOMPLETE Query String **/
+extern const std::string query_status_incomplete_str;
+
+/** TILEDB_UNINITIALIZED Query String **/
+extern const std::string query_status_uninitialized_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 
