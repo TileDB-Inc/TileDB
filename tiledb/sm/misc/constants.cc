@@ -239,6 +239,20 @@ const std::string query_type_read_str = "READ";
 
 /** TILEDB_WRITE Query String **/
 const std::string query_type_write_str = "WRITE";
+/** TILEDB_FAILED Query String **/
+const std::string query_status_failed_str = "FAILED";
+
+/** TILEDB_COMPLETED Query String **/
+const std::string query_status_completed_str = "COMPLETED";
+
+/** TILEDB_INPROGRESS Query String **/
+const std::string query_status_inprogress_str = "INPROGRESS";
+
+/** TILEDB_INCOMPLETE Query String **/
+const std::string query_status_incomplete_str = "INCOMPLETE";
+
+/** TILEDB_UNINITIALIZED Query String **/
+const std::string query_status_uninitialized_str = "UNINITIALIZED";
 
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
