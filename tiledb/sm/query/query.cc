@@ -320,6 +320,10 @@ Status Query::set_layout(Layout layout) {
   return reader_.set_layout(layout);
 }
 
+void Query::set_status(QueryStatus status) {
+  status_ = status;
+}
+
 Status Query::set_subarray(const void* subarray) {
   RETURN_NOT_OK(check_subarray_bounds(subarray));
   if (type_ == QueryType::WRITE) {

@@ -293,6 +293,13 @@ class Query {
   Status set_layout(Layout layout);
 
   /**
+   * Set query status, needed for json deserialization
+   * @param status
+   * @return Status
+   */
+  void set_status(QueryStatus status);
+
+  /**
    * Sets the query subarray. If it is null, then the subarray will be set to
    * the entire domain.
    *
