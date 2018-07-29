@@ -104,6 +104,20 @@ endif()
 # built as external projects.
 set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
 
+# Get the list of CACHE variables, this will include all passed on command
+# line. This must be called before the first project() call
+# See: https://cmake.org/pipermail/cmake/2018-January/067002.html
+get_cmake_property(vars CACHE_VARIABLES)
+foreach(var ${vars})
+  get_property(currentHelpString CACHE "${var}" PROPERTY HELPSTRING)
+  # Limit to only variables which have been passed on the command line or have
+  # no help, which should also be passed from command line
+  if("${currentHelpString}" MATCHES "No help, variable specified on the command line." OR "${currentHelpString}" STREQUAL "")
+        # Create list of command line arguments to forward
+        list(APPEND CMAKE_COMMAND_LINE_ARGUMENTS "-D${var}=${${var}}")
+  endif()
+endforeach()
+
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
   project(TileDB-Superbuild)
