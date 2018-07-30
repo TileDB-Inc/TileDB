@@ -457,6 +457,11 @@ if (NOT WIN32)
   )
 endif()
 
+# Override CMAKE_INSTALL_LIBDIR value from GNUInstallDirs if specified.
+if (NOT TILEDB_INSTALL_LIBDIR STREQUAL "")
+  set(CMAKE_INSTALL_LIBDIR "${TILEDB_INSTALL_LIBDIR}" CACHE STRING "" FORCE)
+endif()
+
 # List of targets to install.
 set(TILEDB_INSTALL_TARGETS
   tiledb_shared
