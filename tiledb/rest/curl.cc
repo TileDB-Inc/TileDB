@@ -71,46 +71,55 @@ CURLcode curl_fetch_url(
     CURL* curl, const char* url, struct MemoryStruct* fetch) {
   CURLcode rcode; /* curl result code */
 
-  /* init memory */
-  fetch->memory = (char*)calloc(1, sizeof(fetch->memory));
+  for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
+    /* init memory */
+    fetch->memory = (char*)calloc(1, sizeof(fetch->memory));
 
-  /* check memory */
-  if (fetch->memory == NULL) {
-    /* log error */
-    fprintf(stderr, "ERROR: Failed to allocate memory in curl_fetch_url");
-    /* return error */
-    return CURLE_FAILED_INIT;
+    /* check memory */
+    if (fetch->memory == NULL) {
+      /* log error */
+      fprintf(stderr, "ERROR: Failed to allocate memory in curl_fetch_url");
+      /* return error */
+      return CURLE_FAILED_INIT;
+    }
+
+    /* init size */
+    fetch->size = 0;
+
+    /* set url to fetch */
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    /* set calback function */
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+
+    /* pass fetch struct pointer */
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)fetch);
+
+    /* set default user agent */
+    // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    /* Fail on error */
+    // curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    /* set timeout */
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+
+    /* enable location redirects */
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+
+    /* set maximum allowed redirects */
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
+
+    /* fetch the url */
+    rcode = curl_easy_perform(curl);
+    /* If Curl call was successful (not http status, but no socket error, etc)
+     * break */
+    if (rcode == CURLE_OK)
+      break;
+    /* If we are here, then curl returned an error */
+    /* Free allocated memory for return as we are now going to retry */
+    free(fetch->memory);
   }
-
-  /* init size */
-  fetch->size = 0;
-
-  /* set url to fetch */
-  curl_easy_setopt(curl, CURLOPT_URL, url);
-
-  /* set calback function */
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-
-  /* pass fetch struct pointer */
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)fetch);
-
-  /* set default user agent */
-  // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-
-  /* Fail on error */
-  // curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-
-  /* set timeout */
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
-
-  /* enable location redirects */
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-
-  /* set maximum allowed redirects */
-  curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
-
-  /* fetch the url */
-  rcode = curl_easy_perform(curl);
 
   /* return */
   return rcode;

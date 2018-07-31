@@ -38,6 +38,12 @@
 #include <cstdlib>
 #include <string>
 
+// TODO: replace this with config option
+#define CURL_MAX_RETRIES 3
+
+/**
+ * Structure for curl return data
+ */
 struct MemoryStruct {
   char* memory;
   size_t size;
