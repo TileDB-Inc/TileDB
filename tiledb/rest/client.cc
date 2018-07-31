@@ -56,7 +56,7 @@ tiledb::sm::Status get_array_schema_json_from_rest(
 
   // Copy the return message
   *json_returned = (char*)std::malloc(memoryStruct.size * sizeof(char));
-  std::memcpy(*json_returned, memoryStruct.memory, memoryStruct.size);
+  strcpy(*json_returned, memoryStruct.memory);
 
   std::free(memoryStruct.memory);
   return tiledb::sm::Status::Ok();
@@ -118,7 +118,7 @@ tiledb::sm::Status submit_query_json_to_rest(
   if (memoryStruct.size > 0) {
     // Copy the return message
     *json_returned = (char*)std::malloc(memoryStruct.size * sizeof(char));
-    std::memcpy(*json_returned, memoryStruct.memory, memoryStruct.size);
+    strcpy(*json_returned, memoryStruct.memory);
   }
 
   std::free(memoryStruct.memory);
