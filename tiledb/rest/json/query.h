@@ -449,6 +449,7 @@ struct adl_serializer<tiledb::sm::Query> {
           break;
       }
       if (!status.ok()) {
+        LOG_STATUS(status);
         throw std::runtime_error(status.to_string());
       }
     }

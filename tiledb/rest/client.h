@@ -68,4 +68,16 @@ tiledb::sm::Status post_array_schema_json_to_rest(
  */
 tiledb::sm::Status submit_query_json_to_rest(
     std::string rest_server, std::string uri, char* json, char** json_returned);
+
+/**
+ * Post a json query to rest server
+ *
+ * @param rest_server url
+ * @param uri of array being queried
+ * @param json string of json serialized query
+ * @param json_returned query json returned from api
+ * @return Status Ok() on success Error() on failures
+ */
+tiledb::sm::Status finalize_query_json_to_rest(
+    std::string rest_server, std::string uri, char* json, char** json_returned);
 #endif  // TILEDB_CLIENT_H

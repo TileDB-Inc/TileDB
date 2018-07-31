@@ -1579,7 +1579,8 @@ int tiledb_array_schema_from_json(
           "json object did not contain array_type for array schema "
           "de-serialization");
       LOG_STATUS(st);
-      save_error(ctx, st);
+      if(ctx != nullptr)
+        save_error(ctx, st);
       return TILEDB_ERR;
     }
     // Create array schema struct
@@ -1588,7 +1589,8 @@ int tiledb_array_schema_from_json(
       st = tiledb::sm::Status::Error(
           "Failed to allocate TileDB array schema object");
       LOG_STATUS(st);
-      save_error(ctx, st);
+      if(ctx != nullptr)
+        save_error(ctx, st);
       return TILEDB_OOM;
     }
 
@@ -1599,7 +1601,8 @@ int tiledb_array_schema_from_json(
     st = (*array_schema)->array_schema_->check();
     if (!st.ok()) {
       LOG_STATUS(st);
-      save_error(ctx, st);
+      if(ctx != nullptr)
+        save_error(ctx, st);
       return TILEDB_ERR;
     }
   } catch (nlohmann::json::exception e) {
@@ -1607,14 +1610,16 @@ int tiledb_array_schema_from_json(
     auto st = tiledb::sm::Status::Error(
         std::string("Failed to decode json for array_schema: ") + e.what());
     LOG_STATUS(st);
-    save_error(ctx, st);
+    if(ctx != nullptr)
+      save_error(ctx, st);
     return TILEDB_ERR;
   } catch (std::exception e) {
     delete *array_schema;
     auto st = tiledb::sm::Status::Error(
         std::string("Failed to decode json for array_schema: ") + e.what());
     LOG_STATUS(st);
-    save_error(ctx, st);
+    if(ctx != nullptr)
+      save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -1887,10 +1892,50 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Flush query
-  if (save_error(ctx, query->query_->finalize()))
+  // Check for REST server configuration
+  tiledb_config_t* config;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR)
+    return TILEDB_ERR;
+  const char* rest_server;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // If we have configured a rest server address use it
+  if (rest_server != nullptr) {
+    // Set URI
+    query->array_->open_array_->array_schema()->set_array_uri(
+            query->array_->array_uri_);
+    char* json;
+    if (tiledb_query_to_json(ctx, query, &json) == TILEDB_ERR)
+      return TILEDB_ERR;
+
+    // Call helper function
+    char* json_returned = nullptr;
+    LOG_STATUS(tiledb::sm::Status::Error(
+            "NOT ERROR, running query against rest server"));
+    auto st = finalize_query_json_to_rest(
+            rest_server, query->array_->array_uri_.c_str(), json, &json_returned);
+    if (save_error(ctx, st)) {
+      LOG_STATUS(st);
+      return TILEDB_ERR;
+    }
+    if (json_returned != nullptr) {
+      LOG_STATUS(
+              tiledb::sm::Status::Error("NOT ERROR, data returned from rest api"));
+      tiledb_query_t* query_returned;
+      tiledb_query_from_json(
+              ctx, query->array_, &query_returned, json_returned);
+
+      query->query_->copy_json_wip(*query_returned->query_);
+    }
+
+  } else {
+    // Flush query
+    if (save_error(ctx, query->query_->finalize()))
+      return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
