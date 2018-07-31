@@ -53,11 +53,28 @@ namespace sm {
 
 Writer::Writer() {
   array_schema_ = nullptr;
-  global_write_state_.reset(nullptr);
+  global_write_state_.reset();
   initialized_ = false;
   layout_ = Layout::ROW_MAJOR;
   storage_manager_ = nullptr;
   subarray_ = nullptr;
+}
+
+Writer::Writer(nlohmann::json j) {
+  array_schema_ = nullptr;
+  global_write_state_.reset();
+  initialized_ = false;
+  layout_ = Layout::ROW_MAJOR;
+  storage_manager_ = nullptr;
+  subarray_ = nullptr;
+
+  try {
+    global_write_state_ =
+        j.at("global_write_state").get<std::shared_ptr<GlobalWriteState>>();
+  } catch (nlohmann::json::exception e) {
+    global_write_state_.reset();
+    LOG_STATUS(Status::Error(e.what()));
+  }
 }
 
 Writer::~Writer() {
@@ -298,6 +315,12 @@ StorageManager* Writer::storage_manager() const {
 
 void* Writer::subarray() const {
   return subarray_;
+}
+
+nlohmann::json Writer::to_json() const {
+  if (global_write_state_ == nullptr)
+    return nlohmann::json();
+  return nlohmann::json{{"global_write_state", global_write_state_}};
 }
 
 Status Writer::write() {
@@ -754,7 +777,7 @@ Status Writer::finalize_global_write_state() {
   if (!st.ok()) {
     close_files(meta);
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
-    global_write_state_.reset(nullptr);
+    global_write_state_.reset();
     return st;
   }
 
@@ -762,7 +785,7 @@ Status Writer::finalize_global_write_state() {
   st = close_files(meta);
   if (!st.ok()) {
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
-    global_write_state_.reset(nullptr);
+    global_write_state_.reset();
     return st;
   }
 
@@ -771,7 +794,7 @@ Status Writer::finalize_global_write_state() {
     if (global_write_state_->cells_written_[attributes_[i]] !=
         global_write_state_->cells_written_[attributes_[i - 1]]) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
-      global_write_state_.reset(nullptr);
+      global_write_state_.reset();
       return LOG_STATUS(Status::WriterError(
           "Failed to finalize global write state; Different "
           "number of cells written across attributes"));
@@ -783,7 +806,7 @@ Status Writer::finalize_global_write_state() {
     auto cells_written = global_write_state_->cells_written_[attributes_[0]];
     if (cells_written != array_schema_->domain()->cell_num<T>((T*)subarray_)) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
-      global_write_state_.reset(nullptr);
+      global_write_state_.reset();
       return LOG_STATUS(Status::WriterError(
           "Failed to finalize global write state; Number "
           "of cells written is different from the number of "
@@ -797,7 +820,7 @@ Status Writer::finalize_global_write_state() {
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
 
   // Delete global write state
-  global_write_state_.reset(nullptr);
+  global_write_state_.reset();
 
   return st;
 }
@@ -875,7 +898,7 @@ Status Writer::global_write() {
   for (auto& st : statuses) {
     if (!st.ok()) {
       storage_manager_->vfs()->remove_dir(uri);
-      global_write_state_.reset(nullptr);
+      global_write_state_.reset();
       return st;
     }
   }
@@ -902,7 +925,7 @@ Status Writer::global_write() {
   for (auto& st : statuses) {
     if (!st.ok()) {
       storage_manager_->vfs()->remove_dir(uri);
-      global_write_state_.reset(nullptr);
+      global_write_state_.reset();
       return st;
     }
   }
@@ -999,7 +1022,7 @@ Status Writer::init_global_write_state() {
   if (!st.ok()) {
     storage_manager_->vfs()->remove_dir(
         global_write_state_->frag_meta_->fragment_uri());
-    global_write_state_.reset(nullptr);
+    global_write_state_.reset();
   }
 
   return st;
@@ -1135,10 +1158,12 @@ Status Writer::new_fragment_name(std::string* frag_uri) const {
 }
 
 void Writer::nuke_global_write_state() {
-  auto meta = global_write_state_->frag_meta_.get();
-  close_files(meta);
-  storage_manager_->vfs()->remove_dir(meta->fragment_uri());
-  global_write_state_.reset(nullptr);
+  if (storage_manager_ != nullptr && storage_manager_->vfs() != nullptr) {
+    auto meta = global_write_state_->frag_meta_.get();
+    close_files(meta);
+    storage_manager_->vfs()->remove_dir(meta->fragment_uri());
+    global_write_state_.reset();
+  }
 }
 
 void Writer::optimize_layout_for_1D() {
@@ -1972,6 +1997,46 @@ Status Writer::write_tiles(
 
   STATS_FUNC_OUT(writer_write_tiles);
 }
+/**
+ * Implement json serialization for GlobalWriteState
+ *
+ * @param j json object to store serialized data in
+ * @param GlobalWriteState to serialize
+ */
+void to_json(
+    nlohmann::json& j, const std::shared_ptr<Writer::GlobalWriteState> g) {
+  if (g != nullptr) {
+    nlohmann::json last_tiles;
+    for (auto& it : g->last_tiles_) {
+      last_tiles[it.first] = {it.second.first, it.second.second};
+    }
+    j = {{"last_tiles", last_tiles}, {"cells_written", g->cells_written_}};
+    // j = {{"last_tiles", g->last_tiles_}, {"cells_written",
+    // g->cells_written_}};
+    //{"fragment_metadata", g->frag_meta_}};
+  }
+};
 
+/**
+ * Implement json de-serialization for GlobalWriteState
+ *
+ * @param j  json containing serialized data
+ * @param g GlobalWriteState to deserialize to
+ */
+void from_json(
+    const nlohmann::json& j, std::shared_ptr<Writer::GlobalWriteState>& g) {
+  g = std::make_shared<Writer::GlobalWriteState>();
+  std::unordered_map<std::string, nlohmann::json> map = j.at("last_tiles");
+  for (auto& it : map) {
+    auto vector = it.second;
+    std::pair<tiledb::sm::Tile, tiledb::sm::Tile> p = std::make_pair(
+        vector[0].get<tiledb::sm::Tile>(), vector[1].get<tiledb::sm::Tile>());
+    g->last_tiles_[it.first] = p;
+  }
+  //      g->last_tiles_ = j.at("last_tiles");
+  g->cells_written_ =
+      j.at("cells_written").get<std::unordered_map<std::string, uint64_t>>();
+  // g->frag_meta_ = j.at("fragment_metadata");
+};
 }  // namespace sm
 }  // namespace tiledb

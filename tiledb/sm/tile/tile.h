@@ -33,9 +33,11 @@
 #ifndef TILEDB_TILE_H
 #define TILEDB_TILE_H
 
+#include "nlohmann/json.hpp"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
 
 #include <cinttypes>
@@ -292,7 +294,21 @@ class Tile {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 };
+/**
+ * Implement json serialization for Tile
+ *
+ * @param j json object to store serialized data in
+ * @param t Tile to serialize
+ */
+void to_json(nlohmann::json& j, const Tile t);
 
+/**
+ * Implement json de-serialization for Tile
+ *
+ * @param j  json containing serialized data
+ * @param t Tile to deserialize to
+ */
+void from_json(const nlohmann::json& j, Tile& t);
 }  // namespace sm
 }  // namespace tiledb
 

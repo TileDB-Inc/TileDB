@@ -295,6 +295,7 @@ class Query {
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
 
+  void set_writer(nlohmann::json j);
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default
@@ -373,6 +374,8 @@ class Query {
 
   /** Returns the query type. */
   QueryType type() const;
+
+  nlohmann::json writer_to_json() const;
 
  private:
   /* ********************************* */

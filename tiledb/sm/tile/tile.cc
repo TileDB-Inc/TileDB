@@ -338,5 +338,204 @@ Tile& Tile::operator=(const Tile& tile) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+/**
+ * Implement json serialization for Tile
+ *
+ * @param j json object to store serialized data in
+ * @param t Tile to serialize
+ */
+void to_json(nlohmann::json& j, const Tile t) {
+  j = {{"type", datatype_str(t.type())},
+       {"compressor", compressor_str(t.compressor())},
+       {"compressor_level", t.compression_level()},
+       //{"tile_size", t.size()},
+       {"cell_size", t.cell_size()},
+       {"dim_num", t.dim_num()}};
+
+  if (t.buffer() != nullptr) {
+    switch (t.type()) {
+      case tiledb::sm::Datatype::INT8:
+        j["buffer"] = std::vector<int8_t>(
+            static_cast<int8_t*>(t.buffer()->data()),
+            static_cast<int8_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::UINT8:
+        j["buffer"] = std::vector<uint8_t>(
+            static_cast<uint8_t*>(t.buffer()->data()),
+            static_cast<uint8_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::INT16:
+        j["buffer"] = std::vector<int16_t>(
+            static_cast<int16_t*>(t.buffer()->data()),
+            static_cast<int16_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::UINT16:
+        j["buffer"] = std::vector<uint16_t>(
+            static_cast<uint16_t*>(t.buffer()->data()),
+            static_cast<uint16_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::INT32:
+        j["buffer"] = std::vector<int32_t>(
+            static_cast<int32_t*>(t.buffer()->data()),
+            static_cast<int32_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::UINT32:
+        j["buffer"] = std::vector<uint32_t>(
+            static_cast<uint32_t*>(t.buffer()->data()),
+            static_cast<uint32_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::INT64:
+        j["buffer"] = std::vector<int64_t>(
+            static_cast<int64_t*>(t.buffer()->data()),
+            static_cast<int64_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::UINT64:
+        j["buffer"] = std::vector<uint64_t>(
+            static_cast<uint64_t*>(t.buffer()->data()),
+            static_cast<uint64_t*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::FLOAT32:
+        j["buffer"] = std::vector<float>(
+            static_cast<float*>(t.buffer()->data()),
+            static_cast<float*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      case tiledb::sm::Datatype::FLOAT64:
+        j["buffer"] = std::vector<double>(
+            static_cast<double*>(t.buffer()->data()),
+            static_cast<double*>(t.buffer()->data()) + t.buffer()->size());
+        break;
+      default:
+        break;
+    }
+  }
+};
+
+/**
+ * Implement json de-serialization for Tile
+ *
+ * @param j  json containing serialized data
+ * @param t Tile to deserialize to
+ */
+void from_json(const nlohmann::json& j, Tile& t) {
+  tiledb::sm::Datatype datatype = tiledb::sm::Datatype::ANY;
+  auto st = datatype_enum(j.at("type"), &datatype);
+  if (!st.ok())
+    LOG_STATUS(st);
+  tiledb::sm::Compressor compressor = tiledb::sm::Compressor::NO_COMPRESSION;
+
+  st = compressor_enum(j.at("compressor"), &compressor);
+  if (!st.ok())
+    LOG_STATUS(st);
+
+  if (j.count("buffer") && !j.at("buffer").empty()) {
+    uint64_t buffer_size = 0;
+    void* buffer_array;
+    switch (t.type()) {
+      case tiledb::sm::Datatype::INT8: {
+        std::vector<int8_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::UINT8: {
+        std::vector<int8_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::INT16: {
+        std::vector<int16_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::UINT16: {
+        std::vector<uint16_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::INT32: {
+        std::vector<int32_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::UINT32: {
+        std::vector<uint32_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::INT64: {
+        std::vector<int64_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::UINT64: {
+        std::vector<uint64_t> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT32: {
+        std::vector<float> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT64: {
+        std::vector<double> vec = j.at("buffer");
+        buffer_size = datatype_size(t.type()) * vec.size();
+        buffer_array = malloc(buffer_size);
+        memcpy(buffer_array, vec.data(), buffer_size);
+        break;
+      }
+      default:
+        break;
+    }
+    tiledb::sm::Buffer* buff = new Buffer(buffer_array, buffer_size, true);
+    t = tiledb::sm::Tile(
+        datatype,
+        compressor,
+        j.at("compressor_level").get<int64_t>(),
+        // j.at("tile_size").get<uint64_t>(),
+        j.at("cell_size").get<int64_t>(),
+        j.at("dim_num").get<int64_t>(),
+        buff,
+        true);
+  } else {
+    t.init(
+        datatype,
+        compressor,
+        j.at("compressor_level").get<int64_t>(),
+        0,  // tile_size
+        j.at("cell_size").get<int64_t>(),
+        j.at("dim_num").get<int64_t>());
+  }
+};
+
 }  // namespace sm
 }  // namespace tiledb

@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include "nlohmann/json.hpp"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/query_type.h"

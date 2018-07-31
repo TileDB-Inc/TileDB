@@ -344,6 +344,13 @@ struct adl_serializer<tiledb::sm::Query> {
       }
     }
     j["buffers"] = buffers;
+
+    if (q.layout() == tiledb::sm::Layout::GLOBAL_ORDER &&
+        q.type() == tiledb::sm::QueryType::WRITE) {
+      nlohmann::json writer = q.writer_to_json();
+      if (!writer.empty())
+        j["writer"] = writer;
+    }
   }
 
   /*
@@ -373,6 +380,11 @@ struct adl_serializer<tiledb::sm::Query> {
     if (!status.ok())
       throw std::runtime_error(status.to_string());
     q.set_layout(layout);
+
+    // TODO: do this differently
+    if (layout == tiledb::sm::Layout::GLOBAL_ORDER &&
+        querytype == tiledb::sm::QueryType::WRITE && j.count("writer"))
+      q.set_writer(j.at("writer"));
 
     // QueryStatus to parse, set default to avoid compiler uninitialized
     // warnings

@@ -33,6 +33,7 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
+#include "nlohmann/json.hpp"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
@@ -104,6 +105,8 @@ class Writer {
 
   /** Constructor. */
   Writer();
+
+  Writer(nlohmann::json);
 
   /** Destructor. */
   ~Writer();
@@ -214,6 +217,12 @@ class Writer {
    */
   void* subarray() const;
 
+  /**
+   * Encode writer to json
+   * @return json encoded
+   */
+  nlohmann::json to_json() const;
+
   /** Performs a write query using its set members. */
   Status write();
 
@@ -250,7 +259,7 @@ class Writer {
   URI fragment_uri_;
 
   /** The state associated with global writes. */
-  std::unique_ptr<GlobalWriteState> global_write_state_;
+  std::shared_ptr<GlobalWriteState> global_write_state_;
 
   /** True if the writer has been initialized. */
   bool initialized_;
@@ -734,6 +743,23 @@ class Writer {
       std::vector<Tile>& tiles) const;
 };
 
+/**
+ * Implement json serialization for GlobalWriteState
+ *
+ * @param j json object to store serialized data in
+ * @param GlobalWriteState to serialize
+ */
+void to_json(
+    nlohmann::json& j, const std::shared_ptr<Writer::GlobalWriteState> g);
+
+/**
+ * Implement json de-serialization for GlobalWriteState
+ *
+ * @param j  json containing serialized data
+ * @param g GlobalWriteState to deserialize to
+ */
+void from_json(
+    const nlohmann::json& j, std::shared_ptr<Writer::GlobalWriteState>& g);
 }  // namespace sm
 }  // namespace tiledb
 

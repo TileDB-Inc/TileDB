@@ -364,6 +364,12 @@ void Query::set_fragment_uri(const URI& fragment_uri) {
   // Non-applicable to reads
 }
 
+void Query::set_writer(nlohmann::json j) {
+  const ArraySchema* array_schema = writer_.array_schema();
+  writer_ = Writer(j);
+  writer_.set_array_schema(array_schema);
+}
+
 Status Query::set_layout(Layout layout) {
   layout_ = layout;
   if (type_ == QueryType::WRITE)
@@ -407,6 +413,10 @@ StorageManager* Query::storage_manager() const {
 
 QueryType Query::type() const {
   return type_;
+}
+
+nlohmann::json Query::writer_to_json() const {
+  return writer_.to_json();
 }
 
 /* ****************************** */
