@@ -464,7 +464,7 @@ Status Win::write(
   } else {
     STATS_COUNTER_ADD(vfs_win32_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
-    uint64_t thread_write_nbytes = utils::ceil(buffer_size, num_ops);
+    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
 
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,
@@ -568,7 +568,7 @@ std::string Win::path_from_uri(const std::string& uri) {
   }
 
   std::string uri_with_scheme =
-      utils::starts_with(uri, "file:///") ? uri : "file:///" + uri;
+      utils::parse::starts_with(uri, "file:///") ? uri : "file:///" + uri;
 
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];

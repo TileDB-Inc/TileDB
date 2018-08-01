@@ -139,7 +139,7 @@ const std::string& Attribute::name() const {
 
 bool Attribute::is_anonymous() const {
   return name_.empty() ||
-         utils::starts_with(name_, constants::default_attr_name);
+         utils::parse::starts_with(name_, constants::default_attr_name);
 }
 
 // ===== FORMAT =====

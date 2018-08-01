@@ -530,7 +530,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 std::string ArraySchemaFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::timestamp_ms();
+     << tiledb::sm::utils::time::timestamp_ms();
   return ss.str();
 }
 

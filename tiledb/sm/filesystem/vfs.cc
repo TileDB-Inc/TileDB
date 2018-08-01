@@ -751,7 +751,7 @@ Status VFS::read(
   } else {
     STATS_COUNTER_ADD(vfs_read_num_parallelized, 1);
     std::vector<std::future<Status>> results;
-    uint64_t thread_read_nbytes = utils::ceil(nbytes, num_ops);
+    uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
 
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_read_nbytes,

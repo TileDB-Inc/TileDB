@@ -372,7 +372,7 @@ Status Consolidator::rename_new_fragment_uri(URI* uri) const {
   auto timestamp_str = name.substr(name.find_last_of('_') + 1);
 
   // Get current time
-  uint64_t ms = utils::timestamp_ms();
+  uint64_t ms = utils::time::timestamp_ms();
 
   // Get uuid
   std::string uuid;

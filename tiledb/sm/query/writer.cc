@@ -598,7 +598,7 @@ Status Writer::compute_coords_metadata(
 
     // Expand the MBR with the rest coords
     for (uint64_t i = 1; i < cell_num; ++i)
-      utils::expand_mbr(&mbr[0], &data[i * dim_num], dim_num);
+      utils::geometry::expand_mbr(&mbr[0], &data[i * dim_num], dim_num);
 
     meta->set_mbr(tile_id, &mbr[0]);
   }
@@ -1115,7 +1115,7 @@ Status Writer::init_tiles(
 Status Writer::new_fragment_name(std::string* frag_uri) const {
   if (frag_uri == nullptr)
     return Status::WriterError("Null fragment uri argument.");
-  uint64_t ms = utils::timestamp_ms();
+  uint64_t ms = utils::time::timestamp_ms();
   std::string uuid;
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
@@ -1606,7 +1606,7 @@ Status Writer::prepare_tiles_fixed(
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
   auto dups_num = coord_dups.size();
-  auto tile_num = utils::ceil(cell_num - dups_num, capacity);
+  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
   auto cell_size = array_schema_->cell_size(attribute);
 
   // Initialize tiles
@@ -1656,7 +1656,7 @@ Status Writer::prepare_tiles_var(
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
   auto dups_num = coord_dups.size();
-  auto tile_num = utils::ceil(cell_num - dups_num, capacity);
+  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
   uint64_t offset;
   uint64_t var_size;
 
@@ -1851,7 +1851,7 @@ Status Writer::unordered_write() {
 Status Writer::write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const {
   auto type = tile->type();
   auto fill_size = datatype_size(type);
-  auto fill_value = utils::fill_value(type);
+  auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   for (uint64_t i = 0; i < num; ++i)
@@ -1864,7 +1864,7 @@ Status Writer::write_empty_cell_range_to_tile_var(
     uint64_t num, Tile* tile, Tile* tile_var) const {
   auto type = tile_var->type();
   auto fill_size = datatype_size(type);
-  auto fill_value = utils::fill_value(type);
+  auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   for (uint64_t i = 0; i < num; ++i) {
