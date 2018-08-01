@@ -214,6 +214,8 @@ Status Query::copy_buffers(const Query& query) {
           existing_buffer->second.buffer_,
           buffer.second.buffer_,
           *buffer.second.buffer_size_);
+      free(buffer.second.buffer_);
+      free(buffer.second.buffer_size_);
       if (buffer.second.buffer_var_ != nullptr) {
         if (*existing_buffer->second.buffer_var_size_ !=
             *buffer.second.buffer_var_size_) {
@@ -227,6 +229,8 @@ Status Query::copy_buffers(const Query& query) {
             existing_buffer->second.buffer_var_,
             buffer.second.buffer_var_,
             *buffer.second.buffer_var_size_);
+        free(buffer.second.buffer_var_);
+        free(buffer.second.buffer_var_size_);
       }
     } else {
       if (buffer.second.buffer_var_ != nullptr) {
@@ -295,6 +299,7 @@ Status Query::copy_json_wip(const Query& query) {
       assert(false);
       break;
   }
+
   return copy_buffers(query);
 }
 
