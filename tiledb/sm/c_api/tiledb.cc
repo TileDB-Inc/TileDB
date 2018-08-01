@@ -1948,6 +1948,7 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
 
       query->query_->copy_json_wip(*query_returned->query_);
       free(json_returned);
+      tiledb_query_free(&query_returned);
     }
 
   } else {
@@ -2006,8 +2007,8 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
           ctx, query->array_, &query_returned, json_returned);
 
       query->query_->copy_json_wip(*query_returned->query_);
-      if (json_returned != nullptr)
-        free(json_returned);
+      free(json_returned);
+      tiledb_query_free(&query_returned);
     }
   } else {
     // Check if the array got closed
