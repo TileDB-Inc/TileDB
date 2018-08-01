@@ -874,7 +874,8 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
     // directory will work as expected. Listing a non-directory object is not an
     // error for S3.
     auto uri_str = uri.to_string();
-    dir_uri = URI(utils::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+    dir_uri =
+        URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
   } else {
     // For non-S3, listing a non-directory is an error.
     bool is_dir = false;
@@ -890,13 +891,15 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
 
   for (const auto& child_uri : child_uris) {
     auto uri_str = child_uri.to_string();
-    if (utils::ends_with(uri_str, constants::group_filename)) {
+    if (utils::parse::ends_with(uri_str, constants::group_filename)) {
       *type = ObjectType::GROUP;
       return Status::Ok();
-    } else if (utils::ends_with(uri_str, constants::kv_schema_filename)) {
+    } else if (utils::parse::ends_with(
+                   uri_str, constants::kv_schema_filename)) {
       *type = ObjectType::KEY_VALUE;
       return Status::Ok();
-    } else if (utils::ends_with(uri_str, constants::array_schema_filename)) {
+    } else if (utils::parse::ends_with(
+                   uri_str, constants::array_schema_filename)) {
       *type = ObjectType::ARRAY;
       return Status::Ok();
     }
@@ -1417,27 +1420,6 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
     }
   }
 
-  // Rectify bound for sparse arrays with integer domain
-  if (!array_schema->dense() &&
-      datatype_is_integer(array_schema->domain()->type())) {
-    auto cell_num = array_schema->domain()->cell_num(subarray);
-    // `cell_num` becomes 0 when `subarray` is huge, leading to a
-    // `uint64_t` overflow.
-    if (cell_num != 0) {
-      for (auto& it : *buffer_sizes) {
-        if (!array_schema->var_size(it.first)) {
-          // Check for overflow
-          uint64_t new_size = cell_num * array_schema->cell_size(it.first);
-          if (new_size / array_schema->cell_size((it.first)) != cell_num)
-            continue;
-
-          // Potentially rectify size
-          it.second.first = MIN(it.second.first, new_size);
-        }
-      }
-    }
-  }
-
   return Status::Ok();
 }
 
@@ -1459,10 +1441,10 @@ void StorageManager::array_get_non_empty_domain(
     non_empty_domain = static_cast<const T*>(metadata[j]->non_empty_domain());
     for (unsigned i = 0; i < dim_num; ++i)
       coords[i] = non_empty_domain[2 * i];
-    utils::expand_mbr(domain, coords, dim_num);
+    utils::geometry::expand_mbr(domain, coords, dim_num);
     for (unsigned i = 0; i < dim_num; ++i)
       coords[i] = non_empty_domain[2 * i + 1];
-    utils::expand_mbr(domain, coords, dim_num);
+    utils::geometry::expand_mbr(domain, coords, dim_num);
   }
   delete[] coords;
 }
@@ -1678,7 +1660,7 @@ Status StorageManager::get_fragment_uris(
   // Get only the fragment uris
   bool exists;
   for (auto& uri : uris) {
-    if (utils::starts_with(uri.last_path_part(), "."))
+    if (utils::parse::starts_with(uri.last_path_part(), "."))
       continue;
 
     RETURN_NOT_OK(is_fragment(uri, &exists))
@@ -1757,7 +1739,7 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
     if (uri_str.back() == '/')
       uri_str.pop_back();
     std::string fragment_name = URI(uri_str).last_path_part();
-    assert(utils::starts_with(fragment_name, "__"));
+    assert(utils::parse::starts_with(fragment_name, "__"));
 
     // Get timestamp in the end of the name after '_'
     assert(fragment_name.find_last_of("_") != std::string::npos);

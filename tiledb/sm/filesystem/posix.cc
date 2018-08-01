@@ -93,7 +93,7 @@ uint64_t Posix::pwrite_all(
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
-  assert(utils::starts_with(*path, "file://"));
+  assert(utils::parse::starts_with(*path, "file://"));
   path->erase(
       std::unique(
           path->begin() + std::string("file://").size(),
@@ -120,13 +120,13 @@ std::string Posix::abs_path(const std::string& path) {
 
   // Other cases
   std::string ret_dir;
-  if (utils::starts_with(path, posix_prefix))
+  if (utils::parse::starts_with(path, posix_prefix))
     return path;
-  else if (utils::starts_with(path, "/"))
+  else if (utils::parse::starts_with(path, "/"))
     ret_dir = posix_prefix + path;
-  else if (utils::starts_with(path, "~/"))
+  else if (utils::parse::starts_with(path, "~/"))
     ret_dir = posix_prefix + home + path.substr(1, path.size() - 1);
-  else if (utils::starts_with(path, "./"))
+  else if (utils::parse::starts_with(path, "./"))
     ret_dir = posix_prefix + current + path.substr(1, path.size() - 1);
   else
     ret_dir = posix_prefix + current + "/" + path;
@@ -321,7 +321,7 @@ void Posix::purge_dots_from_path(std::string* path) {
   if (path_size == 0 || *path == "file:///")
     return;
 
-  assert(utils::starts_with(*path, "file:///"));
+  assert(utils::parse::starts_with(*path, "file:///"));
 
   // Tokenize
   const char* token_c_str = path->c_str() + 8;
@@ -471,7 +471,7 @@ Status Posix::write(
   } else {
     STATS_COUNTER_ADD(vfs_posix_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
-    uint64_t thread_write_nbytes = utils::ceil(buffer_size, num_ops);
+    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
 
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,

@@ -122,7 +122,8 @@ class Query {
     }
 
     // Validate template type matches attribute datatype
-    if (!tiledb::sm::utils::check_template_type_to_datatype<T>(attr->type())
+    if (!tiledb::sm::utils::datatype::check_template_type_to_datatype<T>(
+             attr->type())
              .ok())
       return {{}, {}};
 
@@ -293,7 +294,7 @@ class Query {
         subarray_size / datatype_size(array_schema->coords_type());
 
     // Check template matches datatype
-    if (!tiledb::sm::utils::check_template_type_to_datatype<T>(
+    if (!tiledb::sm::utils::datatype::check_template_type_to_datatype<T>(
              array_schema->domain()->type())
              .ok())
       return {};

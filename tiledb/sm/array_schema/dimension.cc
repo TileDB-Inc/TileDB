@@ -48,14 +48,12 @@ namespace sm {
 Dimension::Dimension() {
   domain_ = nullptr;
   tile_extent_ = nullptr;
+  type_ = Datatype::INT32;
 }
 
-Dimension::Dimension(const std::string& name, Datatype type) {
-  // Set name
-  name_ = name;
-
-  // Set type, domain and tile extent
-  type_ = type;
+Dimension::Dimension(const std::string& name, Datatype type)
+    : name_(name)
+    , type_(type) {
   domain_ = nullptr;
   tile_extent_ = nullptr;
 }
@@ -140,8 +138,9 @@ void* Dimension::domain() const {
 
 void Dimension::dump(FILE* out) const {
   // Retrieve domain and tile extent strings
-  std::string domain_s = utils::domain_str(domain_, type_);
-  std::string tile_extent_s = utils::tile_extent_str(tile_extent_, type_);
+  std::string domain_s = utils::parse::domain_str(domain_, type_);
+  std::string tile_extent_s =
+      utils::parse::tile_extent_str(tile_extent_, type_);
 
   // Dump
   fprintf(out, "### Dimension ###\n");
@@ -156,7 +155,7 @@ const std::string& Dimension::name() const {
 
 bool Dimension::is_anonymous() const {
   return name_.empty() ||
-         utils::starts_with(name_, constants::default_dim_name);
+         utils::parse::starts_with(name_, constants::default_dim_name);
 }
 
 // ===== FORMAT =====

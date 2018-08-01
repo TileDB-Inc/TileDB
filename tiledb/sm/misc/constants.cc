@@ -482,6 +482,49 @@ const std::string special_name_prefix = "__";
 /** Number of milliseconds between watchdog thread wakeups. */
 const unsigned watchdog_thread_sleep_ms = 1000;
 
+const void* fill_value(Datatype type) {
+  switch (type) {
+    case Datatype::INT8:
+      return &constants::empty_int8;
+    case Datatype::UINT8:
+      return &constants::empty_uint8;
+    case Datatype::INT16:
+      return &constants::empty_int16;
+    case Datatype::UINT16:
+      return &constants::empty_uint16;
+    case Datatype::INT32:
+      return &constants::empty_int32;
+    case Datatype::UINT32:
+      return &constants::empty_uint32;
+    case Datatype::INT64:
+      return &constants::empty_int64;
+    case Datatype::UINT64:
+      return &constants::empty_uint64;
+    case Datatype::FLOAT32:
+      return &constants::empty_float32;
+    case Datatype::FLOAT64:
+      return &constants::empty_float64;
+    case Datatype::CHAR:
+      return &constants::empty_char;
+    case Datatype::ANY:
+      return &constants::empty_any;
+    case Datatype::STRING_ASCII:
+      return &constants::empty_ascii;
+    case Datatype::STRING_UTF8:
+      return &constants::empty_utf8;
+    case Datatype::STRING_UTF16:
+      return &constants::empty_utf16;
+    case Datatype::STRING_UTF32:
+      return &constants::empty_utf32;
+    case Datatype::STRING_UCS2:
+      return &constants::empty_ucs2;
+    case Datatype::STRING_UCS4:
+      return &constants::empty_ucs4;
+  }
+
+  return nullptr;
+}
+
 }  // namespace constants
 
 }  // namespace sm

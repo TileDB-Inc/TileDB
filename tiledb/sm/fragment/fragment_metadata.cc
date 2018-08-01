@@ -245,7 +245,7 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   unsigned tid = 0;
   auto dim_num = array_schema_->dim_num();
   for (auto& mbr : mbrs_) {
-    if (utils::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
+    if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
       for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
@@ -310,7 +310,8 @@ Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
   for (auto& mbr : mbrs_) {
     domain->subarray_overlap((T*)mbr, subarray, subarray_overlap, &overlap);
     if (overlap) {
-      double cov = utils::coverage(subarray_overlap, (T*)mbr, dim_num);
+      double cov =
+          utils::geometry::coverage(subarray_overlap, (T*)mbr, dim_num);
       for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           it.second.first += cov * tile_size(it.first, tid);
@@ -580,7 +581,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto metadata_domain = static_cast<const T*>(domain_);
 
   // Check if there is any overlap
-  if (!utils::overlap(subarray, metadata_domain, dim_num))
+  if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
     return tids;
 
   // Initialize subarray tile domain
@@ -599,7 +600,8 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos);
     domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
-  } while (utils::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
+  } while (utils::geometry::coords_in_rect(
+      tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
   delete[] subarray_tile_domain;
@@ -617,7 +619,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto metadata_domain = static_cast<const T*>(domain_);
 
   // Check if there is any overlap
-  if (!utils::overlap(subarray, metadata_domain, dim_num))
+  if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
     return tids;
 
   // Initialize subarray tile domain
@@ -641,11 +643,12 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     domain->get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
     domain->subarray_overlap(subarray, tile_subarray, tile_overlap, &overlap);
     assert(overlap);
-    cov = utils::coverage(tile_overlap, tile_subarray, dim_num);
+    cov = utils::geometry::coverage(tile_overlap, tile_subarray, dim_num);
     tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos, cov);
     domain->get_next_tile_coords(subarray_tile_domain, tile_coords);
-  } while (utils::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
+  } while (utils::geometry::coords_in_rect(
+      tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
   delete[] subarray_tile_domain;
@@ -694,10 +697,10 @@ Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
   for (unsigned i = 0; i < dim_num; ++i)
     coords[i] = mbr[2 * i];
   auto non_empty_domain = static_cast<T*>(non_empty_domain_);
-  utils::expand_mbr(non_empty_domain, coords, dim_num);
+  utils::geometry::expand_mbr(non_empty_domain, coords, dim_num);
   for (unsigned i = 0; i < dim_num; ++i)
     coords[i] = mbr[2 * i + 1];
-  utils::expand_mbr(non_empty_domain, coords, dim_num);
+  utils::geometry::expand_mbr(non_empty_domain, coords, dim_num);
   delete[] coords;
 
   return Status::Ok();

@@ -836,7 +836,7 @@ Status Reader::compute_overlapping_coords(
   auto c = (T*)t.data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
-    if (utils::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
+    if (utils::geometry::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
       coords->emplace_back(tile, &c[pos], i);
   }
 
@@ -937,7 +937,7 @@ Status Reader::copy_fixed_cells(
   auto cell_size = array_schema_->cell_size(attribute);
   auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
-  auto fill_value = utils::fill_value(type);
+  auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   // Precompute the cell range destination offsets in the buffer.
@@ -1009,7 +1009,7 @@ Status Reader::copy_var_cells(
   uint64_t cell_var_size;
   auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
-  auto fill_value = utils::fill_value(type);
+  auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   // Copy cells
