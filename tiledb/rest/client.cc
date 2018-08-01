@@ -49,6 +49,7 @@ tiledb::sm::Status get_array_schema_json_from_rest(
   // Check for errors
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  curl_easy_cleanup(curl);
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error json object
     return tiledb::sm::Status::Error(
@@ -82,6 +83,7 @@ tiledb::sm::Status post_array_schema_json_to_rest(
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  curl_easy_cleanup(curl);
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error json object
 
@@ -115,6 +117,7 @@ tiledb::sm::Status submit_query_json_to_rest(
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  curl_easy_cleanup(curl);
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error json object
 
@@ -154,6 +157,7 @@ tiledb::sm::Status finalize_query_json_to_rest(
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  curl_easy_cleanup(curl);
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error json object
 
