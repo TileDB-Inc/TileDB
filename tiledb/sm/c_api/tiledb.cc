@@ -2255,6 +2255,7 @@ int tiledb_array_alloc(
   // Set other array members
   (*array)->open_array_ = nullptr;
   (*array)->is_open_ = false;
+  (*array)->is_remote_ = false;
 
   // Success
   return TILEDB_OK;
@@ -2300,6 +2301,7 @@ int tiledb_array_open(
     // tiledb::sm::ArraySchema object
     delete array_schema;
   } else {
+    array->is_remote_ = false;
     // Open array
     if (save_error(
             ctx,
