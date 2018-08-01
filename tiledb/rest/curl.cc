@@ -141,7 +141,9 @@ CURLcode post_json(
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  return curl_fetch_url(curl, url.c_str(), memoryStruct);
+  CURLcode ret = curl_fetch_url(curl, url.c_str(), memoryStruct);
+  curl_slist_free_all(headers);
+  return ret;
 }
 
 CURLcode get_json(CURL* curl, std::string url, MemoryStruct* memoryStruct) {
@@ -151,5 +153,7 @@ CURLcode get_json(CURL* curl, std::string url, MemoryStruct* memoryStruct) {
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  return curl_fetch_url(curl, url.c_str(), memoryStruct);
+  CURLcode ret = curl_fetch_url(curl, url.c_str(), memoryStruct);
+  curl_slist_free_all(headers);
+  return ret;
 }
