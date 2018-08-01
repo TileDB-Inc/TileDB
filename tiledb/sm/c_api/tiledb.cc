@@ -2370,7 +2370,10 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
     return TILEDB_OK;
 
   // Only close array if it is not remote
-  if (!array->is_remote_) {
+  if (array->is_remote_) {
+    if (array->open_array_ != nullptr)
+      delete array->open_array_;
+  } else {
     if (save_error(
             ctx,
             ctx->storage_manager_->array_close(
