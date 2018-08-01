@@ -1920,7 +1920,7 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     char* json = nullptr;
     if (tiledb_query_to_json(ctx, query, &json) == TILEDB_ERR) {
       if (json != nullptr)
-        delete json;
+        free(json);
       return TILEDB_ERR;
     }
     // Call helper function
@@ -1930,7 +1930,7 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     auto st = finalize_query_json_to_rest(
         rest_server, query->array_->array_uri_.c_str(), json, &json_returned);
     if (json != nullptr)
-      delete json;
+      free(json);
     if (save_error(ctx, st)) {
       LOG_STATUS(st);
       return TILEDB_ERR;
@@ -1943,7 +1943,7 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
           ctx, query->array_, &query_returned, json_returned);
 
       query->query_->copy_json_wip(*query_returned->query_);
-      delete json_returned;
+      free(json_returned);
     }
 
   } else {
@@ -1976,8 +1976,11 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     query->array_->open_array_->array_schema()->set_array_uri(
         query->array_->array_uri_);
     char* json;
-    if (tiledb_query_to_json(ctx, query, &json) == TILEDB_ERR)
+    if (tiledb_query_to_json(ctx, query, &json) == TILEDB_ERR) {
+      if (json != nullptr)
+        free(json);
       return TILEDB_ERR;
+    }
 
     // Call helper function
     char* json_returned = nullptr;
@@ -1985,6 +1988,8 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
         "NOT ERROR, running query against rest server"));
     auto st = submit_query_json_to_rest(
         rest_server, query->array_->array_uri_.c_str(), json, &json_returned);
+    if (json != nullptr)
+      free(json);
     if (save_error(ctx, st)) {
       LOG_STATUS(st);
       return TILEDB_ERR;
@@ -1997,6 +2002,8 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
           ctx, query->array_, &query_returned, json_returned);
 
       query->query_->copy_json_wip(*query_returned->query_);
+      if (json_returned != nullptr)
+        free(json_returned);
     }
   } else {
     // Check if the array got closed
