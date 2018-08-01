@@ -102,7 +102,7 @@ CURLcode curl_fetch_url(
     // curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
     /* set timeout */
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+    // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 
     /* enable location redirects */
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
