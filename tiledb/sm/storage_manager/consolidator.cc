@@ -64,12 +64,18 @@ Status Consolidator::consolidate(const char* array_name) {
   std::vector<URI> old_fragment_uris;
   URI array_uri = URI(array_name);
 
-  // Open array
+  // Open array for reading
   auto open_array_for_reads = (OpenArray*)nullptr;
-  auto open_array_for_writes = (OpenArray*)nullptr;
   uint64_t snapshot;
   RETURN_NOT_OK(storage_manager_->array_open(
       array_uri, QueryType::READ, &open_array_for_reads, &snapshot));
+  if (open_array_for_reads->is_empty(snapshot)) {
+    RETURN_NOT_OK(storage_manager_->array_close(array_uri, QueryType::READ));
+    return Status::Ok();
+  }
+
+  // Open array for writing
+  auto open_array_for_writes = (OpenArray*)nullptr;
   RETURN_NOT_OK_ELSE(
       storage_manager_->array_open(
           array_uri, QueryType::WRITE, &open_array_for_writes, &snapshot),
@@ -327,12 +333,16 @@ Status Consolidator::create_subarray(
     if (*subarray == nullptr)
       return LOG_STATUS(Status::ConsolidationError(
           "Cannot create subarray; Failed to allocate memory"));
+
     bool is_empty;
     RETURN_NOT_OK_ELSE(
         storage_manager_->array_get_non_empty_domain(
             open_array, snapshot, *subarray, &is_empty),
         std::free(subarray));
-    assert(!is_empty);
+    if (is_empty)
+      return LOG_STATUS(
+          Status::ConsolidationError("Cannot create subarray; empty array."));
+
     array_schema->domain()->expand_domain(*subarray);
   }
 

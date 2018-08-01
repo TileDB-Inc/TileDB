@@ -447,3 +447,27 @@ TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi], [dense]") {
     }
   }
 }
+
+TEST_CASE(
+    "C++ API: Consolidation of empty arrays", "[cppapi], [consolidation]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

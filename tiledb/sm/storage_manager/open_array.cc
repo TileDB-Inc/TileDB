@@ -82,6 +82,18 @@ void OpenArray::cnt_incr() {
   ++cnt_;
 }
 
+bool OpenArray::is_empty(uint64_t snapshot) const {
+  std::lock_guard<std::mutex> lck(mtx_);
+  for (uint64_t i = 0; i < fragment_metadata_.size(); ++i) {
+    if (snapshot < i)
+      break;
+
+    if (!fragment_metadata_[i].empty())
+      return false;
+  }
+  return true;
+}
+
 Status OpenArray::file_lock(VFS* vfs) {
   auto uri = array_uri_.join_path(constants::filelock_name);
   if (filelock_ == INVALID_FILELOCK)

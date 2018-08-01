@@ -89,6 +89,12 @@ class OpenArray {
   /** Increments the counter. */
   void cnt_incr();
 
+  /**
+   * Returns true if the array is empty at the given snapshot. The array is
+   * empty if there are no fragments at or before the given snapshot.
+   */
+  bool is_empty(uint64_t snapshot) const;
+
   /** Retrieves a (shared) filelock for the array. */
   Status file_lock(VFS* vfs);
 
@@ -164,6 +170,15 @@ class OpenArray {
    * created when `push_back_fragment_metadata` is called, which effectively
    * means that a new set of fragment metadata is loaded into the already
    * open array.
+   *
+   * In other words, there is one element in this vector per opening of the
+   * array. E.g. suppose the array is empty when it was opened, this will
+   * contain one element corresponding to the opening, but that element will be
+   * an empty vector (since there were no fragments). Suppose then there were
+   * two writes made and the array was then reopened. This vector will then have
+   * two elements: the first empty vector from the first opening, and then a
+   * vector from the second opening. The second opening's vector will have two
+   * elements (one per fragment).
    */
   std::vector<std::vector<FragmentMetadata*>> fragment_metadata_;
 
@@ -174,7 +189,7 @@ class OpenArray {
    * A mutex used to lock the array when loading the array metadata and
    * any fragment metadata structures from the disk.
    */
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
 
   /** The query type the array was opened with. */
   QueryType query_type_;
