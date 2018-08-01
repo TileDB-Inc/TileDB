@@ -38,9 +38,12 @@ tiledb::sm::Status get_array_schema_json_from_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url = std::string(rest_server) +
                     "/v1/arrays/group/group1/project/project1/uri/" +
-                    curl_easy_escape(curl, uri.c_str(), uri.length());
+                    uri_escaped;
+  curl_free(uri_escaped);
+
   struct MemoryStruct memoryStruct;
   CURLcode res = get_json(curl, url, &memoryStruct);
   // Check for errors
@@ -68,9 +71,12 @@ tiledb::sm::Status post_array_schema_json_to_rest(
   CURL* curl = curl_easy_init();
 
   // Build the url
+  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url = std::string(rest_server) +
                     "/v1/arrays/group/group1/project/project1/uri/" +
-                    curl_easy_escape(curl, uri.c_str(), uri.length());
+                    uri_escaped;
+  curl_free(uri_escaped);
+
   struct MemoryStruct memoryStruct;
   CURLcode res = post_json(curl, url, json, &memoryStruct);
   /* Check for errors */
@@ -98,10 +104,12 @@ tiledb::sm::Status submit_query_json_to_rest(
   CURL* curl = curl_easy_init();
 
   // Build the url
+  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url = std::string(rest_server) +
                     "/v1/queries/group/group1/project/project1/uri/" +
-                    curl_easy_escape(curl, uri.c_str(), uri.length()) +
-                    "/submit";
+                    uri_escaped + "/submit";
+  curl_free(uri_escaped);
+
   struct MemoryStruct memoryStruct;
   CURLcode res = post_json(curl, url, json, &memoryStruct);
   /* Check for errors */
@@ -135,10 +143,12 @@ tiledb::sm::Status finalize_query_json_to_rest(
   CURL* curl = curl_easy_init();
 
   // Build the url
+  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url = std::string(rest_server) +
                     "/v1/queries/group/group1/project/project1/uri/" +
-                    curl_easy_escape(curl, uri.c_str(), uri.length()) +
-                    "/finalize";
+                    uri_escaped + "/finalize";
+  curl_free(uri_escaped);
+
   struct MemoryStruct memoryStruct;
   CURLcode res = post_json(curl, url, json, &memoryStruct);
   /* Check for errors */
