@@ -1399,9 +1399,13 @@ int tiledb_array_schema_load(
     // Error if we didn't get json or we can't convert to array schema
     if (json == nullptr || (tiledb_array_schema_from_json(
                                 ctx, array_schema, json) == TILEDB_ERR)) {
+      if (json != nullptr)
+        free(json);
       delete *array_schema;
       return TILEDB_ERR;
     }
+    if (json != nullptr)
+      free(json);
 
   } else {
     // Load array schema
@@ -2468,12 +2472,17 @@ int tiledb_array_create(
   if (!rest_server.empty()) {
     // Set URI
     array_schema->array_schema_->set_array_uri(uri);
-    char* json;
-    if (tiledb_array_schema_to_json(ctx, array_schema, &json) == TILEDB_ERR)
+    char* json = nullptr;
+    if (tiledb_array_schema_to_json(ctx, array_schema, &json) == TILEDB_ERR) {
+      if (json != nullptr)
+        delete[] json;
       return TILEDB_ERR;
+    }
 
     // Call helper function
     auto st = post_array_schema_json_to_rest(rest_server, array_uri, json);
+    if (json != nullptr)
+      delete[] json;
     if (save_error(ctx, st)) {
       LOG_STATUS(st);
       return TILEDB_ERR;
