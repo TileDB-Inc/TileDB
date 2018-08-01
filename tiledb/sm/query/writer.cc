@@ -61,6 +61,7 @@ Writer::Writer() {
 }
 
 Writer::Writer(nlohmann::json j) {
+  STATS_FUNC_VOID_IN(serialization_writer_writer)
   array_schema_ = nullptr;
   global_write_state_.reset();
   initialized_ = false;
@@ -75,6 +76,7 @@ Writer::Writer(nlohmann::json j) {
     global_write_state_.reset();
     LOG_STATUS(Status::Error(e.what()));
   }
+  STATS_FUNC_VOID_OUT(serialization_writer_writer)
 }
 
 Writer::~Writer() {
@@ -2005,16 +2007,15 @@ Status Writer::write_tiles(
  */
 void to_json(
     nlohmann::json& j, const std::shared_ptr<Writer::GlobalWriteState> g) {
+  STATS_FUNC_VOID_IN(serialization_global_write_state_to_json);
   if (g != nullptr) {
     nlohmann::json last_tiles;
     for (auto& it : g->last_tiles_) {
       last_tiles[it.first] = {it.second.first, it.second.second};
     }
     j = {{"last_tiles", last_tiles}, {"cells_written", g->cells_written_}};
-    // j = {{"last_tiles", g->last_tiles_}, {"cells_written",
-    // g->cells_written_}};
-    //{"fragment_metadata", g->frag_meta_}};
   }
+  STATS_FUNC_VOID_OUT(serialization_global_write_state_to_json);
 };
 
 /**
@@ -2025,6 +2026,7 @@ void to_json(
  */
 void from_json(
     const nlohmann::json& j, std::shared_ptr<Writer::GlobalWriteState>& g) {
+  STATS_FUNC_VOID_IN(serialization_global_write_state_from_json);
   g = std::make_shared<Writer::GlobalWriteState>();
   std::unordered_map<std::string, nlohmann::json> map = j.at("last_tiles");
   for (auto& it : map) {
@@ -2033,10 +2035,9 @@ void from_json(
         vector[0].get<tiledb::sm::Tile>(), vector[1].get<tiledb::sm::Tile>());
     g->last_tiles_[it.first] = p;
   }
-  //      g->last_tiles_ = j.at("last_tiles");
   g->cells_written_ =
       j.at("cells_written").get<std::unordered_map<std::string, uint64_t>>();
-  // g->frag_meta_ = j.at("fragment_metadata");
+  STATS_FUNC_VOID_OUT(serialization_global_write_state_from_json);
 };
 }  // namespace sm
 }  // namespace tiledb

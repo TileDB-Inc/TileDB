@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 namespace nlohmann {
 template <>
@@ -59,6 +60,7 @@ struct adl_serializer<const tiledb::sm::Attribute*> {
    * @param a attribute pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::Attribute* a) {
+    STATS_FUNC_VOID_IN(serialization_attribute_to_json);
     if (a != nullptr)
       j = json{{"name", a->name()},
                {"type", datatype_str(a->type())},
@@ -67,6 +69,7 @@ struct adl_serializer<const tiledb::sm::Attribute*> {
                {"cell_val_num", a->cell_val_num()}};
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_attribute_to_json);
   }
 };
 
@@ -79,8 +82,10 @@ struct adl_serializer<tiledb::sm::Attribute> {
    * @param a attribute object to serialize
    */
   void to_json(json& j, const tiledb::sm::Attribute& a) {
+    STATS_FUNC_VOID_IN(serialization_attribute_to_json);
     // Set j using pointer to_json
     j = &a;
+    STATS_FUNC_VOID_OUT(serialization_attribute_to_json);
   }
   /*
    * Implement json de-serialization for attribute
@@ -89,6 +94,7 @@ struct adl_serializer<tiledb::sm::Attribute> {
    * @param a attribute object to store de-serializated object in
    */
   static void from_json(const json& j, tiledb::sm::Attribute& a) {
+    STATS_FUNC_VOID_IN(serialization_attribute_from_json);
     // Datatype to parse, set default to avoid compiler uninitialized warnings
     tiledb::sm::Datatype datatype = tiledb::sm::Datatype::ANY;
     tiledb::sm::Status status =
@@ -107,6 +113,7 @@ struct adl_serializer<tiledb::sm::Attribute> {
     auto st = a.set_cell_val_num(j.at("cell_val_num"));
     if (!st.ok())
       LOG_STATUS(st);
+    STATS_FUNC_VOID_OUT(serialization_attribute_from_json);
   }
 };
 
@@ -119,6 +126,7 @@ struct adl_serializer<tiledb::sm::Dimension> {
    * @param d dimension object to serialize
    */
   static void to_json(json& j, const tiledb::sm::Dimension& d) {
+    STATS_FUNC_VOID_IN(serialization_dimension_to_json);
     if (d.domain() == nullptr)
       return;
 
@@ -202,6 +210,7 @@ struct adl_serializer<tiledb::sm::Dimension> {
       default:
         break;
     }
+    STATS_FUNC_VOID_OUT(serialization_dimension_to_json);
   }
 
   /*
@@ -211,6 +220,7 @@ struct adl_serializer<tiledb::sm::Dimension> {
    * @param d dimension object to store de-serializated object in
    */
   static void from_json(const json& j, tiledb::sm::Dimension& d) {
+    STATS_FUNC_VOID_IN(serialization_dimension_from_json);
     // Datatype to parse, set default to avoid compiler uninitialized warnings
     tiledb::sm::Datatype datatype = tiledb::sm::Datatype::INT32;
     tiledb::sm::Status status =
@@ -356,6 +366,7 @@ struct adl_serializer<tiledb::sm::Dimension> {
     }
     if (!st.ok())
       LOG_STATUS(st);
+    STATS_FUNC_VOID_OUT(serialization_dimension_from_json);
   }
 };
 
@@ -368,10 +379,12 @@ struct adl_serializer<const tiledb::sm::Dimension*> {
    * @param d dimension pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::Dimension* d) {
+    STATS_FUNC_VOID_IN(serialization_dimension_to_json);
     if (d != nullptr)
       j = *d;
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_dimension_to_json);
   }
 };
 
@@ -384,6 +397,7 @@ struct adl_serializer<tiledb::sm::Domain> {
    * @param d domain object to serialize
    */
   static void to_json(json& j, const tiledb::sm::Domain& d) {
+    STATS_FUNC_VOID_IN(serialization_domain_to_json);
     j = json{
         {"type", datatype_str(d.type())},
         {"tile_order", layout_str(d.tile_order())},
@@ -394,6 +408,7 @@ struct adl_serializer<tiledb::sm::Domain> {
       dims.push_back(d.dimension(i));
     }
     j["dimensions"] = dims;
+    STATS_FUNC_VOID_OUT(serialization_domain_to_json);
   }
 
   /*
@@ -403,12 +418,14 @@ struct adl_serializer<tiledb::sm::Domain> {
    * @param d domain object to store de-serializated object in
    */
   static void from_json(const json& j, tiledb::sm::Domain& d) {
+    STATS_FUNC_VOID_IN(serialization_domain_from_json);
     for (auto it : j.at("dimensions").items()) {
       tiledb::sm::Dimension tmp = it.value().get<tiledb::sm::Dimension>();
       auto st = d.add_dimension(&tmp);
       if (!st.ok())
         LOG_STATUS(st);
     }
+    STATS_FUNC_VOID_OUT(serialization_domain_from_json);
   }
 };
 
@@ -421,10 +438,12 @@ struct adl_serializer<const tiledb::sm::Domain*> {
    * @param d domain pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::Domain* d) {
+    STATS_FUNC_VOID_IN(serialization_domain_to_json);
     if (d != nullptr)
       j = *d;
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_domain_to_json);
   }
 };
 
@@ -437,6 +456,7 @@ struct adl_serializer<tiledb::sm::ArraySchema> {
    * @param a ArraySchema object to serialize
    */
   static void to_json(json& j, const tiledb::sm::ArraySchema& a) {
+    STATS_FUNC_VOID_IN(serialization_array_schema_to_json);
     j = json{
         {"version", tiledb::sm::constants::version},
         {"array_type", array_type_str(a.array_type())},
@@ -456,6 +476,7 @@ struct adl_serializer<tiledb::sm::ArraySchema> {
       attrs.push_back(a.attribute(i));
     }
     j["attributes"] = attrs;
+    STATS_FUNC_VOID_OUT(serialization_array_schema_to_json);
   }
 
   /*
@@ -465,6 +486,7 @@ struct adl_serializer<tiledb::sm::ArraySchema> {
    * @param a ArraySchema object to store de-serializated object in
    */
   static void from_json(const json& j, tiledb::sm::ArraySchema& a) {
+    STATS_FUNC_VOID_IN(serialization_array_schema_from_json);
     tiledb::sm::Status st;
 
     // ArrayType to parse, set default to avoid compiler uninitialized warnings
@@ -521,6 +543,7 @@ struct adl_serializer<tiledb::sm::ArraySchema> {
     st = a.init();
     if (!st.ok())
       LOG_STATUS(st);
+    STATS_FUNC_VOID_OUT(serialization_array_schema_from_json);
   }
 };
 
@@ -533,10 +556,12 @@ struct adl_serializer<tiledb::sm::ArraySchema*> {
    * @param a ArraySchema pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::ArraySchema* a) {
+    STATS_FUNC_VOID_IN(serialization_array_schema_to_json);
     if (a != nullptr)
       j = *a;
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_array_schema_to_json);
   }
 };
 
@@ -549,10 +574,12 @@ struct adl_serializer<const tiledb::sm::ArraySchema*> {
    * @param a ArraySchema pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::ArraySchema* a) {
+    STATS_FUNC_VOID_IN(serialization_array_schema_to_json);
     if (a != nullptr)
       j = *a;
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_array_schema_to_json);
   }
 };
 

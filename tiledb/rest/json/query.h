@@ -43,6 +43,7 @@
 #include "tiledb/rest/json/array.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/query/query.h"
 
 #include <vector>
@@ -58,6 +59,7 @@ struct adl_serializer<tiledb::sm::Query> {
    * @param d dimension object to serialize
    */
   static void to_json(json& j, const tiledb::sm::Query& q) {
+    STATS_FUNC_VOID_IN(serialization_query_to_json);
     const tiledb::sm::ArraySchema* array_schema = q.array_schema();
     j = json{{"type", tiledb::sm::query_type_str(q.type())},
              {"array_schema", array_schema},
@@ -351,6 +353,7 @@ struct adl_serializer<tiledb::sm::Query> {
       if (!writer.empty())
         j["writer"] = writer;
     }
+    STATS_FUNC_VOID_OUT(serialization_query_to_json);
   }
 
   /*
@@ -361,6 +364,7 @@ struct adl_serializer<tiledb::sm::Query> {
    * @param d dimension object to store de-serializated object in
    */
   static void from_json(const json& j, tiledb::sm::Query& q) {
+    STATS_FUNC_VOID_IN(serialization_query_from_json);
     tiledb::sm::ArraySchema tmp_array_schema =
         j.at("array_schema").get<tiledb::sm::ArraySchema>();
     // Memory leak!
@@ -749,6 +753,7 @@ struct adl_serializer<tiledb::sm::Query> {
           break;
       }
     }
+    STATS_FUNC_VOID_OUT(serialization_query_from_json);
   }
 };
 
@@ -761,10 +766,12 @@ struct adl_serializer<tiledb::sm::Query*> {
    * @param d dimension pointer to serialize
    */
   static void to_json(json& j, const tiledb::sm::Query* q) {
+    STATS_FUNC_VOID_IN(serialization_query_to_json);
     if (q != nullptr)
       j = *q;
     else
       j = nullptr;
+    STATS_FUNC_VOID_OUT(serialization_query_to_json);
   }
 };
 

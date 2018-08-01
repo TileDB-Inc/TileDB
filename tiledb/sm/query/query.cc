@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 #include <cassert>
 #include <iostream>
@@ -194,6 +195,7 @@ Status Query::check_var_attr_offsets(
 }
 
 Status Query::copy_buffers(const Query& query) {
+  STATS_FUNC_IN(serialization_copy_buffers);
   auto buffers = query.attribute_buffers();
   auto existing_buffers = attribute_buffers();
   // Loop through each buffer from query we are copying
@@ -247,9 +249,11 @@ Status Query::copy_buffers(const Query& query) {
     }
   }
   return Status::Ok();
+  STATS_FUNC_OUT(serialization_copy_buffers);
 }
 
 Status Query::copy_json_wip(const Query& query) {
+  STATS_FUNC_IN(serialization_copy_json_wip);
   type_ = query.type();
   status_ = query.status();
   set_layout(query.layout());
@@ -301,6 +305,7 @@ Status Query::copy_json_wip(const Query& query) {
   }
 
   return copy_buffers(query);
+  STATS_FUNC_OUT(serialization_copy_json_wip);
 }
 
 Status Query::process() {
@@ -370,9 +375,11 @@ void Query::set_fragment_uri(const URI& fragment_uri) {
 }
 
 void Query::set_writer(nlohmann::json j) {
+  STATS_FUNC_VOID_IN(serialization_query_set_writer);
   const ArraySchema* array_schema = writer_.array_schema();
   writer_ = Writer(j);
   writer_.set_array_schema(array_schema);
+  STATS_FUNC_VOID_OUT(serialization_query_set_writer);
 }
 
 Status Query::set_layout(Layout layout) {

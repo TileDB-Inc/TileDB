@@ -1558,6 +1558,7 @@ int tiledb_array_schema_to_json(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     char** json_string) {
+  STATS_FUNC_IN(serialization_tiledb_array_schema_to_json);
   try {
     nlohmann::json j = array_schema->array_schema_;
     std::string json = j.dump();
@@ -1586,12 +1587,14 @@ int tiledb_array_schema_to_json(
     return TILEDB_ERR;
   }
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_array_schema_to_json);
 }
 
 int tiledb_array_schema_from_json(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t** array_schema,
     const char* json_string) {
+  STATS_FUNC_IN(serialization_tiledb_array_schema_from_json);
   try {
     nlohmann::json j = nlohmann::json::parse(json_string);
     tiledb::sm::Status st = tiledb::sm::Status::Ok();
@@ -1646,6 +1649,7 @@ int tiledb_array_schema_from_json(
 
   // Success
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_array_schema_from_json);
 }
 
 int tiledb_array_schema_get_attribute_from_index(
@@ -1905,6 +1909,7 @@ int tiledb_query_set_layout(
 }
 
 int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  STATS_FUNC_IN(serialization_tiledb_query_finalize);
   // Trivial case
   if (query == nullptr)
     return TILEDB_OK;
@@ -1957,6 +1962,7 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
       return TILEDB_ERR;
   }
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_query_finalize);
 }
 
 void tiledb_query_free(tiledb_query_t** query) {
@@ -1968,6 +1974,7 @@ void tiledb_query_free(tiledb_query_t** query) {
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  STATS_FUNC_IN(serialization_tiledb_query_submit);
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2040,6 +2047,7 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   }
 
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_query_submit);
 }
 
 int tiledb_query_submit_async(
@@ -2120,6 +2128,7 @@ int tiledb_query_get_type(
 
 int tiledb_query_to_json(
     tiledb_ctx_t* ctx, const tiledb_query_t* query, char** json_string) {
+  STATS_FUNC_IN(serialization_tiledb_query_to_json);
   try {
     nlohmann::json j = query->query_;
     std::string json = j.dump();
@@ -2148,6 +2157,7 @@ int tiledb_query_to_json(
     return TILEDB_ERR;
   }
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_query_to_json);
 }
 
 int tiledb_query_from_json(
@@ -2155,6 +2165,7 @@ int tiledb_query_from_json(
     tiledb_array_t* array,
     tiledb_query_t** query,
     const char* json_string) {
+  STATS_FUNC_IN(serialization_tiledb_query_from_json);
   try {
     nlohmann::json j = nlohmann::json::parse(json_string);
 
@@ -2217,6 +2228,7 @@ int tiledb_query_from_json(
 
   // Success
   return TILEDB_OK;
+  STATS_FUNC_OUT(serialization_tiledb_query_from_json);
 }
 
 /* ****************************** */

@@ -32,6 +32,7 @@
  */
 #include "curl.h"
 #include <cstring>
+#include "tiledb/sm/misc/stats.h"
 
 /**
  * @Brief Call back for saving libcurl response body
@@ -44,6 +45,7 @@
  */
 size_t WriteMemoryCallback(
     void* contents, size_t size, size_t nmemb, void* userp) {
+  // STATS_FUNC_IN(serialization_write_memory_callback);
   size_t realsize = size * nmemb;
   struct MemoryStruct* mem = (struct MemoryStruct*)userp;
 
@@ -58,6 +60,7 @@ size_t WriteMemoryCallback(
   mem->size += realsize;
   mem->memory[mem->size] = 0;
   return realsize;
+  // STATS_FUNC_OUT(serialization_write_memory_callback);
 }
 
 /**
@@ -69,6 +72,7 @@ size_t WriteMemoryCallback(
  */
 CURLcode curl_fetch_url(
     CURL* curl, const char* url, struct MemoryStruct* fetch) {
+  STATS_FUNC_IN(serialization_curl_fetch_url);
   CURLcode rcode; /* curl result code */
 
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
@@ -123,6 +127,7 @@ CURLcode curl_fetch_url(
 
   /* return */
   return rcode;
+  STATS_FUNC_OUT(serialization_curl_fetch_url);
 }
 
 CURLcode post_json(
@@ -130,6 +135,7 @@ CURLcode post_json(
     std::string url,
     std::string jsonString,
     MemoryStruct* memoryStruct) {
+  STATS_FUNC_IN(serialization_post_json);
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
@@ -144,9 +150,11 @@ CURLcode post_json(
   CURLcode ret = curl_fetch_url(curl, url.c_str(), memoryStruct);
   curl_slist_free_all(headers);
   return ret;
+  STATS_FUNC_OUT(serialization_post_json);
 }
 
 CURLcode get_json(CURL* curl, std::string url, MemoryStruct* memoryStruct) {
+  STATS_FUNC_IN(serialization_get_json);
   struct curl_slist* headers = NULL;
   headers = curl_slist_append(headers, "Content-Type: application/json");
 
@@ -156,4 +164,5 @@ CURLcode get_json(CURL* curl, std::string url, MemoryStruct* memoryStruct) {
   CURLcode ret = curl_fetch_url(curl, url.c_str(), memoryStruct);
   curl_slist_free_all(headers);
   return ret;
+  STATS_FUNC_OUT(serialization_get_json);
 }

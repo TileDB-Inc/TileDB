@@ -32,9 +32,11 @@
  */
 #include "client.h"
 #include "curl.h"
+#include "tiledb/sm/misc/stats.h"
 
 tiledb::sm::Status get_array_schema_json_from_rest(
     std::string rest_server, std::string uri, char** json_returned) {
+  STATS_FUNC_IN(serialization_get_array_schema_json_from_rest);
   // init the curl session
   CURL* curl = curl_easy_init();
 
@@ -64,10 +66,12 @@ tiledb::sm::Status get_array_schema_json_from_rest(
 
   std::free(memoryStruct.memory);
   return tiledb::sm::Status::Ok();
+  STATS_FUNC_OUT(serialization_get_array_schema_json_from_rest);
 }
 
 tiledb::sm::Status post_array_schema_json_to_rest(
     std::string rest_server, std::string uri, char* json) {
+  STATS_FUNC_IN(serialization_post_array_schema_json_from_rest);
   // init the curl session
   CURL* curl = curl_easy_init();
 
@@ -95,6 +99,7 @@ tiledb::sm::Status post_array_schema_json_to_rest(
 
   std::free(memoryStruct.memory);
   return tiledb::sm::Status::Ok();
+  STATS_FUNC_OUT(serialization_post_array_schema_json_from_rest);
 }
 
 tiledb::sm::Status submit_query_json_to_rest(
@@ -102,6 +107,7 @@ tiledb::sm::Status submit_query_json_to_rest(
     std::string uri,
     char* json,
     char** json_returned) {
+  STATS_FUNC_IN(serialization_submit_query_json_to_rest);
   // init the curl session
   CURL* curl = curl_easy_init();
 
@@ -135,6 +141,7 @@ tiledb::sm::Status submit_query_json_to_rest(
 
   std::free(memoryStruct.memory);
   return tiledb::sm::Status::Ok();
+  STATS_FUNC_OUT(serialization_submit_query_json_to_rest);
 }
 
 tiledb::sm::Status finalize_query_json_to_rest(
@@ -142,6 +149,7 @@ tiledb::sm::Status finalize_query_json_to_rest(
     std::string uri,
     char* json,
     char** json_returned) {
+  STATS_FUNC_IN(serialization_finalize_query_json_to_rest);
   // init the curl session
   CURL* curl = curl_easy_init();
 
@@ -175,4 +183,5 @@ tiledb::sm::Status finalize_query_json_to_rest(
 
   std::free(memoryStruct.memory);
   return tiledb::sm::Status::Ok();
+  STATS_FUNC_OUT(serialization_finalize_query_json_to_rest);
 }
