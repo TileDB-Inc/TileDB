@@ -122,7 +122,7 @@ tiledb::sm::Status submit_query_json_to_rest(
     // TODO: Should see if message has error json object
 
     return tiledb::sm::Status::Error(
-        std::string("rest array post() failed: ") +
+        std::string("rest submit query post() failed: ") +
         ((memoryStruct.size > 0) ? memoryStruct.memory :
                                    " No error message from server"));
   }
@@ -162,7 +162,7 @@ tiledb::sm::Status finalize_query_json_to_rest(
     // TODO: Should see if message has error json object
 
     return tiledb::sm::Status::Error(
-        std::string("rest array post() failed: ") +
+        std::string("rest finalize query post() failed: ") +
         ((memoryStruct.size > 0) ? memoryStruct.memory :
                                    " No error message from server"));
   }
