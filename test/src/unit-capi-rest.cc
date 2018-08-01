@@ -417,5 +417,7 @@ TEST_CASE_METHOD(
   REQUIRE(data_buffer[3] == 4);
 
   // Clean up
+  tiledb_array_free(&array);
   tiledb_array_schema_free(&array_schema);
+  tiledb_query_free(&query);
 }
