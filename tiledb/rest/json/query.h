@@ -345,7 +345,8 @@ struct adl_serializer<tiledb::sm::Query> {
         }
       }
     }
-    j["buffers"] = buffers;
+    if (!buffers.empty())
+      j["buffers"] = buffers;
 
     if (q.layout() == tiledb::sm::Layout::GLOBAL_ORDER &&
         q.type() == tiledb::sm::QueryType::WRITE) {
@@ -470,287 +471,289 @@ struct adl_serializer<tiledb::sm::Query> {
       }
     }
 
-    std::unordered_map<std::string, nlohmann::json> buffers = j.at("buffers");
-    for (auto buffer_json : buffers) {
-      // TODO: We have to skip special attrs, which include anonymous ones
-      // because we can't call add_attribute() for a special attr name, we need
-      // to figure out how to add these to a array schema nicely.
-      if (buffer_json.first.substr(0, 2) ==
-          tiledb::sm::constants::special_name_prefix) {
-        continue;
-      }
-      const tiledb::sm::Attribute* attr =
-          array_schema->attribute(buffer_json.first);
-      if (attr == nullptr) {
-        throw std::runtime_error(
-            "Attribute " + buffer_json.first + " is null in query from_json");
-      }
-      uint64_t type_size = tiledb::sm::datatype_size(attr->type());
-      switch (attr->type()) {
-        case tiledb::sm::Datatype::INT8: {
-          // Get buffer
-          std::vector<int8_t>* buffer = new std::vector<int8_t>(
-              buffer_json.second.at("buffer").get<std::vector<int8_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
-
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
+    if (j.count("buffers")) {
+      std::unordered_map<std::string, nlohmann::json> buffers = j.at("buffers");
+      for (auto buffer_json : buffers) {
+        // TODO: We have to skip special attrs, which include anonymous ones
+        // because we can't call add_attribute() for a special attr name, we
+        // need to figure out how to add these to a array schema nicely.
+        if (buffer_json.first.substr(0, 2) ==
+            tiledb::sm::constants::special_name_prefix) {
+          continue;
         }
-        case tiledb::sm::Datatype::STRING_ASCII:
-        case tiledb::sm::Datatype::STRING_UTF8:
-        case tiledb::sm::Datatype::UINT8: {
-          // Get buffer
-          std::vector<uint8_t>* buffer = new std::vector<uint8_t>(
-              buffer_json.second.at("buffer").get<std::vector<uint8_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
-
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
+        const tiledb::sm::Attribute* attr =
+            array_schema->attribute(buffer_json.first);
+        if (attr == nullptr) {
+          throw std::runtime_error(
+              "Attribute " + buffer_json.first + " is null in query from_json");
         }
-        case tiledb::sm::Datatype::INT16: {
-          // Get buffer
-          std::vector<int16_t>* buffer = new std::vector<int16_t>(
-              buffer_json.second.at("buffer").get<std::vector<int16_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+        uint64_t type_size = tiledb::sm::datatype_size(attr->type());
+        switch (attr->type()) {
+          case tiledb::sm::Datatype::INT8: {
+            // Get buffer
+            std::vector<int8_t>* buffer = new std::vector<int8_t>(
+                buffer_json.second.at("buffer").get<std::vector<int8_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::STRING_UTF16:
-        case tiledb::sm::Datatype::STRING_UCS2:
-        case tiledb::sm::Datatype::UINT16: {
-          // Get buffer
-          std::vector<uint16_t>* buffer = new std::vector<uint16_t>(
-              buffer_json.second.at("buffer").get<std::vector<uint16_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
-
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::INT32: {
-          // Get buffer
-          std::vector<int32_t>* buffer = new std::vector<int32_t>(
-              buffer_json.second.at("buffer").get<std::vector<int32_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
-
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else {
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
           }
-          break;
-        }
-        case tiledb::sm::Datatype::STRING_UTF32:
-        case tiledb::sm::Datatype::STRING_UCS4:
-        case tiledb::sm::Datatype::UINT32: {
-          // Get buffer
-          std::vector<uint32_t>* buffer = new std::vector<uint32_t>(
-              buffer_json.second.at("buffer").get<std::vector<uint32_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+          case tiledb::sm::Datatype::STRING_ASCII:
+          case tiledb::sm::Datatype::STRING_UTF8:
+          case tiledb::sm::Datatype::UINT8: {
+            // Get buffer
+            std::vector<uint8_t>* buffer = new std::vector<uint8_t>(
+                buffer_json.second.at("buffer").get<std::vector<uint8_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::INT64: {
-          // Get buffer
-          std::vector<int64_t>* buffer = new std::vector<int64_t>(
-              buffer_json.second.at("buffer").get<std::vector<int64_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::INT16: {
+            // Get buffer
+            std::vector<int16_t>* buffer = new std::vector<int16_t>(
+                buffer_json.second.at("buffer").get<std::vector<int16_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::UINT64: {
-          // Get buffer
-          std::vector<uint64_t>* buffer = new std::vector<uint64_t>(
-              buffer_json.second.at("buffer").get<std::vector<uint64_t>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::STRING_UTF16:
+          case tiledb::sm::Datatype::STRING_UCS2:
+          case tiledb::sm::Datatype::UINT16: {
+            // Get buffer
+            std::vector<uint16_t>* buffer = new std::vector<uint16_t>(
+                buffer_json.second.at("buffer").get<std::vector<uint16_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::FLOAT32: {
-          // Get buffer
-          std::vector<float>* buffer = new std::vector<float>(
-              buffer_json.second.at("buffer").get<std::vector<float>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::INT32: {
+            // Get buffer
+            std::vector<int32_t>* buffer = new std::vector<int32_t>(
+                buffer_json.second.at("buffer").get<std::vector<int32_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::FLOAT64: {
-          // Get buffer
-          std::vector<double>* buffer = new std::vector<double>(
-              buffer_json.second.at("buffer").get<std::vector<double>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else {
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            }
+            break;
+          }
+          case tiledb::sm::Datatype::STRING_UTF32:
+          case tiledb::sm::Datatype::STRING_UCS4:
+          case tiledb::sm::Datatype::UINT32: {
+            // Get buffer
+            std::vector<uint32_t>* buffer = new std::vector<uint32_t>(
+                buffer_json.second.at("buffer").get<std::vector<uint32_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
-        }
-        case tiledb::sm::Datatype::CHAR: {
-          // Get buffer
-          std::vector<char>* buffer = new std::vector<char>(
-              buffer_json.second.at("buffer").get<std::vector<char>>());
-          uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::INT64: {
+            // Get buffer
+            std::vector<int64_t>* buffer = new std::vector<int64_t>(
+                buffer_json.second.at("buffer").get<std::vector<int64_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
 
-          // Check for offset buffer
-          if (buffer_json.second.count("buffer_offset")) {
-            std::vector<uint64_t>* buffer_offset =
-                new std::vector<uint64_t>(buffer_json.second.at("buffer_offset")
-                                              .get<std::vector<uint64_t>>());
-            uint64_t* buffer_offset_size =
-                new uint64_t(buffer_offset->size() * sizeof(uint64_t));
-            q.set_buffer(
-                attr->name(),
-                buffer_offset->data(),
-                buffer_offset_size,
-                buffer->data(),
-                buffer_size);
-          } else
-            q.set_buffer(attr->name(), buffer->data(), buffer_size);
-          break;
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::UINT64: {
+            // Get buffer
+            std::vector<uint64_t>* buffer = new std::vector<uint64_t>(
+                buffer_json.second.at("buffer").get<std::vector<uint64_t>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::FLOAT32: {
+            // Get buffer
+            std::vector<float>* buffer = new std::vector<float>(
+                buffer_json.second.at("buffer").get<std::vector<float>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::FLOAT64: {
+            // Get buffer
+            std::vector<double>* buffer = new std::vector<double>(
+                buffer_json.second.at("buffer").get<std::vector<double>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::CHAR: {
+            // Get buffer
+            std::vector<char>* buffer = new std::vector<char>(
+                buffer_json.second.at("buffer").get<std::vector<char>>());
+            uint64_t* buffer_size = new uint64_t(buffer->size() * type_size);
+
+            // Check for offset buffer
+            if (buffer_json.second.count("buffer_offset")) {
+              std::vector<uint64_t>* buffer_offset = new std::vector<uint64_t>(
+                  buffer_json.second.at("buffer_offset")
+                      .get<std::vector<uint64_t>>());
+              uint64_t* buffer_offset_size =
+                  new uint64_t(buffer_offset->size() * sizeof(uint64_t));
+              q.set_buffer(
+                  attr->name(),
+                  buffer_offset->data(),
+                  buffer_offset_size,
+                  buffer->data(),
+                  buffer_size);
+            } else
+              q.set_buffer(attr->name(), buffer->data(), buffer_size);
+            break;
+          }
+          case tiledb::sm::Datatype::ANY:
+            // Not supported datatype for buffer
+            assert(false);
+            break;
         }
-        case tiledb::sm::Datatype::ANY:
-          // Not supported datatype for buffer
-          assert(false);
-          break;
       }
     }
     STATS_FUNC_VOID_OUT(serialization_query_from_json);
