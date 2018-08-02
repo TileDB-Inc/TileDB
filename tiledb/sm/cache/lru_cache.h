@@ -123,6 +123,16 @@ class LRUCache {
       uint64_t size,
       bool overwrite = true);
 
+  /**
+   * Invalidates and evicts the object in the cache with the given key.
+   *
+   * @param key The key that describes the object to be invalidated.
+   * @param success Set to `true` if the object was removed successfully; if
+   *    the object did not exist in the cache, set to `false`.
+   * @return Status
+   */
+  Status invalidate(const std::string& key, bool* success);
+
   /** Returns the maximum size of the cache. */
   uint64_t max_size() const;
 

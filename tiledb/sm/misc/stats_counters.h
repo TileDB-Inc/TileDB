@@ -49,6 +49,7 @@ STATS_DEFINE_FUNC_STAT(compressor_zstd_decompress)
 // Tile cache
 STATS_DEFINE_FUNC_STAT(cache_lru_evict)
 STATS_DEFINE_FUNC_STAT(cache_lru_insert)
+STATS_DEFINE_FUNC_STAT(cache_lru_invalidate)
 STATS_DEFINE_FUNC_STAT(cache_lru_read)
 STATS_DEFINE_FUNC_STAT(cache_lru_read_partial)
 // Reader
@@ -154,6 +155,7 @@ STATS_INIT_FUNC_STAT(compressor_zstd_decompress)
 // Tile cache
 STATS_INIT_FUNC_STAT(cache_lru_evict)
 STATS_INIT_FUNC_STAT(cache_lru_insert)
+STATS_INIT_FUNC_STAT(cache_lru_invalidate)
 STATS_INIT_FUNC_STAT(cache_lru_read)
 STATS_INIT_FUNC_STAT(cache_lru_read_partial)
 // Reader
@@ -260,6 +262,7 @@ STATS_REPORT_FUNC_STAT(compressor_zstd_decompress)
 // Tile cache
 STATS_REPORT_FUNC_STAT(cache_lru_evict)
 STATS_REPORT_FUNC_STAT(cache_lru_insert)
+STATS_REPORT_FUNC_STAT(cache_lru_invalidate)
 STATS_REPORT_FUNC_STAT(cache_lru_read)
 STATS_REPORT_FUNC_STAT(cache_lru_read_partial)
 // Reader
