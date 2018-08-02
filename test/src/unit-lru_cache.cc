@@ -136,3 +136,57 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   auto it_end = lru_cache_->item_iter_end();
   CHECK(it == it_end);
 }
+
+TEST_CASE_METHOD(LRUCacheFx, "LRUCache item invalidation", "[lru_cache]") {
+  auto v1 = new int[3]{1, 2, 3};
+  auto v2 = new int[3]{4, 5, 6};
+  Status st = lru_cache_->insert("v1", &v1[0], 3 * sizeof(int));
+  CHECK(st.ok());
+  st = lru_cache_->insert("v2", &v2[0], 3 * sizeof(int));
+  CHECK(st.ok());
+
+  // Check invalidate non-existent key
+  bool success;
+  st = lru_cache_->invalidate("key", &success);
+  CHECK(st.ok());
+  CHECK(!success);
+  CHECK(check_key_order("v1v2"));
+
+  // Check invalidate head of list
+  st = lru_cache_->invalidate("v1", &success);
+  CHECK(st.ok());
+  CHECK(success);
+  CHECK(check_key_order("v2"));
+  st = lru_cache_->invalidate("v1", &success);
+  CHECK(st.ok());
+  CHECK(!success);
+  CHECK(check_key_order("v2"));
+
+  auto v3 = new int[3]{7, 8, 9};
+  auto v4 = new int[3]{10, 11, 12};
+  st = lru_cache_->insert("v3", &v3[0], 3 * sizeof(int));
+  CHECK(st.ok());
+  st = lru_cache_->insert("v4", &v4[0], 3 * sizeof(int));
+  CHECK(st.ok());
+  CHECK(check_key_order("v2v3v4"));
+
+  // Check invalidate middle of list
+  st = lru_cache_->invalidate("v3", &success);
+  CHECK(st.ok());
+  CHECK(success);
+  CHECK(check_key_order("v2v4"));
+
+  // Check invalidate end of list
+  st = lru_cache_->invalidate("v4", &success);
+  CHECK(st.ok());
+  CHECK(success);
+  CHECK(check_key_order("v2"));
+
+  // Check invalidate final element
+  st = lru_cache_->invalidate("v2", &success);
+  CHECK(st.ok());
+  CHECK(success);
+  auto it = lru_cache_->item_iter_begin();
+  auto it_end = lru_cache_->item_iter_end();
+  CHECK(it == it_end);
+}

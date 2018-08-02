@@ -143,6 +143,29 @@ Status LRUCache::insert(
   STATS_FUNC_OUT(cache_lru_insert);
 }
 
+Status LRUCache::invalidate(const std::string& key, bool* success) {
+  STATS_FUNC_IN(cache_lru_invalidate);
+
+  std::lock_guard<std::mutex> lck(mtx_);
+
+  auto item_it = item_map_.find(key);
+  bool exists = item_it != item_map_.end();
+  if (!exists) {
+    *success = false;
+    return Status::Ok();
+  }
+
+  // Move item to the head of the list and evict it.
+  auto& node = item_it->second;
+  item_ll_.splice(item_ll_.begin(), item_ll_, node);
+  evict();
+
+  *success = true;
+  return Status::Ok();
+
+  STATS_FUNC_OUT(cache_lru_invalidate);
+}
+
 uint64_t LRUCache::max_size() const {
   return max_size_;
 }
