@@ -255,7 +255,6 @@ Status Query::copy_buffers(const Query& query) {
 Status Query::copy_json_wip(const Query& query) {
   STATS_FUNC_IN(serialization_copy_json_wip);
   type_ = query.type();
-  status_ = query.status();
   set_layout(query.layout());
   // set_array_schema(query.array_schema());
   switch (array_schema()->domain()->type()) {
@@ -304,6 +303,7 @@ Status Query::copy_json_wip(const Query& query) {
       break;
   }
 
+  status_ = query.status();
   return copy_buffers(query);
   STATS_FUNC_OUT(serialization_copy_json_wip);
 }
