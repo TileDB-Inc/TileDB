@@ -391,15 +391,6 @@ struct adl_serializer<tiledb::sm::Query> {
         querytype == tiledb::sm::QueryType::WRITE && j.count("writer"))
       q.set_writer(j.at("writer"));
 
-    // QueryStatus to parse, set default to avoid compiler uninitialized
-    // warnings
-    tiledb::sm::QueryStatus query_status =
-        tiledb::sm::QueryStatus::UNINITIALIZED;
-    status = tiledb::sm::query_status_enum(j.at("status"), &query_status);
-    if (!status.ok())
-      throw std::runtime_error(status.to_string());
-    q.set_status(query_status);
-
     // Set subarray
     if (j.count("subarray")) {
       switch (array_schema->domain()->type()) {
@@ -756,6 +747,17 @@ struct adl_serializer<tiledb::sm::Query> {
         }
       }
     }
+
+    // QueryStatus to parse, set default to avoid compiler uninitialized
+    // warnings
+    // This is also set last as set_subarray() resets the status to
+    // UNINITIALIZED
+    tiledb::sm::QueryStatus query_status =
+        tiledb::sm::QueryStatus::UNINITIALIZED;
+    status = tiledb::sm::query_status_enum(j.at("status"), &query_status);
+    if (!status.ok())
+      throw std::runtime_error(status.to_string());
+    q.set_status(query_status);
     STATS_FUNC_VOID_OUT(serialization_query_from_json);
   }
 };
