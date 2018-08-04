@@ -400,6 +400,11 @@ Status Dimension::check_tile_extent() const {
   auto tile_extent = static_cast<T*>(tile_extent_);
   auto domain = static_cast<T*>(domain_);
 
+  // Check if tile extent is negative or 0
+  if (*tile_extent <= 0)
+    return LOG_STATUS(Status::DimensionError(
+        "Tile extent check failed; Tile extent must be greater than 0"));
+
   // Check if tile extent exceeds domain
   if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double)) {
     if (*tile_extent > domain[1] - domain[0])
