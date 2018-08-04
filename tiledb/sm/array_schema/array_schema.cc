@@ -734,7 +734,7 @@ Status ArraySchema::set_kv_attributes() {
 Status ArraySchema::set_kv_domain() {
   delete domain_;
   domain_ = new Domain(Datatype::UINT64);
-  uint64_t dim_domain[] = {0, UINT64_MAX};
+  uint64_t dim_domain[] = {0, UINT64_MAX - 1};
 
   auto dim_1 = new Dimension(constants::key_dim_1, Datatype::UINT64);
   RETURN_NOT_OK_ELSE(dim_1->set_domain(dim_domain), delete dim_1);

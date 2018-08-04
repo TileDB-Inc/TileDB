@@ -2,6 +2,7 @@
 
 ## New features
 
+* We now officially support negative and real domains (PR #885)
 * Added string type support: ASCII, UTF-8, UTF-16, UTF-32, UCS-2, UCS-4 (PR #415)
 * Added `TILEDB_ANY` datatype (PR #446)
 * Added parallelized VFS read operations, enabled by default (PR #499)

@@ -45,6 +45,13 @@
 #include <sys/time.h>
 #endif
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 namespace tiledb {
 namespace sm {
 
@@ -452,13 +459,47 @@ bool overlap(const T* a, const T* b, unsigned dim_num) {
 }
 
 template <class T>
+bool overlap(const T* a, const T* b, unsigned dim_num, bool* a_contains_b) {
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
+      return false;
+  }
+
+  *a_contains_b = true;
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[2 * i] > b[2 * i] || a[2 * i + 1] < b[2 * i + 1]) {
+      *a_contains_b = false;
+      break;
+    }
+  }
+
+  return true;
+}
+
+template <class T>
+void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap) {
+  // Get overlap range
+  *overlap = true;
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    o[2 * i] = MAX(a[2 * i], b[2 * i]);
+    o[2 * i + 1] = MIN(a[2 * i + 1], b[2 * i + 1]);
+    if (o[2 * i] > b[2 * i + 1] || o[2 * i + 1] < b[2 * i]) {
+      *overlap = false;
+      break;
+    }
+  }
+}
+
+template <class T>
 double coverage(const T* a, const T* b, unsigned dim_num) {
   double c = 1.0;
-  for (unsigned i = 0; i < dim_num; ++i)
-    if (std::is_integral<T>::value)
-      c *= double(a[2 * i + 1] - a[2 * i] + 1) / (b[2 * i + 1] - b[2 * i] + 1);
-    else
-      c *= double(a[2 * i + 1] - a[2 * i]) / (b[2 * i + 1] - b[2 * i]);
+  auto add = int(std::is_integral<T>::value);
+
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
+    auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
+    c *= a_range / b_range;
+  }
   return c;
 }
 
@@ -565,6 +606,80 @@ template bool overlap<uint64_t>(
 template bool overlap<float>(const float* a, const float* b, unsigned dim_num);
 template bool overlap<double>(
     const double* a, const double* b, unsigned dim_num);
+
+template bool overlap<int8_t>(
+    const int8_t* a, const int8_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<uint8_t>(
+    const uint8_t* a, const uint8_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<int16_t>(
+    const int16_t* a, const int16_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<uint16_t>(
+    const uint16_t* a, const uint16_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<int>(
+    const int* a, const int* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<unsigned>(
+    const unsigned* a, const unsigned* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<int64_t>(
+    const int64_t* a, const int64_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<uint64_t>(
+    const uint64_t* a, const uint64_t* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<float>(
+    const float* a, const float* b, unsigned dim_num, bool* a_contains_b);
+template bool overlap<double>(
+    const double* a, const double* b, unsigned dim_num, bool* a_contains_b);
+
+template void overlap<int>(
+    const int* a, const int* b, unsigned dim_num, int* o, bool* overlap);
+template void overlap<int64_t>(
+    const int64_t* a,
+    const int64_t* b,
+    unsigned dim_num,
+    int64_t* o,
+    bool* overlap);
+template void overlap<float>(
+    const float* a, const float* b, unsigned dim_num, float* o, bool* overlap);
+template void overlap<double>(
+    const double* a,
+    const double* b,
+    unsigned dim_num,
+    double* o,
+    bool* overlap);
+template void overlap<int8_t>(
+    const int8_t* a,
+    const int8_t* b,
+    unsigned dim_num,
+    int8_t* o,
+    bool* overlap);
+template void overlap<uint8_t>(
+    const uint8_t* a,
+    const uint8_t* b,
+    unsigned dim_num,
+    uint8_t* o,
+    bool* overlap);
+template void overlap<int16_t>(
+    const int16_t* a,
+    const int16_t* b,
+    unsigned dim_num,
+    int16_t* o,
+    bool* overlap);
+template void overlap<uint16_t>(
+    const uint16_t* a,
+    const uint16_t* b,
+    unsigned dim_num,
+    uint16_t* o,
+    bool* overlap);
+template void overlap<uint32_t>(
+    const uint32_t* a,
+    const uint32_t* b,
+    unsigned dim_num,
+    uint32_t* o,
+    bool* overlap);
+template void overlap<uint64_t>(
+    const uint64_t* a,
+    const uint64_t* b,
+    unsigned dim_num,
+    uint64_t* o,
+    bool* overlap);
 
 template double coverage<int8_t>(
     const int8_t* a, const int8_t* b, unsigned dim_num);

@@ -882,7 +882,8 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     auto mbrs = fragment_metadata_[i]->mbrs();
     auto mbr_num = (uint64_t)mbrs.size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
-      if (overlap(&subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
+      if (utils::geometry::overlap(
+              &subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
         auto tile = std::unique_ptr<OverlappingTile>(
             new OverlappingTile(i, j, attributes_, full_overlap));
         tiles->push_back(std::move(tile));
@@ -896,10 +897,10 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
 }
 
 template <class T>
-Status Reader::compute_tile_coordinates(
+Status Reader::compute_tile_coords(
     std::unique_ptr<T[]>* all_tile_coords,
     OverlappingCoordsList<T>* coords) const {
-  STATS_FUNC_IN(reader_compute_tile_coordinates);
+  STATS_FUNC_IN(reader_compute_tile_coords);
 
   if (coords->empty() || array_schema_->domain()->tile_extents() == nullptr)
     return Status::Ok();
@@ -929,7 +930,7 @@ Status Reader::compute_tile_coordinates(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_compute_tile_coordinates);
+  STATS_FUNC_OUT(reader_compute_tile_coords);
 }
 
 Status Reader::copy_cells(
@@ -1191,7 +1192,7 @@ Status Reader::dense_read() {
 
   // Compute the tile coordinates for all overlapping coordinates (for sorting).
   std::unique_ptr<T[]> tile_coords(nullptr);
-  RETURN_CANCEL_OR_ERROR(compute_tile_coordinates<T>(&tile_coords, &coords));
+  RETURN_CANCEL_OR_ERROR(compute_tile_coords<T>(&tile_coords, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
@@ -1551,8 +1552,12 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   for (uint64_t i = 0; i < tile_num; ++i) {
     // Compute subarray overlap with tile
     domain->get_tile_subarray(&tile_coords[0], &tile_subarray[0]);
-    domain->subarray_overlap(
-        &subarray[0], &tile_subarray[0], &subarray_in_tile[0], &tile_overlap);
+    utils::geometry::overlap(
+        &subarray[0],
+        &tile_subarray[0],
+        dim_num,
+        &subarray_in_tile[0],
+        &tile_overlap);
     tile_idx = domain->get_tile_pos(&tile_coords[0]);
     (*overlapping_tile_idx_coords)[tile_idx] =
         std::pair<uint64_t, std::vector<T>>(i, tile_coords);
@@ -1567,9 +1572,10 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
         auto frag_domain = (T*)fragment_metadata_[j]->non_empty_domain();
         for (unsigned k = 0; k < 2 * dim_num; ++k)
           frag_subarray[k] = frag_domain[k];
-        domain->subarray_overlap(
+        utils::geometry::overlap(
             &subarray_in_tile[0],
             &frag_subarray[0],
+            dim_num,
             &frag_subarray_in_tile[0],
             &tile_overlap);
 
@@ -1596,25 +1602,6 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
 void Reader::optimize_layout_for_1D() {
   if (array_schema_->dim_num() == 1)
     layout_ = Layout::GLOBAL_ORDER;
-}
-
-template <class T>
-bool Reader::overlap(
-    const T* a, const T* b, unsigned dim_num, bool* a_contains_b) const {
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
-      return false;
-  }
-
-  *a_contains_b = true;
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (a[2 * i] > b[2 * i] || a[2 * i + 1] < b[2 * i + 1]) {
-      *a_contains_b = false;
-      break;
-    }
-  }
-
-  return true;
 }
 
 Status Reader::read_all_tiles(
@@ -1818,7 +1805,7 @@ Status Reader::sparse_read() {
 
   // Compute the tile coordinates for all overlapping coordinates (for sorting).
   std::unique_ptr<T[]> tile_coords(nullptr);
-  RETURN_CANCEL_OR_ERROR(compute_tile_coordinates<T>(&tile_coords, &coords));
+  RETURN_CANCEL_OR_ERROR(compute_tile_coords<T>(&tile_coords, &coords));
 
   // Sort and dedup the coordinates (not applicable to the global order
   // layout for a single fragment)
