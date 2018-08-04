@@ -482,14 +482,15 @@ Status Writer::check_subarray() const {
   auto subarray = (T*)subarray_;
 
   // In global dense writes, the subarray must coincide with tile extents
+  // Note that in the dense case, the domain type is integer
   if (array_schema_->dense() && layout() == Layout::GLOBAL_ORDER) {
     for (unsigned int i = 0; i < dim_num; ++i) {
       auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
       auto tile_extent =
           static_cast<const T*>(domain->dimension(i)->tile_extent());
       assert(tile_extent != nullptr);
-      auto norm_1 = (subarray[2 * i] - dim_domain[0]);
-      auto norm_2 = (subarray[2 * i + 1] - dim_domain[0]) + 1;
+      auto norm_1 = uint64_t(subarray[2 * i] - dim_domain[0]);
+      auto norm_2 = (uint64_t(subarray[2 * i + 1]) - dim_domain[0]) + 1;
       if ((norm_1 / (*tile_extent) * (*tile_extent) != norm_1) ||
           (norm_2 / (*tile_extent) * (*tile_extent) != norm_2)) {
         return LOG_STATUS(Status::WriterError(
@@ -1077,8 +1078,12 @@ Status Writer::init_tile_dense_cell_range_iters(
   for (uint64_t i = 0; i < tile_num; ++i) {
     // Compute subarray overlap with tile
     domain->get_tile_subarray(&tile_coords[0], &tile_subarray[0]);
-    domain->subarray_overlap(
-        &subarray[0], &tile_subarray[0], &subarray_in_tile[0], &tile_overlap);
+    utils::geometry::overlap(
+        &subarray[0],
+        &tile_subarray[0],
+        dim_num,
+        &subarray_in_tile[0],
+        &tile_overlap);
 
     // Create a new iter
     iters->emplace_back(domain, subarray_in_tile, cell_order);

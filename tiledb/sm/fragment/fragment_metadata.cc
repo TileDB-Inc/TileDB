@@ -306,9 +306,9 @@ Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
   auto dim_num = array_schema_->dim_num();
   auto subarray_overlap = new T[2 * dim_num];
   unsigned tid = 0;
-  auto domain = array_schema_->domain();
   for (auto& mbr : mbrs_) {
-    domain->subarray_overlap((T*)mbr, subarray, subarray_overlap, &overlap);
+    utils::geometry::overlap(
+        (T*)mbr, subarray, dim_num, subarray_overlap, &overlap);
     if (overlap) {
       double cov =
           utils::geometry::coverage(subarray_overlap, (T*)mbr, dim_num);
@@ -641,7 +641,8 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   uint64_t tile_pos;
   do {
     domain->get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
-    domain->subarray_overlap(subarray, tile_subarray, tile_overlap, &overlap);
+    utils::geometry::overlap(
+        subarray, tile_subarray, dim_num, tile_overlap, &overlap);
     assert(overlap);
     cov = utils::geometry::coverage(tile_overlap, tile_subarray, dim_num);
     tile_pos = domain->get_tile_pos(metadata_domain, tile_coords);

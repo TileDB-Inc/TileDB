@@ -543,7 +543,7 @@ class Reader {
    * @return Status
    */
   template <class T>
-  Status compute_tile_coordinates(
+  Status compute_tile_coords(
       std::unique_ptr<T[]>* all_tile_coords,
       OverlappingCoordsList<T>* coords) const;
 
@@ -750,22 +750,6 @@ class Reader {
    * equivalent results offering faster processing.
    */
   void optimize_layout_for_1D();
-
-  /**
-   * Checks whether two hyper-rectangles overlap, and determines whether
-   * the first rectangle contains the second.
-   *
-   * @tparam T The domain type.
-   * @param a The first rectangle.
-   * @param b The second rectangle.
-   * @param dim_num The number of dimensions.
-   * @param a_contains_b Determines whether the first rectangle contains the
-   *     second.
-   * @return `True` if the rectangles overlap, and `false` otherwise.
-   */
-  template <class T>
-  bool overlap(
-      const T* a, const T* b, unsigned dim_num, bool* a_contains_b) const;
 
   /**
    * Retrieves the tiles on all attributes from all input fragments based on

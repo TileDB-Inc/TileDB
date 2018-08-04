@@ -215,6 +215,10 @@ Status Dimension::set_domain(const void* domain) {
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
+  if (domain_ == nullptr)
+    return Status::DimensionError(
+        "Cannot set tile extent; Domain must be set first");
+
   if (tile_extent_ != nullptr)
     std::free(tile_extent_);
 
@@ -244,6 +248,10 @@ Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
   if (tile_extent_ != nullptr)
     return Status::Ok();
+
+  if (domain_ == nullptr)
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set tile extent to domain range; Domain not set"));
 
   // Note: this is applicable only to dense array, which are allowed
   // only integer domains
@@ -360,6 +368,16 @@ Status Dimension::check_domain() const {
         Status::DimensionError("Domain check failed; Upper domain bound should "
                                "not be smaller than the lower one"));
 
+  // Domain range must not exceed the maximum uint64_t number
+  // for integer domains
+  if (std::is_integral<T>::value) {
+    uint64_t diff = domain[1] - domain[0];
+    if (diff == std::numeric_limits<uint64_t>::max())
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; Domain range (upper + lower + 1) is larger "
+          "than the maximum uint64 number"));
+  }
+
   return Status::Ok();
 }
 
@@ -399,6 +417,7 @@ Status Dimension::check_tile_extent() const {
 
   auto tile_extent = static_cast<T*>(tile_extent_);
   auto domain = static_cast<T*>(domain_);
+  bool is_int = std::is_integral<T>::value;
 
   // Check if tile extent is negative or 0
   if (*tile_extent <= 0)
@@ -406,33 +425,42 @@ Status Dimension::check_tile_extent() const {
         "Tile extent check failed; Tile extent must be greater than 0"));
 
   // Check if tile extent exceeds domain
-  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double)) {
+  if (!is_int) {
     if (*tile_extent > domain[1] - domain[0])
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
   } else {
     // Check if tile extent exceeds domain
-    // TODO (sp): Handle negative domains
-    if ((domain[1] - domain[0] < std::numeric_limits<T>::max() - 1) &&
-        (*tile_extent > domain[1] - domain[0] + 1))
+    uint64_t range = domain[1] - domain[0] + 1;
+    if (uint64_t(*tile_extent) > range)
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
-  }
 
-  // In the worst case one tile_extent will be added to the upper domain,
-  // so check if the expanded domain will exceed type T's max limit.
-  auto upper_floor = (domain[1] / (*tile_extent)) * (*tile_extent);
-  if (upper_floor != domain[1] &&
-      upper_floor > std::numeric_limits<T>::max() - (*tile_extent))
-    return LOG_STATUS(Status::DimensionError(
-        "Tile extent check failed; domain max expanded to multiple of tile "
-        "extent exceeds max value representable by domain type. Reduce domain "
-        "max by 1 tile extent to allow for expansion."));
+    // In the worst case one tile extent will be added to the upper domain
+    // for the dense case, so check if the expanded domain will exceed type
+    // T's max limit.
+    if (range % uint64_t(*tile_extent)) {
+      auto upper_floor =
+          ((range - 1) / (*tile_extent)) * (*tile_extent) + domain[0];
+      bool exceeds =
+          (upper_floor >
+           std::numeric_limits<uint64_t>::max() - (*tile_extent - 1));
+      exceeds =
+          (exceeds ||
+           uint64_t(upper_floor) > uint64_t(std::numeric_limits<T>::max()));
+      if (exceeds)
+        return LOG_STATUS(Status::DimensionError(
+            "Tile extent check failed; domain max expanded to multiple of tile "
+            "extent exceeds max value representable by domain type. Reduce "
+            "domain max by 1 tile extent to allow for expansion."));
+    }
+  }
 
   return Status::Ok();
 }
 
 }  // namespace sm
+
 }  // namespace tiledb
