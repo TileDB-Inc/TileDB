@@ -88,6 +88,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-array.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-json.cc
     src/unit-cppapi-map.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-type.cc

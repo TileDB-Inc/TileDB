@@ -30,8 +30,8 @@
  *
  * This file defines the C API of TileDB.
  */
-
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/rest/capnp/array.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -2030,6 +2030,65 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_OOM;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_serialize(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_serialization_type_t serialize_type,
+    char** serialized_string,
+    uint64_t* serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto st = tiledb::rest::array_schema_serialize(
+      array_schema->array_schema_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_deserialize(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t** array_schema,
+    tiledb_serialization_type_t serialize_type,
+    const char* serialized_string,
+    const uint64_t serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema struct
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB array schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+  auto st = tiledb::rest::array_schema_deserialize(
+      &((*array_schema)->array_schema_),
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
   }
   return TILEDB_OK;
 }

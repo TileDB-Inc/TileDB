@@ -257,6 +257,12 @@ extern const std::string no_encryption_str;
 /** String describing AES_256_GCM. */
 extern const std::string aes_256_gcm_str;
 
+/** TILEDB_JSON **/
+extern const std::string serialization_type_json_str;
+
+/** TILEDB_CAPNP **/
+extern const std::string serialization_type_capnp_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 

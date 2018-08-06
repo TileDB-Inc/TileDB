@@ -179,18 +179,18 @@ extern Statistics all_stats;
  * statement in the function. Note that a function can have multiple exit paths
  * (i.e. multiple returns), but you should still put this macro after the very
  * last statement in the function. */
-#define STATS_FUNC_OUT(f)                                     \
-  }                                                           \
-  ();                                                         \
-  if (stats::all_stats.enabled()) {                           \
-    auto __stats_end = std::chrono::steady_clock::now();      \
-    uint64_t __stats_dur_ns =                                 \
-        std::chrono::duration_cast<std::chrono::nanoseconds>( \
-            __stats_end - __stats_start)                      \
-            .count();                                         \
-    stats::all_stats.f##_total_ns += __stats_dur_ns;          \
-    stats::all_stats.f##_call_count++;                        \
-  }                                                           \
+#define STATS_FUNC_OUT(f)                                        \
+  }                                                              \
+  ();                                                            \
+  if (tiledb::sm::stats::all_stats.enabled()) {                  \
+    auto __stats_end = std::chrono::steady_clock::now();         \
+    uint64_t __stats_dur_ns =                                    \
+        std::chrono::duration_cast<std::chrono::nanoseconds>(    \
+            __stats_end - __stats_start)                         \
+            .count();                                            \
+    tiledb::sm::stats::all_stats.f##_total_ns += __stats_dur_ns; \
+    tiledb::sm::stats::all_stats.f##_call_count++;               \
+  }                                                              \
   return __stats_##f##_retval;
 
 /** Marks the beginning of a stats-enabled void function. This should come
@@ -200,28 +200,28 @@ extern Statistics all_stats;
   [&]() {
 /** Marks the end of a stats-enabled void function. This should come after the
  * last statement in the function. */
-#define STATS_FUNC_VOID_OUT(f)                                 \
-  }                                                            \
-  ();                                                          \
-  if (stats::all_stats.enabled()) {                            \
-    auto __stats_##f##_end = std::chrono::steady_clock::now(); \
-    uint64_t __stats_dur_ns =                                  \
-        std::chrono::duration_cast<std::chrono::nanoseconds>(  \
-            __stats_##f##_end - __stats_##f##_start)           \
-            .count();                                          \
-    stats::all_stats.f##_total_ns += __stats_dur_ns;           \
-    stats::all_stats.f##_call_count++;                         \
+#define STATS_FUNC_VOID_OUT(f)                                   \
+  }                                                              \
+  ();                                                            \
+  if (tiledb::sm::stats::all_stats.enabled()) {                  \
+    auto __stats_##f##_end = std::chrono::steady_clock::now();   \
+    uint64_t __stats_dur_ns =                                    \
+        std::chrono::duration_cast<std::chrono::nanoseconds>(    \
+            __stats_##f##_end - __stats_##f##_start)             \
+            .count();                                            \
+    tiledb::sm::stats::all_stats.f##_total_ns += __stats_dur_ns; \
+    tiledb::sm::stats::all_stats.f##_call_count++;               \
   }
 /** Adds a value to a counter stat. */
-#define STATS_COUNTER_ADD(counter_name, value)          \
-  if (stats::all_stats.enabled()) {                     \
-    stats::all_stats.counter_##counter_name += (value); \
+#define STATS_COUNTER_ADD(counter_name, value)                      \
+  if (tiledb::sm::stats::all_stats.enabled()) {                     \
+    tiledb::sm::stats::all_stats.counter_##counter_name += (value); \
   }
 
 /** Adds a value to a counter stat if the given condition is true. */
-#define STATS_COUNTER_ADD_IF(cond, counter_name, value) \
-  if (stats::all_stats.enabled() && (cond)) {           \
-    stats::all_stats.counter_##counter_name += (value); \
+#define STATS_COUNTER_ADD_IF(cond, counter_name, value)             \
+  if (tiledb::sm::stats::all_stats.enabled() && (cond)) {           \
+    tiledb::sm::stats::all_stats.counter_##counter_name += (value); \
   }
 
 /** Starts an ad hoc timer of the given name. */
