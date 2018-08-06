@@ -254,6 +254,12 @@ const std::string query_status_incomplete_str = "INCOMPLETE";
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
 
+/** TILEDB_JSON **/
+const std::string serialization_type_json_str = "JSON";
+
+/** TILEDB_CAPNP **/
+const std::string serialization_type_capnp_str = "CAPNP";
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 

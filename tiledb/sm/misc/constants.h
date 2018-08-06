@@ -236,6 +236,12 @@ extern const std::string query_status_incomplete_str;
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 
+/** TILEDB_JSON **/
+extern const std::string serialization_type_json_str;
+
+/** TILEDB_CAPNP **/
+extern const std::string serialization_type_capnp_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 
