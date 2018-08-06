@@ -82,6 +82,8 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/array.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/tiledb-rest.capnp.c++
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc

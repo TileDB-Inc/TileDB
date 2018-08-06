@@ -179,6 +179,13 @@
     TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 4,
 #endif
 
+#ifdef TILEDB_SERIALIZATION_TYPE_ENUM
+    /** Serialize to json */
+    TILEDB_SERIALIZATION_TYPE_ENUM(JSON),
+    /** Serialize to capnp */
+    TILEDB_SERIALIZATION_TYPE_ENUM(CAPNP),
+#endif
+
 #ifdef TILEDB_WALK_ORDER_ENUM
     /** Pre-order traversal */
     TILEDB_WALK_ORDER_ENUM(PREORDER) = 0,
