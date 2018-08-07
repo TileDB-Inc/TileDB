@@ -105,6 +105,317 @@ const URI& FragmentMetadata::array_uri() const {
   return array_schema_->array_uri();
 }
 
+Status FragmentMetadata::capnp(
+    ::FragmentMetadata::Builder* fragmentMetadataBuilder) const {
+  if (this->non_empty_domain_ != nullptr) {
+    ::DomainArray::Builder nonEmptyDomain =
+        fragmentMetadataBuilder->initNonEmptyDomain();
+
+    fragmentMetadataBuilder->setTimestamp(this->timestamp());
+    switch (this->array_schema_->domain()->type()) {
+      case Datatype::INT8: {
+        nonEmptyDomain.setInt8(kj::arrayPtr(
+            static_cast<const int8_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::UINT8: {
+        nonEmptyDomain.setUint8(kj::arrayPtr(
+            static_cast<const uint8_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::INT16: {
+        nonEmptyDomain.setInt16(kj::arrayPtr(
+            static_cast<const int16_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::UINT16: {
+        nonEmptyDomain.setUint16(kj::arrayPtr(
+            static_cast<const uint16_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::INT32: {
+        nonEmptyDomain.setInt32(kj::arrayPtr(
+            static_cast<const int32_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::UINT32: {
+        nonEmptyDomain.setUint32(kj::arrayPtr(
+            static_cast<const uint32_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::INT64: {
+        nonEmptyDomain.setInt64(kj::arrayPtr(
+            static_cast<const int64_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::UINT64: {
+        nonEmptyDomain.setUint64(kj::arrayPtr(
+            static_cast<const uint64_t*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::FLOAT32: {
+        nonEmptyDomain.setFloat32(kj::arrayPtr(
+            static_cast<const float*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      case Datatype::FLOAT64: {
+        nonEmptyDomain.setFloat64(kj::arrayPtr(
+            static_cast<const double*>(this->non_empty_domain()),
+            this->array_schema_->dim_num() * 2));
+        break;
+      }
+      default: {
+        return Status::Error("Unknown/Unsupported domain datatype in capnp");
+      }
+    }
+  }
+
+  if (!this->attribute_idx_map_.empty()) {
+    MapUInt32::Builder attributeIdxMapBuilder =
+        fragmentMetadataBuilder->initAttributeIdxMap();
+    auto attributeIdxMapBuilderEntries =
+        attributeIdxMapBuilder.initEntries(this->attribute_idx_map_.size());
+    size_t i = 0;
+    for (auto it : this->attribute_idx_map_) {
+      auto entry = attributeIdxMapBuilderEntries[i];
+      entry.setKey(it.first);
+      entry.setValue(it.second);
+      i++;
+    }
+  }
+
+  if (!this->attribute_uri_map_.empty()) {
+    Map<capnp::Text, capnp::Text>::Builder attributeUriMapBuilder =
+        fragmentMetadataBuilder->initAttributeUriMap();
+    auto attributeUriMapBuilderEntries =
+        attributeUriMapBuilder.initEntries(this->attribute_uri_map_.size());
+    size_t i = 0;
+    for (auto it : this->attribute_uri_map_) {
+      auto entry = attributeUriMapBuilderEntries[i];
+      entry.setKey(it.first);
+      entry.setValue(it.second.c_str());
+      i++;
+    }
+  }
+
+  if (!this->attribute_var_uri_map_.empty()) {
+    Map<capnp::Text, capnp::Text>::Builder attributeVarUriMapBuilder =
+        fragmentMetadataBuilder->initAttributeVarUriMap();
+    auto attributeVarUriMapBuilderEntries =
+        attributeVarUriMapBuilder.initEntries(
+            this->attribute_var_uri_map_.size());
+    size_t i = 0;
+    for (auto it : this->attribute_var_uri_map_) {
+      auto entry = attributeVarUriMapBuilderEntries[i];
+      entry.setKey(it.first);
+      entry.setValue(it.second.c_str());
+      i++;
+    }
+  }
+
+  if (this->bounding_coords_.size() > 0) {
+    ::FragmentMetadata::BoundingCoords::Builder boundingCoordsBuilder =
+        fragmentMetadataBuilder->initBoundingCoords();
+    switch (array_schema_->coords_type()) {
+      case Datatype::INT8: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initInt8(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          int8_t* bounds = static_cast<int8_t*>(this->bounding_coords_[i]);
+          ::capnp::List<int8_t>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::UINT8: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initUint8(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          uint8_t* bounds = static_cast<uint8_t*>(this->bounding_coords_[i]);
+          ::capnp::List<uint8_t>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::INT16: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initInt16(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          int16_t* bounds = static_cast<int16_t*>(this->bounding_coords_[i]);
+          ::capnp::List<int16_t>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::UINT16: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initUint16(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          uint16_t* bounds = static_cast<uint16_t*>(this->bounding_coords_[i]);
+          ::capnp::List<uint16_t>::Builder list =
+              boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::INT32: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initInt32(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          int32_t* bounds = static_cast<int32_t*>(this->bounding_coords_[i]);
+          ::capnp::List<int32_t>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::UINT32: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initUint32(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          uint32_t* bounds = static_cast<uint32_t*>(this->bounding_coords_[i]);
+          ::capnp::List<uint32_t>::Builder list =
+              boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::INT64: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initInt64(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          int64_t* bounds = static_cast<int64_t*>(this->bounding_coords_[i]);
+          ::capnp::List<int64_t>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::UINT64: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initUint64(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          uint64_t* bounds = static_cast<uint64_t*>(this->bounding_coords_[i]);
+          ::capnp::List<uint64_t>::Builder list =
+              boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::FLOAT32: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initFloat32(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          float* bounds = static_cast<float*>(this->bounding_coords_[i]);
+          ::capnp::List<float>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      case Datatype::FLOAT64: {
+        auto boundingCoordsLists =
+            boundingCoordsBuilder.initFloat64(this->bounding_coords_.size());
+        for (size_t i = 0; i < this->bounding_coords_.size(); i++) {
+          double* bounds = static_cast<double*>(this->bounding_coords_[i]);
+          ::capnp::List<double>::Builder list = boundingCoordsLists.init(i, 2);
+          list.set(0, bounds[0]);
+          list.set(1, bounds[1]);
+        }
+        break;
+      }
+      default: {
+        return Status::Error(
+            "Unknown/Unsupported coordinate datatype in capnp");
+      }
+    }
+  }
+
+  fragmentMetadataBuilder->setDense(this->dense());
+
+  if (!this->file_sizes_.empty())
+    fragmentMetadataBuilder->setFileSizes(
+        kj::arrayPtr(this->file_sizes_.data(), this->file_sizes_.size()));
+
+  if (!this->file_var_sizes_.empty())
+    fragmentMetadataBuilder->setFileVarSizes(kj::arrayPtr(
+        this->file_var_sizes_.data(), this->file_var_sizes_.size()));
+
+  if (!this->fragment_uri_.to_string().empty())
+    fragmentMetadataBuilder->setFragmentUri(this->fragment_uri_.c_str());
+
+  fragmentMetadataBuilder->setLastTileCellNum(this->last_tile_cell_num());
+
+  if (this->next_tile_offsets_.size() > 0)
+    fragmentMetadataBuilder->setNextTileOffsets(kj::arrayPtr(
+        this->next_tile_offsets_.data(), this->next_tile_offsets_.size()));
+
+  if (this->next_tile_var_offsets_.size() > 0)
+    fragmentMetadataBuilder->setNextTileVarOffsets(kj::arrayPtr(
+        this->next_tile_var_offsets_.data(),
+        this->next_tile_var_offsets_.size()));
+
+  fragmentMetadataBuilder->setTileIndexBase(this->tile_index_base_);
+
+  if (!this->tile_offsets_.empty()) {
+    ::capnp::List<capnp::List<uint64_t>>::Builder tileOffsetBuilder =
+        fragmentMetadataBuilder->initTileOffsets(this->tile_offsets_.size());
+    for (size_t i = 0; i < this->tile_offsets_.size(); i++) {
+      std::vector<uint64_t> offset = this->tile_offsets_[i];
+      ::capnp::List<uint64_t>::Builder offsetBuilder =
+          tileOffsetBuilder.init(i, offset.size());
+      for (size_t j = 0; j < offset.size(); j++)
+        offsetBuilder.set(j, offset[j]);
+    }
+  }
+
+  if (!this->tile_var_offsets_.empty()) {
+    ::capnp::List<capnp::List<uint64_t>>::Builder tileVarOffsetBuilder =
+        fragmentMetadataBuilder->initTileVarOffsets(
+            this->tile_var_offsets_.size());
+    for (size_t i = 0; i < this->tile_var_offsets_.size(); i++) {
+      std::vector<uint64_t> varOffset = this->tile_var_offsets_[i];
+      if (!varOffset.empty()) {
+        ::capnp::List<uint64_t>::Builder varOffsetBuilder =
+            tileVarOffsetBuilder.init(i, varOffset.size());
+        for (size_t j = 0; j < varOffset.size(); j++)
+          varOffsetBuilder.set(j, varOffset[j]);
+      }
+    }
+  }
+
+  if (!this->tile_var_sizes_.empty()) {
+    ::capnp::List<capnp::List<uint64_t>>::Builder tileVarSizesBuilder =
+        fragmentMetadataBuilder->initTileVarSizes(this->tile_var_sizes_.size());
+    for (size_t i = 0; i < this->tile_var_sizes_.size(); i++) {
+      std::vector<uint64_t> varSizes = this->tile_var_sizes_[i];
+      ::capnp::List<uint64_t>::Builder varSizesBuilder =
+          tileVarSizesBuilder.init(i, varSizes.size());
+      for (size_t j = 0; j < varSizes.size(); j++)
+        varSizesBuilder.set(j, varSizes[j]);
+    }
+  }
+
+  fragmentMetadataBuilder->setVersion(this->version_);
+
+  return Status::Ok();
+}
+
 void FragmentMetadata::set_bounding_coords(
     uint64_t tile, const void* bounding_coords) {
   // For easy reference
@@ -364,6 +675,394 @@ uint64_t FragmentMetadata::file_var_sizes(const std::string& attribute) const {
 
 const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
+}
+
+Status FragmentMetadata::from_capnp(
+    ::FragmentMetadata::Reader* fragmentMetadataReader) {
+  this->timestamp_ = fragmentMetadataReader->getTimestamp();
+  void* non_empty_domain = nullptr;
+  ::DomainArray::Reader nonEmptyDomain =
+      fragmentMetadataReader->getNonEmptyDomain();
+  switch (this->array_schema_->domain()->type()) {
+    case Datatype::INT8: {
+      if (nonEmptyDomain.hasInt8()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getInt8();
+        int8_t* non_empty_domain_local = new int8_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::UINT8: {
+      if (nonEmptyDomain.hasUint8()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getUint8();
+        uint8_t* non_empty_domain_local =
+            new uint8_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::INT16: {
+      if (nonEmptyDomain.hasInt16()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getInt16();
+        int16_t* non_empty_domain_local =
+            new int16_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::UINT16: {
+      if (nonEmptyDomain.hasUint16()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getUint16();
+        uint16_t* non_empty_domain_local =
+            new uint16_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::INT32: {
+      if (nonEmptyDomain.hasInt32()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getInt32();
+        int32_t* non_empty_domain_local =
+            new int32_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::UINT32: {
+      if (nonEmptyDomain.hasUint32()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getUint32();
+        uint32_t* non_empty_domain_local =
+            new uint32_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::INT64: {
+      if (nonEmptyDomain.hasInt64()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getInt64();
+        int64_t* non_empty_domain_local =
+            new int64_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::UINT64: {
+      if (nonEmptyDomain.hasUint64()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getUint64();
+        uint64_t* non_empty_domain_local =
+            new uint64_t[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::FLOAT32: {
+      if (nonEmptyDomain.hasFloat32()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getFloat32();
+        float* non_empty_domain_local = new float[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    case Datatype::FLOAT64: {
+      if (nonEmptyDomain.hasFloat64()) {
+        auto nonEmptyDomainList = nonEmptyDomain.getFloat64();
+        double* non_empty_domain_local = new double[nonEmptyDomainList.size()];
+        for (size_t i = 0; i < nonEmptyDomainList.size(); i++)
+          non_empty_domain_local[i] = nonEmptyDomainList[i];
+
+        non_empty_domain = non_empty_domain_local;
+      }
+      break;
+    }
+    default: {
+      return Status::Error("Unknown/Unsupported domain datatype in from_capnp");
+    }
+  }
+  if (non_empty_domain == nullptr)
+    return Status::Error("Non_empty_domain was empty!");
+
+  this->init(non_empty_domain);
+
+  // Free non_empty_domain because init function copies it
+  std::free(non_empty_domain);
+
+  ::MapUInt32::Reader attributeIdxMapReader =
+      fragmentMetadataReader->getAttributeIdxMap();
+  this->attribute_idx_map_.clear();
+  for (auto it : attributeIdxMapReader.getEntries()) {
+    this->attribute_idx_map_[it.getKey()] = it.getValue();
+  }
+
+  ::Map<capnp::Text, capnp::Text>::Reader attributeUriMapReader =
+      fragmentMetadataReader->getAttributeUriMap();
+  this->attribute_uri_map_.clear();
+  for (auto it : attributeUriMapReader.getEntries()) {
+    this->attribute_uri_map_[it.getKey()] = URI(it.getValue().cStr());
+  }
+
+  ::Map<capnp::Text, capnp::Text>::Reader attributeVarUriMapReader =
+      fragmentMetadataReader->getAttributeVarUriMap();
+  this->attribute_var_uri_map_.clear();
+  for (auto it : attributeVarUriMapReader.getEntries()) {
+    this->attribute_var_uri_map_[it.getKey()] = URI(it.getValue().cStr());
+  }
+
+  ::FragmentMetadata::BoundingCoords::Reader boundingCoordsReader =
+      fragmentMetadataReader->getBoundingCoords();
+  switch (array_schema_->coords_type()) {
+    case Datatype::INT8: {
+      if (boundingCoordsReader.hasInt8()) {
+        for (auto it : boundingCoordsReader.getInt8()) {
+          std::array<int8_t, 2>* boundingCoordinates =
+              new std::array<int8_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::UINT8: {
+      if (boundingCoordsReader.hasUint8()) {
+        for (auto it : boundingCoordsReader.getUint8()) {
+          std::array<int8_t, 2>* boundingCoordinates =
+              new std::array<int8_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::INT16: {
+      if (boundingCoordsReader.hasInt16()) {
+        for (auto it : boundingCoordsReader.getInt16()) {
+          std::array<int16_t, 2>* boundingCoordinates =
+              new std::array<int16_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::UINT16: {
+      if (boundingCoordsReader.hasUint16()) {
+        for (auto it : boundingCoordsReader.getUint16()) {
+          std::array<int16_t, 2>* boundingCoordinates =
+              new std::array<int16_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::INT32: {
+      if (boundingCoordsReader.hasInt32()) {
+        for (auto it : boundingCoordsReader.getInt32()) {
+          std::array<int32_t, 2>* boundingCoordinates =
+              new std::array<int32_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::UINT32: {
+      if (boundingCoordsReader.hasUint32()) {
+        for (auto it : boundingCoordsReader.getUint32()) {
+          std::array<int32_t, 2>* boundingCoordinates =
+              new std::array<int32_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::INT64: {
+      if (boundingCoordsReader.hasInt64()) {
+        for (auto it : boundingCoordsReader.getInt64()) {
+          std::array<int64_t, 2>* boundingCoordinates =
+              new std::array<int64_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::UINT64: {
+      if (boundingCoordsReader.hasUint64()) {
+        for (auto it : boundingCoordsReader.getUint64()) {
+          std::array<int64_t, 2>* boundingCoordinates =
+              new std::array<int64_t, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::FLOAT32: {
+      if (boundingCoordsReader.hasFloat32()) {
+        for (auto it : boundingCoordsReader.getFloat32()) {
+          std::array<float, 2>* boundingCoordinates =
+              new std::array<float, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    case Datatype::FLOAT64: {
+      if (boundingCoordsReader.hasFloat64()) {
+        for (auto it : boundingCoordsReader.getFloat64()) {
+          std::array<double, 2>* boundingCoordinates =
+              new std::array<double, 2>();
+          if (it.size() > 0) {
+            (*boundingCoordinates)[0] = it[0];
+            (*boundingCoordinates)[1] = it[1];
+          }
+          this->bounding_coords_.push_back(boundingCoordinates->data());
+        }
+      }
+      break;
+    }
+    default: {
+      return Status::Error(
+          "Unknown/Unsupported coordinate datatype in from_capnp");
+    }
+  }
+
+  this->dense_ = fragmentMetadataReader->getDense();
+
+  if (fragmentMetadataReader->hasFileSizes()) {
+    for (auto it : fragmentMetadataReader->getFileSizes()) {
+      this->file_sizes_.push_back(it);
+    }
+  }
+
+  if (fragmentMetadataReader->hasFileVarSizes()) {
+    for (auto it : fragmentMetadataReader->getFileVarSizes()) {
+      this->file_var_sizes_.push_back(it);
+    }
+  }
+
+  if (fragmentMetadataReader->hasFragmentUri()) {
+    this->fragment_uri_ = URI(fragmentMetadataReader->getFragmentUri().cStr());
+  }
+
+  this->last_tile_cell_num_ = fragmentMetadataReader->getLastTileCellNum();
+
+  if (fragmentMetadataReader->hasNextTileOffsets()) {
+    auto nextTileOffsets = fragmentMetadataReader->getNextTileOffsets();
+    // Resize vector so it matches incoming serialized data
+    this->next_tile_offsets_.resize(nextTileOffsets.size());
+    for (size_t i = 0; i < this->next_tile_offsets_.size(); i++)
+      this->next_tile_offsets_[i] = nextTileOffsets[i];
+  }
+
+  if (fragmentMetadataReader->hasNextTileVarOffsets()) {
+    auto nextTileVarOffsets = fragmentMetadataReader->getNextTileOffsets();
+    // Resize vector so it matches incoming serialized data
+    this->next_tile_var_offsets_.resize(nextTileVarOffsets.size());
+    for (size_t i = 0; i < this->next_tile_var_offsets_.size(); i++)
+      this->next_tile_var_offsets_[i] = nextTileVarOffsets[i];
+  }
+
+  this->tile_index_base_ = fragmentMetadataReader->getTileIndexBase();
+
+  if (fragmentMetadataReader->hasTileOffsets()) {
+    auto tileOffsets = fragmentMetadataReader->getTileOffsets();
+    // Resize vector so it matches incoming serialized data
+    this->tile_offsets_.resize(tileOffsets.size());
+    for (size_t i = 0; i < this->tile_offsets_.size(); i++) {
+      std::vector<uint64_t> tileOffsetsTmp;
+      for (auto it : tileOffsets[i]) {
+        tileOffsetsTmp.push_back(it);
+      }
+
+      this->tile_offsets_[i] = tileOffsetsTmp;
+    }
+  }
+
+  if (fragmentMetadataReader->hasTileVarOffsets()) {
+    auto tileVarOffsets = fragmentMetadataReader->getTileVarOffsets();
+    // Resize vector so it matches incoming serialized data
+    this->tile_var_offsets_.resize(tileVarOffsets.size());
+    for (size_t i = 0; i < this->tile_var_offsets_.size(); i++) {
+      std::vector<uint64_t> tileVarOffsetsTmp;
+      for (auto it : tileVarOffsets[i])
+        tileVarOffsetsTmp.push_back(it);
+
+      this->tile_var_offsets_[i] = tileVarOffsetsTmp;
+    }
+  }
+
+  if (fragmentMetadataReader->hasTileVarSizes()) {
+    auto tileVarSizes = fragmentMetadataReader->getTileVarSizes();
+    // Resize vector so it matches incoming serialized data
+    this->tile_var_sizes_.resize(tileVarSizes.size());
+    for (size_t i = 0; i < this->tile_var_sizes_.size(); i++) {
+      std::vector<uint64_t> tileVarSizesTmp;
+      for (auto it : tileVarSizes[i])
+        tileVarSizesTmp.push_back(it);
+
+      this->tile_var_sizes_[i] = tileVarSizesTmp;
+    }
+  }
+  this->version_ = fragmentMetadataReader->getVersion();
+
+  return Status::Ok();
 }
 
 template <class T>

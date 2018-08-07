@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 #include <iostream>
 
@@ -91,6 +92,82 @@ Tile::~Tile() {
 /*               API              */
 /* ****************************** */
 
+Status Tile::capnp(::Tile::Builder* tileBuilder) const {
+  STATS_FUNC_IN(serialization_tile_capnp);
+  tileBuilder->setType(datatype_str(this->type()));
+  tileBuilder->setCellSize(this->cell_size());
+  tileBuilder->setDimNum(this->dim_num());
+
+  ::Tile::Buffer::Builder bufferBuilder = tileBuilder->initBuffer();
+
+  if (this->buffer() != nullptr) {
+    uint64_t type_size = datatype_size(this->type());
+    switch (this->type()) {
+      case tiledb::sm::Datatype::INT8:
+        bufferBuilder.setInt8(kj::arrayPtr(
+            static_cast<int8_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::UINT8:
+        bufferBuilder.setUint8(kj::arrayPtr(
+            static_cast<uint8_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::INT16:
+        bufferBuilder.setInt16(kj::arrayPtr(
+            static_cast<int16_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::UINT16:
+        bufferBuilder.setUint16(kj::arrayPtr(
+            static_cast<uint16_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::INT32:
+        bufferBuilder.setInt32(kj::arrayPtr(
+            static_cast<int32_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::UINT32:
+        bufferBuilder.setUint32(kj::arrayPtr(
+            static_cast<uint32_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::INT64:
+        bufferBuilder.setInt64(kj::arrayPtr(
+            static_cast<int64_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::UINT64:
+        bufferBuilder.setUint64(kj::arrayPtr(
+            static_cast<uint64_t*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::FLOAT32:
+        bufferBuilder.setFloat32(kj::arrayPtr(
+            static_cast<float*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      case tiledb::sm::Datatype::FLOAT64:
+        bufferBuilder.setFloat64(kj::arrayPtr(
+            static_cast<double*>(this->buffer()->data()),
+            this->buffer()->size() / type_size));
+        break;
+      default:
+        break;
+    }
+  }
+
+  return Status::Ok();
+  STATS_FUNC_OUT(serialization_tile_capnp);
+}
+
 uint64_t Tile::cell_num() const {
   return size() / cell_size_;
 }
@@ -106,6 +183,179 @@ Status Tile::init(Datatype type, uint64_t cell_size, unsigned int dim_num) {
         Status::TileError("Cannot initialize tile; Buffer allocation failed"));
 
   return Status::Ok();
+}
+
+Status Tile::from_capnp(::Tile::Reader* tileReader) {
+  STATS_FUNC_IN(serialization_tile_from_capnp);
+  Status status = Status::Ok();
+
+  Datatype datatype = Datatype::ANY;
+  status = datatype_enum(tileReader->getType().cStr(), &datatype);
+  if (!status.ok())
+    return status;
+
+  type_ = datatype;
+  cell_size_ = tileReader->getCellSize();
+
+  dim_num_ = tileReader->getDimNum();
+
+  if (tileReader->getBuffer().totalSize().wordCount > 0) {
+    uint64_t type_size = datatype_size(this->type());
+    ::Tile::Buffer::Reader bufferReader = tileReader->getBuffer();
+    switch (this->type()) {
+      case tiledb::sm::Datatype::INT8: {
+        if (bufferReader.hasInt8()) {
+          auto buffer = bufferReader.getInt8();
+          std::vector<int8_t>* new_buffer =
+              new std::vector<int8_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::UINT8: {
+        if (bufferReader.hasUint8()) {
+          auto buffer = bufferReader.getUint8();
+          std::vector<uint8_t>* new_buffer =
+              new std::vector<uint8_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT16: {
+        if (bufferReader.hasInt16()) {
+          auto buffer = bufferReader.getInt16();
+          std::vector<int16_t>* new_buffer =
+              new std::vector<int16_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::UINT16: {
+        if (bufferReader.hasUint16()) {
+          auto buffer = bufferReader.getUint16();
+          std::vector<uint16_t>* new_buffer =
+              new std::vector<uint16_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT32: {
+        if (bufferReader.hasInt32()) {
+          auto buffer = bufferReader.getInt32();
+          std::vector<int32_t>* new_buffer =
+              new std::vector<int32_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::UINT32: {
+        if (bufferReader.hasUint32()) {
+          auto buffer = bufferReader.getUint32();
+          std::vector<uint32_t>* new_buffer =
+              new std::vector<uint32_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT64: {
+        if (bufferReader.hasInt64()) {
+          auto buffer = bufferReader.getInt64();
+          std::vector<int64_t>* new_buffer =
+              new std::vector<int64_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::UINT64: {
+        if (bufferReader.hasUint64()) {
+          auto buffer = bufferReader.getUint64();
+          std::vector<uint64_t>* new_buffer =
+              new std::vector<uint64_t>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT32: {
+        if (bufferReader.hasFloat32()) {
+          auto buffer = bufferReader.getFloat32();
+          std::vector<float>* new_buffer =
+              new std::vector<float>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT64: {
+        if (bufferReader.hasFloat64()) {
+          auto buffer = bufferReader.getFloat64();
+          std::vector<double>* new_buffer =
+              new std::vector<double>(buffer.size());
+          for (size_t i = 0; i < buffer.size(); i++)
+            (*new_buffer)[i] = buffer[i];
+
+          // Set buffer
+          this->buffer_ = new Buffer(
+              new_buffer->data(), new_buffer->size() * type_size, true);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return status;
+  STATS_FUNC_OUT(serialization_tile_from_capnp);
 }
 
 Status Tile::init(

@@ -34,11 +34,13 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/status.h"
 
+#include <capnp/message.h>
 #include <vector>
 
 namespace tiledb {
@@ -75,6 +77,13 @@ class FragmentMetadata {
 
   /** Returns the array URI. */
   const URI& array_uri() const;
+
+  /**
+   * Serialize a Fragment to capnp format
+   * @param builder
+   * @return  Status of fragment
+   */
+  Status capnp(::FragmentMetadata::Builder* fragmentMetadataBuilder) const;
 
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
@@ -222,6 +231,13 @@ class FragmentMetadata {
 
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
+
+  /**
+   * Deserialize from a capnp message
+   * @param writerBuilder
+   * @return
+   */
+  Status from_capnp(::FragmentMetadata::Reader* fragmentMetadataReader);
 
   /**
    * Given as input global tile coordinates, it retrieves the tile position

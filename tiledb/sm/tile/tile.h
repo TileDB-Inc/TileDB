@@ -33,12 +33,15 @@
 #ifndef TILEDB_TILE_H
 #define TILEDB_TILE_H
 
+#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
+#include <capnp/message.h>
 #include <cinttypes>
+#include <memory>
 
 namespace tiledb {
 namespace sm {
@@ -98,6 +101,19 @@ class Tile {
 
   /** Returns the number of cells stored in the tile. */
   uint64_t cell_num() const;
+
+  /**
+   * Serialize a writer to capnp format
+   * @return unique_prt with capnp message;
+   */
+  Status capnp(::Tile::Builder* tileBuilder) const;
+
+  /**
+   * Deserialize from a capnp message
+   * @param writerBuilder
+   * @return
+   */
+  Status from_capnp(::Tile::Reader* tileReader);
 
   /**
    * Tile initializer.

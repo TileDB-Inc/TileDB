@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2018 tiledb::sm::TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `FilterPipeline` class.
+ * Tests the `tiledb::sm::FilterPipeline` class.
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -53,11 +53,11 @@ using namespace tiledb::sm;
  * Simple filter that modifies the input stream by adding 1 to every input
  * element.
  */
-class Add1InPlace : public Filter {
+class Add1InPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1InPlace()
-      : Filter(FilterType::FILTER_NONE) {
+      : tiledb::sm::Filter(FilterType::FILTER_NONE) {
   }
 
   Status run_forward(
@@ -113,7 +113,7 @@ class Add1InPlace : public Filter {
  * Simple filter that increments every element of the input stream, writing the
  * output to a new buffer. Does not modify the input stream.
  */
-class Add1OutOfPlace : public Filter {
+class Add1OutOfPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1OutOfPlace()
@@ -194,7 +194,7 @@ class Add1OutOfPlace : public Filter {
  * Simple filter that modifies the input stream by adding a constant value to
  * every input element.
  */
-class AddNInPlace : public Filter {
+class AddNInPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   AddNInPlace()
@@ -267,7 +267,7 @@ class AddNInPlace : public Filter {
  * Simple filter which computes the sum of its input and prepends the sum
  * to the output. In reverse execute, checks that the sum is correct.
  */
-class PseudoChecksumFilter : public Filter {
+class PseudoChecksumFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   PseudoChecksumFilter()
@@ -346,7 +346,7 @@ class PseudoChecksumFilter : public Filter {
  * output to a new buffer. The input metadata is treated as a part of the input
  * data.
  */
-class Add1IncludingMetadataFilter : public Filter {
+class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
   Add1IncludingMetadataFilter()
@@ -469,9 +469,9 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.run_forward(&tile).ok());
 
   // Check new size and number of chunks
@@ -514,14 +514,14 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   // Save the original allocation so that we can check that after running
   // through the pipeline, the tile buffer points to a different memory
   // region.
   auto original_alloc = tile.data();
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   SECTION("- Single stage") {
@@ -609,9 +609,9 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
 
   SECTION("- Single stage") {
@@ -698,9 +698,9 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -748,21 +748,21 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
-  Dimension dim;
+  tiledb::sm::Dimension dim;
   dim.set_domain(dim_dom);
-  Domain domain;
+  tiledb::sm::Domain domain;
   domain.add_dimension(&dim);
-  ArraySchema schema;
-  Attribute attr("attr", Datatype::UINT64);
+  tiledb::sm::ArraySchema schema;
+  tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   schema.add_attribute(&attr);
   schema.set_domain(&domain);
   schema.init();
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
 
   SECTION("- Simple") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -834,9 +834,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   SECTION("- Single stage") {
@@ -945,9 +945,9 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(AddNInPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -998,9 +998,9 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
   CHECK(pipeline.add_filter(AddNInPlace()).ok());
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -1012,7 +1012,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   add_n->set_increment(2);
 
   // Copy pipeline
-  FilterPipeline pipeline_copy(pipeline);
+  tiledb::sm::FilterPipeline pipeline_copy(pipeline);
 
   // Check +N filter cloned correctly
   auto* add_n_2 = pipeline_copy.get_filter<AddNInPlace>();
@@ -1061,7 +1061,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   EncryptionKey encryption_key;
   REQUIRE(encryption_key
@@ -1073,7 +1073,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
   // List of potential filters to use. All of these filters can occur anywhere
   // in the pipeline.
-  std::vector<std::function<Filter*(void)>> constructors = {
+  std::vector<std::function<tiledb::sm::Filter*(void)>> constructors = {
       []() { return new Add1InPlace(); },
       []() { return new Add1OutOfPlace(); },
       []() { return new Add1IncludingMetadataFilter(); },
@@ -1088,13 +1088,13 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
   };
 
   // List of potential filters that must occur at the beginning of the pipeline.
-  std::vector<std::function<Filter*(void)>> constructors_first = {
+  std::vector<std::function<tiledb::sm::Filter*(void)>> constructors_first = {
       // Pos-delta would (correctly) return error after e.g. compression.
       []() { return new PositiveDeltaFilter(); }};
 
   for (int i = 0; i < 100; i++) {
     // Construct a random pipeline
-    FilterPipeline pipeline;
+    tiledb::sm::FilterPipeline pipeline;
     const unsigned max_num_filters = 6;
     std::random_device rd;
     auto pipeline_seed = rd();
@@ -1109,11 +1109,11 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     for (unsigned j = 0; j < num_filters; j++) {
       if (j == 0 && rng_bool(gen) == 1) {
         auto idx = (unsigned)rng_constructors_first(gen);
-        Filter* filter = constructors_first[idx]();
+        tiledb::sm::Filter* filter = constructors_first[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
       } else {
         auto idx = (unsigned)rng_constructors(gen);
-        Filter* filter = constructors[idx]();
+        tiledb::sm::Filter* filter = constructors[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
       }
     }
@@ -1135,9 +1135,9 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
 
   SECTION("- Single stage") {
@@ -1203,7 +1203,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     }
     CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-    Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+    tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
     CHECK(pipeline.run_reverse(&tile).ok());
@@ -1231,7 +1231,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     }
     CHECK(buff.size() == nelts * sizeof(int32_t));
 
-    Tile tile(Datatype::INT32, sizeof(int32_t), 0, &buff, false);
+    tiledb::sm::Tile tile(Datatype::INT32, sizeof(int32_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
     CHECK(pipeline.run_reverse(&tile).ok());
@@ -1250,7 +1250,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     }
     CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-    Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+    tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
     CHECK(pipeline.run_reverse(&tile).ok());
@@ -1269,9 +1269,9 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
 
   SECTION("- Single stage") {
@@ -1343,9 +1343,9 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -1363,7 +1363,8 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
     for (uint32_t i = 0; i < nelts; i++)
       CHECK(buff2.write(&i, sizeof(uint32_t)).ok());
     CHECK(buff2.size() == nelts * sizeof(uint32_t));
-    Tile tile2(Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
+    tiledb::sm::Tile tile2(
+        Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
 
     CHECK(pipeline.run_forward(&tile2).ok());
     CHECK(pipeline.run_reverse(&tile2).ok());
@@ -1382,9 +1383,9 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  FilterPipeline pipeline;
+  tiledb::sm::FilterPipeline pipeline;
   CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
 
   SECTION("- Single stage") {
@@ -1402,7 +1403,8 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
     for (uint32_t i = 0; i < nelts; i++)
       CHECK(buff2.write(&i, sizeof(uint32_t)).ok());
     CHECK(buff2.size() == nelts * sizeof(uint32_t));
-    Tile tile2(Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
+    tiledb::sm::Tile tile2(
+        Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
 
     CHECK(pipeline.run_forward(&tile2).ok());
     CHECK(pipeline.run_reverse(&tile2).ok());
@@ -1421,10 +1423,10 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+  tiledb::sm::Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   SECTION("- AES-256-GCM") {
-    FilterPipeline pipeline;
+    tiledb::sm::FilterPipeline pipeline;
     CHECK(pipeline.add_filter(EncryptionAES256GCMFilter()).ok());
 
     // No key set

@@ -33,6 +33,7 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
+#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -295,6 +296,13 @@ class Reader {
   AttributeBuffer buffer(const std::string& attribute) const;
 
   /**
+   * Serialize a writer to capnp format
+   * @param writerBuilder
+   * @return  Status
+   */
+  Status capnp(::QueryReader::Builder* queryReaderBuilder) const;
+
+  /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
    * partitions in the read state have not been processed or there
    * was some buffer overflow.
@@ -303,6 +311,13 @@ class Reader {
 
   /** Returns the number of fragments involved in the (read) query. */
   unsigned fragment_num() const;
+
+  /**
+   * Deserialize from a capnp message
+   * @param writerReader
+   * @return Status
+   */
+  Status from_capnp(::QueryReader::Reader* queryReader);
 
   /** Returns a vector with the fragment URIs. */
   std::vector<URI> fragment_uris() const;

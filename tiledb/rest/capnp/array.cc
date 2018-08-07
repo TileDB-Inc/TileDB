@@ -102,7 +102,7 @@ tiledb::sm::Status filter_to_capnp(
 }
 
 std::unique_ptr<tiledb::sm::Filter> filter_from_capnp(
-    Filter::Reader* filterReader) {
+    const Filter::Reader* filterReader) {
   STATS_FUNC_IN(serialization_filter_from_capnp);
   tiledb::sm::FilterType filterType = tiledb::sm::FilterType::FILTER_NONE;
   auto st =

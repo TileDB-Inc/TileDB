@@ -32,6 +32,7 @@
  */
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/rest/capnp/array.h"
+#include "tiledb/rest/capnp/query.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -2383,6 +2384,60 @@ int32_t tiledb_query_get_type(
 
   *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
 
+  return TILEDB_OK;
+}
+
+int tiledb_query_serialize(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    char** serialized_string,
+    uint64_t* serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  tiledb::sm::Status st = tiledb::rest::query_serialize(
+      query->query_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int tiledb_query_deserialize(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    const char* serialized_string,
+    const uint64_t serialized_string_length) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  tiledb::sm::Status st = tiledb::rest::query_deserialize(
+      query->query_,
+      (tiledb::sm::SerializationType)serialize_type,
+      serialized_string,
+      serialized_string_length);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 

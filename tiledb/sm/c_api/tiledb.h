@@ -2760,6 +2760,56 @@ TILEDB_EXPORT int32_t tiledb_query_get_status(
 TILEDB_EXPORT int32_t tiledb_query_get_type(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type);
 
+/**
+ * Serializes the query
+ *
+ * **Example:**
+ *
+ * The following serializes the query to give json string.
+ *
+ * @code{.c}
+ * tiledb_query_serialize(ctx, query, TILEDB_JSON, &json_string,
+ * &json_string_length);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param serialization_type format to serialization to
+ * @param json_string char* pointer to store json string in
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_query_serialize(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    char** serialized_string,
+    uint64_t* serialized_string_length);
+
+/**
+ * Deserializes the query
+ *
+ * **Example:**
+ *
+ * The following de-serializes the query from a json string.
+ *
+ * @code{.c}
+ * tiledb_query_deserialize(ctx, query, TILEDB_JSON, json_string,
+ * json_string_length);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object must be alloc'ed initially.
+ * @param serialization_type format to serialization to
+ * @param json_string char* which stores the json string
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_query_deserialize(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    const char* serialized_string,
+    const uint64_t serialized_string_length);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

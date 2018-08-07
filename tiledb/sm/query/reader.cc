@@ -116,6 +116,237 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
   return attrbuf->second;
 }
 
+Status Reader::capnp(::QueryReader::Builder* queryReaderBuilder) const {
+  if (!this->fragment_metadata_.empty()) {
+    capnp::List<::FragmentMetadata>::Builder fragmentMetadataBuilder =
+        queryReaderBuilder->initFragmentMetadata(
+            this->fragment_metadata_.size());
+    for (size_t i = 0; i < this->fragment_metadata_.size(); i++) {
+      ::FragmentMetadata::Builder builder = fragmentMetadataBuilder[i];
+      Status st = this->fragment_metadata_[i]->capnp(&builder);
+      if (!st.ok())
+        return st;
+    }
+  }
+
+  if (this->read_state_.initialized_ == true) {
+    ::ReadState::Builder readStateBuilder = queryReaderBuilder->initReadState();
+
+    readStateBuilder.setInitialized(this->read_state_.initialized_);
+    readStateBuilder.setOverflowed(this->read_state_.overflowed_);
+
+    auto coords_type = array_schema_->coords_type();
+    auto subarray_size = 2 * this->array_schema()->coords_size();
+    if (this->read_state_.cur_subarray_partition_ != nullptr) {
+      ::DomainArray::Builder curSubarrayPartitionBuilder =
+          readStateBuilder.initCurSubarrayPartition();
+      // Allocate subarray
+      switch (coords_type) {
+        case Datatype::INT8: {
+          curSubarrayPartitionBuilder.setInt8(kj::arrayPtr(
+              static_cast<int8_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::UINT8: {
+          curSubarrayPartitionBuilder.setUint8(kj::arrayPtr(
+              static_cast<uint8_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::INT16: {
+          curSubarrayPartitionBuilder.setInt16(kj::arrayPtr(
+              static_cast<int16_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::UINT16: {
+          curSubarrayPartitionBuilder.setUint16(kj::arrayPtr(
+              static_cast<uint16_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::INT32: {
+          curSubarrayPartitionBuilder.setInt32(kj::arrayPtr(
+              static_cast<int32_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::UINT32: {
+          curSubarrayPartitionBuilder.setUint32(kj::arrayPtr(
+              static_cast<uint32_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::INT64: {
+          curSubarrayPartitionBuilder.setInt64(kj::arrayPtr(
+              static_cast<int64_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::UINT64: {
+          curSubarrayPartitionBuilder.setUint64(kj::arrayPtr(
+              static_cast<uint64_t*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::FLOAT32: {
+          curSubarrayPartitionBuilder.setFloat32(kj::arrayPtr(
+              static_cast<float*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        case Datatype::FLOAT64: {
+          curSubarrayPartitionBuilder.setFloat64(kj::arrayPtr(
+              static_cast<double*>(this->read_state_.cur_subarray_partition_),
+              subarray_size));
+          break;
+        }
+        default: {
+          return Status::ReaderError(
+              "Unknown datatype for current subarray partition in capnp");
+        }
+      }
+    }
+
+    if (!this->read_state_.subarray_partitions_.empty()) {
+      auto subarray_length = 2 * this->array_schema()->dim_num();
+      // SubarrayPartitions
+      ::ReadState::SubarrayPartitions::Builder subarrayPartitionsBuilder =
+          readStateBuilder.initSubarrayPartitions();
+      size_t subarrayPartitionsSize =
+          this->read_state_.subarray_partitions_.size();
+      switch (coords_type) {
+        case Datatype::INT8: {
+          capnp::List<capnp::List<int8_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initInt8(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<int8_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<int8_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::UINT8: {
+          capnp::List<capnp::List<uint8_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initUint8(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<uint8_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<uint8_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::INT16: {
+          capnp::List<capnp::List<int16_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initInt16(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<int16_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<int16_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::UINT16: {
+          capnp::List<capnp::List<uint16_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initUint16(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<uint16_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<uint16_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::INT32: {
+          capnp::List<capnp::List<int32_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initInt32(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<int32_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<int32_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::UINT32: {
+          capnp::List<capnp::List<uint32_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initUint32(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<uint32_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<uint32_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::INT64: {
+          capnp::List<capnp::List<int64_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initInt64(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<int64_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<int64_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::UINT64: {
+          capnp::List<capnp::List<uint64_t>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initUint64(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<uint64_t>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<uint64_t*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::FLOAT32: {
+          capnp::List<capnp::List<float>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initFloat32(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<float>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<float*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        case Datatype::FLOAT64: {
+          capnp::List<capnp::List<double>>::Builder partitionsBuilder =
+              subarrayPartitionsBuilder.initFloat64(subarrayPartitionsSize);
+          size_t i = 0;
+          for (auto subarray : this->read_state_.subarray_partitions_) {
+            capnp::List<double>::Builder list = partitionsBuilder[i];
+            for (size_t j = 0; j < subarray_length; j++)
+              list.set(j, static_cast<double*>(subarray)[j]);
+            i++;
+          }
+          break;
+        }
+        default: {
+          return Status::ReaderError(
+              "Unknown datatype for subarray partitions in capnp");
+        }
+      }
+    }
+  }
+  return Status::Ok();
+}
+
 bool Reader::incomplete() const {
   return read_state_.overflowed_ ||
          read_state_.cur_subarray_partition_ != nullptr;
@@ -165,7 +396,433 @@ Status Reader::get_buffer(
     *buffer_val = it->second.buffer_var_;
     *buffer_val_size = it->second.buffer_var_size_;
   }
+  return Status::Ok();
+}
 
+Status Reader::from_capnp(::QueryReader::Reader* queryReader) {
+  if (queryReader->hasFragmentMetadata()) {
+    capnp::List<::FragmentMetadata>::Reader fragmentMetadataReader =
+        queryReader->getFragmentMetadata();
+    // Clear existing fragmentMetadata so we can use deserialized data
+    this->fragment_metadata_.clear();
+    for (auto fragmentReader : fragmentMetadataReader) {
+      // TODO: Memory leak! Fragment metadata is never deleted.. would be nice
+      // to change these to shared ptr's
+      FragmentMetadata* fragment = new FragmentMetadata(
+          this->array_schema(),
+          this->array_schema()->array_type() == ArrayType::DENSE,
+          URI(""),
+          this->array_->timestamp());
+      Status st = fragment->from_capnp(&fragmentReader);
+      if (!st.ok())
+        return st;
+      this->fragment_metadata_.push_back(fragment);
+    }
+  }
+
+  if (queryReader->hasReadState()) {
+    ::ReadState::Reader readStateReader = queryReader->getReadState();
+
+    this->read_state_.initialized_ = readStateReader.getInitialized();
+    this->read_state_.overflowed_ = readStateReader.getOverflowed();
+
+    ::DomainArray::Reader curSubarrayPartitionReader =
+        readStateReader.getCurSubarrayPartition();
+    // Allocate subarray
+    auto subarray_size = 2 * this->array_schema_->coords_size();
+    this->read_state_.cur_subarray_partition_ = std::malloc(subarray_size);
+    if (this->read_state_.cur_subarray_partition_ == nullptr)
+      return Status::ReaderError(
+          "Cannot initialize read state current subarray partition; Memory "
+          "allocation failed");
+    auto coords_type = array_schema_->coords_type();
+    switch (coords_type) {
+      case Datatype::INT8: {
+        if (curSubarrayPartitionReader.hasInt8()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getInt8();
+          // Vector to temporary store current sub array before copying
+          std::vector<int8_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::UINT8: {
+        if (curSubarrayPartitionReader.hasUint8()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getUint8();
+          // Vector to temporary store current sub array before copying
+          std::vector<uint8_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::INT16: {
+        if (curSubarrayPartitionReader.hasInt16()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getInt16();
+          // Vector to temporary store current sub array before copying
+          std::vector<int16_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::UINT16: {
+        if (curSubarrayPartitionReader.hasUint16()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getUint16();
+          // Vector to temporary store current sub array before copying
+          std::vector<uint16_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::INT32: {
+        if (curSubarrayPartitionReader.hasInt32()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getInt32();
+          // Vector to temporary store current sub array before copying
+          std::vector<int32_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::UINT32: {
+        if (curSubarrayPartitionReader.hasUint32()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getUint32();
+          // Vector to temporary store current sub array before copying
+          std::vector<uint32_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::INT64: {
+        if (curSubarrayPartitionReader.hasInt64()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getInt64();
+          // Vector to temporary store current sub array before copying
+          std::vector<int64_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::UINT64: {
+        if (curSubarrayPartitionReader.hasUint64()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getUint64();
+          // Vector to temporary store current sub array before copying
+          std::vector<uint64_t> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::FLOAT32: {
+        if (curSubarrayPartitionReader.hasFloat32()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getFloat32();
+          // Vector to temporary store current sub array before copying
+          std::vector<float> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      case Datatype::FLOAT64: {
+        if (curSubarrayPartitionReader.hasFloat64()) {
+          // Get current subarray from reader
+          auto currSubArray = curSubarrayPartitionReader.getFloat64();
+          // Vector to temporary store current sub array before copying
+          std::vector<double> curSubarrayVecTmp(currSubArray.size());
+          for (size_t i = 0; i < currSubArray.size(); i++)
+            curSubarrayVecTmp[i] = currSubArray[i];
+          std::memcpy(
+              this->read_state_.cur_subarray_partition_,
+              curSubarrayVecTmp.data(),
+              subarray_size);
+        } else {
+          std::free(this->read_state_.cur_subarray_partition_);
+          this->read_state_.cur_subarray_partition_ = nullptr;
+        }
+        break;
+      }
+      default: {
+        return Status::ReaderError(
+            "Unknown datatype for current subarray partition in from_capnp");
+      }
+    }
+
+    // SubarrayPartitions
+    ::ReadState::SubarrayPartitions::Reader subarrayPartitionsReader =
+        readStateReader.getSubarrayPartitions();
+    switch (coords_type) {
+      case Datatype::INT8: {
+        if (subarrayPartitionsReader.hasInt8()) {
+          capnp::List<capnp::List<int8_t>>::Reader list =
+              subarrayPartitionsReader.getInt8();
+          for (capnp::List<int8_t>::Reader subarrayPartition : list) {
+            int8_t* subarray = static_cast<int8_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::UINT8: {
+        if (subarrayPartitionsReader.hasUint8()) {
+          capnp::List<capnp::List<uint8_t>>::Reader list =
+              subarrayPartitionsReader.getUint8();
+          for (capnp::List<uint8_t>::Reader subarrayPartition : list) {
+            uint8_t* subarray = static_cast<uint8_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::INT16: {
+        if (subarrayPartitionsReader.hasInt16()) {
+          capnp::List<capnp::List<int16_t>>::Reader list =
+              subarrayPartitionsReader.getInt16();
+          for (capnp::List<int16_t>::Reader subarrayPartition : list) {
+            int16_t* subarray = static_cast<int16_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::UINT16: {
+        if (subarrayPartitionsReader.hasUint16()) {
+          capnp::List<capnp::List<uint16_t>>::Reader list =
+              subarrayPartitionsReader.getUint16();
+          for (capnp::List<uint16_t>::Reader subarrayPartition : list) {
+            uint16_t* subarray = static_cast<uint16_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::INT32: {
+        if (subarrayPartitionsReader.hasInt32()) {
+          capnp::List<capnp::List<int32_t>>::Reader list =
+              subarrayPartitionsReader.getInt32();
+          for (capnp::List<int32_t>::Reader subarrayPartition : list) {
+            int32_t* subarray = static_cast<int32_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::UINT32: {
+        if (subarrayPartitionsReader.hasUint32()) {
+          capnp::List<capnp::List<uint32_t>>::Reader list =
+              subarrayPartitionsReader.getUint32();
+          for (capnp::List<uint32_t>::Reader subarrayPartition : list) {
+            uint32_t* subarray = static_cast<uint32_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::INT64: {
+        if (subarrayPartitionsReader.hasInt64()) {
+          capnp::List<capnp::List<int64_t>>::Reader list =
+              subarrayPartitionsReader.getInt64();
+          for (capnp::List<int64_t>::Reader subarrayPartition : list) {
+            int64_t* subarray = static_cast<int64_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::UINT64: {
+        if (subarrayPartitionsReader.hasUint64()) {
+          capnp::List<capnp::List<uint64_t>>::Reader list =
+              subarrayPartitionsReader.getUint64();
+          for (capnp::List<uint64_t>::Reader subarrayPartition : list) {
+            uint64_t* subarray = static_cast<uint64_t*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::FLOAT32: {
+        if (subarrayPartitionsReader.hasFloat32()) {
+          capnp::List<capnp::List<float>>::Reader list =
+              subarrayPartitionsReader.getFloat32();
+          for (capnp::List<float>::Reader subarrayPartition : list) {
+            float* subarray = static_cast<float*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      case Datatype::FLOAT64: {
+        if (subarrayPartitionsReader.hasFloat64()) {
+          capnp::List<capnp::List<double>>::Reader list =
+              subarrayPartitionsReader.getFloat64();
+          for (capnp::List<double>::Reader subarrayPartition : list) {
+            double* subarray = static_cast<double*>(std::malloc(
+                subarrayPartition.size() * datatype_size(coords_type)));
+            if (subarray == nullptr)
+              return Status::ReaderError(
+                  "Cannot initialize read state subarray partitions; Memory "
+                  "allocation failed");
+            for (size_t i = 0; i < subarrayPartition.size(); i++)
+              subarray[i] = subarrayPartition[i];
+
+            this->read_state_.subarray_partitions_.push_back(subarray);
+          }
+        }
+        break;
+      }
+      default: {
+        return Status::ReaderError(
+            "Unknown datatype for subarray partitions in from_capnp");
+      }
+    }
+  }
   return Status::Ok();
 }
 
