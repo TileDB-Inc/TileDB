@@ -102,7 +102,7 @@ tiledb::sm::Status dimension_to_capnp(
     dimensionBuilder->setName(d->name());
     dimensionBuilder->setType(tiledb::sm::datatype_str(d->type()));
     dimensionBuilder->setNullTileExtent(d->tile_extent() == nullptr);
-    Dimension::Domain::Builder domain = dimensionBuilder->initDomain();
+    DomainArray::Builder domain = dimensionBuilder->initDomain();
     Dimension::TileExtent::Builder tile_extent =
         dimensionBuilder->initTileExtent();
     switch (d->type()) {
