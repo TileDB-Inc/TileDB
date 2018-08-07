@@ -541,17 +541,26 @@ Status Reader::compute_dense_cell_ranges(
 
   // For easy reference
   auto fragment_num = fragment_metadata_.size();
+  auto layout =
+      (layout_ == Layout::GLOBAL_ORDER) ? array_schema_->cell_order() : layout_;
+  auto same_layout = (layout == array_schema_->cell_order());
+  DenseCellRangeCmp<T> comp(array_schema_->domain(), layout);
 
   // Populate queue - stores pairs of (start, fragment_num-fragment_id)
   std::priority_queue<
       DenseCellRange<T>,
       std::vector<DenseCellRange<T>>,
       DenseCellRangeCmp<T>>
-      pq;
+      pq((comp));
   for (unsigned i = 0; i < fragment_num; ++i) {
     if (!frag_its[i].end())
       pq.emplace(
-          i, tile_coords, frag_its[i].range_start(), frag_its[i].range_end());
+          i,
+          tile_coords,
+          frag_its[i].range_start(),
+          frag_its[i].range_end(),
+          (same_layout) ? nullptr : frag_its[i].coords_start(),
+          (same_layout) ? nullptr : frag_its[i].coords_end());
   }
 
   // Iterate over the queue and create dense cell ranges
@@ -562,20 +571,23 @@ Status Reader::compute_dense_cell_ranges(
     pq.pop();
 
     // Popped must be ignored and a new range must be fetched
-    if (popped.end_ < start) {
+    if (comp.precedes(popped, start, DenseCellRangeCmp<T>::RANGE_END)) {
       ++frag_its[fidx];
       if (!frag_its[fidx].end())
         pq.emplace(
             fidx,
             tile_coords,
             frag_its[fidx].range_start(),
-            frag_its[fidx].range_end());
+            frag_its[fidx].range_end(),
+            (same_layout) ? nullptr : frag_its[fidx].coords_start(),
+            (same_layout) ? nullptr : frag_its[fidx].coords_end());
       continue;
     }
 
     // The search needs to stop - add current range as empty result
-    if (popped.start_ > end) {
-      dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
+    if (comp.succeeds(popped, end, DenseCellRangeCmp<T>::RANGE_START)) {
+      dense_cell_ranges->emplace_back(
+          -1, tile_coords, start, end, nullptr, nullptr);
       return Status::Ok();
     }
 
@@ -587,7 +599,8 @@ Status Reader::compute_dense_cell_ranges(
     // Need to pad an empty range
     if (popped.start_ > start) {
       auto new_end = MIN(end, popped.start_ - 1);
-      dense_cell_ranges->emplace_back(-1, tile_coords, start, new_end);
+      dense_cell_ranges->emplace_back(
+          -1, tile_coords, start, new_end, nullptr, nullptr);
       start = new_end + 1;
       if (start > end)
         break;
@@ -597,7 +610,7 @@ Status Reader::compute_dense_cell_ranges(
     if (!pq.empty()) {
       auto top = pq.top();
 
-      // Keep on ingoring ranges that belong to older fragments
+      // Keep on ignoring ranges that belong to older fragments
       // and are fully contained in the popped range
       while (popped.fragment_idx_ > top.fragment_idx_ &&
              popped.start_ <= top.start_ && popped.end_ >= top.end_) {
@@ -611,7 +624,8 @@ Status Reader::compute_dense_cell_ranges(
       if (!pq.empty() && top.start_ <= end && top.start_ > popped.start_ &&
           top.start_ <= popped.end_) {
         auto new_end = top.start_ - 1;
-        dense_cell_ranges->emplace_back(fidx, tile_coords, start, new_end);
+        dense_cell_ranges->emplace_back(
+            fidx, tile_coords, start, new_end, nullptr, nullptr);
         start = new_end + 1;
         if (start > end)
           break;
@@ -623,7 +637,8 @@ Status Reader::compute_dense_cell_ranges(
 
     // Make result
     auto new_end = MIN(end, popped.end_);
-    dense_cell_ranges->emplace_back(fidx, tile_coords, start, new_end);
+    dense_cell_ranges->emplace_back(
+        fidx, tile_coords, start, new_end, nullptr, nullptr);
     start = new_end + 1;
 
     // Check if a new range must be fetched in place of popped
@@ -634,7 +649,9 @@ Status Reader::compute_dense_cell_ranges(
             fidx,
             tile_coords,
             frag_its[fidx].range_start(),
-            frag_its[fidx].range_end());
+            frag_its[fidx].range_end(),
+            (same_layout) ? nullptr : frag_its[fidx].coords_start(),
+            (same_layout) ? nullptr : frag_its[fidx].coords_end());
     }
 
     if (start > end)
@@ -642,8 +659,10 @@ Status Reader::compute_dense_cell_ranges(
   }
 
   // Insert an empty cell range if the input range has not been filled
-  if (start <= end)
-    dense_cell_ranges->emplace_back(-1, tile_coords, start, end);
+  if (start <= end) {
+    dense_cell_ranges->emplace_back(
+        -1, tile_coords, start, end, nullptr, nullptr);
+  }
 
   return Status::Ok();
 

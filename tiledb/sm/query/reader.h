@@ -282,14 +282,35 @@ class Reader {
     uint64_t start_;
     /** The ending cell in the range. */
     uint64_t end_;
+    /**
+     * The coordinates of the start of the range. This is needed for
+     * comparing precednece of ranges. If it is `nullptr` it means
+     * that the precedence check will be based solely on `start_`
+     * and `end_`.
+     */
+    const T* coords_start_;
+    /**
+     * The coordinates of the end of the range. This is needed for
+     * comparing precednece of ranges. If it is `nullptr` it means
+     * that the precedence check will be based solely on `start_`
+     * and `end_`.
+     */
+    const T* coords_end_;
 
     /** Constructor. */
     DenseCellRange(
-        int fragment_idx, const T* tile_coords, uint64_t start, uint64_t end)
+        int fragment_idx,
+        const T* tile_coords,
+        uint64_t start,
+        uint64_t end,
+        const T* coords_start,
+        const T* coords_end)
         : fragment_idx_(fragment_idx)
         , tile_coords_(tile_coords)
         , start_(start)
-        , end_(end) {
+        , end_(end)
+        , coords_start_(coords_start)
+        , coords_end_(coords_end) {
     }
   };
 
