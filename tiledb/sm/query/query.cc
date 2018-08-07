@@ -31,8 +31,10 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/rest/capnp/array.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 #include <cassert>
 #include <iostream>
@@ -257,6 +259,1320 @@ Status Query::check_var_attr_offsets(
   }
 
   return Status::Ok();
+}
+
+Status Query::capnp(::Query::Builder* queryBuilder) const {
+  STATS_FUNC_IN(serialization_query_capnp);
+
+  queryBuilder->setType(query_type_str(this->type()));
+  queryBuilder->setLayout(layout_str(this->layout()));
+  queryBuilder->setStatus(query_status_str(this->status()));
+
+  if (this->array_ != nullptr) {
+    ::Array::Builder arrayBuilder = queryBuilder->initArray();
+    this->array_->capnp(&arrayBuilder);
+  }
+
+  ::DomainArray::Builder subarrayBuilder = queryBuilder->initSubarray();
+  if (this->array_schema() != nullptr) {
+    if (this->array_schema()->domain() == nullptr)
+      return tiledb::sm::Status::Error(
+          "Domain was null from array schema in query::capnp()");
+    switch (this->array_schema()->domain()->type()) {
+      case tiledb::sm::Datatype::INT8: {
+        auto subarray = this->subarray<int8_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setInt8(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::UINT8: {
+        auto subarray = this->subarray<uint8_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setUint8(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::INT16: {
+        auto subarray = this->subarray<int16_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setInt16(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::UINT16: {
+        auto subarray = this->subarray<uint16_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setUint16(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::INT32: {
+        auto subarray = this->subarray<int32_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setInt32(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::UINT32: {
+        auto subarray = this->subarray<uint32_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setUint32(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::INT64: {
+        auto subarray = this->subarray<int64_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setInt64(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::UINT64: {
+        auto subarray = this->subarray<uint64_t>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setUint64(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT32: {
+        auto subarray = this->subarray<float>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setFloat32(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT64: {
+        auto subarray = this->subarray<double>();
+        if (subarray.size() > 0)
+          subarrayBuilder.setFloat64(
+              kj::arrayPtr(subarray.data(), subarray.size()));
+        break;
+      }
+      case tiledb::sm::Datatype::CHAR:
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::ANY:
+        // Not supported domain type
+        return Status::Error("Unspported domain type");
+        break;
+    }
+  }
+
+  std::vector<std::string> attributes = this->attributes();
+
+  Map<::capnp::Text, ::AttributeBuffer>::Builder attributeBuffersBuilder =
+      queryBuilder->initBuffers();
+  auto buffers = attributeBuffersBuilder.initEntries(attributes.size());
+  // for (auto attribute_name : attributes) {
+  for (uint64_t i = 0; i < attributes.size(); i++) {
+    std::string attribute_name = attributes[i];
+    // TODO: We have to skip special attrs, which include anonymous ones
+    // because we can't call add_attribute() for a special attr name, we need
+    // to figure out how to add these to a array schema nicely.
+    if (attribute_name.substr(0, 2) ==
+        tiledb::sm::constants::special_name_prefix) {
+      continue;
+    }
+    const tiledb::sm::Attribute* attribute =
+        this->array_schema()->attribute(attribute_name);
+    if (attribute != nullptr) {
+      Map<capnp::Text, ::AttributeBuffer>::Entry::Builder entryBuilder =
+          buffers[i];
+      ::AttributeBuffer::Builder attributeBuffer = entryBuilder.initValue();
+      entryBuilder.setKey(attribute_name);
+      attributeBuffer.setType(datatype_str(attribute->type()));
+      switch (attribute->type()) {
+        case tiledb::sm::Datatype::INT8: {
+          auto buffer = this->buffer<int8_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setInt8(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_ASCII:
+        case tiledb::sm::Datatype::STRING_UTF8:
+        case tiledb::sm::Datatype::UINT8: {
+          auto buffer = this->buffer<uint8_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setUint8(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::INT16: {
+          auto buffer = this->buffer<int16_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setInt16(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_UTF16:
+        case tiledb::sm::Datatype::STRING_UCS2:
+        case tiledb::sm::Datatype::UINT16: {
+          auto buffer = this->buffer<uint16_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setUint16(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::INT32: {
+          auto buffer = this->buffer<int32_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setInt32(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_UTF32:
+        case tiledb::sm::Datatype::STRING_UCS4:
+        case tiledb::sm::Datatype::UINT32: {
+          auto buffer = this->buffer<uint32_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setUint32(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::INT64: {
+          auto buffer = this->buffer<int64_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setInt64(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::UINT64: {
+          auto buffer = this->buffer<uint64_t>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setUint64(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::FLOAT32: {
+          auto buffer = this->buffer<float>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setFloat32(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::FLOAT64: {
+          auto buffer = this->buffer<double>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          attributeBuffer.initBuffer().setFloat64(
+              kj::arrayPtr(buffer.second.first, buffer.second.second));
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::CHAR: {
+          auto buffer = this->buffer<char>(attribute_name);
+          // If buffer is null, skip
+          if (buffer.second.first == nullptr || buffer.second.second == 0)
+            break;
+
+          const capnp::Data::Reader data(
+              reinterpret_cast<kj::byte*>(buffer.second.first),
+              buffer.second.second);
+          attributeBuffer.initBuffer().setChar(data);
+          if (buffer.first.first != nullptr)
+            attributeBuffer.setBufferOffset(
+                kj::arrayPtr(buffer.first.first, buffer.first.second));
+          break;
+        }
+        case tiledb::sm::Datatype::ANY:
+          // Not supported datatype for buffer
+          return Status::Error("Any datatype not support for serialization");
+          break;
+      }
+    }
+  }
+
+  if (this->layout() == tiledb::sm::Layout::GLOBAL_ORDER &&
+      this->type() == tiledb::sm::QueryType::WRITE) {
+    ::Writer::Builder writerBuilder = queryBuilder->initWriter();
+    auto status = writer_.capnp(&writerBuilder);
+    if (!status.ok())
+      return status;
+  } else if (this->type() == tiledb::sm::QueryType::READ) {
+    ::QueryReader::Builder queryReaderBuilder = queryBuilder->initReader();
+    auto status = reader_.capnp(&queryReaderBuilder);
+    if (!status.ok())
+      return status;
+  }
+
+  return Status::Ok();
+  STATS_FUNC_OUT(serialization_query_capnp);
+}
+
+tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
+  STATS_FUNC_IN(serialization_query_from_capnp);
+  tiledb::sm::Status status;
+
+  // QueryType to parse, set default to avoid compiler uninitialized warnings
+  QueryType query_type = QueryType::READ;
+  status = query_type_enum(query->getType().cStr(), &query_type);
+  if (!status.ok())
+    return status;
+  if (query_type != this->type())
+    return tiledb::sm::Status::QueryError(
+        "Query opened for " + query_type_str(this->type()) +
+        " but got serialized type for " + query->getType().cStr());
+  this->type_ = query_type;
+
+  // Layout to parse, set default to avoid compiler uninitialized warnings
+  Layout layout = Layout::ROW_MAJOR;
+  status = layout_enum(query->getLayout().cStr(), &layout);
+  if (!status.ok())
+    return status;
+  this->set_layout(layout);
+
+  // Load array details
+  this->array_->from_capnp(query->getArray());
+
+  // Override any existing writer or reader first
+  // This prevents the set_subarray() from calling
+  // writer.reset() which will delete the fragement metadata!!
+  if (this->type() == QueryType::WRITE)
+    this->writer_.reset_global_write_state();
+
+  // If we are dense, unordered and writing, we can not set the subarray that
+  // was serialized thats okay because it is just domain, if we set to nullptr
+  // it will have same effect
+  if (this->layout() == Layout::UNORDERED && this->type() == QueryType::WRITE &&
+      this->array_schema()->dense()) {
+    status = this->set_subarray(nullptr);
+  } else {
+    // Set subarray
+    ::DomainArray::Reader subarrayReader = query->getSubarray();
+    switch (array_schema()->domain()->type()) {
+      case tiledb::sm::Datatype::INT8: {
+        if (subarrayReader.hasInt8()) {
+          auto subarrayCapnp = subarrayReader.getInt8();
+          std::vector<int8_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::UINT8: {
+        if (subarrayReader.hasUint8()) {
+          auto subarrayCapnp = subarrayReader.getUint8();
+          std::vector<uint8_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT16: {
+        if (subarrayReader.hasInt16()) {
+          auto subarrayCapnp = subarrayReader.getInt16();
+          std::vector<int16_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::UINT16: {
+        if (subarrayReader.hasUint16()) {
+          auto subarrayCapnp = subarrayReader.getUint16();
+          std::vector<uint16_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT32: {
+        if (subarrayReader.hasInt32()) {
+          auto subarrayCapnp = subarrayReader.getInt32();
+          std::vector<int32_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::UINT32: {
+        if (subarrayReader.hasUint32()) {
+          auto subarrayCapnp = subarrayReader.getUint32();
+          std::vector<uint32_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::INT64: {
+        if (subarrayReader.hasInt64()) {
+          auto subarrayCapnp = subarrayReader.getInt64();
+          std::vector<int64_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::UINT64: {
+        if (subarrayReader.hasUint64()) {
+          auto subarrayCapnp = subarrayReader.getUint64();
+          std::vector<uint64_t> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT32: {
+        if (subarrayReader.hasFloat32()) {
+          auto subarrayCapnp = subarrayReader.getFloat32();
+          std::vector<float> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::FLOAT64: {
+        if (subarrayReader.hasFloat64()) {
+          auto subarrayCapnp = subarrayReader.getFloat64();
+          std::vector<double> subarray(subarrayCapnp.size());
+          for (size_t i = 0; i < subarrayCapnp.size(); i++)
+            subarray[i] = subarrayCapnp[i];
+          status = this->set_subarray(subarray.data());
+        }
+        break;
+      }
+      case tiledb::sm::Datatype::CHAR:
+      case tiledb::sm::Datatype::STRING_ASCII:
+      case tiledb::sm::Datatype::STRING_UTF8:
+      case tiledb::sm::Datatype::STRING_UTF16:
+      case tiledb::sm::Datatype::STRING_UTF32:
+      case tiledb::sm::Datatype::STRING_UCS2:
+      case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::ANY:
+        // Not supported domain type
+        return Status::Error("Unsupport domain type");
+        break;
+    }
+  }
+
+  if (!status.ok()) {
+    LOG_STATUS(status);
+    throw std::runtime_error(status.to_string());
+  }
+
+  if (query->hasBuffers()) {
+    Map<capnp::Text, ::AttributeBuffer>::Reader buffers = query->getBuffers();
+    for (auto bufferMap : buffers.getEntries()) {
+      // empty key name means this object is empty, we should skip it.
+      // Need to handle serialization better and no make empty objects
+      if (std::string(bufferMap.getKey().cStr()).empty())
+        continue;
+
+      // TODO: We have to skip special attrs, which include anonymous ones
+      // because we can't call add_attribute() for a special attr name, we
+      // need to figure out how to add these to a array schema nicely.
+      if (std::string(bufferMap.getKey().cStr()).substr(0, 2) ==
+          tiledb::sm::constants::special_name_prefix) {
+        continue;
+      }
+      const tiledb::sm::Attribute* attr =
+          array_schema()->attribute(bufferMap.getKey().cStr());
+      if (attr == nullptr) {
+        return Status::Error(
+            "Attribute " + std::string(bufferMap.getKey().cStr()) +
+            " is null in query from_capnp");
+      }
+      // check to see if the query already has said buffer
+      uint64_t* existingBufferOffset = nullptr;
+      uint64_t* existingBufferOffsetSize = nullptr;
+      void* existingBuffer = nullptr;
+      uint64_t* existingBufferSize = nullptr;
+      if (attr->var_size()) {
+        this->get_buffer(
+            bufferMap.getKey().cStr(),
+            &existingBufferOffset,
+            &existingBufferOffsetSize,
+            &existingBuffer,
+            &existingBufferSize);
+      } else {
+        this->get_buffer(
+            bufferMap.getKey().cStr(), &existingBuffer, &existingBufferSize);
+      }
+
+      ::AttributeBuffer::Reader buffer = bufferMap.getValue();
+      uint64_t type_size = tiledb::sm::datatype_size(attr->type());
+      Datatype buffer_datatype = Datatype::ANY;
+      status = datatype_enum(buffer.getType().cStr(), &buffer_datatype);
+      if (!status.ok())
+        return status;
+
+      if (attr->type() != buffer_datatype)
+        return Status::Error(
+            "Attribute from array_schema and buffer do not have same "
+            "datatype. " +
+            datatype_str(attr->type()) + " != " + buffer.getType().cStr());
+
+      ::AttributeBuffer::Buffer::Reader bufferReader = buffer.getBuffer();
+
+      switch (attr->type()) {
+        case tiledb::sm::Datatype::INT8: {
+          if (bufferReader.hasInt8()) {
+            auto newBuffer = bufferReader.getInt8();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              int8_t* existing_buffer_casted =
+                  static_cast<int8_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<int8_t>* new_buffer =
+                  new std::vector<int8_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_ASCII:
+        case tiledb::sm::Datatype::STRING_UTF8:
+        case tiledb::sm::Datatype::UINT8: {
+          if (bufferReader.hasUint8()) {
+            auto newBuffer = bufferReader.getUint8();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              uint8_t* existing_buffer_casted =
+                  static_cast<uint8_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<uint8_t>* new_buffer =
+                  new std::vector<uint8_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::INT16: {
+          if (bufferReader.hasInt16()) {
+            auto newBuffer = bufferReader.getInt16();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              int16_t* existing_buffer_casted =
+                  static_cast<int16_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<int16_t>* new_buffer =
+                  new std::vector<int16_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_UTF16:
+        case tiledb::sm::Datatype::STRING_UCS2:
+        case tiledb::sm::Datatype::UINT16: {
+          if (bufferReader.hasUint16()) {
+            auto newBuffer = bufferReader.getUint16();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              uint16_t* existing_buffer_casted =
+                  static_cast<uint16_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<uint16_t>* new_buffer =
+                  new std::vector<uint16_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::INT32: {
+          if (bufferReader.hasInt32()) {
+            auto newBuffer = bufferReader.getInt32();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              int32_t* existing_buffer_casted =
+                  static_cast<int32_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<int32_t>* new_buffer =
+                  new std::vector<int32_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::STRING_UTF32:
+        case tiledb::sm::Datatype::STRING_UCS4:
+        case tiledb::sm::Datatype::UINT32: {
+          if (bufferReader.hasUint32()) {
+            auto newBuffer = bufferReader.getUint32();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              uint32_t* existing_buffer_casted =
+                  static_cast<uint32_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<uint32_t>* new_buffer =
+                  new std::vector<uint32_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::INT64: {
+          if (bufferReader.hasInt64()) {
+            auto newBuffer = bufferReader.getInt64();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              int64_t* existing_buffer_casted =
+                  static_cast<int64_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<int64_t>* new_buffer =
+                  new std::vector<int64_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::UINT64: {
+          if (bufferReader.hasUint64()) {
+            auto newBuffer = bufferReader.getUint64();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              uint64_t* existing_buffer_casted =
+                  static_cast<uint64_t*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<uint64_t>* new_buffer =
+                  new std::vector<uint64_t>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::FLOAT32: {
+          if (bufferReader.hasFloat32()) {
+            auto newBuffer = bufferReader.getFloat32();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              float* existing_buffer_casted =
+                  static_cast<float*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<float>* new_buffer =
+                  new std::vector<float>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::FLOAT64: {
+          if (bufferReader.hasFloat64()) {
+            auto newBuffer = bufferReader.getFloat64();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if (*existingBufferSize / type_size != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              double* existing_buffer_casted =
+                  static_cast<double*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<double>* new_buffer =
+                  new std::vector<double>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::CHAR: {
+          if (bufferReader.hasChar()) {
+            auto newBuffer = bufferReader.getChar();
+            uint buffer_length = newBuffer.size();
+            if (existingBuffer != nullptr) {
+              // If buffer sizes are different error
+              if ((*existingBufferSize / type_size) != buffer_length) {
+                return Status::QueryError(
+                    "Existing buffer in query object is different size (" +
+                    std::to_string(*existingBufferSize) +
+                    ") vs new query object buffer size (" +
+                    std::to_string(buffer_length) + ")");
+              }
+              char* existing_buffer_casted = static_cast<char*>(existingBuffer);
+              for (uint i = 0; i < buffer_length; i++) {
+                existing_buffer_casted[i] = newBuffer[i];
+              }
+
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                if (*existingBufferOffsetSize / sizeof(uint64_t) !=
+                    buffer_offset.size()) {
+                  return Status::QueryError(
+                      "Existing buffer_var_ in query object is different size "
+                      "(" +
+                      std::to_string(*existingBufferOffsetSize) +
+                      ") vs new query object buffer_var size (" +
+                      std::to_string(buffer_offset.size()) + ")");
+                }
+                uint64_t* existing_buffer_var_caster =
+                    static_cast<uint64_t*>(existingBufferOffset);
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  existing_buffer_var_caster[i] = buffer_offset[i];
+                }
+              }
+
+            } else {
+              // Get buffer
+              std::vector<char>* new_buffer =
+                  new std::vector<char>(buffer_length);
+              for (uint i = 0; i < buffer_length; i++) {
+                (*new_buffer)[i] = newBuffer[i];
+              }
+              uint64_t* buffer_size = new uint64_t(buffer_length * type_size);
+
+              // Check for offset buffer
+              if (buffer.hasBufferOffset()) {
+                auto buffer_offset = buffer.getBufferOffset();
+                std::vector<uint64_t>* new_buffer_offset =
+                    new std::vector<uint64_t>(buffer_offset.size());
+                for (uint i = 0; i < buffer_offset.size(); i++) {
+                  (*new_buffer_offset)[i] = buffer_offset[i];
+                }
+
+                uint64_t* new_buffer_offset_size =
+                    new uint64_t(new_buffer_offset->size() * sizeof(uint64_t));
+                set_buffer(
+                    attr->name(),
+                    new_buffer_offset->data(),
+                    new_buffer_offset_size,
+                    new_buffer->data(),
+                    buffer_size);
+              } else
+                set_buffer(attr->name(), new_buffer->data(), buffer_size);
+            }
+          }
+          break;
+        }
+        case tiledb::sm::Datatype::ANY: {
+          // Not supported datatype for buffer
+          return Status::Error(
+              "Any datatype not supported for deserialization");
+          break;
+        }
+      }
+    }
+  }
+
+  // This has to come after set_subarray because they remove global write state
+  if (this->type() == tiledb::sm::QueryType::WRITE && query->hasWriter()) {
+    ::Writer::Reader writerReader = query->getWriter();
+    status = writer_.from_capnp(&writerReader);
+  } else if (
+      this->type() == tiledb::sm::QueryType::READ && query->hasReader()) {
+    ::QueryReader::Reader queryReader = query->getReader();
+    status = reader_.from_capnp(&queryReader);
+  }
+  if (!status.ok())
+    return status;
+
+  // This must come last because set_subarray overrides query status
+  QueryStatus query_status = QueryStatus::UNINITIALIZED;
+  status = query_status_enum(query->getStatus().cStr(), &query_status);
+  if (!status.ok())
+    return status;
+  this->set_status(query_status);
+
+  return status;
+  STATS_FUNC_OUT(serialization_query_from_capnp);
 }
 
 Status Query::process() {

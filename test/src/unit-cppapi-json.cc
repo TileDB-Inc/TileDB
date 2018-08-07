@@ -67,10 +67,10 @@ TEST_CASE("C++ API: JSON", "[cppapi]") {
   auto a2 = Attribute::create<std::string>(ctx, "a2");
   auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
   auto a4 = Attribute::create<std::vector<uint32_t>>(ctx, "a4");
-  Filter filter(ctx, TILEDB_FILTER_LZ4);
-  FilterList filterList(ctx);
-  filterList.add_filter(filter);
-  a1.set_filter_list(filterList);
+  tiledb::Filter a1Filter(ctx, TILEDB_FILTER_LZ4);
+  tiledb::FilterList a1FilterList(ctx);
+  a1FilterList.add_filter(a1Filter);
+  a1.set_filter_list(a1FilterList);
   /*
     SECTION("ArraySchema Serialization") {
       ArraySchema schema(ctx, TILEDB_SPARSE);
