@@ -276,6 +276,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(Capnp_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Blosc::Blosc
@@ -284,6 +285,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Spdlog::Spdlog
     Zlib::Zlib
     Zstd::Zstd
+    Capnp::capnp
+    Capnp::capnp-json
+    Capnp::kj
 )
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -353,6 +357,9 @@ if (TILEDB_STATIC)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(Zstd::Zstd)
+  append_dep_lib(Capnp::capnp)
+  append_dep_lib(Capnp::capnp-json)
+  append_dep_lib(Capnp::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
