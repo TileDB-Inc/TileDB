@@ -34,33 +34,36 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(LZ4_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
-find_path(LZ4_INCLUDE_DIR
-  NAMES lz4.h
-  PATHS ${LZ4_PATHS}
-  PATH_SUFFIXES include
-  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+# First check for a static version in the EP prefix.
+find_library(LZ4_LIBRARIES
+  NAMES
+    liblz4${CMAKE_STATIC_LIBRARY_SUFFIX}
+    liblz4_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
 )
 
-
-# Link statically if installed with the EP.
-if (TILEDB_USE_STATIC_LZ4)
-  find_library(LZ4_LIBRARIES
-    NAMES
-      liblz4${CMAKE_STATIC_LIBRARY_SUFFIX}
-      liblz4_static${CMAKE_STATIC_LIBRARY_SUFFIX}
-    PATHS ${LZ4_PATHS}
-    PATH_SUFFIXES lib
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+if (LZ4_LIBRARIES)
+  set(LZ4_STATIC_EP_FOUND TRUE)
+  find_path(LZ4_INCLUDE_DIR
+    NAMES lz4.h
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES include
+    NO_DEFAULT_PATH
   )
 else()
+  set(LZ4_STATIC_EP_FOUND FALSE)
+  # Static EP not found, search in system paths.
   find_library(LZ4_LIBRARIES
     NAMES
       lz4 liblz4
-    PATHS ${LZ4_PATHS}
     PATH_SUFFIXES lib bin
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_path(LZ4_INCLUDE_DIR
+    NAMES lz4.h
+    PATH_SUFFIXES include
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
@@ -121,9 +124,6 @@ if (NOT LZ4_FOUND)
       )
     endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_LZ4=TRUE
-    )
   else()
     message(FATAL_ERROR "Unable to find LZ4")
   endif()
@@ -138,6 +138,6 @@ if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)
 endif()
 
 # If we built a static EP, install it if required.
-if (TILEDB_USE_STATIC_LZ4 AND TILEDB_INSTALL_STATIC_DEPS)
+if (LZ4_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
   install_target_libs(LZ4::LZ4)
 endif()
