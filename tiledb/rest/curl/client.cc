@@ -41,7 +41,7 @@ tiledb::sm::Status get_array_schema_from_rest(
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
-    tiledb::sm::ArraySchema* array_schema) {
+    tiledb::sm::ArraySchema** array_schema) {
   STATS_FUNC_IN(serialization_get_array_schema_from_rest);
   // init the curl session
   CURL* curl = curl_easy_init();
@@ -69,7 +69,7 @@ tiledb::sm::Status get_array_schema_from_rest(
     return tiledb::sm::Status::Error("Server returned no data!");
 
   tiledb::sm::Status status = array_schema_deserialize(
-      &array_schema,
+      array_schema,
       serialization_type,
       returned_data.memory,
       returned_data.size);

@@ -53,7 +53,7 @@ tiledb::sm::Status get_array_schema_from_rest(
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
-    tiledb::sm::ArraySchema* array_schema);
+    tiledb::sm::ArraySchema** array_schema);
 
 /**
  * Post a data array schema to rest server

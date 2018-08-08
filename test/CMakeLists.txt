@@ -53,6 +53,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-incomplete.cc
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
+  src/unit-capi-rest.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_real.cc
