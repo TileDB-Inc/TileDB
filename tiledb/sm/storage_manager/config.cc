@@ -200,6 +200,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_consolidation_step_max_frags(value));
   } else if (param == "sm.consolidation.step_size_ratio") {
     RETURN_NOT_OK(set_consolidation_step_size_ratio(value));
+  } else if (param == "sm.rest_server_address") {
+    RETURN_NOT_OK(set_sm_rest_server_address(value));
+  } else if (param == "sm.rest_server_serialization_format") {
+    RETURN_NOT_OK(set_sm_rest_server_serialization_format(value));
   } else if (param == "vfs.num_threads") {
     RETURN_NOT_OK(set_vfs_num_threads(value));
   } else if (param == "vfs.min_parallel_size") {
@@ -855,10 +859,23 @@ Status Config::set_consolidation_amplification(const std::string& value) {
   return Status::Ok();
 }
 
+Status Config::set_sm_rest_server_address(const std::string& value) {
+  sm_params_.rest_server_address_ = value;
+
+  return Status::Ok();
+}
+
 Status Config::set_consolidation_buffer_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.consolidation_params_.buffer_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_rest_server_serialization_format(
+    const std::string& value) {
+  sm_params_.rest_server_serialization_format_ = value;
 
   return Status::Ok();
 }
