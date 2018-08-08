@@ -33,6 +33,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/rest/capnp/array.h"
 #include "tiledb/rest/capnp/query.h"
+#include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -1780,32 +1781,57 @@ int32_t tiledb_array_schema_load_with_key(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
-  // Load array schema
-  auto storage_manager = ctx->ctx_->storage_manager();
-  bool in_cache;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          storage_manager->load_array_schema(
-              tiledb::sm::URI(array_uri),
-              tiledb::sm::ObjectType::ARRAY,
-              key,
-              &((*array_schema)->array_schema_),
-              &in_cache))) {
-    delete *array_schema;
-    return TILEDB_ERR;
+    auto st = tiledb::rest::get_array_schema_from_rest(
+        rest_server,
+        array_uri,
+        static_cast<tiledb::sm::SerializationType>(serialization_type),
+        &(*array_schema)->array_schema_);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Load array schema
+    auto storage_manager = ctx->ctx_->storage_manager();
+    bool in_cache;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            storage_manager->load_array_schema(
+                tiledb::sm::URI(array_uri),
+                tiledb::sm::ObjectType::ARRAY,
+                key,
+                &((*array_schema)->array_schema_),
+                &in_cache))) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
   }
-
   return TILEDB_OK;
 }
 
@@ -2788,23 +2814,49 @@ int32_t tiledb_array_create_with_key(
     return TILEDB_ERR;
   }
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
 
-  // Create the array
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_create(
-              uri, array_schema->array_schema_, key)))
-    return TILEDB_ERR;
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
+    auto st = tiledb::rest::post_array_schema_to_rest(
+        rest_server,
+        array_uri,
+        static_cast<tiledb::sm::SerializationType>(serialization_type),
+        array_schema->array_schema_);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Create the array
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_create(
+                uri, array_schema->array_schema_, key)))
+      return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
