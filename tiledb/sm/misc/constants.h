@@ -212,6 +212,9 @@ extern const int num_tbb_threads;
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
+/** The default format for serialization. */
+extern const std::string serialization_default_format;
+
 /** Empty String reference **/
 extern const std::string empty_str;
 

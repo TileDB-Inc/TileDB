@@ -260,6 +260,9 @@ const std::string serialization_type_json_str = "JSON";
 /** TILEDB_CAPNP **/
 const std::string serialization_type_capnp_str = "CAPNP";
 
+/** The default format for serialization. */
+const std::string serialization_default_format = serialization_type_capnp_str;
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 

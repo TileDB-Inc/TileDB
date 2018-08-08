@@ -173,6 +173,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_num_async_threads(value));
   } else if (param == "sm.num_tbb_threads") {
     RETURN_NOT_OK(set_sm_num_tbb_threads(value));
+  } else if (param == "sm.rest_server_address") {
+    RETURN_NOT_OK(set_sm_rest_server_address(value));
+  } else if (param == "sm.rest_server_serialization_format") {
+    RETURN_NOT_OK(set_sm_rest_server_serialization_format(value));
   } else if (param == "vfs.num_threads") {
     RETURN_NOT_OK(set_vfs_num_threads(value));
   } else if (param == "vfs.min_parallel_size") {
@@ -608,6 +612,19 @@ Status Config::set_sm_tile_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.tile_cache_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_rest_server_address(const std::string& value) {
+  sm_params_.rest_server_address_ = value;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_rest_server_serialization_format(
+    const std::string& value) {
+  sm_params_.rest_server_serialization_format_ = value;
 
   return Status::Ok();
 }
