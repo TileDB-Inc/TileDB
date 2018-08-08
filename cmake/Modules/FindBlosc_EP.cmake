@@ -34,31 +34,35 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(BLOSC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
-find_path(BLOSC_INCLUDE_DIR
-  NAMES blosc.h
-  PATHS ${BLOSC_PATHS}
-  PATH_SUFFIXES include
-  ${TILEDB_DEPS_NO_DEFAULT_PATH}
+# First check for a static version in the EP prefix.
+find_library(BLOSC_LIBRARIES
+  NAMES
+    libblosc${CMAKE_STATIC_LIBRARY_SUFFIX}
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
 )
 
-# Link statically if installed with the EP.
-if (TILEDB_USE_STATIC_BLOSC)
-  find_library(BLOSC_LIBRARIES
-    NAMES
-      libblosc${CMAKE_STATIC_LIBRARY_SUFFIX}
-    PATHS ${BLOSC_PATHS}
-    PATH_SUFFIXES lib
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+if (BLOSC_LIBRARIES)
+  set(BLOSC_STATIC_EP_FOUND TRUE)
+  find_path(BLOSC_INCLUDE_DIR
+    NAMES blosc.h
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES include
+    NO_DEFAULT_PATH
   )
 else()
+  set(BLOSC_STATIC_EP_FOUND FALSE)
+  # Static EP not found, search in system paths.
   find_library(BLOSC_LIBRARIES
     NAMES
       blosc libblosc
-    PATHS ${BLOSC_PATHS}
     PATH_SUFFIXES lib bin
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_path(BLOSC_INCLUDE_DIR
+    NAMES blosc.h
+    PATH_SUFFIXES include
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
@@ -101,9 +105,6 @@ if (NOT BLOSC_FOUND)
     endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_blosc)
-    list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_BLOSC=TRUE
-    )
   else()
     message(FATAL_ERROR "Unable to find Blosc")
   endif()
@@ -119,6 +120,6 @@ if (BLOSC_FOUND AND NOT TARGET Blosc::Blosc)
 endif()
 
 # If we built a static EP, install it if required.
-if (TILEDB_USE_STATIC_BLOSC AND TILEDB_INSTALL_STATIC_DEPS)
+if (BLOSC_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
   install_target_libs(Blosc::Blosc)
 endif()
