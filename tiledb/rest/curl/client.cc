@@ -123,6 +123,39 @@ tiledb::sm::Status post_array_schema_to_rest(
   STATS_FUNC_OUT(serialization_post_array_schema_to_rest);
 }
 
+tiledb::sm::Status delete_array_schema_from_rest(
+    std::string rest_server,
+    std::string uri,
+    tiledb::sm::SerializationType serialization_type) {
+  STATS_FUNC_IN(serialization_delete_array_schema_from_rest);
+  // init the curl session
+  CURL* curl = curl_easy_init();
+
+  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  std::string url = std::string(rest_server) +
+                    "/v1/arrays/group/group1/project/project1/uri/" +
+                    uri_escaped;
+  curl_free(uri_escaped);
+
+  struct MemoryStruct returned_data = {nullptr, 0};
+  CURLcode res = delete_data(curl, url, serialization_type, &returned_data);
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  curl_easy_cleanup(curl);
+  if (res != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest array get() failed: ") +
+        ((returned_data.size > 0) ? returned_data.memory :
+                                    " No error message from server"));
+  }
+
+  free(returned_data.memory);
+  return tiledb::sm::Status::Ok();
+  STATS_FUNC_OUT(serialization_delete_array_schema_from_rest);
+}
+
 tiledb::sm::Status submit_query_to_rest(
     std::string rest_server,
     std::string uri,
