@@ -83,6 +83,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/tiledb-rest.capnp.c++
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/curl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
@@ -208,23 +210,24 @@ if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
 
+find_package(Curl_EP REQUIRED)
+if (NOT WIN32)
+  # No Curl required on Windows.
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          Curl::Curl
+          )
+endif()
+
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(Curl_EP REQUIRED)
   find_package(AWSSDK_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       AWSSDK::aws-cpp-sdk-s3
       AWSSDK::aws-cpp-sdk-core
   )
-  if (NOT WIN32)
-    # No Curl required on Windows.
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        Curl::Curl
-    )
-  endif()
   add_definitions(-DHAVE_S3)
 endif()
 
