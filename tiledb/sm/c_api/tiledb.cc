@@ -196,6 +196,72 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   return true;
 }
 
+const std::string get_rest_server(tiledb_ctx_t* ctx) {
+  tiledb_config_t* config = nullptr;
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return "";
+  }
+  const char* rest_server = nullptr;
+  std::string rest_server_str;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config, "sm.rest_server_address", &rest_server, &error) ==
+      TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return "";
+  }
+  if (rest_server != nullptr)
+    rest_server_str = rest_server;
+  if (config != nullptr)
+    tiledb_config_free(&config);
+  return rest_server_str;
+}
+
+int get_rest_server_serialization_format(
+    tiledb_ctx_t* ctx, tiledb_serialization_type_t* serialization_type) {
+  tiledb_config_t* config = nullptr;
+  tiledb::sm::Status st = tiledb::sm::serialization_type_enum(
+      tiledb::sm::constants::serialization_default_format,
+      reinterpret_cast<tiledb::sm::SerializationType*>(serialization_type));
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return TILEDB_ERR;
+  }
+  const char* config_serialization_type = nullptr;
+  tiledb_error_t* error = NULL;
+  if (tiledb_config_get(
+          config,
+          "sm.rest_server_serialization_format",
+          &config_serialization_type,
+          &error) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(&config);
+    return TILEDB_ERR;
+  }
+  if (config_serialization_type != nullptr) {
+    st = tiledb::sm::serialization_type_enum(
+        config_serialization_type,
+        reinterpret_cast<tiledb::sm::SerializationType*>(serialization_type));
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  }
+  if (config != nullptr)
+    tiledb_config_free(&config);
+  return TILEDB_OK;
+}
+
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
