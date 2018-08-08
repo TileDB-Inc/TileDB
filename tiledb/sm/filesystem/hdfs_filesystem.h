@@ -59,12 +59,16 @@ class HDFS {
   ~HDFS() = default;
 
   /**
-   * Connects to an HDFS filesystem
+   * Initializes the HDFS VFS backend
    *
-   * @param fs Reference to a hdfsFS filesystem handle.
+   * If libhdfs is not found, returns immediately.
+   * If libhdfs is found, attempts to connect to the
+   * default HDFS namenode defined in the Config::HDFSParams object.
+   *
+   * @param config HDFS configuration parameter object
    * @return Status
    */
-  Status connect(const Config::HDFSParams& config);
+  Status init(const Config::HDFSParams& config);
 
   /**
    * Disconnects an HDFS filesystem

@@ -204,8 +204,11 @@ HDFS::HDFS()
     , libhdfs_(LibHDFS::load()) {
 }
 
-Status HDFS::connect(const Config::HDFSParams& config) {
-  RETURN_NOT_OK(libhdfs_->status());
+Status HDFS::init(const Config::HDFSParams& config) {
+  // if libhdfs does not exist, just return and fail lazily on connection
+  if (!libhdfs_->status().ok()) {
+    return Status::Ok();
+  }
   struct hdfsBuilder* builder = libhdfs_->hdfsNewBuilder();
   if (builder == nullptr) {
     return LOG_STATUS(Status::HDFSError(
