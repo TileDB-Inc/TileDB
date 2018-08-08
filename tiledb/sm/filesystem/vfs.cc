@@ -574,7 +574,7 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   if (hdfs_.get() == nullptr) {
     return LOG_STATUS(Status::VFSError("Could not create VFS HDFS backend"));
   }
-  RETURN_NOT_OK(hdfs_->connect(vfs_params.hdfs_params_));
+  RETURN_NOT_OK(hdfs_->init(vfs_params.hdfs_params_));
 #endif
 
 #ifdef HAVE_S3
