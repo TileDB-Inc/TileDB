@@ -71,6 +71,20 @@ tiledb::sm::Status post_array_schema_to_rest(
     tiledb::sm::ArraySchema* array_schema);
 
 /**
+ * Get a data encoded array schema from rest server
+ *
+ * @param rest_server url
+ * @param uri of array being loaded
+ * @param serialization_type format to serialize in
+ * @param array_schema array schema to send to server
+ * @return Status Ok() on success Error() on failures
+ */
+tiledb::sm::Status delete_array_schema_from_rest(
+    std::string rest_server,
+    std::string uri,
+    tiledb::sm::SerializationType serialization_type);
+
+/**
  * Post a data query to rest server
  *
  * @param rest_server url

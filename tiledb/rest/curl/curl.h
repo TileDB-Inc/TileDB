@@ -105,4 +105,17 @@ CURLcode get_data(
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data);
 
+/**
+ * Simple wraper for sending delete requests to server
+ * @param curl
+ * @param url
+ * @param serialization_type
+ * @param returned_data
+ * @return
+ */
+CURLcode delete_data(
+    CURL* curl,
+    std::string url,
+    tiledb::sm::SerializationType serialization_type,
+    MemoryStruct* returned_data);
 #endif  // TILEDB_REST_CURL_HPP

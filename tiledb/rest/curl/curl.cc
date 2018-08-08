@@ -179,3 +179,28 @@ CURLcode get_data(
   return ret;
   STATS_FUNC_OUT(serialization_get_data);
 }
+
+CURLcode delete_data(
+    CURL* curl,
+    std::string url,
+    tiledb::sm::SerializationType serialization_type,
+    MemoryStruct* returned_data) {
+  STATS_FUNC_IN(serialization_delete_data);
+  /* HTTP DELETE please */
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+
+  struct curl_slist* headers = NULL;
+  if (serialization_type == tiledb::sm::SerializationType::JSON)
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+  else
+    headers = curl_slist_append(headers, "Content-Type: application/capnp");
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+  CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
+  curl_slist_free_all(headers);
+
+  return ret;
+  STATS_FUNC_OUT(serialization_delete_data);
+}
