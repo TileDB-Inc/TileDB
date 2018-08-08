@@ -81,6 +81,12 @@ script:
       ./ExampleExe
       ./ExampleExe_static
       popd
+    # Build the benchmarks (but do not run them).
+    - |
+      pushd $TRAVIS_BUILD_DIR/test/benchmarking && \
+      mkdir build && cd build && \
+      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist ../src && make && \
+      popd
     - |
       testfile=$(mktemp)
       mv $testfile $testfile.cc
