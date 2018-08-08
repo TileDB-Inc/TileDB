@@ -203,21 +203,11 @@ you may need to explicity add the conda path after activating the environment
 with ``conda activate tiledb`` (``conda activate`` sets the ``CONDA_PREFIX``
 environment variable)
 
-Linux (64 bit):
-
 .. code-block:: console
 
-   $ export CPATH=$CONDA_PREFIX/include:${CPATH}
-   $ export LIBRARY_PATH=$CONDA_PREFIX/lib64:${LIBRARY_PATH}
-   $ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib64:${LD_LIBRARY_PATH}
-
-macOS:
-
-.. code-block:: console
-
-   $ export CPATH=$CONDA_PREFIX/include:${CPATH}
-   $ export LIBRARY_PATH=$CONDA_PREFIX/lib:${LIBRARY_PATH}
-   $ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:${LD_LIBRARY_PATH}
+   $ export CPATH=$CONDA_PREFIX/include
+   $ export LIBRARY_PATH=$CONDA_PREFIX/lib
+   $ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 
 Or, instead of exporting those environment variables, you can pass them as
 command line flags during compilation
