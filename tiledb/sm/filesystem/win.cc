@@ -29,7 +29,7 @@
  *
  * This file includes definitions of Windows filesystem functions.
  */
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 #include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/constants.h"
@@ -604,4 +604,4 @@ bool Win::is_win_path(const std::string& path) {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // _WIN32
+#endif  // _MSC_VER

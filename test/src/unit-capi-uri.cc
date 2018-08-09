@@ -35,7 +35,7 @@
 
 #include <string.h>
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <Windows.h>
 static const unsigned PLATFORM_PATH_MAX = MAX_PATH;
 #elif __APPLE__
@@ -56,7 +56,7 @@ TEST_CASE("C API: Test URI", "[capi], [uri]") {
   unsigned path_length = PLATFORM_PATH_MAX;
   rc = tiledb_uri_to_path(ctx, "file:///my/path", path, &path_length);
   CHECK(rc == TILEDB_OK);
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(path_length == 8);
   CHECK(path[path_length] == '\0');
   CHECK(strlen(path) == path_length);
@@ -83,7 +83,7 @@ TEST_CASE("C API: Test URI", "[capi], [uri]") {
   path_length = PLATFORM_PATH_MAX;
   rc = tiledb_uri_to_path(ctx, "file:///C:/my/path", path, &path_length);
   CHECK(rc == TILEDB_OK);
-#ifdef _WIN32
+#ifdef _MSC_VER
   CHECK(path_length == 10);
   CHECK(path[path_length] == '\0');
   CHECK(strlen(path) == path_length);

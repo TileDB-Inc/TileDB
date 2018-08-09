@@ -30,7 +30,7 @@
  * This file includes definitions of POSIX filesystem functions.
  */
 
-#ifndef _WIN32
+#ifndef _MSC_VER
 
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/sm/misc/constants.h"
@@ -539,4 +539,4 @@ Status Posix::write_at(
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // !_WIN32
+#endif  // !_MSC_VER

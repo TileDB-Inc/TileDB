@@ -32,7 +32,7 @@
  */
 
 #include "catch.hpp"
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -61,7 +61,7 @@ struct DenseArrayFx {
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#ifdef _WIN32
+#ifdef _MSC_VER
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Win::current_dir() + "\\tiledb_test\\";

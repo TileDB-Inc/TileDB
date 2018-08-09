@@ -336,7 +336,7 @@ class VFS {
   S3 s3_;
 #endif
 
-#ifdef _WIN32
+#ifdef _MSC_VER
   Win win_;
 #else
   Posix posix_;
