@@ -253,12 +253,20 @@ void ArraySchemaRest::remove_temp_dir(const std::string& path) {
 }
 
 TEST_CASE_METHOD(
-    ArraySchemaRest, "C API: Test array schema rest api", "[capi], [rest]") {
+    ArraySchemaRest,
+    "C API: Test array schema rest api",
+    "[capi], [rest], [json]") {
   // Create array schema
   tiledb_array_schema_t* array_schema = create_array_schema();
   // Create array schema to post
 
-  std::string uri = "file:///tmp/company1/project1/array_sparse_example";
+  std::string uri;
+  if (supports_s3_) {
+    // Create array schema
+    uri = "s3://tiledb-seth-test/array_sparse_example";
+  } else {
+    uri = "file:///tmp/company1/project1/array_sparse_example";
+  }
   int rc = tiledb_array_create(ctx_, uri.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -274,101 +282,17 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArraySchemaRest, "C API: Test query rest api s3", "[capi], [rest]") {
-  if (supports_s3_) {
-    // Create array schema
-    tiledb_array_schema_t* array_schema = create_array_schema_simple();
-
-    std::string array_name = "s3://tiledb-seth-test/query_rest_test";
-
-    // Create array
-    int rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
-    REQUIRE(rc == TILEDB_OK);
-
-    tiledb_array_t* array;
-    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Prepare some data for the array
-    int data[] = {1, 2, 3, 4};
-    uint64_t data_size = sizeof(data);
-
-    // Create the query
-    tiledb_query_t* query;
-    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Slice only rows 1, 2, 3, 4
-    int64_t subarray[] = {1, 4};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(ctx_, query, "a1", data, &data_size);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Submit query
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Finalize query
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Close array
-    rc = tiledb_array_close(ctx_, array);
-    REQUIRE(rc == TILEDB_OK);
-
-    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-    REQUIRE(rc == TILEDB_OK);
-    tiledb_query_free(&query);
-
-    // Create the query
-    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
-    REQUIRE(rc == TILEDB_OK);
-
-    int data_buffer[4] = {0};
-    uint64_t data_buffer_size = sizeof(data_buffer);
-    rc = tiledb_query_set_buffer(
-        ctx_, query, "a1", data_buffer, &data_buffer_size);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Slice only rows 1, 2 and cols 2, 3, 4
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
-    REQUIRE(rc == TILEDB_OK);
-
-    // Submit query
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-
-    int has_results;
-    rc = tiledb_query_has_results(ctx_, query, &has_results);
-    CHECK(rc == TILEDB_OK);
-    CHECK(has_results);
-
-    REQUIRE(data_buffer[0] == 1);
-    REQUIRE(data_buffer[1] == 2);
-    REQUIRE(data_buffer[2] == 3);
-    REQUIRE(data_buffer[3] == 4);
-
-    // Clean up
-    tiledb_array_schema_free(&array_schema);
-  }
-}
-
-TEST_CASE_METHOD(
-    ArraySchemaRest,
-    "C API: Test query rest api server local",
-    "[capi], [rest]") {
+    ArraySchemaRest, "C API: Test query rest api", "[capi], [rest], [json]") {
   // Create array schema
   tiledb_array_schema_t* array_schema = create_array_schema_simple();
 
-  // std::string array_name = "s3://tiledb-seth-test/query_rest_test";
-  std::string array_name = "file:///tmp/company1/project1/array_sparse_example";
+  std::string array_name;
+  if (supports_s3_) {
+    // Create array schema
+    array_name = "s3://tiledb-seth-test/query_rest_test";
+  } else {
+    array_name = "file:///tmp/company1/project1/query_rest_test";
+  }
 
   // Create array
   int rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
@@ -443,6 +367,122 @@ TEST_CASE_METHOD(
   REQUIRE(data_buffer[1] == 2);
   REQUIRE(data_buffer[2] == 3);
   REQUIRE(data_buffer[3] == 4);
+
+  tiledb::rest::delete_array_schema_from_rest(
+      REST_SERVER, array_name, tiledb::sm::SerializationType::JSON);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_array_schema_free(&array_schema);
+  tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaRest,
+    "C API: Test query rest api capnp format",
+    "[capi], [rest], [capnp]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema = create_array_schema_simple();
+
+  std::string array_name;
+  if (supports_s3_) {
+    // Create array schema
+    array_name = "s3://tiledb-seth-test/query_rest_test";
+  } else {
+    array_name = "file:///tmp/company1/project1/query_rest_test";
+  }
+
+  tiledb_error_t* error = nullptr;
+  tiledb_config_t* config = nullptr;
+  REQUIRE(tiledb_ctx_get_config(ctx_, &config) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.rest_server_serialization_format",
+          tiledb::sm::serialization_type_str(
+              tiledb::sm::SerializationType::CAPNP)
+              .c_str(),
+          &error) == TILEDB_OK);
+
+  REQUIRE(error == nullptr);
+  tiledb_config_free(&config);
+
+  // Create array
+  int rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Prepare some data for the array
+  int data[] = {1, 2, 3, 4};
+  uint64_t data_size = sizeof(data);
+
+  // Create the query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Slice only rows 1, 2, 3, 4
+  int64_t subarray[] = {1, 4};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", data, &data_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+
+  // Create the query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+
+  int data_buffer[4] = {0};
+  uint64_t data_buffer_size = sizeof(data_buffer);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "a1", data_buffer, &data_buffer_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Slice only rows 1, 2 and cols 2, 3, 4
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  int has_results;
+  rc = tiledb_query_has_results(ctx_, query, &has_results);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_results);
+
+  REQUIRE(data_buffer[0] == 1);
+  REQUIRE(data_buffer[1] == 2);
+  REQUIRE(data_buffer[2] == 3);
+  REQUIRE(data_buffer[3] == 4);
+
+  tiledb::rest::delete_array_schema_from_rest(
+      REST_SERVER, array_name, tiledb::sm::SerializationType::JSON);
 
   // Clean up
   tiledb_array_free(&array);

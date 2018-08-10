@@ -108,6 +108,8 @@ tiledb::sm::Status post_array_schema_to_rest(
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
+  // Cleanup initial data
+  delete[] data.memory;
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error data object
 
@@ -177,9 +179,10 @@ tiledb::sm::Status submit_query_to_rest(
 
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped +
-                    "/query/submit";
+  std::string url =
+      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
+      uri_escaped +
+      "/query/submit?type=" + tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
@@ -189,6 +192,8 @@ tiledb::sm::Status submit_query_to_rest(
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
+  // Cleanup initial data
+  delete[] data.memory;
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error data object
 
@@ -231,9 +236,10 @@ tiledb::sm::Status finalize_query_to_rest(
 
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped +
-                    "/query/finalize";
+  std::string url =
+      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
+      uri_escaped +
+      "/query/finalize?type=" + tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
@@ -243,6 +249,8 @@ tiledb::sm::Status finalize_query_to_rest(
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
+  // Cleanup initial data
+  delete[] data.memory;
   if (res != CURLE_OK || httpCode >= 400) {
     // TODO: Should see if message has error data object
 

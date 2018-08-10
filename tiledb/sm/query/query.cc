@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/query.h"
 #include "tiledb/rest/capnp/array.h"
+#include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
@@ -98,6 +99,15 @@ std::vector<std::string> Query::attributes() const {
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();
+
+  if (array_->is_remote()) {
+    array_->array_schema()->set_array_uri(array_->array_uri());
+    return tiledb::rest::finalize_query_to_rest(
+        array_->get_rest_server(),
+        array_->array_uri().to_string(),
+        array_->get_serialization_type(),
+        this);
+  }
 
   RETURN_NOT_OK(writer_.finalize());
   status_ = QueryStatus::COMPLETED;
@@ -1663,12 +1673,23 @@ Status Query::set_subarray(const void* subarray) {
 
 Status Query::submit() {  // Do nothing if the query is completed or failed
   RETURN_NOT_OK(init());
+  if (array_->is_remote()) {
+    array_->array_schema()->set_array_uri(array_->array_uri());
+    return tiledb::rest::submit_query_to_rest(
+        array_->get_rest_server(),
+        array_->array_uri().to_string(),
+        array_->get_serialization_type(),
+        this);
+  }
   return storage_manager_->query_submit(this);
 }
 
 Status Query::submit_async(
     std::function<void(void*)> callback, void* callback_data) {
   RETURN_NOT_OK(init());
+  if (array_->is_remote()) {
+    return Status::QueryError("submit_async not supported for remote queries");
+  }
   callback_ = callback;
   callback_data_ = callback_data;
   return storage_manager_->query_submit_async(this);

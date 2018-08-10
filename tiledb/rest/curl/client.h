@@ -93,7 +93,7 @@ tiledb::sm::Status delete_array_schema_from_rest(
  * @param query to send to server and store results in, this qill be modified
  * @return Status Ok() on success Error() on failures
  */
-tiledb::sm::Status submit_query_data_to_rest(
+tiledb::sm::Status submit_query_to_rest(
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
@@ -108,7 +108,7 @@ tiledb::sm::Status submit_query_data_to_rest(
  * @param query to send to server and store results in, this qill be modified
  * @return Status Ok() on success Error() on failures
  */
-tiledb::sm::Status finalize_query_data_to_rest(
+tiledb::sm::Status finalize_query_to_rest(
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,

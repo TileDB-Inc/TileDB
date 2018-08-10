@@ -748,6 +748,14 @@ const EncryptionKey& Array::get_encryption_key() const {
   return encryption_key_;
 }
 
+const std::string Array::get_rest_server() const {
+  return rest_server_;
+}
+
+SerializationType Array::get_serialization_type() const {
+  return serialization_type_;
+}
+
 Status Array::reopen() {
   return reopen(utils::time::timestamp_now_ms());
 }
