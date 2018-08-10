@@ -91,6 +91,7 @@ struct tiledb_array_t {
   uint64_t snapshot_;
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       max_buffer_sizes_;
+  void* max_buffer_sizes_subarray_;
 };
 
 struct tiledb_config_t {
@@ -1923,6 +1924,7 @@ int tiledb_array_alloc(
   }
 
   // Set other array members
+  (*array)->max_buffer_sizes_subarray_ = nullptr;
   (*array)->open_array_ = nullptr;
   (*array)->is_open_ = false;
 
@@ -2016,6 +2018,8 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
 
 void tiledb_array_free(tiledb_array_t** array) {
   if (array != nullptr && *array != nullptr) {
+    if ((*array)->max_buffer_sizes_subarray_ != nullptr)
+      std::free((*array)->max_buffer_sizes_subarray_);
     delete *array;
     *array = nullptr;
   }
@@ -2154,8 +2158,24 @@ int tiledb_array_max_buffer_size(
     return TILEDB_ERR;
   }
 
-  // Compute max buffer sizes if they are not already computed
-  if (array->max_buffer_sizes_.empty()) {
+  // Allocate space for max buffer sizes subarray
+  auto subarray_size = 2 * array->open_array_->array_schema()->coords_size();
+  if (array->max_buffer_sizes_subarray_ == nullptr) {
+    array->max_buffer_sizes_subarray_ = std::malloc(subarray_size);
+    if (array->max_buffer_sizes_subarray_ == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to allocate subarray for computing max buffer size");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  }
+
+  // Compute max buffer sizes
+  if (array->max_buffer_sizes_.empty() ||
+      std::memcmp(array->max_buffer_sizes_subarray_, subarray, subarray_size) !=
+          0) {
+    array->max_buffer_sizes_.clear();
     if (save_error(
             ctx,
             ctx->storage_manager_->array_compute_max_buffer_sizes(
@@ -2165,6 +2185,9 @@ int tiledb_array_max_buffer_size(
                 &array->max_buffer_sizes_)))
       return TILEDB_ERR;
   }
+
+  // Update subarray
+  std::memcpy(array->max_buffer_sizes_subarray_, subarray, subarray_size);
 
   // Normalize attribute name
   std::string norm_attribute;
@@ -2220,8 +2243,24 @@ int tiledb_array_max_buffer_size_var(
     return TILEDB_ERR;
   }
 
-  // Compute max buffer sizes if they are not already computed
-  if (array->max_buffer_sizes_.empty()) {
+  // Allocate space for max buffer sizes subarray
+  auto subarray_size = 2 * array->open_array_->array_schema()->coords_size();
+  if (array->max_buffer_sizes_subarray_ == nullptr) {
+    array->max_buffer_sizes_subarray_ = std::malloc(subarray_size);
+    if (array->max_buffer_sizes_subarray_ == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to allocate subarray for computing max buffer size");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  }
+
+  // Compute max buffer sizes
+  if (array->max_buffer_sizes_.empty() ||
+      std::memcmp(array->max_buffer_sizes_subarray_, subarray, subarray_size) !=
+          0) {
+    array->max_buffer_sizes_.clear();
     if (save_error(
             ctx,
             ctx->storage_manager_->array_compute_max_buffer_sizes(
@@ -2231,6 +2270,9 @@ int tiledb_array_max_buffer_size_var(
                 &array->max_buffer_sizes_)))
       return TILEDB_ERR;
   }
+
+  // Update subarray
+  std::memcpy(array->max_buffer_sizes_subarray_, subarray, subarray_size);
 
   // Normalize attribute name
   std::string norm_attribute;
