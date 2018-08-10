@@ -94,6 +94,7 @@ struct tiledb_array_t {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       max_buffer_sizes_;
   void* max_buffer_sizes_subarray_;
+  bool is_remote_;
 };
 
 struct tiledb_config_t {
@@ -2133,6 +2134,7 @@ int tiledb_array_alloc(
   (*array)->max_buffer_sizes_subarray_ = nullptr;
   (*array)->open_array_ = nullptr;
   (*array)->is_open_ = false;
+  (*array)->is_remote_ = false;
 
   // Success
   return TILEDB_OK;
@@ -2152,16 +2154,42 @@ int tiledb_array_open(
     return TILEDB_ERR;
   }
 
-  // Open array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_open(
-              array->array_uri_,
-              static_cast<tiledb::sm::QueryType>(query_type),
-              &(array->open_array_),
-              &(array->snapshot_))))
-    return TILEDB_ERR;
+  // Check if rest server is set, if so try to load remote array
+  std::string rest_server = get_rest_server(ctx);
+  if (rest_server != "") {
+    array->is_remote_ = true;
+    tiledb_array_schema_t* array_schema =
+        new (std::nothrow) tiledb_array_schema_t;
+    if (array_schema == nullptr) {
+      auto st =
+          tiledb::sm::Status::Error("Failed to allocate TileDB array schema");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
 
+    if (tiledb_array_schema_load(
+            ctx, array->array_uri_.c_str(), &array_schema) == TILEDB_ERR)
+      return TILEDB_ERR;
+
+    array->open_array_ = new tiledb::sm::OpenArray(
+        array->array_uri_, static_cast<tiledb::sm::QueryType>(query_type));
+    array->open_array_->set_array_schema(array_schema->array_schema_);
+    // Delete array_schema since it is not needed after setting the
+    // tiledb::sm::ArraySchema object
+    delete array_schema;
+
+  } else {
+    // Open array
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_open(
+                array->array_uri_,
+                static_cast<tiledb::sm::QueryType>(query_type),
+                &(array->open_array_),
+                &(array->snapshot_))))
+      return TILEDB_ERR;
+  }
   array->is_open_ = true;
 
   return TILEDB_OK;
@@ -2190,12 +2218,23 @@ int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
     return TILEDB_ERR;
   }
 
-  // Re-open array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_reopen(
-              array->open_array_, &(array->snapshot_))))
-    return TILEDB_ERR;
+  // If array is remote, re-call open to fetch array schema again
+  if (array->is_remote_) {
+    // delete open array if set
+    if (array->open_array_ != nullptr)
+      delete array->open_array_;
+    return tiledb_array_open(
+        ctx,
+        array,
+        static_cast<tiledb_query_type_t>(array->open_array_->query_type()));
+  } else {
+    // Re-open array
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_reopen(
+                array->open_array_, &(array->snapshot_))))
+      return TILEDB_ERR;
+  }
 
   array->max_buffer_sizes_.clear();
 
@@ -2210,11 +2249,16 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (!array->is_open_)
     return TILEDB_OK;
 
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_close(
-              array->array_uri_, array->open_array_->query_type())))
-    return TILEDB_ERR;
+  // Only close array if it is not remote
+  if (array->is_remote_) {
+    delete array->open_array_;
+  } else {
+    if (save_error(
+            ctx,
+            ctx->storage_manager_->array_close(
+                array->array_uri_, array->open_array_->query_type())))
+      return TILEDB_ERR;
+  }
 
   array->is_open_ = false;
   array->max_buffer_sizes_.clear();
@@ -2361,6 +2405,16 @@ int tiledb_array_get_non_empty_domain(
 
   bool is_empty_b;
 
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_get_non_empty_domain not implemented for remote "
+        "arrays");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   if (save_error(
           ctx,
           ctx->storage_manager_->array_get_non_empty_domain(
@@ -2385,6 +2439,16 @@ int tiledb_array_max_buffer_size(
   if (attribute == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Failed to get max buffer size; Attribute is null");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_max_buffer_size not implemented for remote "
+        "arrays");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -2470,6 +2534,16 @@ int tiledb_array_max_buffer_size_var(
   if (attribute == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Failed to get max buffer size; Attribute is null");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Log error for unimplemented remote functionality
+  if (array->is_remote_) {
+    auto st = tiledb::sm::Status::Error(
+        "tiledb_array_max_buffer_size_var not implemented for remote "
+        "arrays");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
