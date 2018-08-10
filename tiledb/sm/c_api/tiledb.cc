@@ -1917,9 +1917,38 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Flush query
-  if (save_error(ctx, query->query_->finalize()))
-    return TILEDB_ERR;
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
+
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    // Set URI
+    query->array_->open_array_->array_schema()->set_array_uri(
+        query->array_->array_uri_);
+
+    if (save_error(
+            ctx,
+            tiledb::rest::finalize_query_to_rest(
+                rest_server,
+                query->array_->array_uri_.to_string(),
+                static_cast<tiledb::sm::SerializationType>(serialization_type),
+                query->query_)))
+      return TILEDB_ERR;
+  } else {
+    // Flush query
+    if (save_error(ctx, query->query_->finalize()))
+      return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -1937,32 +1966,61 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if the array got closed
-  if (query->array_ == nullptr || !query->array_->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to submit TileDB query; The associated array got closed");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  // Check for REST server configuration
+  std::string rest_server = get_rest_server(ctx);
 
-  // Check if the array got re-opened with a different query type
-  auto array_query_type = query->array_->open_array_->query_type();
-  auto query_type = query->query_->type();
-  if (array_query_type != query_type) {
-    std::stringstream errmsg;
-    errmsg << "Failed to submit TileDB query; "
-           << "Opened array query type does not match declared query type: "
-           << "(" << query_type_str(array_query_type)
-           << " != " << query_type_str(query_type) << ")";
-    auto st = tiledb::sm::Status::Error(errmsg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  // If we have configured a rest server address use it
+  if (!rest_server.empty()) {
+    tiledb_serialization_type_t serialization_type;
+    if (get_rest_server_serialization_format(ctx, &serialization_type) ==
+        TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get rest server serialization format from config");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
-  if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
-    return TILEDB_ERR;
+    // Set URI
+    query->array_->open_array_->array_schema()->set_array_uri(
+        query->array_->array_uri_);
+
+    if (save_error(
+            ctx,
+            tiledb::rest::submit_query_to_rest(
+                rest_server,
+                query->array_->array_uri_.to_string(),
+                static_cast<tiledb::sm::SerializationType>(serialization_type),
+                query->query_)))
+      return TILEDB_ERR;
+  } else {
+    // Check if the array got closed
+    if (query->array_ == nullptr || !query->array_->is_open_) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to submit TileDB query; The associated array got closed");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    // Check if the array got re-opened with a different query type
+    auto array_query_type = query->array_->open_array_->query_type();
+    auto query_type = query->query_->type();
+    if (array_query_type != query_type) {
+      std::stringstream errmsg;
+      errmsg << "Failed to submit TileDB query; "
+             << "Opened array query type does not match declared query type: "
+             << "(" << query_type_str(array_query_type)
+             << " != " << query_type_str(query_type) << ")";
+      auto st = tiledb::sm::Status::Error(errmsg.str());
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
+      return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
