@@ -31,7 +31,9 @@
  */
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 
@@ -58,9 +60,43 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , storage_manager_(storage_manager) {
   is_open_ = false;
   array_schema_ = nullptr;
+  remote_ = false;
   timestamp_ = 0;
   last_max_buffer_sizes_subarray_ = nullptr;
 }
+
+Array::Array(const URI& array_uri, StorageManager* storage_manager, bool remote)
+    : array_uri_(array_uri)
+    , storage_manager_(storage_manager)
+    , remote_(remote) {
+  tiledb::sm::Status st = tiledb::sm::serialization_type_enum(
+      tiledb::sm::constants::serialization_default_format,
+      &serialization_type_);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
+  const char* config_serialization_type = nullptr;
+  Config config = this->storage_manager_->config();
+  st = config.get(
+      "rest.server_serialization_format", &config_serialization_type);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
+  if (config_serialization_type != nullptr) {
+    st = tiledb::sm::serialization_type_enum(
+        config_serialization_type, &serialization_type_);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+    }
+  }
+
+  const char* config_rest_server = nullptr;
+  st = config.get("rest.server_address", &config_rest_server);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
+  this->rest_server_ = config_rest_server;
+};
 
 Array::~Array() {
   std::free(last_max_buffer_sizes_subarray_);
@@ -401,6 +437,10 @@ Status Array::compute_max_buffer_sizes(
     return LOG_STATUS(
         Status::ArrayError("Cannot compute max read buffer sizes; "
                            "Array was not opened in read mode"));
+  if (remote_) {
+    return tiledb::sm::Status::ArrayError(
+        "compute_max_buffer_sizes not implemented for remote arrays");
+  }
 
   // Check attributes
   RETURN_NOT_OK(array_schema_->check_attributes(attributes));
@@ -473,15 +513,23 @@ Status Array::open(
 
   timestamp_ = utils::time::timestamp_now_ms();
 
-  // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-      array_uri_,
-      fragments,
-      encryption_key_,
-      &array_schema_,
-      &fragment_metadata_));
-
   query_type_ = QueryType::READ;
+  if (remote_) {
+    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
+        rest_server_,
+        array_uri_.to_string(),
+        serialization_type_,
+        &array_schema_));
+  } else {
+    // Open the array.
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+        array_uri_,
+        fragments,
+        encryption_key_,
+        &array_schema_,
+        &fragment_metadata_));
+  }
+
   is_open_ = true;
 
   return Status::Ok();
@@ -510,15 +558,23 @@ Status Array::open(
 
   timestamp_ = timestamp;
 
-  // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-      array_uri_,
-      timestamp_,
-      encryption_key_,
-      &array_schema_,
-      &fragment_metadata_));
-
   query_type_ = query_type;
+  if (remote_) {
+    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
+        rest_server_,
+        array_uri_.to_string(),
+        serialization_type_,
+        &array_schema_));
+  } else {
+    // Open the array.
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+        array_uri_,
+        timestamp_,
+        encryption_key_,
+        &array_schema_,
+        &fragment_metadata_));
+  }
+
   is_open_ = true;
 
   return Status::Ok();
@@ -535,10 +591,12 @@ Status Array::close() {
   array_schema_ = nullptr;
   fragment_metadata_.clear();
 
-  if (query_type_ == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
-  } else {
-    RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+  if (!remote_) {
+    if (query_type_ == QueryType::READ) {
+      RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
+    } else {
+      RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+    }
   }
 
   return Status::Ok();
@@ -552,6 +610,10 @@ bool Array::is_empty() const {
 bool Array::is_open() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return is_open_;
+}
+
+bool Array::is_remote() const {
+  return remote_;
 }
 
 std::vector<FragmentMetadata*> Array::fragment_metadata() const {
@@ -707,6 +769,13 @@ Status Array::reopen(uint64_t timestamp) {
   timestamp_ = timestamp;
   fragment_metadata_.clear();
 
+  if (remote_) {
+    return open(
+        this->query_type_,
+        this->encryption_key_.encryption_type(),
+        this->encryption_key_.key().data(),
+        this->encryption_key_.key().size());
+  }
   return storage_manager_->array_reopen(
       array_uri_,
       timestamp_,
@@ -738,6 +807,11 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     if (last_max_buffer_sizes_subarray_ == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot compute max buffer sizes; Subarray allocation failed"));
+  }
+
+  if (remote_) {
+    return tiledb::sm::Status::ArrayError(
+        "compute_max_buffer_sizes not implemented for remote arrays");
   }
 
   // Compute max buffer sizes

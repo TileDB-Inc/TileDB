@@ -2567,8 +2567,15 @@ int32_t tiledb_array_alloc(
   }
 
   // Allocate an array object
-  (*array)->array_ =
-      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  // Check if rest server is set, if so try to load remote array
+  std::string rest_server = get_rest_server(ctx);
+  if (rest_server != "") {
+    (*array)->array_ = new (std::nothrow)
+        tiledb::sm::Array(uri, ctx->ctx_->storage_manager(), true);
+  } else {
+    (*array)->array_ =
+        new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  }
   if ((*array)->array_ == nullptr) {
     delete *array;
     *array = nullptr;

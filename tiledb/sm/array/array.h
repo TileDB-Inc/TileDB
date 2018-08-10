@@ -34,6 +34,7 @@
 #define TILEDB_ARRAY_H
 
 #include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -53,6 +54,9 @@ class Array {
 
   /** Constructor. */
   Array(const URI& array_uri, StorageManager* storage_manager);
+
+  /** Constructor. */
+  Array(const URI& array_uri, StorageManager* storage_manager, bool remote);
 
   /** Destructor. */
   ~Array();
@@ -168,6 +172,9 @@ class Array {
   /** Returns `true` if the array is open. */
   bool is_open() const;
 
+  /** Returns `true` if the array is remote */
+  bool is_remote() const;
+
   /** Retrieves the array schema. Errors if the array is not open. */
   Status get_array_schema(ArraySchema** array_schema) const;
 
@@ -267,6 +274,12 @@ class Array {
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
+
+  /** defines if the array is remote */
+  bool remote_;
+
+  SerializationType serialization_type_;
+  std::string rest_server_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
