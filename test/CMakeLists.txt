@@ -61,6 +61,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-rest.cc
+  src/unit-capi-rest-dense_array.cc
   src/unit-capi-serialization-dense_array.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_neg.cc
