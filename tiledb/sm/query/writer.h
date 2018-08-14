@@ -173,6 +173,11 @@ class Writer {
   /** Sets the array. */
   void set_array(const Array* array);
 
+  /**
+   * Reset fragment metadata
+   */
+  void reset_global_write_state();
+
   /*
    * Sets the array schema. If the array is a kv store, then this
    * function also sets global order as the default layout.
