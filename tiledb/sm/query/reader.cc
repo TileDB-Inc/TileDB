@@ -1353,6 +1353,19 @@ void Reader::fill_coords_col_slab(
   }
 }
 
+Status Reader::filter_tile(
+    const std::string& attribute, Tile* tile, bool offsets) const {
+  if (tile->stores_coords()) {
+    RETURN_NOT_OK(array_schema_->coords_filters()->run_reverse(tile));
+  } else if (offsets) {
+    RETURN_NOT_OK(array_schema_->cell_var_offsets_filters()->run_reverse(tile));
+  } else {
+    RETURN_NOT_OK(array_schema_->filters(attribute)->run_reverse(tile));
+  }
+
+  return Status::Ok();
+}
+
 template <class T>
 Status Reader::get_all_coords(
     const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const {
@@ -1643,79 +1656,90 @@ Status Reader::read_all_tiles(
 
 Status Reader::read_tiles(
     const std::string& attribute, OverlappingTileVec* tiles) const {
-  // Prepare tile IO
+  // For each tile, read from its fragment.
   auto var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(tiles->size());
-  std::vector<std::vector<std::unique_ptr<TileIO>>> tile_io_vec(num_tiles);
-  std::vector<std::vector<std::unique_ptr<TileIO>>> tile_io_var_vec(num_tiles);
-
-  // Create one TileIO instance per tile, per fragment.
-  for (uint64_t i = 0; i < num_tiles; i++) {
-    auto& tile_io = tile_io_vec[i];
-    auto& tile_io_var = tile_io_var_vec[i];
-    for (const auto& f : fragment_metadata_) {
-      tile_io.push_back(std::unique_ptr<TileIO>(new TileIO(
-          storage_manager_, f->attr_uri(attribute), f->file_sizes(attribute))));
-      if (var_size)
-        tile_io_var.push_back(std::unique_ptr<TileIO>(new TileIO(
-            storage_manager_,
-            f->attr_var_uri(attribute),
-            f->file_var_sizes(attribute))));
-      else
-        tile_io_var.push_back(std::unique_ptr<TileIO>(nullptr));
-    }
-  }
-
-  // For each tile, read from its fragment.
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = (*tiles)[i];
-    auto& tile_io = tile_io_vec[i];
-    auto& tile_io_var = tile_io_var_vec[i];
     auto it = tile->attr_tiles_.find(attribute);
     if (it == tile->attr_tiles_.end()) {
       return LOG_STATUS(
           Status::ReaderError("Invalid tile map for attribute " + attribute));
     }
 
+    // Get information about the tile in its fragment
+    auto& fragment = fragment_metadata_[tile->fragment_idx_];
+    auto tile_attr_uri = fragment->attr_uri(attribute);
+    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+    auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
+    auto tile_persisted_size =
+        fragment->persisted_tile_size(attribute, tile->tile_idx_);
+
+    // Initialize the tile(s)
     auto& tile_pair = it->second;
     auto& t = tile_pair.first;
     auto& t_var = tile_pair.second;
-    // Initialize
     if (!var_size) {
       RETURN_NOT_OK(init_tile(attribute, &t));
     } else {
       RETURN_NOT_OK(init_tile(attribute, &t, &t_var));
     }
 
-    // Read
-    bool t_cache_hit;
-    RETURN_NOT_OK(tile_io[tile->fragment_idx_]->read(
-        &t,
-        fragment_metadata_[tile->fragment_idx_]->file_offset(
-            attribute, tile->tile_idx_),
-        fragment_metadata_[tile->fragment_idx_]->persisted_tile_size(
-            attribute, tile->tile_idx_),
-        fragment_metadata_[tile->fragment_idx_]->tile_size(
-            attribute, tile->tile_idx_),
-        &t_cache_hit));
+    // Try the cache first.
+    bool cache_hit;
+    RETURN_NOT_OK(storage_manager_->read_from_cache(
+        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+    STATS_COUNTER_ADD_IF(cache_hit, reader_attr_tile_cache_hits, 1);
+
+    // Read from disk and add to cache if it missed.
+    if (!cache_hit) {
+      RETURN_NOT_OK(storage_manager_->read(
+          tile_attr_uri, tile_attr_offset, t.buffer(), tile_persisted_size));
+      STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
+
+      // Decompress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
+
+      RETURN_NOT_OK(storage_manager_->write_to_cache(
+          tile_attr_uri, tile_attr_offset, t.buffer()));
+    }
+
     if (var_size) {
-      bool t_var_cache_hit;
-      RETURN_NOT_OK(tile_io_var[tile->fragment_idx_]->read(
-          &t_var,
-          fragment_metadata_[tile->fragment_idx_]->file_var_offset(
-              attribute, tile->tile_idx_),
-          fragment_metadata_[tile->fragment_idx_]->persisted_tile_var_size(
-              attribute, tile->tile_idx_),
-          fragment_metadata_[tile->fragment_idx_]->tile_var_size(
-              attribute, tile->tile_idx_),
-          &t_var_cache_hit));
+      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      auto tile_attr_var_offset =
+          fragment->file_var_offset(attribute, tile->tile_idx_);
+      auto tile_var_size = fragment->tile_var_size(attribute, tile->tile_idx_);
+      auto tile_var_persisted_size =
+          fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
+
+      RETURN_NOT_OK(storage_manager_->read_from_cache(
+          tile_attr_var_uri,
+          tile_attr_var_offset,
+          t_var.buffer(),
+          tile_var_size,
+          &cache_hit));
+
+      if (!cache_hit) {
+        RETURN_NOT_OK(storage_manager_->read(
+            tile_attr_var_uri,
+            tile_attr_var_offset,
+            t_var.buffer(),
+            tile_var_persisted_size));
+        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
+        // Decompress, etc.
+        RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
+        RETURN_NOT_OK(storage_manager_->write_to_cache(
+            tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+      }
+
+      STATS_COUNTER_ADD_IF(cache_hit, reader_attr_tile_cache_hits, 1);
       STATS_COUNTER_ADD_IF(
-          !t_cache_hit, reader_num_var_cell_bytes_read, t.size());
+          !cache_hit, reader_num_var_cell_bytes_read, t.size());
       STATS_COUNTER_ADD_IF(
-          !t_var_cache_hit, reader_num_var_cell_bytes_read, t_var.size());
+          !cache_hit, reader_num_var_cell_bytes_read, t_var.size());
     } else {
       STATS_COUNTER_ADD_IF(
-          !t_cache_hit, reader_num_fixed_cell_bytes_read, t.size());
+          !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
     }
 
     return Status::Ok();

@@ -49,6 +49,7 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
@@ -142,6 +143,11 @@ class ArraySchema {
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(const std::string& attribute) const;
 
+  /**
+   * Return a pointer to the pipeline used for offsets of variable-sized cells.
+   */
+  const FilterPipeline* cell_var_offsets_filters() const;
+
   /** Returns the compression type used for offsets of variable-sized cells. */
   Compressor cell_var_offsets_compression() const;
 
@@ -164,11 +170,17 @@ class ArraySchema {
    */
   Status check_attributes(const std::vector<std::string>& attributes) const;
 
+  /** Return the filter pipeline for the given attribute. */
+  const FilterPipeline* filters(const std::string& attribute) const;
+
   /** Returns the compression type of the input attribute. */
   Compressor compression(const std::string& compression) const;
 
   /** Return the compression level of the input attribute. */
   int compression_level(const std::string& attribute) const;
+
+  /** Return a pointer to the pipeline used for coordinates. */
+  const FilterPipeline* coords_filters() const;
 
   /** Returns the compressor of the coordinates. */
   Compressor coords_compression() const;
@@ -307,17 +319,11 @@ class ArraySchema {
   /** Stores the size of every attribute (plus coordinates). */
   std::unordered_map<std::string, uint64_t> cell_sizes_;
 
-  /** The compression type used for offsets of variable-sized cells. */
-  Compressor cell_var_offsets_compression_;
+  /** The filter pipeline run on offset tiles for var-length attributes. */
+  FilterPipeline cell_var_offsets_filters_;
 
-  /** The compression level used for offsets of variable-sized cells. */
-  int cell_var_offsets_compression_level_;
-
-  /** The coordinates compression type. */
-  Compressor coords_compression_;
-
-  /** The coordinates compression level. */
-  int coords_compression_level_;
+  /** The filter pipeline run on coordinate tiles. */
+  FilterPipeline coords_filters_;
 
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;

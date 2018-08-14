@@ -34,6 +34,7 @@
 #define TILEDB_WRITER_H
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
@@ -362,6 +363,19 @@ class Writer {
    */
   Status create_fragment(
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
+
+  /**
+   * Runs the input tile for the input attribute through the filter pipeline.
+   * The tile buffer is modified to contain the output of the pipeline.
+   *
+   * @param attribute The attribute the tile belong to.
+   * @param tile The tile to be filtered.
+   * @param offsets True if the tile to be filtered contains offsets for a
+   *    var-sized attribute.
+   * @return Status
+   */
+  Status filter_tile(
+      const std::string& attribute, Tile* tile, bool offsets) const;
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();

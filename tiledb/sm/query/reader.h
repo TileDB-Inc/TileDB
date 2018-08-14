@@ -34,6 +34,7 @@
 #define TILEDB_READER_H
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
@@ -650,6 +651,19 @@ class Reader {
   template <class T>
   void fill_coords_col_slab(
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
+
+  /**
+   * Runs the input tile for the input attribute through the filter pipeline.
+   * The tile buffer is modified to contain the output of the pipeline.
+   *
+   * @param attribute The attribute the tile belong to.
+   * @param tile The tile to be filtered.
+   * @param offsets True if the tile to be filtered contains offsets for a
+   *    var-sized attribute.
+   * @return Status
+   */
+  Status filter_tile(
+      const std::string& attribute, Tile* tile, bool offsets) const;
 
   /**
    * Gets all the coordinates of the input tile into `coords`.

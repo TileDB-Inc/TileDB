@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
@@ -52,15 +53,18 @@ ArraySchema::ArraySchema() {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
-  cell_var_offsets_compression_level_ =
-      constants::cell_var_offsets_compression_level;
-  coords_compression_ = constants::coords_compression;
-  coords_compression_level_ = constants::coords_compression_level;
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
   std::memcpy(version_, constants::version, sizeof(version_));
+
+  // Set up default filter pipelines for coords and offsets
+  coords_filters_.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
+      constants::coords_compression, constants::coords_compression_level)));
+  cell_var_offsets_filters_.add_filter(
+      std::unique_ptr<Filter>(new CompressionFilter(
+          constants::cell_var_offsets_compression,
+          constants::cell_var_offsets_compression_level)));
 }
 
 ArraySchema::ArraySchema(ArrayType array_type)
@@ -68,15 +72,18 @@ ArraySchema::ArraySchema(ArrayType array_type)
   array_uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  cell_var_offsets_compression_ = constants::cell_var_offsets_compression;
-  cell_var_offsets_compression_level_ =
-      constants::cell_var_offsets_compression_level;
-  coords_compression_ = constants::coords_compression;
-  coords_compression_level_ = constants::coords_compression_level;
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
   std::memcpy(version_, constants::version, sizeof(version_));
+
+  // Set up default filter pipelines for coords and offsets
+  coords_filters_.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
+      constants::coords_compression, constants::coords_compression_level)));
+  cell_var_offsets_filters_.add_filter(
+      std::unique_ptr<Filter>(new CompressionFilter(
+          constants::cell_var_offsets_compression,
+          constants::cell_var_offsets_compression_level)));
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
@@ -103,11 +110,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_sizes_ = array_schema->cell_sizes_;
-  cell_var_offsets_compression_ = array_schema->cell_var_offsets_compression_;
-  cell_var_offsets_compression_level_ =
-      array_schema->cell_var_offsets_compression_level_;
-  coords_compression_ = array_schema->coords_compression_;
-  coords_compression_level_ = array_schema->coords_compression_level_;
+  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
+  coords_filters_ = array_schema->coords_filters_;
   coords_size_ = array_schema->coords_size_;
   tile_order_ = array_schema->tile_order_;
   std::memcpy(version_, array_schema->version_, sizeof(version_));
@@ -202,12 +206,20 @@ unsigned int ArraySchema::cell_val_num(const std::string& attribute) const {
   return it->second->cell_val_num();
 }
 
+const FilterPipeline* ArraySchema::cell_var_offsets_filters() const {
+  return &cell_var_offsets_filters_;
+}
+
 Compressor ArraySchema::cell_var_offsets_compression() const {
-  return cell_var_offsets_compression_;
+  auto* compressor = cell_var_offsets_filters_.get_filter<CompressionFilter>();
+  assert(compressor != nullptr);
+  return compressor->compressor();
 }
 
 int ArraySchema::cell_var_offsets_compression_level() const {
-  return cell_var_offsets_compression_level_;
+  auto* compressor = cell_var_offsets_filters_.get_filter<CompressionFilter>();
+  assert(compressor != nullptr);
+  return compressor->compression_level();
 }
 
 Status ArraySchema::check() const {
@@ -259,11 +271,23 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
+const FilterPipeline* ArraySchema::filters(const std::string& attribute) const {
+  auto it = attribute_map_.find(attribute);
+  if (it == attribute_map_.end()) {
+    if (attribute == constants::coords)
+      return coords_filters();
+    assert(false);   // This should never happen
+    return nullptr;  // Return something ad hoc
+  }
+
+  return it->second->filters();
+}
+
 Compressor ArraySchema::compression(const std::string& attribute) const {
   auto it = attribute_map_.find(attribute);
   if (it == attribute_map_.end()) {
     if (attribute == constants::coords)
-      return coords_compression_;
+      return coords_compression();
     assert(false);                      // This should never happen
     return Compressor::NO_COMPRESSION;  // Return something ad hoc
   }
@@ -275,7 +299,7 @@ int ArraySchema::compression_level(const std::string& attribute) const {
   auto it = attribute_map_.find(attribute);
   if (it == attribute_map_.end()) {
     if (attribute == constants::coords)
-      return coords_compression_level_;
+      return coords_compression_level();
     assert(false);  // This should never happen
     return -1;      // Return something ad hoc
   }
@@ -283,12 +307,20 @@ int ArraySchema::compression_level(const std::string& attribute) const {
   return it->second->compression_level();
 }
 
+const FilterPipeline* ArraySchema::coords_filters() const {
+  return &coords_filters_;
+}
+
 Compressor ArraySchema::coords_compression() const {
-  return coords_compression_;
+  auto compressor = coords_filters_.get_filter<CompressionFilter>();
+  assert(compressor != nullptr);
+  return compressor->compressor();
 }
 
 int ArraySchema::coords_compression_level() const {
-  return coords_compression_level_;
+  auto compressor = coords_filters_.get_filter<CompressionFilter>();
+  assert(compressor != nullptr);
+  return compressor->compression_level();
 }
 
 uint64_t ArraySchema::coords_size() const {
@@ -319,11 +351,11 @@ void ArraySchema::dump(FILE* out) const {
   fprintf(
       out,
       "- Coordinates compressor: %s\n",
-      compressor_str(coords_compression_).c_str());
+      compressor_str(coords_compression()).c_str());
   fprintf(
       out,
       "- Coordinates compression level: %d\n\n",
-      coords_compression_level_);
+      coords_compression_level());
 
   if (domain_ != nullptr)
     domain_->dump(out);
@@ -372,14 +404,16 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&capacity_, sizeof(uint64_t)));
 
   // Write coords compression
-  auto compressor = static_cast<char>(coords_compression_);
+  auto compressor = static_cast<char>(coords_compression());
   RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
-  RETURN_NOT_OK(buff->write(&coords_compression_level_, sizeof(int)));
+  auto compressor_level = coords_compression_level();
+  RETURN_NOT_OK(buff->write(&compressor_level, sizeof(int)));
 
   // Write offsets compression
-  auto offset_compressor = static_cast<char>(cell_var_offsets_compression_);
+  auto offset_compressor = static_cast<char>(cell_var_offsets_compression());
   RETURN_NOT_OK(buff->write(&offset_compressor, sizeof(char)));
-  RETURN_NOT_OK(buff->write(&cell_var_offsets_compression_level_, sizeof(int)));
+  auto offset_compressor_level = cell_var_offsets_compression_level();
+  RETURN_NOT_OK(buff->write(&offset_compressor_level, sizeof(int)));
 
   // Write domain
   domain_->serialize(buff);
@@ -501,14 +535,18 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   // Load coords compression
   char compressor;
   RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  coords_compression_ = static_cast<Compressor>(compressor);
-  RETURN_NOT_OK(buff->read(&coords_compression_level_, sizeof(int)));
+  set_coords_compressor(static_cast<Compressor>(compressor));
+  int compressor_level;
+  RETURN_NOT_OK(buff->read(&compressor_level, sizeof(int)));
+  set_coords_compression_level(compressor_level);
 
   // Load offsets compression
   char offsets_compressor;
   RETURN_NOT_OK(buff->read(&offsets_compressor, sizeof(char)));
-  cell_var_offsets_compression_ = static_cast<Compressor>(offsets_compressor);
-  RETURN_NOT_OK(buff->read(&cell_var_offsets_compression_level_, sizeof(int)));
+  set_cell_var_offsets_compressor(static_cast<Compressor>(offsets_compressor));
+  int offsets_compressor_level;
+  RETURN_NOT_OK(buff->read(&offsets_compressor_level, sizeof(int)));
+  set_cell_var_offsets_compression_level(offsets_compressor_level);
 
   // Load domain
   domain_ = new Domain();
@@ -590,20 +628,28 @@ void ArraySchema::set_capacity(uint64_t capacity) {
 }
 
 void ArraySchema::set_coords_compressor(Compressor compressor) {
-  coords_compression_ = compressor;
+  auto* filter = coords_filters_.get_filter<CompressionFilter>();
+  assert(filter != nullptr);
+  filter->set_compressor(compressor);
 }
 
 void ArraySchema::set_coords_compression_level(int compression_level) {
-  coords_compression_level_ = compression_level;
+  auto* filter = coords_filters_.get_filter<CompressionFilter>();
+  assert(filter != nullptr);
+  filter->set_compression_level(compression_level);
 }
 
 void ArraySchema::set_cell_var_offsets_compressor(Compressor compressor) {
-  cell_var_offsets_compression_ = compressor;
+  auto* filter = cell_var_offsets_filters_.get_filter<CompressionFilter>();
+  assert(filter != nullptr);
+  filter->set_compressor(compressor);
 }
 
 void ArraySchema::set_cell_var_offsets_compression_level(
     int compression_level) {
-  cell_var_offsets_compression_level_ = compression_level;
+  auto* filter = cell_var_offsets_filters_.get_filter<CompressionFilter>();
+  assert(filter != nullptr);
+  filter->set_compression_level(compression_level);
 }
 
 void ArraySchema::set_cell_order(Layout cell_order) {
@@ -634,8 +680,8 @@ Status ArraySchema::set_domain(Domain* domain) {
   // Potentially change the default coordinates compressor
   if ((domain_->type() == Datatype::FLOAT32 ||
        domain_->type() == Datatype::FLOAT64) &&
-      coords_compression_ == Compressor::DOUBLE_DELTA)
-    coords_compression_ = constants::real_coords_compression;
+      coords_compression() == Compressor::DOUBLE_DELTA)
+    set_coords_compressor(constants::real_coords_compression);
 
   return Status::Ok();
 }
@@ -662,7 +708,7 @@ bool ArraySchema::check_double_delta_compressor() const {
   // Check coordinates
   if ((domain_->type() == Datatype::FLOAT32 ||
        domain_->type() == Datatype::FLOAT64) &&
-      coords_compression_ == Compressor::DOUBLE_DELTA)
+      coords_compression() == Compressor::DOUBLE_DELTA)
     return false;
 
   // Check attributes
