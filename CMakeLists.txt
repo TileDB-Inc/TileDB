@@ -49,7 +49,12 @@ endif()
 # Set C++11 as required standard for all C++ targets.
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) # Don't use GNU extensions
+if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
+  # Use GNU extensions under Cygwin
+  set(CMAKE_CXX_EXTENSIONS ON)
+else()
+  set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
 # Set -fvisibility=hidden (or equivalent) flags by default.
 set(CMAKE_C_VISIBILITY_PRESET hidden)

@@ -798,6 +798,7 @@ class StorageManager {
   /** Increment the count of in-progress queries. */
   void increment_in_progress();
 
+#ifdef HAVE_TBB
   /**
    * Configures the TBB runtime. If TBB is not enabled, does nothing.
    *
@@ -805,6 +806,7 @@ class StorageManager {
    * @return Status
    */
   Status init_tbb(Config::SMParams& config);
+#endif
 
   /**
    * Loads the array schema into an open array.
