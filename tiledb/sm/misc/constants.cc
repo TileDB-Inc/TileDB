@@ -225,7 +225,7 @@ const uint64_t num_async_threads = 1;
 #ifdef HAVE_TBB
 const int num_tbb_threads = tbb::task_scheduler_init::automatic;
 #else
-const int num_tbb_threads = std::thread::hardware_concurrency();
+const int num_tbb_threads = -1;
 #endif
 
 /** The tile cache size. */
