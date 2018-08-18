@@ -388,7 +388,7 @@ uint64_t Domain::cell_num(const void* domain) const {
     case Datatype::FLOAT64:
       return cell_num<double>(static_cast<const double*>(domain));
     default:
-      assert(0);
+      assert(false);
       return 0;
   }
 }
@@ -408,7 +408,6 @@ uint64_t Domain::cell_num(const T* domain) const {
       return 0;
     ++range;
     prod = range * cell_num;
-    // TODO: this will probably not work for signed integers
     if (prod / range != cell_num)  // Overflow
       return 0;
     cell_num = prod;
@@ -784,30 +783,6 @@ Status Domain::set_null_tile_extents_to_range() {
   return Status::Ok();
 }
 
-template <class T>
-void Domain::subarray_overlap(
-    const T* subarray_a,
-    const T* subarray_b,
-    T* overlap_subarray,
-    bool* overlap) const {
-  // Get overlap range
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    overlap_subarray[2 * i] = MAX(subarray_a[2 * i], subarray_b[2 * i]);
-    overlap_subarray[2 * i + 1] =
-        MIN(subarray_a[2 * i + 1], subarray_b[2 * i + 1]);
-  }
-
-  // Check overlap
-  *overlap = true;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    if (overlap_subarray[2 * i] > subarray_b[2 * i + 1] ||
-        overlap_subarray[2 * i + 1] < subarray_b[2 * i]) {
-      *overlap = false;
-      break;
-    }
-  }
-}
-
 const void* Domain::tile_extent(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
@@ -817,58 +792,6 @@ const void* Domain::tile_extent(unsigned int i) const {
 
 const void* Domain::tile_extents() const {
   return tile_extents_;
-}
-
-uint64_t Domain::tile_num() const {
-  // Invoke the proper template function
-  switch (type_) {
-    case Datatype::INT32:
-      return tile_num<int>();
-    case Datatype::INT64:
-      return tile_num<int64_t>();
-    case Datatype::INT8:
-      return tile_num<int8_t>();
-    case Datatype::UINT8:
-      return tile_num<uint8_t>();
-    case Datatype::INT16:
-      return tile_num<int16_t>();
-    case Datatype::UINT16:
-      return tile_num<uint16_t>();
-    case Datatype::UINT32:
-      return tile_num<uint32_t>();
-    case Datatype::UINT64:
-      return tile_num<uint64_t>();
-    case Datatype::FLOAT32:
-    case Datatype::FLOAT64:
-      // Operation not supported for float domains
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain types
-      assert(false);
-      return 0;
-  }
-
-  assert(false);
-  return 0;
-}
-
-template <class T>
-uint64_t Domain::tile_num() const {
-  // For easy reference
-  auto domain = static_cast<const T*>(domain_);
-  auto tile_extents = static_cast<const T*>(tile_extents_);
-
-  uint64_t ret = 1;
-  for (unsigned int i = 0; i < dim_num_; ++i)
-    ret *= (domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i];
-
-  return ret;
 }
 
 uint64_t Domain::tile_num(const void* range) const {
@@ -907,21 +830,6 @@ uint64_t Domain::tile_num(const void* range) const {
 
   assert(false);
   return 0;
-}
-
-template <class T>
-uint64_t Domain::tile_num(const T* range) const {
-  // For easy reference
-  auto tile_extents = static_cast<const T*>(tile_extents_);
-  auto domain = static_cast<const T*>(domain_);
-
-  uint64_t ret = 1;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    uint64_t start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
-    uint64_t end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
-    ret *= (end - start + 1);
-  }
-  return ret;
 }
 
 template <class T>
@@ -1031,12 +939,16 @@ void Domain::compute_cell_num_per_tile() {
       compute_cell_num_per_tile<uint64_t>();
       break;
     default:
-      assert(0);
+      return;
   }
 }
 
 template <class T>
 void Domain::compute_cell_num_per_tile() {
+  // Applicable only to integer domains
+  if (!std::numeric_limits<T>::is_integer)
+    return;
+
   // Applicable only to non-NULL space tiles
   if (tile_extents_ == nullptr)
     return;
@@ -1095,7 +1007,7 @@ void Domain::compute_tile_domain() {
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
   // Allocate space for the tile domain
-  assert(tile_domain_ == NULL);
+  assert(tile_domain_ == nullptr);
   tile_domain_ = std::malloc(2 * dim_num_ * sizeof(T));
 
   // For easy reference
@@ -1200,9 +1112,8 @@ T Domain::floor_to_tile(T value, unsigned dim_idx) const {
   if (tile_extents_ == nullptr)
     return domain[2 * dim_idx];
 
-  return ((value - domain[2 * dim_idx]) / tile_extents[dim_idx]) *
-             tile_extents[dim_idx] +
-         domain[2 * dim_idx];
+  uint64_t div = (value - domain[2 * dim_idx]) / tile_extents[dim_idx];
+  return (T)div * tile_extents[dim_idx] + domain[2 * dim_idx];
 }
 
 template <class T>
@@ -1696,57 +1607,6 @@ template void Domain::get_tile_subarray<double>(
     const double* tile_coords,
     double* tile_subarray) const;
 
-template void Domain::subarray_overlap<int>(
-    const int* subarray_a,
-    const int* subarray_b,
-    int* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<int64_t>(
-    const int64_t* subarray_a,
-    const int64_t* subarray_b,
-    int64_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<float>(
-    const float* subarray_a,
-    const float* subarray_b,
-    float* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<double>(
-    const double* subarray_a,
-    const double* subarray_b,
-    double* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<int8_t>(
-    const int8_t* subarray_a,
-    const int8_t* subarray_b,
-    int8_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<uint8_t>(
-    const uint8_t* subarray_a,
-    const uint8_t* subarray_b,
-    uint8_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<int16_t>(
-    const int16_t* subarray_a,
-    const int16_t* subarray_b,
-    int16_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<uint16_t>(
-    const uint16_t* subarray_a,
-    const uint16_t* subarray_b,
-    uint16_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<uint32_t>(
-    const uint32_t* subarray_a,
-    const uint32_t* subarray_b,
-    uint32_t* overlap_subarray,
-    bool* in) const;
-template void Domain::subarray_overlap<uint64_t>(
-    const uint64_t* subarray_a,
-    const uint64_t* subarray_b,
-    uint64_t* overlap_subarray,
-    bool* in) const;
-
 template int Domain::tile_order_cmp<int8_t>(
     const int8_t* coords_a, const int8_t* coords_b) const;
 template int Domain::tile_order_cmp<uint8_t>(
@@ -1839,15 +1699,6 @@ template void Domain::get_tile_domain<int64_t>(
     const int64_t* subarray, int64_t* tile_subarray) const;
 template void Domain::get_tile_domain<uint64_t>(
     const uint64_t* subarray, uint64_t* tile_subarray) const;
-
-template uint64_t Domain::tile_num<int8_t>(const int8_t* range) const;
-template uint64_t Domain::tile_num<uint8_t>(const uint8_t* range) const;
-template uint64_t Domain::tile_num<int16_t>(const int16_t* range) const;
-template uint64_t Domain::tile_num<uint16_t>(const uint16_t* range) const;
-template uint64_t Domain::tile_num<int>(const int* range) const;
-template uint64_t Domain::tile_num<unsigned>(const unsigned* range) const;
-template uint64_t Domain::tile_num<int64_t>(const int64_t* range) const;
-template uint64_t Domain::tile_num<uint64_t>(const uint64_t* range) const;
 
 template uint64_t Domain::get_tile_pos<int8_t>(const int8_t* tile_coords) const;
 template uint64_t Domain::get_tile_pos<uint8_t>(

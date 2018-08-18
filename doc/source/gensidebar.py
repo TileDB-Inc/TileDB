@@ -102,6 +102,7 @@ def generate_sidebar(conf, conf_api):
     write('Writing Sparse Arrays', 'tutorials/writing-sparse')
     write('Writing Dense Arrays', 'tutorials/writing-dense')
     write('Reading Arrays', 'tutorials/reading')
+    write('Negative and Real Domains', 'tutorials/neg-real')
     write('Key-value Store', 'tutorials/kv')
     write('Object Management', 'tutorials/object')
     write('Virtual Filesystem', 'tutorials/vfs')

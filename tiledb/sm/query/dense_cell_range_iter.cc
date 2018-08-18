@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <iostream>
@@ -178,10 +179,15 @@ Status DenseCellRangeIter<T>::compute_current_range() {
 
 template <class T>
 void DenseCellRangeIter<T>::compute_current_tile_info() {
+  auto dim_num = domain_->dim_num();
   domain_->get_tile_coords(&coords_start_[0], &tile_coords_[0]);
   domain_->get_tile_subarray(&tile_coords_[0], &tile_subarray_[0]);
-  domain_->subarray_overlap(
-      &subarray_[0], &tile_subarray_[0], &subarray_in_tile_[0], &tile_overlap_);
+  utils::geometry::overlap(
+      &subarray_[0],
+      &tile_subarray_[0],
+      dim_num,
+      &subarray_in_tile_[0],
+      &tile_overlap_);
   domain_->get_tile_domain(&subarray_[0], &tile_domain_[0]);
   tile_idx_ = domain_->get_tile_pos(&tile_coords_[0]);
 }
@@ -219,15 +225,17 @@ void DenseCellRangeIter<T>::compute_next_start_coords_global(
     assert(0);
 
   // Move to the next tile
+  auto dim_num = domain_->dim_num();
   if (!*in_subarray) {
     domain_->get_next_tile_coords(
         &tile_domain_[0], &tile_coords_[0], in_subarray);
     if (*in_subarray) {
       tile_idx_ = domain_->get_tile_pos(&tile_coords_[0]);
       domain_->get_tile_subarray(&tile_coords_[0], &tile_subarray_[0]);
-      domain_->subarray_overlap(
+      utils::geometry::overlap(
           &subarray_[0],
           &tile_subarray_[0],
+          dim_num,
           &subarray_in_tile_[0],
           &tile_overlap_);
       for (unsigned i = 0; i < domain_->dim_num(); ++i)

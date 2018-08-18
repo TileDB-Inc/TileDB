@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/status.h"
 
+#include <iostream>
 #include <vector>
 
 namespace tiledb {
@@ -459,23 +460,6 @@ class Domain {
    */
   Status set_null_tile_extents_to_range();
 
-  /**
-   * Returns the type of overlap of the input subarrays.
-   *
-   * @tparam T The types of the subarrays.
-   * @param subarray_a The first input subarray.
-   * @param subarray_b The second input subarray.
-   * @param overlap_subarray The overlap area between *subarray_a* and
-   *     *subarray_b*.
-   * @param overlap `true` if the tow subarrays overlap and `false` otherwise.
-   */
-  template <class T>
-  void subarray_overlap(
-      const T* subarray_a,
-      const T* subarray_b,
-      T* overlap_subarray,
-      bool* overlap) const;
-
   /** Returns the tile extents. */
   const void* tile_extents() const;
 
@@ -483,37 +467,33 @@ class Domain {
   const void* tile_extent(unsigned int i) const;
 
   /**
-   * Returns the number of tiles in the array domain (applicable only to dense
-   * arrays).
-   */
-  uint64_t tile_num() const;
-
-  /**
-   * Returns the number of tiles in the array domain (applicable only to dense
-   * arrays).
+   * Returns the number of tiles contained in the input range.
    *
-   * @tparam T The coordinates type.
-   * @return The number of tiles.
-   */
-  template <class T>
-  uint64_t tile_num() const;
-
-  /**
-   * Returns the number of tiles overlapping with the input range
-   * (applicable only to dense arrays).
+   * @note Applicable only to integer domains.
    */
   uint64_t tile_num(const void* range) const;
 
   /**
-   * Returns the number of tiles in the input subarray (applicable only to dense
-   * arrays).
+   * Returns the number of tiles contained in the input range.
    *
-   * @tparam T The coordinates type.
-   * @param subarray The input subarray.
-   * @return The number of tiles.
+   * @note Applicable only to integer domains.
    */
-  template <class T>
-  uint64_t tile_num(const T* subarray) const;
+  template <
+      class T,
+      class = typename std::enable_if<std::is_integral<T>::value>::type>
+  uint64_t tile_num(const T* range) const {
+    // For easy reference
+    auto tile_extents = static_cast<const T*>(tile_extents_);
+    auto domain = static_cast<const T*>(domain_);
+
+    uint64_t ret = 1;
+    for (unsigned int i = 0; i < dim_num_; ++i) {
+      uint64_t start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
+      uint64_t end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
+      ret *= (end - start + 1);
+    }
+    return ret;
+  }
 
   /**
    * Checks the tile order of the input coordinates.
@@ -619,7 +599,7 @@ class Domain {
   unsigned int dim_num_;
 
   /**
-   * The array domain, represented by serializes the dimensions domains.
+   * The array domain, represented by serializing the dimension domains.
    * It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the dimensions
    * type.

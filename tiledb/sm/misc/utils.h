@@ -161,6 +161,33 @@ template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num);
 
 /**
+ * Checks whether two hyper-rectangles overlap, and determines whether
+ * the first rectangle contains the second.
+ *
+ * @tparam T The type of the rectangles.
+ * @param a The first rectangle.
+ * @param b The second rectangle.
+ * @param dim_num The number of dimensions.
+ * @param a_contains_b Determines whether the first rectangle contains the
+ *     second.
+ * @return `True` if the rectangles overlap, and `false` otherwise.
+ */
+template <class T>
+bool overlap(const T* a, const T* b, unsigned dim_num, bool* a_contains_b);
+
+/**
+ * Computes the overlap between two rectangles.
+ *
+ * @tparam T The types of the rectangles.
+ * @param a The first input rectangle.
+ * @param b The second input rectangle.
+ * @param o The overlap area between `a` and `b`.
+ * @param overlap `true` if the two rectangles overlap and `false` otherwise.
+ */
+template <class T>
+void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap);
+
+/**
  * Returns the percentage of coverage of hyper-rectangle `a` in `b`.
  * Note that the function assumes that `a` is fully contained in `b`.
  */
