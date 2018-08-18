@@ -1674,8 +1674,11 @@ Status StorageManager::get_fragment_uris(
 
 #ifdef HAVE_TBB
 Status StorageManager::init_tbb(Config::SMParams& config) {
-  tbb_scheduler_ = std::unique_ptr<tbb::task_scheduler_init>(
-      new tbb::task_scheduler_init(config.num_tbb_threads_));
+  // use tbb's default scheduler if configured with default number of threads
+  if (config.num_tbb_threads_ != constants::num_tbb_threads) {
+    tbb_scheduler_ = std::unique_ptr<tbb::task_scheduler_init>(
+        new tbb::task_scheduler_init(config.num_tbb_threads_));
+  }
   return Status::Ok();
 }
 #endif
