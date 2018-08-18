@@ -69,4 +69,6 @@ The full TileDB documentation can be found at [docs.tiledb.io](https://docs.tile
 
 ## Get involved
 
+TileDB is an open source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md) for more information.
+
 We'd love to hear from you. Drop us a line at [hello@tiledb.io](mailto:hello@tiledb.io), visit our [forum](https://forum.tiledb.io/) or [contact form](https://tiledb.io/contact-us), or [follow us on Twitter](https://twitter.com/tiledb) to stay informed of updates and news.
