@@ -1693,7 +1693,7 @@ Status Reader::read_tiles(
         &t,
         fragment_metadata_[tile->fragment_idx_]->file_offset(
             attribute, tile->tile_idx_),
-        fragment_metadata_[tile->fragment_idx_]->compressed_tile_size(
+        fragment_metadata_[tile->fragment_idx_]->persisted_tile_size(
             attribute, tile->tile_idx_),
         fragment_metadata_[tile->fragment_idx_]->tile_size(
             attribute, tile->tile_idx_),
@@ -1704,7 +1704,7 @@ Status Reader::read_tiles(
           &t_var,
           fragment_metadata_[tile->fragment_idx_]->file_var_offset(
               attribute, tile->tile_idx_),
-          fragment_metadata_[tile->fragment_idx_]->compressed_tile_var_size(
+          fragment_metadata_[tile->fragment_idx_]->persisted_tile_var_size(
               attribute, tile->tile_idx_),
           fragment_metadata_[tile->fragment_idx_]->tile_var_size(
               attribute, tile->tile_idx_),
