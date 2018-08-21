@@ -385,26 +385,27 @@ class FragmentMetadata {
       const std::string& attribute, uint64_t tile_idx) const;
 
   /**
-   * Returns the compressed tile size for a given attribute
-   * and tile index. If the attribute is var-sized, this will return
-   * the size of the offsets tile.
+   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * compressed tile on disk) for a given attribute and tile index. If the
+   * attribute is var-sized, this will return the persisted size of the offsets
+   * tile.
    *
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
    * @return The tile size.
    */
-  uint64_t compressed_tile_size(
+  uint64_t persisted_tile_size(
       const std::string& attribute, uint64_t tile_idx) const;
 
   /**
-   * Returns the compressed tile size for a given var-sized attribute
-   * and tile index.
+   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * compressed tile on disk) for a given var-sized attribute and tile index.
    *
    * @param attribute The inout attribute.
    * @param tile_idx The index of the tile in the metadata.
    * @return The tile size.
    */
-  uint64_t compressed_tile_var_size(
+  uint64_t persisted_tile_var_size(
       const std::string& attribute, uint64_t tile_idx) const;
 
   /**

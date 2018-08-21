@@ -517,35 +517,24 @@ uint64_t FragmentMetadata::file_var_offset(
   return tile_var_offsets_[attribute_id][tile_idx];
 }
 
-uint64_t FragmentMetadata::compressed_tile_size(
+uint64_t FragmentMetadata::persisted_tile_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
-
-  // Check if the tile is not compressed
-  if (array_schema_->var_size(attribute)) {
-    if (constants::cell_var_offsets_compression == Compressor::NO_COMPRESSION)
-      return 0;  // Uncompressed offsets tile
-  } else {
-    if (array_schema_->compression(attribute) == Compressor::NO_COMPRESSION)
-      return 0;  // Uncompressed fix-sized value tile
-  }
-
   auto tile_num = this->tile_num();
+
   return (tile_idx != tile_num - 1) ?
              tile_offsets_[attribute_id][tile_idx + 1] -
                  tile_offsets_[attribute_id][tile_idx] :
              file_sizes_[attribute_id] - tile_offsets_[attribute_id][tile_idx];
 }
 
-uint64_t FragmentMetadata::compressed_tile_var_size(
+uint64_t FragmentMetadata::persisted_tile_var_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
-  if (array_schema_->compression(attribute) == Compressor::NO_COMPRESSION)
-    return 0;
-
   auto tile_num = this->tile_num();
+
   return (tile_idx != tile_num - 1) ?
              tile_var_offsets_[attribute_id][tile_idx + 1] -
                  tile_var_offsets_[attribute_id][tile_idx] :
