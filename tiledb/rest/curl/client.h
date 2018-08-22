@@ -85,6 +85,22 @@ tiledb::sm::Status delete_array_schema_from_rest(
     tiledb::sm::SerializationType serialization_type);
 
 /**
+ * Get array's non_empty domain from rest server
+ *
+ * @param rest_server url
+ * @param uri of array being loaded
+ * @param domain The domain to be retrieved.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return Status Ok() on success Error() on failures
+ */
+tiledb::sm::Status get_array_non_empty_domain(
+    std::string rest_server,
+    tiledb::sm::Array* array,
+    void* domain,
+    bool* is_empty);
+
+/**
  * Post a data query to rest server
  *
  * @param rest_server url

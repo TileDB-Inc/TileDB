@@ -2903,11 +2903,30 @@ int32_t tiledb_array_get_non_empty_domain(
 
   bool is_empty_b;
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_get_non_empty_domain(
-              array->array_, domain, &is_empty_b)))
-    return TILEDB_ERR;
+  // Log error for unimplemented remote functionality
+  if (array->array_->is_remote()) {
+    // Check for REST server configuration
+    std::string rest_server = get_rest_server(ctx);
+    if (!rest_server.empty()) {
+      if (save_error(
+              ctx,
+              tiledb::rest::get_array_non_empty_domain(
+                  rest_server, array->array_, domain, &is_empty_b)))
+        return TILEDB_ERR;
+    } else {
+      auto st = tiledb::sm::Status::Error(
+          "Rest server not in config but array marked remote");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_get_non_empty_domain(
+                array->array_, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  }
 
   *is_empty = (int32_t)is_empty_b;
 

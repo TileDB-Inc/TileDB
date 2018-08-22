@@ -123,8 +123,8 @@ ArraySchemaRest::ArraySchemaRest() {
   REQUIRE(error == nullptr);
 
   REQUIRE(
-      tiledb_config_set(
-          config, "rest.server_address", REST_SERVER, &error) == TILEDB_OK);
+      tiledb_config_set(config, "rest.server_address", REST_SERVER, &error) ==
+      TILEDB_OK);
 
   REQUIRE(
       tiledb_config_set(
