@@ -132,9 +132,6 @@ set(TILEDB_CORE_SOURCES
 
 # 'External' source files included in the source tree.
 set(TILEDB_EXTERNALS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/include")
-set(TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
-)
 
 ############################################################
 # Build core objects as a reusable object library
@@ -142,7 +139,6 @@ set(TILEDB_EXTERNALS_SOURCES
 
 add_library(TILEDB_CORE_OBJECTS OBJECT 
     ${TILEDB_CORE_SOURCES}
-    ${TILEDB_EXTERNALS_SOURCES}
 )
 
 # Compile all core sources with PIC
