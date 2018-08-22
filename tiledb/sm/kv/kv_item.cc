@@ -31,9 +31,9 @@
  */
 
 #include "tiledb/sm/kv/kv_item.h"
-#include "md5/md5.h"
 #include "tiledb/sm/misc/logger.h"
 
+#include <openssl/md5.h>
 #include <iostream>
 
 namespace tiledb {
@@ -213,18 +213,18 @@ KVItem::Hash KVItem::compute_hash(
     return Hash();
 
   Hash hash;
-  md5::MD5_CTX md5_ctx;
-  uint64_t coord_size = sizeof(md5_ctx.digest) / 2;
+  MD5_CTX md5_ctx;
+  unsigned char md5_digest[16];
+  uint64_t coord_size = sizeof(md5_digest) / 2;
   assert(coord_size == sizeof(uint64_t));
   auto key_type_c = static_cast<char>(key_type);
-  md5::MD5Init(&md5_ctx);
-  md5::MD5Update(&md5_ctx, (unsigned char*)&key_type_c, sizeof(char));
-  md5::MD5Update(&md5_ctx, (unsigned char*)&key_size, sizeof(uint64_t));
-  md5::MD5Update(&md5_ctx, (unsigned char*)key, (unsigned int)key_size);
-  md5::MD5Final(&md5_ctx);
-  std::memcpy(&(hash.first), md5_ctx.digest, coord_size);
-  std::memcpy(&(hash.second), md5_ctx.digest + coord_size, coord_size);
-
+  MD5_Init(&md5_ctx);
+  MD5_Update(&md5_ctx, (unsigned char*)&key_type_c, sizeof(char));
+  MD5_Update(&md5_ctx, (unsigned char*)&key_size, sizeof(uint64_t));
+  MD5_Update(&md5_ctx, (unsigned char*)key, (unsigned int)key_size);
+  MD5_Final(md5_digest, &md5_ctx);
+  std::memcpy(&(hash.first), md5_digest, coord_size);
+  std::memcpy(&(hash.second), md5_digest + coord_size, coord_size);
   return hash;
 }
 
