@@ -39,6 +39,7 @@ CAPNP_DECLARE_SCHEMA(cbe1e7c13508aa2c);
 CAPNP_DECLARE_SCHEMA(bc07b09812d262fa);
 CAPNP_DECLARE_SCHEMA(e19754f813ccf79c);
 CAPNP_DECLARE_SCHEMA(96ba49d0f8b23ccc);
+CAPNP_DECLARE_SCHEMA(a6d6e18628ea9cc9);
 CAPNP_DECLARE_SCHEMA(9df6f2a42c4e5f0b);
 CAPNP_DECLARE_SCHEMA(91f5a1c793993019);
 
@@ -542,6 +543,23 @@ struct Query {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 0, 7)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct NonEmptyDomainArray {
+  NonEmptyDomainArray() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(a6d6e18628ea9cc9, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4417,6 +4435,115 @@ class Query::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class NonEmptyDomainArray::Reader {
+ public:
+  typedef NonEmptyDomainArray Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasName() const;
+  inline ::capnp::Text::Reader getName() const;
+
+  inline bool hasDomain() const;
+  inline ::DomainArray::Reader getDomain() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class NonEmptyDomainArray::Builder {
+ public:
+  typedef NonEmptyDomainArray Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasName();
+  inline ::capnp::Text::Builder getName();
+  inline void setName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownName();
+
+  inline bool hasDomain();
+  inline ::DomainArray::Builder getDomain();
+  inline void setDomain(::DomainArray::Reader value);
+  inline ::DomainArray::Builder initDomain();
+  inline void adoptDomain(::capnp::Orphan<::DomainArray>&& value);
+  inline ::capnp::Orphan<::DomainArray> disownDomain();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class NonEmptyDomainArray::Pipeline {
+ public:
+  typedef NonEmptyDomainArray Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::DomainArray::Pipeline getDomain();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class NonEmptyDomain::Reader {
  public:
   typedef NonEmptyDomain Reads;
@@ -4437,7 +4564,7 @@ class NonEmptyDomain::Reader {
 #endif  // !CAPNP_LITE
 
   inline bool hasNonEmptyDomain() const;
-  inline ::Map<::capnp::Text, ::DomainArray>::Reader getNonEmptyDomain() const;
+  inline ::capnp::List<::NonEmptyDomainArray>::Reader getNonEmptyDomain() const;
 
   inline bool getIsEmpty() const;
 
@@ -4481,13 +4608,14 @@ class NonEmptyDomain::Builder {
 #endif  // !CAPNP_LITE
 
   inline bool hasNonEmptyDomain();
-  inline ::Map<::capnp::Text, ::DomainArray>::Builder getNonEmptyDomain();
+  inline ::capnp::List<::NonEmptyDomainArray>::Builder getNonEmptyDomain();
   inline void setNonEmptyDomain(
-      ::Map<::capnp::Text, ::DomainArray>::Reader value);
-  inline ::Map<::capnp::Text, ::DomainArray>::Builder initNonEmptyDomain();
+      ::capnp::List<::NonEmptyDomainArray>::Reader value);
+  inline ::capnp::List<::NonEmptyDomainArray>::Builder initNonEmptyDomain(
+      unsigned int size);
   inline void adoptNonEmptyDomain(
-      ::capnp::Orphan<::Map<::capnp::Text, ::DomainArray>>&& value);
-  inline ::capnp::Orphan<::Map<::capnp::Text, ::DomainArray>>
+      ::capnp::Orphan<::capnp::List<::NonEmptyDomainArray>>&& value);
+  inline ::capnp::Orphan<::capnp::List<::NonEmptyDomainArray>>
   disownNonEmptyDomain();
 
   inline bool getIsEmpty();
@@ -4513,8 +4641,6 @@ class NonEmptyDomain::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
-
-  inline ::Map<::capnp::Text, ::DomainArray>::Pipeline getNonEmptyDomain();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -11635,6 +11761,88 @@ inline ::capnp::Orphan<::DomainArray> Query::Builder::disownSubarray() {
       _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
 }
 
+inline bool NonEmptyDomainArray::Reader::hasName() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool NonEmptyDomainArray::Builder::hasName() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader NonEmptyDomainArray::Reader::getName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder NonEmptyDomainArray::Builder::getName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void NonEmptyDomainArray::Builder::setName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder NonEmptyDomainArray::Builder::initName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void NonEmptyDomainArray::Builder::adoptName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+NonEmptyDomainArray::Builder::disownName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool NonEmptyDomainArray::Reader::hasDomain() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool NonEmptyDomainArray::Builder::hasDomain() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::DomainArray::Reader NonEmptyDomainArray::Reader::getDomain() const {
+  return ::capnp::_::PointerHelpers<::DomainArray>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::DomainArray::Builder NonEmptyDomainArray::Builder::getDomain() {
+  return ::capnp::_::PointerHelpers<::DomainArray>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::DomainArray::Pipeline NonEmptyDomainArray::Pipeline::getDomain() {
+  return ::DomainArray::Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void NonEmptyDomainArray::Builder::setDomain(
+    ::DomainArray::Reader value) {
+  ::capnp::_::PointerHelpers<::DomainArray>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::DomainArray::Builder NonEmptyDomainArray::Builder::initDomain() {
+  return ::capnp::_::PointerHelpers<::DomainArray>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void NonEmptyDomainArray::Builder::adoptDomain(
+    ::capnp::Orphan<::DomainArray>&& value) {
+  ::capnp::_::PointerHelpers<::DomainArray>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::DomainArray>
+NonEmptyDomainArray::Builder::disownDomain() {
+  return ::capnp::_::PointerHelpers<::DomainArray>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -11643,43 +11851,37 @@ inline bool NonEmptyDomain::Builder::hasNonEmptyDomain() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::Map<::capnp::Text, ::DomainArray>::Reader
+inline ::capnp::List<::NonEmptyDomainArray>::Reader
 NonEmptyDomain::Reader::getNonEmptyDomain() const {
-  return ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::get(
+  return ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::get(
       _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::Map<::capnp::Text, ::DomainArray>::Builder
+inline ::capnp::List<::NonEmptyDomainArray>::Builder
 NonEmptyDomain::Builder::getNonEmptyDomain() {
-  return ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::get(
+  return ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::get(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-#if !CAPNP_LITE
-inline ::Map<::capnp::Text, ::DomainArray>::Pipeline
-NonEmptyDomain::Pipeline::getNonEmptyDomain() {
-  return ::Map<::capnp::Text, ::DomainArray>::Pipeline(
-      _typeless.getPointerField(0));
-}
-#endif  // !CAPNP_LITE
 inline void NonEmptyDomain::Builder::setNonEmptyDomain(
-    ::Map<::capnp::Text, ::DomainArray>::Reader value) {
-  ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::set(
+    ::capnp::List<::NonEmptyDomainArray>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
-inline ::Map<::capnp::Text, ::DomainArray>::Builder
-NonEmptyDomain::Builder::initNonEmptyDomain() {
-  return ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::init(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::capnp::List<::NonEmptyDomainArray>::Builder
+NonEmptyDomain::Builder::initNonEmptyDomain(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
 }
 inline void NonEmptyDomain::Builder::adoptNonEmptyDomain(
-    ::capnp::Orphan<::Map<::capnp::Text, ::DomainArray>>&& value) {
-  ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::adopt(
+    ::capnp::Orphan<::capnp::List<::NonEmptyDomainArray>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
-inline ::capnp::Orphan<::Map<::capnp::Text, ::DomainArray>>
+inline ::capnp::Orphan<::capnp::List<::NonEmptyDomainArray>>
 NonEmptyDomain::Builder::disownNonEmptyDomain() {
-  return ::capnp::_::PointerHelpers<::Map<::capnp::Text, ::DomainArray>>::
+  return ::capnp::_::PointerHelpers<::capnp::List<::NonEmptyDomainArray>>::
       disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
