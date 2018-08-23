@@ -45,6 +45,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <functional>
+#include <utility>
 #include <vector>
 
 namespace tiledb {
@@ -85,12 +86,12 @@ class Query {
    * @tparam T
    * @param attribute name of buffer to retrieve
    * @return a std::pair which contains two pairs. First pair is a pointer to
-   * the value buffer and its size. The second pair is a pointer to the offset
-   * buffer and its size. Note the first pair (the value buffer) is of type T
-   * where the second pair (the offset buffer) is always type uint64_t
+   * the offset buffer and its size. The second pair is a pointer to the values
+   * buffer and its size. Note the first pair (the offset buffer) is of type
+   * uint64_t, where the second pair (the values buffer) is of type T
    */
   template <class T>
-  std::pair<std::pair<T*, uint64_t>, std::pair<uint64_t*, uint64_t>> buffer(
+  std::pair<std::pair<uint64_t*, uint64_t>, std::pair<T*, uint64_t>> buffer(
       const std::string& attribute) const {
     AttributeBuffer buffer;
     if (type_ == QueryType::WRITE) {
@@ -127,17 +128,28 @@ class Query {
              .ok())
       return {{}, {}};
 
-    std::pair<uint64_t*, uint64_t> offset_buffer;
-    if (buffer.buffer_var_ != nullptr && buffer.buffer_var_size_ != nullptr)
-      offset_buffer = std::pair<uint64_t*, uint64_t>(
-          static_cast<uint64_t*>(buffer.buffer_var_),
-          *buffer.buffer_var_size_ / sizeof(uint64_t));
-    // Return pair of pairs with value and offset buffers
-    return std::pair<std::pair<T*, uint64_t>, std::pair<uint64_t*, uint64_t>>(
-        std::pair<T*, uint64_t>(
-            static_cast<T*>(buffer.buffer_),
-            *buffer.buffer_size_ / datatype_size(attr->type())),
-        offset_buffer);
+    std::pair<uint64_t*, uint64_t> offset_buffer = {};
+    // If the variable length buffer is not nullptr we have a variable length
+    // attribute
+    if (buffer.buffer_var_ != nullptr && buffer.buffer_var_size_ != nullptr) {
+      offset_buffer = std::make_pair(
+          static_cast<uint64_t*>(buffer.buffer_),
+          *buffer.buffer_size_ / sizeof(uint64_t));
+
+      // Return pair of pairs with value and offset buffers
+      return std::make_pair(
+          offset_buffer,
+          std::make_pair(
+              static_cast<T*>(buffer.buffer_var_),
+              *buffer.buffer_var_size_ / datatype_size(attr->type())));
+    } else {  // Non variable length attribute
+      // Return pair of pairs with value and offset buffers
+      return std::make_pair(
+          offset_buffer,
+          std::make_pair(
+              static_cast<T*>(buffer.buffer_),
+              *buffer.buffer_size_ / datatype_size(attr->type())));
+    }
   };
 
   /**
