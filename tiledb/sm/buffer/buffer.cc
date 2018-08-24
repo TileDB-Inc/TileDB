@@ -88,6 +88,7 @@ void Buffer::advance_offset(uint64_t nbytes) {
 }
 
 void Buffer::advance_size(uint64_t nbytes) {
+  assert(owns_data_);
   size_ += nbytes;
 }
 
@@ -160,6 +161,7 @@ Status Buffer::realloc(uint64_t nbytes) {
       return LOG_STATUS(Status::BufferError(
           "Cannot allocate buffer; Memory allocation failed"));
     }
+    alloced_size_ = nbytes;
   } else if (nbytes > alloced_size_) {
     auto new_data = std::realloc(data_, nbytes);
     if (new_data == nullptr) {
@@ -167,9 +169,8 @@ Status Buffer::realloc(uint64_t nbytes) {
           "Cannot reallocate buffer; Memory allocation failed"));
     }
     data_ = new_data;
+    alloced_size_ = nbytes;
   }
-
-  alloced_size_ = nbytes;
 
   return Status::Ok();
 }
@@ -193,6 +194,15 @@ void Buffer::set_size(uint64_t size) {
 
 uint64_t Buffer::size() const {
   return size_;
+}
+
+Status Buffer::swap(Buffer& other) {
+  std::swap(alloced_size_, other.alloced_size_);
+  std::swap(data_, other.data_);
+  std::swap(offset_, other.offset_);
+  std::swap(owns_data_, other.owns_data_);
+  std::swap(size_, other.size_);
+  return Status::Ok();
 }
 
 Status Buffer::write(ConstBuffer* buff) {

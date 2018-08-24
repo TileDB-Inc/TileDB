@@ -142,6 +142,16 @@ class Buffer {
   uint64_t size() const;
 
   /**
+   * Swaps this buffer with the other one. After swapping, this buffer's
+   * allocation will point to the other buffer's allocation (including size,
+   * offset, data ownership, etc).
+   *
+   * @param other Buffer to swap with.
+   * @return Status
+   */
+  Status swap(Buffer& other);
+
+  /**
    * Returns the value of type T at the input offset.
    *
    * @tparam T The type of the value to return.

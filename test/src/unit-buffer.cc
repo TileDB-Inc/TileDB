@@ -96,3 +96,52 @@ TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {
 
   delete buff;
 }
+
+TEST_CASE("Buffer: Test swap", "[buffer]") {
+  // Write a char array
+  Status st;
+  char data1[3] = {1, 2, 3};
+  Buffer buff1;
+  st = buff1.write(data1, sizeof(data1));
+  REQUIRE(st.ok());
+  CHECK(buff1.owns_data());
+  CHECK(buff1.offset() == 3);
+  CHECK(buff1.size() == sizeof(data1));
+  CHECK(buff1.alloced_size() == 3);
+  CHECK(std::memcmp(buff1.data(), &data1, sizeof(data1)) == 0);
+
+  char data2[5] = {4, 5, 6, 7, 8};
+  Buffer buff2;
+  st = buff2.write(data2, sizeof(data2));
+  CHECK(buff2.owns_data());
+  CHECK(std::memcmp(buff2.data(), &data2, sizeof(data2)) == 0);
+
+  st = buff1.swap(buff2);
+  REQUIRE(st.ok());
+  CHECK(buff1.owns_data());
+  CHECK(buff1.offset() == 5);
+  CHECK(buff1.size() == sizeof(data2));
+  CHECK(buff1.alloced_size() == 5);
+  CHECK(std::memcmp(buff1.data(), &data2, sizeof(data2)) == 0);
+  CHECK(buff2.owns_data());
+  CHECK(buff2.offset() == 3);
+  CHECK(buff2.size() == sizeof(data1));
+  CHECK(buff2.alloced_size() == 3);
+  CHECK(std::memcmp(buff2.data(), &data1, sizeof(data1)) == 0);
+
+  char data3[] = {9};
+  Buffer buff3(data3, sizeof(data3), false);
+  CHECK(!buff3.owns_data());
+  st = buff1.swap(buff3);
+  REQUIRE(st.ok());
+  CHECK(!buff1.owns_data());
+  CHECK(buff1.data() == &data3[0]);
+  CHECK(buff1.offset() == 0);
+  CHECK(buff1.size() == sizeof(data3));
+  CHECK(buff1.alloced_size() == 0);
+  CHECK(buff3.owns_data());
+  CHECK(buff3.offset() == 5);
+  CHECK(buff3.size() == sizeof(data2));
+  CHECK(buff3.alloced_size() == 5);
+  CHECK(std::memcmp(buff3.data(), &data2, sizeof(data2)) == 0);
+}
