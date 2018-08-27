@@ -705,6 +705,19 @@ Status Writer::create_fragment(
   STATS_FUNC_OUT(writer_create_fragment);
 }
 
+Status Writer::filter_tile(
+    const std::string& attribute, Tile* tile, bool offsets) const {
+  if (tile->stores_coords()) {
+    RETURN_NOT_OK(array_schema_->coords_filters()->run_forward(tile));
+  } else if (offsets) {
+    RETURN_NOT_OK(array_schema_->cell_var_offsets_filters()->run_forward(tile));
+  } else {
+    RETURN_NOT_OK(array_schema_->filters(attribute)->run_forward(tile));
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::finalize_global_write_state() {
   auto coords_type = array_schema_->coords_type();
   switch (coords_type) {
@@ -1929,28 +1942,35 @@ Status Writer::write_tiles(
     return Status::Ok();
 
   // For easy reference
-  auto var_size = array_schema_->var_size(attribute);
-
-  // Prepare TileIO
-  auto tile_io = std::make_shared<TileIO>(
-      storage_manager_, frag_meta->attr_uri(attribute));
-  auto tile_io_var =
-      (!var_size) ? nullptr :
-                    std::make_shared<TileIO>(
-                        storage_manager_, frag_meta->attr_var_uri(attribute));
+  bool var_size = array_schema_->var_size(attribute);
+  auto attr_uri = frag_meta->attr_uri(attribute);
+  auto attr_var_uri = var_size ? frag_meta->attr_var_uri(attribute) : URI("");
 
   // Write tiles
   auto tile_num = tiles.size();
-  uint64_t bytes_written, bytes_written_var;
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    RETURN_NOT_OK(tile_io->write(&(tiles[i]), &bytes_written));
-    frag_meta->set_tile_offset(attribute, tile_id, bytes_written);
+    STATS_COUNTER_ADD(writer_num_input_bytes, tiles[i].buffer()->size());
+
+    // Compress, etc.
+    RETURN_NOT_OK(filter_tile(attribute, &(tiles[i]), var_size));
+
+    RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
+    frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer()->size());
+    STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
 
     if (var_size) {
       ++i;
-      RETURN_NOT_OK(tile_io_var->write(&(tiles[i]), &bytes_written_var));
-      frag_meta->set_tile_var_offset(attribute, tile_id, bytes_written_var);
-      frag_meta->set_tile_var_size(attribute, tile_id, tiles[i].size());
+      auto tile_size = tiles[i].size();
+      STATS_COUNTER_ADD(writer_num_input_bytes, tiles[i].buffer()->size());
+
+      // Compress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &(tiles[i]), false));
+
+      RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
+      frag_meta->set_tile_var_offset(
+          attribute, tile_id, tiles[i].buffer()->size());
+      frag_meta->set_tile_var_size(attribute, tile_id, tile_size);
+      STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
     }
   }
 

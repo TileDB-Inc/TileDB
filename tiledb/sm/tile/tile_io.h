@@ -59,8 +59,8 @@ class TileIO {
     /** Size, in bytes, of the serialized header. */
     static const uint64_t SIZE =
         3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(int);
-    /** Compressed size of the tile. */
-    uint64_t compressed_size;
+    /** Persisted (e.g. compressed) size of the tile. */
+    uint64_t persisted_size;
     /** Uncompressed size of the tile. */
     uint64_t tile_size;
     /** Datatype of the tile. */
@@ -74,7 +74,7 @@ class TileIO {
 
     /** Constructor. */
     GenericTileHeader()
-        : compressed_size(0)
+        : persisted_size(0)
         , tile_size(0)
         , datatype((char)Datatype::ANY)
         , cell_size(0)
@@ -107,9 +107,6 @@ class TileIO {
    */
   TileIO(StorageManager* storage_manager, const URI& uri, uint64_t file_size);
 
-  /** Destructor. */
-  ~TileIO();
-
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -127,23 +124,6 @@ class TileIO {
    */
   static Status is_generic_tile(
       const StorageManager* sm, const URI& uri, bool* is_generic_tile);
-
-  /**
-   * Reads into a tile from the file.
-   *
-   * @param tile The tile to read into.
-   * @param file_offset The offset in the file to read from.
-   * @param compressed_size The size of the compressed tile.
-   * @param tile_size The size of the decompressed tile.
-   * @param cache_hit Set to true if the tile was read from the cache.
-   * @return Status.
-   */
-  Status read(
-      Tile* tile,
-      uint64_t file_offset,
-      uint64_t compressed_size,
-      uint64_t tile_size,
-      bool* cache_hit);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
@@ -177,17 +157,6 @@ class TileIO {
       GenericTileHeader* header);
 
   /**
-   * Writes (appends) a tile into the file.
-   *
-   * @param tile The tile to be written.
-   * @param bytes_written The actual number of bytes written. This may be
-   *     different from the tile size, since the write function may
-   *     invoke a filter such as compression prior to writing to the file.
-   * @return Status.
-   */
-  Status write(Tile* tile, uint64_t* bytes_written);
-
-  /**
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,
@@ -202,22 +171,16 @@ class TileIO {
    * Writes the generic tile header to the file.
    *
    * @param tile The tile whose header will be written.
-   * @param compressed_size The size that the (potentially) compressed tile
+   * @param persisted_size The size that the (potentially) compressed tile
    *     will occupy in the file.
    * @return Status
    */
-  Status write_generic_tile_header(Tile* tile, uint64_t compressed_size);
+  Status write_generic_tile_header(Tile* tile, uint64_t persisted_size);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /**
-   * An internal buffer used to facilitate compression/decompression (or
-   * other future filters).
-   */
-  Buffer* buffer_;
 
   /** The size of the file pointed by `uri_`. */
   uint64_t file_size_;
@@ -227,118 +190,6 @@ class TileIO {
 
   /** The file URI. */
   URI uri_;
-
-  /* ********************************* */
-  /*      PRIVATE TYPE DEFINITIONS     */
-  /* ********************************* */
-
-  /**
-   * Encapsulated information about tile chunks for decompression.
-   */
-  struct DecompressionChunkInfo {
-    /** Number of chunks to decompress. */
-    uint64_t chunk_num_;
-    /** Pointer to start of compressed chunk data. */
-    const char* compressed_chunks_;
-    /** Pointer to start of destination buffer for decompressed chunks. */
-    char* decompressed_chunks_;
-    /** Vector of (offset, len) pairs for the compressed chunks. */
-    std::vector<std::pair<uint64_t, uint64_t>> compressed_chunk_info_;
-    /**
-     * Vector of (offset, len) pairs for the decompressed chunk destinations.
-     */
-    std::vector<std::pair<uint64_t, uint64_t>> decompressed_chunk_info_;
-    /** Total number of bytes that will be decompressed. */
-    uint64_t total_decompressed_bytes_;
-
-    /** Constructor. */
-    DecompressionChunkInfo()
-        : chunk_num_(0)
-        , compressed_chunks_(nullptr)
-        , decompressed_chunks_(nullptr)
-        , total_decompressed_bytes_(0) {
-    }
-  };
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Checks if the given number of bytes can be compressed in a single block.
-   *
-   * @param nbytes Number of bytes including overhead to check.
-   * @return True if the given number of bytes can be compressed
-   */
-  bool can_compress_nbytes(uint64_t nbytes) const;
-
-  /**
-   * Compresses a tile. The compressed data are written in buffer_.
-   * Note that a coordinates tile must be split into one tile per
-   * dimension. In that case *compress_one_tile* will be invoked
-   * for each dimension sub-tile.
-   *
-   * @param tile The tile to be compressed.
-   * @return Status
-   */
-  Status compress_tile(Tile* tile);
-
-  /**
-   * Compresses a single tile. The compressed data are written in buffer_.
-   *
-   * @param tile The tile to be compressed.
-   * @return Status
-   */
-  Status compress_one_tile(Tile* tile);
-
-  /**
-   * Computes necessary info for chunking a tile upon compression.
-   *
-   * @param tile The tile whose chunking info is being computed.
-   * @param chunk_num The computed number of chunks.
-   * @param chunk_size The computed chunk size (a multiple of the cell size).
-   * @param chunk_overhead The compression overhead for `chunk_size` bytes.
-   * @param total_overhead The total compression overhead.
-   * @return Status
-   */
-  Status compute_chunking_info(
-      Tile* tile,
-      uint64_t* chunk_num,
-      uint64_t* chunk_size,
-      uint64_t* chunk_overhead,
-      uint64_t* total_overhead);
-
-  /**
-   * Computes necessary info for decompressing chunks of a tile.
-   *
-   * @param tile The tile whose chunking info is being computed.
-   * @param info The info that will be computed.
-   * @return Status
-   */
-  Status compute_decompression_chunk_info(
-      Tile* tile, DecompressionChunkInfo* info);
-
-  /**
-   * Decompresses buffer_ into a tile.
-   * Note that a coordinates tile was split into one tile per
-   * dimension. In that case *decompress_one_tile* will be invoked
-   * for each dimension sub-tile.
-   *
-   * @param tile The tile where the decompressed data will be stored.
-   * @return Status
-   */
-  Status decompress_tile(Tile* tile);
-
-  /**
-   * Decompresses buffer_ into a tile.
-   *
-   * @param tile The tile where the decompressed data will be stored.
-   * @return Status
-   */
-  Status decompress_one_tile(Tile* tile);
-
-  /** Computes the compression overhead on *nbytes* of the input tile. */
-  uint64_t overhead(Tile* tile, uint64_t nbytes) const;
 };
 
 }  // namespace sm

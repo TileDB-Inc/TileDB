@@ -107,7 +107,8 @@ enum class StatusCode : char {
   DenseCellRangeIter,
   Reader,
   Writer,
-  PreallocatedBuffer
+  PreallocatedBuffer,
+  Filter
 };
 
 class Status {
@@ -297,6 +298,11 @@ class Status {
    * **/
   static Status PreallocatedBufferError(const std::string& msg) {
     return Status(StatusCode::PreallocatedBuffer, msg, -1);
+  }
+
+  /** Return a FilterError error class Status with a given message **/
+  static Status FilterError(const std::string& msg) {
+    return Status(StatusCode::Filter, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

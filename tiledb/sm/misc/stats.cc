@@ -61,7 +61,7 @@ void Statistics::dump_read_summary(FILE* out) const {
       out,
       "  Tile cache hit ratio",
       "",
-      counter_tileio_read_cache_hits,
+      counter_reader_attr_tile_cache_hits,
       counter_reader_num_attr_tiles_touched);
 
   report_ratio_pct(
@@ -91,8 +91,10 @@ void Statistics::dump_read_summary(FILE* out) const {
       out,
       "  Read compression ratio",
       "bytes",
-      counter_tileio_read_num_resulting_bytes,
-      counter_tileio_read_num_bytes_read);
+      counter_reader_num_fixed_cell_bytes_read +
+          counter_reader_num_var_cell_bytes_read +
+          counter_tileio_read_num_resulting_bytes,
+      counter_reader_num_tile_bytes_read + counter_tileio_read_num_bytes_read);
 }
 
 void Statistics::dump_write_summary(FILE* out) const {
@@ -110,8 +112,9 @@ void Statistics::dump_write_summary(FILE* out) const {
       out,
       "  Write compression ratio",
       "bytes",
-      counter_tileio_write_num_input_bytes,
-      counter_tileio_write_num_bytes_written);
+      counter_writer_num_input_bytes + counter_tileio_write_num_input_bytes,
+      counter_writer_num_bytes_written +
+          counter_tileio_write_num_bytes_written);
 }
 
 void Statistics::report_ratio(
