@@ -252,6 +252,12 @@ class Config {
    * - `sm.num_async_threads` <br>
    *    The number of threads allocated for async queries. <br>
    *    **Default**: 1
+   * - `sm.num_reader_threads` <br>
+   *    The number of threads allocated for filesystem read operations. <br>
+   *    **Default**: 1
+   * - `sm.num_writer_threads` <br>
+   *    The number of threads allocated for filesystem write operations. <br>
+   *    **Default**: 1
    * - `sm.num_tbb_threads` <br>
    *    The number of threads allocated for the TBB thread pool (if TBB is
    *    enabled). Note: this is a whole-program setting. Usually this should not

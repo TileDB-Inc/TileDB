@@ -300,10 +300,14 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 Status FilterPipeline::run_reverse(Tile* tile) const {
   STATS_FUNC_IN(filter_pipeline_run_reverse);
 
+  auto tile_buff = tile->buffer();
+  if (tile_buff == nullptr)
+    return LOG_STATUS(
+        Status::FilterError("Filter error; tile has null buffer."));
+
   current_tile_ = tile;
 
   // First make a pass over the tile to get the chunk information.
-  auto tile_buff = tile->buffer();
   tile_buff->reset_offset();
   uint64_t num_chunks;
   RETURN_NOT_OK(tile_buff->read(&num_chunks, sizeof(uint64_t)));

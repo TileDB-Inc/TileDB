@@ -185,7 +185,9 @@ void check_save_to_file() {
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
   ss << "sm.num_async_threads 1\n";
+  ss << "sm.num_reader_threads 1\n";
   ss << "sm.num_tbb_threads -1\n";
+  ss << "sm.num_writer_threads 1\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -354,6 +356,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.num_async_threads"] = "1";
+  all_param_values["sm.num_reader_threads"] = "1";
+  all_param_values["sm.num_writer_threads"] = "1";
   all_param_values["sm.num_tbb_threads"] = "-1";
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());

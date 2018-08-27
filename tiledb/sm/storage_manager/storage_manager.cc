@@ -713,6 +713,10 @@ Status StorageManager::init(Config* config) {
       new LRUCache(sm_params.fragment_metadata_cache_size_);
   async_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
   RETURN_NOT_OK(async_thread_pool_->init(sm_params.num_async_threads_));
+  reader_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
+  RETURN_NOT_OK(reader_thread_pool_->init(sm_params.num_reader_threads_));
+  writer_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
+  RETURN_NOT_OK(writer_thread_pool_->init(sm_params.num_writer_threads_));
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
@@ -1165,6 +1169,10 @@ Status StorageManager::read(
   return Status::Ok();
 }
 
+ThreadPool* StorageManager::reader_thread_pool() const {
+  return reader_thread_pool_.get();
+}
+
 Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   auto& array_uri = array_schema->array_uri();
   URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
@@ -1260,6 +1268,10 @@ Status StorageManager::close_file(const URI& uri) {
 
 Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
+}
+
+ThreadPool* StorageManager::writer_thread_pool() const {
+  return writer_thread_pool_.get();
 }
 
 VFS* StorageManager::vfs() const {

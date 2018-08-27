@@ -1186,6 +1186,9 @@ Status Reader::dense_read() {
   // Read sparse tiles
   RETURN_CANCEL_OR_ERROR(read_all_tiles(&sparse_tiles));
 
+  // Filter sparse tiles
+  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&sparse_tiles));
+
   // Compute the read coordinates for all sparse fragments
   OverlappingCoordsList<T> coords;
   RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(sparse_tiles, &coords));
@@ -1237,6 +1240,9 @@ Status Reader::dense_read() {
 
   // Read dense tiles
   RETURN_CANCEL_OR_ERROR(read_all_tiles(&dense_tiles, false));
+
+  // Filter dense tiles
+  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&dense_tiles, false));
 
   // Copy cells
   for (const auto& attr : attributes_) {
@@ -1353,8 +1359,93 @@ void Reader::fill_coords_col_slab(
   }
 }
 
+Status Reader::filter_all_tiles(
+    OverlappingTileVec* tiles, bool ensure_coords) const {
+  if (tiles->empty())
+    return Status::Ok();
+
+  // Prepare attributes
+  std::set<std::string> all_attributes;
+  for (const auto& attr : attributes_) {
+    if (array_schema_->dense() && attr == constants::coords)
+      continue;  // Skip coords in dense case - no actual tiles to filter
+    all_attributes.insert(attr);
+  }
+
+  // Make sure the coordinate tiles are filtered if specified.
+  if (ensure_coords)
+    all_attributes.insert(constants::coords);
+
+  // Filter the tiles in parallel over the attributes.
+  auto statuses = parallel_for_each(
+      all_attributes.begin(),
+      all_attributes.end(),
+      [this, &tiles](const std::string& attr) {
+        RETURN_CANCEL_OR_ERROR(filter_tiles(attr, tiles));
+        return Status::Ok();
+      });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
+}
+
+Status Reader::filter_tiles(
+    const std::string& attribute, OverlappingTileVec* tiles) const {
+  STATS_FUNC_IN(reader_filter_tiles);
+
+  auto var_size = array_schema_->var_size(attribute);
+  auto num_tiles = static_cast<uint64_t>(tiles->size());
+  auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
+    auto& tile = (*tiles)[i];
+    auto it = tile->attr_tiles_.find(attribute);
+    // Skip non-existent attributes (e.g. coords in the dense case).
+    if (it == tile->attr_tiles_.end())
+      return Status::Ok();
+
+    // Get information about the tile in its fragment
+    auto& fragment = fragment_metadata_[tile->fragment_idx_];
+    auto tile_attr_uri = fragment->attr_uri(attribute);
+    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+
+    auto& tile_pair = it->second;
+    auto& t = tile_pair.first;
+    auto& t_var = tile_pair.second;
+
+    if (!t.filtered()) {
+      // Decompress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
+      RETURN_NOT_OK(storage_manager_->write_to_cache(
+          tile_attr_uri, tile_attr_offset, t.buffer()));
+    }
+
+    if (var_size && !t_var.filtered()) {
+      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      auto tile_attr_var_offset =
+          fragment->file_var_offset(attribute, tile->tile_idx_);
+
+      // Decompress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
+      RETURN_NOT_OK(storage_manager_->write_to_cache(
+          tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+    }
+
+    return Status::Ok();
+  });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(reader_filter_tiles);
+}
+
 Status Reader::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
+  uint64_t orig_size = tile->buffer()->size();
+
   if (tile->stores_coords()) {
     RETURN_NOT_OK(array_schema_->coords_filters()->run_reverse(tile));
   } else if (offsets) {
@@ -1362,6 +1453,9 @@ Status Reader::filter_tile(
   } else {
     RETURN_NOT_OK(array_schema_->filters(attribute)->run_reverse(tile));
   }
+
+  tile->set_filtered(true);
+  tile->set_pre_filtered_size(orig_size);
 
   return Status::Ok();
 }
@@ -1637,15 +1731,14 @@ Status Reader::read_all_tiles(
   if (ensure_coords)
     all_attributes.insert(constants::coords);
 
-  // Read the tiles in parallel over the attributes.
-  auto statuses = parallel_for_each(
-      all_attributes.begin(),
-      all_attributes.end(),
-      [this, &tiles](const std::string& attr) {
-        RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles));
-        return Status::Ok();
-      });
+  // Read the tiles asynchronously.
+  std::vector<std::future<Status>> tasks;
+  for (const auto& attr : all_attributes)
+    RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles, &tasks));
 
+  // Wait for the reads to finish and check statuses.
+  auto statuses =
+      storage_manager_->reader_thread_pool()->wait_all_status(tasks);
   for (const auto& st : statuses)
     RETURN_CANCEL_OR_ERROR(st);
 
@@ -1655,25 +1748,20 @@ Status Reader::read_all_tiles(
 }
 
 Status Reader::read_tiles(
-    const std::string& attribute, OverlappingTileVec* tiles) const {
+    const std::string& attribute,
+    OverlappingTileVec* tiles,
+    std::vector<std::future<Status>>* tasks) const {
   // For each tile, read from its fragment.
-  auto var_size = array_schema_->var_size(attribute);
+  bool var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(tiles->size());
-  auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
+
+  for (uint64_t i = 0; i < num_tiles; i++) {
     auto& tile = (*tiles)[i];
     auto it = tile->attr_tiles_.find(attribute);
     if (it == tile->attr_tiles_.end()) {
       return LOG_STATUS(
           Status::ReaderError("Invalid tile map for attribute " + attribute));
     }
-
-    // Get information about the tile in its fragment
-    auto& fragment = fragment_metadata_[tile->fragment_idx_];
-    auto tile_attr_uri = fragment->attr_uri(attribute);
-    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
-    auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
-    auto tile_persisted_size =
-        fragment->persisted_tile_size(attribute, tile->tile_idx_);
 
     // Initialize the tile(s)
     auto& tile_pair = it->second;
@@ -1685,68 +1773,75 @@ Status Reader::read_tiles(
       RETURN_NOT_OK(init_tile(attribute, &t, &t_var));
     }
 
-    // Try the cache first.
-    bool cache_hit;
-    RETURN_NOT_OK(storage_manager_->read_from_cache(
-        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
-    STATS_COUNTER_ADD_IF(cache_hit, reader_attr_tile_cache_hits, 1);
+    // Enqueue the read task in the Reader thread pool.
+    auto task = storage_manager_->reader_thread_pool()->enqueue([&attribute,
+                                                                 &tile,
+                                                                 &t,
+                                                                 &t_var,
+                                                                 var_size,
+                                                                 this]() {
+      // Get information about the tile in its fragment
+      auto& fragment = fragment_metadata_[tile->fragment_idx_];
+      auto tile_attr_uri = fragment->attr_uri(attribute);
+      auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+      auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
+      auto tile_persisted_size =
+          fragment->persisted_tile_size(attribute, tile->tile_idx_);
 
-    // Read from disk and add to cache if it missed.
-    if (!cache_hit) {
-      RETURN_NOT_OK(storage_manager_->read(
-          tile_attr_uri, tile_attr_offset, t.buffer(), tile_persisted_size));
-      STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
-
-      // Decompress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
-
-      RETURN_NOT_OK(storage_manager_->write_to_cache(
-          tile_attr_uri, tile_attr_offset, t.buffer()));
-    }
-
-    if (var_size) {
-      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
-      auto tile_attr_var_offset =
-          fragment->file_var_offset(attribute, tile->tile_idx_);
-      auto tile_var_size = fragment->tile_var_size(attribute, tile->tile_idx_);
-      auto tile_var_persisted_size =
-          fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
-
+      // Try the cache first.
+      bool cache_hit;
       RETURN_NOT_OK(storage_manager_->read_from_cache(
-          tile_attr_var_uri,
-          tile_attr_var_offset,
-          t_var.buffer(),
-          tile_var_size,
-          &cache_hit));
-
-      if (!cache_hit) {
+          tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+      if (cache_hit) {
+        t.set_filtered(true);
+        STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
+      } else {
+        // Read from disk if it missed.
         RETURN_NOT_OK(storage_manager_->read(
+            tile_attr_uri, tile_attr_offset, t.buffer(), tile_persisted_size));
+        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
+      }
+
+      if (var_size) {
+        auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+        auto tile_attr_var_offset =
+            fragment->file_var_offset(attribute, tile->tile_idx_);
+        auto tile_var_size =
+            fragment->tile_var_size(attribute, tile->tile_idx_);
+        auto tile_var_persisted_size =
+            fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
+
+        RETURN_NOT_OK(storage_manager_->read_from_cache(
             tile_attr_var_uri,
             tile_attr_var_offset,
             t_var.buffer(),
-            tile_var_persisted_size));
-        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
-        // Decompress, etc.
-        RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
-        RETURN_NOT_OK(storage_manager_->write_to_cache(
-            tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+            tile_var_size,
+            &cache_hit));
+
+        if (cache_hit) {
+          t_var.set_filtered(true);
+          STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
+        } else {
+          RETURN_NOT_OK(storage_manager_->read(
+              tile_attr_var_uri,
+              tile_attr_var_offset,
+              t_var.buffer(),
+              tile_var_persisted_size));
+          STATS_COUNTER_ADD(
+              reader_num_tile_bytes_read, tile_var_persisted_size);
+          STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t.size());
+          STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t_var.size());
+        }
+      } else {
+        STATS_COUNTER_ADD_IF(
+            !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
       }
 
-      STATS_COUNTER_ADD_IF(cache_hit, reader_attr_tile_cache_hits, 1);
-      STATS_COUNTER_ADD_IF(
-          !cache_hit, reader_num_var_cell_bytes_read, t.size());
-      STATS_COUNTER_ADD_IF(
-          !cache_hit, reader_num_var_cell_bytes_read, t_var.size());
-    } else {
-      STATS_COUNTER_ADD_IF(
-          !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
-    }
+      return Status::Ok();
+    });
 
-    return Status::Ok();
-  });
-
-  for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
+    tasks->push_back(std::move(task));
+  }
 
   STATS_COUNTER_ADD(reader_num_attr_tiles_touched, num_tiles);
 
@@ -1822,6 +1917,9 @@ Status Reader::sparse_read() {
 
   // Read tiles
   RETURN_CANCEL_OR_ERROR(read_all_tiles(&tiles));
+
+  // Filter tiles
+  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&tiles));
 
   // Compute the read coordinates for all fragments
   OverlappingCoordsList<T> coords;
