@@ -70,8 +70,6 @@ class Tile {
    * Constructor.
    *
    * @param type The type of the data to be stored.
-   * @param compression The compression type.
-   * @param compression_level The compression level.
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
@@ -83,8 +81,6 @@ class Tile {
    */
   Tile(
       Datatype type,
-      Compressor compression,
-      int compression_level,
       uint64_t cell_size,
       unsigned int dim_num,
       Buffer* buff,
@@ -107,24 +103,17 @@ class Tile {
    * Tile initializer.
    *
    * @param type The type of the data to be stored.
-   * @param compression The compression type.
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
    * @return Status
    */
-  Status init(
-      Datatype type,
-      Compressor compression,
-      uint64_t cell_size,
-      unsigned int dim_num);
+  Status init(Datatype type, uint64_t cell_size, unsigned int dim_num);
 
   /**
    * Tile initializer.
    *
    * @param type The type of the data to be stored.
-   * @param compression The compression type.
-   * @param compression_level The compression level.
    * @param tile_size The tile size. The internal buffer will be allocated
    *     that much space upon construction.
    * @param cell_size The cell size.
@@ -134,8 +123,6 @@ class Tile {
    */
   Status init(
       Datatype type,
-      Compressor compression,
-      int compression_level,
       uint64_t tile_size,
       uint64_t cell_size,
       unsigned int dim_num);
@@ -148,12 +135,6 @@ class Tile {
 
   /** Returns the cell size. */
   uint64_t cell_size() const;
-
-  /** Returns the tile compressor. */
-  Compressor compressor() const;
-
-  /** Returns the tile compression level. */
-  int compression_level() const;
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
@@ -292,12 +273,6 @@ class Tile {
 
   /** The cell size. */
   uint64_t cell_size_;
-
-  /** The compression type. */
-  Compressor compressor_;
-
-  /** The compression level. */
-  int compression_level_;
 
   /**
    * The number of dimensions, in case the tile stores coordinates. It is 0

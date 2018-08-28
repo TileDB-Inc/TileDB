@@ -253,14 +253,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(pipeline.run_forward(&tile).ok());
@@ -303,14 +296,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   // Save the original allocation so that we can check that after running
   // through the pipeline, the tile buffer points to a different memory
@@ -401,14 +387,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(
@@ -496,14 +475,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
@@ -553,14 +525,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
@@ -661,14 +626,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
@@ -777,14 +735,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
@@ -835,14 +786,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
   CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
@@ -904,14 +848,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     CHECK(buff.write(&i, sizeof(uint64_t)).ok());
   CHECK(buff.size() == nelts * sizeof(uint64_t));
 
-  Tile tile(
-      Datatype::UINT64,
-      Compressor::NO_COMPRESSION,
-      -1,
-      sizeof(uint64_t),
-      0,
-      &buff,
-      false);
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   // List of potential filters to use
   std::vector<std::function<Filter*(void)>> constructors = {

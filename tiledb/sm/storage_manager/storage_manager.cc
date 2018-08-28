@@ -1193,8 +1193,6 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
   buff->reset_offset();
   auto tile = new Tile(
       constants::generic_tile_datatype,
-      constants::generic_tile_compressor,
-      constants::generic_tile_compression_level,
       constants::generic_tile_cell_size,
       0,
       buff,
@@ -1240,8 +1238,6 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   buff->reset_offset();
   auto tile = new Tile(
       constants::generic_tile_datatype,
-      constants::generic_tile_compressor,
-      constants::generic_tile_compression_level,
       constants::generic_tile_cell_size,
       0,
       buff,

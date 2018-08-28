@@ -1067,15 +1067,12 @@ Status Writer::init_tile(const std::string& attribute, Tile* tile) const {
   auto type = array_schema_->type(attribute);
   auto is_coords = (attribute == constants::coords);
   auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
-  auto compressor = array_schema_->compression(attribute);
-  auto compression_level = array_schema_->compression_level(attribute);
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
-  RETURN_NOT_OK(tile->init(
-      type, compressor, compression_level, tile_size, cell_size, dim_num));
+  RETURN_NOT_OK(tile->init(type, tile_size, cell_size, dim_num));
 
   return Status::Ok();
 }
@@ -1086,8 +1083,6 @@ Status Writer::init_tile(
   auto domain = array_schema_->domain();
   auto capacity = array_schema_->capacity();
   auto type = array_schema_->type(attribute);
-  auto compressor = array_schema_->compression(attribute);
-  auto compression_level = array_schema_->compression_level(attribute);
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
@@ -1095,13 +1090,10 @@ Status Writer::init_tile(
   // Initialize
   RETURN_NOT_OK(tile->init(
       constants::cell_var_offset_type,
-      array_schema_->cell_var_offsets_compression(),
-      array_schema_->cell_var_offsets_compression_level(),
       tile_size,
       constants::cell_var_offset_size,
       0));
-  RETURN_NOT_OK(tile_var->init(
-      type, compressor, compression_level, tile_size, datatype_size(type), 0));
+  RETURN_NOT_OK(tile_var->init(type, tile_size, datatype_size(type), 0));
   return Status::Ok();
 }
 

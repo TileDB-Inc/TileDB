@@ -108,11 +108,7 @@ Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
 
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(
-      (*tile)->init(
-          (Datatype)header.datatype,
-          (Compressor)header.compressor,
-          header.cell_size,
-          0),
+      (*tile)->init((Datatype)header.datatype, header.cell_size, 0),
       delete *tile);
 
   // Try the cache first.
@@ -138,7 +134,7 @@ Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
     FilterPipeline pipeline;
     RETURN_NOT_OK_ELSE(
         pipeline.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
-            (*tile)->compressor(), (*tile)->compression_level()))),
+            (Compressor)header.compressor, header.compression_level))),
         delete *tile);
     RETURN_NOT_OK_ELSE(pipeline.run_reverse(*tile), delete *tile);
 
@@ -182,8 +178,10 @@ Status TileIO::write_generic(Tile* tile) {
 
   // Compress tile
   FilterPipeline pipeline;
-  RETURN_NOT_OK(pipeline.add_filter(std::unique_ptr<Filter>(
-      new CompressionFilter(tile->compressor(), tile->compression_level()))));
+  RETURN_NOT_OK(
+      pipeline.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
+          constants::generic_tile_compressor,
+          constants::generic_tile_compression_level))));
   RETURN_NOT_OK(pipeline.run_forward(tile));
 
   RETURN_NOT_OK(write_generic_tile_header(tile, tile->buffer()->size()));
@@ -199,8 +197,8 @@ Status TileIO::write_generic_tile_header(Tile* tile, uint64_t persisted_size) {
   uint64_t tile_size = tile->size();
   auto datatype = (char)tile->type();
   uint64_t cell_size = tile->cell_size();
-  auto compressor = (char)tile->compressor();
-  int compression_level = tile->compression_level();
+  auto compressor = constants::generic_tile_compressor;
+  int compression_level = constants::generic_tile_compression_level;
 
   // Write to buffer
   auto buff = new Buffer();

@@ -45,8 +45,6 @@ namespace sm {
 Tile::Tile() {
   buffer_ = nullptr;
   cell_size_ = 0;
-  compressor_ = Compressor::NO_COMPRESSION;
-  compression_level_ = -1;
   dim_num_ = 0;
   filtered_ = false;
   owns_buff_ = true;
@@ -58,8 +56,6 @@ Tile::Tile(unsigned int dim_num)
     : dim_num_(dim_num) {
   buffer_ = nullptr;
   cell_size_ = 0;
-  compressor_ = Compressor::NO_COMPRESSION;
-  compression_level_ = -1;
   filtered_ = false;
   owns_buff_ = true;
   pre_filtered_size_ = 0;
@@ -68,16 +64,12 @@ Tile::Tile(unsigned int dim_num)
 
 Tile::Tile(
     Datatype type,
-    Compressor compressor,
-    int compression_level,
     uint64_t cell_size,
     unsigned int dim_num,
     Buffer* buff,
     bool owns_buff)
     : buffer_(buff)
     , cell_size_(cell_size)
-    , compressor_(compressor)
-    , compression_level_(compression_level)
     , dim_num_(dim_num)
     , filtered_(false)
     , owns_buff_(owns_buff)
@@ -103,13 +95,8 @@ uint64_t Tile::cell_num() const {
   return size() / cell_size_;
 }
 
-Status Tile::init(
-    Datatype type,
-    Compressor compressor,
-    uint64_t cell_size,
-    unsigned int dim_num) {
+Status Tile::init(Datatype type, uint64_t cell_size, unsigned int dim_num) {
   cell_size_ = cell_size;
-  compressor_ = compressor;
   dim_num_ = dim_num;
   type_ = type;
 
@@ -123,14 +110,10 @@ Status Tile::init(
 
 Status Tile::init(
     Datatype type,
-    Compressor compressor,
-    int compression_level,
     uint64_t tile_size,
     uint64_t cell_size,
     unsigned int dim_num) {
   cell_size_ = cell_size;
-  compressor_ = compressor;
-  compression_level_ = compression_level;
   dim_num_ = dim_num;
   type_ = type;
 
@@ -153,14 +136,6 @@ Buffer* Tile::buffer() const {
 
 uint64_t Tile::cell_size() const {
   return cell_size_;
-}
-
-Compressor Tile::compressor() const {
-  return compressor_;
-}
-
-int Tile::compression_level() const {
-  return compression_level_;
 }
 
 void* Tile::cur_data() const {
@@ -335,8 +310,6 @@ Tile& Tile::operator=(const Tile& tile) {
   }
 
   cell_size_ = tile.cell_size_;
-  compressor_ = tile.compressor_;
-  compression_level_ = tile.compression_level_;
   dim_num_ = tile.dim_num_;
   filtered_ = tile.filtered_;
   owns_buff_ = tile.owns_buff_;
