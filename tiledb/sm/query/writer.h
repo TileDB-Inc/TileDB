@@ -365,6 +365,17 @@ class Writer {
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
 
   /**
+   * Runs the input tiles for the input attribute through the filter pipeline.
+   * The tile buffers are modified to contain the output of the pipeline.
+   *
+   * @param attribute The attribute the tiles belong to.
+   * @param tile The tiles to be filtered.
+   * @return Status
+   */
+  Status filter_tiles(
+      const std::string& attribute, std::vector<Tile>* tiles) const;
+
+  /**
    * Runs the input tile for the input attribute through the filter pipeline.
    * The tile buffer is modified to contain the output of the pipeline.
    *
@@ -723,6 +734,16 @@ class Writer {
       Tile* tile_var) const;
 
   /**
+   * Writes all the input tiles to storage.
+   *
+   * @param attribute_tiles Tiles to be written, one element per attribute.
+   * @return Status
+   */
+  Status write_all_tiles(
+      FragmentMetadata* frag_meta,
+      const std::vector<std::vector<Tile>>& attribute_tiles) const;
+
+  /**
    * Writes the input tiles for the input attribute to storage.
    *
    * @param attribute The attribute the tiles belong to.
@@ -733,7 +754,7 @@ class Writer {
   Status write_tiles(
       const std::string& attribute,
       FragmentMetadata* frag_meta,
-      std::vector<Tile>& tiles) const;
+      const std::vector<Tile>& tiles) const;
 };
 
 }  // namespace sm

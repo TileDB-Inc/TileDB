@@ -84,7 +84,9 @@ in this program and explain the output.
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
         "sm.num_async_threads" : "1"
+        "sm.num_reader_threads" : "1"
         "sm.num_tbb_threads" : "-1"
+        "sm.num_writer_threads" : "1"
         "sm.tile_cache_size" : "10000000"
         "vfs.file.max_parallel_ops" : "8"
         "vfs.hdfs.kerb_ticket_cache_path" : ""
@@ -142,7 +144,9 @@ in this program and explain the output.
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
         "sm.num_async_threads" : "1"
+        "sm.num_reader_threads" : "1"
         "sm.num_tbb_threads" : "-1"
+        "sm.num_writer_threads" : "1"
         "sm.tile_cache_size" : "10000000"
         "vfs.file.max_parallel_ops" : "8"
         "vfs.hdfs.kerb_ticket_cache_path" : ""
@@ -276,7 +280,9 @@ The corresponding output is (note that we ran this on a machine with
    "sm.enable_signal_handlers" : "true"
    "sm.fragment_metadata_cache_size" : "10000000"
    "sm.num_async_threads" : "1"
+   "sm.num_reader_threads" : "1"
    "sm.num_tbb_threads" : "-1"
+   "sm.num_writer_threads" : "1"
    "sm.tile_cache_size" : "10000000"
    "vfs.file.max_parallel_ops" : "8"
    "vfs.hdfs.kerb_ticket_cache_path" : ""
@@ -414,7 +420,9 @@ Inspecting the contents of the exported config file, we get the following:
   sm.enable_signal_handlers true
   sm.fragment_metadata_cache_size 10000000
   sm.num_async_threads 1
+  sm.num_reader_threads 1
   sm.num_tbb_threads -1
+  sm.num_writer_threads 1
   sm.tile_cache_size 0
   vfs.file.max_parallel_ops 8
   vfs.min_parallel_size 10485760
@@ -464,6 +472,10 @@ along with their description and default values.
                                                                       signal handlers.
     ``"sm.fragment_metadata_cache_size"``     ``"10000000"``          The fragment metadata cache size in bytes.
     ``"sm.num_async_threads"``                ``"1"``                 The number of threads allocated for async queries.
+    ``"sm.num_reader_threads"``               ``"1"``                 The number of threads allocated for filesystem
+                                                                      read operations.
+    ``"sm.num_writer_threads"``               ``"1"``                 The number of threads allocated for filesystem
+                                                                      write operations.
     ``"sm.num_tbb_threads"``                  ``"-1"``                The number of threads allocated for the TBB thread
                                                                       pool (if TBB is enabled). **Note:** this is a
                                                                       whole-program setting. Usually this should not be

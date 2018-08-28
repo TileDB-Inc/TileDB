@@ -13,6 +13,7 @@
 
 ## Improvements
 
+* Add config params `sm.num_reader_threads` and `sm.num_writer_threads` for separately controlling I/O parallelism from compression parallelism.
 * Added contribution guidelines #899
 * Enable building TileDB in Cygwin environment on Windows #890
 * Added a simple benchmarking script and several benchmark programs #889

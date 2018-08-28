@@ -705,8 +705,30 @@ Status Writer::create_fragment(
   STATS_FUNC_OUT(writer_create_fragment);
 }
 
+Status Writer::filter_tiles(
+    const std::string& attribute, std::vector<Tile>* tiles) const {
+  STATS_FUNC_IN(writer_filter_tiles);
+
+  bool var_size = array_schema_->var_size(attribute);
+  // Filter all tiles
+  auto tile_num = tiles->size();
+  for (size_t i = 0; i < tile_num; ++i) {
+    RETURN_NOT_OK(filter_tile(attribute, &(*tiles)[i], var_size));
+    if (var_size) {
+      ++i;
+      RETURN_NOT_OK(filter_tile(attribute, &(*tiles)[i], false));
+    }
+  }
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_filter_tiles);
+}
+
 Status Writer::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
+  auto orig_size = tile->buffer()->size();
+
   if (tile->stores_coords()) {
     RETURN_NOT_OK(array_schema_->coords_filters()->run_forward(tile));
   } else if (offsets) {
@@ -714,6 +736,10 @@ Status Writer::filter_tile(
   } else {
     RETURN_NOT_OK(array_schema_->filters(attribute)->run_forward(tile));
   }
+
+  tile->set_filtered(true);
+  tile->set_pre_filtered_size(orig_size);
+  STATS_COUNTER_ADD(writer_num_input_bytes, orig_size);
 
   return Status::Ok();
 }
@@ -893,13 +919,13 @@ Status Writer::global_write() {
   auto new_num_tiles = frag_meta->tile_index_base() + num_tiles;
   frag_meta->set_num_tiles(new_num_tiles);
 
-  // Write all attributes
+  // Filter all tiles
   statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& full_tiles = attribute_tiles[i];
     if (attr == constants::coords)
       RETURN_CANCEL_OR_ERROR(compute_coords_metadata<T>(full_tiles, frag_meta));
-    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, full_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &full_tiles));
     return Status::Ok();
   });
 
@@ -910,6 +936,15 @@ Status Writer::global_write() {
       global_write_state_.reset(nullptr);
       return st;
     }
+  }
+  statuses.clear();
+
+  // Write tiles for all attributes
+  auto st = write_all_tiles(frag_meta, attribute_tiles);
+  if (!st.ok()) {
+    storage_manager_->vfs()->remove_dir(uri);
+    global_write_state_.reset(nullptr);
+    return st;
   }
 
   // Increment the tile index base for the next global order write.
@@ -938,20 +973,32 @@ Status Writer::global_write_handle_last_tile() {
   auto meta = global_write_state_->frag_meta_.get();
   meta->set_num_tiles(meta->tile_index_base() + 1);
 
-  // Write the last tiles
-  for (const auto& attr : attributes_) {
+  // Filter the last tiles
+  uint64_t num_attributes = attributes_.size();
+  std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
+  auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
+    const auto& attr = attributes_[i];
     auto& last_tile = global_write_state_->last_tiles_[attr].first;
     auto& last_tile_var = global_write_state_->last_tiles_[attr].second;
+
     if (!last_tile.empty()) {
-      std::vector<Tile> tiles;
+      std::vector<Tile>& tiles = attribute_tiles[i];
       tiles.push_back(last_tile);
       if (!last_tile_var.empty())
         tiles.push_back(last_tile_var);
       if (attr == constants::coords)
         RETURN_NOT_OK(compute_coords_metadata<T>(tiles, meta));
-      RETURN_NOT_OK(write_tiles(attr, meta, tiles));
+      RETURN_NOT_OK(filter_tiles(attr, &tiles));
     }
-  }
+    return Status::Ok();
+  });
+
+  // Check statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Write the last tiles
+  RETURN_NOT_OK(write_all_tiles(meta, attribute_tiles));
 
   // Increment the tile index base.
   meta->set_tile_index_base(meta->tile_index_base() + 1);
@@ -1220,19 +1267,25 @@ Status Writer::ordered_write() {
   // Set number of tiles in the fragment metadata
   frag_meta->set_num_tiles(tile_num);
 
-  // Prepare tiles for all attributes and write
+  // Prepare tiles for all attributes and filter
   uint64_t num_attributes = attributes_.size();
+  std::vector<std::vector<Tile>> attr_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
-    std::vector<Tile> tiles;
+    std::vector<Tile>& tiles = attr_tiles[i];
     RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
-    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta.get(), tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
     return Status::Ok();
   });
 
   // Check all statuses
   for (auto& st : statuses)
     RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+
+  // Write tiles for all attributes
+  RETURN_NOT_OK_ELSE(
+      write_all_tiles(frag_meta.get(), attr_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -1843,20 +1896,26 @@ Status Writer::unordered_write() {
                            attribute_tiles[0].size();
   frag_meta->set_num_tiles(num_tiles);
 
-  // Write tiles for all attributes
+  // Filter all tiles
   statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = attributes_[i];
     auto& tiles = attribute_tiles[i];
     if (attr == constants::coords)
       RETURN_CANCEL_OR_ERROR(
           compute_coords_metadata<T>(tiles, frag_meta.get()));
-    RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta.get(), tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
     return Status::Ok();
   });
 
   // Check all statuses
   for (auto& st : statuses)
     RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  statuses.clear();
+
+  // Write tiles for all attributes
+  RETURN_NOT_OK_ELSE(
+      write_all_tiles(frag_meta.get(), attribute_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -1931,12 +1990,39 @@ Status Writer::write_cell_range_to_tile_var(
   return Status::Ok();
 }
 
+Status Writer::write_all_tiles(
+    FragmentMetadata* frag_meta,
+    const std::vector<std::vector<tiledb::sm::Tile>>& attribute_tiles) const {
+  STATS_FUNC_IN(writer_write_all_tiles);
+
+  std::vector<std::future<Status>> tasks;
+
+  auto num_attributes = attributes_.size();
+  for (uint64_t i = 0; i < num_attributes; i++) {
+    const auto& attr = attributes_[i];
+    auto& tiles = attribute_tiles[i];
+    tasks.push_back(
+        storage_manager_->writer_thread_pool()->enqueue([&, this]() {
+          RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, tiles));
+          return Status::Ok();
+        }));
+  }
+
+  // Wait for writes and check all statuses
+  auto statuses =
+      storage_manager_->writer_thread_pool()->wait_all_status(tasks);
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_write_all_tiles);
+}
+
 Status Writer::write_tiles(
     const std::string& attribute,
     FragmentMetadata* frag_meta,
-    std::vector<Tile>& tiles) const {
-  STATS_FUNC_IN(writer_write_tiles);
-
+    const std::vector<Tile>& tiles) const {
   // Handle zero tiles
   if (tiles.empty())
     return Status::Ok();
@@ -1949,27 +2035,20 @@ Status Writer::write_tiles(
   // Write tiles
   auto tile_num = tiles.size();
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    STATS_COUNTER_ADD(writer_num_input_bytes, tiles[i].buffer()->size());
-
-    // Compress, etc.
-    RETURN_NOT_OK(filter_tile(attribute, &(tiles[i]), var_size));
-
     RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
     frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer()->size());
+
     STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
 
     if (var_size) {
       ++i;
-      auto tile_size = tiles[i].size();
-      STATS_COUNTER_ADD(writer_num_input_bytes, tiles[i].buffer()->size());
-
-      // Compress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &(tiles[i]), false));
 
       RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
       frag_meta->set_tile_var_offset(
           attribute, tile_id, tiles[i].buffer()->size());
-      frag_meta->set_tile_var_size(attribute, tile_id, tile_size);
+      frag_meta->set_tile_var_size(
+          attribute, tile_id, tiles[i].pre_filtered_size());
+
       STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
     }
   }
@@ -1985,8 +2064,6 @@ Status Writer::write_tiles(
   STATS_COUNTER_ADD(writer_num_attr_tiles_written, tile_num);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_write_tiles);
 }
 
 }  // namespace sm

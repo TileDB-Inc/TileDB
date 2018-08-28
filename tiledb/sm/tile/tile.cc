@@ -48,7 +48,9 @@ Tile::Tile() {
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
   dim_num_ = 0;
+  filtered_ = false;
   owns_buff_ = true;
+  pre_filtered_size_ = 0;
   type_ = Datatype::INT32;
 }
 
@@ -58,7 +60,9 @@ Tile::Tile(unsigned int dim_num)
   cell_size_ = 0;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
+  filtered_ = false;
   owns_buff_ = true;
+  pre_filtered_size_ = 0;
   type_ = Datatype::INT32;
 }
 
@@ -75,7 +79,9 @@ Tile::Tile(
     , compressor_(compressor)
     , compression_level_(compression_level)
     , dim_num_(dim_num)
+    , filtered_(false)
     , owns_buff_(owns_buff)
+    , pre_filtered_size_(0)
     , type_(type) {
 }
 
@@ -177,6 +183,10 @@ bool Tile::empty() const {
   return (buffer_ == nullptr) || (buffer_->size() == 0);
 }
 
+bool Tile::filtered() const {
+  return filtered_;
+}
+
 bool Tile::full() const {
   return (buffer_->size() != 0) &&
          (buffer_->offset() == buffer_->alloced_size());
@@ -184,6 +194,10 @@ bool Tile::full() const {
 
 uint64_t Tile::offset() const {
   return buffer_->offset();
+}
+
+uint64_t Tile::pre_filtered_size() const {
+  return pre_filtered_size_;
 }
 
 Status Tile::realloc(uint64_t nbytes) {
@@ -209,8 +223,16 @@ void Tile::reset_size() {
   buffer_->reset_size();
 }
 
+void Tile::set_filtered(bool filtered) {
+  filtered_ = filtered;
+}
+
 void Tile::set_offset(uint64_t offset) {
   buffer_->set_offset(offset);
+}
+
+void Tile::set_pre_filtered_size(uint64_t pre_filtered_size) {
+  pre_filtered_size_ = pre_filtered_size;
 }
 
 void Tile::set_size(uint64_t size) {
@@ -316,7 +338,9 @@ Tile& Tile::operator=(const Tile& tile) {
   compressor_ = tile.compressor_;
   compression_level_ = tile.compression_level_;
   dim_num_ = tile.dim_num_;
+  filtered_ = tile.filtered_;
   owns_buff_ = tile.owns_buff_;
+  pre_filtered_size_ = tile.pre_filtered_size_;
   type_ = tile.type_;
 
   if (!tile.owns_buff_) {

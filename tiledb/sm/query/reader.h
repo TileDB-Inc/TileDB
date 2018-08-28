@@ -41,6 +41,7 @@
 #include "tiledb/sm/query/types.h"
 #include "tiledb/sm/tile/tile.h"
 
+#include <future>
 #include <list>
 #include <memory>
 
@@ -653,6 +654,29 @@ class Reader {
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
 
   /**
+   * Filters the tiles on all attributes from all input fragments based on the
+   * tile info in `tiles`.
+   *
+   * @param tiles Vector containing tiles to be filtered.
+   * @param ensure_coords If true (the default), always filter the coordinate
+   *    tiles.
+   * @return Status
+   */
+  Status filter_all_tiles(
+      OverlappingTileVec* tiles, bool ensure_coords = true) const;
+
+  /**
+   * Filters the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
+   * @param attribute Attribute whose tiles will be filtered
+   * @param tiles Vector containing the tiles to be filtered
+   * @return Status
+   */
+  Status filter_tiles(
+      const std::string& attribute, OverlappingTileVec* tiles) const;
+
+  /**
    * Runs the input tile for the input attribute through the filter pipeline.
    * The tile buffer is modified to contain the output of the pipeline.
    *
@@ -781,12 +805,18 @@ class Reader {
    * Retrieves the tiles on a particular attribute from all input fragments
    * based on the tile info in `tiles`.
    *
+   * The reads are done asynchronously, and futures for each read operation are
+   * added to the output parameter.
+   *
    * @param attribute The attribute name.
    * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @param tasks Vector to hold futures for the read tasks.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attribute, OverlappingTileVec* tiles) const;
+      const std::string& attribute,
+      OverlappingTileVec* tiles,
+      std::vector<std::future<Status>>* tasks) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because

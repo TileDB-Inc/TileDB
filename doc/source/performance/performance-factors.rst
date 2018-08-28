@@ -152,6 +152,18 @@ Thread pool size -- ``sm.num_tbb_threads``
     this config parameter from the default (while not recommended) can lead
     to better performance in certain circumstances.
 
+Reader thread pool size -- ``sm.num_reader_threads``
+    Read operations for read queries can be issued to the VFS layer in parallel
+    (the VFS layer may additionally parallelize large I/O operations). For some
+    hardware configurations, increasing the number of parallel VFS read
+    operations with this parameter may increase performance.
+
+Writer thread pool size -- ``sm.num_writer_threads``
+    Write operations for write queries can be issued to the VFS layer in parallel
+    (the VFS layer may additionally parallelize large I/O operations). For some
+    hardware configurations, increasing the number of parallel VFS write
+    operations with this parameter may increase performance.
+
 VFS thread pool size -- ``vfs.num_threads``
     The virtual filesystem (VFS) subsystem in TileDB maintains a separate thread
     pool per context for I/O operations. Reducing or increasing the VFS thread

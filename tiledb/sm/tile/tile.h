@@ -173,11 +173,31 @@ class Tile {
   /** Checks if the tile is empty. */
   bool empty() const;
 
+  /**
+   * Returns the current filtered state of the tile data in the buffer.
+   *
+   * On writes, this returns true once the tile buffer is ready to be written
+   * (compressed, etc).
+   *
+   * On reads, this returns true once the tile buffer is ready to be copied to
+   * user buffers (decompressed, etc).
+   */
+  bool filtered() const;
+
   /** Checks if the tile is full. */
   bool full() const;
 
   /** The current offset in the tile. */
   uint64_t offset() const;
+
+  /**
+   * Returns the pre-filtered size of the tile data in the buffer.
+   *
+   * On writes, the pre-filtered size is the uncompressed size.
+   *
+   * On reads, the pre-filtered size is the persisted (compressed) size.
+   */
+  uint64_t pre_filtered_size() const;
 
   /** Reallocates nbytes for the internal tile buffer. */
   Status realloc(uint64_t nbytes);
@@ -194,8 +214,14 @@ class Tile {
   /** Resets the tile size. */
   void reset_size();
 
+  /** Set the filtered state of the tile. */
+  void set_filtered(bool filtered);
+
   /** Sets the tile offset. */
   void set_offset(uint64_t offset);
+
+  /** Sets the pre-filtered size value to the given value. */
+  void set_pre_filtered_size(uint64_t pre_filtered_size);
 
   /** Sets the internal buffer size. */
   void set_size(uint64_t size);
@@ -279,11 +305,17 @@ class Tile {
    */
   unsigned int dim_num_;
 
+  /** The current state of the in-memory tile data with respect to filtering. */
+  bool filtered_;
+
   /**
    * If *true* the tile object will delete *buff* upon
    * destruction, otherwise it will not delete it.
    */
   bool owns_buff_;
+
+  /** The size in bytes of the tile data before it has been filtered. */
+  uint64_t pre_filtered_size_;
 
   /** The tile data type. */
   Datatype type_;

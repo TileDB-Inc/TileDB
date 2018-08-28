@@ -565,6 +565,9 @@ class StorageManager {
       uint64_t nbytes,
       bool* in_cache) const;
 
+  /** Returns the Reader thread pool. */
+  ThreadPool* reader_thread_pool() const;
+
   /**
    * Reads from a file into the input buffer.
    *
@@ -599,6 +602,9 @@ class StorageManager {
 
   /** Syncs a file or directory, flushing its contents to persistent storage. */
   Status sync(const URI& uri);
+
+  /** Returns the Writer thread pool. */
+  ThreadPool* writer_thread_pool() const;
 
   /** Returns the virtual filesystem object. */
   VFS* vfs() const;
@@ -685,6 +691,12 @@ class StorageManager {
 
   /** The storage manager's thread pool for async queries. */
   std::unique_ptr<ThreadPool> async_thread_pool_;
+
+  /** The storage manager's thread pool for Readers. */
+  std::unique_ptr<ThreadPool> reader_thread_pool_;
+
+  /** The storage manager's thread pool for Writers. */
+  std::unique_ptr<ThreadPool> writer_thread_pool_;
 
 #ifdef HAVE_TBB
   /** The TBB scheduler, used for controlling the number of TBB threads. */

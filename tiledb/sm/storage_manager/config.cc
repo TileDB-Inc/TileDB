@@ -282,6 +282,16 @@ Status Config::unset(const std::string& param) {
     value << sm_params_.num_async_threads_;
     param_values_["sm.num_async_threads"] = value.str();
     value.str(std::string());
+  } else if (param == "sm.num_reader_threads") {
+    sm_params_.num_reader_threads_ = constants::num_reader_threads;
+    value << sm_params_.num_reader_threads_;
+    param_values_["sm.num_reader_threads"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.num_writer_threads") {
+    sm_params_.num_writer_threads_ = constants::num_writer_threads;
+    value << sm_params_.num_writer_threads_;
+    param_values_["sm.num_writer_threads"] = value.str();
+    value.str(std::string());
   } else if (param == "sm.num_tbb_threads") {
     sm_params_.num_tbb_threads_ = constants::num_tbb_threads;
     value << sm_params_.num_tbb_threads_;
@@ -441,6 +451,14 @@ void Config::set_default_param_values() {
   param_values_["sm.num_async_threads"] = value.str();
   value.str(std::string());
 
+  value << sm_params_.num_reader_threads_;
+  param_values_["sm.num_reader_threads"] = value.str();
+  value.str(std::string());
+
+  value << sm_params_.num_writer_threads_;
+  param_values_["sm.num_writer_threads"] = value.str();
+  value.str(std::string());
+
   value << sm_params_.num_tbb_threads_;
   param_values_["sm.num_tbb_threads"] = value.str();
   value.str(std::string());
@@ -592,6 +610,22 @@ Status Config::set_sm_num_async_threads(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.num_async_threads_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_num_reader_threads(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.num_reader_threads_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_num_writer_threads(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.num_writer_threads_ = v;
 
   return Status::Ok();
 }

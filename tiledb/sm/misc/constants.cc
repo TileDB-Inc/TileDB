@@ -221,6 +221,12 @@ const bool enable_signal_handlers = true;
 /** The number of threads allocated per StorageManager for async queries. */
 const uint64_t num_async_threads = 1;
 
+/** The number of threads allocated per StorageManager for async queries. */
+const uint64_t num_reader_threads = 1;
+
+/** The number of threads allocated per StorageManager for async queries. */
+const uint64_t num_writer_threads = 1;
+
 /** The number of threads allocated for TBB. */
 #ifdef HAVE_TBB
 const int num_tbb_threads = tbb::task_scheduler_init::automatic;
