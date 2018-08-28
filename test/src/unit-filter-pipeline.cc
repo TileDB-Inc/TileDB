@@ -50,6 +50,11 @@ using namespace tiledb::sm;
  */
 class Add1InPlace : public Filter {
  public:
+  // Just use a dummy filter type
+  Add1InPlace()
+      : Filter(FilterType::COMPRESSION) {
+  }
+
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
     auto input_size = input->size();
     RETURN_NOT_OK(output->append_view(input, 0, input_size));
@@ -91,6 +96,11 @@ class Add1InPlace : public Filter {
  */
 class Add1OutOfPlace : public Filter {
  public:
+  // Just use a dummy filter type
+  Add1OutOfPlace()
+      : Filter(FilterType::COMPRESSION) {
+  }
+
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
     auto nelts = input->size() / sizeof(uint64_t);
 
@@ -136,7 +146,9 @@ class Add1OutOfPlace : public Filter {
  */
 class AddNInPlace : public Filter {
  public:
-  AddNInPlace() {
+  // Just use a dummy filter type
+  AddNInPlace()
+      : Filter(FilterType::COMPRESSION) {
     increment_ = 1;
   }
 
@@ -194,6 +206,10 @@ class AddNInPlace : public Filter {
  */
 class PseudoChecksumFilter : public Filter {
  public:
+  // Just use a dummy filter type
+  PseudoChecksumFilter()
+      : Filter(FilterType::COMPRESSION) {
+  }
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
@@ -304,7 +320,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
   auto original_alloc = tile.data();
 
   FilterPipeline pipeline;
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&tile).ok());
@@ -343,8 +359,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
+    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.run_forward(&tile).ok());
 
     // Check new size and number of chunks
@@ -390,8 +406,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
-  CHECK(
-      pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace())).ok());
+  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&tile).ok());
@@ -429,10 +444,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace()))
-              .ok());
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace()))
-              .ok());
+    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(pipeline.run_forward(&tile).ok());
 
     // Check new size and number of chunks
@@ -478,12 +491,10 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-  CHECK(
-      pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-  CHECK(
-      pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace())).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
   CHECK(pipeline.run_forward(&tile).ok());
 
   // Check new size and number of chunks
@@ -542,13 +553,10 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
   FilterPipeline pipeline;
 
   SECTION("- Simple") {
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace()))
-              .ok());
-    CHECK(pipeline
-              .add_filter(std::unique_ptr<Filter>(
-                  new CompressionFilter(Compressor::BLOSC_LZ4, 5)))
-              .ok());
+    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+    CHECK(
+        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked
@@ -566,13 +574,9 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
   }
 
   SECTION("- With checksum stage") {
+    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
     CHECK(
-        pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
-            .ok());
-    CHECK(pipeline
-              .add_filter(std::unique_ptr<Filter>(
-                  new CompressionFilter(Compressor::BLOSC_LZ4, 5)))
-              .ok());
+        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked
@@ -590,16 +594,11 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
   }
 
   SECTION("- With multiple stages") {
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
+    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
     CHECK(
-        pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
-            .ok());
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace()))
-              .ok());
-    CHECK(pipeline
-              .add_filter(std::unique_ptr<Filter>(
-                  new CompressionFilter(Compressor::BLOSC_LZ4, 5)))
-              .ok());
+        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked
@@ -629,8 +628,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
-            .ok());
+  CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&tile).ok());
@@ -672,12 +670,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
   }
 
   SECTION("- Multi-stage") {
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1OutOfPlace()))
-              .ok());
-    CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-    CHECK(
-        pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
-            .ok());
+    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
     CHECK(pipeline.run_forward(&tile).ok());
 
     // Compute the second (final) checksum value.
@@ -738,9 +733,9 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new AddNInPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  CHECK(pipeline.add_filter(AddNInPlace()).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
 
   // Get non-existent filter instance
   auto* cksum = pipeline.get_filter<PseudoChecksumFilter>();
@@ -789,11 +784,10 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
   FilterPipeline pipeline;
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new AddNInPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new Add1InPlace())).ok());
-  CHECK(pipeline.add_filter(std::unique_ptr<Filter>(new PseudoChecksumFilter()))
-            .ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  CHECK(pipeline.add_filter(AddNInPlace()).ok());
+  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
 
   // Modify +N filter
   auto* add_n = pipeline.get_filter<AddNInPlace>();
@@ -872,15 +866,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     for (unsigned i = 0; i < num_filters; i++) {
       unsigned idx = (unsigned)rng2(gen);
       Filter* filter = constructors[idx]();
-      CHECK(pipeline.add_filter(std::unique_ptr<Filter>(filter)).ok());
+      CHECK(pipeline.add_filter(*filter).ok());
     }
 
     // Maybe add a compressor at the end.
     if (rng01(gen) == 0) {
-      CHECK(pipeline
-                .add_filter(std::unique_ptr<Filter>(
-                    new CompressionFilter(Compressor::BZIP2, -1)))
-                .ok());
+      CHECK(pipeline.add_filter(CompressionFilter(Compressor::BZIP2, -1)).ok());
     }
 
     // End result should always be the same as the input.

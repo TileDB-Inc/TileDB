@@ -242,6 +242,9 @@ extern const std::string query_status_incomplete_str;
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 
+/** TILEDB_COMPRESSION Filter type string */
+extern const std::string filter_type_compression_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 

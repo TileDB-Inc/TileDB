@@ -34,6 +34,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
+#include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/kv/kv.h"
 #include "tiledb/sm/kv/kv_item.h"
 #include "tiledb/sm/kv/kv_iter.h"
@@ -129,6 +131,10 @@ struct tiledb_dimension_t {
 
 struct tiledb_domain_t {
   tiledb::sm::Domain* domain_;
+};
+
+struct tiledb_filter_t {
+  tiledb::sm::Filter* filter_;
 };
 
 struct tiledb_query_t {
@@ -279,6 +285,16 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   return TILEDB_OK;
 }
 
+inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
+  if (filter == nullptr || filter->filter_ == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
   if (dim == nullptr || dim->dim_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB dimension object");
@@ -380,6 +396,19 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
   if (fh == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Invalid TileDB virtual filesystem file handle");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int check_filter_type(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t type) {
+  auto cpp_type = static_cast<tiledb::sm::FilterType>(type);
+  if (filter->filter_->type() != cpp_type) {
+    auto st = tiledb::sm::Status::FilterError(
+        "Invalid filter type (expected " + filter_type_str(cpp_type) + ")");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -778,6 +807,109 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
 }
 
 /* ********************************* */
+/*              FILTER               */
+/* ********************************* */
+
+int tiledb_filter_alloc(
+    tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a filter struct
+  *filter = new (std::nothrow) tiledb_filter_t;
+  if (*filter == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new Filter object of the given type
+  (*filter)->filter_ =
+      tiledb::sm::Filter::create(static_cast<tiledb::sm::FilterType>(type));
+  if ((*filter)->filter_ == nullptr) {
+    delete *filter;
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_filter_free(tiledb_filter_t** filter) {
+  if (filter != nullptr && *filter != nullptr) {
+    delete (*filter)->filter_;
+    delete (*filter);
+    *filter = nullptr;
+  }
+}
+
+int tiledb_filter_set_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_compressor_t compressor) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR ||
+      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
+  f->set_compressor(static_cast<tiledb::sm::Compressor>(compressor));
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_filter_set_compression_level(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int compression_level) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR ||
+      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
+  f->set_compression_level(compression_level);
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_filter_get_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_compressor_t* compressor) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR ||
+      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
+  *compressor = static_cast<tiledb_compressor_t>(f->compressor());
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_filter_get_compression_level(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int* compression_level) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR ||
+      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
+  *compression_level = f->compression_level();
+
+  // Success
+  return TILEDB_OK;
+}
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -821,6 +953,74 @@ void tiledb_attribute_free(tiledb_attribute_t** attr) {
     delete (*attr);
     *attr = nullptr;
   }
+}
+
+int tiledb_attribute_add_filter(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, tiledb_filter_t* filter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, attr) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, attr->attr_->add_filter(*(filter->filter_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_get_nfilters(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, unsigned int* nfilters) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *nfilters = attr->attr_->filters()->size();
+
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_get_filter_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    unsigned int index,
+    tiledb_filter_t** filter) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  unsigned int nfilters = attr->attr_->filters()->size();
+  if (nfilters == 0 && index == 0) {
+    *filter = nullptr;
+    return TILEDB_OK;
+  }
+
+  if (index >= nfilters) {
+    auto st = tiledb::sm::Status::Error(
+        "Filter " + std::to_string(index) + " out of bounds, attribute has " +
+        std::to_string(nfilters) + " filters.");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  auto f = attr->attr_->filters()->get_filter(index);
+  if (f == nullptr) {
+    auto st = tiledb::sm::Status::Error("Failed to retrieve filter at index");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  *filter = new (std::nothrow) tiledb_filter_t;
+  if (*filter == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  (*filter)->filter_ = f->clone();
+
+  return TILEDB_OK;
 }
 
 int tiledb_attribute_set_compressor(

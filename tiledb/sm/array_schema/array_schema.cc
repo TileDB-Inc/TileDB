@@ -59,12 +59,11 @@ ArraySchema::ArraySchema() {
   std::memcpy(version_, constants::version, sizeof(version_));
 
   // Set up default filter pipelines for coords and offsets
-  coords_filters_.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level)));
-  cell_var_offsets_filters_.add_filter(
-      std::unique_ptr<Filter>(new CompressionFilter(
-          constants::cell_var_offsets_compression,
-          constants::cell_var_offsets_compression_level)));
+  coords_filters_.add_filter(CompressionFilter(
+      constants::coords_compression, constants::coords_compression_level));
+  cell_var_offsets_filters_.add_filter(CompressionFilter(
+      constants::cell_var_offsets_compression,
+      constants::cell_var_offsets_compression_level));
 }
 
 ArraySchema::ArraySchema(ArrayType array_type)
@@ -78,12 +77,11 @@ ArraySchema::ArraySchema(ArrayType array_type)
   std::memcpy(version_, constants::version, sizeof(version_));
 
   // Set up default filter pipelines for coords and offsets
-  coords_filters_.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level)));
-  cell_var_offsets_filters_.add_filter(
-      std::unique_ptr<Filter>(new CompressionFilter(
-          constants::cell_var_offsets_compression,
-          constants::cell_var_offsets_compression_level)));
+  coords_filters_.add_filter(CompressionFilter(
+      constants::coords_compression, constants::coords_compression_level));
+  cell_var_offsets_filters_.add_filter(CompressionFilter(
+      constants::cell_var_offsets_compression,
+      constants::cell_var_offsets_compression_level));
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {

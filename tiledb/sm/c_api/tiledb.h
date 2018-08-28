@@ -110,6 +110,14 @@ typedef enum {
 #undef TILEDB_LAYOUT_ENUM
 } tiledb_layout_t;
 
+/** Filter type. */
+typedef enum {
+/** Helper macro for defining filter type enums. */
+#define TILEDB_FILTER_TYPE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_FILTER_TYPE_ENUM
+} tiledb_filter_type_t;
+
 /** Compression type. */
 typedef enum {
 /** Helper macro for defining compressor enums. */
@@ -225,6 +233,9 @@ typedef struct tiledb_dimension_t tiledb_dimension_t;
 
 /** A TileDB domain. */
 typedef struct tiledb_domain_t tiledb_domain_t;
+
+/** A TileDB filter. */
+typedef struct tiledb_filter_t tiledb_filter_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
@@ -834,6 +845,126 @@ TILEDB_EXPORT int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx);
 TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
 
 /* ********************************* */
+/*              FILTER               */
+/* ********************************* */
+
+/**
+ * Creates a TileDB filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param type The filter type.
+ * @param filter The TileDB filter to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_alloc(
+    tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter);
+
+/**
+ * Destroys a TileDB filter, freeing associated memory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_free(&filter);
+ * @endcode
+ *
+ * @param filter The filter to be destroyed.
+ */
+TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
+
+/**
+ * Sets the compressor to use on a compressor filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param filter The target compression filter
+ * @param compressor The compressor to use
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_set_compressor(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_compressor_t compressor);
+
+/**
+ * Sets the compression level to use on a compressor filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ * tiledb_filter_set_compression_level(ctx, filter, 5);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param filter The target compression filter
+ * @param compression_level The compression level (use `-1` for default).
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_set_compression_level(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int compression_level);
+
+/**
+ * Gets the compressor used on a compressor filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_compressor_t compressor;
+ * tiledb_filter_get_compressor(ctx, filter, &compressor);
+ * // compressor == TILEDB_NO_COMPRESSION
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param filter The target compression filter
+ * @param compressor Set to the compressor
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_get_compressor(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_compressor_t* compressor);
+
+/**
+ * Gets the compression level used on a compressor filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * int level;
+ * tiledb_filter_get_compression_level(ctx, filter, &level);
+ * // level == -1
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param filter The target compression filter
+ * @param compression_level Set to the compression level
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_get_compression_level(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int* compression_level);
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -876,6 +1007,71 @@ TILEDB_EXPORT int tiledb_attribute_alloc(
  * @param attr The attribute to be destroyed.
  */
 TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr);
+
+/**
+ * Adds a filter for an attribute. More than one filter can be added, in which
+ * case the attribute is processed through each filter in the order the filters
+ * were added.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ * tiledb_attribute_add_filter(ctx, attr, filter);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param filter The filter to add.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_add_filter(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, tiledb_filter_t* filter);
+
+/**
+ * Retrieves the number of filters set on an attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * unsigned num_filters;
+ * tiledb_attribute_get_nfilters(ctx, attr, &num_filters);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param attr The attribute
+ * @param nfilters The number of filters on the attribute
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_get_nfilters(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, unsigned int* nfilters);
+
+/**
+ * Retrieves a filter object from an attribute by index.
+ *
+ * **Example:**
+ *
+ * The following retrieves the first filter from an attribute.
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_attribute_get_filter_from_index(ctx, attr, 0, &filter);
+ * tiledb_filter_free(&filter);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param attr The attribute to retrieve the filter from
+ * @param index The index of the filter
+ * @param filter The retrieved filter object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_get_filter_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    unsigned int index,
+    tiledb_filter_t** filter);
 
 /**
  * Sets a compressor for an attribute.

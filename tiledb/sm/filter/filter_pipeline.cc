@@ -48,8 +48,7 @@ FilterPipeline::FilterPipeline() {
 
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
-    std::unique_ptr<Filter> copy(filter->clone());
-    add_filter(std::move(copy));
+    add_filter(*filter);
   }
   current_tile_ = other.current_tile_;
 }
@@ -62,9 +61,10 @@ FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
   return *this;
 }
 
-Status FilterPipeline::add_filter(std::unique_ptr<Filter> filter) {
-  filter->set_pipeline(this);
-  filters_.push_back(std::move(filter));
+Status FilterPipeline::add_filter(const Filter& filter) {
+  std::unique_ptr<Filter> copy(filter.clone());
+  copy->set_pipeline(this);
+  filters_.push_back(std::move(copy));
   return Status::Ok();
 }
 
@@ -263,6 +263,13 @@ Status FilterPipeline::filter_chunks_reverse(
   return Status::Ok();
 }
 
+Filter* FilterPipeline::get_filter(unsigned index) const {
+  if (index >= filters_.size())
+    return nullptr;
+
+  return filters_[index].get();
+}
+
 Status FilterPipeline::run_forward(Tile* tile) const {
   STATS_FUNC_IN(filter_pipeline_run_forward);
 
@@ -344,6 +351,10 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
   return Status::Ok();
 
   STATS_FUNC_OUT(filter_pipeline_run_reverse);
+}
+
+unsigned FilterPipeline::size() const {
+  return static_cast<unsigned>(filters_.size());
 }
 
 void FilterPipeline::swap(FilterPipeline& other) {

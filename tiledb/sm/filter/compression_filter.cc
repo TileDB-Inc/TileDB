@@ -40,12 +40,20 @@
 #include "tiledb/sm/compressors/zstd_compressor.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
 namespace sm {
 
-CompressionFilter::CompressionFilter(Compressor compressor, int level) {
+CompressionFilter::CompressionFilter()
+    : Filter(FilterType::COMPRESSION) {
+  compressor_ = Compressor::NO_COMPRESSION;
+  level_ = -1;
+}
+
+CompressionFilter::CompressionFilter(Compressor compressor, int level)
+    : Filter(FilterType::COMPRESSION) {
   compressor_ = compressor;
   level_ = level;
 }

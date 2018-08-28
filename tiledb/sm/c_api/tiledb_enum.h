@@ -142,6 +142,11 @@
     TILEDB_COMPRESSOR_ENUM(DOUBLE_DELTA),
 #endif
 
+#ifdef TILEDB_FILTER_TYPE_ENUM
+    /** Compression filter. */
+    TILEDB_FILTER_TYPE_ENUM(COMPRESSION),
+#endif
+
 #ifdef TILEDB_QUERY_STATUS_ENUM
     /** Query failed */
     TILEDB_QUERY_STATUS_ENUM(FAILED) = -1,

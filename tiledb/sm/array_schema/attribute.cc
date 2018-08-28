@@ -49,16 +49,12 @@ Attribute::Attribute() {
   name_ = "";
   type_ = Datatype::CHAR;
   cell_val_num_ = 1;
-  filters_.add_filter(std::unique_ptr<Filter>(
-      new CompressionFilter(Compressor::NO_COMPRESSION, -1)));
 }
 
 Attribute::Attribute(const std::string& name, Datatype type) {
   name_ = name;
   type_ = type;
   cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
-  filters_.add_filter(std::unique_ptr<Filter>(
-      new CompressionFilter(Compressor::NO_COMPRESSION, -1)));
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -75,6 +71,10 @@ Attribute::~Attribute() = default;
 /*                API                */
 /* ********************************* */
 
+Status Attribute::add_filter(const Filter& filter) {
+  return filters_.add_filter(filter);
+}
+
 uint64_t Attribute::cell_size() const {
   if (var_size())
     return constants::var_size;
@@ -88,14 +88,13 @@ unsigned int Attribute::cell_val_num() const {
 
 Compressor Attribute::compressor() const {
   auto compressor = filters_.get_filter<CompressionFilter>();
-  assert(compressor != nullptr);
-  return compressor->compressor();
+  return compressor == nullptr ? Compressor::NO_COMPRESSION :
+                                 compressor->compressor();
 }
 
 int Attribute::compression_level() const {
   auto compressor = filters_.get_filter<CompressionFilter>();
-  assert(compressor != nullptr);
-  return compressor->compression_level();
+  return compressor == nullptr ? -1 : compressor->compression_level();
 }
 
 // ===== FORMAT =====
@@ -200,14 +199,19 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
 
 void Attribute::set_compressor(Compressor compressor) {
   auto filter = filters_.get_filter<CompressionFilter>();
-  assert(filter != nullptr);
-  filter->set_compressor(compressor);
+  if (filter == nullptr)
+    filters_.add_filter(CompressionFilter(compressor, -1));
+  else
+    filter->set_compressor(compressor);
 }
 
 void Attribute::set_compression_level(int compression_level) {
   auto filter = filters_.get_filter<CompressionFilter>();
-  assert(filter != nullptr);
-  filter->set_compression_level(compression_level);
+  if (filter == nullptr)
+    filters_.add_filter(
+        CompressionFilter(Compressor::NO_COMPRESSION, compression_level));
+  else
+    filter->set_compression_level(compression_level);
 }
 
 void Attribute::set_name(const std::string& name) {
