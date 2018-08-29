@@ -50,6 +50,16 @@ class Config {
   /*         TYPE DEFINITIONS          */
   /* ********************************* */
 
+  struct RESTParams {
+    std::string server_address_;
+    std::string server_serialization_format_;
+
+    RESTParams() {
+      server_address_ = "";
+      server_serialization_format_ = constants::serialization_default_format;
+    }
+  };
+
   /** Storage manager parameters. */
   struct SMParams {
     uint64_t array_schema_cache_size_;
@@ -60,8 +70,6 @@ class Config {
     uint64_t tile_cache_size_;
     bool dedup_coords_;
     bool check_coord_dups_;
-    std::string rest_server_address_;
-    std::string rest_server_serialization_format_;
 
     SMParams() {
       array_schema_cache_size_ = constants::array_schema_cache_size;
@@ -72,9 +80,6 @@ class Config {
       tile_cache_size_ = constants::tile_cache_size;
       dedup_coords_ = false;
       check_coord_dups_ = true;
-      rest_server_address_ = "";
-      rest_server_serialization_format_ =
-          constants::serialization_default_format;
     }
   };
 
@@ -169,6 +174,9 @@ class Config {
 
   /** Saves the config parameters to a configuration (local) file. */
   Status save_to_file(const std::string& filename);
+
+  /** Returns the rest interface parameters. */
+  RESTParams rest_params() const;
 
   /** Returns the storage manager parameters. */
   SMParams sm_params() const;
@@ -321,6 +329,9 @@ class Config {
   /** Stores a map of param -> value. */
   std::map<std::string, std::string> param_values_;
 
+  /** The rest interface parameters. */
+  RESTParams rest_params_;
+
   /** The storage manager parameters. */
   SMParams sm_params_;
 
@@ -372,10 +383,10 @@ class Config {
   Status set_sm_tile_cache_size(const std::string& value);
 
   /** Set the rest server address */
-  Status set_sm_rest_server_address(const std::string& value);
+  Status set_rest_server_address(const std::string& value);
 
   /** Set the rest server serialization format */
-  Status set_sm_rest_server_serialization_format(const std::string& value);
+  Status set_rest_server_serialization_format(const std::string& value);
 
   /** Sets the number of VFS threads. */
   Status set_vfs_num_threads(const std::string& value);

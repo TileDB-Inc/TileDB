@@ -143,7 +143,7 @@ tiledb::sm::Status post_data(
 
   // Get rest server
   const char* rest_server = nullptr;
-  auto st = config->get("sm.rest_server_address", &rest_server);
+  auto st = config->get("rest.server_address", &rest_server);
   if (!st.ok())
     return st;
 
@@ -192,7 +192,7 @@ tiledb::sm::Status get_data(
 
   // Get rest server
   const char* rest_server = nullptr;
-  auto st = config->get("sm.rest_server_address", &rest_server);
+  auto st = config->get("rest.server_address", &rest_server);
   if (!st.ok())
     return st;
 
@@ -234,7 +234,7 @@ tiledb::sm::Status delete_data(
 
   // Get rest server
   const char* rest_server = nullptr;
-  auto st = config->get("sm.rest_server_address", &rest_server);
+  auto st = config->get("rest.server_address", &rest_server);
   if (!st.ok())
     return st;
 

@@ -130,7 +130,7 @@ ArraySchemaRest::ArraySchemaRest() {
   REQUIRE(
       tiledb_config_set(
           config_,
-          "sm.config__serialization_format",
+          "sm.re_serialization_format",
           tiledb::sm::serialization_type_str(
               tiledb::sm::SerializationType::JSON)
               .c_str(),
