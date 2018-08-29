@@ -278,7 +278,15 @@ int get_rest_server_serialization_format(
     tiledb_config_free(&config);
   return TILEDB_OK;
 }
-
+int get_ctx_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
+  *config = nullptr;
+  if (tiledb_ctx_get_config(ctx, config) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(config);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
@@ -1437,8 +1445,15 @@ int tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get contex config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     auto st = tiledb::rest::get_array_schema_from_rest(
-        rest_server,
+        config->config_,
         array_uri,
         static_cast<tiledb::sm::SerializationType>(serialization_type),
         &(*array_schema)->array_schema_);
@@ -1936,10 +1951,16 @@ int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     query->array_->open_array_->array_schema()->set_array_uri(
         query->array_->array_uri_);
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get contex config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
     if (save_error(
             ctx,
             tiledb::rest::finalize_query_to_rest(
-                rest_server,
+                config->config_,
                 query->array_->array_uri_.to_string(),
                 static_cast<tiledb::sm::SerializationType>(serialization_type),
                 query->query_)))
@@ -1985,10 +2006,17 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     query->array_->open_array_->array_schema()->set_array_uri(
         query->array_->array_uri_);
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get contex config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     if (save_error(
             ctx,
             tiledb::rest::submit_query_to_rest(
-                rest_server,
+                config->config_,
                 query->array_->array_uri_.to_string(),
                 static_cast<tiledb::sm::SerializationType>(serialization_type),
                 query->query_)))
@@ -2424,8 +2452,15 @@ int tiledb_array_create(
       return TILEDB_ERR;
     }
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get contex config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     auto st = tiledb::rest::post_array_schema_to_rest(
-        rest_server,
+        config->config_,
         array_uri,
         static_cast<tiledb::sm::SerializationType>(serialization_type),
         array_schema->array_schema_);
@@ -2468,10 +2503,17 @@ int tiledb_array_get_non_empty_domain(
     // Check for REST server configuration
     std::string rest_server = get_rest_server(ctx);
     if (!rest_server.empty()) {
+      tiledb_config_t* config;
+      if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+        auto st = tiledb::sm::Status::Error("Failed to get contex config");
+        save_error(ctx, st);
+        return TILEDB_ERR;
+      }
+
       if (save_error(
               ctx,
               tiledb::rest::get_array_non_empty_domain(
-                  rest_server, array->open_array_, domain, &is_empty_b)))
+                  config->config_, array->open_array_, domain, &is_empty_b)))
         return TILEDB_ERR;
     } else {
       auto st = tiledb::sm::Status::Error(

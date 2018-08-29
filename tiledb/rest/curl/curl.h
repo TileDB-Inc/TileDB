@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <string>
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/storage_manager/config.h"
 
 // TODO: replace this with config option
 #define CURL_MAX_RETRIES 3
@@ -79,14 +80,17 @@ CURLcode curl_fetch_url(
  *
  * @param curl instance
  * @param url to post to
- * @param dataString data encoded string for posting
- * @param memoryStruct where response is stored
+ * @param serialization_type format data is serialized in, effects headers
+ * @param config used to get rest server url and auth information
+ * @param data struct container data bytes
+ * @param returned_data where response is stored
  * @return
  */
-CURLcode post_data(
+tiledb::sm::Status post_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* data,
     MemoryStruct* returned_data);
 
@@ -96,26 +100,30 @@ CURLcode post_data(
  * @param curl instance
  * @param url to get
  * @param serialization_type format data is serialized in, effects headers
- * @param memoryStruct response is stored
+ * @param config used to get rest server url and auth information
+ * @param returned_data where response is stored
  * @return
  */
-CURLcode get_data(
+tiledb::sm::Status get_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* returned_data);
 
 /**
  * Simple wraper for sending delete requests to server
  * @param curl
  * @param url
- * @param serialization_type
- * @param returned_data
+ * @param serialization_type format data is serialized in, effects headers
+ * @param config used to get rest server url and auth information
+ * @param returned_data where response is stored
  * @return
  */
-CURLcode delete_data(
+tiledb::sm::Status delete_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* returned_data);
 #endif  // TILEDB_REST_CURL_HPP

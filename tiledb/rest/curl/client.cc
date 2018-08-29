@@ -40,7 +40,7 @@
 namespace tiledb {
 namespace rest {
 tiledb::sm::Status get_array_schema_from_rest(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::ArraySchema** array_schema) {
@@ -49,22 +49,18 @@ tiledb::sm::Status get_array_schema_from_rest(
   CURL* curl = curl_easy_init();
 
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped;
+  std::string url =
+      "/v1/arrays/organization_place_holder/" + std::string(uri_escaped);
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  CURLcode res = get_data(curl, url, serialization_type, &returned_data);
-  // Check for errors
-  long httpCode = 0;
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  tiledb::sm::Status res =
+      get_data(curl, url, serialization_type, config, &returned_data);
   curl_easy_cleanup(curl);
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-    return tiledb::sm::Status::Error(
-        std::string("rest array get() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   if (returned_data.memory == nullptr || returned_data.size == 0)
@@ -81,7 +77,7 @@ tiledb::sm::Status get_array_schema_from_rest(
 }
 
 tiledb::sm::Status post_array_schema_to_rest(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::ArraySchema* array_schema) {
@@ -99,26 +95,23 @@ tiledb::sm::Status post_array_schema_to_rest(
 
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped;
+  std::string url =
+      "/v1/arrays/organization_place_holder/" + std::string(uri_escaped);
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  CURLcode res =
-      post_data(curl, url, serialization_type, &data, &returned_data);
+  tiledb::sm::Status res =
+      post_data(curl, url, serialization_type, config, &data, &returned_data);
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
   // Cleanup initial data
   delete[] data.memory;
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-
-    return tiledb::sm::Status::Error(
-        std::string("rest array post() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   std::free(returned_data.memory);
@@ -128,7 +121,7 @@ tiledb::sm::Status post_array_schema_to_rest(
 }
 
 tiledb::sm::Status delete_array_schema_from_rest(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     std::string uri,
     tiledb::sm::SerializationType serialization_type) {
   STATS_FUNC_IN(serialization_delete_array_schema_from_rest);
@@ -136,23 +129,21 @@ tiledb::sm::Status delete_array_schema_from_rest(
   CURL* curl = curl_easy_init();
 
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/group/group1/project/project1/uri/" +
-                    uri_escaped;
+  std::string url = "/v1/arrays/group/group1/project/project1/uri/" +
+                    std::string(uri_escaped);
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  CURLcode res = delete_data(curl, url, serialization_type, &returned_data);
+  tiledb::sm::Status res =
+      delete_data(curl, url, serialization_type, config, &returned_data);
   // Check for errors
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-    return tiledb::sm::Status::Error(
-        std::string("rest array get() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   free(returned_data.memory);
@@ -161,7 +152,7 @@ tiledb::sm::Status delete_array_schema_from_rest(
 }
 
 tiledb::sm::Status get_array_non_empty_domain(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     tiledb::sm::OpenArray* openArray,
     void* domain,
     bool* is_empty) {
@@ -179,24 +170,21 @@ tiledb::sm::Status get_array_non_empty_domain(
 
   std::string uri = openArray->array_uri().to_string();
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped +
-                    "/non_empty_domain";
+  std::string url = "/v1/arrays/organization_place_holder/" +
+                    std::string(uri_escaped) + "/non_empty_domain";
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data;
-  CURLcode res =
-      get_data(curl, url, tiledb::sm::SerializationType::JSON, &returned_data);
+  tiledb::sm::Status res = get_data(
+      curl, url, tiledb::sm::SerializationType::JSON, config, &returned_data);
   // Check for errors
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-    return tiledb::sm::Status::Error(
-        std::string("rest array get() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   if (returned_data.memory == nullptr || returned_data.size == 0)
@@ -338,7 +326,7 @@ tiledb::sm::Status get_array_non_empty_domain(
 }
 
 tiledb::sm::Status submit_query_to_rest(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::Query* query) {
@@ -359,27 +347,23 @@ tiledb::sm::Status submit_query_to_rest(
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url =
-      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
-      uri_escaped +
+      "/v1/arrays/organization_place_holder/" + std::string(uri_escaped) +
       "/query/submit?type=" + tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  CURLcode res =
-      post_data(curl, url, serialization_type, &data, &returned_data);
+  tiledb::sm::Status res =
+      post_data(curl, url, serialization_type, config, &data, &returned_data);
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
   // Cleanup initial data
   delete[] data.memory;
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-
-    return tiledb::sm::Status::Error(
-        std::string("rest submit query post() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   if (returned_data.memory == nullptr || returned_data.size == 0)
@@ -395,7 +379,7 @@ tiledb::sm::Status submit_query_to_rest(
 }
 
 tiledb::sm::Status finalize_query_to_rest(
-    std::string rest_server,
+    tiledb::sm::Config* config,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::Query* query) {
@@ -416,27 +400,23 @@ tiledb::sm::Status finalize_query_to_rest(
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
   std::string url =
-      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
-      uri_escaped +
+      "/v1/arrays/organization_place_holder/" + std::string(uri_escaped) +
       "/query/finalize?type=" + tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  CURLcode res =
-      post_data(curl, url, serialization_type, &data, &returned_data);
+  tiledb::sm::Status res =
+      post_data(curl, url, serialization_type, config, &data, &returned_data);
   /* Check for errors */
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   curl_easy_cleanup(curl);
   // Cleanup initial data
   delete[] data.memory;
-  if (res != CURLE_OK || httpCode >= 400) {
-    // TODO: Should see if message has error data object
-
-    return tiledb::sm::Status::Error(
-        std::string("rest finalize query post() failed: ") +
-        ((returned_data.size > 0) ? returned_data.memory :
-                                    " No error message from server"));
+  if (!res.ok()) {
+    if(returned_data.memory != nullptr)
+      std::free(returned_data.memory);
+    return res;
   }
 
   if (returned_data.memory == nullptr || returned_data.size == 0)

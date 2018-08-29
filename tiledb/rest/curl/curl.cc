@@ -123,6 +123,8 @@ CURLcode curl_fetch_url(
     /* If we are here, then curl returned an error */
     /* Free allocated memory for return as we are now going to retry */
     free(fetch->memory);
+    fetch->memory = nullptr;
+    fetch->size = 0;
   }
 
   /* return */
@@ -130,13 +132,22 @@ CURLcode curl_fetch_url(
   STATS_FUNC_OUT(serialization_curl_fetch_url);
 }
 
-CURLcode post_data(
+tiledb::sm::Status post_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* data,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_post_data);
+
+  // Get rest server
+  const char* rest_server = nullptr;
+  auto st = config->get("sm.rest_server_address", &rest_server);
+  if (!st.ok())
+    return st;
+
+  url = rest_server + url;
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
@@ -155,16 +166,37 @@ CURLcode post_data(
 
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
-  return ret;
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest post_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_post_data);
 }
 
-CURLcode get_data(
+tiledb::sm::Status get_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_get_data);
+
+  // Get rest server
+  const char* rest_server = nullptr;
+  auto st = config->get("sm.rest_server_address", &rest_server);
+  if (!st.ok())
+    return st;
+
+  url = rest_server + url;
   struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -176,16 +208,37 @@ CURLcode get_data(
 
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
-  return ret;
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest get_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_get_data);
 }
 
-CURLcode delete_data(
+tiledb::sm::Status delete_data(
     CURL* curl,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
+    tiledb::sm::Config* config,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_delete_data);
+
+  // Get rest server
+  const char* rest_server = nullptr;
+  auto st = config->get("sm.rest_server_address", &rest_server);
+  if (!st.ok())
+    return st;
+
+  url = rest_server + url;
   /* HTTP DELETE please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 
@@ -200,7 +253,19 @@ CURLcode delete_data(
 
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
-  return ret;
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest delete_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+
+  return tiledb::sm::Status::Ok();
+
   STATS_FUNC_OUT(serialization_delete_data);
 }
