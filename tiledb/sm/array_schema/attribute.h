@@ -80,14 +80,6 @@ class Attribute {
   /* ********************************* */
 
   /**
-   * Add a copy of the given filter to the filter pipeline of this attribute.
-   *
-   * @param filter Filter to add
-   * @return Status
-   */
-  Status add_filter(const Filter& filter);
-
-  /**
    * Returns the size in bytes of one cell for this attribute. If the attribute
    * is variable-sized, this function returns the size in bytes of an offset.
    */
@@ -144,6 +136,9 @@ class Attribute {
 
   /** Sets the attribute compression level. */
   void set_compression_level(int compression_level);
+
+  /** Sets the filter pipeline for this attribute. */
+  Status set_filter_pipeline(const FilterPipeline* pipeline);
 
   /** Sets the attribute name. */
   void set_name(const std::string& name);

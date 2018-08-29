@@ -35,7 +35,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/kv/kv.h"
 #include "tiledb/sm/kv/kv_item.h"
 #include "tiledb/sm/kv/kv_iter.h"
@@ -135,6 +135,10 @@ struct tiledb_domain_t {
 
 struct tiledb_filter_t {
   tiledb::sm::Filter* filter_;
+};
+
+struct tiledb_filter_list_t {
+  tiledb::sm::FilterPipeline* pipeline_;
 };
 
 struct tiledb_query_t {
@@ -288,6 +292,17 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
   if (filter == nullptr || filter->filter_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_filter_list_t* filter_list) {
+  if (filter_list == nullptr || filter_list->pipeline_ == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB filter list object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -910,6 +925,148 @@ int tiledb_filter_get_compression_level(
 }
 
 /* ********************************* */
+/*            FILTER LIST            */
+/* ********************************* */
+
+int tiledb_filter_list_alloc(
+    tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a filter struct
+  *filter_list = new (std::nothrow) tiledb_filter_list_t;
+  if (*filter_list == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new FilterPipeline object
+  (*filter_list)->pipeline_ = new (std::nothrow) tiledb::sm::FilterPipeline();
+  if ((*filter_list)->pipeline_ == nullptr) {
+    delete *filter_list;
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) {
+  if (filter_list != nullptr && *filter_list != nullptr) {
+    delete (*filter_list)->pipeline_;
+    delete (*filter_list);
+    *filter_list = nullptr;
+  }
+}
+
+int tiledb_filter_list_add_filter(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_list_t* filter_list,
+    tiledb_filter_t* filter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR ||
+      sanity_check(ctx, filter) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, filter_list->pipeline_->add_filter(*filter->filter_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_filter_list_set_max_chunk_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint32_t max_chunk_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  filter_list->pipeline_->set_max_chunk_size(max_chunk_size);
+
+  return TILEDB_OK;
+}
+
+int tiledb_filter_list_get_nfilters(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    unsigned int* nfilters) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *nfilters = filter_list->pipeline_->size();
+
+  return TILEDB_OK;
+}
+
+int tiledb_filter_list_get_filter_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    unsigned int index,
+    tiledb_filter_t** filter) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  unsigned int nfilters = filter_list->pipeline_->size();
+  if (nfilters == 0 && index == 0) {
+    *filter = nullptr;
+    return TILEDB_OK;
+  }
+
+  if (index >= nfilters) {
+    auto st = tiledb::sm::Status::Error(
+        "Filter " + std::to_string(index) + " out of bounds, filter list has " +
+        std::to_string(nfilters) + " filters.");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  auto f = filter_list->pipeline_->get_filter(index);
+  if (f == nullptr) {
+    auto st = tiledb::sm::Status::Error("Failed to retrieve filter at index");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  *filter = new (std::nothrow) tiledb_filter_t;
+  if (*filter == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB filter object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  (*filter)->filter_ = f->clone();
+
+  return TILEDB_OK;
+}
+
+int tiledb_filter_list_get_max_chunk_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint32_t* max_chunk_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *max_chunk_size = filter_list->pipeline_->max_chunk_size();
+
+  return TILEDB_OK;
+}
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -955,70 +1112,17 @@ void tiledb_attribute_free(tiledb_attribute_t** attr) {
   }
 }
 
-int tiledb_attribute_add_filter(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, tiledb_filter_t* filter) {
+int tiledb_attribute_set_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_filter_list_t* filter_list) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR)
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, attr->attr_->add_filter(*(filter->filter_))))
+  if (save_error(ctx, attr->attr_->set_filter_pipeline(filter_list->pipeline_)))
     return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int tiledb_attribute_get_nfilters(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, unsigned int* nfilters) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *nfilters = attr->attr_->filters()->size();
-
-  return TILEDB_OK;
-}
-
-int tiledb_attribute_get_filter_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    unsigned int index,
-    tiledb_filter_t** filter) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  unsigned int nfilters = attr->attr_->filters()->size();
-  if (nfilters == 0 && index == 0) {
-    *filter = nullptr;
-    return TILEDB_OK;
-  }
-
-  if (index >= nfilters) {
-    auto st = tiledb::sm::Status::Error(
-        "Filter " + std::to_string(index) + " out of bounds, attribute has " +
-        std::to_string(nfilters) + " filters.");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  auto f = attr->attr_->filters()->get_filter(index);
-  if (f == nullptr) {
-    auto st = tiledb::sm::Status::Error("Failed to retrieve filter at index");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  *filter = new (std::nothrow) tiledb_filter_t;
-  if (*filter == nullptr) {
-    auto st =
-        tiledb::sm::Status::Error("Failed to allocate TileDB filter object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  (*filter)->filter_ = f->clone();
 
   return TILEDB_OK;
 }
@@ -1065,6 +1169,38 @@ int tiledb_attribute_get_type(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   *type = static_cast<tiledb_datatype_t>(attr->attr_->type());
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_get_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_filter_list_t** filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a filter list struct
+  *filter_list = new (std::nothrow) tiledb_filter_list_t;
+  if (*filter_list == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new FilterPipeline object
+  (*filter_list)->pipeline_ =
+      new (std::nothrow) tiledb::sm::FilterPipeline(*attr->attr_->filters());
+  if ((*filter_list)->pipeline_ == nullptr) {
+    delete *filter_list;
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
   return TILEDB_OK;
 }
 
