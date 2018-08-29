@@ -1,5 +1,7 @@
 # In progress
 
+**Note:** TileDB v1.4.0 changes the on-disk array format. Existing arrays should be re-written using TileDB v1.4.0 before use.
+
 ## New features
 
 * Negative and real-valued domain types are now fully supported. #885

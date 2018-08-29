@@ -328,5 +328,22 @@ uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
   }
 }
 
+Status CompressionFilter::serialize_impl(Buffer* buff) const {
+  auto compressor_char = static_cast<char>(compressor_);
+  RETURN_NOT_OK(buff->write(&compressor_char, sizeof(char)));
+  RETURN_NOT_OK(buff->write(&level_, sizeof(int)));
+
+  return Status::Ok();
+}
+
+Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
+  char compressor_char;
+  RETURN_NOT_OK(buff->read(&compressor_char, sizeof(char)));
+  compressor_ = static_cast<Compressor>(compressor_char);
+  RETURN_NOT_OK(buff->read(&level_, sizeof(int)));
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb

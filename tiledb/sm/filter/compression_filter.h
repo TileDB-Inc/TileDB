@@ -113,8 +113,14 @@ class CompressionFilter : public Filter {
    */
   Status decompress_part(FilterBuffer* input, Buffer* output) const;
 
+  /** Deserializes this filter's metadata from the given buffer. */
+  Status deserialize_impl(ConstBuffer* buff) override;
+
   /** Computes the compression overhead on nbytes of the input data. */
   uint64_t overhead(uint64_t nbytes) const;
+
+  /** Serializes this filter's metadata to the given buffer. */
+  Status serialize_impl(Buffer* buff) const override;
 };
 
 }  // namespace sm

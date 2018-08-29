@@ -59,6 +59,69 @@ Filter* Filter::create(FilterType type) {
   }
 }
 
+Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
+  char type;
+  RETURN_NOT_OK(buff->read(&type, sizeof(char)));
+  uint32_t filter_metadata_len;
+  RETURN_NOT_OK(buff->read(&filter_metadata_len, sizeof(uint32_t)));
+
+  auto* f = create(static_cast<FilterType>(type));
+  if (f == nullptr)
+    return LOG_STATUS(Status::FilterError("Deserialization error."));
+
+  auto offset = buff->offset();
+  RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), delete f);
+
+  if (buff->offset() - offset != filter_metadata_len) {
+    delete f;
+    return LOG_STATUS(Status::FilterError(
+        "Deserialization error; unexpected metadata length"));
+  }
+
+  *filter = f;
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// filter type (char)
+// filter metadata num bytes (unsigned int -- may be 0)
+// filter metadata (char[])
+Status Filter::serialize(Buffer* buff) const {
+  char type = static_cast<char>(type_);
+  RETURN_NOT_OK(buff->write(&type, sizeof(char)));
+
+  // Save a pointer to store the actual length of the metadata.
+  uint32_t metadata_len = 0;
+  auto metadata_length_offset = buff->offset();
+  RETURN_NOT_OK(buff->write(&metadata_len, sizeof(uint32_t)));
+
+  // Filter-specific serialization
+  uint64_t buff_size = buff->size();
+  RETURN_NOT_OK(serialize_impl(buff));
+
+  // Compute and write metadata length
+  if (buff->size() < buff_size ||
+      buff->size() - buff_size > std::numeric_limits<uint32_t>::max())
+    return LOG_STATUS(
+        Status::FilterError("Filter metadata exceeds max length"));
+  metadata_len = static_cast<uint32_t>(buff->size() - buff_size);
+  std::memcpy(
+      buff->data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
+
+  return Status::Ok();
+}
+
+Status Filter::deserialize_impl(ConstBuffer* buff) {
+  (void)buff;
+  return Status::Ok();
+}
+
+Status Filter::serialize_impl(Buffer* buff) const {
+  (void)buff;
+  return Status::Ok();
+}
+
 void Filter::set_pipeline(const FilterPipeline* pipeline) {
   pipeline_ = pipeline;
 }
