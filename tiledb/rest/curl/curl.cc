@@ -137,6 +137,7 @@ CURLcode post_data(
     MemoryStruct* data,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_post_data);
+
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
@@ -165,6 +166,7 @@ CURLcode get_data(
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_get_data);
+
   struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -186,6 +188,7 @@ CURLcode delete_data(
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_delete_data);
+
   /* HTTP DELETE please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 

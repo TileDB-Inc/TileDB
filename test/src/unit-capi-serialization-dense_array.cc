@@ -279,7 +279,7 @@ SerializationDenseArrayFx::SerializationDenseArrayFx() {
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.rest_server_serialization_format",
+          "rest.server_serialization_format",
           tiledb::sm::serialization_type_str(
               tiledb::sm::SerializationType(serialization_type_))
               .c_str(),

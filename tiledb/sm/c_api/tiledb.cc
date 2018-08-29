@@ -207,8 +207,7 @@ const std::string get_rest_server(tiledb_ctx_t* ctx) {
   const char* rest_server = nullptr;
   std::string rest_server_str;
   tiledb_error_t* error = NULL;
-  if (tiledb_config_get(
-          config, "sm.rest_server_address", &rest_server, &error) ==
+  if (tiledb_config_get(config, "rest.server_address", &rest_server, &error) ==
       TILEDB_ERR) {
     if (config != nullptr)
       tiledb_config_free(&config);
@@ -241,7 +240,7 @@ int get_rest_server_serialization_format(
   tiledb_error_t* error = NULL;
   if (tiledb_config_get(
           config,
-          "sm.rest_server_serialization_format",
+          "rest.server_serialization_format",
           &config_serialization_type,
           &error) == TILEDB_ERR) {
     if (config != nullptr)

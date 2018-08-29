@@ -275,12 +275,12 @@ RestDenseArrayFx::RestDenseArrayFx() {
   REQUIRE(error == nullptr);
   REQUIRE(
       tiledb_config_set(
-          config, "sm.rest_server_address", "http://localhost:8080", &error) ==
+          config, "rest.server_address", "http://localhost:8080", &error) ==
       TILEDB_OK);
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.rest_server_serialization_format",
+          "rest.server_serialization_format",
           tiledb::sm::serialization_type_str(
               tiledb::sm::SerializationType::CAPNP)
               .c_str(),

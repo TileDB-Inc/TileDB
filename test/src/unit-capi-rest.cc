@@ -124,12 +124,12 @@ ArraySchemaRest::ArraySchemaRest() {
 
   REQUIRE(
       tiledb_config_set(
-          config, "sm.rest_server_address", REST_SERVER, &error) == TILEDB_OK);
+          config, "rest.server_address", REST_SERVER, &error) == TILEDB_OK);
 
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.rest_server_serialization_format",
+          "rest.server_serialization_format",
           tiledb::sm::serialization_type_str(
               tiledb::sm::SerializationType::JSON)
               .c_str(),
@@ -496,7 +496,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.rest_server_serialization_format",
+          "rest.server_serialization_format",
           tiledb::sm::serialization_type_str(
               tiledb::sm::SerializationType::CAPNP)
               .c_str(),
