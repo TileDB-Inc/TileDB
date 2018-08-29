@@ -132,6 +132,27 @@ CURLcode curl_fetch_url(
   STATS_FUNC_OUT(serialization_curl_fetch_url);
 }
 
+tiledb::sm::Status set_auth(CURL* curl, tiledb::sm::Config* config) {
+  // Get username
+  const char* username = nullptr;
+  auto st = config->get("rest.username", &username);
+  if (!st.ok())
+    return st;
+
+  // Get password
+  const char* password = nullptr;
+  st = config->get("rest.password", &password);
+  if (!st.ok())
+    return st;
+
+  std::string basic_auth = username + std::string(":") + password;
+
+  curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+  curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+
+  return tiledb::sm::Status::Ok();
+}
+
 tiledb::sm::Status post_data(
     CURL* curl,
     std::string url,
@@ -150,6 +171,11 @@ tiledb::sm::Status post_data(
   url = rest_server + url;
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+  // Set auth for server
+  st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
 
   // TODO: If you post more than 2GB, use CURLOPT_POSTFIELDSIZE_LARGE.
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data->memory);
@@ -197,6 +223,12 @@ tiledb::sm::Status get_data(
     return st;
 
   url = rest_server + url;
+
+  // Set auth for server
+  st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
+
   struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -239,6 +271,12 @@ tiledb::sm::Status delete_data(
     return st;
 
   url = rest_server + url;
+
+  // Set auth for server
+  st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
+
   /* HTTP DELETE please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 
