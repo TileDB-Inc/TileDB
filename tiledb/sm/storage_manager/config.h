@@ -72,10 +72,14 @@ class Config {
   struct RESTParams {
     std::string server_address_;
     std::string server_serialization_format_;
+    std::string username_;
+    std::string password_;
 
     RESTParams() {
       server_address_ = "";
       server_serialization_format_ = constants::serialization_default_format;
+      username_ = "";
+      password_ = "";
     }
   };
 
@@ -513,6 +517,12 @@ class Config {
 
   /** Set the rest server serialization format */
   Status set_rest_server_serialization_format(const std::string& value);
+
+  /** Set the rest server username for auth */
+  Status set_rest_username(const std::string& value);
+
+  /** Set the rest server password for auth */
+  Status set_rest_password(const std::string& value);
 
   /** Sets the number of VFS threads. */
   Status set_vfs_num_threads(const std::string& value);

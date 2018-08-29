@@ -172,6 +172,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_rest_server_address(value));
   } else if (param == "rest.server_serialization_format") {
     RETURN_NOT_OK(set_rest_server_serialization_format(value));
+  } else if (param == "rest.username") {
+    RETURN_NOT_OK(set_rest_username(value));
+  } else if (param == "rest.password") {
+    RETURN_NOT_OK(set_rest_password(value));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(set_sm_dedup_coords(value));
   } else if (param == "sm.check_coord_dups") {
@@ -730,6 +734,17 @@ Status Config::set_rest_server_address(const std::string& value) {
 
 Status Config::set_rest_server_serialization_format(const std::string& value) {
   rest_params_.server_serialization_format_ = value;
+
+  return Status::Ok();
+}
+
+Status Config::set_rest_username(const std::string& value) {
+  rest_params_.username_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_rest_password(const std::string& value) {
+  rest_params_.password_ = value;
 
   return Status::Ok();
 }
