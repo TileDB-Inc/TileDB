@@ -75,12 +75,12 @@ class FilterPipeline {
   /** @} */
 
   /**
-   * Adds the given filter to the end of this pipeline.
+   * Adds a copy of the given filter to the end of this pipeline.
    *
    * @param filter Filter to add
    * @return Status
    */
-  Status add_filter(std::unique_ptr<Filter> filter);
+  Status add_filter(const Filter& filter);
 
   /** Returns pointer to the current Tile being processed by run/run_reverse. */
   const Tile* current_tile() const;
@@ -105,6 +105,14 @@ class FilterPipeline {
     }
     return nullptr;
   }
+
+  /**
+   * Returns a pointer to the filter in the pipeline at the given index.
+   *
+   * @param index Index of filter
+   * @return Pointer to filter instance in the pipeline
+   */
+  Filter* get_filter(unsigned index) const;
 
   /**
    * Runs the full pipeline on the given tile in the "forward" direction. The
@@ -174,6 +182,9 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse(Tile* tile) const;
+
+  /** Returns the number of filters in the pipeline. */
+  unsigned size() const;
 
   /** Swaps the contents of this pipeline with the given pipeline. */
   void swap(FilterPipeline& other);

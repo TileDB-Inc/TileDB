@@ -61,6 +61,9 @@ namespace sm {
  */
 class CompressionFilter : public Filter {
  public:
+  /** Constructor. */
+  CompressionFilter();
+
   /**
    * Constructor.
    *

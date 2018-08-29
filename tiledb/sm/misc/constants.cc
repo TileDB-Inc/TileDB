@@ -260,6 +260,9 @@ const std::string query_status_incomplete_str = "INCOMPLETE";
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
 
+/** TILEDB_COMPRESSION Filter type string */
+const std::string filter_type_compression_str = "COMPRESSION";
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 

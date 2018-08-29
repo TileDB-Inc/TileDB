@@ -133,8 +133,8 @@ Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
     // Decompress
     FilterPipeline pipeline;
     RETURN_NOT_OK_ELSE(
-        pipeline.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
-            (Compressor)header.compressor, header.compression_level))),
+        pipeline.add_filter(CompressionFilter(
+            (Compressor)header.compressor, header.compression_level)),
         delete *tile);
     RETURN_NOT_OK_ELSE(pipeline.run_reverse(*tile), delete *tile);
 
@@ -178,10 +178,9 @@ Status TileIO::write_generic(Tile* tile) {
 
   // Compress tile
   FilterPipeline pipeline;
-  RETURN_NOT_OK(
-      pipeline.add_filter(std::unique_ptr<Filter>(new CompressionFilter(
-          constants::generic_tile_compressor,
-          constants::generic_tile_compression_level))));
+  RETURN_NOT_OK(pipeline.add_filter(CompressionFilter(
+      constants::generic_tile_compressor,
+      constants::generic_tile_compression_level)));
   RETURN_NOT_OK(pipeline.run_forward(tile));
 
   RETURN_NOT_OK(write_generic_tile_header(tile, tile->buffer()->size()));

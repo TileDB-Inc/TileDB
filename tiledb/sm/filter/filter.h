@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/status.h"
@@ -50,13 +51,24 @@ namespace sm {
 class Filter {
  public:
   /** Constructor. */
-  Filter();
+  explicit Filter(FilterType type);
+
+  /** Destructor. */
+  virtual ~Filter() = default;
 
   /**
    * Returns a newly allocated clone of this Filter. The clone does not belong
    * to any pipeline. Caller is responsible for deletion of the clone.
    */
   Filter* clone() const;
+
+  /**
+   * Factory method to create a new Filter instance of the given type.
+   *
+   * @param type Filter type to create
+   * @return New Filter instance or nullptr on error.
+   */
+  static Filter* create(FilterType type);
 
   /**
    * Runs this filter in the "forward" direction (i.e. during write queries).
@@ -93,6 +105,9 @@ class Filter {
   /** Sets the pipeline instance that executes this filter. */
   void set_pipeline(const FilterPipeline* pipeline);
 
+  /** Returns the filter type. */
+  FilterType type() const;
+
  protected:
   /** Pointer to the pipeline instance that executes this filter. */
   const FilterPipeline* pipeline_;
@@ -103,6 +118,10 @@ class Filter {
    * to be cloned without knowing their derived types.
    */
   virtual Filter* clone_impl() const = 0;
+
+ private:
+  /** The filter type. */
+  FilterType type_;
 };
 
 }  // namespace sm

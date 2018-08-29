@@ -1,5 +1,5 @@
 /**
- * @file   filter.cc
+ * @file filter_type.h
  *
  * @section LICENSE
  *
@@ -27,45 +27,50 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Filter.
+ * This defines the TileDB FilterType enum that maps to tiledb_filter_type_t
+ * C-API enum.
  */
 
-#include "tiledb/sm/filter/filter.h"
-#include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/misc/logger.h"
+#ifndef TILEDB_FILTER_TYPE_H
+#define TILEDB_FILTER_TYPE_H
+
+#include <cassert>
+#include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
 
-Filter::Filter(FilterType type) {
-  pipeline_ = nullptr;
-  type_ = type;
-}
+/** Defines the filter type. */
+enum class FilterType : char {
+#define TILEDB_FILTER_TYPE_ENUM(id) id
+#include "tiledb/sm/c_api/tiledb_enum.h"
+#undef TILEDB_FILTER_TYPE_ENUM
+};
 
-Filter* Filter::clone() const {
-  // Call subclass-specific clone function
-  auto clone = clone_impl();
-  // Ensure the clone does not "belong" to any pipeline.
-  clone->pipeline_ = nullptr;
-  return clone;
-}
-
-Filter* Filter::create(FilterType type) {
-  switch (type) {
+/** Returns the string representation of the input filter type. */
+inline const std::string& filter_type_str(FilterType filter_type) {
+  switch (filter_type) {
     case FilterType::COMPRESSION:
-      return new (std::nothrow) CompressionFilter();
+      return constants::filter_type_compression_str;
     default:
-      return nullptr;
+      assert(0);
+      return constants::empty_str;
   }
 }
 
-void Filter::set_pipeline(const FilterPipeline* pipeline) {
-  pipeline_ = pipeline;
-}
-
-FilterType Filter::type() const {
-  return type_;
+/** Returns the filter type given a string representation. */
+inline Status filter_type_enum(
+    const std::string& filter_type_str, FilterType* filter_type) {
+  if (filter_type_str == constants::filter_type_compression_str)
+    *filter_type = FilterType::COMPRESSION;
+  else {
+    return Status::Error("Invalid FilterType " + filter_type_str);
+  }
+  return Status::Ok();
 }
 
 }  // namespace sm
 }  // namespace tiledb
+
+#endif  // TILEDB_FILTER_TYPE_H

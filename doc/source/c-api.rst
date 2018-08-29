@@ -25,6 +25,8 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_query_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_filter_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_schema_t
@@ -83,6 +85,8 @@ Enumerations
 .. doxygenenum:: tiledb_array_type_t
     :project: TileDB-C
 .. doxygenenum:: tiledb_layout_t
+    :project: TileDB-C
+.. doxygenenum:: tiledb_filter_type_t
     :project: TileDB-C
 .. doxygenenum:: tiledb_compressor_t
     :project: TileDB-C
@@ -226,6 +230,12 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_add_filter
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_nfilters
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_filter_from_index
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_cell_val_num
@@ -304,6 +314,21 @@ Query
 .. doxygenfunction:: tiledb_query_get_type
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_has_results
+    :project: TileDB-C
+
+Filters
+-------
+.. doxygenfunction:: tiledb_filter_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_set_compressor
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_set_compression_level
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_get_compressor
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_get_compression_level
     :project: TileDB-C
 
 Group

@@ -80,6 +80,14 @@ class Attribute {
   /* ********************************* */
 
   /**
+   * Add a copy of the given filter to the filter pipeline of this attribute.
+   *
+   * @param filter Filter to add
+   * @return Status
+   */
+  Status add_filter(const Filter& filter);
+
+  /**
    * Returns the size in bytes of one cell for this attribute. If the attribute
    * is variable-sized, this function returns the size in bytes of an offset.
    */
