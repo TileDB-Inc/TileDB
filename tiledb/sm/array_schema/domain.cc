@@ -116,18 +116,12 @@ Domain::~Domain() {
   for (auto dim : dimensions_)
     delete dim;
 
-  if (tile_extents_ != nullptr) {
-    std::free(tile_extents_);
-    tile_extents_ = nullptr;
-  }
-  if (domain_ != nullptr) {
-    std::free(domain_);
-    domain_ = nullptr;
-  }
-  if (tile_domain_ != nullptr) {
-    std::free(tile_domain_);
-    tile_domain_ = nullptr;
-  }
+  std::free(tile_extents_);
+  tile_extents_ = nullptr;
+  std::free(domain_);
+  domain_ = nullptr;
+  std::free(tile_domain_);
+  tile_domain_ = nullptr;
 }
 
 /* ********************************* */
@@ -716,8 +710,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set domain
   uint64_t coord_size = datatype_size(type_);
   uint64_t coords_size = dim_num_ * coord_size;
-  if (domain_ != nullptr)
-    std::free(domain_);
+  std::free(domain_);
   domain_ = std::malloc(dim_num_ * 2 * coord_size);
   auto domain = (char*)domain_;
   for (unsigned int i = 0; i < dim_num_; ++i) {
@@ -725,8 +718,7 @@ Status Domain::init(Layout cell_order, Layout tile_order) {
   }
 
   // Set tile extents
-  if (tile_extents_ != nullptr)
-    std::free(tile_extents_);
+  std::free(tile_extents_);
   if (null_tile_extents()) {
     tile_extents_ = nullptr;
   } else {

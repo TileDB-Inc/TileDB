@@ -81,21 +81,16 @@ FragmentMetadata::FragmentMetadata(
 }
 
 FragmentMetadata::~FragmentMetadata() {
-  if (domain_ != nullptr)
-    std::free(domain_);
-
-  if (non_empty_domain_ != nullptr)
-    std::free(non_empty_domain_);
+  std::free(domain_);
+  std::free(non_empty_domain_);
 
   auto mbr_num = (uint64_t)mbrs_.size();
   for (uint64_t i = 0; i < mbr_num; ++i)
-    if (mbrs_[i] != nullptr)
-      std::free(mbrs_[i]);
+    std::free(mbrs_[i]);
 
   auto bounding_coords_num = (uint64_t)bounding_coords_.size();
   for (uint64_t i = 0; i < bounding_coords_num; ++i)
-    if (bounding_coords_[i] != nullptr)
-      std::free(bounding_coords_[i]);
+    std::free(bounding_coords_[i]);
 }
 
 /* ****************************** */

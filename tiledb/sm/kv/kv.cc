@@ -335,10 +335,8 @@ void KV::clear_items() {
 
 void KV::clear_read_buffers() {
   for (auto b_it : read_buffers_) {
-    if (b_it.second.first != nullptr)
-      std::free(b_it.second.first);
-    if (b_it.second.second != nullptr)
-      std::free(b_it.second.second);
+    std::free(b_it.second.first);
+    std::free(b_it.second.second);
   }
   read_buffers_.clear();
   read_buffer_sizes_.clear();
