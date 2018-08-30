@@ -61,8 +61,7 @@ Writer::Writer() {
 }
 
 Writer::~Writer() {
-  if (subarray_ != nullptr)
-    std::free(subarray_);
+  std::free(subarray_);
 }
 
 /* ****************************** */

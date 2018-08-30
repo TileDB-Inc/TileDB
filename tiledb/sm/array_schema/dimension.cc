@@ -78,10 +78,8 @@ Dimension::Dimension(const Dimension* dim) {
 
 Dimension::~Dimension() {
   // Clean up
-  if (domain_ != nullptr)
-    std::free(domain_);
-  if (tile_extent_ != nullptr)
-    std::free(tile_extent_);
+  std::free(domain_);
+  std::free(tile_extent_);
 }
 
 /* ********************************* */
@@ -106,8 +104,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
 
   // Load domain
   uint64_t domain_size = 2 * datatype_size(type_);
-  if (domain_ != nullptr)
-    std::free(domain_);
+  std::free(domain_);
   domain_ = std::malloc(domain_size);
   if (domain_ == nullptr)
     return LOG_STATUS(
@@ -115,8 +112,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   RETURN_NOT_OK(buff->read(domain_, domain_size));
 
   // Load tile extent
-  if (tile_extent_ != nullptr)
-    std::free(tile_extent_);
+  std::free(tile_extent_);
   tile_extent_ = nullptr;
   bool null_tile_extent;
   RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(bool)));
@@ -189,8 +185,7 @@ Status Dimension::serialize(Buffer* buff) {
 }
 
 Status Dimension::set_domain(const void* domain) {
-  if (domain_ != nullptr)
-    std::free(domain_);
+  std::free(domain_);
 
   if (domain == nullptr) {
     domain_ = nullptr;
@@ -219,9 +214,7 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
     return Status::DimensionError(
         "Cannot set tile extent; Domain must be set first");
 
-  if (tile_extent_ != nullptr)
-    std::free(tile_extent_);
-
+  std::free(tile_extent_);
   if (tile_extent == nullptr) {
     tile_extent_ = nullptr;
     return Status::Ok();

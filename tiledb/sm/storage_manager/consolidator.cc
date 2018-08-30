@@ -228,8 +228,7 @@ void Consolidator::clean_up(
     uint64_t* buffer_sizes,
     Query* query_r,
     Query* query_w) const {
-  if (subarray != nullptr)
-    std::free(subarray);
+  std::free(subarray);
   free_buffers(buffer_num, buffers, buffer_sizes);
   delete query_r;
   delete query_w;
@@ -369,8 +368,7 @@ Status Consolidator::delete_old_fragments(const std::vector<URI>& uris) {
 void Consolidator::free_buffers(
     unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) const {
   for (unsigned int i = 0; i < buffer_num; ++i) {
-    if (buffers[i] != nullptr)
-      std::free(buffers[i]);
+    std::free(buffers[i]);
   }
   std::free(buffers);
   delete[] buffer_sizes;

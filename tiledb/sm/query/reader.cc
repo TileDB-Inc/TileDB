@@ -172,10 +172,8 @@ Status Reader::next_subarray_partition() {
   STATS_FUNC_IN(reader_next_subarray_partition);
 
   if (read_state_.subarray_partitions_.empty()) {
-    if (read_state_.cur_subarray_partition_ != nullptr) {
-      std::free(read_state_.cur_subarray_partition_);
-      read_state_.cur_subarray_partition_ = nullptr;
-    }
+    std::free(read_state_.cur_subarray_partition_);
+    read_state_.cur_subarray_partition_ = nullptr;
     return Status::Ok();
   }
 
@@ -265,14 +263,11 @@ Status Reader::next_subarray_partition() {
         next_partition,
         2 * array_schema_->coords_size());
   } else {
-    if (read_state_.cur_subarray_partition_ != nullptr) {
-      std::free(read_state_.cur_subarray_partition_);
-      read_state_.cur_subarray_partition_ = nullptr;
-    }
+    std::free(read_state_.cur_subarray_partition_);
+    read_state_.cur_subarray_partition_ = nullptr;
   }
 
-  if (next_partition != nullptr)
-    std::free(next_partition);
+  std::free(next_partition);
 
   return Status::Ok();
 
@@ -483,15 +478,10 @@ void Reader::clear_read_state() {
     std::free(p);
   read_state_.subarray_partitions_.clear();
 
-  if (read_state_.subarray_ != nullptr) {
-    std::free(read_state_.subarray_);
-    read_state_.subarray_ = nullptr;
-  }
-
-  if (read_state_.cur_subarray_partition_ != nullptr) {
-    std::free(read_state_.cur_subarray_partition_);
-    read_state_.cur_subarray_partition_ = nullptr;
-  }
+  std::free(read_state_.subarray_);
+  read_state_.subarray_ = nullptr;
+  std::free(read_state_.cur_subarray_partition_);
+  read_state_.cur_subarray_partition_ = nullptr;
 
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
