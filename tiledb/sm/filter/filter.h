@@ -71,6 +71,15 @@ class Filter {
   static Filter* create(FilterType type);
 
   /**
+   * Deserializes a new Filter instance from the data in the given buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param filter New filter instance (caller's responsibility to free).
+   * @return Status
+   */
+  static Status deserialize(ConstBuffer* buff, Filter** filter);
+
+  /**
    * Runs this filter in the "forward" direction (i.e. during write queries).
    *
    * Note: the input buffer should not be modified directly. The only reason it
@@ -102,6 +111,14 @@ class Filter {
   virtual Status run_reverse(
       FilterBuffer* input, FilterBuffer* output) const = 0;
 
+  /**
+   * Serializes the filter metadata into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @return Status
+   */
+  Status serialize(Buffer* buff) const;
+
   /** Sets the pipeline instance that executes this filter. */
   void set_pipeline(const FilterPipeline* pipeline);
 
@@ -118,6 +135,30 @@ class Filter {
    * to be cloned without knowing their derived types.
    */
   virtual Filter* clone_impl() const = 0;
+
+  /**
+   * Deserialization function that can be implemented by a specific Filter
+   * subclass for filter-specific metadata.
+   *
+   * If a filter subclass has no specific metadata, it's not necessary to
+   * implement this method.
+   *
+   * @param buff The buffer to deserialize from
+   * @return Status
+   */
+  virtual Status deserialize_impl(ConstBuffer* buff);
+
+  /**
+   * Serialization function that can be implemented by a specific Filter
+   * subclass for filter-specific metadata.
+   *
+   * If a filter subclass has no specific metadata, it's not necessary to
+   * implement this method.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @return Status
+   */
+  virtual Status serialize_impl(Buffer* buff) const;
 
  private:
   /** The filter type. */

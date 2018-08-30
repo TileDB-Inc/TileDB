@@ -44,6 +44,7 @@ namespace sm {
 
 FilterPipeline::FilterPipeline() {
   current_tile_ = nullptr;
+  max_chunk_size_ = constants::max_tile_chunk_size;
 }
 
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
@@ -51,6 +52,7 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
     add_filter(*filter);
   }
   current_tile_ = other.current_tile_;
+  max_chunk_size_ = other.max_chunk_size_;
 }
 
 FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
@@ -78,7 +80,7 @@ Status FilterPipeline::compute_tile_chunks(
   auto dim_cell_size = tile->cell_size() / dim_num;
 
   // Compute a chunk size as a multiple of the cell size.
-  uint64_t chunk_size = std::min(constants::max_tile_chunk_size, dim_tile_size);
+  uint64_t chunk_size = std::min((uint64_t)max_chunk_size_, dim_tile_size);
   chunk_size = chunk_size / dim_cell_size * dim_cell_size;
   if (chunk_size > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
@@ -351,6 +353,37 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
   return Status::Ok();
 
   STATS_FUNC_OUT(filter_pipeline_run_reverse);
+}
+
+// ===== FORMAT =====
+// max_chunk_size (unsigned int)
+// num_filters (unsigned int)
+// filter0 metadata (see Filter::serialize)
+// filter1...
+Status FilterPipeline::serialize(Buffer* buff) const {
+  RETURN_NOT_OK(buff->write(&max_chunk_size_, sizeof(uint32_t)));
+  auto num_filters = static_cast<uint32_t>(filters_.size());
+  RETURN_NOT_OK(buff->write(&num_filters, sizeof(uint32_t)));
+
+  for (const auto& f : filters_)
+    RETURN_NOT_OK(f->serialize(buff));
+
+  return Status::Ok();
+}
+
+Status FilterPipeline::deserialize(ConstBuffer* buff) {
+  RETURN_NOT_OK(buff->read(&max_chunk_size_, sizeof(uint32_t)));
+  uint32_t num_filters;
+  RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));
+
+  for (uint32_t i = 0; i < num_filters; i++) {
+    Filter* filter;
+    RETURN_NOT_OK(Filter::deserialize(buff, &filter));
+    add_filter(*filter);
+    delete filter;
+  }
+
+  return Status::Ok();
 }
 
 unsigned FilterPipeline::size() const {

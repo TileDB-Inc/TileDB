@@ -101,9 +101,8 @@ int Attribute::compression_level() const {
 // attribute_name_size (unsigned int)
 // attribute_name (string)
 // type (char)
-// compressor (char)
-// compression_level (int)
 // cell_val_num (unsigned int)
+// filter_pipeline (see FilterPipeline::serialize)
 Status Attribute::deserialize(ConstBuffer* buff) {
   // Load attribute name
   unsigned int attribute_name_size;
@@ -116,16 +115,11 @@ Status Attribute::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&type, sizeof(char)));
   type_ = (Datatype)type;
 
-  // Load compressor
-  char compressor;
-  RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  set_compressor((Compressor)compressor);
-  int compressor_level;
-  RETURN_NOT_OK(buff->read(&compressor_level, sizeof(int)));
-  set_compression_level(compressor_level);
-
   // Load cell_val_num_
   RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(unsigned int)));
+
+  // Load filter pipeline
+  RETURN_NOT_OK(filters_.deserialize(buff));
 
   return Status::Ok();
 }
@@ -161,9 +155,8 @@ bool Attribute::is_anonymous() const {
 // attribute_name_size (unsigned int)
 // attribute_name (string)
 // type (char)
-// compressor (char)
-// compression_level (int)
 // cell_val_num (unsigned int)
+// filter_pipeline (see FilterPipeline::serialize)
 Status Attribute::serialize(Buffer* buff) {
   // Write attribute name
   auto attribute_name_size = (unsigned int)name_.size();
@@ -174,14 +167,11 @@ Status Attribute::serialize(Buffer* buff) {
   auto type = (char)type_;
   RETURN_NOT_OK(buff->write(&type, sizeof(char)));
 
-  // Write compressor
-  auto compressor_char = (char)compressor();
-  RETURN_NOT_OK(buff->write(&compressor_char, sizeof(char)));
-  int compressor_level = compression_level();
-  RETURN_NOT_OK(buff->write(&compressor_level, sizeof(int)));
-
   // Write cell_val_num_
   RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(unsigned int)));
+
+  // Write filter pipeline
+  RETURN_NOT_OK(filters_.serialize(buff));
 
   return Status::Ok();
 }

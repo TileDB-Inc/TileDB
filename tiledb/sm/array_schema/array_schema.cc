@@ -375,10 +375,8 @@ bool ArraySchema::is_kv() const {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
-// coords_compression (char)
-// coords_compression_level (int)
-// cell_var_offsets_compression (char)
-// cell_var_offsets_compression_level (int)
+// coords_filters (see FilterPipeline::serialize)
+// cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
 // attribute_num (unsigned int)
 //   attribute #1
@@ -401,17 +399,11 @@ Status ArraySchema::serialize(Buffer* buff) const {
   // Write capacity
   RETURN_NOT_OK(buff->write(&capacity_, sizeof(uint64_t)));
 
-  // Write coords compression
-  auto compressor = static_cast<char>(coords_compression());
-  RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
-  auto compressor_level = coords_compression_level();
-  RETURN_NOT_OK(buff->write(&compressor_level, sizeof(int)));
+  // Write coords filters
+  RETURN_NOT_OK(coords_filters_.serialize(buff));
 
-  // Write offsets compression
-  auto offset_compressor = static_cast<char>(cell_var_offsets_compression());
-  RETURN_NOT_OK(buff->write(&offset_compressor, sizeof(char)));
-  auto offset_compressor_level = cell_var_offsets_compression_level();
-  RETURN_NOT_OK(buff->write(&offset_compressor_level, sizeof(int)));
+  // Write offsets filters
+  RETURN_NOT_OK(cell_var_offsets_filters_.serialize(buff));
 
   // Write domain
   domain_->serialize(buff);
@@ -497,10 +489,8 @@ Status ArraySchema::add_attribute(const Attribute* attr) {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
-// coords_compression (char)
-// coords_compression_level (int)
-// cell_var_offsets_compression (char)
-// cell_var_offsets_compression_level (int)
+// coords_filters (see FilterPipeline::serialize)
+// cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
 // attribute_num (unsigned int)
 //   attribute #1
@@ -530,21 +520,11 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   // Load capacity
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
-  // Load coords compression
-  char compressor;
-  RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  set_coords_compressor(static_cast<Compressor>(compressor));
-  int compressor_level;
-  RETURN_NOT_OK(buff->read(&compressor_level, sizeof(int)));
-  set_coords_compression_level(compressor_level);
+  // Load coords filters
+  RETURN_NOT_OK(coords_filters_.deserialize(buff));
 
-  // Load offsets compression
-  char offsets_compressor;
-  RETURN_NOT_OK(buff->read(&offsets_compressor, sizeof(char)));
-  set_cell_var_offsets_compressor(static_cast<Compressor>(offsets_compressor));
-  int offsets_compressor_level;
-  RETURN_NOT_OK(buff->read(&offsets_compressor_level, sizeof(int)));
-  set_cell_var_offsets_compression_level(offsets_compressor_level);
+  // Load offsets filters
+  RETURN_NOT_OK(cell_var_offsets_filters_.deserialize(buff));
 
   // Load domain
   domain_ = new Domain();

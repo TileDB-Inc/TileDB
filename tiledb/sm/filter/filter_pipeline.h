@@ -86,6 +86,14 @@ class FilterPipeline {
   const Tile* current_tile() const;
 
   /**
+   * Populates the filter pipeline from the data in the input binary buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @return Status
+   */
+  Status deserialize(ConstBuffer* buff);
+
+  /**
    * Returns pointer to the first instance of a filter in the pipeline with the
    * given filter subclass type.
    *
@@ -183,6 +191,14 @@ class FilterPipeline {
    */
   Status run_reverse(Tile* tile) const;
 
+  /**
+   * Serializes the pipeline metadata into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @return Status
+   */
+  Status serialize(Buffer* buff) const;
+
   /** Returns the number of filters in the pipeline. */
   unsigned size() const;
 
@@ -198,6 +214,9 @@ class FilterPipeline {
    * because it is the only state modified by those const functions.
    */
   mutable const Tile* current_tile_;
+
+  /** The max chunk size allowed within tiles. */
+  uint32_t max_chunk_size_;
 
   /**
    * Compute chunks of the given tile, used in the forward direction.
