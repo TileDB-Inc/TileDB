@@ -6,6 +6,7 @@
 
 * Negative and real-valued domain types are now fully supported. #885
 * New filter pipeline for compression, etc. #912
+* Current filters include: previous compressors, bit width reduction filter.
 
 ## Bug fixes
 

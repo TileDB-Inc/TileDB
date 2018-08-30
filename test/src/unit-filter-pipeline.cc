@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/tile/tile.h"
@@ -102,10 +103,11 @@ class Add1OutOfPlace : public Filter {
   }
 
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
-    auto nelts = input->size() / sizeof(uint64_t);
+    auto input_size = input->size();
+    auto nelts = input_size / sizeof(uint64_t);
 
     // Add a new output buffer.
-    RETURN_NOT_OK(output->prepend_buffer(input->size()))
+    RETURN_NOT_OK(output->prepend_buffer(input_size))
     output->reset_offset();
 
     for (uint64_t i = 0; i < nelts; i++) {
@@ -115,10 +117,19 @@ class Add1OutOfPlace : public Filter {
       RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
     }
 
+    // Finish any remaining bytes to ensure no data loss.
+    auto rem = input_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output->write(&byte, sizeof(char)));
+    }
+
     return Status::Ok();
   }
 
   Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override {
+    auto input_size = input->size();
     auto nelts = input->size() / sizeof(uint64_t);
 
     // Add a new output buffer.
@@ -130,6 +141,13 @@ class Add1OutOfPlace : public Filter {
       RETURN_NOT_OK(input->read(&inc, sizeof(uint64_t)));
       inc--;
       RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
+    }
+
+    auto rem = input_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output->write(&byte, sizeof(char)));
     }
 
     return Status::Ok();
@@ -848,6 +866,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
   std::vector<std::function<Filter*(void)>> constructors = {
       []() { return new Add1InPlace(); },
       []() { return new Add1OutOfPlace(); },
+      []() { return new BitWidthReductionFilter(); },
+      []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); }};
 
   for (int i = 0; i < 100; i++) {
@@ -858,7 +878,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     auto pipeline_seed = rd();
     std::mt19937 gen(pipeline_seed);
     std::uniform_int_distribution<> rng1(0, max_num_filters),
-        rng2(0, (int)(constructors.size() - 1)), rng01(0, 1);
+        rng2(0, (int)(constructors.size() - 1));
 
     INFO("Random pipeline seed: " << pipeline_seed);
 
@@ -869,16 +889,126 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       CHECK(pipeline.add_filter(*filter).ok());
     }
 
-    // Maybe add a compressor at the end.
-    if (rng01(gen) == 0) {
-      CHECK(pipeline.add_filter(CompressionFilter(Compressor::BZIP2, -1)).ok());
-    }
-
     // End result should always be the same as the input.
     CHECK(pipeline.run_forward(&tile).ok());
     CHECK(pipeline.run_reverse(&tile).ok());
     auto* tile_buff = tile.buffer();
     for (uint64_t i = 0; i < nelts; i++)
       REQUIRE(tile_buff->value<uint64_t>(i * sizeof(uint64_t)) == i);
+  }
+}
+
+TEST_CASE("Filter: Test bit width reduction", "[filter]") {
+  // Set up test data
+  const uint64_t nelts = 1000;
+  Buffer buff;
+  for (uint64_t i = 0; i < nelts; i++)
+    CHECK(buff.write(&i, sizeof(uint64_t)).ok());
+  CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+  FilterPipeline pipeline;
+  CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
+
+  SECTION("- Single stage") {
+    CHECK(pipeline.run_forward(&tile).ok());
+
+    // Sanity check number of windows value
+    buff.reset_offset();
+    buff.advance_offset(sizeof(uint64_t));  // Number of chunks
+    buff.advance_offset(sizeof(uint32_t));  // First chunk orig size
+    buff.advance_offset(sizeof(uint32_t));  // First chunk filtered size
+
+    CHECK(
+        buff.value<uint32_t>() == nelts * sizeof(uint64_t));  // Original length
+    buff.advance_offset(sizeof(uint32_t));
+
+    auto max_win_size =
+        pipeline.get_filter<BitWidthReductionFilter>()->max_window_size();
+    auto expected_num_win =
+        (nelts * sizeof(uint64_t)) / max_win_size +
+        uint32_t(bool((nelts * sizeof(uint64_t)) % max_win_size));
+    CHECK(buff.value<uint32_t>() == expected_num_win);  // Number of windows
+
+    // Check compression worked
+    auto compressed_size = buff.size();
+    CHECK(compressed_size < nelts * sizeof(uint64_t));
+
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer() == &buff);
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+  }
+
+  SECTION("- Window sizes") {
+    std::vector<uint32_t> window_sizes = {
+        32, 64, 128, 256, 437, 512, 1024, 2000};
+    for (auto window_size : window_sizes) {
+      pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
+          window_size);
+
+      CHECK(pipeline.run_forward(&tile).ok());
+      CHECK(pipeline.run_reverse(&tile).ok());
+      CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+      tile.buffer()->reset_offset();
+      for (uint64_t i = 0; i < nelts; i++)
+        CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+    }
+  }
+
+  SECTION("- Random values") {
+    std::random_device rd;
+    auto seed = rd();
+    std::mt19937 gen(seed), gen_copy(seed);
+    std::uniform_int_distribution<> rng(0, std::numeric_limits<int32_t>::max());
+    INFO("Random element seed: " << seed);
+
+    Buffer buff;
+    for (uint64_t i = 0; i < nelts; i++) {
+      uint64_t val = (uint64_t)rng(gen);
+      CHECK(buff.write(&val, sizeof(uint64_t)).ok());
+    }
+    CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+    Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+    CHECK(pipeline.run_forward(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(
+          tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) ==
+          rng(gen_copy));
+  }
+
+  SECTION(" - Random signed values") {
+    std::random_device rd;
+    auto seed = rd();
+    std::mt19937 gen(seed), gen_copy(seed);
+    std::uniform_int_distribution<> rng(
+        std::numeric_limits<int32_t>::lowest(),
+        std::numeric_limits<int32_t>::max());
+    INFO("Random element seed: " << seed);
+
+    Buffer buff;
+    for (uint64_t i = 0; i < nelts; i++) {
+      int32_t val = (int32_t)rng(gen);
+      CHECK(buff.write(&val, sizeof(int32_t)).ok());
+    }
+    CHECK(buff.size() == nelts * sizeof(int32_t));
+
+    Tile tile(Datatype::INT32, sizeof(int32_t), 0, &buff, false);
+
+    CHECK(pipeline.run_forward(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(int32_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(
+          tile.buffer()->value<int32_t>(i * sizeof(int32_t)) == rng(gen_copy));
   }
 }

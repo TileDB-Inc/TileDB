@@ -169,11 +169,15 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZLIB),
     /** Blosc compressor using Zstandard */
     TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZSTD),
+    /** Bit width reduction filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION),
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM
     /** Compression level. Type: `int32_t`. */
     TILEDB_FILTER_OPTION_ENUM(COMPRESSION_LEVEL),
+    /** Max window length for bit width reduction. Type: `uint32_t`. */
+    TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW),
 #endif
 
 #ifdef TILEDB_QUERY_STATUS_ENUM
