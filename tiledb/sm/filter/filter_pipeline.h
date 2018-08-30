@@ -122,6 +122,9 @@ class FilterPipeline {
    */
   Filter* get_filter(unsigned index) const;
 
+  /** Returns the maximum tile chunk size. */
+  uint32_t max_chunk_size() const;
+
   /**
    * Runs the full pipeline on the given tile in the "forward" direction. The
    * forward direction is used during writes, and processes unfiltered (e.g.
@@ -198,6 +201,9 @@ class FilterPipeline {
    * @return Status
    */
   Status serialize(Buffer* buff) const;
+
+  /** Sets the maximum tile chunk size. */
+  void set_max_chunk_size(uint32_t max_chunk_size);
 
   /** Returns the number of filters in the pipeline. */
   unsigned size() const;

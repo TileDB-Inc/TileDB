@@ -71,10 +71,6 @@ Attribute::~Attribute() = default;
 /*                API                */
 /* ********************************* */
 
-Status Attribute::add_filter(const Filter& filter) {
-  return filters_.add_filter(filter);
-}
-
 uint64_t Attribute::cell_size() const {
   if (var_size())
     return constants::var_size;
@@ -202,6 +198,11 @@ void Attribute::set_compression_level(int compression_level) {
         CompressionFilter(Compressor::NO_COMPRESSION, compression_level));
   else
     filter->set_compression_level(compression_level);
+}
+
+Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
+  filters_ = *pipeline;
+  return Status::Ok();
 }
 
 void Attribute::set_name(const std::string& name) {

@@ -237,6 +237,9 @@ typedef struct tiledb_domain_t tiledb_domain_t;
 /** A TileDB filter. */
 typedef struct tiledb_filter_t tiledb_filter_t;
 
+/** A TileDB filter list. */
+typedef struct tiledb_filter_list_t tiledb_filter_list_t;
+
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
 
@@ -965,6 +968,156 @@ TILEDB_EXPORT int tiledb_filter_get_compression_level(
     tiledb_ctx_t* ctx, tiledb_filter_t* filter, int* compression_level);
 
 /* ********************************* */
+/*            FILTER LIST            */
+/* ********************************* */
+
+/**
+ * Creates a TileDB filter list (pipeline of filters).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param filter_list The TileDB filter list to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_alloc(
+    tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list);
+
+/**
+ * Destroys a TileDB filter list, freeing associated memory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_free(&filter_list);
+ * @endcode
+ *
+ * @param filter_list The filter list to be destroyed.
+ */
+TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list);
+
+/**
+ * Appends a filter to a filter list. Data is processed through each filter in
+ * the order the filters were added.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ *
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ *
+ * tiledb_filter_list_free(&filter_list);
+ * tiledb_filter_free(&filter);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param filter_list The target filter list.
+ * @param filter The filter to add.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_add_filter(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_list_t* filter_list,
+    tiledb_filter_t* filter);
+
+/**
+ * Sets the maximum tile chunk size for a filter list.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Set max chunk size to 16KB:
+ * tiledb_filter_list_set_max_chunk_size(ctx, filter_list, 16384);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param filter_list The target filter list
+ * @param max_chunk_size The max chunk size value to set
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_set_max_chunk_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint32_t max_chunk_size);
+
+/**
+ * Retrieves the number of filters in a filter list.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * unsigned num_filters;
+ * tiledb_filter_list_get_nfilters(ctx, attr, &num_filters);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param filter_list The filter list
+ * @param nfilters The number of filters on the filter list
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_get_nfilters(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    unsigned int* nfilters);
+
+/**
+ * Retrieves a filter object from a filter list by index.
+ *
+ * **Example:**
+ *
+ * The following retrieves the first filter from a filter list.
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_list_get_filter_from_index(ctx, filter_list, 0, &filter);
+ * tiledb_filter_free(&filter);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param filter_list The filter list to retrieve the filter from
+ * @param index The index of the filter
+ * @param filter The retrieved filter object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_get_filter_from_index(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    unsigned int index,
+    tiledb_filter_t** filter);
+
+/**
+ * Gets the maximum tile chunk size for a filter list.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t max_chunk_size;
+ * tiledb_filter_list_get_max_chunk_size(ctx, filter_list, &max_chunk_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param filter_list The target filter list
+ * @param max_chunk_size The retrieved max chunk size value
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_list_get_max_chunk_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint32_t* max_chunk_size);
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -1009,69 +1162,26 @@ TILEDB_EXPORT int tiledb_attribute_alloc(
 TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr);
 
 /**
- * Adds a filter for an attribute. More than one filter can be added, in which
- * case the attribute is processed through each filter in the order the filters
- * were added.
+ * Sets the filter list for an attribute.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
- * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
- * tiledb_attribute_add_filter(ctx, attr, filter);
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_attribute_set_filter_list(ctx, attr, filter_list);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param attr The target attribute.
- * @param filter The filter to add.
+ * @param filter_list The filter_list to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_attribute_add_filter(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, tiledb_filter_t* filter);
-
-/**
- * Retrieves the number of filters set on an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * unsigned num_filters;
- * tiledb_attribute_get_nfilters(ctx, attr, &num_filters);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param attr The attribute
- * @param nfilters The number of filters on the attribute
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int tiledb_attribute_get_nfilters(
-    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, unsigned int* nfilters);
-
-/**
- * Retrieves a filter object from an attribute by index.
- *
- * **Example:**
- *
- * The following retrieves the first filter from an attribute.
- *
- * @code{.c}
- * tiledb_filter_t* filter;
- * tiledb_attribute_get_filter_from_index(ctx, attr, 0, &filter);
- * tiledb_filter_free(&filter);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param attr The attribute to retrieve the filter from
- * @param index The index of the filter
- * @param filter The retrieved filter object.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int tiledb_attribute_get_filter_from_index(
+TILEDB_EXPORT int tiledb_attribute_set_filter_list(
     tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    unsigned int index,
-    tiledb_filter_t** filter);
+    tiledb_attribute_t* attr,
+    tiledb_filter_list_t* filter_list);
 
 /**
  * Sets a compressor for an attribute.
@@ -1155,6 +1265,27 @@ TILEDB_EXPORT int tiledb_attribute_get_name(
  */
 TILEDB_EXPORT int tiledb_attribute_get_type(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, tiledb_datatype_t* type);
+
+/**
+ * Retrieves the filter list for an attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_attribute_get_filter_list(ctx, attr, &filter_list);
+ * tiledb_filter_list_free(&filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_get_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_filter_list_t** filter_list);
 
 /**
  * Retrieves the attribute compressor and the compression level.

@@ -27,6 +27,8 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_filter_list_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_kv_schema_t
@@ -230,11 +232,7 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_free
     :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_add_filter
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_get_nfilters
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_get_filter_from_index
+.. doxygenfunction:: tiledb_attribute_set_filter_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_compressor
     :project: TileDB-C
@@ -316,8 +314,8 @@ Query
 .. doxygenfunction:: tiledb_query_has_results
     :project: TileDB-C
 
-Filters
--------
+Filter
+------
 .. doxygenfunction:: tiledb_filter_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_filter_free
@@ -329,6 +327,23 @@ Filters
 .. doxygenfunction:: tiledb_filter_get_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_filter_get_compression_level
+    :project: TileDB-C
+
+Filter List
+-----------
+.. doxygenfunction:: tiledb_filter_list_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_add_filter
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_set_max_chunk_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_get_nfilters
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_get_filter_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_list_get_max_chunk_size
     :project: TileDB-C
 
 Group

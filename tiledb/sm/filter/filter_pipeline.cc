@@ -272,6 +272,10 @@ Filter* FilterPipeline::get_filter(unsigned index) const {
   return filters_[index].get();
 }
 
+uint32_t FilterPipeline::max_chunk_size() const {
+  return max_chunk_size_;
+}
+
 Status FilterPipeline::run_forward(Tile* tile) const {
   STATS_FUNC_IN(filter_pipeline_run_forward);
 
@@ -386,6 +390,10 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
+  max_chunk_size_ = max_chunk_size;
+}
+
 unsigned FilterPipeline::size() const {
   return static_cast<unsigned>(filters_.size());
 }
@@ -393,6 +401,7 @@ unsigned FilterPipeline::size() const {
 void FilterPipeline::swap(FilterPipeline& other) {
   filters_.swap(other.filters_);
   std::swap(current_tile_, other.current_tile_);
+  std::swap(max_chunk_size_, other.max_chunk_size_);
 }
 
 }  // namespace sm
