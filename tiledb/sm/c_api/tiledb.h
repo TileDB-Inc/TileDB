@@ -118,6 +118,14 @@ typedef enum {
 #undef TILEDB_FILTER_TYPE_ENUM
 } tiledb_filter_type_t;
 
+/** Filter option. */
+typedef enum {
+/** Helper macro for defining filter option enums. */
+#define TILEDB_FILTER_OPTION_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_FILTER_OPTION_ENUM
+} tiledb_filter_option_t;
+
 /** Compression type. */
 typedef enum {
 /** Helper macro for defining compressor enums. */
@@ -858,7 +866,7 @@ TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -876,7 +884,7 @@ TILEDB_EXPORT int tiledb_filter_alloc(
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
  * tiledb_filter_free(&filter);
  * @endcode
  *
@@ -885,87 +893,61 @@ TILEDB_EXPORT int tiledb_filter_alloc(
 TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
 
 /**
- * Sets the compressor to use on a compressor filter.
+ * Sets an option on a filter. Options are filter dependent; this function
+ * returns an error if the given option is not valid for the given filter.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
- * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * int level = 5;
+ * tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
+ * tiledb_filter_free(&filter);
  * @endcode
  *
- * @param ctx TileDB context
- * @param filter The target compression filter
- * @param compressor The compressor to use
+ * @param ctx TileDB context.
+ * @param filter The target filter.
+ * @param option Filter option to set.
+ * @param value Value of option to set.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_filter_set_compressor(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_compressor_t compressor);
-
-/**
- * Sets the compression level to use on a compressor filter.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
- * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
- * tiledb_filter_set_compression_level(ctx, filter, 5);
- * @endcode
- *
- * @param ctx TileDB context
- * @param filter The target compression filter
- * @param compression_level The compression level (use `-1` for default).
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int tiledb_filter_set_compression_level(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int compression_level);
-
-/**
- * Gets the compressor used on a compressor filter.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
- * tiledb_compressor_t compressor;
- * tiledb_filter_get_compressor(ctx, filter, &compressor);
- * // compressor == TILEDB_NO_COMPRESSION
- * @endcode
- *
- * @param ctx TileDB context
- * @param filter The target compression filter
- * @param compressor Set to the compressor
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int tiledb_filter_get_compressor(
+TILEDB_EXPORT int tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
-    tiledb_compressor_t* compressor);
+    tiledb_filter_option_t option,
+    const void* value);
 
 /**
- * Gets the compression level used on a compressor filter.
+ * Gets an option value from a filter. Options are filter dependent; this
+ * function returns an error if the given option is not valid for the given
+ * filter.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
  * int level;
- * tiledb_filter_get_compression_level(ctx, filter, &level);
- * // level == -1
+ * tiledb_filter_get_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
+ * // level == -1 (the default)
+ * tiledb_filter_free(&filter);
  * @endcode
  *
- * @param ctx TileDB context
- * @param filter The target compression filter
- * @param compression_level Set to the compression level
+ * @note The buffer pointed to by `value` must be large enough to hold the
+ * option value.
+ *
+ * @param ctx TileDB context.
+ * @param filter The target filter.
+ * @param option Filter option to set.
+ * @param value Buffer that option value will be written to.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int tiledb_filter_get_compression_level(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int* compression_level);
+TILEDB_EXPORT int tiledb_filter_get_option(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_filter_option_t option,
+    void* value);
 
 /* ********************************* */
 /*            FILTER LIST            */
@@ -1011,8 +993,7 @@ TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list);
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
- * tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
+ * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
  *
  * tiledb_filter_list_t* filter_list;
  * tiledb_filter_list_alloc(ctx, &filter_list);

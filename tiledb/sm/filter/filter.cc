@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/logger.h"
 
 namespace tiledb {
@@ -52,11 +53,37 @@ Filter* Filter::clone() const {
 
 Filter* Filter::create(FilterType type) {
   switch (type) {
-    case FilterType::COMPRESSION:
-      return new (std::nothrow) CompressionFilter();
+    case FilterType::FILTER_NONE:
+      return new (std::nothrow) NoopFilter;
+    case FilterType::FILTER_GZIP:
+    case FilterType::FILTER_ZSTD:
+    case FilterType::FILTER_LZ4:
+    case FilterType::FILTER_BLOSC_LZ:
+    case FilterType::FILTER_BLOSC_LZ4:
+    case FilterType::FILTER_BLOSC_LZ4HC:
+    case FilterType::FILTER_BLOSC_SNAPPY:
+    case FilterType::FILTER_BLOSC_ZLIB:
+    case FilterType::FILTER_BLOSC_ZSTD:
+    case FilterType::FILTER_RLE:
+    case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DOUBLE_DELTA:
+      return new (std::nothrow) CompressionFilter(type, -1);
     default:
+      assert(false);
       return nullptr;
   }
+}
+
+Status Filter::get_option(FilterOption option, void* value) const {
+  if (value == nullptr)
+    return LOG_STATUS(
+        Status::FilterError("Cannot get option; null value pointer"));
+
+  return get_option_impl(option, value);
+}
+
+Status Filter::set_option(FilterOption option, const void* value) {
+  return set_option_impl(option, value);
 }
 
 Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
@@ -110,6 +137,18 @@ Status Filter::serialize(Buffer* buff) const {
       buff->data(metadata_length_offset), &metadata_len, sizeof(uint32_t));
 
   return Status::Ok();
+}
+
+Status Filter::get_option_impl(FilterOption option, void* value) const {
+  (void)option;
+  (void)value;
+  return LOG_STATUS(Status::FilterError("Filter does not support options."));
+}
+
+Status Filter::set_option_impl(FilterOption option, const void* value) {
+  (void)option;
+  (void)value;
+  return LOG_STATUS(Status::FilterError("Filter does not support options."));
 }
 
 Status Filter::deserialize_impl(ConstBuffer* buff) {

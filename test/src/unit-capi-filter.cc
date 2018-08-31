@@ -40,24 +40,21 @@ TEST_CASE("C API: Test filter set option", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_filter_t* filter;
-  rc = tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+  rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
   REQUIRE(rc == TILEDB_OK);
 
-  // Check valid options
-  rc = tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compression_level(ctx, filter, 5);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compressor(ctx, filter, TILEDB_DOUBLE_DELTA);
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
 
-  tiledb_compressor_t compr;
-  rc = tiledb_filter_get_compressor(ctx, filter, &compr);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(compr == TILEDB_DOUBLE_DELTA);
+  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, nullptr);
+  REQUIRE(rc == TILEDB_ERR);
 
-  int level;
-  rc = tiledb_filter_get_compression_level(ctx, filter, &level);
+  rc = tiledb_filter_get_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, nullptr);
+  REQUIRE(rc == TILEDB_ERR);
+
+  level = 0;
+  rc = tiledb_filter_get_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(level == 5);
 
@@ -90,11 +87,11 @@ TEST_CASE("C API: Test filter list", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_ERR);
 
   tiledb_filter_t* filter;
-  rc = tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+  rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compression_level(ctx, filter, 5);
+
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_filter_list_add_filter(ctx, filter_list, filter);
@@ -109,13 +106,8 @@ TEST_CASE("C API: Test filter list", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(filter_out != nullptr);
 
-  tiledb_compressor_t compr;
-  rc = tiledb_filter_get_compressor(ctx, filter_out, &compr);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(compr == TILEDB_BZIP2);
-
-  int level;
-  rc = tiledb_filter_get_compression_level(ctx, filter_out, &level);
+  level = 0;
+  rc = tiledb_filter_get_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(level == 5);
 
@@ -137,11 +129,11 @@ TEST_CASE("C API: Test filter list on attribute", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_filter_t* filter;
-  rc = tiledb_filter_alloc(ctx, TILEDB_COMPRESSION, &filter);
+  rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compressor(ctx, filter, TILEDB_BZIP2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_compression_level(ctx, filter, 5);
+
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_filter_list_t* filter_list;
@@ -174,13 +166,9 @@ TEST_CASE("C API: Test filter list on attribute", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(filter_out != nullptr);
 
-  tiledb_compressor_t compr;
-  rc = tiledb_filter_get_compressor(ctx, filter_out, &compr);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(compr == TILEDB_BZIP2);
-
-  int level;
-  rc = tiledb_filter_get_compression_level(ctx, filter_out, &level);
+  level = 0;
+  rc = tiledb_filter_get_option(
+      ctx, filter_out, TILEDB_COMPRESSION_LEVEL, &level);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(level == 5);
 

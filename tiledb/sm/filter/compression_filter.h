@@ -61,9 +61,6 @@ namespace sm {
  */
 class CompressionFilter : public Filter {
  public:
-  /** Constructor. */
-  CompressionFilter();
-
   /**
    * Constructor.
    *
@@ -71,6 +68,14 @@ class CompressionFilter : public Filter {
    * @param level Compression level to use
    */
   CompressionFilter(Compressor compressor, int level);
+
+  /**
+   * Constructor.
+   *
+   * @param compressor Compressor to use
+   * @param level Compression level to use
+   */
+  CompressionFilter(FilterType compressor, int level);
 
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
@@ -107,6 +112,9 @@ class CompressionFilter : public Filter {
   /** Helper function to compress a single contiguous buffer (part). */
   Status compress_part(ConstBuffer* part, Buffer* output) const;
 
+  /** Return the FilterType corresponding to the given Compressor. */
+  static FilterType compressor_to_filter(Compressor compressor);
+
   /**
    * Helper function to decompress a single contiguous buffer (part), appending
    * onto the single output buffer.
@@ -116,8 +124,17 @@ class CompressionFilter : public Filter {
   /** Deserializes this filter's metadata from the given buffer. */
   Status deserialize_impl(ConstBuffer* buff) override;
 
+  /** Gets an option from this filter. */
+  Status get_option_impl(FilterOption option, void* value) const override;
+
+  /** Return the Compressor corresponding to the given FilterType. */
+  static Compressor filter_to_compressor(FilterType type);
+
   /** Computes the compression overhead on nbytes of the input data. */
   uint64_t overhead(uint64_t nbytes) const;
+
+  /** Sets an option on this filter. */
+  Status set_option_impl(FilterOption option, const void* value) override;
 
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;

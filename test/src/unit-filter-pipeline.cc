@@ -52,7 +52,7 @@ class Add1InPlace : public Filter {
  public:
   // Just use a dummy filter type
   Add1InPlace()
-      : Filter(FilterType::COMPRESSION) {
+      : Filter(FilterType::FILTER_NONE) {
   }
 
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
@@ -98,7 +98,7 @@ class Add1OutOfPlace : public Filter {
  public:
   // Just use a dummy filter type
   Add1OutOfPlace()
-      : Filter(FilterType::COMPRESSION) {
+      : Filter(FilterType::FILTER_NONE) {
   }
 
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
@@ -148,7 +148,7 @@ class AddNInPlace : public Filter {
  public:
   // Just use a dummy filter type
   AddNInPlace()
-      : Filter(FilterType::COMPRESSION) {
+      : Filter(FilterType::FILTER_NONE) {
     increment_ = 1;
   }
 
@@ -208,7 +208,7 @@ class PseudoChecksumFilter : public Filter {
  public:
   // Just use a dummy filter type
   PseudoChecksumFilter()
-      : Filter(FilterType::COMPRESSION) {
+      : Filter(FilterType::FILTER_NONE) {
   }
   Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
     auto input_size = input->size();

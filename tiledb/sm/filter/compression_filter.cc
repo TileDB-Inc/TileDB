@@ -46,16 +46,17 @@
 namespace tiledb {
 namespace sm {
 
-CompressionFilter::CompressionFilter()
-    : Filter(FilterType::COMPRESSION) {
-  compressor_ = Compressor::NO_COMPRESSION;
-  level_ = -1;
+CompressionFilter::CompressionFilter(FilterType compressor, int level)
+    : Filter(compressor) {
+  compressor_ = filter_to_compressor(compressor);
+  level_ = level;
 }
 
 CompressionFilter::CompressionFilter(Compressor compressor, int level)
-    : Filter(FilterType::COMPRESSION) {
+    : Filter(FilterType::FILTER_NONE) {
   compressor_ = compressor;
   level_ = level;
+  type_ = compressor_to_filter(compressor);
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -72,10 +73,107 @@ CompressionFilter* CompressionFilter::clone_impl() const {
 
 void CompressionFilter::set_compressor(Compressor compressor) {
   compressor_ = compressor;
+  type_ = compressor_to_filter(compressor);
 }
 
 void CompressionFilter::set_compression_level(int compressor_level) {
   level_ = compressor_level;
+}
+
+FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
+  switch (compressor) {
+    case Compressor::NO_COMPRESSION:
+      return FilterType::FILTER_NONE;
+    case Compressor::GZIP:
+      return FilterType::FILTER_GZIP;
+    case Compressor::ZSTD:
+      return FilterType::FILTER_ZSTD;
+    case Compressor::LZ4:
+      return FilterType::FILTER_LZ4;
+    case Compressor::BLOSC_LZ:
+      return FilterType::FILTER_BLOSC_LZ;
+    case Compressor::BLOSC_LZ4:
+      return FilterType::FILTER_BLOSC_LZ4;
+    case Compressor::BLOSC_LZ4HC:
+      return FilterType::FILTER_BLOSC_LZ4HC;
+    case Compressor::BLOSC_SNAPPY:
+      return FilterType::FILTER_BLOSC_SNAPPY;
+    case Compressor::BLOSC_ZLIB:
+      return FilterType::FILTER_BLOSC_ZLIB;
+    case Compressor::BLOSC_ZSTD:
+      return FilterType::FILTER_BLOSC_ZSTD;
+    case Compressor::RLE:
+      return FilterType::FILTER_RLE;
+    case Compressor::BZIP2:
+      return FilterType::FILTER_BZIP2;
+    case Compressor::DOUBLE_DELTA:
+      return FilterType::FILTER_DOUBLE_DELTA;
+    default:
+      assert(false);
+      return FilterType::FILTER_NONE;
+  }
+}
+
+Compressor CompressionFilter::filter_to_compressor(FilterType type) {
+  switch (type) {
+    case FilterType::FILTER_NONE:
+      return Compressor::NO_COMPRESSION;
+    case FilterType::FILTER_GZIP:
+      return Compressor::GZIP;
+    case FilterType::FILTER_ZSTD:
+      return Compressor::ZSTD;
+    case FilterType::FILTER_LZ4:
+      return Compressor::LZ4;
+    case FilterType::FILTER_BLOSC_LZ:
+      return Compressor::BLOSC_LZ;
+    case FilterType::FILTER_BLOSC_LZ4:
+      return Compressor::BLOSC_LZ4;
+    case FilterType::FILTER_BLOSC_LZ4HC:
+      return Compressor::BLOSC_LZ4HC;
+    case FilterType::FILTER_BLOSC_SNAPPY:
+      return Compressor::BLOSC_SNAPPY;
+    case FilterType::FILTER_BLOSC_ZLIB:
+      return Compressor::BLOSC_ZLIB;
+    case FilterType::FILTER_BLOSC_ZSTD:
+      return Compressor::BLOSC_ZSTD;
+    case FilterType::FILTER_RLE:
+      return Compressor::RLE;
+    case FilterType::FILTER_BZIP2:
+      return Compressor::BZIP2;
+    case FilterType::FILTER_DOUBLE_DELTA:
+      return Compressor::DOUBLE_DELTA;
+    default:
+      assert(false);
+      return Compressor::NO_COMPRESSION;
+  }
+}
+
+Status CompressionFilter::set_option_impl(
+    FilterOption option, const void* value) {
+  if (value == nullptr)
+    return LOG_STATUS(
+        Status::FilterError("Compression filter error; invalid option value"));
+
+  switch (option) {
+    case FilterOption::COMPRESSION_LEVEL:
+      level_ = *(int*)value;
+      return Status::Ok();
+    default:
+      return LOG_STATUS(
+          Status::FilterError("Compression filter error; unknown option"));
+  }
+}
+
+Status CompressionFilter::get_option_impl(
+    FilterOption option, void* value) const {
+  switch (option) {
+    case FilterOption::COMPRESSION_LEVEL:
+      *(int*)value = level_;
+      return Status::Ok();
+    default:
+      return LOG_STATUS(
+          Status::FilterError("Compression filter error; unknown option"));
+  }
 }
 
 Status CompressionFilter::run_forward(
