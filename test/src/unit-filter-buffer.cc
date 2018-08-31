@@ -198,6 +198,60 @@ TEST_CASE(
   check_buf(data_r, {1, 2});
 }
 
+TEST_CASE("FilterBuffer: Test write from other", "[filter], [filter-buffer]") {
+  FilterStorage storage;
+  FilterBuffer fbuf(&storage), fbuf2(&storage);
+
+  CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
+  CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
+
+  const int data1[] = {1}, data2[] = {2};
+  fbuf.reset_offset();
+  CHECK(fbuf.write(data1, sizeof(int)).ok());
+  CHECK(fbuf.write(data2, sizeof(int)).ok());
+
+  CHECK(fbuf2.prepend_buffer(2 * sizeof(int)).ok());
+  CHECK(!fbuf2.write(&fbuf, fbuf.size()).ok());
+  fbuf.reset_offset();
+  CHECK(fbuf2.write(&fbuf, fbuf.size()).ok());
+
+  int data_r[2] = {0};
+  fbuf2.reset_offset();
+  CHECK(fbuf2.read(data_r, 2 * sizeof(int)).ok());
+  check_buf(data_r, {1, 2});
+}
+
+TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter], [filter-buffer]") {
+  FilterStorage storage;
+  FilterBuffer fbuf(&storage);
+
+  CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
+  CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
+
+  const int data1[] = {1}, data2[] = {2};
+  fbuf.reset_offset();
+  CHECK(fbuf.write(data1, sizeof(int)).ok());
+  CHECK(fbuf.write(data2, sizeof(int)).ok());
+
+  ConstBuffer cbuf(nullptr, 0);
+  CHECK(!fbuf.get_const_buffer(sizeof(int), &cbuf).ok());
+  fbuf.reset_offset();
+  CHECK(fbuf.get_const_buffer(sizeof(int), &cbuf).ok());
+  CHECK(cbuf.size() == sizeof(int));
+  CHECK(cbuf.value<int>(0) == 1);
+
+  fbuf.advance_offset(sizeof(int));
+  CHECK(fbuf.get_const_buffer(sizeof(int), &cbuf).ok());
+  CHECK(cbuf.size() == sizeof(int));
+  CHECK(cbuf.value<int>(0) == 2);
+
+  fbuf.advance_offset(sizeof(int));
+  CHECK(!fbuf.get_const_buffer(sizeof(int), &cbuf).ok());
+
+  fbuf.reset_offset();
+  CHECK(!fbuf.get_const_buffer(2 * sizeof(int), &cbuf).ok());
+}
+
 TEST_CASE("FilterBuffer: Test clear", "[filter], [filter-buffer]") {
   FilterStorage storage;
   FilterBuffer fbuf(&storage);

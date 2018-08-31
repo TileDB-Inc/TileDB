@@ -122,8 +122,16 @@ class FilterBuffer {
    */
   Status copy_to(void* dest) const;
 
-  /** Return a pointer to the data at the current global offset. */
-  void* cur_data() const;
+  /**
+   * Returns a ConstBuffer wrapping data at the current offset of the given
+   * length. Returns an error if this is not possible (e.g. the region would
+   * span multiple discontiguous regions of memory).
+   *
+   * @param nbytes Size of ConstBuffer
+   * @param buffer Set to the resulting ConstBuffer
+   * @return Status
+   */
+  Status get_const_buffer(uint64_t nbytes, ConstBuffer* buffer) const;
 
   /**
    * Initialize this FilterBuffer with a preallocated buffer view.
@@ -222,6 +230,17 @@ class FilterBuffer {
    * @return Status
    */
   Status write(const void* buffer, uint64_t nbytes);
+
+  /**
+   * Write a number of bytes from the given buffer at the current global offset.
+   *
+   * The given buffer's offset is not modified.
+   *
+   * @param buffer Buffer to copy from
+   * @param nbytes Number of bytes to copy
+   * @return Status
+   */
+  Status write(FilterBuffer* buffer, uint64_t nbytes);
 
  private:
   /**

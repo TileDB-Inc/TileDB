@@ -118,7 +118,7 @@ Status FilterPipeline::filter_chunks_forward(
       chunks.size());
 
   // Run each chunk through the entire pipeline.
-  parallel_for(0, chunks.size(), [&](uint64_t i) {
+  auto statuses = parallel_for(0, chunks.size(), [&](uint64_t i) {
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
     FilterStorage storage;
@@ -155,6 +155,10 @@ Status FilterPipeline::filter_chunks_forward(
     return Status::Ok();
   });
 
+  // Check statuses
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
   // Compute the destination offset of each processed chunk in the final output
   // buffer.
   uint64_t offset = output->offset();
@@ -176,7 +180,7 @@ Status FilterPipeline::filter_chunks_forward(
 
   // Concatenate all processed chunks into the final output buffer.
   RETURN_NOT_OK(output->realloc(output->size() + total_processed_size));
-  parallel_for(0, final_stage_io.size(), [&](uint64_t i) {
+  statuses = parallel_for(0, final_stage_io.size(), [&](uint64_t i) {
     auto& src = final_stage_io[i].first;
     auto filtered_size = (uint32_t)src.size();
     auto orig_chunk_size = chunks[i].second;
@@ -190,6 +194,10 @@ Status FilterPipeline::filter_chunks_forward(
     RETURN_NOT_OK(src.copy_to((char*)dest + 2 * sizeof(uint32_t)));
     return Status::Ok();
   });
+
+  // Check statuses
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
 
   // Ensure the final size is set to the concatenated size.
   output->advance_offset(total_processed_size);
@@ -210,7 +218,7 @@ Status FilterPipeline::filter_chunks_reverse(
   }
 
   // Run each chunk through the entire pipeline.
-  parallel_for(0, chunks.size(), [&](uint64_t i) {
+  auto statuses = parallel_for(0, chunks.size(), [&](uint64_t i) {
     const auto& chunk_input = chunks[i];
 
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
@@ -257,6 +265,10 @@ Status FilterPipeline::filter_chunks_reverse(
 
     return Status::Ok();
   });
+
+  // Check statuses
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
 
   // Ensure the final size is set to the sum of unfiltered chunk sizes.
   output->set_offset(chunk_dest_offset);
