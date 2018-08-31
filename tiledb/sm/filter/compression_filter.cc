@@ -243,7 +243,9 @@ Status CompressionFilter::decompress_part(
         "CompressionFilter error; output buffer too small."));
   }
 
-  ConstBuffer input_buffer(input->cur_data(), compressed_size);
+  ConstBuffer input_buffer(nullptr, 0);
+  RETURN_NOT_OK(input->get_const_buffer(compressed_size, &input_buffer));
+
   PreallocatedBuffer output_buffer(output->cur_data(), uncompressed_size);
 
   // Invoke the proper decompressor

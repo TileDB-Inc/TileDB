@@ -167,6 +167,23 @@ Status FilterBuffer::copy_to(void* dest) const {
   return Status::Ok();
 }
 
+Status FilterBuffer::get_const_buffer(
+    uint64_t nbytes, ConstBuffer* buffer) const {
+  if (current_buffer_ == buffers_.end())
+    return LOG_STATUS(
+        Status::FilterError("FilterBuffer error; no current buffer."));
+
+  Buffer* buf = current_buffer_->buffer();
+  uint64_t bytes_in_buf = buf->size() - current_relative_offset_;
+  if (bytes_in_buf < nbytes)
+    return LOG_STATUS(Status::FilterError(
+        "FilterBuffer error; ConstBuffer would span multiple regions."));
+
+  *buffer = ConstBuffer(buf->data(current_relative_offset_), nbytes);
+
+  return Status::Ok();
+}
+
 std::vector<ConstBuffer> FilterBuffer::buffers() const {
   std::vector<ConstBuffer> result;
 
@@ -194,10 +211,6 @@ Buffer* FilterBuffer::buffer_ptr(unsigned index) const {
     index--;
   }
   return nullptr;
-}
-
-void* FilterBuffer::cur_data() const {
-  return current_buffer_->buffer()->data(current_relative_offset_);
 }
 
 Status FilterBuffer::read(void* buffer, uint64_t nbytes) {
@@ -300,6 +313,36 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
       current_relative_offset_ = 0;
     }
   }
+
+  return Status::Ok();
+}
+
+Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
+  if (read_only_)
+    return LOG_STATUS(
+        Status::FilterError("FilterBuffer error; cannot write: read-only."));
+
+  auto list_node = other->current_buffer_;
+  uint64_t relative_offset = other->current_relative_offset_;
+  uint64_t bytes_left = nbytes;
+  for (auto it = list_node, ite = other->buffers_.cend(); it != ite; ++it) {
+    if (bytes_left == 0)
+      break;
+
+    Buffer* buf = it->buffer();
+    uint64_t bytes_in_buf = buf->size() - relative_offset;
+    uint64_t bytes_from_buf = std::min(bytes_left, bytes_in_buf);
+
+    // Use bare pointer write function to copy the data.
+    RETURN_NOT_OK(this->write(buf->data(relative_offset), bytes_from_buf));
+
+    bytes_left -= bytes_from_buf;
+    relative_offset = 0;
+  }
+
+  if (bytes_left > 0)
+    return LOG_STATUS(Status::FilterError(
+        "FilterBuffer error; could not write requested byte count."));
 
   return Status::Ok();
 }
