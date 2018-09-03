@@ -82,6 +82,9 @@ class FilterPipeline {
    */
   Status add_filter(const Filter& filter);
 
+  /** Clears the pipeline (removes all filters. */
+  void clear();
+
   /** Returns pointer to the current Tile being processed by run/run_reverse. */
   const Tile* current_tile() const;
 

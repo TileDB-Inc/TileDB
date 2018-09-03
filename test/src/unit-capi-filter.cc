@@ -58,6 +58,11 @@ TEST_CASE("C API: Test filter set option", "[capi], [filter]") {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(level == 5);
 
+  tiledb_filter_type_t type;
+  rc = tiledb_filter_get_type(ctx, filter, &type);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(type == TILEDB_FILTER_BZIP2);
+
   // Clean up
   tiledb_filter_free(&filter);
   tiledb_ctx_free(&ctx);
