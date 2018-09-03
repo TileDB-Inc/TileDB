@@ -34,6 +34,7 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_storage.h"
+#include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
@@ -381,8 +382,18 @@ Status FilterPipeline::serialize(Buffer* buff) const {
   auto num_filters = static_cast<uint32_t>(filters_.size());
   RETURN_NOT_OK(buff->write(&num_filters, sizeof(uint32_t)));
 
-  for (const auto& f : filters_)
-    RETURN_NOT_OK(f->serialize(buff));
+  for (const auto& f : filters_) {
+    // For compatibility with the old attribute compressor API: if the filter
+    // is a compression filter but with no compression, serialize the filter
+    // as a no-op filter instead.
+    auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
+    if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
+      auto noop = std::unique_ptr<NoopFilter>(new NoopFilter);
+      RETURN_NOT_OK(noop->serialize(buff));
+    } else {
+      RETURN_NOT_OK(f->serialize(buff));
+    }
+  }
 
   return Status::Ok();
 }
@@ -395,7 +406,7 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   for (uint32_t i = 0; i < num_filters; i++) {
     Filter* filter;
     RETURN_NOT_OK(Filter::deserialize(buff, &filter));
-    add_filter(*filter);
+    RETURN_NOT_OK_ELSE(add_filter(*filter), delete filter);
     delete filter;
   }
 

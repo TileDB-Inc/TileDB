@@ -24,8 +24,8 @@
 
 ### C API
 
-* Added `tiledb_filter_t` `tiledb_filter_type_t`, and `tiledb_filter_list_t` types
-* Added `tiledb_filter_*` and `tiledb_filter_type_*` functions.
+* Added `tiledb_filter_t` `tiledb_filter_type_t`, `tiledb_filter_option_t`, and `tiledb_filter_list_t` types
+* Added `tiledb_filter_*` and `tiledb_filter_list_*` functions.
 * Added `tiledb_attribute_set_filter_list` function
 
 # TileDB v1.3.2 Release Notes

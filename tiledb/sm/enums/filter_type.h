@@ -51,8 +51,30 @@ enum class FilterType : char {
 /** Returns the string representation of the input filter type. */
 inline const std::string& filter_type_str(FilterType filter_type) {
   switch (filter_type) {
-    case FilterType::COMPRESSION:
-      return constants::filter_type_compression_str;
+    case FilterType::FILTER_GZIP:
+      return constants::gzip_str;
+    case FilterType::FILTER_ZSTD:
+      return constants::zstd_str;
+    case FilterType::FILTER_LZ4:
+      return constants::lz4_str;
+    case FilterType::FILTER_BLOSC_LZ:
+      return constants::blosc_lz_str;
+    case FilterType::FILTER_BLOSC_LZ4:
+      return constants::blosc_lz4_str;
+    case FilterType::FILTER_BLOSC_LZ4HC:
+      return constants::blosc_lz4hc_str;
+    case FilterType::FILTER_BLOSC_SNAPPY:
+      return constants::blosc_snappy_str;
+    case FilterType::FILTER_BLOSC_ZLIB:
+      return constants::blosc_zlib_str;
+    case FilterType::FILTER_BLOSC_ZSTD:
+      return constants::blosc_zstd_str;
+    case FilterType::FILTER_RLE:
+      return constants::rle_str;
+    case FilterType::FILTER_BZIP2:
+      return constants::bzip2_str;
+    case FilterType::FILTER_DOUBLE_DELTA:
+      return constants::double_delta_str;
     default:
       assert(0);
       return constants::empty_str;
@@ -62,8 +84,30 @@ inline const std::string& filter_type_str(FilterType filter_type) {
 /** Returns the filter type given a string representation. */
 inline Status filter_type_enum(
     const std::string& filter_type_str, FilterType* filter_type) {
-  if (filter_type_str == constants::filter_type_compression_str)
-    *filter_type = FilterType::COMPRESSION;
+  if (filter_type_str == constants::gzip_str)
+    *filter_type = FilterType::FILTER_GZIP;
+  else if (filter_type_str == constants::zstd_str)
+    *filter_type = FilterType::FILTER_ZSTD;
+  else if (filter_type_str == constants::lz4_str)
+    *filter_type = FilterType::FILTER_LZ4;
+  else if (filter_type_str == constants::blosc_lz_str)
+    *filter_type = FilterType::FILTER_BLOSC_LZ;
+  else if (filter_type_str == constants::blosc_lz4_str)
+    *filter_type = FilterType::FILTER_BLOSC_LZ4;
+  else if (filter_type_str == constants::blosc_lz4hc_str)
+    *filter_type = FilterType::FILTER_BLOSC_LZ4HC;
+  else if (filter_type_str == constants::blosc_snappy_str)
+    *filter_type = FilterType::FILTER_BLOSC_SNAPPY;
+  else if (filter_type_str == constants::blosc_zlib_str)
+    *filter_type = FilterType::FILTER_BLOSC_ZLIB;
+  else if (filter_type_str == constants::blosc_zstd_str)
+    *filter_type = FilterType::FILTER_BLOSC_ZSTD;
+  else if (filter_type_str == constants::rle_str)
+    *filter_type = FilterType::FILTER_RLE;
+  else if (filter_type_str == constants::bzip2_str)
+    *filter_type = FilterType::FILTER_BZIP2;
+  else if (filter_type_str == constants::double_delta_str)
+    *filter_type = FilterType::FILTER_DOUBLE_DELTA;
   else {
     return Status::Error("Invalid FilterType " + filter_type_str);
   }

@@ -864,61 +864,39 @@ void tiledb_filter_free(tiledb_filter_t** filter) {
   }
 }
 
-int tiledb_filter_set_compressor(
+int tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
-    tiledb_compressor_t compressor) {
+    tiledb_filter_option_t option,
+    const void* value) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR ||
-      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+      sanity_check(ctx, filter) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
-  f->set_compressor(static_cast<tiledb::sm::Compressor>(compressor));
+  if (save_error(
+          ctx,
+          filter->filter_->set_option(
+              static_cast<tiledb::sm::FilterOption>(option), value)))
+    return TILEDB_ERR;
 
   // Success
   return TILEDB_OK;
 }
 
-int tiledb_filter_set_compression_level(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR ||
-      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
-  f->set_compression_level(compression_level);
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_filter_get_compressor(
+int tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
-    tiledb_compressor_t* compressor) {
+    tiledb_filter_option_t option,
+    void* value) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR ||
-      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+      sanity_check(ctx, filter) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
-  *compressor = static_cast<tiledb_compressor_t>(f->compressor());
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_filter_get_compression_level(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, int* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, filter) == TILEDB_ERR ||
-      check_filter_type(ctx, filter, TILEDB_COMPRESSION) == TILEDB_ERR)
+  if (save_error(
+          ctx,
+          filter->filter_->get_option(
+              static_cast<tiledb::sm::FilterOption>(option), value)))
     return TILEDB_ERR;
-
-  auto* f = static_cast<tiledb::sm::CompressionFilter*>(filter->filter_);
-  *compression_level = f->compression_level();
 
   // Success
   return TILEDB_OK;

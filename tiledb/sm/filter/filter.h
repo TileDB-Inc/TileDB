@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -80,6 +81,15 @@ class Filter {
   static Status deserialize(ConstBuffer* buff, Filter** filter);
 
   /**
+   * Gets an option from this filter.
+   *
+   * @param option Option whose value to get
+   * @param value Buffer to store the value.
+   * @return Status
+   */
+  Status get_option(FilterOption option, void* value) const;
+
+  /**
    * Runs this filter in the "forward" direction (i.e. during write queries).
    *
    * Note: the input buffer should not be modified directly. The only reason it
@@ -112,6 +122,15 @@ class Filter {
       FilterBuffer* input, FilterBuffer* output) const = 0;
 
   /**
+   * Sets an option on this filter.
+   *
+   * @param option Option whose value to get
+   * @param value Buffer holding the value.
+   * @return Status
+   */
+  Status set_option(FilterOption option, const void* value);
+
+  /**
    * Serializes the filter metadata into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
@@ -128,6 +147,9 @@ class Filter {
  protected:
   /** Pointer to the pipeline instance that executes this filter. */
   const FilterPipeline* pipeline_;
+
+  /** The filter type. */
+  FilterType type_;
 
   /**
    * Clone function must implemented by each specific Filter subclass. This is
@@ -148,6 +170,12 @@ class Filter {
    */
   virtual Status deserialize_impl(ConstBuffer* buff);
 
+  /** Optional subclass specific get_option method. */
+  virtual Status get_option_impl(FilterOption option, void* value) const;
+
+  /** Optional subclass specific get_option method. */
+  virtual Status set_option_impl(FilterOption option, const void* value);
+
   /**
    * Serialization function that can be implemented by a specific Filter
    * subclass for filter-specific metadata.
@@ -159,10 +187,6 @@ class Filter {
    * @return Status
    */
   virtual Status serialize_impl(Buffer* buff) const;
-
- private:
-  /** The filter type. */
-  FilterType type_;
 };
 
 }  // namespace sm

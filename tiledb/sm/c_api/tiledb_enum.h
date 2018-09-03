@@ -143,8 +143,37 @@
 #endif
 
 #ifdef TILEDB_FILTER_TYPE_ENUM
-    /** Compression filter. */
-    TILEDB_FILTER_TYPE_ENUM(COMPRESSION),
+    /** No-op filter */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_NONE),
+    /** Gzip compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_GZIP),
+    /** Zstandard compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_ZSTD),
+    /** LZ4 compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_LZ4),
+    /** Run-length encoding compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_RLE),
+    /** Bzip2 compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BZIP2),
+    /** Double-delta compressor */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_DOUBLE_DELTA),
+    /** Blosc compressor using LZ */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ),
+    /** Blosc compressor using LZ4 */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ4),
+    /** Blosc compressor using LZ4HC */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ4HC),
+    /** Blosc compressor using Snappy */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_SNAPPY),
+    /** Blosc compressor using zlib */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZLIB),
+    /** Blosc compressor using Zstandard */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZSTD),
+#endif
+
+#ifdef TILEDB_FILTER_OPTION_ENUM
+    /** Compression level. Type: `int32_t`. */
+    TILEDB_FILTER_OPTION_ENUM(COMPRESSION_LEVEL),
 #endif
 
 #ifdef TILEDB_QUERY_STATUS_ENUM

@@ -90,6 +90,8 @@ Enumerations
     :project: TileDB-C
 .. doxygenenum:: tiledb_filter_type_t
     :project: TileDB-C
+.. doxygenenum:: tiledb_filter_option_t
+    :project: TileDB-C
 .. doxygenenum:: tiledb_compressor_t
     :project: TileDB-C
 .. doxygenenum:: tiledb_walk_order_t
@@ -320,13 +322,9 @@ Filter
     :project: TileDB-C
 .. doxygenfunction:: tiledb_filter_free
     :project: TileDB-C
-.. doxygenfunction:: tiledb_filter_set_compressor
+.. doxygenfunction:: tiledb_filter_set_option
     :project: TileDB-C
-.. doxygenfunction:: tiledb_filter_set_compression_level
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_filter_get_compressor
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_filter_get_compression_level
+.. doxygenfunction:: tiledb_filter_get_option
     :project: TileDB-C
 
 Filter List
