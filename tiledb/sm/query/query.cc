@@ -98,6 +98,62 @@ std::vector<URI> Query::fragment_uris() const {
   return reader_.fragment_uris();
 }
 
+Status Query::get_buffer(
+    const char* attribute, void** buffer, uint64_t** buffer_size) const {
+  // Normalize attribute
+  std::string normalized;
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (normalized != constants::coords) {
+    if (array_schema->attribute(normalized) == nullptr)
+      return LOG_STATUS(Status::QueryError(
+          std::string("Cannot get buffer; Invalid attribute name '") +
+          normalized + "'"));
+  }
+  if (array_schema->var_size(normalized))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Attribute '") + normalized +
+        "' is var-sized"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer(normalized, buffer, buffer_size);
+  return reader_.get_buffer(normalized, buffer, buffer_size);
+}
+
+Status Query::get_buffer(
+    const char* attribute,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size) const {
+  // Normalize attribute
+  std::string normalized;
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (normalized == constants::coords) {
+    return LOG_STATUS(
+        Status::QueryError("Cannot get buffer; Coordinates are not var-sized"));
+  }
+  if (array_schema->attribute(normalized) == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Invalid attribute name '") +
+        normalized + "'"));
+  if (!array_schema->var_size(normalized))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Attribute '") + normalized +
+        "' is fixed-sized"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer(
+        normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+  return reader_.get_buffer(
+      normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+}
+
 bool Query::has_results() const {
   if (status_ == QueryStatus::UNINITIALIZED || type_ == QueryType::WRITE)
     return false;

@@ -306,6 +306,37 @@ class Reader {
   /** Returns a vector with the fragment URIs. */
   std::vector<URI> fragment_uris() const;
 
+  /**
+   * Retrieves the buffer of a fixed-sized attribute.
+   *
+   * @param attribute The buffer attribute.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const std::string& attribute,
+      void** buffer,
+      uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offsets and values buffers of a var-sized attribute.
+   *
+   * @param attribute The buffer attribute.
+   * @param buffer_off The offsets buffer to be retrieved.
+   * @param buffer_off_size A pointer to the offsets buffer size to be
+   * retrieved.
+   * @param buffer_val The values buffer to be retrieved.
+   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
+   * @return Status
+   */
+  Status get_buffer(
+      const std::string& attribute,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size,
+      void** buffer_val,
+      uint64_t** buffer_val_size) const;
+
   /** Returns the last fragment uri. */
   URI last_fragment_uri() const;
 
