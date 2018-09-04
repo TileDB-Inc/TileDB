@@ -71,6 +71,10 @@ Status FilterPipeline::add_filter(const Filter& filter) {
   return Status::Ok();
 }
 
+void FilterPipeline::clear() {
+  filters_.clear();
+}
+
 Status FilterPipeline::compute_tile_chunks(
     Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const {
   // For coordinate tiles, we treat each dimension separately (chunks won't
@@ -399,6 +403,9 @@ Status FilterPipeline::serialize(Buffer* buff) const {
 }
 
 Status FilterPipeline::deserialize(ConstBuffer* buff) {
+  // Remove any old filters.
+  clear();
+
   RETURN_NOT_OK(buff->read(&max_chunk_size_, sizeof(uint32_t)));
   uint32_t num_filters;
   RETURN_NOT_OK(buff->read(&num_filters, sizeof(uint32_t)));

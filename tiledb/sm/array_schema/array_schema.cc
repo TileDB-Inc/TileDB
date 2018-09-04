@@ -617,6 +617,11 @@ void ArraySchema::set_coords_compression_level(int compression_level) {
   filter->set_compression_level(compression_level);
 }
 
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
+  coords_filters_ = *pipeline;
+  return Status::Ok();
+}
+
 void ArraySchema::set_cell_var_offsets_compressor(Compressor compressor) {
   auto* filter = cell_var_offsets_filters_.get_filter<CompressionFilter>();
   assert(filter != nullptr);
@@ -628,6 +633,12 @@ void ArraySchema::set_cell_var_offsets_compression_level(
   auto* filter = cell_var_offsets_filters_.get_filter<CompressionFilter>();
   assert(filter != nullptr);
   filter->set_compression_level(compression_level);
+}
+
+Status ArraySchema::set_cell_var_offsets_filter_pipeline(
+    const FilterPipeline* pipeline) {
+  cell_var_offsets_filters_ = *pipeline;
+  return Status::Ok();
 }
 
 void ArraySchema::set_cell_order(Layout cell_order) {

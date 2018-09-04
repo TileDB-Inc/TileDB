@@ -934,3 +934,137 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_dimension_free(&d1);
 }
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema offsets/coords filter lists",
+    "[capi], [array-schema], [filter]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "foo", TILEDB_INT32, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr1, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema members
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, CELL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILE_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set up filter list
+  tiledb_filter_t* filter;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BZIP2, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx_, filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_list_t* filter_list;
+  rc = tiledb_filter_list_alloc(ctx_, &filter_list);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, filter);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema filters
+  rc = tiledb_array_schema_set_coords_filter_list(
+      ctx_, array_schema, filter_list);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_offsets_filter_list(
+      ctx_, array_schema, filter_list);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&attr1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_t* read_schema;
+  rc = tiledb_array_get_schema(ctx_, array, &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get filter lists
+  tiledb_filter_list_t *coords_flist, *offsets_flist;
+  rc = tiledb_array_schema_get_coords_filter_list(
+      ctx_, read_schema, &coords_flist);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_offsets_filter_list(
+      ctx_, read_schema, &offsets_flist);
+  REQUIRE(rc == TILEDB_OK);
+
+  unsigned nfilters;
+  rc = tiledb_filter_list_get_nfilters(ctx_, coords_flist, &nfilters);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(nfilters == 1);
+  rc = tiledb_filter_list_get_nfilters(ctx_, offsets_flist, &nfilters);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(nfilters == 1);
+
+  // Check getting a filter
+  tiledb_filter_t* read_filter;
+  rc = tiledb_filter_list_get_filter_from_index(
+      ctx_, coords_flist, 0, &read_filter);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_type_t type;
+  rc = tiledb_filter_get_type(ctx_, read_filter, &type);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(type == TILEDB_FILTER_BZIP2);
+  int read_level;
+  rc = tiledb_filter_get_option(
+      ctx_, read_filter, TILEDB_COMPRESSION_LEVEL, &read_level);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(read_level == level);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_filter_free(&read_filter);
+  tiledb_filter_list_free(&coords_flist);
+  tiledb_filter_list_free(&offsets_flist);
+  tiledb_array_schema_free(&read_schema);
+  tiledb_array_free(&array);
+  delete_array(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}

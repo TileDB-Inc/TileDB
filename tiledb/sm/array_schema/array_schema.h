@@ -267,11 +267,17 @@ class ArraySchema {
   /** Sets the variable cell offsets compression level. */
   void set_cell_var_offsets_compression_level(int compression_level);
 
+  /** Sets the filter pipeline for the variable cell offsets. */
+  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
+
   /** Sets the coordinates compressor. */
   void set_coords_compressor(Compressor compressor);
 
   /** Sets the coordinates compression level. */
   void set_coords_compression_level(int compression_level);
+
+  /** Sets the filter pipeline for the coordinates. */
+  Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);

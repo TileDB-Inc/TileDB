@@ -866,7 +866,7 @@ TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri);
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -884,13 +884,34 @@ TILEDB_EXPORT int tiledb_filter_alloc(
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
  * tiledb_filter_free(&filter);
  * @endcode
  *
  * @param filter The filter to be destroyed.
  */
 TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
+
+/**
+ * Retrieves the type of a filter.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_t* filter;
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
+ * tiledb_filter_type_t type;
+ * tiledb_filter_get_type(ctx, filter, &type);
+ * // type == TILEDB_FILTER_BZIP2
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param filter The TileDB filter.
+ * @param type The filter type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_filter_get_type(
+    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t* type);
 
 /**
  * Sets an option on a filter. Options are filter dependent; this function
@@ -900,7 +921,7 @@ TILEDB_EXPORT void tiledb_filter_free(tiledb_filter_t** filter);
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
  * int level = 5;
  * tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
  * tiledb_filter_free(&filter);
@@ -927,7 +948,7 @@ TILEDB_EXPORT int tiledb_filter_set_option(
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
  * int level;
  * tiledb_filter_get_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
  * // level == -1 (the default)
@@ -993,7 +1014,7 @@ TILEDB_EXPORT void tiledb_filter_list_free(tiledb_filter_list_t** filter_list);
  *
  * @code{.c}
  * tiledb_filter_t* filter;
- * tiledb_filter_alloc(ctx, TILEDB_BZIP2, &filter);
+ * tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
  *
  * tiledb_filter_list_t* filter_list;
  * tiledb_filter_list_alloc(ctx, &filter_list);
@@ -1784,6 +1805,28 @@ TILEDB_EXPORT int tiledb_array_schema_set_tile_order(
     tiledb_layout_t tile_order);
 
 /**
+ * Sets the filter list to use for the coordinates.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_array_schema_set_coords_filter_list(ctx, array_schema, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_set_coords_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t* filter_list);
+
+/**
  * Sets the compressor to use for the coordinates.
  *
  * **Example:**
@@ -1805,6 +1848,29 @@ TILEDB_EXPORT int tiledb_array_schema_set_coords_compressor(
     tiledb_array_schema_t* array_schema,
     tiledb_compressor_t compressor,
     int compression_level);
+
+/**
+ * Sets the filter list to use for the offsets of variable-sized attribute
+ * values.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_array_schema_set_offsets_filter_list(ctx, array_schema, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_set_offsets_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t* filter_list);
 
 /**
  * Sets the compressor to use for the offsets of variable-sized attribute
@@ -1933,6 +1999,27 @@ TILEDB_EXPORT int tiledb_array_schema_get_cell_order(
     tiledb_layout_t* cell_order);
 
 /**
+ * Retrieves the filter list used for the coordinates.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_array_schema_get_coords_filter_list(ctx, array_schema, &filter_list);
+ * tiledb_filter_list_free(ctx, &filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_get_coords_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t** filter_list);
+
+/**
  * Retrieves the compressor info of the coordinates.
  *
  * **Example:**
@@ -1955,6 +2042,27 @@ TILEDB_EXPORT int tiledb_array_schema_get_coords_compressor(
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,
     int* compression_level);
+
+/**
+ * Retrieves the filter list used for the offsets.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_array_schema_get_offsets_filter_list(ctx, array_schema, &filter_list);
+ * tiledb_filter_list_free(ctx, &filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_get_offsets_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_filter_list_t** filter_list);
 
 /**
  * Retrieves the compressor info of the offsets.

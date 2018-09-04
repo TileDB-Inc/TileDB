@@ -27,7 +27,7 @@
 
 * Added `tiledb_filter_t` `tiledb_filter_type_t`, `tiledb_filter_option_t`, and `tiledb_filter_list_t` types
 * Added `tiledb_filter_*` and `tiledb_filter_list_*` functions.
-* Added `tiledb_attribute_set_filter_list` function
+* Added `tiledb_attribute_{set,get}_filter_list`, `tiledb_array_schema_{set,get}_coords_filter_list`, `tiledb_array_schema_{set,get}_offsets_filter_list` functions.
 
 # TileDB v1.3.2 Release Notes
 

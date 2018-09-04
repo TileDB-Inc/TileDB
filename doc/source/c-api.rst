@@ -197,6 +197,10 @@ Array Schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_set_tile_order
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_set_coords_filter_list
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_set_offsets_filter_list
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_set_coords_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_set_offsets_compressor
@@ -210,6 +214,10 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_get_capacity
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_cell_order
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_get_coords_filter_list
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_get_offsets_filter_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_coords_compressor
     :project: TileDB-C
@@ -321,6 +329,8 @@ Filter
 .. doxygenfunction:: tiledb_filter_alloc
     :project: TileDB-C
 .. doxygenfunction:: tiledb_filter_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_get_type
     :project: TileDB-C
 .. doxygenfunction:: tiledb_filter_set_option
     :project: TileDB-C
