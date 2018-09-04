@@ -89,6 +89,42 @@ Status Writer::finalize() {
   return Status::Ok();
 }
 
+Status Writer::get_buffer(
+    const std::string& attribute, void** buffer, uint64_t** buffer_size) const {
+  auto it = attr_buffers_.find(attribute);
+  if (it == attr_buffers_.end()) {
+    *buffer = nullptr;
+    *buffer_size = nullptr;
+  } else {
+    *buffer = it->second.buffer_;
+    *buffer_size = it->second.buffer_size_;
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::get_buffer(
+    const std::string& attribute,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size) const {
+  auto it = attr_buffers_.find(attribute);
+  if (it == attr_buffers_.end()) {
+    *buffer_off = nullptr;
+    *buffer_off_size = nullptr;
+    *buffer_val = nullptr;
+    *buffer_val_size = nullptr;
+  } else {
+    *buffer_off = (uint64_t*)it->second.buffer_;
+    *buffer_off_size = it->second.buffer_size_;
+    *buffer_val = it->second.buffer_var_;
+    *buffer_val_size = it->second.buffer_var_size_;
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)

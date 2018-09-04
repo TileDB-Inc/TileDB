@@ -2117,7 +2117,7 @@ int tiledb_query_set_buffer(
               attribute, &normalized_name)))
     return TILEDB_ERR;
 
-  // Set attributes and buffers
+  // Set attribute buffer
   if (save_error(
           ctx, query->query_->set_buffer(normalized_name, buffer, buffer_size)))
     return TILEDB_ERR;
@@ -2153,11 +2153,55 @@ int tiledb_query_set_buffer_var(
               attribute, &normalized_name)))
     return TILEDB_ERR;
 
-  // Set attributes and buffers
+  // Set attribute buffers
   if (save_error(
           ctx,
           query->query_->set_buffer(
               normalized_name,
+              buffer_off,
+              buffer_off_size,
+              buffer_val,
+              buffer_val_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_get_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attribute,
+    void** buffer,
+    uint64_t** buffer_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set attribute buffer
+  if (save_error(
+          ctx, query->query_->get_buffer(attribute, buffer, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int tiledb_query_get_buffer_var(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attribute,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get attribute buffers
+  if (save_error(
+          ctx,
+          query->query_->get_buffer(
+              attribute,
               buffer_off,
               buffer_off_size,
               buffer_val,
