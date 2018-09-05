@@ -45,14 +45,22 @@ NoopFilter* NoopFilter::clone_impl() const {
 }
 
 Status NoopFilter::run_forward(
-    FilterBuffer* input, FilterBuffer* output) const {
-  RETURN_NOT_OK(output->append_view(input, 0, input->size()));
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
+  RETURN_NOT_OK(output->append_view(input));
+  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();
 }
 
 Status NoopFilter::run_reverse(
-    FilterBuffer* input, FilterBuffer* output) const {
-  RETURN_NOT_OK(output->append_view(input, 0, input->size()));
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
+  RETURN_NOT_OK(output->append_view(input));
+  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();
 }
 

@@ -56,18 +56,24 @@ namespace sm {
  * If the input comes in multiple FilterBuffer parts, each part is broken up
  * into windows separately in the forward direction.
  *
- * The forward output format is, regardless of number of parts:
+ * Input metadata is not compressed or modified.
+ *
+ * The forward output metadata has the format:
  *   uint32_t - Original input number of bytes
  *   uint32_t - Number of windows
- *   window0
+ *   window0_md
  *   ...
- *   windowN
- *
- * Each window has the format:
+ *   windowN_md
+ * Where each window*_md has the fixed format:
  *   T - Window value offset
  *   uint8_t - Bit width of reduced element type T'
  *   uint32_t - Number of bytes in window data
- *   uint8_t[] - Window data (possibly-reduced width elements)
+ *
+ * The forward output data format is the concatenated window data:
+ *   uint8_t[] - Window0 data (possibly-reduced width elements)
+ *   uint8_t[] - Window1 data (possibly-reduced width elements)
+ *   ...
+ *   uint8_t[] - WindowN data (possibly-reduced width elements)
  *
  * The reverse output format is simply:
  *   T[] - Array of original elements
@@ -83,12 +89,20 @@ class BitWidthReductionFilter : public Filter {
   /**
    * Reduce the bit size of the given input into the given output.
    */
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
   /**
    * Restore the bit size the given input into the given output.
    */
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
   /** Set the max window size (in bytes) to use. */
   void set_max_window_size(uint32_t max_window_size);
@@ -106,10 +120,14 @@ class BitWidthReductionFilter : public Filter {
    * @tparam T Tile cell datatype
    * @param input Buffer to compress
    * @param output Buffer to store compressed output.
+   * @param output_metadata Buffer to store output metadata.
    * @return Status
    */
   template <typename T>
-  Status compress_part(ConstBuffer* input, FilterBuffer* output) const;
+  Status compress_part(
+      ConstBuffer* input,
+      FilterBuffer* output,
+      FilterBuffer* output_metadata) const;
 
   /**
    * Computes the number of bits required to represent elements of type T in the
@@ -148,11 +166,19 @@ class BitWidthReductionFilter : public Filter {
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const;
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const;
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;

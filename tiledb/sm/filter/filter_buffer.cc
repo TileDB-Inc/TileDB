@@ -226,6 +226,9 @@ Status FilterBuffer::read(void* buffer, uint64_t nbytes) {
     bytes_left -= bytes_from_src;
     dest_offset += bytes_from_src;
 
+    // Keep current buffer in sync.
+    current_buffer_ = it;
+
     if (bytes_left == 0) {
       current_relative_offset_ += bytes_from_src;
       break;
@@ -289,6 +292,9 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
 
     bytes_left -= bytes_to_dest;
     src_offset += bytes_to_dest;
+
+    // Keep current buffer in sync.
+    current_buffer_ = it;
 
     if (bytes_left == 0) {
       current_relative_offset_ += bytes_to_dest;
@@ -472,6 +478,10 @@ Status FilterBuffer::append_view(
     return LOG_STATUS(Status::FilterError(
         "FilterBuffer error; cannot append view: read-only."));
 
+  // Empty views can be skipped.
+  if (nbytes == 0)
+    return Status::Ok();
+
   // Check for fixed-allocation errors first.
   if (fixed_allocation_data_ != nullptr) {
     assert(!buffers_.empty());
@@ -522,6 +532,10 @@ Status FilterBuffer::append_view(
   reset_offset();
 
   return Status::Ok();
+}
+
+Status FilterBuffer::append_view(const FilterBuffer* other) {
+  return append_view(other, 0, other->size());
 }
 
 Status FilterBuffer::clear() {

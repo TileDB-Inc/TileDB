@@ -177,10 +177,14 @@ Status CompressionFilter::get_option_impl(
 }
 
 Status CompressionFilter::run_forward(
-    FilterBuffer* input, FilterBuffer* output) const {
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    RETURN_NOT_OK(output->append_view(input, 0, input->size()));
+    RETURN_NOT_OK(output->append_view(input));
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
   }
 
@@ -189,59 +193,74 @@ Status CompressionFilter::run_forward(
         Status::FilterError("Input is too large to be compressed."));
 
   // Compute the upper bound on the size of the output.
-  std::vector<ConstBuffer> parts = input->buffers();
-  auto num_parts = (uint32_t)parts.size();
-  uint64_t output_size_ub = sizeof(uint32_t);
-  for (unsigned i = 0; i < num_parts; i++) {
-    auto part = &parts[i];
-    output_size_ub +=
-        part->size() + overhead(part->size()) + 2 * sizeof(uint32_t);
-  }
+  std::vector<ConstBuffer> data_parts = input->buffers(),
+                           metadata_parts = input_metadata->buffers();
+  auto num_data_parts = (uint32_t)data_parts.size(),
+       num_metadata_parts = (uint32_t)metadata_parts.size(),
+       total_num_parts = num_data_parts + num_metadata_parts;
+  uint64_t output_size_ub = 0;
+  for (const auto& part : metadata_parts)
+    output_size_ub += part.size() + overhead(part.size());
+  for (const auto& part : data_parts)
+    output_size_ub += part.size() + overhead(part.size());
 
   // Ensure space in output buffer for worst case.
   RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   assert(buffer_ptr != nullptr);
-
-  // Write the header value
   buffer_ptr->reset_offset();
-  RETURN_NOT_OK(buffer_ptr->write(&num_parts, sizeof(uint32_t)));
+
+  // Allocate a buffer for this filter's metadata and write the number of parts.
+  auto metadata_size =
+      2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
+  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
+  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Compress all parts.
-  for (unsigned i = 0; i < num_parts; i++) {
-    RETURN_NOT_OK(compress_part(&parts[i], buffer_ptr));
-  }
+  for (auto& part : metadata_parts)
+    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
+  for (auto& part : data_parts)
+    RETURN_NOT_OK(compress_part(&part, buffer_ptr, output_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::run_reverse(
-    FilterBuffer* input, FilterBuffer* output) const {
+    FilterBuffer* input_metadata,
+    FilterBuffer* input,
+    FilterBuffer* output_metadata,
+    FilterBuffer* output) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    RETURN_NOT_OK(output->append_view(input, 0, input->size()));
+    RETURN_NOT_OK(output->append_view(input));
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
   }
 
-  // Read the compressed and uncompressed (result) size
-  uint32_t num_parts;
-  input->reset_offset();
-  RETURN_NOT_OK(input->read(&num_parts, sizeof(uint32_t)));
+  // Read the number of parts from input metadata.
+  uint32_t num_metadata_parts, num_data_parts;
+  RETURN_NOT_OK(input_metadata->read(&num_metadata_parts, sizeof(uint32_t)));
+  RETURN_NOT_OK(input_metadata->read(&num_data_parts, sizeof(uint32_t)));
 
   // Get a buffer for output.
   RETURN_NOT_OK(output->prepend_buffer(0));
-  Buffer* buffer_ptr = output->buffer_ptr(0);
-  assert(buffer_ptr != nullptr);
+  Buffer* data_buffer = output->buffer_ptr(0);
+  assert(data_buffer != nullptr);
+  RETURN_NOT_OK(output_metadata->prepend_buffer(0));
+  Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
+  assert(metadata_buffer != nullptr);
 
-  for (uint32_t i = 0; i < num_parts; i++) {
-    RETURN_NOT_OK(decompress_part(input, buffer_ptr));
-  }
+  for (uint32_t i = 0; i < num_metadata_parts; i++)
+    RETURN_NOT_OK(decompress_part(input, metadata_buffer, input_metadata));
+  for (uint32_t i = 0; i < num_data_parts; i++)
+    RETURN_NOT_OK(decompress_part(input, data_buffer, input_metadata));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::compress_part(
-    ConstBuffer* part, Buffer* output) const {
+    ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
   // Create const buffer
   ConstBuffer input_buffer(part->data(), part->size());
 
@@ -249,12 +268,6 @@ Status CompressionFilter::compress_part(
   auto cell_size = tile->cell_size();
   auto type = tile->type();
   auto type_size = datatype_size(type);
-
-  // Write part header
-  uint32_t input_size = (uint32_t)part->size(), compressed_size;
-  RETURN_NOT_OK(output->write(&input_size, sizeof(uint32_t)));
-  uint64_t compressed_size_offset = output->offset();  // Will be used later
-  RETURN_NOT_OK(output->write(&compressed_size, sizeof(uint32_t)));
 
   // Invoke the proper compressor
   uint32_t orig_size = (uint32_t)output->size();
@@ -314,24 +327,25 @@ Status CompressionFilter::compress_part(
     return LOG_STATUS(
         Status::FilterError("Compressed output exceeds uint32 max."));
 
-  // Overwrite the header value with the real compressed size.
-  compressed_size = (uint32_t)output->size() - orig_size;
-  std::memcpy(
-      output->data(compressed_size_offset), &compressed_size, sizeof(uint32_t));
+  // Write part original and compressed size to metadata
+  uint32_t input_size = (uint32_t)part->size(),
+           compressed_size = (uint32_t)output->size() - orig_size;
+  RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(output_metadata->write(&compressed_size, sizeof(uint32_t)));
 
   return Status::Ok();
 }
 
 Status CompressionFilter::decompress_part(
-    FilterBuffer* input, Buffer* output) const {
+    FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const {
   auto tile = pipeline_->current_tile();
   auto cell_size = tile->cell_size();
   auto type = tile->type();
 
-  // Read the part header
+  // Read the part metadata
   uint32_t compressed_size, uncompressed_size;
-  RETURN_NOT_OK(input->read(&uncompressed_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(input->read(&compressed_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(input_metadata->read(&uncompressed_size, sizeof(uint32_t)));
+  RETURN_NOT_OK(input_metadata->read(&compressed_size, sizeof(uint32_t)));
 
   // Ensure space in the output buffer if possible.
   if (output->owns_data()) {

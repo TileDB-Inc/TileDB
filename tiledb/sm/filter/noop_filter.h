@@ -52,12 +52,20 @@ class NoopFilter : public Filter {
   /**
    * Run forward.
    */
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
   /**
    * Run reverse.
    */
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
  private:
   /** Returns a new clone of this filter. */
