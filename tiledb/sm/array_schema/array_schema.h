@@ -229,8 +229,18 @@ class ArraySchema {
   /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(const std::string& attribute) const;
 
-  /** Adds an attribute, copying the input. */
-  Status add_attribute(const Attribute* attr);
+  /**
+   * Adds an attribute, copying the input.
+   *
+   * @param attr The attribute to be added
+   * @param check_special If `true` this function will check if the attribute
+   *     is special (starting with `__`) and error if that's the case. Setting
+   *     to `false` will allow adding attributes starting with `__`, noting
+   *     that particular care must be taken (i.e., the user must know what
+   *     they are doing in this case).
+   * @return Status
+   */
+  Status add_attribute(const Attribute* attr, bool check_special = true);
 
   /**
    * It assigns values to the members of the object from the input buffer.

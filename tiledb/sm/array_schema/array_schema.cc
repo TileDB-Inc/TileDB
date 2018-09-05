@@ -450,14 +450,14 @@ bool ArraySchema::var_size(const std::string& attribute) const {
   return it->second->var_size();
 }
 
-Status ArraySchema::add_attribute(const Attribute* attr) {
+Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   // Sanity check
   if (attr == nullptr)
     return LOG_STATUS(Status::ArraySchemaError(
         "Cannot add attribute; Input attribute is null"));
 
   // Do not allow attributes with special names
-  if (attr->name().find(constants::special_name_prefix) == 0) {
+  if (check_special && attr->name().find(constants::special_name_prefix) == 0) {
     std::string msg = "Cannot add attribute; Attribute names starting with '";
     msg += std::string(constants::special_name_prefix) + "' are reserved";
     return LOG_STATUS(Status::ArraySchemaError(msg));
