@@ -65,7 +65,7 @@ class KV {
   /* ********************************* */
 
   /** Constructor. */
-  explicit KV(StorageManager* storage_manager);
+  KV(const URI& kv_uri, StorageManager* storage_manager);
 
   /** Destructor. */
   ~KV();
@@ -81,13 +81,22 @@ class KV {
   uint64_t capacity() const;
 
   /**
-   * Returns `true` if the kv contains written unflushed items buffered
+   * Checks if the kv contains written unflushed items buffered
    * in main memory.
+   *
+   * @param dirty Set to `true` if the kv contains unflushed items.
+   * @return Status
    */
-  bool dirty() const;
+  Status is_dirty(bool* dirty) const;
 
   /** Flushes the buffered written items to persistent storage. */
   Status flush();
+
+  /**
+   * Returns the query type the kv was opened with (i.e., for reads or
+   * writes).
+   */
+  QueryType query_type() const;
 
   /**
    * Gets a key-value item from the key-value store. This function first
@@ -125,36 +134,27 @@ class KV {
       const void* key, Datatype key_type, uint64_t key_size, bool* has_key);
 
   /**
-   * Initializes the key-value store for reading/writing.
+   * Opens the key-value store for reading/writing.
    *
-   * @param uri The URI of the key-value store.
-   * @param attributes The attributes of the key-value store schema to focus on.
-   *     Use an empty vector to indicate **all** attributes.
+   * @param query_type The mode in which the key-value store is opened.
    * @return Status
-   *
-   * @note If the key-value store will be used for writes, `attributes` **must**
-   *     be empty, indicating that all attributes will participate in
-   *     the write.
    */
-  Status init(const URI& uri, const std::vector<std::string>& attributes);
+  Status open(QueryType query_type);
 
   /** Clears the key-value store. */
   void clear();
 
-  /**
-   * Finalizes the key-value store and frees all memory. All buffered values
-   * will be flushed to persistent storage.
-   */
-  Status finalize();
+  /** Closes the key-value store and frees all memory. */
+  Status close();
+
+  /** Returns `true` if the array is open. */
+  bool is_open() const;
 
   /** Re-opens the key-value store for reads. */
   Status reopen();
 
-  /** The open array used for dispatching read queries. */
-  OpenArray* open_array_for_reads() const;
-
-  /** Sets the number of maximum written items buffered before being flushed. */
-  Status set_max_buffered_items(uint64_t max_items);
+  /** The open array used for dispatching read/write queries. */
+  OpenArray* open_array() const;
 
   /**
    * Returns the snapshot at which the underlying array got opened for
@@ -176,11 +176,11 @@ class KV {
   /** These are the corresponding types of `attributes_`. */
   std::vector<Datatype> attribute_types_;
 
-  /** The array object that will receive the read queries. */
-  OpenArray* open_array_for_reads_;
+  /** True if the kv has been opened. */
+  bool is_open_;
 
-  /** The array object that will receive the write queries. */
-  OpenArray* open_array_for_writes_;
+  /** The array object that will receive the read or write queries. */
+  OpenArray* open_array_;
 
   /**
    * Buffers to be used in read queries. This is a map from the
@@ -212,7 +212,7 @@ class KV {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       read_buffer_alloced_sizes_;
 
-  /** The snapshot at which the `open_array_for_reads_` got opened. */
+  /** The snapshot at which the `open_array_` got opened. */
   uint64_t snapshot_;
 
   /**
@@ -232,21 +232,14 @@ class KV {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       write_buffer_sizes_;
 
-  /**
-   * `True` if the key-value store is good for writes. This happens when
-   * the user specifies `nullptr` for attributes in `open`, meaning that
-   * all attributes must be participate in the write.
-   */
-  bool write_good_;
-
   /** Items to be written to disk indexed on their hash. */
   std::map<KVItem::Hash, KVItem*> items_;
 
   /** The key-value URI.*/
   URI kv_uri_;
 
-  /** Maximum number of items to be buffered. */
-  uint64_t max_items_;
+  /** The mode in which the key-value store is opened. */
+  QueryType query_type_;
 
   /** The key-value store schema. */
   const ArraySchema* schema_;

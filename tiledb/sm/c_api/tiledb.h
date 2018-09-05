@@ -3436,24 +3436,6 @@ TILEDB_EXPORT int tiledb_kv_create(
 TILEDB_EXPORT int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
 
 /**
- * Sets the parameter that dictates the maximum number of written items
- * buffered in memory before a flush is initiated.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_kv_set_max_buffered_items(ctx, kv, 1000);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param kv The key-value store.
- * @param max_items The number of maximum items to be set.
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_EXPORT int tiledb_kv_set_max_buffered_items(
-    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t max_items);
-
-/**
  * Creates a key-value store object.
  *
  * **Example:**
@@ -3479,26 +3461,20 @@ TILEDB_EXPORT int tiledb_kv_alloc(
  * @code{.c}
  * tiledb_kv_t* kv;
  * tiledb_kv_alloc(ctx, "my_kv", &kv);
- * const char* attributes[] = {"attr_1", "attr_2"};
- * tiledb_kv_open(ctx, kv, attributes, 2);
+ * tiledb_kv_open(ctx, kv, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param kv The key-value store object to be opened.
- * @param attributes The attributes to focus on. `NULL` indicates all
- *     attributes. If the key-value object is used for writing key-value
- *     items, **all** attributes must be specified.
- * @param attribute_num The number of `attributes`.
+ * @param query_type The mode in which the key-value store is opened
+ *     (read or write).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note If the key-value store is already open, the function throws
  *     an error.
  */
 TILEDB_EXPORT int tiledb_kv_open(
-    tiledb_ctx_t* ctx,
-    tiledb_kv_t* kv,
-    const char** attributes,
-    unsigned int attribute_num);
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type);
 
 /**
  * Reopens a key-value store. This is useful when there were updates
@@ -3510,8 +3486,7 @@ TILEDB_EXPORT int tiledb_kv_open(
  * @code{.c}
  * tiledb_kv_t* kv;
  * tiledb_kv_alloc(ctx, "my_kv", &kv);
- * const char* attributes[] = {"attr_1", "attr_2"};
- * tiledb_kv_open(ctx, kv, attributes, 2);
+ * tiledb_kv_open(ctx, kv, TILEDB_READ);
  * // Some code here
  * tiledb_kv_reopen(ctx, kv);
  * @endcode
@@ -3520,7 +3495,7 @@ TILEDB_EXPORT int tiledb_kv_open(
  * @param kv An opened key-value store object.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note
+ * @note This is applicable only to arrays opened for reads.
  */
 TILEDB_EXPORT int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
@@ -3687,8 +3662,7 @@ TILEDB_EXPORT int tiledb_kv_has_key(
  * @code{.c}
  * tiledb_kv_t* kv;
  * tiledb_kv_alloc(ctx, "my_kv", &kv);
- * const char* attributes[] = {"attr_1", "attr_2"};
- * tiledb_kv_open(ctx, kv, attributes, 2);
+ * tiledb_kv_open(ctx, kv);
  * tiledb_kv_iter_t* kv_iter;
  * tiledb_kv_iter_alloc(ctx, kv, &kv_iter);
  * @endcode

@@ -371,8 +371,6 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_consolidate
     :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_set_max_buffered_items
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_reopen

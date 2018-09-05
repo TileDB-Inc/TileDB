@@ -145,24 +145,20 @@ You can write to a TileDB KV store as follows:
         tiledb::Context ctx;
 
         // Open the map
-        tiledb::Map map(ctx, map_name);
-
-        // Set maximum items for a flush
-        map.set_max_buffered_items(2);
+        tiledb::Map map(ctx, map_name, TILEDB_WRITE);
 
         std::vector<std::string> attrs = {"a1", "a2"};
 
         // Add map items with [] operator
         map["key_1"][attrs] = std::tuple<int, float>(1, 1.1f);
         map["key_2"][attrs] = std::tuple<int, float>(2, 2.1f);
+        map.flush();
 
         // Add map items through functions
         auto key3_item = Map::create_item(ctx, "key_3");
         key3_item.set("a1", 3);
         key3_item["a2"] = 3.1f;
         map.add_item(key3_item);
-
-        // Explicit flush
         map.flush();
 
         // Close the map
@@ -183,33 +179,12 @@ You can write to a TileDB KV store as follows:
          A["key_3"] = "3"
          A.flush()
 
-Note that the KV store *buffers* the items you are writing,
-and *periodically flushes* the buffered items on the disk, by performing a sparse
-write operation. You can control the number of maximum buffered items as follows (in
-our example we limit it to ``2`` items):
 
-.. content-tabs::
-
-   .. tab-container:: cpp
-      :title: C++
-
-      .. code-block:: c++
-
-        map.set_max_buffered_items(2);
-
-   .. tab-container:: python
-      :title: Python
-
-      .. code-block:: python
-
-         ctx = tiledb.Ctx()
-         A = tiledb.KV(ctx, array_name, buffered_items=2)
-
-Each flush creates a new fragment on the disk. Therefore, it is
-important to set the maximum buffered items to a reasobably large number,
-in order to avoid creating numerous fragments. You can always explicitly flush
-the buffered items as follows (note also that the KV store flushes automatically
-upon being closed):
+Note that you must **always flush** the key-value store, otherwise the written
+items will not be persisted on the file. Each flush creates a new fragment on
+the disk. Therefore, it is important to not flush too often (while being careful
+about the memory used internally for unflushed items), in order to avoid creating
+numerous fragments. You explicitly flush the buffered items as follows:
 
 .. content-tabs::
 
@@ -238,7 +213,7 @@ store similar to arrays as follows:
 
       .. code-block:: c++
 
-         Map::consolidate(ctx, "my_map");
+         tiledb::Map::consolidate(ctx, "my_map");
 
    .. tab-container:: python
       :title: Python
@@ -259,6 +234,10 @@ You can read from a KV store as follows:
 
       .. code-block:: c++
 
+       // Open the map
+       tiledb::Map map(ctx, map_name, TILEDB_READ);
+
+       // Read the item values
        int key1_a1 = map["key_1"]["a1"];
        float key1_a2 = map["key_1"]["a2"];
        auto key2_item = map["key_2"];
@@ -277,29 +256,7 @@ You can read from a KV store as follows:
          print("key_2: %s" % A["key_2"])
          print("key_3: %s" % A["key_3"])
 
-Similar to arrays, you can *subselect* over the
-attributes in case you wish to focus on a subset of KV store attributes
-instead of all the attributes. You can do that simply by opening
-the KV store with the attribute set of your choice:
-
-.. content-tabs::
-
-   .. tab-container:: cpp
-      :title: C++
-
-      .. code-block:: c++
-
-       tiledb::Map map(ctx, map_name, {"a1"});
-
-   .. tab-container:: python
-      :title: Python
-
-      .. warning::
-
-         Multi-attribute KV stores are not yet supported in the Python API, and therefore
-         attribute subselection is not supported either.
-
-Finally, you can even iterate over the stored KV items, and print
+Finally, you can iterate over the stored KV items, and print
 their keys and attribute values as follows (note that TileDB
 retrieves the items in *random order*):
 
@@ -311,7 +268,7 @@ retrieves the items in *random order*):
       .. code-block:: c++
 
         Context ctx;
-        tiledb::Map map(ctx, map_name);
+        tiledb::Map map(ctx, map_name, TILEDB_READ);
 
         std::cout << "\nIterating over map items\n";
         MapIter iter(map), end(map, true);
@@ -349,11 +306,6 @@ of the tutorial, you get the following output:
          key_1, a2: 1.1
          key_2: a1: 2
          key_3: a2: 3.1
-
-         Subselecting over a1
-         key_1, a1: 1
-         key_2, a1: 2
-         key_3: a1: 3
 
          Iterating over map items
          key: key_3, a1: 3, a2: 3.1
@@ -403,19 +355,7 @@ is a sparse array), and some files for the keys ``__key.tdb``, ``__key_type.tdb`
   -rwx------  1 stavros  staff    8 Jul  2 22:30 a1.tdb
   -rwx------  1 stavros  staff    8 Jul  2 22:30 a2.tdb
 
-Finally, notice that our example produces two fragments.
-This is because TileDB flushed immediately after adding two items (since
-we had set the maximum number of buffered items to ``2``), and then we
-explicitly flushed again after adding the third item.
+Finally, notice that our example produces two fragments. This is because we
+flushed after adding two items, and then again after adding the third item.
 
-Interleaved KV writes/reads
----------------------------
-
-TileDB allows you to create a map object and perform interleaved writes
-and reads (as well as have them be executed in parallel). We defer a
-more detailed discussion on this topic to the tutorial about Consistency; unless
-you understand the consistency model of TileDB, it is likely that you will
-be observing some unexpected behavior from the TileDB map. Until then,
-we recommend that you complete the writes first and then initiate your
-reads as shown in the code example of this tutorial.
 

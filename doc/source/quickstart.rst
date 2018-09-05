@@ -1061,11 +1061,12 @@ and ``"key_3": 3``.
           tiledb::Context ctx;
 
           // Open the map
-          tiledb::Map map(ctx, map_name);
+          tiledb::Map map(ctx, map_name, TILEDB_WRITE);
 
           map["key_1"]["a"] = 1;
           map["key_2"] = 2;  // Implicit "a" since there is 1 attr
           map["key_3"] = 3;
+          map.flush();
 
           // Close the map
           map.close();
@@ -1098,7 +1099,7 @@ Finally, we read the data back using the keys and print them on the screen.
            Context ctx;
 
            // Open the map
-           tiledb::Map map(ctx, map_name);
+           tiledb::Map map(ctx, map_name, TILEDB_READ);
 
            // Read the keys
            int a1 = map["key_1"];

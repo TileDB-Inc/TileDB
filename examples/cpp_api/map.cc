@@ -59,24 +59,20 @@ void write_map() {
   tiledb::Context ctx;
 
   // Open the map
-  tiledb::Map map(ctx, map_name);
-
-  // Set maximum items for a flush
-  map.set_max_buffered_items(2);
+  tiledb::Map map(ctx, map_name, TILEDB_WRITE);
 
   std::vector<std::string> attrs = {"a1", "a2"};
 
   // Add map items with [] operator
   map["key_1"][attrs] = std::tuple<int, float>(1, 1.1f);
   map["key_2"][attrs] = std::tuple<int, float>(2, 2.1f);
+  map.flush();
 
   // Add map items through functions
   auto key3_item = Map::create_item(ctx, "key_3");
   key3_item.set("a1", 3);
   key3_item["a2"] = 3.1f;
   map.add_item(key3_item);
-
-  // Explicit flush
   map.flush();
 
   // Close the map
@@ -87,7 +83,7 @@ void read_map() {
   Context ctx;
 
   // Open the map
-  tiledb::Map map(ctx, map_name);
+  tiledb::Map map(ctx, map_name, TILEDB_READ);
 
   // Read the keys
   int key1_a1 = map["key_1"]["a1"];
@@ -108,32 +104,11 @@ void read_map() {
   map.close();
 }
 
-void read_map_subselect() {
-  Context ctx;
-
-  // Open the map
-  tiledb::Map map(ctx, map_name, {"a1"});
-
-  // Read the keys
-  int key1_a1 = map["key_1"]["a1"];
-  int key2_a1 = map["key_2"]["a1"];
-  int key3_a1 = map["key_3"]["a1"];
-
-  // Print
-  std::cout << "\nSubselecting over a1\n";
-  std::cout << "key_1, a1: " << key1_a1 << "\n";
-  std::cout << "key_2, a1: " << key2_a1 << "\n";
-  std::cout << "key_3: a1: " << key3_a1 << "\n";
-
-  // Close the map
-  map.close();
-}
-
 void iter_map() {
   Context ctx;
 
   // Open the map
-  tiledb::Map map(ctx, map_name);
+  tiledb::Map map(ctx, map_name, TILEDB_READ);
 
   std::cout << "\nIterating over map items\n";
   MapIter iter(map), end(map, true);
@@ -155,7 +130,6 @@ int main() {
   }
 
   read_map();
-  read_map_subselect();
   iter_map();
 
   return 0;

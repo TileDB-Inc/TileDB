@@ -30,6 +30,28 @@
 * Added `tiledb_attribute_{set,get}_filter_list`, `tiledb_array_schema_{set,get}_coords_filter_list`, `tiledb_array_schema_{set,get}_offsets_filter_list` functions.
 * Added `tiledb_query_get_buffer` and `tiledb_query_get_buffer_var`.
 
+## Breaking changes
+
+### C API
+
+* Removed `tiledb_kv_set_max_buffered_items`.
+* Modified `tiledb_kv_open` to not take an attribute subselection, but instead take as input the 
+query type (similar to arrays). This makes the key-value store behave similarly to arrays,
+which means that the key-value store does not support interleaved reads/writes any more
+(an opened key-value store is used either for reads or writes, but not both).   
+* `tiledb_kv_close` does not flush the written items. Instead, `tiledb_kv_flush` must be
+invoked explicitly.
+
+### C++ API
+
+* Removed `Map::set_max_buffered_items`.
+* Modified `Map::Map` and `Map::open` to not take an attribute subselection, but instead take as input the 
+query type (similar to arrays). This makes the key-value store behave similarly to arrays,
+which means that the key-value store does not support interleaved reads/writes any more
+(an opened key-value store is used either for reads or writes, but not both).   
+* `Map::close` does not flush the written items. Instead, `Map::flush` must be
+invoked explicitly.
+
 # TileDB v1.3.2 Release Notes
 
 ## Bug fixes

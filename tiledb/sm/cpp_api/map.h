@@ -664,35 +664,22 @@ class Map {
    *
    * @param ctx TileDB context
    * @param uri URI of map to open.
-   * @param attributes If reading, the vector of attributes to read. If the
-   * vector is empty, read all attributes. If writing, must be an empty vector.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
    */
   Map(const Context& ctx,
       const std::string& uri,
-      const std::vector<std::string>& attributes = std::vector<std::string>())
+      tiledb_query_type_t query_type)
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
       , uri_(uri) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
-
-    if (attributes.empty()) {
-      ctx.handle_error(tiledb_kv_open(ctx, kv, nullptr, 0));
-    } else {
-      auto attribute_num = (unsigned)attributes.size();
-      const char** c_attributes = new const char*[attribute_num];
-      for (unsigned i = 0; i < attribute_num; ++i)
-        c_attributes[i] = attributes[i].c_str();
-      auto rc = tiledb_kv_open(ctx, kv, c_attributes, attribute_num);
-      delete[] c_attributes;
-      ctx.handle_error(rc);
-    }
+    ctx.handle_error(tiledb_kv_open(ctx, kv, query_type));
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
-
-    is_closed_ = false;
   }
 
   Map(const Map&) = default;
@@ -835,17 +822,6 @@ class Map {
     return *this;
   }
 
-  /**
-   * Sets the maximum number of items to buffer in memory before flushing to
-   * storage.
-   *
-   * @param num Max number of item to buffer
-   */
-  void set_max_buffered_items(uint64_t num) {
-    auto& ctx = context();
-    ctx.handle_error(tiledb_kv_set_max_buffered_items(ctx, kv_.get(), num));
-  }
-
   /** Flush any buffered items to storage. **/
   void flush() {
     auto& ctx = context();
@@ -870,29 +846,14 @@ class Map {
   /**
    * Opens the Map, preparing it for reading/writing. This is called
    * automatically by the constructor.
-   *
-   * @param attributes If reading, the vector of attributes to read. If the
-   * vector is empty, read all attributes. If writing, must be an empty vector.
    */
-  void open(
-      const std::vector<std::string>& attributes = std::vector<std::string>()) {
+  void open(tiledb_query_type_t query_type) {
     auto& ctx = context();
-    if (attributes.empty()) {
-      ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), nullptr, 0));
-    } else {
-      auto attribute_num = (unsigned)attributes.size();
-      const char** c_attributes = new const char*[attribute_num];
-      for (unsigned i = 0; i < attribute_num; ++i)
-        c_attributes[i] = attributes[i].c_str();
-      auto rc = tiledb_kv_open(ctx, kv_.get(), c_attributes, attribute_num);
-      delete[] c_attributes;
-      ctx.handle_error(rc);
-    }
+    ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), query_type));
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
-    is_closed_ = false;
   }
 
   /**
@@ -923,7 +884,6 @@ class Map {
   void close() {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
-    is_closed_ = true;
   }
 
   /** Returns a shared pointer to the C TileDB kv object. */
@@ -979,7 +939,7 @@ class Map {
    * map[1] = "12";
    * Map::create(ctx, "map_name", map, "attr");
    * // Load map and read items
-   * Map map2(ctx, "map_name");
+   * Map map2(ctx, "map_name", TILEDB_READ);
    * auto a = map2[0]["attr"].get<std::string>(); // "0"
    * auto b = map2[1]["attr"].get<std::string>(); // "12"
    * @endcode
@@ -1005,10 +965,11 @@ class Map {
     auto a = Attribute::create<Value>(ctx, attr_name);
     schema.add_attribute(a);
     create(uri, schema);
-    Map m(ctx, uri);
+    Map m(ctx, uri, TILEDB_WRITE);
     for (const auto& p : map) {
       m[p.first][attr_name] = p.second;
     }
+    m.flush();
     m.close();
   }
 
@@ -1031,9 +992,6 @@ class Map {
 
   /** Schema of the map. **/
   MapSchema schema_;
-
-  /** True if the map is closed. */
-  bool is_closed_;
 
   /** ptr to underlying TileDB object. **/
   std::shared_ptr<tiledb_kv_t> kv_;
