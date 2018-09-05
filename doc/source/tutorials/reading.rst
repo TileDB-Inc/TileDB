@@ -1,3 +1,5 @@
+.. _reading:
+
 Reading Arrays
 ==============
 
@@ -419,6 +421,8 @@ are depicted in grey).
 .. figure:: ../figures/non_empty_domain.png
    :align: center
    :scale: 40 %
+
+.. _incomplete_queries:
 
 Incomplete queries
 ------------------
