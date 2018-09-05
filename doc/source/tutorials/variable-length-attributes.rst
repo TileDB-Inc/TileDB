@@ -177,6 +177,20 @@ contain ``0, 8, 12, 16, 24, 32`` (see figure above).
         query.submit();
         array.close();
 
+.. warning::
+
+  For the case of variable-length attributes, you should always use the
+  auxialiary ``max_buffer_elements`` function to calculate the
+  appropriate buffer sizes that will hold the result, even if you
+  know the result size a priori. This is because TileDB **may overestimate**
+  the buffer sizes needed and, hence, process a **part of the query**
+  upon ``query.submit()``, yielding an incomplete status (checked
+  with ``query.query_status()``). For more information about incomplete
+  queries, see :ref:`incomplete_queries`. Allocating buffers using the sizes output by
+  ``max_buffer_elements`` guarantees that the query will be completed
+  and the whole result will be returned.
+
+
 Perhaps the most cumbersome task is parsing the cell values given the
 data and offset buffers. Here is what we do for the strings of ``a1``.
 We first calculate the string sizes using the offsets buffer. Then,
