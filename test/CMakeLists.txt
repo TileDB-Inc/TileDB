@@ -84,6 +84,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-map.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-type.cc
+    src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
   )
 endif()

@@ -1402,8 +1402,11 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
-        if (!array_schema->var_size(it.first))
+        if (array_schema->var_size(it.first)) {
+          it.second.first = cell_num * constants::cell_var_offset_size;
+        } else {
           it.second.first = cell_num * array_schema->cell_size(it.first);
+        }
       }
     }
   }
