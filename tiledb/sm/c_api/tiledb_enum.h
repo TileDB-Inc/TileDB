@@ -171,6 +171,8 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZSTD),
     /** Bit width reduction filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION),
+    /** Bitshuffle filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE),
     /** Positive-delta encoding filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA),
 #endif
