@@ -56,9 +56,13 @@ class Add1InPlace : public Filter {
       : Filter(FilterType::FILTER_NONE) {
   }
 
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
-    RETURN_NOT_OK(output->append_view(input, 0, input_size));
+    RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
 
     uint64_t nelts = input_size / sizeof(uint64_t);
@@ -68,12 +72,19 @@ class Add1InPlace : public Filter {
       output->advance_offset(sizeof(uint64_t));
     }
 
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+
     return Status::Ok();
   }
 
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
-    RETURN_NOT_OK(output->append_view(input, 0, input_size));
+    RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
 
     uint64_t nelts = input_size / sizeof(uint64_t);
@@ -82,6 +93,9 @@ class Add1InPlace : public Filter {
       *val -= 1;
       output->advance_offset(sizeof(uint64_t));
     }
+
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
 
     return Status::Ok();
   }
@@ -102,7 +116,11 @@ class Add1OutOfPlace : public Filter {
       : Filter(FilterType::FILTER_NONE) {
   }
 
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -125,10 +143,17 @@ class Add1OutOfPlace : public Filter {
       RETURN_NOT_OK(output->write(&byte, sizeof(char)));
     }
 
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+
     return Status::Ok();
   }
 
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
     auto nelts = input->size() / sizeof(uint64_t);
 
@@ -150,6 +175,9 @@ class Add1OutOfPlace : public Filter {
       RETURN_NOT_OK(output->write(&byte, sizeof(char)));
     }
 
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+
     return Status::Ok();
   }
 
@@ -170,9 +198,13 @@ class AddNInPlace : public Filter {
     increment_ = 1;
   }
 
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
-    RETURN_NOT_OK(output->append_view(input, 0, input_size));
+    RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
 
     uint64_t nelts = input_size / sizeof(uint64_t);
@@ -182,12 +214,18 @@ class AddNInPlace : public Filter {
       output->advance_offset(sizeof(uint64_t));
     }
 
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
   }
 
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
-    RETURN_NOT_OK(output->append_view(input, 0, input_size));
+    RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
 
     uint64_t nelts = input_size / sizeof(uint64_t);
@@ -196,6 +234,9 @@ class AddNInPlace : public Filter {
       *val -= increment_;
       output->advance_offset(sizeof(uint64_t));
     }
+
+    // Metadata not modified by this filter.
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
 
     return Status::Ok();
   }
@@ -228,16 +269,22 @@ class PseudoChecksumFilter : public Filter {
   PseudoChecksumFilter()
       : Filter(FilterType::FILTER_NONE) {
   }
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
-    // The output will be the checksum value followed by the unmodified input,
-    // so we'll add a view of the input, and then prepend a buffer for the
+    // The input is unmodified by this filter.
+    RETURN_NOT_OK(output->append_view(input));
+
+    // Forward the existing metadata and prepend a metadata buffer for the
     // checksum.
-    RETURN_NOT_OK(output->append_view(input, 0, input_size));
-    RETURN_NOT_OK(output->prepend_buffer(sizeof(uint64_t)));
-    output->reset_offset();
+    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+    RETURN_NOT_OK(output_metadata->prepend_buffer(sizeof(uint64_t)));
+    output_metadata->reset_offset();
 
     uint64_t sum = 0;
     for (uint64_t i = 0; i < nelts; i++) {
@@ -246,16 +293,21 @@ class PseudoChecksumFilter : public Filter {
       sum += val;
     }
 
-    RETURN_NOT_OK(output->write(&sum, sizeof(uint64_t)));
+    RETURN_NOT_OK(output_metadata->write(&sum, sizeof(uint64_t)));
 
     return Status::Ok();
   }
 
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override {
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
     auto input_size = input->size();
+    auto nelts = input_size / sizeof(uint64_t);
+
     uint64_t input_sum;
-    RETURN_NOT_OK(input->read(&input_sum, sizeof(uint64_t)));
-    auto nelts = (input_size - sizeof(uint64_t)) / sizeof(uint64_t);
+    RETURN_NOT_OK(input_metadata->read(&input_sum, sizeof(uint64_t)));
 
     uint64_t sum = 0;
     for (uint64_t i = 0; i < nelts; i++) {
@@ -267,15 +319,141 @@ class PseudoChecksumFilter : public Filter {
     if (sum != input_sum)
       return Status::FilterError("Filter error; sum does not match.");
 
-    // The output is just a view on the input, skipping the checksum bytes.
-    RETURN_NOT_OK(output->append_view(
-        input, sizeof(uint64_t), input_size - sizeof(uint64_t)));
+    // The output metadata is just a view on the input metadata, skipping the
+    // checksum bytes.
+    RETURN_NOT_OK(output_metadata->append_view(
+        input_metadata,
+        sizeof(uint64_t),
+        input_metadata->size() - sizeof(uint64_t)));
+
+    // The output data is just a view on the unmodified input.
+    RETURN_NOT_OK(output->append_view(input));
 
     return Status::Ok();
   }
 
   PseudoChecksumFilter* clone_impl() const override {
     return new PseudoChecksumFilter();
+  }
+};
+
+/**
+ * Simple filter that increments every element of the input stream, writing the
+ * output to a new buffer. The input metadata is treated as a part of the input
+ * data.
+ */
+class Add1IncludingMetadataFilter : public Filter {
+ public:
+  // Just use a dummy filter type
+  Add1IncludingMetadataFilter()
+      : Filter(FilterType::FILTER_NONE) {
+  }
+
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
+    auto input_size = static_cast<uint32_t>(input->size()),
+         input_md_size = static_cast<uint32_t>(input_metadata->size());
+    auto nelts = input_size / sizeof(uint64_t),
+         md_nelts = input_md_size / sizeof(uint64_t);
+
+    // Add a new output buffer.
+    RETURN_NOT_OK(output->prepend_buffer(input_size + input_md_size))
+    output->reset_offset();
+
+    // Filter input data
+    for (uint64_t i = 0; i < nelts; i++) {
+      uint64_t inc;
+      RETURN_NOT_OK(input->read(&inc, sizeof(uint64_t)));
+      inc++;
+      RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
+    }
+    // Finish any remaining bytes to ensure no data loss.
+    auto rem = input_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output->write(&byte, sizeof(char)));
+    }
+
+    // Now filter input metadata.
+    for (uint64_t i = 0; i < md_nelts; i++) {
+      uint64_t inc;
+      RETURN_NOT_OK(input_metadata->read(&inc, sizeof(uint64_t)));
+      inc++;
+      RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
+    }
+    rem = input_md_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input_metadata->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output->write(&byte, sizeof(char)));
+    }
+
+    // Because this filter modifies the input metadata, we need output metadata
+    // that allows the original metadata to be reconstructed on reverse. Also
+    // note that contrary to most filters, we don't forward the input metadata.
+    RETURN_NOT_OK(output_metadata->prepend_buffer(2 * sizeof(uint32_t)));
+    RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
+    RETURN_NOT_OK(output_metadata->write(&input_md_size, sizeof(uint32_t)));
+
+    return Status::Ok();
+  }
+
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override {
+    if (input_metadata->size() != 2 * sizeof(uint32_t))
+      return Status::FilterError("Unexpected input metadata length");
+
+    uint32_t orig_input_size, orig_md_size;
+    RETURN_NOT_OK(input_metadata->read(&orig_input_size, sizeof(uint32_t)));
+    RETURN_NOT_OK(input_metadata->read(&orig_md_size, sizeof(uint32_t)));
+
+    // Add a new output buffer.
+    RETURN_NOT_OK(output->prepend_buffer(orig_input_size))
+    // Add a new output metadata buffer.
+    RETURN_NOT_OK(output_metadata->prepend_buffer(orig_md_size));
+
+    // Restore original data
+    auto nelts = orig_input_size / sizeof(uint64_t);
+    for (uint64_t i = 0; i < nelts; i++) {
+      uint64_t inc;
+      RETURN_NOT_OK(input->read(&inc, sizeof(uint64_t)));
+      inc--;
+      RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
+    }
+    auto rem = orig_input_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output->write(&byte, sizeof(char)));
+    }
+
+    // Restore original metadata
+    nelts = orig_md_size / sizeof(uint64_t);
+    for (uint64_t i = 0; i < nelts; i++) {
+      uint64_t inc;
+      RETURN_NOT_OK(input->read(&inc, sizeof(uint64_t)));
+      inc--;
+      RETURN_NOT_OK(output_metadata->write(&inc, sizeof(uint64_t)));
+    }
+    rem = orig_md_size % sizeof(uint64_t);
+    for (unsigned i = 0; i < rem; i++) {
+      char byte;
+      RETURN_NOT_OK(input->read(&byte, sizeof(char)));
+      RETURN_NOT_OK(output_metadata->write(&byte, sizeof(char)));
+    }
+
+    return Status::Ok();
+  }
+
+  Add1IncludingMetadataFilter* clone_impl() const override {
+    return new Add1IncludingMetadataFilter;
   }
 };
 
@@ -295,7 +473,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   // Check new size and number of chunks
   CHECK(
       buff.size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
   buff.reset_offset();
   CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
   buff.advance_offset(sizeof(uint64_t));
@@ -306,6 +484,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
   CHECK(
       buff.value<uint32_t>() ==
       nelts * sizeof(uint64_t));  // First chunk filtered size
+  buff.advance_offset(sizeof(uint32_t));
+  CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
   buff.advance_offset(sizeof(uint32_t));
 
   // Check all elements unchanged.
@@ -348,7 +528,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(tile.data() != original_alloc);
     CHECK(
         buff.size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -359,6 +539,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(
         buff.value<uint32_t>() ==
         nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
     // Check all elements incremented.
@@ -385,7 +567,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(tile.buffer() == &buff);
     CHECK(
         buff.size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -396,6 +578,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
     CHECK(
         buff.value<uint32_t>() ==
         nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
     // Check all elements incremented.
@@ -433,7 +617,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(tile.buffer() == &buff);
     CHECK(
         buff.size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -444,6 +628,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(
         buff.value<uint32_t>() ==
         nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
     // Check all elements incremented.
@@ -470,7 +656,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(tile.buffer() == &buff);
     CHECK(
         buff.size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -481,6 +667,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
     CHECK(
         buff.value<uint32_t>() ==
         nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
     // Check all elements incremented.
@@ -519,7 +707,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   CHECK(tile.buffer() == &buff);
   CHECK(
       buff.size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 2 * sizeof(uint32_t));
+      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
   buff.reset_offset();
   CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
   buff.advance_offset(sizeof(uint64_t));
@@ -530,6 +718,8 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
   CHECK(
       buff.value<uint32_t>() ==
       nelts * sizeof(uint64_t));  // First chunk filtered size
+  buff.advance_offset(sizeof(uint32_t));
+  CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
   buff.advance_offset(sizeof(uint32_t));
 
   // Check all elements incremented.
@@ -655,7 +845,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(tile.buffer() == &buff);
     CHECK(
         buff.size() == nelts * sizeof(uint64_t) + sizeof(uint64_t) +
-                           sizeof(uint64_t) + 2 * sizeof(uint32_t));
+                           sizeof(uint64_t) + 3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -665,8 +855,11 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     buff.advance_offset(sizeof(uint32_t));
     CHECK(
         buff.value<uint32_t>() ==
-        nelts * sizeof(uint64_t) +
-            sizeof(uint64_t));  // First chunk filtered size
+        nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(
+        buff.value<uint32_t>() ==
+        sizeof(uint64_t));  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
     // Checksum
@@ -694,7 +887,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(pipeline.run_forward(&tile).ok());
 
     // Compute the second (final) checksum value.
-    uint64_t expected_checksum_2 = expected_checksum + 2;
+    uint64_t expected_checksum_2 = 0;
     for (uint64_t i = 0; i < nelts; i++)
       expected_checksum_2 += i + 2;
 
@@ -703,7 +896,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     CHECK(
         buff.size() == nelts * sizeof(uint64_t) + sizeof(uint64_t) +
                            sizeof(uint64_t) + sizeof(uint64_t) +
-                           2 * sizeof(uint32_t));
+                           3 * sizeof(uint32_t));
     buff.reset_offset();
     CHECK(buff.value<uint64_t>() == 1);  // Number of chunks
     buff.advance_offset(sizeof(uint64_t));
@@ -713,16 +906,19 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
     buff.advance_offset(sizeof(uint32_t));
     CHECK(
         buff.value<uint32_t>() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) +
-            sizeof(uint64_t));  // First chunk filtered size
+        nelts * sizeof(uint64_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));
+    CHECK(
+        buff.value<uint32_t>() ==
+        2 * sizeof(uint64_t));  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
-    // Checksum
+    // Outer checksum
     CHECK(buff.value<uint64_t>() == expected_checksum_2);
     buff.advance_offset(sizeof(uint64_t));
 
-    // Inner checksum (which was modified by the later Add1 filters).
-    CHECK(buff.value<uint64_t>() == expected_checksum + 2);
+    // Inner checksum
+    CHECK(buff.value<uint64_t>() == expected_checksum);
     buff.advance_offset(sizeof(uint64_t));
 
     // Check all elements are correct.
@@ -776,6 +972,8 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
   CHECK(
       buff.value<uint32_t>() ==
       nelts * sizeof(uint64_t));  // First chunk filtered size
+  buff.advance_offset(sizeof(uint32_t));
+  CHECK(buff.value<uint32_t>() == 0);  // First chunk metadata size
   buff.advance_offset(sizeof(uint32_t));
 
   // Check all elements incremented.
@@ -832,8 +1030,10 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
   buff.advance_offset(sizeof(uint32_t));
   CHECK(
       buff.value<uint32_t>() ==
-      nelts * sizeof(uint64_t) +
-          sizeof(uint64_t));  // First chunk filtered size
+      nelts * sizeof(uint64_t));  // First chunk filtered size
+  buff.advance_offset(sizeof(uint32_t));
+  CHECK(
+      buff.value<uint32_t>() == sizeof(uint64_t));  // First chunk metadata size
   buff.advance_offset(sizeof(uint32_t));
 
   // Checksum
@@ -866,6 +1066,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
   std::vector<std::function<Filter*(void)>> constructors = {
       []() { return new Add1InPlace(); },
       []() { return new Add1OutOfPlace(); },
+      []() { return new Add1IncludingMetadataFilter(); },
       []() { return new BitWidthReductionFilter(); },
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); }};
@@ -919,6 +1120,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     buff.advance_offset(sizeof(uint64_t));  // Number of chunks
     buff.advance_offset(sizeof(uint32_t));  // First chunk orig size
     buff.advance_offset(sizeof(uint32_t));  // First chunk filtered size
+    buff.advance_offset(sizeof(uint32_t));  // First chunk metadata size
 
     CHECK(
         buff.value<uint32_t>() == nelts * sizeof(uint64_t));  // Original length

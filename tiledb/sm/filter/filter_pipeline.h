@@ -34,6 +34,7 @@
 #define TILEDB_FILTER_PIPELINE_H
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 #include <memory>
@@ -137,22 +138,25 @@ class FilterPipeline {
    * passing through the pipeline is, regardless of the specific filters:
    *
    *   number_of_chunks (uint64_t)
-   *   chunk0 (uint8_t[])
-   *   chunk1 (uint8_t[])
+   *   chunk0
+   *   chunk1
    *   ...
-   *   chunkN (uint8_t[])
+   *   chunkN
    *
    * Each chunk can be a different size. The byte layout of a chunk is:
    *
    *   chunk_orig_length (uint32_t)
    *   chunk_filtered_length (uint32_t)
-   *   chunk_data (uint8_t[])
+   *   chunk_metadata_length (uint32_t)
+   *   chunk_metadata (uint8_t[])
+   *   chunk_filtered_data (uint8_t[])
    *
    * The chunk_orig_length value indicates the original unfiltered chunk
    * length, i.e. the length the chunk will be after it has passed through the
-   * pipeline in reverse. The chunk_data contains the filtered chunk data, of
-   * chunk_filtered_length bytes, which is the chunk after it has passed through
-   * the entire pipeline.
+   * pipeline in reverse. The chunk_filtered_data contains the filtered chunk
+   * data, of chunk_filtered_length bytes, which is the chunk after it has
+   * passed through the entire pipeline. The chunk_metadata contains any
+   * metadata that was added by the filters in the pipeline (may be empty).
    *
    * Each filter in the pipeline transforms the chunk_data bytes
    * arbitrarily. Each filter knows how to interpret the blob of bytes given to
@@ -176,13 +180,19 @@ class FilterPipeline {
    *   number_of_chunks (uint64_t)
    *   chunk0_orig_len (uint32_t)
    *   chunk0_data_len (uint32_t)
+   *   chunk0_metadata_len (uint32_t)
+   *   chunk0_metadata (uint8_t[])
    *   chunk0_data (uint8_t[])
    *   chunk1_orig_len (uint32_t)
    *   chunk1_data_len (uint32_t)
+   *   chunk1_metadata_len (uint32_t)
+   *   chunk1_metadata (uint8_t[])
    *   chunk1_data (uint8_t[])
    *   ...
    *   chunkN_orig_len (uint32_t)
    *   chunkN_data_len (uint32_t)
+   *   chunkN_metadata_len (uint32_t)
+   *   chunkN_metadata (uint8_t[])
    *   chunkN_data (uint8_t[])
    *
    * And modifies the Tile's buffer to contain the unfiltered byte array:
@@ -215,6 +225,9 @@ class FilterPipeline {
   void swap(FilterPipeline& other);
 
  private:
+  /** A pair of FilterBuffers. */
+  typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
+
   /** The ordered list of filters comprising the pipeline. */
   std::vector<std::unique_ptr<Filter>> filters_;
 
@@ -252,12 +265,13 @@ class FilterPipeline {
    * Run the given list of chunks in reverse through the pipeline.
    *
    * @param chunks Chunks to process. Format is
-   *    (data ptr, filtered size, original size).
+   *    (data ptr, filtered size, original size, metadata size).
    * @param output Buffer where output of last stage will be written.
    * @return Status
    */
   Status filter_chunks_reverse(
-      const std::vector<std::tuple<void*, uint32_t, uint32_t>>& chunks,
+      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>&
+          chunks,
       Buffer* output) const;
 };
 

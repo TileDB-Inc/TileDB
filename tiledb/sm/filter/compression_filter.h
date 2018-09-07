@@ -42,19 +42,31 @@ namespace tiledb {
 namespace sm {
 
 /**
- * A filter that compresses/decompresses its input data. The input to a filter
- * may come in multiple contiguous buffers. Each input buffer is termed a
- * "part", and is compressed separately by this filter.
+ * A filter that compresses/decompresses its input data. The FilterBuffer input
+ * to a filter may contain multiple buffers. Each input buffer is termed a
+ * "part", and is compressed separately by this filter. Input metadata is
+ * compressed as well.
  *
- * The forward (compress) output format is:
- *   uint32_t - Number of parts
- *   part0
+ * The forward (compress) output metadata has the format:
+ *   uint32_t - Number of compressed metadata parts
+ *   uint32_t - Number of compressed data parts
+ *   metadata_part0
  *   ...
- *   partN
- * Each 'part' is separately compressed, with byte format:
- *   uint32_t - Uncompressed part length
- *   uint32_t - Compressed part length
- *   uint8_t[] - Array of compressed bytes
+ *   metadata_partN
+ *   data_part0
+ *   ...
+ *   data_partN
+ * Where each metadata_part/data_part has the format:
+ *   uint32_t - part uncompressed length
+ *   uint32_t - part compressed length
+ *
+ * The forward output data format is just the concatenated compressed bytes:
+ *   uint8_t[] - metadata_part0's array of compressed bytes
+ *   ...
+ *   uint8_t[] - metadata_partN's array of compressed bytes
+ *   uint8_t[] - data_part0's array of compressed bytes
+ *   ...
+ *   uint8_t[] - data_partN's array of compressed bytes
  *
  * The reverse (decompress) output format is simply:
  *   uint8_t[] - Array of uncompressed bytes
@@ -86,12 +98,20 @@ class CompressionFilter : public Filter {
   /**
    * Compress the given input into the given output.
    */
-  Status run_forward(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_forward(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
   /**
    * Decompress the given input into the given output.
    */
-  Status run_reverse(FilterBuffer* input, FilterBuffer* output) const override;
+  Status run_reverse(
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const override;
 
   /** Set the compressor used by this filter instance. */
   void set_compressor(Compressor compressor);
@@ -110,7 +130,8 @@ class CompressionFilter : public Filter {
   CompressionFilter* clone_impl() const override;
 
   /** Helper function to compress a single contiguous buffer (part). */
-  Status compress_part(ConstBuffer* part, Buffer* output) const;
+  Status compress_part(
+      ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const;
 
   /** Return the FilterType corresponding to the given Compressor. */
   static FilterType compressor_to_filter(Compressor compressor);
@@ -119,7 +140,8 @@ class CompressionFilter : public Filter {
    * Helper function to decompress a single contiguous buffer (part), appending
    * onto the single output buffer.
    */
-  Status decompress_part(FilterBuffer* input, Buffer* output) const;
+  Status decompress_part(
+      FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const;
 
   /** Deserializes this filter's metadata from the given buffer. */
   Status deserialize_impl(ConstBuffer* buff) override;

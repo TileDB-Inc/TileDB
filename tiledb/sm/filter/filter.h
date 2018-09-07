@@ -92,34 +92,44 @@ class Filter {
   /**
    * Runs this filter in the "forward" direction (i.e. during write queries).
    *
-   * Note: the input buffer should not be modified directly. The only reason it
+   * Note: the input buffers should not be modified directly. The only reason it
    * is not a const pointer is to allow its offset field to be modified while
    * reading from it.
    *
    * Implemented by filter subclass.
    *
+   * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
+   * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
    */
   virtual Status run_forward(
-      FilterBuffer* input, FilterBuffer* output) const = 0;
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const = 0;
 
   /**
    * Runs this filter in the "reverse" direction (i.e. during read queries).
    *
-   * Note: the input buffer should not be modified directly. The only reason it
+   * Note: the input buffers should not be modified directly. The only reason it
    * is not a const pointer is to allow its offset field to be modified while
    * reading from it.
    *
    * Implemented by filter subclass.
    *
+   * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
+   * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
    */
   virtual Status run_reverse(
-      FilterBuffer* input, FilterBuffer* output) const = 0;
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const = 0;
 
   /**
    * Sets an option on this filter.

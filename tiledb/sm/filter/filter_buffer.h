@@ -83,6 +83,20 @@ class FilterBuffer {
       const FilterBuffer* other, uint64_t offset, uint64_t nbytes);
 
   /**
+   * Append a new buffer "view" to the end of the ordered list of buffers and
+   * reset the offset.
+   *
+   * A buffer "view" is just a pointer into an existing buffer and associated
+   * length. No bytes are copied by this function, but the underlying bytes
+   * behind the view are treated as a part of this FilterBuffer for reads and
+   * writes.
+   *
+   * @param other Buffer to "view" into
+   * @return Status
+   */
+  Status append_view(const FilterBuffer* other);
+
+  /**
    * Return a list of ConstBuffers representing the multiple separate buffers
    * making up this FilterBuffer.
    */

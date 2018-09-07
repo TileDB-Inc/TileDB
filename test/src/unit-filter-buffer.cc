@@ -425,7 +425,7 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
     // Error prepending again
     CHECK(!fbuf.prepend_buffer(0).ok());
     // Error append after prepend
-    CHECK(!fbuf.append_view(&fbuf, 0, 0).ok());
+    CHECK(!fbuf.append_view(&fbuf, 0, 1).ok());
 
     // Prepend allowed after clear.
     CHECK(fbuf.clear().ok());
@@ -466,6 +466,51 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter], [filter-buffer]") {
   SECTION("- Append too large view") {
     CHECK(!fbuf.append_view(&fbuf, 0, nelts * sizeof(unsigned) + 1).ok());
   }
+}
+
+TEST_CASE(
+    "FilterBuffer: Test copy with reinterpret type",
+    "[filter], [filter-buffer]") {
+  FilterStorage storage;
+  FilterBuffer fbuf(&storage), fbuf2(&storage);
+
+  // Prepare some uint32 data in two separate buffers
+  const uint32_t a = 100, b = 101, c = 102, d = 200, e = 201, f = 202;
+  CHECK(fbuf.prepend_buffer(3 * sizeof(uint32_t)).ok());
+  CHECK(fbuf.prepend_buffer(3 * sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&a, sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&b, sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&c, sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&d, sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&e, sizeof(uint32_t)).ok());
+  CHECK(fbuf.write(&f, sizeof(uint32_t)).ok());
+
+  // Write the data as uint64s to another buffer
+  CHECK(fbuf2.prepend_buffer(3 * sizeof(uint64_t)).ok());
+  fbuf.reset_offset();
+  uint64_t u;
+  CHECK(fbuf.read(&u, sizeof(uint64_t)).ok());
+  CHECK(fbuf2.write(&u, sizeof(uint64_t)).ok());
+  CHECK(fbuf.read(&u, sizeof(uint64_t)).ok());
+  CHECK(fbuf2.write(&u, sizeof(uint64_t)).ok());
+  CHECK(fbuf.read(&u, sizeof(uint64_t)).ok());
+  CHECK(fbuf2.write(&u, sizeof(uint64_t)).ok());
+
+  // Read back as uint32 and assert equivalence.
+  uint32_t aa;
+  fbuf2.reset_offset();
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == a);
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == b);
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == c);
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == d);
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == e);
+  CHECK(fbuf2.read(&aa, sizeof(uint32_t)).ok());
+  CHECK(aa == f);
 }
 
 TEST_CASE("FilterBuffer: Test read-only", "[filter], [filter-buffer]") {
