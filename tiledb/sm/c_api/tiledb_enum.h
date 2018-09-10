@@ -171,6 +171,8 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZSTD),
     /** Bit width reduction filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION),
+    /** Positive-delta encoding filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA),
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM
@@ -178,6 +180,8 @@
     TILEDB_FILTER_OPTION_ENUM(COMPRESSION_LEVEL),
     /** Max window length for bit width reduction. Type: `uint32_t`. */
     TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW),
+    /** Max window length for positive-delta encoding. Type: `uint32_t`. */
+    TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW),
 #endif
 
 #ifdef TILEDB_QUERY_STATUS_ENUM

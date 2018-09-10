@@ -34,6 +34,7 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
+#include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/logger.h"
 
 namespace tiledb {
@@ -71,6 +72,8 @@ Filter* Filter::create(FilterType type) {
       return new (std::nothrow) CompressionFilter(type, -1);
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
       return new (std::nothrow) BitWidthReductionFilter();
+    case FilterType::FILTER_POSITIVE_DELTA:
+      return new (std::nothrow) PositiveDeltaFilter();
     default:
       assert(false);
       return nullptr;

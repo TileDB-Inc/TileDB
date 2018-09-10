@@ -36,6 +36,7 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <catch.hpp>
@@ -1062,7 +1063,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
-  // List of potential filters to use
+  // List of potential filters to use. All of these filters can occur anywhere
+  // in the pipeline.
   std::vector<std::function<Filter*(void)>> constructors = {
       []() { return new Add1InPlace(); },
       []() { return new Add1OutOfPlace(); },
@@ -1071,6 +1073,11 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); }};
 
+  // List of potential filters that must occur at the beginning of the pipeline.
+  std::vector<std::function<Filter*(void)>> constructors_first = {
+      // Pos-delta would (correctly) return error after e.g. compression.
+      []() { return new PositiveDeltaFilter(); }};
+
   for (int i = 0; i < 100; i++) {
     // Construct a random pipeline
     FilterPipeline pipeline;
@@ -1078,16 +1085,23 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
     std::random_device rd;
     auto pipeline_seed = rd();
     std::mt19937 gen(pipeline_seed);
-    std::uniform_int_distribution<> rng1(0, max_num_filters),
-        rng2(0, (int)(constructors.size() - 1));
+    std::uniform_int_distribution<> rng_num_filters(0, max_num_filters),
+        rng_bool(0, 1), rng_constructors(0, (int)(constructors.size() - 1)),
+        rng_constructors_first(0, (int)(constructors_first.size() - 1));
 
     INFO("Random pipeline seed: " << pipeline_seed);
 
-    unsigned num_filters = (unsigned)rng1(gen);
-    for (unsigned i = 0; i < num_filters; i++) {
-      unsigned idx = (unsigned)rng2(gen);
-      Filter* filter = constructors[idx]();
-      CHECK(pipeline.add_filter(*filter).ok());
+    auto num_filters = (unsigned)rng_num_filters(gen);
+    for (unsigned j = 0; j < num_filters; j++) {
+      if (j == 0 && rng_bool(gen) == 1) {
+        auto idx = (unsigned)rng_constructors_first(gen);
+        Filter* filter = constructors_first[idx]();
+        CHECK(pipeline.add_filter(*filter).ok());
+      } else {
+        auto idx = (unsigned)rng_constructors(gen);
+        Filter* filter = constructors[idx]();
+        CHECK(pipeline.add_filter(*filter).ok());
+      }
     }
 
     // End result should always be the same as the input.
@@ -1212,5 +1226,83 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     for (uint64_t i = 0; i < nelts; i++)
       CHECK(
           tile.buffer()->value<int32_t>(i * sizeof(int32_t)) == rng(gen_copy));
+  }
+}
+
+TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
+  // Set up test data
+  const uint64_t nelts = 1000;
+  Buffer buff;
+  for (uint64_t i = 0; i < nelts; i++)
+    CHECK(buff.write(&i, sizeof(uint64_t)).ok());
+  CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+  FilterPipeline pipeline;
+  CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
+
+  SECTION("- Single stage") {
+    CHECK(pipeline.run_forward(&tile).ok());
+
+    auto pipeline_metadata_size = sizeof(uint64_t) + 3 * sizeof(uint32_t);
+
+    buff.reset_offset();
+    buff.advance_offset(sizeof(uint64_t));  // Number of chunks
+    buff.advance_offset(sizeof(uint32_t));  // First chunk orig size
+    buff.advance_offset(sizeof(uint32_t));  // First chunk filtered size
+    auto filter_metadata_size =
+        buff.value<uint32_t>();  // First chunk metadata size
+    buff.advance_offset(sizeof(uint32_t));
+
+    CHECK(
+        buff.value<uint32_t>() == nelts * sizeof(uint64_t));  // Original length
+    buff.advance_offset(sizeof(uint32_t));
+
+    auto max_win_size =
+        pipeline.get_filter<PositiveDeltaFilter>()->max_window_size();
+    auto expected_num_win =
+        (nelts * sizeof(uint64_t)) / max_win_size +
+        uint32_t(bool((nelts * sizeof(uint64_t)) % max_win_size));
+    CHECK(buff.value<uint32_t>() == expected_num_win);  // Number of windows
+
+    // Check encoded size
+    auto encoded_size = buff.size();
+    CHECK(
+        encoded_size == pipeline_metadata_size + filter_metadata_size +
+                            nelts * sizeof(uint64_t));
+
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer() == &buff);
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+  }
+
+  SECTION("- Window sizes") {
+    std::vector<uint32_t> window_sizes = {
+        32, 64, 128, 256, 437, 512, 1024, 2000};
+    for (auto window_size : window_sizes) {
+      pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
+          window_size);
+
+      CHECK(pipeline.run_forward(&tile).ok());
+      CHECK(pipeline.run_reverse(&tile).ok());
+      CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+      tile.buffer()->reset_offset();
+      for (uint64_t i = 0; i < nelts; i++)
+        CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+    }
+  }
+
+  SECTION("- Error on non-positive delta data") {
+    buff.reset_offset();
+    for (uint64_t i = 0; i < nelts; i++) {
+      auto val = nelts - i;
+      CHECK(buff.write(&val, sizeof(uint64_t)).ok());
+    }
+
+    CHECK(!pipeline.run_forward(&tile).ok());
   }
 }
