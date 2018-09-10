@@ -64,8 +64,10 @@ static inline uint8_t bits_required(T value, std::true_type) {
 template <typename T>
 static inline uint8_t bits_required(T value, std::false_type) {
   uint8_t bits = 0;
-  while (value >>= 1)
+  while (value > 0) {
     bits++;
+    value >>= 1;
+  }
   return bits;
 }
 
