@@ -1227,6 +1227,24 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
       CHECK(
           tile.buffer()->value<int32_t>(i * sizeof(int32_t)) == rng(gen_copy));
   }
+
+  SECTION("- Byte overflow") {
+    Buffer buff;
+    for (uint64_t i = 0; i < nelts; i++) {
+      uint64_t val = i % 257;
+      CHECK(buff.write(&val, sizeof(uint64_t)).ok());
+    }
+    CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+    Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+    CHECK(pipeline.run_forward(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i % 257);
+  }
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
