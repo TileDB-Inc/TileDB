@@ -78,11 +78,11 @@ Status KVIter::here(KVItem** kv_item) const {
 }
 
 Status KVIter::init(KV* kv) {
-  // Error if kv is dirty
-  if (kv->dirty())
+  // Error if kv is opened in write mode
+  if (kv->query_type() != QueryType::READ)
     return LOG_STATUS(
         Status::KVIterError("Cannot initialize kv iterator; The input kv is "
-                            "dirty - consider flushing the kv"));
+                            "not opened for reads"));
 
   kv_ = kv;
   max_item_num_ = kv->capacity();
@@ -94,7 +94,7 @@ Status KVIter::init(KV* kv) {
   coords_buffer_alloced_size_ = 2 * max_item_num_ * sizeof(uint64_t);
 
   RETURN_NOT_OK(storage_manager_->query_create(
-      &query_, kv_->open_array_for_reads(), kv->snapshot()));
+      &query_, kv_->open_array(), kv->snapshot()));
 
   RETURN_NOT_OK(submit_read_query());
 

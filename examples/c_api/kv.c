@@ -41,7 +41,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* kv_name = "map";
+const char* kv_name = "kv";
 
 void create_kv() {
   // Create TileDB context
@@ -114,14 +114,15 @@ void write_kv() {
   // Open the key-value store
   tiledb_kv_t* kv;
   tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, NULL, 0);
-  tiledb_kv_set_max_buffered_items(ctx, kv, 2);
+  tiledb_kv_open(ctx, kv, TILEDB_WRITE);
 
   tiledb_kv_add_item(ctx, kv, kv_item1);
   tiledb_kv_add_item(ctx, kv, kv_item2);
-  tiledb_kv_add_item(ctx, kv, kv_item3);
-
   tiledb_kv_flush(ctx, kv);
+
+  tiledb_kv_add_item(ctx, kv, kv_item3);
+  tiledb_kv_flush(ctx, kv);
+
   tiledb_kv_close(ctx, kv);
 
   // Clean up
@@ -140,7 +141,7 @@ void read_kv() {
   // Open array for reading
   tiledb_kv_t* kv;
   tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, NULL, 0);
+  tiledb_kv_open(ctx, kv, TILEDB_READ);
 
   // Read first item
   const char* key1 = "key_1";
@@ -199,67 +200,6 @@ void read_kv() {
   tiledb_ctx_free(&ctx);
 }
 
-void read_kv_subselect() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-
-  // Open array for reading
-  const char* attributes = {"a1"};
-  tiledb_kv_t* kv;
-  tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, &attributes, 1);
-
-  // Read first item
-  const char* key1 = "key_1";
-  uint64_t key1_size = strlen(key1) + 1;
-  tiledb_kv_item_t* kv_item1 = NULL;
-  tiledb_kv_get_item(ctx, kv, key1, TILEDB_CHAR, key1_size, &kv_item1);
-  const void* key1_a1;
-  tiledb_datatype_t key1_a1_type;
-  uint64_t key1_a1_size;
-  tiledb_kv_item_get_value(
-      ctx, kv_item1, "a1", &key1_a1, &key1_a1_type, &key1_a1_size);
-
-  // Read second item
-  const char* key2 = "key_2";
-  uint64_t key2_size = strlen(key2) + 1;
-  tiledb_kv_item_t* kv_item2 = NULL;
-  tiledb_kv_get_item(ctx, kv, key2, TILEDB_CHAR, key2_size, &kv_item2);
-  const void* key2_a1;
-  tiledb_datatype_t key2_a1_type;
-  uint64_t key2_a1_size;
-  tiledb_kv_item_get_value(
-      ctx, kv_item2, "a1", &key2_a1, &key2_a1_type, &key2_a1_size);
-
-  // Read third item
-  const char* key3 = "key_3";
-  uint64_t key3_size = strlen(key3) + 1;
-  tiledb_kv_item_t* kv_item3 = NULL;
-  tiledb_kv_get_item(ctx, kv, key3, TILEDB_CHAR, key3_size, &kv_item3);
-  const void* key3_a1;
-  tiledb_datatype_t key3_a1_type;
-  uint64_t key3_a1_size;
-  tiledb_kv_item_get_value(
-      ctx, kv_item3, "a1", &key3_a1, &key3_a1_type, &key3_a1_size);
-
-  // Print results
-  printf("\nSubselecting over a1\n");
-  printf("key_1, a1: %d\n", *((int*)key1_a1));
-  printf("key_2, a1: %d\n", *((int*)key2_a1));
-  printf("key_3, a1: %d\n", *((int*)key3_a1));
-
-  // Close kv
-  tiledb_kv_close(ctx, kv);
-
-  // Clean up
-  tiledb_kv_free(&kv);
-  tiledb_kv_item_free(&kv_item1);
-  tiledb_kv_item_free(&kv_item2);
-  tiledb_kv_item_free(&kv_item3);
-  tiledb_ctx_free(&ctx);
-}
-
 void iter_kv() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
@@ -268,7 +208,7 @@ void iter_kv() {
   // Open array for reading
   tiledb_kv_t* kv;
   tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, NULL, 0);
+  tiledb_kv_open(ctx, kv, TILEDB_READ);
 
   // Create a kv iterator
   tiledb_kv_iter_t* kv_iter;
@@ -334,7 +274,6 @@ int main() {
   }
 
   read_kv();
-  read_kv_subselect();
   iter_kv();
 
   return 0;

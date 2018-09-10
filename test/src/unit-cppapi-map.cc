@@ -64,7 +64,7 @@ struct CPPMapFx {
 };
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
-  Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
   CHECK(!map.is_dirty());
 
   int simple_key = 10;
@@ -87,7 +87,7 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   CHECK(!map.is_dirty());
 
   map.close();
-  map.open();
+  map.open(TILEDB_READ);
 
   auto schema = map.schema();
   CHECK(schema.capacity() == 10);
@@ -102,11 +102,14 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   CHECK(std::get<2>(ret).size() == 2);
   CHECK(std::get<2>(ret)[0] == 3);
 
+  map.close();
+  map.open(TILEDB_WRITE);
+
   map[compound_key][{"a1", "a2", "a3"}] = my_cell_t(2, "aaa", {{4.2, 1}});
 
   map.flush();
   map.close();
-  map.open();
+  map.open(TILEDB_READ);
 
   CHECK(map.has_key(simple_key));
   CHECK(map.has_key(compound_key));
@@ -136,7 +139,7 @@ TEST_CASE_METHOD(
     CPPMapFx,
     "C++ API: Map Issue 606 segault in Reader::zero_out_buffer_sizes()",
     "[cppapi], [cppapi-map]") {
-  Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
 
   int simple_key = 1;
 
@@ -146,23 +149,19 @@ TEST_CASE_METHOD(
   i1["a2"] = std::string("someval");
   i1["a3"] = std::array<double, 2>({{3, 2.4}});
 
-  // Get item from map, at this point the map is empty, item should != good()
-  // This is where segfault was happening for issue #606
-  tiledb::MapItem test_get_item_by_key = map.get_item(simple_key);
-  CHECK(!test_get_item_by_key.good());
-
   // Add the item
   map.add_item(i1);
 
   // Flush and reopen
   map.flush();
   map.close();
-  map.open();
+
+  map.open(TILEDB_READ);
 
   CHECK(map.has_key(simple_key));
 
   // Validate item is now on map
-  test_get_item_by_key = map.get_item(simple_key);
+  tiledb::MapItem test_get_item_by_key = map.get_item(simple_key);
   CHECK(test_get_item_by_key.good());
   CHECK(test_get_item_by_key.get<int>("a1") == 1);
   CHECK(test_get_item_by_key.get<std::string>("a2") == "someval");
@@ -198,13 +197,13 @@ struct CPPMapFx1A {
 
 TEST_CASE_METHOD(
     CPPMapFx1A, "C++ API: Map, implicit attribute", "[cppapi], [cppapi-map]") {
-  Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
   map[10] = 1;
 
   // Flush and reopen
   map.flush();
   map.close();
-  map.open();
+  map.open(TILEDB_READ);
 
   assert(int(map[10]) == 1);
 
@@ -238,46 +237,20 @@ struct CPPMapFromMapFx {
 
 TEST_CASE_METHOD(
     CPPMapFromMapFx, "C++ API: Map from std::map", "[cppapi], [cppapi-map]") {
-  Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map", TILEDB_READ);
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
   map.close();
 
   // Check reopening
-  map.open();
+  map.open(TILEDB_READ);
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
 
   // Check opening without closing
-  REQUIRE_THROWS(map.open());
-  CHECK(map[0]["val"].get<std::string>() == "0");
-  CHECK(map[1]["val"].get<std::string>() == "12");
-  CHECK(map[2].get<std::string>() == "123");  // implicit
-  map.close();
-}
-
-TEST_CASE_METHOD(
-    CPPMapFromMapFx,
-    "C++ API: Map with explicit attributes",
-    "[cppapi], [cppapi-map]") {
-  std::vector<std::string> attributes = {std::string("val")};
-  Map map(ctx, "cpp_unit_map", attributes);
-  CHECK(map[0]["val"].get<std::string>() == "0");
-  CHECK(map[1]["val"].get<std::string>() == "12");
-  CHECK(map[2].get<std::string>() == "123");  // implicit
-  map.close();
-
-  // Check reopening
-  map.open(attributes);
-  map.reopen();
-  CHECK(map[0]["val"].get<std::string>() == "0");
-  CHECK(map[1]["val"].get<std::string>() == "12");
-  CHECK(map[2].get<std::string>() == "123");  // implicit
-
-  // Check opening without closing
-  REQUIRE_THROWS(map.open());
+  REQUIRE_THROWS(map.open(TILEDB_READ));
   CHECK(map[0]["val"].get<std::string>() == "0");
   CHECK(map[1]["val"].get<std::string>() == "12");
   CHECK(map[2].get<std::string>() == "123");  // implicit
@@ -286,11 +259,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPMapFromMapFx, "C++ API: Map iter", "[cppapi], [cppapi-map]") {
-  Map map(ctx, "cpp_unit_map");
+  Map map(ctx, "cpp_unit_map", TILEDB_READ);
 
   // Test closing and reopening
   map.close();
-  map.open();
+  map.open(TILEDB_READ);
 
   MapIter iter(map), end(map, true);
 

@@ -100,7 +100,7 @@ void write_kv() {
   // Open the key-value store
   tiledb_kv_t* kv;
   tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, NULL, 0);
+  tiledb_kv_open(ctx, kv, TILEDB_WRITE);
 
   // Add key-value items to key-value store
   tiledb_kv_add_item(ctx, kv, kv_item_1);
@@ -127,7 +127,7 @@ void read_kv() {
   // Open a key-value store
   tiledb_kv_t* kv;
   tiledb_kv_alloc(ctx, kv_name, &kv);
-  tiledb_kv_open(ctx, kv, NULL, 0);
+  tiledb_kv_open(ctx, kv, TILEDB_READ);
 
   // Read item #1
   const char* key_1 = "key_1";
