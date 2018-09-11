@@ -86,14 +86,13 @@ Status LRUCache::insert(
         "Cannot insert into cache; Object cannot be null"));
 
   // Lock mutex
-  mtx_.lock();
+  std::lock_guard<std::mutex> lock{mtx_};
 
   auto item_it = item_map_.find(key);
   bool exists = item_it != item_map_.end();
 
   if (exists && !overwrite) {
     std::free(object);
-    mtx_.unlock();
     return Status::Ok();
   }
 
@@ -130,11 +129,7 @@ Status LRUCache::insert(
     // Create new element in the hash table
     item_map_[key] = --(item_ll_.end());
   }
-
   size_ += size;
-
-  // Unlock mutex
-  mtx_.unlock();
 
   STATS_COUNTER_ADD(cache_lru_inserts, 1);
 
@@ -159,8 +154,8 @@ Status LRUCache::invalidate(const std::string& key, bool* success) {
   auto& node = item_it->second;
   item_ll_.splice(item_ll_.begin(), item_ll_, node);
   evict();
-
   *success = true;
+
   return Status::Ok();
 
   STATS_FUNC_OUT(cache_lru_invalidate);
@@ -174,12 +169,11 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   STATS_FUNC_IN(cache_lru_read);
 
   // Lock mutex
-  mtx_.lock();
+  std::lock_guard<std::mutex> lock{mtx_};
 
   // Find cached item
   auto item_it = item_map_.find(key);
   if (item_it == item_map_.end()) {
-    mtx_.unlock();
     *success = false;
     STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
@@ -193,12 +187,10 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   if (std::next(item) != item_ll_.end()) {
     item_ll_.splice(item_ll_.end(), item_ll_, item, std::next(item));
   }
-
-  // Unlock mutex
-  mtx_.unlock();
-
   *success = true;
+
   STATS_COUNTER_ADD(cache_lru_read_hits, 1);
+
   return Status::Ok();
 
   STATS_FUNC_OUT(cache_lru_read);
@@ -211,15 +203,12 @@ Status LRUCache::read(
     uint64_t nbytes,
     bool* success) {
   STATS_FUNC_IN(cache_lru_read_partial);
-
-  // Lock mutex
-  mtx_.lock();
+  std::lock_guard<std::mutex> lock{mtx_};
+  *success = false;
 
   // Find cached item
   auto item_it = item_map_.find(key);
   if (item_it == item_map_.end()) {
-    mtx_.unlock();
-    *success = false;
     STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
   }
@@ -227,7 +216,6 @@ Status LRUCache::read(
   // Copy from item object
   auto& item = item_it->second;
   if (item->size_ < offset + nbytes) {
-    mtx_.unlock();
     return LOG_STATUS(
         Status::LRUCacheError("Failed to read item; Byte range out of bounds"));
   }
@@ -237,12 +225,10 @@ Status LRUCache::read(
   if (std::next(item) != item_ll_.end()) {
     item_ll_.splice(item_ll_.end(), item_ll_, item, std::next(item));
   }
-
-  // Unlock mutex
-  mtx_.unlock();
-
   *success = true;
+
   STATS_COUNTER_ADD(cache_lru_read_hits, 1);
+
   return Status::Ok();
 
   STATS_FUNC_OUT(cache_lru_read_partial);
