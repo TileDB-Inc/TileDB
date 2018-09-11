@@ -129,23 +129,20 @@ Status StorageManager::array_open(
 
 Status StorageManager::array_reopen(OpenArray* open_array, uint64_t* snapshot) {
   // Lock mutex
-  open_array_for_reads_mtx_.lock();
+  {
+    std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
-  // Find the open array entry
-  auto array_uri = open_array->array_uri();
-  auto it = open_arrays_for_reads_.find(array_uri.to_string());
-  if (it == open_arrays_for_reads_.end()) {
-    open_array_for_reads_mtx_.unlock();
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot reopen array ") + array_uri.to_string() +
-        "; Array not open"));
+    // Find the open array entry
+    auto array_uri = open_array->array_uri();
+    auto it = open_arrays_for_reads_.find(array_uri.to_string());
+    if (it == open_arrays_for_reads_.end()) {
+      return LOG_STATUS(Status::StorageManagerError(
+          std::string("Cannot reopen array ") + array_uri.to_string() +
+          "; Array not open"));
+    }
+    // Lock the array
+    open_array->mtx_lock();
   }
-
-  // Lock the array
-  open_array->mtx_lock();
-
-  // Unlock mutex
-  open_array_for_reads_mtx_.unlock();
 
   *snapshot = open_array->next_snapshot();
 
@@ -407,34 +404,24 @@ Status StorageManager::array_create(
   }
 
   // Check if array exists
-  bool exists;
+  bool exists = false;
   RETURN_NOT_OK(is_array(array_uri, &exists));
   if (exists)
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot create array; Array '") + array_uri.c_str() +
         "' already exists"));
 
-  object_create_mtx_.lock();
-
+  std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
-  auto st = array_schema->check();
-  if (!st.ok()) {
-    object_create_mtx_.unlock();
-    return st;
-  }
+  RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
-  st = vfs_->create_dir(array_uri);
-  if (!st.ok()) {
-    object_create_mtx_.unlock();
-    return st;
-  }
+  RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Store array schema
-  st = store_array_schema(array_schema);
+  Status st = store_array_schema(array_schema);
   if (!st.ok()) {
     vfs_->remove_file(array_uri);
-    object_create_mtx_.unlock();
     return st;
   }
 
@@ -443,14 +430,9 @@ Status StorageManager::array_create(
   st = vfs_->touch(filelock_uri);
   if (!st.ok()) {
     vfs_->remove_file(array_uri);
-    object_create_mtx_.unlock();
     return st;
   }
-
-  object_create_mtx_.unlock();
-
-  // Success
-  return Status::Ok();
+  return st;
 }
 
 Status StorageManager::array_get_non_empty_domain(
@@ -684,23 +666,19 @@ Status StorageManager::group_create(const std::string& group) {
         std::string("Cannot create group; Group '") + uri.c_str() +
         "' already exists"));
 
-  object_create_mtx_.lock();
+  std::lock_guard<std::mutex> lock{object_create_mtx_};
 
   // Create group directory
-  RETURN_NOT_OK_ELSE(vfs_->create_dir(uri), object_create_mtx_.unlock());
+  RETURN_NOT_OK(vfs_->create_dir(uri));
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  auto st = vfs_->touch(group_filename);
+  Status st = vfs_->touch(group_filename);
   if (!st.ok()) {
     vfs_->remove_dir(uri);
-    object_create_mtx_.unlock();
     return st;
   }
-
-  object_create_mtx_.unlock();
-
-  return Status::Ok();
+  return st;
 }
 
 Status StorageManager::init(Config* config) {
@@ -1211,25 +1189,23 @@ Status StorageManager::store_array_schema(ArraySchema* array_schema) {
 
 Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
   // For thread-safety while loading fragment metadata
-  open_array_for_reads_mtx_.lock();
+  std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
-  bool is_dir;
+  bool is_dir = false;
   const URI& fragment_uri = metadata->fragment_uri();
-  RETURN_NOT_OK_ELSE(
-      vfs_->is_dir(fragment_uri, &is_dir), open_array_for_reads_mtx_.unlock());
+  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
   if (!is_dir) {
-    open_array_for_reads_mtx_.unlock();
     return Status::Ok();
   }
 
   // Serialize
   auto buff = new Buffer();
-  auto st = metadata->serialize(buff);
+  Status st = metadata->serialize(buff);
   if (!st.ok()) {
-    open_array_for_reads_mtx_.unlock();
     delete buff;
+    return st;
   }
 
   // Write to file
@@ -1245,15 +1221,13 @@ Status StorageManager::store_fragment_metadata(FragmentMetadata* metadata) {
 
   auto tile_io = new TileIO(this, fragment_metadata_uri);
   st = tile_io->write_generic(tile);
-  if (st.ok())
+  if (st.ok()) {
     st = close_file(fragment_metadata_uri);
+  }
 
   delete tile;
   delete tile_io;
   delete buff;
-
-  // Unlock the mutex
-  open_array_for_reads_mtx_.unlock();
 
   return st;
 }
@@ -1463,14 +1437,13 @@ void StorageManager::array_get_non_empty_domain(
 
 Status StorageManager::array_close_for_reads(const URI& array_uri) {
   // Lock mutex
-  open_array_for_reads_mtx_.lock();
+  std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
   // Find the open array entry
   auto it = open_arrays_for_reads_.find(array_uri.to_string());
 
   // Do nothing if array is closed
   if (it == open_arrays_for_reads_.end()) {
-    open_array_for_reads_mtx_.unlock();
     return Status::Ok();
   }
 
@@ -1487,10 +1460,8 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
     auto st = open_array->file_unlock(vfs_);
     if (!st.ok()) {
       open_array->mtx_unlock();
-      open_array_for_reads_mtx_.unlock();
       return st;
     }
-
     // Remove open array entry
     open_array->mtx_unlock();
     delete open_array;
@@ -1499,8 +1470,6 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
     open_array->mtx_unlock();
   }
 
-  // Unlock mutex and notify condition on exclusive locks
-  open_array_for_reads_mtx_.unlock();
   xlock_cv_.notify_all();
 
   return Status::Ok();
@@ -1508,14 +1477,13 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
 
 Status StorageManager::array_close_for_writes(const URI& array_uri) {
   // Lock mutex
-  open_array_for_writes_mtx_.lock();
+  std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
 
   // Find the open array entry
   auto it = open_arrays_for_writes_.find(array_uri.to_string());
 
   // Do nothing if array is closed
   if (it == open_arrays_for_writes_.end()) {
-    open_array_for_writes_mtx_.unlock();
     return Status::Ok();
   }
 
@@ -1535,9 +1503,6 @@ Status StorageManager::array_close_for_writes(const URI& array_uri) {
     open_array->mtx_unlock();
   }
 
-  // Unlock mutex
-  open_array_for_writes_mtx_.unlock();
-
   return Status::Ok();
 }
 
@@ -1556,23 +1521,21 @@ Status StorageManager::array_open_for_reads(
   }
 
   // Lock mutex
-  open_array_for_reads_mtx_.lock();
+  {
+    std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
-  // Find the open array entry
-  auto it = open_arrays_for_reads_.find(array_uri.to_string());
-  if (it != open_arrays_for_reads_.end()) {
-    *open_array = it->second;
-  } else {  // Create a new entry
-    *open_array = new OpenArray(array_uri, QueryType::READ);
-    open_arrays_for_reads_[array_uri.to_string()] = *open_array;
+    // Find the open array entry
+    auto it = open_arrays_for_reads_.find(array_uri.to_string());
+    if (it != open_arrays_for_reads_.end()) {
+      *open_array = it->second;
+    } else {  // Create a new entry
+      *open_array = new OpenArray(array_uri, QueryType::READ);
+      open_arrays_for_reads_[array_uri.to_string()] = *open_array;
+    }
+    // Lock the array and increment counter
+    (*open_array)->mtx_lock();
+    (*open_array)->cnt_incr();
   }
-
-  // Lock the array and increment counter
-  (*open_array)->mtx_lock();
-  (*open_array)->cnt_incr();
-
-  // Unlock mutex
-  open_array_for_reads_mtx_.unlock();
 
   // Acquire a shared filelock
   auto st = (*open_array)->file_lock(vfs_);
@@ -1606,7 +1569,6 @@ Status StorageManager::array_open_for_reads(
   (*open_array)->mtx_unlock();
 
   // Note that we retain the (shared) lock on the array filelock
-
   return Status::Ok();
 }
 
@@ -1625,23 +1587,21 @@ Status StorageManager::array_open_for_writes(
   }
 
   // Lock mutex
-  open_array_for_writes_mtx_.lock();
+  {
+    std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
 
-  // Find the open array entry
-  auto it = open_arrays_for_writes_.find(array_uri.to_string());
-  if (it != open_arrays_for_writes_.end()) {
-    *open_array = it->second;
-  } else {  // Create a new entry
-    *open_array = new OpenArray(array_uri, QueryType::WRITE);
-    open_arrays_for_writes_[array_uri.to_string()] = *open_array;
+    // Find the open array entry
+    auto it = open_arrays_for_writes_.find(array_uri.to_string());
+    if (it != open_arrays_for_writes_.end()) {
+      *open_array = it->second;
+    } else {  // Create a new entry
+      *open_array = new OpenArray(array_uri, QueryType::WRITE);
+      open_arrays_for_writes_[array_uri.to_string()] = *open_array;
+    }
+    // Lock the array and increment counter
+    (*open_array)->mtx_lock();
+    (*open_array)->cnt_incr();
   }
-
-  // Lock the array and increment counter
-  (*open_array)->mtx_lock();
-  (*open_array)->cnt_incr();
-
-  // Unlock mutex
-  open_array_for_writes_mtx_.unlock();
 
   // No shared filelock needed to be acquired
 
