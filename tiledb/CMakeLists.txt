@@ -103,6 +103,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bit_width_reduction_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitshuffle_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/byteshuffle_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/compression_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
@@ -143,11 +144,16 @@ set(TILEDB_CORE_SOURCES
 set(TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
 set(TILEDB_EXTERNALS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-avx2.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-generic.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/blosc/shuffle-sse2.cc
 )
 
 ############################################################
