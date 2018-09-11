@@ -134,6 +134,7 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 if (WIN32)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
+  #   C4146: unary minus operator applied to unsigned type
   #   C4244: conversion warning of floating point to integer type.
   #   C4251: C++ export warning
   #   C4456: local variable hiding previous local variable
@@ -141,7 +142,7 @@ if (WIN32)
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
   #   C4996: deprecation warning about e.g. sscanf.
-  add_compile_options(/W4 /wd4101 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
@@ -179,6 +180,13 @@ endif()
 
 # Definitions for all targets
 add_definitions(-D_FILE_OFFSET_BITS=64)
+
+# AVX2 flag
+include(CheckAVX2Support)
+CheckAVX2Support()
+if (COMPILER_SUPPORTS_AVX2)
+  add_compile_options(${COMPILER_AVX2_FLAG})
+endif()
 
 ############################################################
 # Enable testing and add subdirectories

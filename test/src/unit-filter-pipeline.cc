@@ -34,6 +34,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
@@ -1070,6 +1071,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       []() { return new Add1OutOfPlace(); },
       []() { return new Add1IncludingMetadataFilter(); },
       []() { return new BitWidthReductionFilter(); },
+      []() { return new BitshuffleFilter(); },
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); }};
 
@@ -1322,5 +1324,44 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
     }
 
     CHECK(!pipeline.run_forward(&tile).ok());
+  }
+}
+
+TEST_CASE("Filter: Test bitshuffle", "[filter]") {
+  // Set up test data
+  const uint64_t nelts = 1000;
+  Buffer buff;
+  for (uint64_t i = 0; i < nelts; i++)
+    CHECK(buff.write(&i, sizeof(uint64_t)).ok());
+  CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+  FilterPipeline pipeline;
+  CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
+
+  SECTION("- Single stage") {
+    CHECK(pipeline.run_forward(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+  }
+
+  SECTION("- Indivisible by 8") {
+    const uint32_t nelts = 1001;
+    Buffer buff2;
+    for (uint32_t i = 0; i < nelts; i++)
+      CHECK(buff2.write(&i, sizeof(uint32_t)).ok());
+    CHECK(buff2.size() == nelts * sizeof(uint32_t));
+    Tile tile2(Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
+
+    CHECK(pipeline.run_forward(&tile2).ok());
+    CHECK(pipeline.run_reverse(&tile2).ok());
+    CHECK(tile2.buffer()->size() == nelts * sizeof(uint32_t));
+    tile2.buffer()->reset_offset();
+    for (uint32_t i = 0; i < nelts; i++)
+      CHECK(tile2.buffer()->value<uint32_t>(i * sizeof(uint32_t)) == i);
   }
 }
