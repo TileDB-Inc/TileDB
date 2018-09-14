@@ -108,7 +108,8 @@ enum class StatusCode : char {
   Reader,
   Writer,
   PreallocatedBuffer,
-  Filter
+  Filter,
+  Encryption
 };
 
 class Status {
@@ -303,6 +304,11 @@ class Status {
   /** Return a FilterError error class Status with a given message **/
   static Status FilterError(const std::string& msg) {
     return Status(StatusCode::Filter, msg, -1);
+  }
+
+  /** Return a EncryptionError error class Status with a given message **/
+  static Status EncryptionError(const std::string& msg) {
+    return Status(StatusCode::Encryption, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

@@ -37,6 +37,7 @@
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/tile/tile.h"
@@ -1075,7 +1076,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       []() { return new BitshuffleFilter(); },
       []() { return new ByteshuffleFilter(); },
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
-      []() { return new PseudoChecksumFilter(); }};
+      []() { return new PseudoChecksumFilter(); },
+      []() {
+        return new EncryptionAES256GCMFilter(
+            "abcdefghijklmnopqrstuvwxyz012345");
+      },
+  };
 
   // List of potential filters that must occur at the beginning of the pipeline.
   std::vector<std::function<Filter*(void)>> constructors_first = {
@@ -1404,5 +1410,56 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
     tile2.buffer()->reset_offset();
     for (uint32_t i = 0; i < nelts; i++)
       CHECK(tile2.buffer()->value<uint32_t>(i * sizeof(uint32_t)) == i);
+  }
+}
+
+TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
+  // Set up test data
+  const uint64_t nelts = 1000;
+  Buffer buff;
+  for (uint64_t i = 0; i < nelts; i++)
+    CHECK(buff.write(&i, sizeof(uint64_t)).ok());
+  CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+  SECTION("- AES-256-GCM") {
+    FilterPipeline pipeline;
+    CHECK(pipeline.add_filter(EncryptionAES256GCMFilter()).ok());
+
+    // No key set
+    CHECK(!pipeline.run_forward(&tile).ok());
+
+    // Create and set a key
+    char key[32];
+    for (unsigned i = 0; i < 32; i++)
+      key[i] = (char)i;
+    auto filter = pipeline.get_filter<EncryptionAES256GCMFilter>();
+    CHECK(filter->set_key(key).ok());
+
+    // Check success
+    CHECK(pipeline.run_forward(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
+
+    // Check error decrypting with wrong key.
+    CHECK(pipeline.run_forward(&tile).ok());
+    key[0]++;
+    CHECK(filter->set_key(key).ok());
+    CHECK(!pipeline.run_reverse(&tile).ok());
+
+    // Fix key and check success. Note: this test depends on the implementation
+    // leaving the tile data unmodified when the decryption fails, which is not
+    // true in general use of the filter pipeline.
+    key[0]--;
+    CHECK(filter->set_key(key).ok());
+    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
+    tile.buffer()->reset_offset();
+    for (uint64_t i = 0; i < nelts; i++)
+      CHECK(tile.buffer()->value<uint64_t>(i * sizeof(uint64_t)) == i);
   }
 }

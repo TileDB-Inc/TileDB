@@ -41,11 +41,17 @@
 namespace tiledb {
 namespace sm {
 
-/** Defines the filter type. */
+/**
+ * A filter type.
+ *
+ * Note: not all of these are exposed in the C API.
+ */
 enum class FilterType : char {
 #define TILEDB_FILTER_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
+  /** Internally used encryption with AES-256-GCM. */
+  INTERNAL_FILTER_AES_256_GCM,
 };
 
 /** Returns the string representation of the input filter type. */

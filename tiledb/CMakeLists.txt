@@ -96,6 +96,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_openssl.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -105,6 +108,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitshuffle_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/byteshuffle_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/compression_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/encryption_aes256gcm_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
@@ -315,7 +319,7 @@ endif()
 
 # Win32 specific libraries
 if (WIN32)
-  set(WIN32_LIBS shlwapi rpcrt4)
+  set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
 
   if (TILEDB_S3)
     list(APPEND WIN32_LIBS bcrypt winhttp wininet userenv version)
