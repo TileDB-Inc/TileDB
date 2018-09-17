@@ -6,7 +6,9 @@
 
 * Negative and real-valued domain types are now fully supported. #885
 * New filter pipeline for compression, etc. #912
-* Current filters include: previous compressors, bit width reduction, positive-delta encoding.
+* Current filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.
+    * The bitshuffle filter uses an implementation by [Kiyoshi Masui](https://github.com/kiyo-masui/bitshuffle).
+    * The byteshuffle filter uses an implementation by [Francesc Alted](https://github.com/Blosc/c-blosc) (from the Blosc project).
 
 ## Bug fixes
 

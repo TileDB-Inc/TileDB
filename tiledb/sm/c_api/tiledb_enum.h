@@ -173,6 +173,8 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION),
     /** Bitshuffle filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE),
+    /** Byteshuffle filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE),
     /** Positive-delta encoding filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA),
 #endif
