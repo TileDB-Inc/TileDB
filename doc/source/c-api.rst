@@ -180,6 +180,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_max_buffer_size_var
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_uri
+    :project: TileDB-C
 
 Array Schema
 ------------

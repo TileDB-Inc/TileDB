@@ -31,6 +31,7 @@
 * Added `tiledb_filter_*` and `tiledb_filter_list_*` functions.
 * Added `tiledb_attribute_{set,get}_filter_list`, `tiledb_array_schema_{set,get}_coords_filter_list`, `tiledb_array_schema_{set,get}_offsets_filter_list` functions.
 * Added `tiledb_query_get_buffer` and `tiledb_query_get_buffer_var`.
+* Added `tiledb_array_get_uri`
 
 ## Breaking changes
 
