@@ -129,8 +129,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array, tiledb_query_type_t type)
       : ctx_(ctx)
-      , schema_(ctx, array.uri())
-      , uri_(array.uri()) {
+      , schema_(ctx, array.uri()) {
     tiledb_query_t* q;
     ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
@@ -163,8 +162,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array)
       : ctx_(ctx)
-      , schema_(ctx, array.uri())
-      , uri_(array.uri()) {
+      , schema_(ctx, array.uri()) {
     tiledb_query_t* q;
     auto type = array.query_type();
     ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
@@ -737,9 +735,6 @@ class Query {
 
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
   uint64_t subarray_cell_num_ = 0;
-
-  /** URI of array being queried. **/
-  std::string uri_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -2930,6 +2930,18 @@ TILEDB_EXPORT int tiledb_array_max_buffer_size_var(
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size);
 
+/**
+ * Retrieves the URI the array was opened with. It outputs an error
+ * if the array is not open.
+ *
+ * @param ctx The TileDB context.
+ * @param array The input array.
+ * @param array_uri The array URI to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_get_uri(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */

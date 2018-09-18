@@ -88,8 +88,7 @@ class Array {
       const std::string& array_uri,
       tiledb_query_type_t query_type)
       : ctx_(ctx)
-      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr))
-      , uri_(array_uri) {
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
     tiledb_array_t* array;
     ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
@@ -120,7 +119,10 @@ class Array {
 
   /** Returns the array URI. */
   std::string uri() const {
-    return uri_;
+    auto& ctx = ctx_.get();
+    const char* uri = nullptr;
+    ctx.handle_error(tiledb_array_get_uri(ctx, array_.get(), &uri));
+    return std::string(uri);
   }
 
   /** Get the ArraySchema for the array. **/
@@ -396,9 +398,6 @@ class Array {
 
   /** The array schema. */
   ArraySchema schema_;
-
-  /** The array URI. */
-  std::string uri_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

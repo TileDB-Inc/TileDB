@@ -2779,6 +2779,26 @@ int tiledb_array_max_buffer_size_var(
   return TILEDB_OK;
 }
 
+int tiledb_array_get_uri(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check if array is open
+  if (!array->is_open_) {
+    auto st =
+        tiledb::sm::Status::Error("Cannot get array URI; Array is not open");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  *array_uri = array->open_array_->array_uri().c_str();
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */
