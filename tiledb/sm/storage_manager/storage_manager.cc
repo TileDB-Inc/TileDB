@@ -35,6 +35,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
@@ -161,7 +162,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
     const void* subarray,
     const std::vector<std::string>& attributes,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        max_buffer_sizes_) {
+        max_buffer_sizes) {
   // Error if the array was not opened in read mode
   if (open_array->query_type() != QueryType::READ)
     return LOG_STATUS(
@@ -178,11 +179,11 @@ Status StorageManager::array_compute_max_buffer_sizes(
   RETURN_NOT_OK(array_schema->check_attributes(attributes));
 
   // Compute buffer sizes
-  max_buffer_sizes_->clear();
+  max_buffer_sizes->clear();
   for (const auto& attr : attributes)
-    (*max_buffer_sizes_)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+    (*max_buffer_sizes)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
   RETURN_NOT_OK(array_compute_max_buffer_sizes(
-      array_schema, metadata, subarray, max_buffer_sizes_));
+      array_schema, metadata, subarray, max_buffer_sizes));
 
   // Close array
   return Status::Ok();
@@ -193,7 +194,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
     uint64_t snapshot,
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        max_buffer_sizes_) {
+        max_buffer_sizes) {
   // Error if the array was not opened in read mode
   if (open_array->query_type() != QueryType::READ)
     return LOG_STATUS(
@@ -214,7 +215,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
   attributes.push_back(constants::coords);
 
   return array_compute_max_buffer_sizes(
-      open_array, snapshot, subarray, attributes, max_buffer_sizes_);
+      open_array, snapshot, subarray, attributes, max_buffer_sizes);
 }
 
 Status StorageManager::array_compute_max_buffer_sizes(
@@ -436,21 +437,20 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_get_non_empty_domain(
-    OpenArray* open_array, uint64_t snapshot, void* domain, bool* is_empty) {
-  if (open_array == nullptr)
+    Array* array, void* domain, bool* is_empty) {
+  if (array == nullptr)
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot get non-empty domain; Open array object is null"));
+        "Cannot get non-empty domain; Array object is null"));
 
-  if (open_array->query_type() != QueryType::READ)
+  if (open_arrays_for_reads_.find(array->array_uri().to_string()) ==
+      open_arrays_for_reads_.end())
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot get non-empty domain; Array was not opened in read mode"));
+        "Cannot get non-empty domain; Array not opened for reads"));
 
   // Open the array
   *is_empty = true;
-  open_array->mtx_lock();
-  auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
-  open_array->mtx_unlock();
+  auto array_schema = array->array_schema();
+  auto metadata = array->fragment_metadata();
 
   // Return if there are no metadata
   if (metadata.empty())
@@ -1047,24 +1047,6 @@ Status StorageManager::object_iter_next_preorder(
   return Status::Ok();
 }
 
-Status StorageManager::query_create(
-    Query** query, OpenArray* open_array, uint64_t snapshot, URI fragment_uri) {
-  // For easy reference
-  open_array->mtx_lock();
-  auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
-  open_array->mtx_unlock();
-
-  // Create query
-  auto type = open_array->query_type();
-  *query = new Query(this, type, array_schema, metadata);
-
-  if (type == QueryType::WRITE)
-    (*query)->set_fragment_uri(fragment_uri);
-
-  return Status::Ok();
-}
-
 Status StorageManager::query_submit(Query* query) {
   STATS_COUNTER_ADD_IF(
       query->type() == QueryType::READ, sm_query_submit_read, 1);
@@ -1088,9 +1070,6 @@ Status StorageManager::query_submit(Query* query) {
       1);
   STATS_FUNC_IN(sm_query_submit);
 
-  // Initialize query
-  RETURN_NOT_OK(query->init());
-
   // Process the query
   increment_in_progress();
   auto st = query->process();
@@ -1101,18 +1080,8 @@ Status StorageManager::query_submit(Query* query) {
   STATS_FUNC_OUT(sm_query_submit);
 }
 
-Status StorageManager::query_submit_async(
-    Query* query, std::function<void(void*)> callback, void* callback_data) {
-  // Do nothing if the query is completed or failed
-  auto status = query->status();
-  if (status == QueryStatus::COMPLETED)
-    return Status::Ok();
-
-  // Initialize query
-  RETURN_NOT_OK(query->init());
-
+Status StorageManager::query_submit_async(Query* query) {
   // Push the query into the async queue
-  query->set_callback(callback, callback_data);
   return async_push_query(query);
 }
 

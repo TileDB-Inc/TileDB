@@ -63,6 +63,9 @@
 namespace tiledb {
 namespace sm {
 
+class Array;
+class Consolidator;
+
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
  public:
@@ -199,7 +202,7 @@ class StorageManager {
       const void* subarray,
       const std::vector<std::string>& attributes,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes_);
+          max_buffer_sizes);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
@@ -263,16 +266,13 @@ class StorageManager {
    * Retrieves the non-empty domain from an array. This is the union of the
    * non-empty domains of the array fragments.
    *
-   * @param open_array An open array object (must be already open).
-   * @param snapshot The snapshot that indicates which fragment metadata should
-   *     be loaded from `open_array`.
+   * @param array An open array object (must be already open).
    * @param domain The domain to be retrieved.
    * @param is_empty `ture` if the non-empty domain is empty (the array
    *     is empty).
    * @return Status
    */
-  Status array_get_non_empty_domain(
-      OpenArray* open_array, uint64_t snapshot, void* domain, bool* is_empty);
+  Status array_get_non_empty_domain(Array* array, void* domain, bool* is_empty);
 
   /**
    * Exclusively locks an array preventing it from being opened in
@@ -504,30 +504,6 @@ class StorageManager {
    */
   Status object_type(const URI& uri, ObjectType* type) const;
 
-  /**
-   * Creates a query. The query type is inferred from the input array.
-   *
-   * @param query The query to initialize.
-   * @param open_array An opened array.
-   * @param snapshot This indicates which fragment metadata to retrieve
-   *     from the open array and assigned to the query. This snapshot
-   *     should be the value retrieved upon opening the array when it
-   *     was intended to be assigned to the query. This safeguards against
-   *     new fragment metadata are loaded into `open_array` after `snapshot`,
-   *     which however must be ignored by the query being created.
-   * @param fragment_uri This is applicable only to write queries. This is
-   *     to indicate that the new fragment created by a write will have
-   *     a specific URI. This is useful mainly in consolidation, where
-   *     the consolidated fragment URI must be explicitly created by
-   *     the consolidator.
-   * @return Status
-   */
-  Status query_create(
-      Query** query,
-      OpenArray* open_array,
-      uint64_t snapshot,
-      URI fragment_uri = URI(""));
-
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
 
@@ -535,12 +511,9 @@ class StorageManager {
    * Submits a query for async execution.
    *
    * @param query The query to submit.
-   * @param callback The fuction that will be called upon query completion.
-   * @param callback_data The data to be provided to the callback function.
    * @return Status
    */
-  Status query_submit_async(
-      Query* query, std::function<void(void*)> callback, void* callback_data);
+  Status query_submit_async(Query* query);
 
   /**
    * Reads from the cache into the input buffer. `uri` and `offset` collectively

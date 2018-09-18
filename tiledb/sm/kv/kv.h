@@ -33,14 +33,13 @@
 #ifndef TILEDB_KV_H
 #define TILEDB_KV_H
 
-#include "tiledb/sm/storage_manager/storage_manager.h"
-
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/kv/kv_item.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <map>
 #include <mutex>
@@ -94,9 +93,9 @@ class KV {
 
   /**
    * Returns the query type the kv was opened with (i.e., for reads or
-   * writes).
+   * writes). It outputs an error if the kv is not open.
    */
-  QueryType query_type() const;
+  Status get_query_type(QueryType* query_type) const;
 
   /**
    * Gets a key-value item from the key-value store. This function first
@@ -141,9 +140,6 @@ class KV {
    */
   Status open(QueryType query_type);
 
-  /** Clears the key-value store. */
-  void clear();
-
   /** Closes the key-value store and frees all memory. */
   Status close();
 
@@ -154,13 +150,7 @@ class KV {
   Status reopen();
 
   /** The open array used for dispatching read/write queries. */
-  OpenArray* open_array() const;
-
-  /**
-   * Returns the snapshot at which the underlying array got opened for
-   * reads.
-   */
-  uint64_t snapshot() const;
+  Array* array() const;
 
  private:
   /* ********************************* */
@@ -176,11 +166,8 @@ class KV {
   /** These are the corresponding types of `attributes_`. */
   std::vector<Datatype> attribute_types_;
 
-  /** True if the kv has been opened. */
-  bool is_open_;
-
   /** The array object that will receive the read or write queries. */
-  OpenArray* open_array_;
+  Array* array_;
 
   /**
    * Buffers to be used in read queries. This is a map from the
@@ -212,9 +199,6 @@ class KV {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       read_buffer_alloced_sizes_;
 
-  /** The snapshot at which the `open_array_` got opened. */
-  uint64_t snapshot_;
-
   /**
    * Buffers to be used in write queries. This is a map from the
    * attribute (or coordinates) name to a pair of buffers. For fixed-sized
@@ -238,12 +222,6 @@ class KV {
   /** The key-value URI.*/
   URI kv_uri_;
 
-  /** The mode in which the key-value store is opened. */
-  QueryType query_type_;
-
-  /** The key-value store schema. */
-  const ArraySchema* schema_;
-
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
 
@@ -265,6 +243,9 @@ class KV {
    * @return Status
    */
   Status add_value(const std::string& attribute, const KVItem::Value& value);
+
+  /** Clears the key-value store. */
+  void clear();
 
   /** Frees memory of items. */
   void clear_items();

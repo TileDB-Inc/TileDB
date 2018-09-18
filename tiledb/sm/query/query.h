@@ -51,6 +51,8 @@
 namespace tiledb {
 namespace sm {
 
+class Array;
+
 /** Processes a (read/write) query. */
 class Query {
  public:
@@ -58,12 +60,18 @@ class Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
+  /**
+   * Constructor. The query type is inherited from the query type of the
+   * input array. An optional fragment URI is given as input in
+   * case the query will be used as writes and the given URI should be used
+   * for the name of the new fragment to be created.
+   *
+   * @note Array must be a properly opened array.
+   */
   Query(
       StorageManager* storage_manager,
-      QueryType type,
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
+      Array* array,
+      URI fragment_uri = URI(""));
 
   /** Destructor. */
   ~Query();
@@ -278,16 +286,6 @@ class Query {
       uint64_t* buffer_val_size);
 
   /**
-   * Sets the callback function and its data input that will be called
-   * upon the completion of an asynchronous query.
-   */
-  void set_callback(
-      const std::function<void(void*)>& callback, void* callback_data);
-
-  /** Sets the fragment URI. Applicable only to write queries. */
-  void set_fragment_uri(const URI& fragment_uri);
-
-  /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default
    * layout for both reads and writes.
@@ -302,6 +300,17 @@ class Query {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /** Submits the query to the storage manager. */
+  Status submit();
+
+  /**
+   * Submits the query to the storage manager. The query will be
+   * processed asynchronously (i.e., in a non-blocking manner).
+   * Once the query is completed, the input callback function will
+   * be executed using the input callback data.
+   */
+  Status submit_async(std::function<void(void*)> callback, void* callback_data);
 
   /**
    * Return the query subarray
@@ -358,6 +367,9 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The array the query is associated with. */
+  Array* array_;
+
   /** A function that will be called upon the completion of an async query. */
   std::function<void(void*)> callback_;
 
@@ -369,6 +381,9 @@ class Query {
 
   /** The query status. */
   QueryStatus status_;
+
+  /** The storage manager. */
+  StorageManager* storage_manager_;
 
   /** The query type. */
   QueryType type_;
@@ -389,16 +404,6 @@ class Query {
   /** Correctness checks for `subarray`. */
   template <class T>
   Status check_subarray_bounds(const T* subarray) const;
-
-  /** Sets the array schema. */
-  void set_array_schema(const ArraySchema* array_schema);
-
-  /** Sets the fragment metadata. */
-  void set_fragment_metadata(
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
-  /** Sets the storage manager. */
-  void set_storage_manager(StorageManager* storage_manager);
 };
 
 }  // namespace sm
