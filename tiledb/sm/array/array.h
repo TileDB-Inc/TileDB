@@ -90,9 +90,11 @@ class Array {
    * Opens the array for reading/writing at the current timestamp.
    *
    * @param query_type The mode in which the array is opened.
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
    * @return Status
    */
-  Status open(QueryType query_type);
+  Status open(QueryType query_type, const void* encryption_key);
 
   /** Closes the array and frees all memory. */
   Status close();
@@ -136,6 +138,17 @@ class Array {
       uint64_t* buffer_val_size);
 
   /**
+   * Returns the encryption type used for the array.
+   */
+  EncryptionType get_encryption_type() const;
+
+  /**
+   * Returns a ConstBuffer instance holding a pointer to the user's private
+   * encryption key.
+   */
+  ConstBuffer get_encryption_key() const;
+
+  /**
    * Re-opens the array. This effectively updates the "view" of the array,
    * by loading the fragments potentially written after the last time
    * the array was opened. Errors if the array is not open.
@@ -152,6 +165,18 @@ class Array {
 
   /** The array URI. */
   URI array_uri_;
+
+  /**
+   * The private encryption key used to encrypt the array.
+   *
+   * Note: this is the only place in TileDB where the user's private key bytes
+   * should be stored. Wherever a key is needed, a pointer to this memory region
+   * should be passed instead of a copy of the bytes.
+   */
+  Buffer encryption_key_;
+
+  /** The type of encryption used to encrypt the array. */
+  EncryptionType encryption_type_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
@@ -190,6 +215,16 @@ class Array {
    * which are cached locally in the instance.
    */
   Status compute_max_buffer_sizes(const void* subarray);
+
+  /**
+   * Copies the given encryption key into this Array's private buffer.
+   *
+   * @param encryption_type Type of encryption key
+   * @param key_bytes Key bytes (from user).
+   * @return Status
+   */
+  Status set_encryption_key(
+      EncryptionType encryption_type, const void* key_bytes);
 };
 
 }  // namespace sm

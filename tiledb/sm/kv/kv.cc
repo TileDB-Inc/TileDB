@@ -77,12 +77,12 @@ Status KV::is_dirty(bool* dirty) const {
   return Status::Ok();
 }
 
-Status KV::open(QueryType query_type) {
+Status KV::open(QueryType query_type, const void* encryption_key) {
   if (is_open())
     return LOG_STATUS(Status::KVError(
         "Cannot open key-value store; Key-value store already open"));
 
-  RETURN_NOT_OK(array_->open(query_type));
+  RETURN_NOT_OK(array_->open(query_type, encryption_key));
   auto schema = array_->array_schema();
 
   // Load all attributes

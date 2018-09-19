@@ -72,6 +72,9 @@ struct DenseArrayFx {
 #endif
   const int ITER_NUM = 10;
 
+  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
+  const char* encryption_key = nullptr;
+
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -437,9 +440,16 @@ void DenseArrayFx::create_dense_array_2D(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_encryption(ctx_, array_schema, encryption_type);
+  REQUIRE(rc == TILEDB_OK);
 
   // Create the array
-  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  } else {
+    rc = tiledb_array_create_with_key(
+        ctx_, array_name.c_str(), array_schema, encryption_key);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -498,8 +508,13 @@ int* DenseArrayFx::read_dense_array_2D(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, query_type);
-  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, query_type);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(ctx_, array, query_type, encryption_key);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Create query
   tiledb_query_t* query;
@@ -654,8 +669,13 @@ void DenseArrayFx::write_dense_array_by_tiles(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(ctx_, array, TILEDB_WRITE, encryption_key);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Create query
   tiledb_query_t* query;
@@ -906,8 +926,13 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(ctx_, array, TILEDB_READ, encryption_key);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Check out of bounds subarray
   tiledb_query_t* query;
@@ -3687,4 +3712,29 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense array, encrypted",
+    "[capi], [dense], [encryption]") {
+  encryption_type = TILEDB_AES_256_GCM;
+  encryption_key = "0123456789abcdeF0123456789abcdeF";
+
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    check_sorted_reads(S3_TEMP_DIR);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    create_temp_dir(HDFS_TEMP_DIR);
+    check_sorted_reads(HDFS_TEMP_DIR);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
 }

@@ -126,6 +126,14 @@ typedef enum {
 #undef TILEDB_FILTER_OPTION_ENUM
 } tiledb_filter_option_t;
 
+/** Encryption type. */
+typedef enum {
+/** Helper macro for defining encryption enums. */
+#define TILEDB_ENCRYPTION_TYPE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_ENCRYPTION_TYPE_ENUM
+} tiledb_encryption_type_t;
+
 /** Compression type. */
 typedef enum {
 /** Helper macro for defining compressor enums. */
@@ -1897,6 +1905,29 @@ TILEDB_EXPORT int tiledb_array_schema_set_offsets_compressor(
     int compression_level);
 
 /**
+ * Sets the encryption to use for the array.
+ *
+ * In an encrypted array, all attribute data, tile data, fragment and array
+ * metadata are encrypted with the same key. Encryption is always applied after
+ * all other filters (e.g. compression).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_set_encryption(ctx, array_schema, TILEDB_AES_256_GCM);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param encryption_type The encryption type to use.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_set_encryption(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_encryption_type_t encryption_type);
+
+/**
  * Checks the correctness of the array schema.
  *
  * **Example:**
@@ -1933,6 +1964,32 @@ TILEDB_EXPORT int tiledb_array_schema_check(
 TILEDB_EXPORT int tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
+    tiledb_array_schema_t** array_schema);
+
+/**
+ * Retrieves the schema of an encrypted array from the disk, creating an array
+ * schema struct.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_schema_load_with_key(
+ *     ctx, "s3://tiledb_bucket/my_array", key, array_schema);
+ * // Make sure to free the array schema in the end
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema to be retrieved, or `NULL` upon error.
+ * @param array_uri The array whose schema will be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_load_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* encryption_key,
     tiledb_array_schema_t** array_schema);
 
 /**
@@ -2087,6 +2144,26 @@ TILEDB_EXPORT int tiledb_array_schema_get_offsets_compressor(
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,
     int* compression_level);
+
+/**
+ * Gets the encryption used for the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_encryption_type_t enc;
+ * tiledb_array_schema_get_encryption(ctx, array_schema, &enc);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param encryption_type The encryption type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_schema_get_encryption(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_encryption_type_t* encryption_type);
 
 /**
  * Retrieves the array domain.
@@ -2685,6 +2762,38 @@ TILEDB_EXPORT int tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * Opens an encrypted array using the given encryption key. This function has
+ * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
+ *
+ * An encrypted array must be opened with this function before queries can be
+ * issued to it.
+ *
+ * The expected length of the key depends on the encryption algorithm used:
+ * - `TILEDB_AES_256_GCM`: 256-bit key.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open_with_key(ctx, array, TILEDB_READ, key);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be opened.
+ * @param query_type The type of queries the array object will be receiving.
+ * @param key The encryption key to use.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_open_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    const void* key);
+
+/**
  * Checks if the array is open.
  *
  * @param ctx The TileDB context.
@@ -2820,6 +2929,32 @@ TILEDB_EXPORT int tiledb_array_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema);
+
+/**
+ * Creates a new encrypted TileDB array given an input schema.
+ *
+ * Encrypted arrays can only be created through this function.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_set_encryption(ctx, array_schema, TILEDB_AES_256_GCM);
+ * uint8_t key[32] = ...;
+ * tiledb_array_create_with_key(
+ *     ctx, "hdfs:///tiledb_arrays/my_array", array_schema, key);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array name.
+ * @param array_schema The array schema.
+ * @param key The encryption key to use.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_array_create_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_array_schema_t* array_schema,
+    const void* key);
 
 /**
  * Consolidates the fragments of an array into a single fragment.

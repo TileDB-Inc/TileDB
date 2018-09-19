@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/tile/tile_io.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
@@ -93,7 +94,7 @@ Status TileIO::is_generic_tile(
     return Status::Ok();
 
   GenericTileHeader header;
-  RETURN_NOT_OK(read_generic_tile_header(sm, uri, 0, &header));
+  RETURN_NOT_OK(read_generic_tile_header(sm, uri, 0, nullptr, &header));
 
   auto expected_size = GenericTileHeader::BASE_SIZE +
                        header.filter_pipeline_size + header.persisted_size;
@@ -104,10 +105,11 @@ Status TileIO::is_generic_tile(
   return Status::Ok();
 }
 
-Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
+Status TileIO::read_generic(
+    Tile** tile, uint64_t file_offset, const void* encryption_key) {
   GenericTileHeader header;
-  RETURN_NOT_OK(
-      read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
+  RETURN_NOT_OK(read_generic_tile_header(
+      storage_manager_, uri_, file_offset, encryption_key, &header));
 
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(
@@ -152,6 +154,7 @@ Status TileIO::read_generic_tile_header(
     const StorageManager* sm,
     const URI& uri,
     uint64_t file_offset,
+    const void* encryption_key,
     GenericTileHeader* header) {
   // Read the fixed-sized part of the header from file
   std::unique_ptr<Buffer> header_buff(new Buffer());
@@ -163,6 +166,7 @@ Status TileIO::read_generic_tile_header(
   RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
   RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(char)));
   RETURN_NOT_OK(header_buff->read(&header->cell_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(header_buff->read(&header->encryption_type, sizeof(char)));
   RETURN_NOT_OK(
       header_buff->read(&header->filter_pipeline_size, sizeof(uint32_t)));
 
@@ -177,6 +181,26 @@ Status TileIO::read_generic_tile_header(
   ConstBuffer cbuf(header_buff->data(), header_buff->size());
   RETURN_NOT_OK(header->filters.deserialize(&cbuf));
 
+  // Configure the encryption filter if a key was given.
+  if (encryption_key != nullptr) {
+    switch ((EncryptionType)header->encryption_type) {
+      case EncryptionType::NO_ENCRYPTION:
+        // Do nothing.
+        break;
+      case EncryptionType::AES_256_GCM: {
+        auto* f = header->filters.get_filter<EncryptionAES256GCMFilter>();
+        if (f == nullptr)
+          return Status::Error(
+              "Error getting generic tile; no encryption filter.");
+        RETURN_NOT_OK(f->set_key(encryption_key));
+        break;
+      }
+      default:
+        return Status::Error(
+            "Error getting generic tile; invalid encryption type.");
+    }
+  }
+
   STATS_COUNTER_ADD(
       tileio_read_num_bytes_read,
       GenericTileHeader::BASE_SIZE + header->filter_pipeline_size);
@@ -184,7 +208,8 @@ Status TileIO::read_generic_tile_header(
   return Status::Ok();
 }
 
-Status TileIO::write_generic(Tile* tile) {
+Status TileIO::write_generic(
+    Tile* tile, const EncryptionInfo& encryption_info) {
   // Reset the tile and buffer offset
   tile->reset_offset();
 
@@ -192,7 +217,7 @@ Status TileIO::write_generic(Tile* tile) {
 
   // Create a header
   GenericTileHeader header;
-  RETURN_NOT_OK(init_generic_tile_header(tile, &header));
+  RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_info));
 
   // Filter tile
   RETURN_NOT_OK(header.filters.run_forward(tile));
@@ -216,6 +241,8 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
   RETURN_NOT_OK_ELSE(buff->write(&header->datatype, sizeof(char)), delete buff);
   RETURN_NOT_OK_ELSE(
       buff->write(&header->cell_size, sizeof(uint64_t)), delete buff);
+  RETURN_NOT_OK_ELSE(
+      buff->write(&header->encryption_type, sizeof(char)), delete buff);
 
   // Write placeholder value for pipeline size.
   uint64_t pipeline_size_offset = buff->offset();
@@ -245,13 +272,28 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
 }
 
 Status TileIO::init_generic_tile_header(
-    Tile* tile, GenericTileHeader* header) const {
+    Tile* tile,
+    GenericTileHeader* header,
+    const EncryptionInfo& encryption_info) const {
   header->tile_size = tile->size();
   header->datatype = (char)tile->type();
   header->cell_size = tile->cell_size();
+  header->encryption_type = (char)encryption_info.type;
   RETURN_NOT_OK(header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,
       constants::generic_tile_compression_level)));
+
+  switch (encryption_info.type) {
+    case EncryptionType::NO_ENCRYPTION:
+      // Do nothing
+      break;
+    case EncryptionType::AES_256_GCM:
+      RETURN_NOT_OK(header->filters.add_filter(
+          EncryptionAES256GCMFilter((const char*)encryption_info.key)));
+      break;
+    default:
+      return Status::Error("Invalid encryption type for generic tile.");
+  }
 
   return Status::Ok();
 }

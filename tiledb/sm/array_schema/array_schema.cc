@@ -34,6 +34,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
@@ -53,6 +54,7 @@ ArraySchema::ArraySchema() {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
+  encryption_type_ = EncryptionType::NO_ENCRYPTION;
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
@@ -71,6 +73,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   array_uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
+  encryption_type_ = EncryptionType::NO_ENCRYPTION;
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
@@ -96,6 +99,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   } else {
     set_domain(array_schema->domain_);
   }
+
+  set_encryption_type(array_schema->encryption_type_);
 
   for (auto attr : array_schema->attributes_) {
     if (attr->name() != constants::key_attr_name &&
@@ -375,6 +380,7 @@ bool ArraySchema::is_kv() const {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
+// encryption_type (char)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
@@ -398,6 +404,10 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Write capacity
   RETURN_NOT_OK(buff->write(&capacity_, sizeof(uint64_t)));
+
+  // Write encryption type
+  auto encryption_type = (char)encryption_type_;
+  RETURN_NOT_OK(buff->write(&encryption_type, sizeof(char)));
 
   // Write coords filters
   RETURN_NOT_OK(coords_filters_.serialize(buff));
@@ -489,6 +499,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
+// encryption_type (char)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
@@ -520,6 +531,11 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   // Load capacity
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
+  // Load encryption type
+  char encryption_type;
+  RETURN_NOT_OK(buff->read(&encryption_type, sizeof(char)));
+  set_encryption_type((EncryptionType)encryption_type);
+
   // Load coords filters
   RETURN_NOT_OK(coords_filters_.deserialize(buff));
 
@@ -548,6 +564,10 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
 
 const Domain* ArraySchema::domain() const {
   return domain_;
+}
+
+EncryptionType ArraySchema::encryption_type() const {
+  return encryption_type_;
 }
 
 Status ArraySchema::init() {
@@ -672,6 +692,11 @@ Status ArraySchema::set_domain(Domain* domain) {
       coords_compression() == Compressor::DOUBLE_DELTA)
     set_coords_compressor(constants::real_coords_compression);
 
+  return Status::Ok();
+}
+
+Status ArraySchema::set_encryption_type(EncryptionType encryption_type) {
+  encryption_type_ = encryption_type;
   return Status::Ok();
 }
 
