@@ -40,11 +40,14 @@ namespace sm {
 
 EncryptionAES256GCMFilter::EncryptionAES256GCMFilter()
     : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
+  set_key(nullptr);
 }
 
-EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(const char* key)
+EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(
+    const EncryptionKey& encryption_key)
     : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
-  set_key(key);
+  auto buff = encryption_key.key();
+  set_key(buff.data());
 }
 
 EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
@@ -59,7 +62,7 @@ Status EncryptionAES256GCMFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  if (key_bytes_.size() != Encryption::AES256GCM_KEY_BYTES)
+  if (key_bytes_ == nullptr)
     return LOG_STATUS(Status::FilterError("Encryption error; bad key."));
 
   // Allocate an initial output buffer.
@@ -94,7 +97,7 @@ Status EncryptionAES256GCMFilter::run_forward(
 Status EncryptionAES256GCMFilter::encrypt_part(
     ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
   // Set up the key buffer.
-  ConstBuffer key(key_bytes_.data(), key_bytes_.size());
+  ConstBuffer key(key_bytes_, Encryption::AES256GCM_KEY_BYTES);
 
   // Set up the IV and tag metadata buffers.
   uint8_t iv[Encryption::AES256GCM_IV_BYTES],
@@ -128,7 +131,7 @@ Status EncryptionAES256GCMFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  if (key_bytes_.size() != Encryption::AES256GCM_KEY_BYTES)
+  if (key_bytes_ == nullptr)
     return LOG_STATUS(Status::FilterError("Encryption error; bad key."));
 
   // Read the number of parts from input metadata.
@@ -161,7 +164,7 @@ Status EncryptionAES256GCMFilter::decrypt_part(
   RETURN_NOT_OK(input_metadata->read(&encrypted_size, sizeof(uint32_t)));
 
   // Set up the key buffer.
-  ConstBuffer key(key_bytes_.data(), key_bytes_.size());
+  ConstBuffer key(key_bytes_, Encryption::AES256GCM_KEY_BYTES);
 
   // Set up the IV and tag metadata buffers.
   uint8_t iv_bytes[Encryption::AES256GCM_IV_BYTES],
@@ -193,21 +196,31 @@ Status EncryptionAES256GCMFilter::decrypt_part(
   return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
-  key_bytes_.reset_offset();
-  key_bytes_.reset_size();
-  RETURN_NOT_OK(key_bytes_.write(key_bytes, Encryption::AES256GCM_KEY_BYTES));
+Status EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
+  auto key_buff = key.key();
+
+  if (key.encryption_type() != EncryptionType::AES_256_GCM)
+    return LOG_STATUS(
+        Status::FilterError("Encryption error; invalid key encryption type."));
+
+  if (key_buff.data() == nullptr ||
+      key_buff.size() != Encryption::AES256GCM_KEY_BYTES)
+    return LOG_STATUS(
+        Status::FilterError("Encryption error; invalid key for AES-256-GCM."));
+
+  key_bytes_ = key_buff.data();
 
   return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::get_key(void* key_bytes) const {
-  if (key_bytes_.size() != Encryption::AES256GCM_KEY_BYTES)
-    return Status::FilterError(
-        "Encryption filter error; bad key buffer length.");
+Status EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
+  key_bytes_ = key_bytes;
 
-  std::memcpy(key_bytes, key_bytes_.data(), key_bytes_.size());
+  return Status::Ok();
+}
 
+Status EncryptionAES256GCMFilter::get_key(const void** key_bytes) const {
+  *key_bytes = key_bytes_;
   return Status::Ok();
 }
 

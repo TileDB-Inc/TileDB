@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/tile/tile_io.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
@@ -104,10 +105,20 @@ Status TileIO::is_generic_tile(
   return Status::Ok();
 }
 
-Status TileIO::read_generic(Tile** tile, uint64_t file_offset) {
+Status TileIO::read_generic(
+    Tile** tile, uint64_t file_offset, const EncryptionKey& encryption_key) {
   GenericTileHeader header;
   RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
+  RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
+
+  if (encryption_key.encryption_type() !=
+      (EncryptionType)header.encryption_type)
+    return LOG_STATUS(Status::Error(
+        "Error reading generic tile; tile is encrypted with " +
+        encryption_type_str((EncryptionType)header.encryption_type) +
+        " but given key is for " +
+        encryption_type_str(encryption_key.encryption_type())));
 
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(
@@ -163,6 +174,7 @@ Status TileIO::read_generic_tile_header(
   RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
   RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(char)));
   RETURN_NOT_OK(header_buff->read(&header->cell_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(header_buff->read(&header->encryption_type, sizeof(char)));
   RETURN_NOT_OK(
       header_buff->read(&header->filter_pipeline_size, sizeof(uint32_t)));
 
@@ -184,7 +196,7 @@ Status TileIO::read_generic_tile_header(
   return Status::Ok();
 }
 
-Status TileIO::write_generic(Tile* tile) {
+Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
   // Reset the tile and buffer offset
   tile->reset_offset();
 
@@ -192,7 +204,7 @@ Status TileIO::write_generic(Tile* tile) {
 
   // Create a header
   GenericTileHeader header;
-  RETURN_NOT_OK(init_generic_tile_header(tile, &header));
+  RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
 
   // Filter tile
   RETURN_NOT_OK(header.filters.run_forward(tile));
@@ -216,6 +228,8 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
   RETURN_NOT_OK_ELSE(buff->write(&header->datatype, sizeof(char)), delete buff);
   RETURN_NOT_OK_ELSE(
       buff->write(&header->cell_size, sizeof(uint64_t)), delete buff);
+  RETURN_NOT_OK_ELSE(
+      buff->write(&header->encryption_type, sizeof(char)), delete buff);
 
   // Write placeholder value for pipeline size.
   uint64_t pipeline_size_offset = buff->offset();
@@ -244,14 +258,43 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
   return st;
 }
 
+Status TileIO::configure_encryption_filter(
+    GenericTileHeader* header, const EncryptionKey& encryption_key) const {
+  switch ((EncryptionType)header->encryption_type) {
+    case EncryptionType::NO_ENCRYPTION:
+      // Do nothing.
+      break;
+    case EncryptionType::AES_256_GCM: {
+      auto* f = header->filters.get_filter<EncryptionAES256GCMFilter>();
+      if (f == nullptr)
+        return Status::Error(
+            "Error getting generic tile; no encryption filter.");
+      RETURN_NOT_OK(f->set_key(encryption_key));
+      break;
+    }
+    default:
+      return Status::Error(
+          "Error getting generic tile; invalid encryption type.");
+  }
+
+  return Status::Ok();
+}
+
 Status TileIO::init_generic_tile_header(
-    Tile* tile, GenericTileHeader* header) const {
+    Tile* tile,
+    GenericTileHeader* header,
+    const EncryptionKey& encryption_key) const {
   header->tile_size = tile->size();
   header->datatype = (char)tile->type();
   header->cell_size = tile->cell_size();
+  header->encryption_type = (char)encryption_key.encryption_type();
+
   RETURN_NOT_OK(header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,
       constants::generic_tile_compression_level)));
+
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &header->filters, encryption_key));
 
   return Status::Ok();
 }

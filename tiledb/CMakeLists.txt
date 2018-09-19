@@ -98,6 +98,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc

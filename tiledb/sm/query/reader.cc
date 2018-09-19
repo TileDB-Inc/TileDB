@@ -83,6 +83,7 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 /* ****************************** */
 
 Reader::Reader() {
+  array_ = nullptr;
   array_schema_ = nullptr;
   storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
@@ -359,6 +360,10 @@ Status Reader::read() {
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_read);
+}
+
+void Reader::set_array(const Array* array) {
+  array_ = array;
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -1472,13 +1477,21 @@ Status Reader::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
   uint64_t orig_size = tile->buffer()->size();
 
+  // Get a copy of the appropriate filter pipeline.
+  FilterPipeline filters;
   if (tile->stores_coords()) {
-    RETURN_NOT_OK(array_schema_->coords_filters()->run_reverse(tile));
+    filters = *array_schema_->coords_filters();
   } else if (offsets) {
-    RETURN_NOT_OK(array_schema_->cell_var_offsets_filters()->run_reverse(tile));
+    filters = *array_schema_->cell_var_offsets_filters();
   } else {
-    RETURN_NOT_OK(array_schema_->filters(attribute)->run_reverse(tile));
+    filters = *array_schema_->filters(attribute);
   }
+
+  // Append an encryption filter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  RETURN_NOT_OK(filters.run_reverse(tile));
 
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);

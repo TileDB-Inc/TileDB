@@ -48,6 +48,7 @@
 namespace tiledb {
 namespace sm {
 
+class Array;
 class StorageManager;
 
 /** Processes read queries. */
@@ -362,6 +363,9 @@ class Reader {
   /** Performs a read query using its set members. */
   Status read();
 
+  /** Sets the array. */
+  void set_array(const Array* array);
+
   /**
    * Sets the array schema. If the array is a kv store, then this
    * function also sets global order as the default layout.
@@ -440,6 +444,9 @@ class Reader {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The array. */
+  const Array* array_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;

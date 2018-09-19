@@ -59,7 +59,7 @@ class TileIO {
   struct GenericTileHeader {
     /** Size in bytes of the non-filters part of the serialized header. */
     static const uint64_t BASE_SIZE =
-        3 * sizeof(uint64_t) + sizeof(char) + sizeof(uint32_t);
+        3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(uint32_t);
     /** Persisted (e.g. compressed) size of the tile. */
     uint64_t persisted_size;
     /** Uncompressed size of the tile. */
@@ -68,6 +68,8 @@ class TileIO {
     char datatype;
     /** Cell size of the tile. */
     uint64_t cell_size;
+    /** The type of the encryption used in filtering. */
+    char encryption_type;
     /** Number of bytes in the serialized filter pipeline instance. */
     uint32_t filter_pipeline_size;
     /** Filter pipeline used to filter the tile. */
@@ -79,6 +81,7 @@ class TileIO {
         , tile_size(0)
         , datatype((char)Datatype::ANY)
         , cell_size(0)
+        , encryption_type((char)EncryptionType::NO_ENCRYPTION)
         , filter_pipeline_size(0) {
     }
   };
@@ -137,9 +140,11 @@ class TileIO {
    *
    * @param tile The tile that will hold the read data.
    * @param file_offset The offset in the file to read from.
+   * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status read_generic(Tile** tile, uint64_t file_offset);
+  Status read_generic(
+      Tile** tile, uint64_t file_offset, const EncryptionKey& encryption_key);
 
   /**
    * Reads the generic tile header from the file.
@@ -147,6 +152,8 @@ class TileIO {
    * @param sm The StorageManager instance to use for reading.
    * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
    * @param header The header to be retrieved.
    * @return Status
    */
@@ -163,9 +170,10 @@ class TileIO {
    * other thant the file itself.
    *
    * @param tile The tile to be written.
+   * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status write_generic(Tile* tile);
+  Status write_generic(Tile* tile, const EncryptionKey& encryption_key);
 
   /**
    * Writes the generic tile header to the file.
@@ -190,15 +198,29 @@ class TileIO {
   URI uri_;
 
   /**
+   * Configures the header's encryption filter with the given key.
+   *
+   * @param header Header instance to modify.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status configure_encryption_filter(
+      GenericTileHeader* header, const EncryptionKey& encryption_key) const;
+
+  /**
    * Initializes a generic tile header struct.
    *
    * This does not set the persisted size or filter pipeline size fields.
    *
    * @param tile The tile to initialize a header for
    * @param header The header to initialize
+   * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status init_generic_tile_header(Tile* tile, GenericTileHeader* header) const;
+  Status init_generic_tile_header(
+      Tile* tile,
+      GenericTileHeader* header,
+      const EncryptionKey& encryption_key) const;
 };
 
 }  // namespace sm

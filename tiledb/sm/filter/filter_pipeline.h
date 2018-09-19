@@ -34,6 +34,8 @@
 #define TILEDB_FILTER_PIPELINE_H
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
@@ -62,16 +64,14 @@ class FilterPipeline {
   /** Copy constructor. */
   FilterPipeline(const FilterPipeline& other);
 
+  /** Move constructor. */
+  FilterPipeline(FilterPipeline&& other);
+
   /** Copy-assign operator. */
   FilterPipeline& operator=(const FilterPipeline& other);
 
-  /**
-   * Deleted (unimplemented) rest of "rule of 5" functions.
-   * @{
-   */
-  FilterPipeline(FilterPipeline&& other) = delete;
-  FilterPipeline& operator=(FilterPipeline&& other) = delete;
-  /** @} */
+  /** Move-assign operator. */
+  FilterPipeline& operator=(FilterPipeline&& other);
 
   /**
    * Adds a copy of the given filter to the end of this pipeline.
@@ -221,6 +221,16 @@ class FilterPipeline {
 
   /** Swaps the contents of this pipeline with the given pipeline. */
   void swap(FilterPipeline& other);
+
+  /**
+   * Helper method to append an encryption filter to the given filter pipeline.
+   *
+   * @param pipeline Pipeline which may be modified.
+   * @param encryption_key Encryption key for filter.
+   * @return Status
+   */
+  static Status append_encryption_filter(
+      FilterPipeline* pipeline, const EncryptionKey& encryption_key);
 
  private:
   /** A pair of FilterBuffers. */

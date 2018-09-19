@@ -33,6 +33,7 @@
 #ifndef TILEDB_ARRAY_H
 #define TILEDB_ARRAY_H
 
+#include "tiledb/sm/encryption/encryption_key.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -90,9 +91,17 @@ class Array {
    * Opens the array for reading/writing at the current timestamp.
    *
    * @param query_type The mode in which the array is opened.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
    * @return Status
    */
-  Status open(QueryType query_type);
+  Status open(
+      QueryType query_type,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
 
   /** Closes the array and frees all memory. */
   Status close();
@@ -136,6 +145,11 @@ class Array {
       uint64_t* buffer_val_size);
 
   /**
+   * Returns a reference to the private encryption key.
+   */
+  const EncryptionKey& get_encryption_key() const;
+
+  /**
    * Re-opens the array. This effectively updates the "view" of the array,
    * by loading the fragments potentially written after the last time
    * the array was opened. Errors if the array is not open.
@@ -152,6 +166,15 @@ class Array {
 
   /** The array URI. */
   URI array_uri_;
+
+  /**
+   * The private encryption key used to encrypt the array.
+   *
+   * Note: this is the only place in TileDB where the user's private key bytes
+   * should be stored. Wherever a key is needed, a pointer to this memory region
+   * should be passed instead of a copy of the bytes.
+   */
+  EncryptionKey encryption_key_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;

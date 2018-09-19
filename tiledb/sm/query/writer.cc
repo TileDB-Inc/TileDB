@@ -52,6 +52,7 @@ namespace sm {
 /* ****************************** */
 
 Writer::Writer() {
+  array_ = nullptr;
   array_schema_ = nullptr;
   global_write_state_.reset(nullptr);
   initialized_ = false;
@@ -164,6 +165,10 @@ Status Writer::init() {
 
 Layout Writer::layout() const {
   return layout_;
+}
+
+void Writer::set_array(const Array* array) {
+  array_ = array;
 }
 
 void Writer::set_array_schema(const ArraySchema* array_schema) {
@@ -764,13 +769,21 @@ Status Writer::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
   auto orig_size = tile->buffer()->size();
 
+  // Get a copy of the appropriate filter pipeline.
+  FilterPipeline filters;
   if (tile->stores_coords()) {
-    RETURN_NOT_OK(array_schema_->coords_filters()->run_forward(tile));
+    filters = *array_schema_->coords_filters();
   } else if (offsets) {
-    RETURN_NOT_OK(array_schema_->cell_var_offsets_filters()->run_forward(tile));
+    filters = *array_schema_->cell_var_offsets_filters();
   } else {
-    RETURN_NOT_OK(array_schema_->filters(attribute)->run_forward(tile));
+    filters = *array_schema_->filters(attribute);
   }
+
+  // Append an encryption filter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  RETURN_NOT_OK(filters.run_forward(tile));
 
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);
@@ -858,7 +871,8 @@ Status Writer::finalize_global_write_state() {
   }
 
   // Flush fragment metadata to storage
-  st = storage_manager_->store_fragment_metadata(meta);
+  st = storage_manager_->store_fragment_metadata(
+      meta, array_->get_encryption_key());
   if (!st.ok())
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
 
@@ -1316,7 +1330,8 @@ Status Writer::ordered_write() {
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      storage_manager_->store_fragment_metadata(frag_meta.get()),
+      storage_manager_->store_fragment_metadata(
+          frag_meta.get(), array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();
@@ -1946,7 +1961,8 @@ Status Writer::unordered_write() {
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      storage_manager_->store_fragment_metadata(frag_meta.get()),
+      storage_manager_->store_fragment_metadata(
+          frag_meta.get(), array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();

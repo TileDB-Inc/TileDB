@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
@@ -87,13 +88,22 @@ Status Array::compute_max_buffer_sizes(
       open_array_, snapshot_, subarray, attributes, max_buffer_sizes);
 }
 
-Status Array::open(QueryType query_type) {
+Status Array::open(
+    QueryType query_type,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
   if (is_open())
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
 
+  // Copy the key bytes.
+  RETURN_NOT_OK(
+      encryption_key_.set_key(encryption_type, encryption_key, key_length));
+
+  // Open the array.
   RETURN_NOT_OK(storage_manager_->array_open(
-      array_uri_, query_type, &open_array_, &snapshot_));
+      array_uri_, query_type, encryption_key_, &open_array_, &snapshot_));
 
   is_open_ = true;
 
@@ -235,6 +245,10 @@ Status Array::get_max_buffer_size(
   return Status::Ok();
 }
 
+const EncryptionKey& Array::get_encryption_key() const {
+  return encryption_key_;
+}
+
 Status Array::reopen() {
   std::unique_lock<std::mutex> lck(mtx_);
 
@@ -249,7 +263,8 @@ Status Array::reopen() {
 
   clear_last_max_buffer_sizes();
 
-  return storage_manager_->array_reopen(open_array_, &snapshot_);
+  return storage_manager_->array_reopen(
+      open_array_, encryption_key_, &snapshot_);
 }
 
 /* ********************************* */

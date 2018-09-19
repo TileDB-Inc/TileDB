@@ -263,6 +263,12 @@ const std::string query_status_uninitialized_str = "UNINITIALIZED";
 /** TILEDB_COMPRESSION Filter type string */
 const std::string filter_type_compression_str = "COMPRESSION";
 
+/** String describing no encryption. */
+const std::string no_encryption_str = "NO_ENCRYPTION";
+
+/** String describing AES_256_GCM. */
+const std::string aes_256_gcm_str = "AES_256_GCM";
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 
