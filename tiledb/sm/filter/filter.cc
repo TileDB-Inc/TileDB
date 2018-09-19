@@ -35,6 +35,7 @@
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/misc/logger.h"
@@ -80,6 +81,8 @@ Filter* Filter::create(FilterType type) {
       return new (std::nothrow) ByteshuffleFilter();
     case FilterType::FILTER_POSITIVE_DELTA:
       return new (std::nothrow) PositiveDeltaFilter();
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+      return new (std::nothrow) EncryptionAES256GCMFilter();
     default:
       assert(false);
       return nullptr;

@@ -189,6 +189,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Filter:
       type = "[TileDB::Filter] Error";
       break;
+    case StatusCode::Encryption:
+      type = "[TileDB::Encryption] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }
