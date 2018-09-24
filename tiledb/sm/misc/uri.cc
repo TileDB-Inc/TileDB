@@ -52,6 +52,14 @@ URI::URI() {
   uri_ = "";
 }
 
+URI::URI(char* path)
+    : URI((path == nullptr) ? std::string("") : std::string(path)) {
+}
+
+URI::URI(const char* path)
+    : URI((path == nullptr) ? std::string("") : std::string(path)) {
+}
+
 URI::URI(const std::string& path) {
   if (path.empty())
     uri_ = "";
