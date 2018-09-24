@@ -94,8 +94,6 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto input_size = static_cast<uint32_t>(input->size());
-
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> parts = input->buffers();
   auto num_parts = (uint32_t)parts.size();
@@ -126,7 +124,6 @@ Status PositiveDeltaFilter::run_forward(
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   // Allocate a buffer for this filter's metadata and write the header.
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
 
   // Compress all parts.
@@ -243,11 +240,10 @@ Status PositiveDeltaFilter::run_reverse(
   auto tile_type = pipeline_->current_tile()->type();
   auto tile_type_size = datatype_size(tile_type);
 
-  uint32_t num_windows, orig_length;
-  RETURN_NOT_OK(input_metadata->read(&orig_length, sizeof(uint32_t)));
+  uint32_t num_windows;
   RETURN_NOT_OK(input_metadata->read(&num_windows, sizeof(uint32_t)));
 
-  RETURN_NOT_OK(output->prepend_buffer(orig_length));
+  RETURN_NOT_OK(output->prepend_buffer(input->size()));
   output->reset_offset();
 
   // Read each window
