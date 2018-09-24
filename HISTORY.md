@@ -14,6 +14,7 @@
 
 * Fix issue where performing a read query with empty result could cause future reads to return empty #882
 * Fix TBB initialization bug with multiple contexts #898 
+* Fix bug in max buffer sizes estimation #903
 * Fix Buffer allocation size being incorrectly set on realloc #911
 
 ## Improvements
