@@ -191,6 +191,7 @@ std::string Status::code_to_string() const {
       break;
     case StatusCode::Encryption:
       type = "[TileDB::Encryption] Error";
+      break;
     case StatusCode::Array:
       type = "[TileDB::Array] Error";
       break;

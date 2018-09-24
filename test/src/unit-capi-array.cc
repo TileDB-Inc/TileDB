@@ -226,13 +226,9 @@ TEST_CASE_METHOD(
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "array_uri";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
-  // Create context
-  int rc = tiledb_ctx_alloc(nullptr, &ctx_);
-  REQUIRE(rc == TILEDB_OK);
-
   // Create array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
 
   // Get URI when array is not opened (should not error)
@@ -264,4 +260,12 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    ArrayFx, "C API: Set null URI", "[capi], [array], [array-null-uri]") {
+  // Create context
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, nullptr, &array);
+  CHECK(rc == TILEDB_ERR);
 }
