@@ -191,6 +191,14 @@ std::string Status::code_to_string() const {
       break;
     case StatusCode::Encryption:
       type = "[TileDB::Encryption] Error";
+    case StatusCode::Array:
+      type = "[TileDB::Array] Error";
+      break;
+    case StatusCode::VFSFileHandleError:
+      type = "[TileDB::VFSFileHandle] Error";
+      break;
+    case StatusCode::ContextError:
+      type = "[TileDB::Context] Error";
       break;
     default:
       type = "[TileDB::?] Error:";

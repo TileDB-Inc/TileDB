@@ -46,14 +46,12 @@ namespace sm {
 KV::KV(const URI& kv_uri, StorageManager* storage_manager)
     : kv_uri_(kv_uri)
     , storage_manager_(storage_manager) {
-  is_open_ = false;
-  schema_ = nullptr;
-  open_array_ = nullptr;
-  snapshot_ = 0;
+  array_ = new Array(kv_uri, storage_manager);
 }
 
 KV::~KV() {
   clear();
+  delete array_;
 }
 
 /* ********************************* */
@@ -61,11 +59,16 @@ KV::~KV() {
 /* ********************************* */
 
 uint64_t KV::capacity() const {
-  return (schema_ != nullptr) ? schema_->capacity() : 0;
+  if (!is_open())
+    return 0;
+  auto schema = array_->array_schema();
+  return (schema != nullptr) ? schema->capacity() : 0;
 }
 
 Status KV::is_dirty(bool* dirty) const {
-  if (query_type_ != QueryType::WRITE)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::WRITE)
     return LOG_STATUS(Status::KVError(
         "Cannot check if dirty; Key-value store was not opened in write mode"));
 
@@ -75,79 +78,50 @@ Status KV::is_dirty(bool* dirty) const {
 }
 
 Status KV::open(QueryType query_type) {
-  if (is_open_)
+  if (is_open())
     return LOG_STATUS(Status::KVError(
         "Cannot open key-value store; Key-value store already open"));
 
-  query_type_ = query_type;
-
-  // Open the array for reads
-  if (query_type_ == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_open(
-        kv_uri_, QueryType::READ, &open_array_, &snapshot_));
-  }
-
-  // Open the array for writes
-  uint64_t snapshot;  // will be ignored for writes
-  if (query_type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(storage_manager_->array_open(
-        kv_uri_, QueryType::WRITE, &open_array_, &snapshot));
-  }
-
-  // Get array schema
-  schema_ = open_array_->array_schema();
+  RETURN_NOT_OK(array_->open(query_type));
+  auto schema = array_->array_schema();
 
   // Load all attributes
-  auto schema_attributes = schema_->attributes();
+  auto schema_attributes = schema->attributes();
   attributes_.push_back(constants::coords);
   for (const auto& attr : schema_attributes)
     attributes_.push_back(attr->name());
 
   // Prepare attribute types and read buffer sizes
   for (const auto& attr : attributes_) {
-    attribute_types_.push_back(schema_->type(attr));
+    attribute_types_.push_back(schema->type(attr));
     read_buffer_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, 0);
   }
-
-  is_open_ = true;
 
   return Status::Ok();
 }
 
-void KV::clear() {
-  schema_ = nullptr;
-  attributes_.clear();
-  attribute_types_.clear();
-
-  clear_items();
-  clear_read_buffers();
-  clear_write_buffers();
-
-  open_array_ = nullptr;
-}
-
 Status KV::close() {
-  if (!is_open_)
+  if (!is_open())
     return Status::Ok();
 
   std::unique_lock<std::mutex> lck(mtx_);
-  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_, QueryType::READ));
-  RETURN_NOT_OK(storage_manager_->array_close(kv_uri_, QueryType::WRITE));
+  RETURN_NOT_OK(array_->close());
   clear();
-  is_open_ = false;
 
   return Status::Ok();
 }
 
 bool KV::is_open() const {
-  return is_open_;
+  return array_ != nullptr && array_->is_open();
 }
 
 Status KV::add_item(const KVItem* kv_item) {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (query_type_ != QueryType::WRITE)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::WRITE)
     return LOG_STATUS(Status::KVError(
         "Cannot add item; Key-value store was not opened in write mode"));
 
@@ -165,7 +139,9 @@ Status KV::get_item(
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (query_type_ != QueryType::READ)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::READ)
     return LOG_STATUS(Status::KVError(
         "Cannot get item; Key-value store was not opened in read mode"));
 
@@ -199,15 +175,18 @@ Status KV::get_item(
     return st;
   }
 
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
   // Set values
   const void* value = nullptr;
   uint64_t value_size = 0;
   for (const auto& attr : attributes_) {
-    auto var = schema_->var_size(attr);
+    auto var = schema->var_size(attr);
     value = var ? read_buffers_[attr].second : read_buffers_[attr].first;
     value_size =
         var ? read_buffer_sizes_[attr].second : read_buffer_sizes_[attr].first;
-    st = (*kv_item)->set_value(attr, value, schema_->type(attr), value_size);
+    st = (*kv_item)->set_value(attr, value, schema->type(attr), value_size);
     if (!st.ok()) {
       delete *kv_item;
       *kv_item = nullptr;
@@ -261,12 +240,15 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
       continue;
     }
 
+    assert(array_->is_open());
+    auto schema = array_->array_schema();
+
     // Set values
-    auto var = schema_->var_size(attr);
+    auto var = schema->var_size(attr);
     value = var ? read_buffers_[attr].second : read_buffers_[attr].first;
     value_size =
         var ? read_buffer_sizes_[attr].second : read_buffer_sizes_[attr].first;
-    st = (*kv_item)->set_value(attr, value, schema_->type(attr), value_size);
+    st = (*kv_item)->set_value(attr, value, schema->type(attr), value_size);
     if (!st.ok()) {
       delete *kv_item;
       *kv_item = nullptr;
@@ -293,7 +275,9 @@ Status KV::has_key(
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (query_type_ != QueryType::READ)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::READ)
     return LOG_STATUS(Status::KVError(
         "Cannot check key; Key-value store was not opened in read mode"));
 
@@ -320,7 +304,9 @@ Status KV::flush() {
   // Take the lock.
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (query_type_ != QueryType::WRITE)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::WRITE)
     return LOG_STATUS(
         Status::KVError("Cannot flush key-value store; Key-value store was not "
                         "opened in write mode"));
@@ -338,8 +324,16 @@ Status KV::flush() {
   return Status::Ok();
 }
 
-QueryType KV::query_type() const {
-  return query_type_;
+Status KV::get_query_type(QueryType* query_type) const {
+  if (array_ == nullptr || !array_->is_open())
+    return LOG_STATUS(
+        Status::KVError("Cannot get query type; Key-value store is not open"));
+
+  QueryType type;
+  RETURN_NOT_OK(array_->get_query_type(&type));
+  *query_type = type;
+
+  return Status::Ok();
 }
 
 void KV::clear_items() {
@@ -366,27 +360,25 @@ void KV::clear_write_buffers() {
   write_buffers_.clear();
 }
 
-OpenArray* KV::open_array() const {
-  return open_array_;
-}
-
-uint64_t KV::snapshot() const {
-  return snapshot_;
+Array* KV::array() const {
+  return array_;
 }
 
 Status KV::reopen() {
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (query_type_ != QueryType::READ)
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::READ)
     return LOG_STATUS(
         Status::KVError("Cannot reopen key-value store; Key-value store was "
                         "not opened in read mode"));
 
-  if (!is_open_)
+  if (!is_open())
     return LOG_STATUS(Status::KVError(
         "Cannot reopen key-value store; Key-value store is not open"));
 
-  return storage_manager_->array_reopen(open_array_, &snapshot_);
+  return array_->reopen();
 }
 
 /* ********************************* */
@@ -415,7 +407,10 @@ Status KV::add_key(const KVItem::Key& key) {
 }
 
 Status KV::add_value(const std::string& attribute, const KVItem::Value& value) {
-  if (schema_->var_size(attribute)) {
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
+  if (schema->var_size(attribute)) {
     uint64_t offset = write_buffers_[attribute].second->size();
     RETURN_NOT_OK(
         write_buffers_[attribute].first->write(&offset, sizeof(offset)));
@@ -429,7 +424,19 @@ Status KV::add_value(const std::string& attribute, const KVItem::Value& value) {
   return Status::Ok();
 }
 
+void KV::clear() {
+  attributes_.clear();
+  attribute_types_.clear();
+
+  clear_items();
+  clear_read_buffers();
+  clear_write_buffers();
+}
+
 Status KV::populate_write_buffers() {
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
   // Reset buffers
   for (const auto& buff_it : write_buffers_) {
     buff_it.second.first->reset_size();
@@ -440,7 +447,7 @@ Status KV::populate_write_buffers() {
   // Create buffers if this is the first time to populate the write buffers
   if (write_buffers_.empty()) {
     for (const auto& attr : attributes_) {
-      auto var = schema_->var_size(attr);
+      auto var = schema->var_size(attr);
       auto buff_1 = new Buffer();
       auto buff_2 = var ? new Buffer() : (Buffer*)nullptr;
       write_buffers_[attr] = std::pair<Buffer*, Buffer*>(buff_1, buff_2);
@@ -474,8 +481,8 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
   subarray[3] = hash.second;
 
   // Compute max buffer sizes
-  RETURN_NOT_OK(storage_manager_->array_compute_max_buffer_sizes(
-      open_array_, snapshot_, subarray, attributes_, &read_buffer_sizes_));
+  RETURN_NOT_OK(array_->compute_max_buffer_sizes(
+      subarray, attributes_, &read_buffer_sizes_));
 
   // If the max buffer sizes are 0, then the item is not found
   if (read_buffer_sizes_.begin()->second.first == 0) {
@@ -502,10 +509,13 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 }
 
 Status KV::realloc_read_buffers() {
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
   for (const auto& attr : attributes_) {
     auto alloced_size_1 = read_buffer_alloced_sizes_[attr].first;
     auto alloced_size_2 = read_buffer_alloced_sizes_[attr].second;
-    auto var = schema_->var_size(attr);
+    auto var = schema->var_size(attr);
     auto new_size_1 = read_buffer_sizes_[attr].first;
     auto new_size_2 = read_buffer_sizes_[attr].second;
 
@@ -554,8 +564,11 @@ Status KV::realloc_read_buffers() {
 }
 
 Status KV::set_read_query_buffers(Query* query) {
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
   for (const auto& attr : attributes_) {
-    if (!schema_->var_size(attr)) {
+    if (!schema->var_size(attr)) {
       RETURN_NOT_OK(query->set_buffer(
           attr, read_buffers_[attr].first, &read_buffer_sizes_[attr].first));
     } else {
@@ -572,8 +585,11 @@ Status KV::set_read_query_buffers(Query* query) {
 }
 
 Status KV::set_write_query_buffers(Query* query) {
+  assert(array_->is_open());
+  auto schema = array_->array_schema();
+
   for (const auto& attr : attributes_) {
-    if (!schema_->var_size(attr)) {
+    if (!schema->var_size(attr)) {
       write_buffer_sizes_[attr] =
           std::pair<uint64_t, uint64_t>(write_buffers_[attr].first->size(), 0);
       RETURN_NOT_OK(query->set_buffer(
@@ -599,21 +615,19 @@ Status KV::set_write_query_buffers(Query* query) {
 
 Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
-  auto query = (Query*)nullptr;
-  RETURN_NOT_OK(storage_manager_->query_create(&query, open_array_, snapshot_));
+  auto query = new Query(storage_manager_, array_);
   RETURN_NOT_OK_ELSE(set_read_query_buffers(query), delete query);
   RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
-  RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
+  RETURN_NOT_OK_ELSE(query->submit(), delete query);
   delete query;
 
   return Status::Ok();
 }
 
 Status KV::submit_write_query() {
-  auto query = (Query*)nullptr;
-  RETURN_NOT_OK(storage_manager_->query_create(&query, open_array_, snapshot_));
+  auto query = new Query(storage_manager_, array_);
   RETURN_NOT_OK_ELSE(set_write_query_buffers(query), delete query);
-  RETURN_NOT_OK_ELSE(storage_manager_->query_submit(query), delete query);
+  RETURN_NOT_OK_ELSE(query->submit(), delete query);
   delete query;
 
   return Status::Ok();

@@ -109,7 +109,10 @@ enum class StatusCode : char {
   Writer,
   PreallocatedBuffer,
   Filter,
-  Encryption
+  Encryption,
+  Array,
+  VFSFileHandleError,
+  ContextError
 };
 
 class Status {
@@ -309,6 +312,21 @@ class Status {
   /** Return a EncryptionError error class Status with a given message **/
   static Status EncryptionError(const std::string& msg) {
     return Status(StatusCode::Encryption, msg, -1);
+  }
+
+  /** Return an ArrayError error class Status with a given message **/
+  static Status ArrayError(const std::string& msg) {
+    return Status(StatusCode::Array, msg, -1);
+  }
+
+  /** Return a VFSFileHandle error class Status with a given message **/
+  static Status VFSFileHandleError(const std::string& msg) {
+    return Status(StatusCode::VFSFileHandleError, msg, -1);
+  }
+
+  /** Return a ContextError error class Status with a given message **/
+  static Status ContextError(const std::string& msg) {
+    return Status(StatusCode::ContextError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

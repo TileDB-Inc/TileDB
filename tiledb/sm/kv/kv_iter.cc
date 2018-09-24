@@ -78,8 +78,14 @@ Status KVIter::here(KVItem** kv_item) const {
 }
 
 Status KVIter::init(KV* kv) {
+  if (kv_ != nullptr)
+    return LOG_STATUS(Status::KVIterError(
+        "Cannot initialize kv iterator; Kv iterator already initialized"));
+
   // Error if kv is opened in write mode
-  if (kv->query_type() != QueryType::READ)
+  QueryType query_type;
+  RETURN_NOT_OK(kv->get_query_type(&query_type));
+  if (query_type != QueryType::READ)
     return LOG_STATUS(
         Status::KVIterError("Cannot initialize kv iterator; The input kv is "
                             "not opened for reads"));
@@ -93,9 +99,7 @@ Status KVIter::init(KV* kv) {
         "Cannot initialize kv iterator; Memory allocation failed"));
   coords_buffer_alloced_size_ = 2 * max_item_num_ * sizeof(uint64_t);
 
-  RETURN_NOT_OK(storage_manager_->query_create(
-      &query_, kv_->open_array(), kv->snapshot()));
-
+  query_ = new Query(storage_manager_, kv->array());
   RETURN_NOT_OK(submit_read_query());
 
   return Status::Ok();
@@ -140,7 +144,7 @@ Status KVIter::submit_read_query() {
   do {
     RETURN_NOT_OK(query_->set_buffer(
         constants::coords, coords_buffer_, &coords_buffer_size));
-    RETURN_NOT_OK(storage_manager_->query_submit(query_));
+    RETURN_NOT_OK(query_->submit());
 
     status_ = query_->status();
     item_num_ = coords_buffer_size / (2 * sizeof(uint64_t));

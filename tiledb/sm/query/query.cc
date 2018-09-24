@@ -31,10 +31,12 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -43,19 +45,32 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(
-    StorageManager* storage_manager,
-    QueryType type,
-    const ArraySchema* array_schema,
-    const std::vector<FragmentMetadata*>& fragment_metadata)
-    : type_(type) {
+Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
+    : array_(array)
+    , storage_manager_(storage_manager) {
+  assert(array != nullptr && array->is_open());
+
   callback_ = nullptr;
   callback_data_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   status_ = QueryStatus::UNINITIALIZED;
-  set_storage_manager(storage_manager);
-  set_array_schema(array_schema);
-  set_fragment_metadata(fragment_metadata);
+  auto st = array->get_query_type(&type_);
+  assert(st.ok());
+
+  if (type_ == QueryType::WRITE)
+    writer_.set_storage_manager(storage_manager);
+  else
+    reader_.set_storage_manager(storage_manager);
+
+  if (type_ == QueryType::READ) {
+    reader_.set_storage_manager(storage_manager);
+    reader_.set_array_schema(array->array_schema());
+    reader_.set_fragment_metadata(array->fragment_metadata());
+  } else {
+    writer_.set_storage_manager(storage_manager);
+    writer_.set_array_schema(array->array_schema());
+    writer_.set_fragment_uri(fragment_uri);
+  }
 }
 
 Query::~Query() = default;
@@ -163,6 +178,23 @@ bool Query::has_results() const {
 Status Query::init() {
   // Only if the query has not been initialized before
   if (status_ == QueryStatus::UNINITIALIZED) {
+    // Check if the array got closed
+    if (array_ == nullptr || !array_->is_open())
+      return LOG_STATUS(Status::QueryError(
+          "Cannot init query; The associated array is not open"));
+
+    // Check if the array got re-opened with a different query type
+    QueryType array_query_type;
+    RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+    if (array_query_type != type_) {
+      std::stringstream errmsg;
+      errmsg << "Cannot init query; "
+             << "Associated array query type does not match query type: "
+             << "(" << query_type_str(array_query_type)
+             << " != " << query_type_str(type_) << ")";
+      return LOG_STATUS(Status::QueryError(errmsg.str()));
+    }
+
     if (type_ == QueryType::READ) {
       RETURN_NOT_OK(reader_.init());
     } else {  // Write
@@ -279,30 +311,11 @@ Status Query::set_buffer(
       attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
-void Query::set_callback(
-    const std::function<void(void*)>& callback, void* callback_data) {
-  callback_ = callback;
-  callback_data_ = callback_data;
-}
-
-void Query::set_fragment_uri(const URI& fragment_uri) {
-  if (type_ == QueryType::WRITE)
-    writer_.set_fragment_uri(fragment_uri);
-  // Non-applicable to reads
-}
-
 Status Query::set_layout(Layout layout) {
   layout_ = layout;
   if (type_ == QueryType::WRITE)
     return writer_.set_layout(layout);
   return reader_.set_layout(layout);
-}
-
-void Query::set_storage_manager(StorageManager* storage_manager) {
-  if (type_ == QueryType::WRITE)
-    writer_.set_storage_manager(storage_manager);
-  else
-    reader_.set_storage_manager(storage_manager);
 }
 
 Status Query::set_subarray(const void* subarray) {
@@ -316,6 +329,19 @@ Status Query::set_subarray(const void* subarray) {
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
+}
+
+Status Query::submit() {  // Do nothing if the query is completed or failed
+  RETURN_NOT_OK(init());
+  return storage_manager_->query_submit(this);
+}
+
+Status Query::submit_async(
+    std::function<void(void*)> callback, void* callback_data) {
+  RETURN_NOT_OK(init());
+  callback_ = callback;
+  callback_data_ = callback_data;
+  return storage_manager_->query_submit_async(this);
 }
 
 QueryStatus Query::status() const {
@@ -401,19 +427,6 @@ Status Query::check_subarray_bounds(const T* subarray) const {
   }
 
   return Status::Ok();
-}
-
-void Query::set_array_schema(const ArraySchema* array_schema) {
-  if (type_ == QueryType::READ)
-    reader_.set_array_schema(array_schema);
-  else
-    writer_.set_array_schema(array_schema);
-}
-
-void Query::set_fragment_metadata(
-    const std::vector<FragmentMetadata*>& fragment_metadata) {
-  if (type_ == QueryType::READ)
-    reader_.set_fragment_metadata(fragment_metadata);
 }
 
 }  // namespace sm

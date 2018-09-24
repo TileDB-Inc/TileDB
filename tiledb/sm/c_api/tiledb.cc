@@ -32,8 +32,10 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
+#include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/kv/kv.h"
@@ -44,6 +46,8 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/config.h"
+#include "tiledb/sm/storage_manager/config_iter.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 #include <map>
 #include <sstream>
@@ -87,90 +91,75 @@ void tiledb_version(int* major, int* minor, int* rev) {
 /* ********************************* */
 
 struct tiledb_array_t {
-  tiledb::sm::URI array_uri_;
-  tiledb::sm::OpenArray* open_array_;
-  bool is_open_;
-  uint64_t snapshot_;
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      max_buffer_sizes_;
-  void* max_buffer_sizes_subarray_;
+  tiledb::sm::Array* array_ = nullptr;
 };
 
 struct tiledb_config_t {
-  tiledb::sm::Config* config_;
+  tiledb::sm::Config* config_ = nullptr;
 };
 
 struct tiledb_config_iter_t {
-  std::map<std::string, std::string> param_values_;
-  std::map<std::string, std::string>::iterator it_;
+  tiledb::sm::ConfigIter* config_iter_ = nullptr;
 };
 
 struct tiledb_ctx_t {
-  tiledb::sm::StorageManager* storage_manager_;
-  tiledb::sm::Status* last_error_;
-  std::mutex* mtx_;
+  tiledb::sm::Context* ctx_ = nullptr;
 };
 
 struct tiledb_error_t {
-  // Pointer to a copy of the last TileDB error associated with a given ctx
-  const tiledb::sm::Status* status_;
-  std::string* errmsg_;
+  std::string errmsg_;
 };
 
 struct tiledb_attribute_t {
-  tiledb::sm::Attribute* attr_;
+  tiledb::sm::Attribute* attr_ = nullptr;
 };
 
 struct tiledb_array_schema_t {
-  tiledb::sm::ArraySchema* array_schema_;
+  tiledb::sm::ArraySchema* array_schema_ = nullptr;
 };
 
 struct tiledb_dimension_t {
-  tiledb::sm::Dimension* dim_;
+  tiledb::sm::Dimension* dim_ = nullptr;
 };
 
 struct tiledb_domain_t {
-  tiledb::sm::Domain* domain_;
+  tiledb::sm::Domain* domain_ = nullptr;
 };
 
 struct tiledb_filter_t {
-  tiledb::sm::Filter* filter_;
+  tiledb::sm::Filter* filter_ = nullptr;
 };
 
 struct tiledb_filter_list_t {
-  tiledb::sm::FilterPipeline* pipeline_;
+  tiledb::sm::FilterPipeline* pipeline_ = nullptr;
 };
 
 struct tiledb_query_t {
-  tiledb_array_t* array_;  // The array the query was alloc'ed with
-  tiledb::sm::Query* query_;
+  tiledb::sm::Query* query_ = nullptr;
 };
 
 struct tiledb_kv_schema_t {
-  tiledb::sm::ArraySchema* array_schema_;
+  tiledb::sm::ArraySchema* array_schema_ = nullptr;
 };
 
 struct tiledb_kv_t {
-  tiledb::sm::KV* kv_;
+  tiledb::sm::KV* kv_ = nullptr;
 };
 
 struct tiledb_kv_item_t {
-  tiledb::sm::KVItem* kv_item_;
+  tiledb::sm::KVItem* kv_item_ = nullptr;
 };
 
 struct tiledb_kv_iter_t {
-  tiledb::sm::KVIter* kv_iter_;
+  tiledb::sm::KVIter* kv_iter_ = nullptr;
 };
 
 struct tiledb_vfs_t {
-  tiledb::sm::VFS* vfs_;
+  tiledb::sm::VFS* vfs_ = nullptr;
 };
 
 struct tiledb_vfs_fh_t {
-  tiledb::sm::URI uri_;
-  bool is_closed_;
-  tiledb::sm::VFS* vfs_;
-  tiledb::sm::VFSMode mode_;
+  tiledb::sm::VFSFileHandle* vfs_fh_ = nullptr;
 };
 
 /* ********************************* */
@@ -184,11 +173,7 @@ static bool save_error(tiledb_ctx_t* ctx, const tiledb::sm::Status& st) {
     return false;
 
   // Store new error
-  {
-    std::lock_guard<std::mutex> lock(*(ctx->mtx_));
-    delete ctx->last_error_;
-    ctx->last_error_ = new (std::nothrow) tiledb::sm::Status(st);
-  }
+  ctx->ctx_->save_error(st);
 
   // There is an error
   return true;
@@ -201,25 +186,13 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   (*error) = new (std::nothrow) tiledb_error_t;
   if (*error == nullptr)
     return true;
-  (*error)->status_ = new (std::nothrow) tiledb::sm::Status(st);
-  if ((*error)->status_ == nullptr) {
-    delete (*error);
-    *error = nullptr;
-    return true;
-  }
-  (*error)->errmsg_ =
-      new (std::nothrow) std::string((*error)->status_->to_string());
-  if ((*error)->errmsg_ == nullptr) {
-    delete (*error)->status_;
-    delete (*error);
-    (*error) = nullptr;
-  }
+  (*error)->errmsg_ = st.to_string();
 
   return true;
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
-  if (array == nullptr) {
+  if (array == nullptr || array->array_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -243,7 +216,7 @@ inline int sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
 
 inline int sanity_check(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
-  if (config_iter == nullptr) {
+  if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Cannot set config; Invalid config iterator object");
     LOG_STATUS(st);
@@ -256,9 +229,9 @@ inline int sanity_check(
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx) {
-  if (ctx == nullptr || ctx->mtx_ == nullptr)
+  if (ctx == nullptr)
     return TILEDB_ERR;
-  if (ctx->storage_manager_ == nullptr) {
+  if (ctx->ctx_ == nullptr || ctx->ctx_->storage_manager() == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB context");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -268,7 +241,7 @@ inline int sanity_check(tiledb_ctx_t* ctx) {
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
-  if (err == nullptr || err->status_ == nullptr) {
+  if (err == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB error object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -340,8 +313,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
-  if (query == nullptr || query->query_ == nullptr ||
-      query->array_ == nullptr) {
+  if (query == nullptr || query->query_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB query object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -406,7 +378,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
 }
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
-  if (fh == nullptr) {
+  if (fh == nullptr || fh->vfs_fh_ == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Invalid TileDB virtual filesystem file handle");
     LOG_STATUS(st);
@@ -434,19 +406,17 @@ inline int check_filter_type(
 /* ********************************* */
 
 int tiledb_error_message(tiledb_error_t* err, const char** errmsg) {
-  if (err == nullptr || err->status_ == nullptr)
+  if (err == nullptr)
     return TILEDB_ERR;
-  if (err->status_->ok() || err->errmsg_ == nullptr)
+  if (err->errmsg_.empty())
     *errmsg = nullptr;
   else
-    *errmsg = err->errmsg_->c_str();
+    *errmsg = err->errmsg_.c_str();
   return TILEDB_OK;
 }
 
 void tiledb_error_free(tiledb_error_t** err) {
   if (err != nullptr && *err != nullptr) {
-    delete (*err)->status_;
-    delete (*err)->errmsg_;
     delete (*err);
     *err = nullptr;
   }
@@ -592,8 +562,17 @@ int tiledb_config_iter_alloc(
   }
 
   std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
-  (*config_iter)->param_values_ = config->config_->param_values(prefix_str);
-  (*config_iter)->it_ = (*config_iter)->param_values_.begin();
+  (*config_iter)->config_iter_ =
+      new (std::nothrow) tiledb::sm::ConfigIter(config->config_, prefix_str);
+  if ((*config_iter)->config_iter_ == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Cannot create config iterator object; Memory allocation failed");
+    LOG_STATUS(st);
+    create_error(error, st);
+    delete *config_iter;
+    *config_iter = nullptr;
+    return TILEDB_OOM;
+  }
 
   *error = nullptr;
   return TILEDB_OK;
@@ -609,8 +588,7 @@ int tiledb_config_iter_reset(
     return TILEDB_ERR;
 
   std::string prefix_str = (prefix == nullptr) ? "" : std::string(prefix);
-  config_iter->param_values_ = config->config_->param_values(prefix_str);
-  config_iter->it_ = config_iter->param_values_.begin();
+  config_iter->config_iter_->reset(config->config_, prefix_str);
 
   *error = nullptr;
   return TILEDB_OK;
@@ -618,6 +596,7 @@ int tiledb_config_iter_reset(
 
 void tiledb_config_iter_free(tiledb_config_iter_t** config_iter) {
   if (config_iter != nullptr && *config_iter != nullptr) {
+    delete (*config_iter)->config_iter_;
     delete *config_iter;
     *config_iter = nullptr;
   }
@@ -631,12 +610,12 @@ int tiledb_config_iter_here(
   if (sanity_check(config_iter, error) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (config_iter->it_ == config_iter->param_values_.end()) {
+  if (config_iter->config_iter_->end()) {
     *param = nullptr;
     *value = nullptr;
   } else {
-    *param = config_iter->it_->first.c_str();
-    *value = config_iter->it_->second.c_str();
+    *param = config_iter->config_iter_->param().c_str();
+    *value = config_iter->config_iter_->value().c_str();
   }
 
   *error = nullptr;
@@ -648,8 +627,7 @@ int tiledb_config_iter_next(
   if (sanity_check(config_iter, error) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (config_iter->it_ != config_iter->param_values_.end())
-    config_iter->it_++;
+  config_iter->config_iter_->next();
 
   *error = nullptr;
   return TILEDB_OK;
@@ -660,7 +638,7 @@ int tiledb_config_iter_done(
   if (sanity_check(config_iter, error) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *done = config_iter->it_ != config_iter->param_values_.end() ? 0 : 1;
+  *done = (int)config_iter->config_iter_->end();
 
   *error = nullptr;
   return TILEDB_OK;
@@ -674,33 +652,26 @@ int tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
   if (config != nullptr && config->config_ == nullptr)
     return TILEDB_ERR;
 
-  // Initialize context
+  // Create a context object
   *ctx = new (std::nothrow) tiledb_ctx_t;
   if (*ctx == nullptr)
     return TILEDB_OOM;
 
-  // Create mutex
-  (*ctx)->mtx_ = new (std::nothrow) std::mutex();
-
-  // Create storage manager
-  (*ctx)->storage_manager_ = new (std::nothrow) tiledb::sm::StorageManager();
-  if ((*ctx)->storage_manager_ == nullptr) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to allocate storage manager in TileDB context");
-    LOG_STATUS(st);
-    save_error(*ctx, st);
-    return TILEDB_ERR;
+  // Create a context object
+  (*ctx)->ctx_ = new (std::nothrow) tiledb::sm::Context();
+  if ((*ctx)->ctx_ == nullptr) {
+    delete (*ctx);
+    (*ctx) = nullptr;
+    return TILEDB_OOM;
   }
 
-  // Initialize last error
-  (*ctx)->last_error_ = nullptr;
-
-  // Initialize storage manager
+  // Initialize the context
   auto conf =
       (config == nullptr) ? (tiledb::sm::Config*)nullptr : config->config_;
-  if (save_error(*ctx, ((*ctx)->storage_manager_->init(conf)))) {
-    delete (*ctx)->storage_manager_;
-    (*ctx)->storage_manager_ = nullptr;
+  if (!(*ctx)->ctx_->init(conf).ok()) {
+    delete (*ctx)->ctx_;
+    delete (*ctx);
+    (*ctx) = nullptr;
     return TILEDB_ERR;
   }
 
@@ -710,9 +681,7 @@ int tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
 
 void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   if (ctx != nullptr && *ctx != nullptr) {
-    delete (*ctx)->storage_manager_;
-    delete (*ctx)->last_error_;
-    delete (*ctx)->mtx_;
+    delete (*ctx)->ctx_;
     delete (*ctx);
     *ctx = nullptr;
   }
@@ -730,44 +699,31 @@ int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
     return TILEDB_OOM;
   }
 
-  *((*config)->config_) = ctx->storage_manager_->config();
+  *((*config)->config_) = ctx->ctx_->storage_manager()->config();
 
   return TILEDB_OK;
 }
 
 int tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   // sanity check
-  if (ctx == nullptr || ctx->mtx_ == nullptr) {
+  if (ctx == nullptr || ctx->ctx_ == nullptr)
     return TILEDB_ERR;
+
+  tiledb::sm::Status last_error = ctx->ctx_->last_error();
+
+  // No last error
+  if (last_error.ok()) {
+    *err = nullptr;
+    return TILEDB_OK;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(*(ctx->mtx_));
+  // Create error struct
+  *err = new (std::nothrow) tiledb_error_t;
+  if (*err == nullptr)
+    return TILEDB_OOM;
 
-    // No last error
-    if (ctx->last_error_ == nullptr) {
-      *err = nullptr;
-      return TILEDB_OK;
-    }
-
-    // Create error struct
-    *err = new (std::nothrow) tiledb_error_t;
-    if (*err == nullptr) {
-      return TILEDB_OOM;
-    }
-
-    // Create status
-    (*err)->status_ =
-        new (std::nothrow) tiledb::sm::Status(*(ctx->last_error_));
-    if ((*err)->status_ == nullptr) {
-      delete *err;
-      return TILEDB_OOM;
-    }
-
-    // Set error message
-    (*err)->errmsg_ =
-        new (std::nothrow) std::string((*err)->status_->to_string());
-  }
+  // Set error message
+  (*err)->errmsg_ = last_error.to_string();
 
   // Success
   return TILEDB_OK;
@@ -778,7 +734,7 @@ int tiledb_ctx_is_supported_fs(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_supported = (int)ctx->storage_manager_->vfs()->supports_fs(
+  *is_supported = (int)ctx->ctx_->storage_manager()->vfs()->supports_fs(
       static_cast<tiledb::sm::Filesystem>(fs));
 
   return TILEDB_OK;
@@ -788,7 +744,7 @@ int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, ctx->storage_manager_->cancel_all_tasks()))
+  if (save_error(ctx, ctx->ctx_->storage_manager()->cancel_all_tasks()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -812,7 +768,7 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   }
 
   // Create the group
-  if (save_error(ctx, ctx->storage_manager_->group_create(group_uri)))
+  if (save_error(ctx, ctx->ctx_->storage_manager()->group_create(group_uri)))
     return TILEDB_ERR;
 
   // Success
@@ -1714,7 +1670,7 @@ int tiledb_array_schema_load(
   }
 
   // Load array schema
-  auto storage_manager = ctx->storage_manager_;
+  auto storage_manager = ctx->ctx_->storage_manager();
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
@@ -2030,27 +1986,32 @@ int tiledb_query_alloc(
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Error if array is not open
-  if (!array->is_open_) {
+  if (!array->array_->is_open()) {
     auto st = tiledb::sm::Status::Error(
-        "Failed to allocate TileDB query object; Input array is not open");
+        "Cannot create query; Input array is not open");
+    *query = nullptr;
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
 
   // Error is the query type and array query type do not match
-  auto _array_query_type = array->open_array_->query_type();
-  auto _query_type = static_cast<tiledb::sm::QueryType>(query_type);
-  if (_array_query_type != _query_type) {
+  tiledb::sm::QueryType array_query_type;
+  if (save_error(ctx, array->array_->get_query_type(&array_query_type)))
+    return TILEDB_ERR;
+  if (query_type != static_cast<tiledb_query_type_t>(array_query_type)) {
     std::stringstream errmsg;
-    errmsg << "Failed to allocate TileDB query object; "
-           << "Opened array query type does not match declared query type: "
-           << "(" << query_type_str(_array_query_type)
-           << " != " << query_type_str(_query_type) << ")";
+    errmsg << "Cannot create query; "
+           << "Array query type does not match declared query type: "
+           << "(" << query_type_str(array_query_type) << " != "
+           << tiledb::sm::query_type_str(
+                  static_cast<tiledb::sm::QueryType>(query_type))
+           << ")";
+    *query = nullptr;
     auto st = tiledb::sm::Status::Error(errmsg.str());
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -2067,18 +2028,18 @@ int tiledb_query_alloc(
     return TILEDB_OOM;
   }
 
-  // Create query object
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->query_create(
-              &((*query)->query_), array->open_array_, array->snapshot_))) {
-    delete (*query)->query_;
+  // Create query
+  (*query)->query_ = new (std::nothrow)
+      tiledb::sm::Query(ctx->ctx_->storage_manager(), array->array_);
+  if ((*query)->query_ == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB query object; Memory allocation failed");
     delete *query;
     *query = nullptr;
-    return TILEDB_ERR;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
   }
-
-  (*query)->array_ = array;
 
   // Success
   return TILEDB_OK;
@@ -2253,31 +2214,7 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if the array got closed
-  if (query->array_ == nullptr || !query->array_->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to submit TileDB query; The associated array got closed");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Check if the array got re-opened with a different query type
-  auto array_query_type = query->array_->open_array_->query_type();
-  auto query_type = query->query_->type();
-  if (array_query_type != query_type) {
-    std::stringstream errmsg;
-    errmsg << "Failed to submit TileDB query; "
-           << "Opened array query type does not match declared query type: "
-           << "(" << query_type_str(array_query_type)
-           << " != " << query_type_str(query_type) << ")";
-    auto st = tiledb::sm::Status::Error(errmsg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
+  if (save_error(ctx, query->query_->submit()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2292,35 +2229,7 @@ int tiledb_query_submit_async(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if the array got closed
-  if (query->array_ == nullptr || !query->array_->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to submit TileDB query asynchronously; The associated array "
-        "got closed");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Check if the array got re-opened with a different query type
-  auto array_query_type = query->array_->open_array_->query_type();
-  auto query_type = query->query_->type();
-  if (array_query_type != query_type) {
-    std::stringstream errmsg;
-    errmsg << "Failed to submit TileDB query asynchronously; "
-           << "Opened array query type does not match declared query type: "
-           << "(" << query_type_str(array_query_type)
-           << " != " << query_type_str(query_type) << ")";
-    auto st = tiledb::sm::Status::Error(errmsg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->query_submit_async(
-              query->query_, callback, callback_data)))
+  if (save_error(ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2380,9 +2289,9 @@ int tiledb_array_alloc(
     return TILEDB_OOM;
   }
 
-  // Set array URI
-  (*array)->array_uri_ = tiledb::sm::URI(array_uri);
-  if ((*array)->array_uri_.is_invalid()) {
+  // Check array URI
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
     auto st = tiledb::sm::Status::Error(
         "Failed to create TileDB array object; Invalid URI");
     delete *array;
@@ -2392,10 +2301,19 @@ int tiledb_array_alloc(
     return TILEDB_ERR;
   }
 
-  // Set other array members
-  (*array)->max_buffer_sizes_subarray_ = nullptr;
-  (*array)->open_array_ = nullptr;
-  (*array)->is_open_ = false;
+  // Allocate an array object
+  (*array)->array_ =
+      new (std::nothrow) tiledb::sm::Array(uri, ctx->ctx_->storage_manager());
+  if ((*array)->array_ == nullptr) {
+    delete *array;
+    *array = nullptr;
+    tiledb::sm::Status st = tiledb::sm::Status::Error(
+        "Failed to create TileDB array object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
 
   // Success
   return TILEDB_OK;
@@ -2406,26 +2324,11 @@ int tiledb_array_open(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Error if the array is already open
-  if (array->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to open TileDB array object; Array object already open");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Open array
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_open(
-              array->array_uri_,
-              static_cast<tiledb::sm::QueryType>(query_type),
-              &(array->open_array_),
-              &(array->snapshot_))))
+          array->array_->open(static_cast<tiledb::sm::QueryType>(query_type))))
     return TILEDB_ERR;
-
-  array->is_open_ = true;
 
   return TILEDB_OK;
 }
@@ -2435,7 +2338,7 @@ int tiledb_array_is_open(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_open = (int)array->is_open_;
+  *is_open = (int)array->array_->is_open();
 
   return TILEDB_OK;
 }
@@ -2444,23 +2347,9 @@ int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Error if the array is not open
-  if (!array->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to re-open TileDB array object; Array object not open");
-    LOG_STATUS(st);
-    save_error(ctx, st);
+  // Reopen array
+  if (save_error(ctx, array->array_->reopen()))
     return TILEDB_ERR;
-  }
-
-  // Re-open array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_reopen(
-              array->open_array_, &(array->snapshot_))))
-    return TILEDB_ERR;
-
-  array->max_buffer_sizes_.clear();
 
   return TILEDB_OK;
 }
@@ -2469,26 +2358,16 @@ int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Do nothing if the array is already closed
-  if (!array->is_open_)
-    return TILEDB_OK;
-
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_close(
-              array->array_uri_, array->open_array_->query_type())))
+  // Close array
+  if (save_error(ctx, array->array_->close()))
     return TILEDB_ERR;
-
-  array->is_open_ = false;
-  array->max_buffer_sizes_.clear();
 
   return TILEDB_OK;
 }
 
 void tiledb_array_free(tiledb_array_t** array) {
   if (array != nullptr && *array != nullptr) {
-    if ((*array)->max_buffer_sizes_subarray_ != nullptr)
-      std::free((*array)->max_buffer_sizes_subarray_);
+    delete (*array)->array_;
     delete *array;
     *array = nullptr;
   }
@@ -2503,16 +2382,6 @@ int tiledb_array_get_schema(
     return TILEDB_ERR;
   }
 
-  // Error if the array is not open
-  if (!array->is_open_) {
-    *array_schema = nullptr;
-    auto st =
-        tiledb::sm::Status::Error("Cannot get array schema; Array is not open");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st =
@@ -2522,8 +2391,16 @@ int tiledb_array_get_schema(
     return TILEDB_OOM;
   }
 
+  // Get schema
+  auto schema = (tiledb::sm::ArraySchema*)nullptr;
+  if (save_error(ctx, array->array_->get_array_schema(&schema))) {
+    delete *array_schema;
+    *array_schema = nullptr;
+    return TILEDB_ERR;
+  }
+
   (*array_schema)->array_schema_ =
-      new tiledb::sm::ArraySchema(array->open_array_->array_schema());
+      new (std::nothrow) tiledb::sm::ArraySchema(schema);
 
   return TILEDB_OK;
 }
@@ -2536,17 +2413,12 @@ int tiledb_array_get_query_type(
     return TILEDB_ERR;
   }
 
-  // Error if the array is not open
-  if (!array->is_open_) {
-    auto st = tiledb::sm::Status::Error(
-        "Cannot get the query type from array; Array is not open");
-    LOG_STATUS(st);
-    save_error(ctx, st);
+  // Get query_type
+  tiledb::sm::QueryType type;
+  if (save_error(ctx, array->array_->get_query_type(&type)))
     return TILEDB_ERR;
-  }
 
-  *query_type =
-      static_cast<tiledb_query_type_t>(array->open_array_->query_type());
+  *query_type = static_cast<tiledb_query_type_t>(type);
 
   return TILEDB_OK;
 }
@@ -2573,7 +2445,7 @@ int tiledb_array_create(
   // Create the array
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_create(
+          ctx->ctx_->storage_manager()->array_create(
               uri, array_schema->array_schema_)))
     return TILEDB_ERR;
 
@@ -2585,7 +2457,8 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_uri)))
+  if (save_error(
+          ctx, ctx->ctx_->storage_manager()->array_consolidate(array_uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2593,15 +2466,15 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
 
 int tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b;
 
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_get_non_empty_domain(
-              array->open_array_, array->snapshot_, domain, &is_empty_b)))
+          ctx->ctx_->storage_manager()->array_get_non_empty_domain(
+              array->array_, domain, &is_empty_b)))
     return TILEDB_ERR;
 
   *is_empty = (int)is_empty_b;
@@ -2615,80 +2488,13 @@ int tiledb_array_max_buffer_size(
     const char* attribute,
     const void* subarray,
     uint64_t* buffer_size) {
-  if (sanity_check(ctx) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if attribute is null
-  if (attribute == nullptr) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to get max buffer size; Attribute is null");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Allocate space for max buffer sizes subarray
-  auto subarray_size = 2 * array->open_array_->array_schema()->coords_size();
-  if (array->max_buffer_sizes_subarray_ == nullptr) {
-    array->max_buffer_sizes_subarray_ = std::malloc(subarray_size);
-    if (array->max_buffer_sizes_subarray_ == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to allocate subarray for computing max buffer size");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-  }
-
-  // Compute max buffer sizes
-  if (array->max_buffer_sizes_.empty() ||
-      std::memcmp(array->max_buffer_sizes_subarray_, subarray, subarray_size) !=
-          0) {
-    array->max_buffer_sizes_.clear();
-    if (save_error(
-            ctx,
-            ctx->storage_manager_->array_compute_max_buffer_sizes(
-                array->open_array_,
-                array->snapshot_,
-                subarray,
-                &array->max_buffer_sizes_)))
-      return TILEDB_ERR;
-  }
-
-  // Update subarray
-  std::memcpy(array->max_buffer_sizes_subarray_, subarray, subarray_size);
-
-  // Normalize attribute name
-  std::string norm_attribute;
   if (save_error(
           ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attribute, &norm_attribute)))
+          array->array_->get_max_buffer_size(attribute, subarray, buffer_size)))
     return TILEDB_ERR;
-
-  // Check if attribute exists
-  auto it = array->max_buffer_sizes_.find(norm_attribute);
-  if (it == array->max_buffer_sizes_.end()) {
-    auto st = tiledb::sm::Status::Error(
-        std::string("Failed to get max buffer size; Attribute '") +
-        norm_attribute + "' does not exist");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Check if attribute is fixed sized
-  if (array->open_array_->array_schema()->var_size(norm_attribute)) {
-    auto st = tiledb::sm::Status::Error(
-        std::string("Failed to get max buffer size; Attribute '") +
-        norm_attribute + "' is var-sized");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Retrieve buffer size
-  *buffer_size = it->second.first;
 
   return TILEDB_OK;
 }
@@ -2700,81 +2506,14 @@ int tiledb_array_max_buffer_size_var(
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
-  if (sanity_check(ctx) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if attribute is null
-  if (attribute == nullptr) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to get max buffer size; Attribute is null");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Allocate space for max buffer sizes subarray
-  auto subarray_size = 2 * array->open_array_->array_schema()->coords_size();
-  if (array->max_buffer_sizes_subarray_ == nullptr) {
-    array->max_buffer_sizes_subarray_ = std::malloc(subarray_size);
-    if (array->max_buffer_sizes_subarray_ == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to allocate subarray for computing max buffer size");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-  }
-
-  // Compute max buffer sizes
-  if (array->max_buffer_sizes_.empty() ||
-      std::memcmp(array->max_buffer_sizes_subarray_, subarray, subarray_size) !=
-          0) {
-    array->max_buffer_sizes_.clear();
-    if (save_error(
-            ctx,
-            ctx->storage_manager_->array_compute_max_buffer_sizes(
-                array->open_array_,
-                array->snapshot_,
-                subarray,
-                &array->max_buffer_sizes_)))
-      return TILEDB_ERR;
-  }
-
-  // Update subarray
-  std::memcpy(array->max_buffer_sizes_subarray_, subarray, subarray_size);
-
-  // Normalize attribute name
-  std::string norm_attribute;
   if (save_error(
           ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attribute, &norm_attribute)))
+          array->array_->get_max_buffer_size(
+              attribute, subarray, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
-
-  // Check if attribute exists
-  auto it = array->max_buffer_sizes_.find(norm_attribute);
-  if (it == array->max_buffer_sizes_.end()) {
-    auto st = tiledb::sm::Status::Error(
-        std::string("Failed to get max buffer size; Attribute '") +
-        norm_attribute + "' does not exist");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Check if attribute is fixed sized
-  if (!array->open_array_->array_schema()->var_size(norm_attribute)) {
-    auto st = tiledb::sm::Status::Error(
-        std::string("Failed to get max buffer size; Attribute '") +
-        norm_attribute + "' is fixed-sized");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Retrieve buffer sizes
-  *buffer_off_size = it->second.first;
-  *buffer_val_size = it->second.second;
 
   return TILEDB_OK;
 }
@@ -2785,16 +2524,7 @@ int tiledb_array_get_uri(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Check if array is open
-  if (!array->is_open_) {
-    auto st =
-        tiledb::sm::Status::Error("Cannot get array URI; Array is not open");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  *array_uri = array->open_array_->array_uri().c_str();
+  *array_uri = array->array_->array_uri().c_str();
 
   return TILEDB_OK;
 }
@@ -2810,7 +2540,8 @@ int tiledb_object_type(
 
   auto uri = tiledb::sm::URI(path);
   tiledb::sm::ObjectType object_type;
-  if (save_error(ctx, ctx->storage_manager_->object_type(uri, &object_type)))
+  if (save_error(
+          ctx, ctx->ctx_->storage_manager()->object_type(uri, &object_type)))
     return TILEDB_ERR;
 
   *type = static_cast<tiledb_object_t>(object_type);
@@ -2820,7 +2551,7 @@ int tiledb_object_type(
 int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (save_error(ctx, ctx->storage_manager_->object_remove(path)))
+  if (save_error(ctx, ctx->ctx_->storage_manager()->object_remove(path)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2829,7 +2560,8 @@ int tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (save_error(ctx, ctx->storage_manager_->object_move(old_path, new_path)))
+  if (save_error(
+          ctx, ctx->ctx_->storage_manager()->object_move(old_path, new_path)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -2855,7 +2587,7 @@ int tiledb_object_walk(
   tiledb::sm::StorageManager::ObjectIter* obj_iter;
   if (save_error(
           ctx,
-          ctx->storage_manager_->object_iter_begin(
+          ctx->ctx_->storage_manager()->object_iter_begin(
               &obj_iter, path, static_cast<tiledb::sm::WalkOrder>(order))))
     return TILEDB_ERR;
 
@@ -2868,9 +2600,9 @@ int tiledb_object_walk(
   do {
     if (save_error(
             ctx,
-            ctx->storage_manager_->object_iter_next(
+            ctx->ctx_->storage_manager()->object_iter_next(
                 obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager_->object_iter_free(obj_iter);
+      ctx->ctx_->storage_manager()->object_iter_free(obj_iter);
       return TILEDB_ERR;
     }
     if (!has_next)
@@ -2879,7 +2611,7 @@ int tiledb_object_walk(
   } while (rc == 1);
 
   // Clean up
-  ctx->storage_manager_->object_iter_free(obj_iter);
+  ctx->ctx_->storage_manager()->object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;
@@ -2905,7 +2637,8 @@ int tiledb_object_ls(
   // Create an object iterator
   tiledb::sm::StorageManager::ObjectIter* obj_iter;
   if (save_error(
-          ctx, ctx->storage_manager_->object_iter_begin(&obj_iter, path)))
+          ctx,
+          ctx->ctx_->storage_manager()->object_iter_begin(&obj_iter, path)))
     return TILEDB_ERR;
 
   // For as long as there is another object and the callback indicates to
@@ -2917,9 +2650,9 @@ int tiledb_object_ls(
   do {
     if (save_error(
             ctx,
-            ctx->storage_manager_->object_iter_next(
+            ctx->ctx_->storage_manager()->object_iter_next(
                 obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager_->object_iter_free(obj_iter);
+      ctx->ctx_->storage_manager()->object_iter_free(obj_iter);
       return TILEDB_ERR;
     }
     if (!has_next)
@@ -2928,7 +2661,7 @@ int tiledb_object_ls(
   } while (rc == 1);
 
   // Clean up
-  ctx->storage_manager_->object_iter_free(obj_iter);
+  ctx->ctx_->storage_manager()->object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;
@@ -3033,7 +2766,7 @@ int tiledb_kv_schema_load(
   }
 
   // Load array schema
-  auto storage_manager = ctx->storage_manager_;
+  auto storage_manager = ctx->ctx_->storage_manager();
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
@@ -3433,7 +3166,8 @@ int tiledb_kv_create(
   // Create the key-value store
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_create(uri, kv_schema->array_schema_)))
+          ctx->ctx_->storage_manager()->array_create(
+              uri, kv_schema->array_schema_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3443,7 +3177,7 @@ int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, ctx->storage_manager_->array_consolidate(kv_uri)))
+  if (save_error(ctx, ctx->ctx_->storage_manager()->array_consolidate(kv_uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3478,7 +3212,8 @@ int tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv) {
   (*kv)->kv_ = nullptr;
 
   // Create a new key-value store object
-  (*kv)->kv_ = new tiledb::sm::KV(uri, ctx->storage_manager_);
+  (*kv)->kv_ =
+      new (std::nothrow) tiledb::sm::KV(uri, ctx->ctx_->storage_manager());
   if ((*kv)->kv_ == nullptr) {
     delete *kv;
     *kv = nullptr;
@@ -3559,8 +3294,8 @@ int tiledb_kv_get_schema(
     return TILEDB_OOM;
   }
 
-  (*kv_schema)->array_schema_ =
-      new tiledb::sm::ArraySchema(kv->kv_->open_array()->array_schema());
+  (*kv_schema)->array_schema_ = new (std::nothrow)
+      tiledb::sm::ArraySchema(kv->kv_->array()->array_schema());
 
   return TILEDB_OK;
 }
@@ -3620,7 +3355,8 @@ int tiledb_kv_iter_alloc(
   }
 
   // Create KVIter object
-  (*kv_iter)->kv_iter_ = new tiledb::sm::KVIter(ctx->storage_manager_);
+  (*kv_iter)->kv_iter_ =
+      new (std::nothrow) tiledb::sm::KVIter(ctx->ctx_->storage_manager());
   if ((*kv_iter)->kv_iter_ == nullptr) {
     tiledb::sm::Status st = tiledb::sm::Status::Error(
         "Failed to allocate TileDB key-value iterator object");
@@ -3963,22 +3699,47 @@ int tiledb_vfs_open(
     return TILEDB_ERR;
 
   *fh = new (std::nothrow) tiledb_vfs_fh_t;
-  if (*fh == nullptr)
+  if (*fh == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB VFS file handle; Memory allocation error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_OOM;
-  (*fh)->uri_ = tiledb::sm::URI(uri);
+  }
 
-  if (save_error(
-          ctx,
-          vfs->vfs_->open_file(
-              (*fh)->uri_, static_cast<tiledb::sm::VFSMode>(mode)))) {
+  // Check URI
+  auto fh_uri = tiledb::sm::URI(uri);
+  if (fh_uri.is_invalid()) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB VFS file handle; Invalid URI");
+    delete *fh;
+    *fh = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
+
+  // Create VFS file handle
+  (*fh)->vfs_fh_ =
+      new (std::nothrow) tiledb::sm::VFSFileHandle(fh_uri, vfs->vfs_, vfs_mode);
+  if ((*fh)->vfs_fh_ == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB VFS file handle; Memory allocation error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    delete (*fh);
+    *fh = nullptr;
+    return TILEDB_OOM;
+  }
+
+  // Open VFS file
+  if (save_error(ctx, (*fh)->vfs_fh_->open())) {
+    delete (*fh)->vfs_fh_;
     delete (*fh);
     *fh = nullptr;
     return TILEDB_ERR;
   }
-
-  (*fh)->is_closed_ = false;
-  (*fh)->vfs_ = vfs->vfs_;
-  (*fh)->mode_ = static_cast<tiledb::sm::VFSMode>(mode);
 
   return TILEDB_OK;
 }
@@ -3987,30 +3748,9 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (fh->is_closed_) {
-    std::stringstream msg;
-    msg << "Cannot close file '" << fh->uri_.to_string() << "'; File closed";
-    auto st = tiledb::sm::Status::Error(msg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
+  if (save_error(ctx, fh->vfs_fh_->close()))
     return TILEDB_ERR;
-  }
 
-  // Close file in write or append mode
-  if (fh->mode_ != tiledb::sm::VFSMode::VFS_READ) {
-    if (save_error(ctx, fh->vfs_->close_file(fh->uri_)))
-      return TILEDB_ERR;
-
-    // Create an empty file if the file does not exist
-    bool exists;
-    if (save_error(ctx, fh->vfs_->is_file(fh->uri_, &exists)))
-      return TILEDB_ERR;
-    if (!exists)
-      if (save_error(ctx, fh->vfs_->touch(fh->uri_)))
-        return TILEDB_ERR;
-  }
-
-  fh->is_closed_ = true;
   return TILEDB_OK;
 }
 
@@ -4023,17 +3763,7 @@ int tiledb_vfs_read(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (fh->is_closed_) {
-    std::stringstream msg;
-    msg << "Cannot read from file '" << fh->uri_.to_string()
-        << "'; File closed";
-    auto st = tiledb::sm::Status::Error(msg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (save_error(ctx, fh->vfs_->read(fh->uri_, offset, buffer, nbytes)))
+  if (save_error(ctx, fh->vfs_fh_->read(offset, buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4047,16 +3777,7 @@ int tiledb_vfs_write(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (fh->is_closed_) {
-    std::stringstream msg;
-    msg << "Cannot write to file '" + fh->uri_.to_string() << "'; File closed";
-    auto st = tiledb::sm::Status::Error(msg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (save_error(ctx, fh->vfs_->write(fh->uri_, buffer, nbytes)))
+  if (save_error(ctx, fh->vfs_fh_->write(buffer, nbytes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4066,16 +3787,7 @@ int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (fh->is_closed_) {
-    std::stringstream msg;
-    msg << "Cannot sync file '" << fh->uri_.to_string() << "'; File closed";
-    auto st = tiledb::sm::Status::Error(msg.str());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (save_error(ctx, fh->vfs_->sync(fh->uri_)))
+  if (save_error(ctx, fh->vfs_fh_->sync()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4083,6 +3795,7 @@ int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
   if (fh != nullptr && *fh != nullptr) {
+    delete (*fh)->vfs_fh_;
     delete *fh;
     *fh = nullptr;
   }
@@ -4093,7 +3806,7 @@ int tiledb_vfs_fh_is_closed(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_closed = fh->is_closed_;
+  *is_closed = !fh->vfs_fh_->is_open();
 
   return TILEDB_OK;
 }
@@ -4170,10 +3883,7 @@ int tiledb::impl::tiledb_query_submit_async_func(
   std::function<void(void*)> callback =
       *reinterpret_cast<std::function<void(void*)>*>(callback_func);
 
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->query_submit_async(
-              query->query_, callback, callback_data)))
+  if (save_error(ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

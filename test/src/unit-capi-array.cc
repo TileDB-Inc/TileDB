@@ -235,10 +235,10 @@ TEST_CASE_METHOD(
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
 
-  // Get URI when array is not opened
+  // Get URI when array is not opened (should not error)
   const char* uri = nullptr;
   rc = tiledb_array_get_uri(ctx_, array, &uri);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
 
   // Get URI when array is opened
   create_sparse_vector(array_name);
