@@ -67,7 +67,7 @@ ArraySchema* OpenArray::array_schema() const {
 }
 
 const URI& OpenArray::array_uri() const {
-  return array_schema_->array_uri();
+  return array_uri_;
 }
 
 uint64_t OpenArray::cnt() const {
