@@ -34,6 +34,7 @@
 #define TILEDB_FILTER_PIPELINE_H
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -43,9 +44,6 @@
 namespace tiledb {
 namespace sm {
 
-/** Forward declarations for easier includes. */
-
-class Filter;
 class Tile;
 
 /**

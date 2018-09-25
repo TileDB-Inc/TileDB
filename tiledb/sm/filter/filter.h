@@ -36,11 +36,12 @@
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_buffer.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class FilterPipeline;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or

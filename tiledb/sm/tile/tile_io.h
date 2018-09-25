@@ -33,6 +33,7 @@
 #ifndef TILEDB_TILE_IO_H
 #define TILEDB_TILE_IO_H
 
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
@@ -56,9 +57,9 @@ class TileIO {
    * the tile data itself.
    */
   struct GenericTileHeader {
-    /** Size, in bytes, of the serialized header. */
-    static const uint64_t SIZE =
-        3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(int);
+    /** Size in bytes of the non-filters part of the serialized header. */
+    static const uint64_t BASE_SIZE =
+        3 * sizeof(uint64_t) + sizeof(char) + sizeof(uint32_t);
     /** Persisted (e.g. compressed) size of the tile. */
     uint64_t persisted_size;
     /** Uncompressed size of the tile. */
@@ -67,10 +68,10 @@ class TileIO {
     char datatype;
     /** Cell size of the tile. */
     uint64_t cell_size;
-    /** Compressor of the tile. */
-    char compressor;
-    /** Compression level of the tile. */
-    int compression_level;
+    /** Number of bytes in the serialized filter pipeline instance. */
+    uint32_t filter_pipeline_size;
+    /** Filter pipeline used to filter the tile. */
+    FilterPipeline filters;
 
     /** Constructor. */
     GenericTileHeader()
@@ -78,8 +79,7 @@ class TileIO {
         , tile_size(0)
         , datatype((char)Datatype::ANY)
         , cell_size(0)
-        , compressor((char)Compressor::NO_COMPRESSION)
-        , compression_level(-1) {
+        , filter_pipeline_size(0) {
     }
   };
 
@@ -170,12 +170,10 @@ class TileIO {
   /**
    * Writes the generic tile header to the file.
    *
-   * @param tile The tile whose header will be written.
-   * @param persisted_size The size that the (potentially) compressed tile
-   *     will occupy in the file.
+   * @param header The header to write
    * @return Status
    */
-  Status write_generic_tile_header(Tile* tile, uint64_t persisted_size);
+  Status write_generic_tile_header(GenericTileHeader* header);
 
  private:
   /* ********************************* */
@@ -190,6 +188,17 @@ class TileIO {
 
   /** The file URI. */
   URI uri_;
+
+  /**
+   * Initializes a generic tile header struct.
+   *
+   * This does not set the persisted size or filter pipeline size fields.
+   *
+   * @param tile The tile to initialize a header for
+   * @param header The header to initialize
+   * @return Status
+   */
+  Status init_generic_tile_header(Tile* tile, GenericTileHeader* header) const;
 };
 
 }  // namespace sm
