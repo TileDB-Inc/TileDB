@@ -36,6 +36,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -89,6 +90,31 @@ class Encryption {
       ConstBuffer* tag,
       ConstBuffer* input,
       Buffer* output);
+};
+
+/** Convenience struct representing a pair of encryption type and key. */
+struct EncryptionInfo {
+  EncryptionType type;
+  const void* key;
+
+  /** Constructor. */
+  EncryptionInfo()
+      : type(EncryptionType::NO_ENCRYPTION)
+      , key(nullptr) {
+  }
+
+  /** Constructor. */
+  EncryptionInfo(
+      EncryptionType encryption_type, const ConstBuffer& encryption_key)
+      : type(encryption_type)
+      , key(encryption_key.data()) {
+  }
+
+  /** Constructor. */
+  EncryptionInfo(EncryptionType encryption_type, const void* encryption_key)
+      : type(encryption_type)
+      , key(encryption_key) {
+  }
 };
 
 }  // namespace sm

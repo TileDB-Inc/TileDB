@@ -136,9 +136,11 @@ class KV {
    * Opens the key-value store for reading/writing.
    *
    * @param query_type The mode in which the key-value store is opened.
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
    * @return Status
    */
-  Status open(QueryType query_type);
+  Status open(QueryType query_type, const void* encryption_key);
 
   /** Closes the key-value store and frees all memory. */
   Status close();

@@ -48,8 +48,9 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
@@ -257,6 +258,9 @@ class ArraySchema {
   /** Returns the array domain. */
   const Domain* domain() const;
 
+  /** Returns the encryption type. */
+  EncryptionType encryption_type() const;
+
   /**
    * Initializes the ArraySchema object. It also performs a check to see if
    * all the member attributes have been properly set.
@@ -300,6 +304,14 @@ class ArraySchema {
    * previously set to be a key-value store.
    */
   Status set_domain(Domain* domain);
+
+  /**
+   * Sets the encryption type for the array. The encryption is used for all
+   * attributes and all metadata.
+   *
+   * @return Status
+   */
+  Status set_encryption_type(EncryptionType encryption_type);
 
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
@@ -346,6 +358,9 @@ class ArraySchema {
 
   /** The array domain. */
   Domain* domain_;
+
+  /** The encryption type. */
+  EncryptionType encryption_type_;
 
   /** `true` if the array is a key-value store. */
   bool is_kv_;

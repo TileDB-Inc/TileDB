@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
@@ -50,10 +51,13 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   open_array_ = nullptr;
   snapshot_ = 0;
   last_max_buffer_sizes_subarray_ = nullptr;
+  encryption_type_ = EncryptionType::NO_ENCRYPTION;
 }
 
 Array::~Array() {
   std::free(last_max_buffer_sizes_subarray_);
+  if (encryption_key_.data() != nullptr)
+    std::memset(encryption_key_.data(), 0, encryption_key_.alloced_size());
 }
 
 /* ********************************* */
@@ -87,13 +91,19 @@ Status Array::compute_max_buffer_sizes(
       open_array_, snapshot_, subarray, attributes, max_buffer_sizes);
 }
 
-Status Array::open(QueryType query_type) {
+Status Array::open(QueryType query_type, const void* encryption_key) {
   if (is_open())
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
 
   RETURN_NOT_OK(storage_manager_->array_open(
-      array_uri_, query_type, &open_array_, &snapshot_));
+      array_uri_, query_type, encryption_key, &open_array_, &snapshot_));
+
+  if (encryption_key != nullptr) {
+    auto schema = open_array_->array_schema();
+    RETURN_NOT_OK(
+        set_encryption_key(schema->encryption_type(), encryption_key));
+  }
 
   is_open_ = true;
 
@@ -235,6 +245,14 @@ Status Array::get_max_buffer_size(
   return Status::Ok();
 }
 
+EncryptionType Array::get_encryption_type() const {
+  return encryption_type_;
+}
+
+ConstBuffer Array::get_encryption_key() const {
+  return ConstBuffer(encryption_key_.data(), encryption_key_.size());
+}
+
 Status Array::reopen() {
   std::unique_lock<std::mutex> lck(mtx_);
 
@@ -249,7 +267,8 @@ Status Array::reopen() {
 
   clear_last_max_buffer_sizes();
 
-  return storage_manager_->array_reopen(open_array_, &snapshot_);
+  return storage_manager_->array_reopen(
+      open_array_, encryption_key_.data(), &snapshot_);
 }
 
 /* ********************************* */
@@ -283,6 +302,36 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
 
   // Update subarray
   std::memcpy(last_max_buffer_sizes_subarray_, subarray, subarray_size);
+
+  return Status::Ok();
+}
+
+Status Array::set_encryption_key(
+    EncryptionType encryption_type, const void* key_bytes) {
+  // Get the key size (in bytes)
+  unsigned key_size;
+  switch (encryption_type) {
+    case EncryptionType::NO_ENCRYPTION:
+      return LOG_STATUS(Status::ArrayError(
+          "Error setting encryption key: array not encrypted."));
+    case EncryptionType::AES_256_GCM:
+      key_size = Encryption::AES256GCM_KEY_BYTES;
+      break;
+    default:
+      return LOG_STATUS(Status::ArrayError(
+          "Error setting encryption key: invalid encryption type."));
+  }
+
+  // Copy the key
+  encryption_key_.reset_size();
+  encryption_key_.reset_offset();
+  if (encryption_key_.free_space() < key_size)
+    RETURN_NOT_OK(
+        encryption_key_.realloc(encryption_key_.alloced_size() + key_size));
+  RETURN_NOT_OK(encryption_key_.write(key_bytes, key_size));
+  encryption_key_.reset_offset();
+
+  encryption_type_ = encryption_type;
 
   return Status::Ok();
 }

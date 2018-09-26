@@ -47,6 +47,7 @@
 namespace tiledb {
 namespace sm {
 
+class Array;
 class StorageManager;
 
 /** Processes write queries. */
@@ -169,6 +170,9 @@ class Writer {
   /** Returns the cell layout. */
   Layout layout() const;
 
+  /** Sets the array. */
+  void set_array(const Array* array);
+
   /*
    * Sets the array schema. If the array is a kv store, then this
    * function also sets global order as the default layout.
@@ -241,6 +245,9 @@ class Writer {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The array. */
+  const Array* array_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;

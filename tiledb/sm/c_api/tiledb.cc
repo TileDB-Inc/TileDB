@@ -1641,6 +1641,23 @@ int tiledb_array_schema_set_offsets_compressor(
   return TILEDB_OK;
 }
 
+int tiledb_array_schema_set_encryption(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_encryption_type_t encryption_type) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(
+          ctx,
+          array_schema->array_schema_->set_encryption_type(
+              static_cast<tiledb::sm::EncryptionType>(encryption_type))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -1657,6 +1674,15 @@ int tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
+  return tiledb_array_schema_load_with_key(
+      ctx, array_uri, nullptr, array_schema);
+}
+
+int tiledb_array_schema_load_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const void* encryption_key,
+    tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create array schema
@@ -1671,12 +1697,15 @@ int tiledb_array_schema_load(
 
   // Load array schema
   auto storage_manager = ctx->ctx_->storage_manager();
+  bool in_cache;
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
               tiledb::sm::URI(array_uri),
               tiledb::sm::ObjectType::ARRAY,
-              &((*array_schema)->array_schema_)))) {
+              encryption_key,
+              &((*array_schema)->array_schema_),
+              &in_cache))) {
     delete *array_schema;
     return TILEDB_ERR;
   }
@@ -1813,6 +1842,21 @@ int tiledb_array_schema_get_offsets_compressor(
       array_schema->array_schema_->cell_var_offsets_compression());
   *compression_level =
       array_schema->array_schema_->cell_var_offsets_compression_level();
+  return TILEDB_OK;
+}
+
+int tiledb_array_schema_get_encryption(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_encryption_type_t* encryption_type) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR ||
+      encryption_type == nullptr)
+    return TILEDB_ERR;
+
+  *encryption_type = static_cast<tiledb_encryption_type_t>(
+      array_schema->array_schema_->encryption_type());
+
   return TILEDB_OK;
 }
 
@@ -2321,13 +2365,22 @@ int tiledb_array_alloc(
 
 int tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
+  return tiledb_array_open_with_key(ctx, array, query_type, nullptr);
+}
+
+int tiledb_array_open_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    const void* key) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Open array
   if (save_error(
           ctx,
-          array->array_->open(static_cast<tiledb::sm::QueryType>(query_type))))
+          array->array_->open(
+              static_cast<tiledb::sm::QueryType>(query_type), key)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2427,6 +2480,14 @@ int tiledb_array_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema) {
+  return tiledb_array_create_with_key(ctx, array_uri, array_schema, nullptr);
+}
+
+int tiledb_array_create_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_array_schema_t* array_schema,
+    const void* key) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
@@ -2446,7 +2507,7 @@ int tiledb_array_create(
   if (save_error(
           ctx,
           ctx->ctx_->storage_manager()->array_create(
-              uri, array_schema->array_schema_)))
+              uri, array_schema->array_schema_, key)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2767,12 +2828,15 @@ int tiledb_kv_schema_load(
 
   // Load array schema
   auto storage_manager = ctx->ctx_->storage_manager();
+  bool in_cache;
   if (save_error(
           ctx,
           storage_manager->load_array_schema(
               tiledb::sm::URI(kv_uri),
               tiledb::sm::ObjectType::KEY_VALUE,
-              &((*kv_schema)->array_schema_)))) {
+              nullptr,
+              &((*kv_schema)->array_schema_),
+              &in_cache))) {
     delete *kv_schema;
     return TILEDB_ERR;
   }
@@ -3167,7 +3231,7 @@ int tiledb_kv_create(
   if (save_error(
           ctx,
           ctx->ctx_->storage_manager()->array_create(
-              uri, kv_schema->array_schema_)))
+              uri, kv_schema->array_schema_, nullptr)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3236,7 +3300,9 @@ int tiledb_kv_open(
 
   // Prepare the key-value store
   if (save_error(
-          ctx, kv->kv_->open(static_cast<tiledb::sm::QueryType>(query_type))))
+          ctx,
+          kv->kv_->open(
+              static_cast<tiledb::sm::QueryType>(query_type), nullptr)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
