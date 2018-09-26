@@ -3489,6 +3489,17 @@ TILEDB_EXPORT int tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type);
 
 /**
+ * Checks if the key-value store is open.
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store to be checked.
+ * @param is_open `1` if the array is open and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_is_open(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_open);
+
+/**
  * Reopens a key-value store. This is useful when there were updates
  * to the key-value store after it got opened. This function reopens
  * the key-value store so that it can "see" the new fragments.

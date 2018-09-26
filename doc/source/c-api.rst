@@ -375,6 +375,8 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_open
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_is_open
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_reopen
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_close
