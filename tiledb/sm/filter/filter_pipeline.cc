@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/filter/noop_filter.h"
@@ -56,11 +57,20 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   max_chunk_size_ = other.max_chunk_size_;
 }
 
+FilterPipeline::FilterPipeline(FilterPipeline&& other) {
+  swap(other);
+}
+
 FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
   // Call copy constructor
   FilterPipeline copy(other);
   // Swap with the temporary copy
   swap(copy);
+  return *this;
+}
+
+FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
+  swap(other);
   return *this;
 }
 
@@ -480,8 +490,28 @@ unsigned FilterPipeline::size() const {
 
 void FilterPipeline::swap(FilterPipeline& other) {
   filters_.swap(other.filters_);
+
+  for (auto& f : filters_)
+    f->set_pipeline(this);
+
+  for (auto& f : other.filters_)
+    f->set_pipeline(&other);
+
   std::swap(current_tile_, other.current_tile_);
   std::swap(max_chunk_size_, other.max_chunk_size_);
+}
+
+Status FilterPipeline::append_encryption_filter(
+    FilterPipeline* pipeline, const EncryptionKey& encryption_key) {
+  switch (encryption_key.encryption_type()) {
+    case EncryptionType ::NO_ENCRYPTION:
+      return Status::Ok();
+    case EncryptionType::AES_256_GCM:
+      return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+    default:
+      return LOG_STATUS(Status::FilterError(
+          "Error appending encryption filter; unknown type."));
+  }
 }
 
 }  // namespace sm

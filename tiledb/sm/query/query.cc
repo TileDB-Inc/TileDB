@@ -64,10 +64,12 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   if (type_ == QueryType::READ) {
     reader_.set_storage_manager(storage_manager);
+    reader_.set_array(array);
     reader_.set_array_schema(array->array_schema());
     reader_.set_fragment_metadata(array->fragment_metadata());
   } else {
     writer_.set_storage_manager(storage_manager);
+    writer_.set_array(array);
     writer_.set_array_schema(array->array_schema());
     writer_.set_fragment_uri(fragment_uri);
   }

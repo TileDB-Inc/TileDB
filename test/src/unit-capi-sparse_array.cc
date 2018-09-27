@@ -73,6 +73,9 @@ struct SparseArrayFx {
   int ITER_NUM = 5;
   const std::string ARRAY = "sparse_array";
 
+  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
+  const char* encryption_key = nullptr;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -354,8 +357,18 @@ void SparseArrayFx::create_sparse_array_2D(
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create the array schema
-  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  // Create the array
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  } else {
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        array_name.c_str(),
+        array_schema,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -382,8 +395,19 @@ int* SparseArrayFx::read_sparse_array_2D(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, query_type);
-  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, query_type);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        query_type,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare the buffers that will store the result
   uint64_t buffer_size;
@@ -544,8 +568,19 @@ void SparseArrayFx::write_sparse_array_unsorted_2D(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Create query
   tiledb_query_t* query;
@@ -2668,4 +2703,30 @@ TEST_CASE_METHOD(
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "C API: Test sparse array, encrypted",
+    "[capi], [sparse], [encryption]") {
+  std::string array_name;
+  encryption_type = TILEDB_AES_256_GCM;
+  encryption_key = "0123456789abcdeF0123456789abcdeF";
+
+  if (supports_s3_) {
+    // S3
+    array_name = S3_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  } else if (supports_hdfs_) {
+    // HDFS
+    array_name = HDFS_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  } else {
+    // File
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  }
 }

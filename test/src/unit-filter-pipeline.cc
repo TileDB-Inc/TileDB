@@ -1066,6 +1066,14 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
   Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
+  EncryptionKey encryption_key;
+  REQUIRE(encryption_key
+              .set_key(
+                  EncryptionType::AES_256_GCM,
+                  "abcdefghijklmnopqrstuvwxyz012345",
+                  32)
+              .ok());
+
   // List of potential filters to use. All of these filters can occur anywhere
   // in the pipeline.
   std::vector<std::function<Filter*(void)>> constructors = {
@@ -1077,9 +1085,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       []() { return new ByteshuffleFilter(); },
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); },
-      []() {
-        return new EncryptionAES256GCMFilter(
-            "abcdefghijklmnopqrstuvwxyz012345");
+      [&encryption_key]() {
+        return new EncryptionAES256GCMFilter(encryption_key);
       },
   };
 

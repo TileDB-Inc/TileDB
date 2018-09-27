@@ -245,6 +245,12 @@ extern const std::string query_status_uninitialized_str;
 /** TILEDB_COMPRESSION Filter type string */
 extern const std::string filter_type_compression_str;
 
+/** String describing no encryption. */
+extern const std::string no_encryption_str;
+
+/** String describing AES_256_GCM. */
+extern const std::string aes_256_gcm_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 

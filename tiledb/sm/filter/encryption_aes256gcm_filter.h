@@ -34,6 +34,7 @@
 #define TILEDB_ENCRYPTION_AES256GCM_FILTER_H
 
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/encryption/encryption_key.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -85,7 +86,7 @@ class EncryptionAES256GCMFilter : public Filter {
    *
    * @param key Key to use for the filter.
    */
-  explicit EncryptionAES256GCMFilter(const char* key);
+  explicit EncryptionAES256GCMFilter(const EncryptionKey& key);
 
   /**
    * Encrypt the bytes of the input data into the output data buffer.
@@ -106,15 +107,23 @@ class EncryptionAES256GCMFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
-   * Return the secret key set on this filter.
+   * Return a pointer to the secret key set on this filter.
    *
-   * @param key_bytes Buffer to store the key.
+   * @param key_bytes Will store a pointer to the key.
    * @return Status
    */
-  Status get_key(void* key_bytes) const;
+  Status get_key(const void** key_bytes) const;
 
   /**
-   * Sets the secret key on this filter to a copy of the given key.
+   * Sets the secret key on this filter to a pointer to the given key.
+   *
+   * @param key Encryption key, expected to hold `uint8_t[32]`.
+   * @return Status
+   */
+  Status set_key(const EncryptionKey& key);
+
+  /**
+   * Sets the secret key on this filter to a pointer to the given key.
    *
    * @param key_bytes Buffer holding the key, expected to be `uint8_t[32]`.
    * @return Status
@@ -122,8 +131,8 @@ class EncryptionAES256GCMFilter : public Filter {
   Status set_key(const void* key_bytes);
 
  private:
-  /** Buffer storing a copy of the secret key. */
-  Buffer key_bytes_;
+  /** Pointer to a buffer storing the secret key. */
+  const void* key_bytes_;
 
   /** Returns a new clone of this filter. */
   EncryptionAES256GCMFilter* clone_impl() const override;

@@ -269,3 +269,280 @@ TEST_CASE_METHOD(
   int rc = tiledb_array_alloc(ctx_, nullptr, &array);
   CHECK(rc == TILEDB_ERR);
 }
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "C API: Test array with encryption",
+    "[capi], [array], [encryption]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  const int64_t d1_domain[2] = {0, 99};
+  const int64_t tile_extent[1] = {10};
+  rc = tiledb_dimension_alloc(
+      ctx_, "", TILEDB_INT64, &d1_domain[0], &tile_extent[0], &d1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "foo", TILEDB_INT32, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr1, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema members
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 500);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "encrypyted_array";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  SECTION("- API calls with encrypted schema") {
+    const char key[] = "0123456789abcdeF0123456789abcdeF";
+    uint32_t key_len = (uint32_t)strlen(key);
+
+    // Check error with invalid key length
+    rc = tiledb_array_create_with_key(
+        ctx_, array_name.c_str(), array_schema, TILEDB_AES_256_GCM, key, 31);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        array_name.c_str(),
+        array_schema,
+        TILEDB_NO_ENCRYPTION,
+        key,
+        key_len);
+    REQUIRE(rc == TILEDB_ERR);
+
+    // Create array with proper key
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        array_name.c_str(),
+        array_schema,
+        TILEDB_AES_256_GCM,
+        key,
+        key_len);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_attribute_free(&attr1);
+    tiledb_dimension_free(&d1);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+
+    // Open array
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    // Check error with no key
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_ERR);
+    int is_open;
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    // Check error with wrong algorithm
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_NO_ENCRYPTION, key, key_len);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    // Check error with bad key
+    char bad_key[32];
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    // Check error with bad key length
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len - 1);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    // Use correct key
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 1);
+    tiledb_array_schema_t* read_schema;
+    rc = tiledb_array_get_schema(ctx_, array, &read_schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check opening again still requires correct key
+    tiledb_array_t* array2;
+    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array2);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_open_with_key(
+        ctx_, array2, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_open_with_key(
+        ctx_, array2, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check reopening works
+    rc = tiledb_array_reopen(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Close arrays
+    rc = tiledb_array_close(ctx_, array2);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check loading schema requires key
+    tiledb_array_schema_free(&read_schema);
+    rc = tiledb_array_schema_load(ctx_, array_name.c_str(), &read_schema);
+    REQUIRE(rc == TILEDB_ERR);
+    // Check with bad key
+    rc = tiledb_array_schema_load_with_key(
+        ctx_,
+        array_name.c_str(),
+        TILEDB_AES_256_GCM,
+        bad_key,
+        key_len,
+        &read_schema);
+    REQUIRE(rc == TILEDB_ERR);
+    // Check with correct key
+    rc = tiledb_array_schema_load_with_key(
+        ctx_,
+        array_name.c_str(),
+        TILEDB_AES_256_GCM,
+        key,
+        key_len,
+        &read_schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check opening after closing still requires a key.
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 1);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_schema_free(&read_schema);
+    tiledb_array_free(&array);
+    tiledb_array_free(&array2);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
+
+  SECTION("- API calls with unencrypted schema") {
+    // Check for invalid array schema
+    rc = tiledb_array_schema_check(ctx_, array_schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check create ok with null key
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        array_name.c_str(),
+        array_schema,
+        TILEDB_NO_ENCRYPTION,
+        nullptr,
+        0);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_attribute_free(&attr1);
+    tiledb_dimension_free(&d1);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+
+    // Open array
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    // Check error with key
+    char key[32];
+    uint32_t key_len = 32;
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+    REQUIRE(rc == TILEDB_ERR);
+    int is_open;
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 0);
+    // Check ok with null key
+    rc = tiledb_array_open_with_key(
+        ctx_, array, TILEDB_READ, TILEDB_NO_ENCRYPTION, nullptr, 0);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_is_open(ctx_, array, &is_open);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_open == 1);
+    tiledb_array_schema_t* read_schema;
+    rc = tiledb_array_get_schema(ctx_, array, &read_schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check loading schema with key is error
+    tiledb_array_schema_free(&read_schema);
+    rc = tiledb_array_schema_load_with_key(
+        ctx_,
+        array_name.c_str(),
+        TILEDB_AES_256_GCM,
+        key,
+        key_len,
+        &read_schema);
+    REQUIRE(rc == TILEDB_ERR);
+    // Check ok with nullptr
+    rc = tiledb_array_schema_load_with_key(
+        ctx_,
+        array_name.c_str(),
+        TILEDB_NO_ENCRYPTION,
+        nullptr,
+        0,
+        &read_schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_schema_free(&read_schema);
+    tiledb_array_free(&array);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
+}
