@@ -3242,6 +3242,15 @@ int tiledb_kv_open(
   return TILEDB_OK;
 }
 
+int tiledb_kv_is_open(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_open) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *is_open = (int)kv->kv_->is_open();
+
+  return TILEDB_OK;
+}
+
 int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;

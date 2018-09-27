@@ -65,6 +65,7 @@ struct CPPMapFx {
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
+  CHECK(map.is_open());
   CHECK(!map.is_dirty());
 
   int simple_key = 10;
@@ -87,7 +88,10 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   CHECK(!map.is_dirty());
 
   map.close();
+  CHECK(!map.is_open());
+
   map.open(TILEDB_READ);
+  CHECK(map.is_open());
 
   auto schema = map.schema();
   CHECK(schema.capacity() == 10);
@@ -103,14 +107,19 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   CHECK(std::get<2>(ret)[0] == 3);
 
   map.close();
+  CHECK(!map.is_open());
+
   map.open(TILEDB_WRITE);
+  CHECK(map.is_open());
 
   map[compound_key][{"a1", "a2", "a3"}] = my_cell_t(2, "aaa", {{4.2, 1}});
 
   map.flush();
   map.close();
-  map.open(TILEDB_READ);
+  CHECK(!map.is_open());
 
+  map.open(TILEDB_READ);
+  CHECK(map.is_open());
   CHECK(map.has_key(simple_key));
   CHECK(map.has_key(compound_key));
   CHECK(!map.has_key(3453463));
@@ -126,6 +135,7 @@ TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   CHECK(std::get<2>(ret)[0] == 4.2);
 
   map.close();
+  CHECK(!map.is_open());
 }
 
 /**

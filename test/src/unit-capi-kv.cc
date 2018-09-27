@@ -780,8 +780,18 @@ TEST_CASE_METHOD(
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, array_name.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
+
+  int is_open = -1;
+  rc = tiledb_kv_is_open(ctx_, kv, &is_open);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(is_open == 0);
+
   rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_kv_is_open(ctx_, kv, &is_open);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(is_open == 1);
 
   char key[] = "key";
   int has_key;
@@ -828,6 +838,9 @@ TEST_CASE_METHOD(
   // Clean up
   rc = tiledb_kv_close(ctx_, kv);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_is_open(ctx_, kv, &is_open);
+  CHECK(is_open == 0);
+
   tiledb_kv_free(&kv);
   tiledb_kv_item_free(&kv_item);
 

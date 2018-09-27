@@ -856,6 +856,14 @@ class Map {
     schema_ = MapSchema(ctx, kv_schema);
   }
 
+  /** Checks if the Map is open. */
+  bool is_open() const {
+    auto& ctx = context();
+    int open = 0;
+    ctx.handle_error(tiledb_kv_is_open(ctx, kv_.get(), &open));
+    return bool(open);
+  }
+
   /**
    * Reopens the Map. This is useful when there were updates to the
    * Map after it got opened. This function reopens the Map so that it can "see"
