@@ -76,6 +76,10 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
   return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
 }
 
+uint64_t tiledb_timestamp_now_ms() {
+  return tiledb::sm::utils::time::timestamp_now_ms();
+}
+
 /* ****************************** */
 /*            VERSION             */
 /* ****************************** */
@@ -2345,8 +2349,42 @@ int32_t tiledb_array_alloc(
 
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
-  return tiledb_array_open_with_key(
-      ctx, array, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Open array
+  if (save_error(
+          ctx,
+          array->array_->open(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_open_at(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    uint64_t timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Open array
+  if (save_error(
+          ctx,
+          array->array_->open_at(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0,
+              timestamp)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_array_open_with_key(
@@ -2367,6 +2405,31 @@ int32_t tiledb_array_open_with_key(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_open_at_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    uint64_t timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Open array
+  if (save_error(
+          ctx,
+          array->array_->open_at(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length,
+              timestamp)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3369,8 +3432,44 @@ int32_t tiledb_kv_alloc(
 
 int32_t tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type) {
-  return tiledb_kv_open_with_key(
-      ctx, kv, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Prepare the key-value store
+  if (save_error(
+          ctx,
+          kv->kv_->open(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_kv_open_at(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    tiledb_query_type_t query_type,
+    uint64_t timestamp) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Prepare the key-value store
+  if (save_error(
+          ctx,
+          kv->kv_->open_at(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0,
+              timestamp)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_kv_open_with_key(
@@ -3392,6 +3491,32 @@ int32_t tiledb_kv_open_with_key(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_kv_open_at_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    tiledb_query_type_t query_type,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    uint64_t timestamp) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Prepare the key-value store
+  if (save_error(
+          ctx,
+          kv->kv_->open_at(
+              static_cast<tiledb::sm::QueryType>(query_type),
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length,
+              timestamp)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

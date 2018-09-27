@@ -88,19 +88,32 @@ Status KV::open(
 
   RETURN_NOT_OK(
       array_->open(query_type, encryption_type, encryption_key, key_length));
-  auto schema = array_->array_schema();
 
-  // Load all attributes
-  auto schema_attributes = schema->attributes();
-  attributes_.push_back(constants::coords);
-  for (const auto& attr : schema_attributes)
-    attributes_.push_back(attr->name());
+  prepare_attributes_and_read_buffer_sizes();
 
-  // Prepare attribute types and read buffer sizes
-  for (const auto& attr : attributes_) {
-    attribute_types_.push_back(schema->type(attr));
-    read_buffer_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-  }
+  return Status::Ok();
+}
+
+Status KV::open_at(
+    QueryType query_type,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    uint64_t timestamp) {
+  if (is_open())
+    return LOG_STATUS(
+        Status::KVError("Cannot open key-value store at timestamp; Key-value "
+                        "store already open"));
+
+  if (query_type != QueryType::READ)
+    return LOG_STATUS(
+        Status::KVError("Cannot open key-value store at timestamp; This is "
+                        "applicable only to reads"));
+
+  RETURN_NOT_OK(array_->open_at(
+      query_type, encryption_type, encryption_key, key_length, timestamp));
+
+  prepare_attributes_and_read_buffer_sizes();
 
   return Status::Ok();
 }
@@ -467,6 +480,21 @@ Status KV::populate_write_buffers() {
   }
 
   return Status::Ok();
+}
+
+void KV::prepare_attributes_and_read_buffer_sizes() {
+  // Load all attributes
+  auto schema = array_->array_schema();
+  auto schema_attributes = schema->attributes();
+  attributes_.push_back(constants::coords);
+  for (const auto& attr : schema_attributes)
+    attributes_.push_back(attr->name());
+
+  // Prepare attribute types and read buffer sizes
+  for (const auto& attr : attributes_) {
+    attribute_types_.push_back(schema->type(attr));
+    read_buffer_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+  }
 }
 
 Status KV::read_item(const KVItem::Hash& hash, bool* found) {

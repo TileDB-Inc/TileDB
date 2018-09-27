@@ -118,13 +118,12 @@ Status StorageManager::array_open(
     QueryType query_type,
     const EncryptionKey& encryption_key,
     OpenArray** open_array,
-    uint64_t* snapshot) {
+    uint64_t timestamp) {
   STATS_FUNC_IN(sm_array_open);
 
   if (query_type == QueryType::READ)
     return array_open_for_reads(
-        array_uri, encryption_key, open_array, snapshot);
-  *snapshot = 0;
+        array_uri, encryption_key, open_array, timestamp);
   return array_open_for_writes(array_uri, encryption_key, open_array);
 
   STATS_FUNC_OUT(sm_array_open);
@@ -133,7 +132,7 @@ Status StorageManager::array_open(
 Status StorageManager::array_reopen(
     OpenArray* open_array,
     const EncryptionKey& encryption_key,
-    uint64_t* snapshot) {
+    uint64_t timestamp) {
   // Lock mutex
   {
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
@@ -150,11 +149,10 @@ Status StorageManager::array_reopen(
     open_array->mtx_lock();
   }
 
-  *snapshot = open_array->next_snapshot();
-
   // Get fragment metadata in the case of reads, if not fetched already
   bool in_cache;
-  auto st = load_fragment_metadata(open_array, encryption_key, &in_cache);
+  auto st =
+      load_fragment_metadata(open_array, encryption_key, &in_cache, timestamp);
   if (!st.ok()) {
     open_array->mtx_unlock();
     return st;
@@ -173,7 +171,7 @@ Status StorageManager::array_reopen(
 
 Status StorageManager::array_compute_max_buffer_sizes(
     OpenArray* open_array,
-    uint64_t snapshot,
+    uint64_t timestamp,
     const void* subarray,
     const std::vector<std::string>& attributes,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
@@ -187,7 +185,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
   // Get array schema and fragment metadata
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
+  auto metadata = open_array->fragment_metadata(timestamp);
   open_array->mtx_unlock();
 
   // Check attributes
@@ -206,7 +204,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
 
 Status StorageManager::array_compute_max_buffer_sizes(
     OpenArray* open_array,
-    uint64_t snapshot,
+    uint64_t timestamp,
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         max_buffer_sizes) {
@@ -219,7 +217,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
   // Get array schema and fragment metadata
   open_array->mtx_lock();
   auto array_schema = open_array->array_schema();
-  auto metadata = open_array->fragment_metadata(snapshot);
+  auto metadata = open_array->fragment_metadata(timestamp);
   open_array->mtx_unlock();
 
   // Get all attributes and coordinates
@@ -230,7 +228,7 @@ Status StorageManager::array_compute_max_buffer_sizes(
   attributes.push_back(constants::coords);
 
   return array_compute_max_buffer_sizes(
-      open_array, snapshot, subarray, attributes, max_buffer_sizes);
+      open_array, timestamp, subarray, attributes, max_buffer_sizes);
 }
 
 Status StorageManager::array_compute_max_buffer_sizes(
@@ -1551,7 +1549,7 @@ Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     OpenArray** open_array,
-    uint64_t* snapshot) {
+    uint64_t timestamp) {
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
@@ -1614,10 +1612,9 @@ Status StorageManager::array_open_for_reads(
     return st;
   }
 
-  *snapshot = (*open_array)->next_snapshot();
-
   // Get fragment metadata in the case of reads, if not fetched already
-  st = load_fragment_metadata(*open_array, encryption_key, &in_cache);
+  st =
+      load_fragment_metadata(*open_array, encryption_key, &in_cache, timestamp);
   if (!st.ok()) {
     (*open_array)->mtx_unlock();
     array_close((*open_array)->array_uri(), QueryType::READ);
@@ -1751,54 +1748,59 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_fragment_metadata(
     OpenArray* open_array,
     const EncryptionKey& encryption_key,
-    bool* in_cache) {
+    bool* in_cache,
+    uint64_t timestamp) {
   // Get all the fragment uris, sorted by timestamp
   std::vector<URI> fragment_uris;
   const URI& array_uri = open_array->array_uri();
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  sort_fragment_uris(&fragment_uris);
 
+  // Check if the array is empty
   if (fragment_uris.empty())
     return Status::Ok();
 
   *in_cache = false;
+  // Sort the URIs by timestamp
+  std::vector<std::pair<uint64_t, URI>> sorted_fragment_uris;
+  sort_fragment_uris(fragment_uris, &sorted_fragment_uris);
 
   // Load the metadata for each fragment, only if they are not already loaded
-  std::vector<FragmentMetadata*> fragment_metadata;
-  for (auto& uri : fragment_uris) {
-    auto metadata = open_array->fragment_metadata_get(uri);
-    if (metadata == nullptr) {
+  for (auto& sf : sorted_fragment_uris) {
+    auto frag_timestamp = sf.first;
+    auto frag_uri = sf.second;
+    if (!open_array->fragment_metadata_exists(frag_uri) &&
+        frag_timestamp <= timestamp) {
       URI coords_uri =
-          uri.join_path(constants::coords + constants::file_suffix);
+          frag_uri.join_path(constants::coords + constants::file_suffix);
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-      metadata = new FragmentMetadata(open_array->array_schema(), !sparse, uri);
+      auto metadata = new FragmentMetadata(
+          open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
       bool metadata_in_cache;
       RETURN_NOT_OK_ELSE(
           load_fragment_metadata(metadata, encryption_key, &metadata_in_cache),
           delete metadata);
       *in_cache |= metadata_in_cache;
-      fragment_metadata.push_back(metadata);
+      open_array->insert_fragment_metadata(metadata);
     }
   }
-  open_array->push_back_fragment_metadata(fragment_metadata);
 
   return Status::Ok();
 }
 
-void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
+void StorageManager::sort_fragment_uris(
+    const std::vector<URI>& fragment_uris,
+    std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const {
   // Do nothing if there are not enough fragments
-  uint64_t fragment_num = fragment_uris->size();
-  if (fragment_num == 0)
+  if (fragment_uris.empty())
     return;
 
   // Initializations
   std::string t_str;
-  uint64_t t, pos = 0;
-  std::vector<std::pair<uint64_t, uint64_t>> t_pos_vec;
+  uint64_t t;
 
   // Get the timestamp for each fragment
-  for (auto& uri : *fragment_uris) {
+  for (auto& uri : fragment_uris) {
     // Get fragment name
     std::string uri_str = uri.c_str();
     if (uri_str.back() == '/')
@@ -1807,19 +1809,14 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
     assert(utils::parse::starts_with(fragment_name, "__"));
 
     // Get timestamp in the end of the name after '_'
-    assert(fragment_name.find_last_of("_") != std::string::npos);
+    assert(fragment_name.find_last_of('_') != std::string::npos);
     t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
     sscanf(t_str.c_str(), "%lld", (long long int*)&t);
-    t_pos_vec.emplace_back(std::pair<uint64_t, uint64_t>(t, pos++));
+    sorted_fragment_uris->emplace_back(t, uri);
   }
 
   // Sort the names based on the timestamps
-  std::sort(t_pos_vec.begin(), t_pos_vec.end());
-  std::vector<URI> fragment_uris_sorted;
-  fragment_uris_sorted.resize(fragment_num);
-  for (uint64_t i = 0; i < fragment_num; ++i)
-    fragment_uris_sorted[i] = (*fragment_uris)[t_pos_vec[i].second];
-  *fragment_uris = fragment_uris_sorted;
+  std::sort(sorted_fragment_uris->begin(), sorted_fragment_uris->end());
 }
 
 }  // namespace sm

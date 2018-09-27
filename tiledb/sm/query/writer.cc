@@ -731,14 +731,16 @@ Status Writer::create_fragment(
   STATS_FUNC_IN(writer_create_fragment);
 
   URI uri;
+  uint64_t timestamp;
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(&new_fragment_str));
+    RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
-  *frag_meta = std::make_shared<FragmentMetadata>(array_schema_, dense, uri);
+  *frag_meta =
+      std::make_shared<FragmentMetadata>(array_schema_, dense, uri, timestamp);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 
@@ -1218,15 +1220,16 @@ Status Writer::init_tiles(
   return Status::Ok();
 }
 
-Status Writer::new_fragment_name(std::string* frag_uri) const {
+Status Writer::new_fragment_name(
+    std::string* frag_uri, uint64_t* timestamp) const {
   if (frag_uri == nullptr)
     return Status::WriterError("Null fragment uri argument.");
-  uint64_t ms = utils::time::timestamp_ms();
+  *timestamp = utils::time::timestamp_now_ms();
   std::string uuid;
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << "/__" << uuid << "_" << ms;
+  ss << "/__" << uuid << "_" << *timestamp;
   *frag_uri = ss.str();
   return Status::Ok();
 }

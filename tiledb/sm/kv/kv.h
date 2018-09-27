@@ -136,8 +136,10 @@ class KV {
    * Opens the key-value store for reading/writing.
    *
    * @param query_type The mode in which the key-value store is opened.
+   * @param encryption_type The type of encryption.
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length of the encryption key.
    * @return Status
    */
   Status open(
@@ -145,6 +147,24 @@ class KV {
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);
+
+  /**
+   * Opens the key-value store for reading/writing at a given timestamp.
+   *
+   * @param query_type The mode in which the key-value store is opened.
+   * @param encryption_type The type of encryption.
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length of the encryption key.
+   * @param timestamp The timestamp at which to open the array.
+   * @return Status
+   */
+  Status open_at(
+      QueryType query_type,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      uint64_t timestamp);
 
   /** Closes the key-value store and frees all memory. */
   Status close();
@@ -264,6 +284,9 @@ class KV {
 
   /** Populates the write buffers with the buffered key-value items. */
   Status populate_write_buffers();
+
+  /** Initializations when opening the KV. */
+  void prepare_attributes_and_read_buffer_sizes();
 
   /**
    * Reads a key-value item from persistent storage and into the local

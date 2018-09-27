@@ -703,6 +703,78 @@ class Map {
     schema_ = MapSchema(ctx, kv_schema);
   }
 
+  /**
+   * Load an existing map for reading/writing.
+   *
+   * This constructor takes as input a
+   * timestamp, representing time in milliseconds ellapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
+   * timestamp provides a view of the map with all writes/updates that
+   * happened at or before `timestamp` (i.e., excluding those that
+   * occurred after `timestamp`). This is useful to ensure
+   * consistency at a potential distributed setting, where machines
+   * need to operate on the same view of the map.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
+   * @param timestamp The timestamp to open the map at.
+   */
+  Map(const Context& ctx,
+      const std::string& uri,
+      tiledb_query_type_t query_type,
+      uint64_t timestamp)
+      : Map(ctx, uri, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp) {
+  }
+
+  /**
+   * Load an existing encrypted map for reading/writing.
+   *
+   * This constructor takes as input a
+   * timestamp, representing time in milliseconds ellapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
+   * timestamp provides a view of the map with all writes/updates that
+   * happened at or before `timestamp` (i.e., excluding those that
+   * occurred after `timestamp`). This is useful to ensure
+   * consistency at a potential distributed setting, where machines
+   * need to operate on the same view of the map.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   * @param timestamp The timestamp to open the map at.
+   */
+  Map(const Context& ctx,
+      const std::string& uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      uint64_t timestamp)
+      : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
+      , uri_(uri) {
+    tiledb_kv_t* kv;
+    ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
+    kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
+    ctx.handle_error(tiledb_kv_open_at_with_key(
+        ctx,
+        kv,
+        query_type,
+        encryption_type,
+        encryption_key,
+        key_length,
+        timestamp));
+
+    tiledb_kv_schema_t* kv_schema;
+    ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
+    schema_ = MapSchema(ctx, kv_schema);
+  }
+
   Map(const Map&) = default;
   Map(Map&& o) = default;
   Map& operator=(const Map&) = default;
@@ -895,6 +967,65 @@ class Map {
         encryption_type,
         encryption_key,
         key_length));
+
+    tiledb_kv_schema_t* kv_schema;
+    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    schema_ = MapSchema(ctx, kv_schema);
+  }
+
+  /**
+   * Opens the Map, preparing it for reading/writing. This is called
+   * automatically by the constructor.
+   *
+   * This function takes as input a
+   * timestamp, representing time in milliseconds ellapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
+   * timestamp provides a view of the map with all writes/updates that
+   * happened at or before `timestamp` (i.e., excluding those that
+   * occurred after `timestamp`). This is useful to ensure
+   * consistency at a potential distributed setting, where machines
+   * need to operate on the same view of the map.
+   *
+   * @param query_type The type of queries the Map will be receiving.
+   * @param timestamp The timestamp to open the map at.
+   */
+  void open(tiledb_query_type_t query_type, uint64_t timestamp) {
+    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp);
+  }
+
+  /**
+   * Opens the Map, for encrypted Maps.
+   *
+   * This function takes as input a
+   * timestamp, representing time in milliseconds ellapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
+   * timestamp provides a view of the map with all writes/updates that
+   * happened at or before `timestamp` (i.e., excluding those that
+   * occurred after `timestamp`). This is useful to ensure
+   * consistency at a potential distributed setting, where machines
+   * need to operate on the same view of the map.
+   *
+   * @param query_type The type of queries the Map will be receiving.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   * @param timestamp The timestamp to open the map at.
+   */
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      uint64_t timestamp) {
+    auto& ctx = context();
+    ctx.handle_error(tiledb_kv_open_at_with_key(
+        ctx,
+        kv_.get(),
+        query_type,
+        encryption_type,
+        encryption_key,
+        key_length,
+        timestamp));
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));

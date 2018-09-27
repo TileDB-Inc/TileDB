@@ -55,10 +55,14 @@ namespace sm {
 /* ****************************** */
 
 FragmentMetadata::FragmentMetadata(
-    const ArraySchema* array_schema, bool dense, const URI& fragment_uri)
+    const ArraySchema* array_schema,
+    bool dense,
+    const URI& fragment_uri,
+    uint64_t timestamp)
     : array_schema_(array_schema)
     , dense_(dense)
-    , fragment_uri_(fragment_uri) {
+    , fragment_uri_(fragment_uri)
+    , timestamp_(timestamp) {
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
@@ -550,6 +554,16 @@ uint64_t FragmentMetadata::tile_var_size(
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
   return tile_var_sizes_[attribute_id][tile_idx];
+}
+
+uint64_t FragmentMetadata::timestamp() const {
+  return timestamp_;
+}
+
+bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
+  return (timestamp_ < metadata.timestamp_) ||
+         (timestamp_ == metadata.timestamp_ &&
+          fragment_uri_ < metadata.fragment_uri_);
 }
 
 /* ****************************** */

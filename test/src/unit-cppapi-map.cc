@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
@@ -414,4 +415,139 @@ TEST_CASE_METHOD(
 
   map.close();
   CHECK(!map.is_open());
+}
+
+TEST_CASE("C++ API: Open map at", "[cppapi], [cppapi-open-map-at]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string map_name = "cppapi_open_map_at";
+  if (vfs.is_dir(map_name))
+    vfs.remove_dir(map_name);
+
+  // Create map
+  auto a = Attribute::create<int>(ctx, "a");
+  MapSchema schema(ctx);
+  schema.add_attribute(a);
+  Map::create(map_name, schema);
+
+  REQUIRE_THROWS_AS(Map(ctx, map_name, TILEDB_WRITE, 0), tiledb::TileDBError);
+
+  // Write map
+  Map map_w(ctx, map_name, TILEDB_WRITE);
+  map_w["key"] = 10;
+  map_w.flush();
+  map_w.close();
+
+  // Normal read
+  Map map_r(ctx, map_name, TILEDB_READ);
+  CHECK(map_r.has_key("key"));
+  CHECK((int)map_r["key"]["a"] == 10);
+  map_r.close();
+
+  // Read from 0 timestamp
+  Map map_r_at_0(ctx, map_name, TILEDB_READ, 0);
+
+  SECTION("Testing Map::Map") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Map::open") {
+    map_r_at_0.close();
+    map_r_at_0.open(TILEDB_READ, 0);
+  }
+
+  CHECK(!map_r_at_0.has_key("key"));
+  map_r_at_0.close();
+
+  // Read from later timestamp
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  Map map_r_at(ctx, map_name, TILEDB_READ, timestamp);
+
+  SECTION("Testing Map::Map") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Map::open") {
+    map_r_at.close();
+    map_r_at.open(TILEDB_READ, timestamp);
+  }
+
+  CHECK(map_r_at.has_key("key"));
+  CHECK((int)map_r_at["key"]["a"] == 10);
+  map_r_at.close();
+
+  if (vfs.is_dir(map_name))
+    vfs.remove_dir(map_name);
+}
+
+TEST_CASE(
+    "C++ API: Open encrypted map at",
+    "[cppapi], [cppapi-open-encrypted-map-at]") {
+  const char key[] = "0123456789abcdeF0123456789abcdeF";
+  auto key_len = (uint32_t)strlen(key);
+
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string map_name = "cppapi_open_encrypted_map_at";
+  if (vfs.is_dir(map_name))
+    vfs.remove_dir(map_name);
+
+  // Create map
+  auto a = Attribute::create<int>(ctx, "a");
+  MapSchema schema(ctx);
+  schema.add_attribute(a);
+  Map::create(map_name, schema, TILEDB_AES_256_GCM, key, key_len);
+
+  REQUIRE_THROWS_AS(
+      Map(ctx, map_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len, 0),
+      tiledb::TileDBError);
+
+  // Write map
+  Map map_w(ctx, map_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  map_w["key"] = 10;
+  map_w.flush();
+  map_w.close();
+
+  // Normal read
+  Map map_r(ctx, map_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+  CHECK(map_r.has_key("key"));
+  CHECK((int)map_r["key"]["a"] == 10);
+  map_r.close();
+
+  // Read from 0 timestamp
+  Map map_r_at_0(
+      ctx, map_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+
+  SECTION("Testing Map::Map") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Map::open") {
+    map_r_at_0.close();
+    map_r_at_0.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+  }
+
+  CHECK(!map_r_at_0.has_key("key"));
+  map_r_at_0.close();
+
+  // Read from later timestamp
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  Map map_r_at(
+      ctx, map_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, timestamp);
+
+  SECTION("Testing Map::Map") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Map::open") {
+    map_r_at.close();
+    map_r_at.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, timestamp);
+  }
+
+  CHECK(map_r_at.has_key("key"));
+  CHECK((int)map_r_at["key"]["a"] == 10);
+  map_r_at.close();
+
+  if (vfs.is_dir(map_name))
+    vfs.remove_dir(map_name);
 }

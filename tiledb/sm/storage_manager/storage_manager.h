@@ -128,12 +128,10 @@ class StorageManager {
    * @param query_type The type of queries the array is opened for.
    * @param encryption_key The encryption key to use.
    * @param open_array The open array object to be retrieved.
-   * @param snapshot A snapshot to be retrieved. This is a token needed to
-   *     retrieve the appropriate fragment metadata, so that the new
-   *     fragment metadata potentially loaded to the open array object
-   *     by another invocation of this function can be ignored (to comply
-   *     with the TileDB consistency model). This is used only when
-   *     opening array for reading.
+   * @param timestamp The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC). This timestamp is meaningful only
+   *     when opening the array for reading.
    * @return Status
    *
    * @note The same array can be opened for both reads and writes. However,
@@ -145,32 +143,34 @@ class StorageManager {
       QueryType query_type,
       const EncryptionKey& encryption_key,
       OpenArray** open_array,
-      uint64_t* snapshot);
+      uint64_t timestamp);
 
   /**
    * Reopens an already open array, loading the fragment metadata of any new
-   * fragments and acquiring a new snapshot identifier.
+   * fragments and acquiring a new timestamp.
    * This is applicable only to arrays opened for reads.
-   * When the new snapshot snapshot is used in future queries, the queries
-   * will see the fragments in the array created at or before this snapshot.
+   * When the new timestamp is used in future queries, the queries
+   * will see the fragments in the array created at or before this timestamp.
    *
    * @param open_array The open array to be reopened.
    * @param encryption_key The encryption key to use.
-   * @param snapshot A new snapshot identifier retrieved.
+   * @param timestamp The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status array_reopen(
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
-      uint64_t* snapshot);
+      uint64_t timestamp);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for all array attributes plus coordinates.
    *
    * @param open_array The opened array.
-   * @param snapshot The snapshot that indicates which fragment metadata should
-   *     be loaded from `open_array`.
+   * @param timestamp The timestamp that indicates which fragment metadata
+   * should be loaded from `open_array`.
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
@@ -182,7 +182,7 @@ class StorageManager {
    */
   Status array_compute_max_buffer_sizes(
       OpenArray* open_array,
-      uint64_t snapshot,
+      uint64_t timestamp,
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes_);
@@ -192,8 +192,8 @@ class StorageManager {
    * query, for a given subarray and set of attributes.
    *
    * @param open_array The opened array.
-   * @param snapshot The snapshot that indicates which fragment metadata should
-   *     be loaded from `open_array`.
+   * @param timestamp The timestamp that indicates which fragment metadata
+   * should be loaded from `open_array`.
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
    * @param attributes The attributes to focus on.
@@ -206,7 +206,7 @@ class StorageManager {
    */
   Status array_compute_max_buffer_sizes(
       OpenArray* open_array,
-      uint64_t snapshot,
+      uint64_t timestamp,
       const void* subarray,
       const std::vector<std::string>& attributes,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
@@ -810,18 +810,16 @@ class StorageManager {
    * @param array_uri The array URI.
    * @param encryption_key The encryption key to use.
    * @param open_array The open array object to be created
-   * @param snapshot A snapshot to be retrieved. This is a token needed to
-   *     retrieve the appropriate fragment metadata, so that the new
-   *     fragment metadata potentially loaded to the open array object
-   *     by another invocation of this function can be ignored (to comply
-   *     with the TileDB consistency model).
+   * @param timestamp The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status array_open_for_reads(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       OpenArray** open_array,
-      uint64_t* snapshot);
+      uint64_t timestamp);
 
   /** Opens an array for writes. */
   Status array_open_for_writes(
@@ -888,18 +886,26 @@ class StorageManager {
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
    * @param in_cache Set to true if any metdata was retrieved from the cache
+   * @param timestamp The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status load_fragment_metadata(
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
-      bool* in_cache);
+      bool* in_cache,
+      uint64_t timestamp);
 
   /**
-   * Sorts the input fragment URIs in ascending timestamp order, breaking
-   * ties using the process id.
+   * Sorts the fragment URIs (in the first input) in ascending timestamp
+   * order, breaking ties using the process id. The sorted fragment
+   * URIs are stored in the second input, including the fragment
+   * timestamps.
    */
-  void sort_fragment_uris(std::vector<URI>* fragment_uris) const;
+  void sort_fragment_uris(
+      const std::vector<URI>& fragment_uris,
+      std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
