@@ -87,6 +87,10 @@ struct KVFx {
   bool supports_s3_;
   bool supports_hdfs_;
 
+  // Encryption parameters
+  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
+  const char* encryption_key = nullptr;
+
   // Functions
   KVFx();
   ~KVFx();
@@ -237,7 +241,17 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Create key-value store
-  rc = tiledb_kv_create(ctx_, path.c_str(), kv_schema);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_create(ctx_, path.c_str(), kv_schema);
+  } else {
+    rc = tiledb_kv_create_with_key(
+        ctx_,
+        path.c_str(),
+        kv_schema,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -247,8 +261,19 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_kv_schema_free(&kv_schema);
 
   // Load schema
-  rc = tiledb_kv_schema_load(ctx_, path.c_str(), &kv_schema);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_schema_load(ctx_, path.c_str(), &kv_schema);
+  } else {
+    rc = tiledb_kv_schema_load_with_key(
+        ctx_,
+        path.c_str(),
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key),
+        &kv_schema);
+  }
   CHECK(rc == TILEDB_OK);
+
   uint64_t capacity;
   rc = tiledb_kv_schema_get_capacity(ctx_, kv_schema, &capacity);
   CHECK(rc == TILEDB_OK);
@@ -311,7 +336,17 @@ void KVFx::check_write(const std::string& path) {
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
+  } else {
+    rc = tiledb_kv_open_with_key(
+        ctx_,
+        kv,
+        TILEDB_WRITE,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // The kv is not dirty
@@ -456,7 +491,16 @@ void KVFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // Consolidate
-  rc = tiledb_kv_consolidate(ctx_, path.c_str());
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_consolidate(ctx_, path.c_str());
+  } else {
+    rc = tiledb_kv_consolidate_with_key(
+        ctx_,
+        path.c_str(),
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -481,7 +525,17 @@ void KVFx::check_single_read(const std::string& path) {
   rc = tiledb_kv_reopen(ctx_, kv);
   REQUIRE(rc == TILEDB_ERR);
 
-  rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
+  } else {
+    rc = tiledb_kv_open_with_key(
+        ctx_,
+        kv,
+        TILEDB_READ,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Re-open should succeed after open
@@ -731,7 +785,17 @@ void KVFx::check_iter(const std::string& path) {
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
+  } else {
+    rc = tiledb_kv_open_with_key(
+        ctx_,
+        kv,
+        TILEDB_READ,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
   REQUIRE(rc == TILEDB_OK);
   tiledb_kv_iter_t* kv_iter;
   rc = tiledb_kv_iter_alloc(ctx_, kv, &kv_iter);
@@ -785,7 +849,6 @@ TEST_CASE_METHOD(
   rc = tiledb_kv_is_open(ctx_, kv, &is_open);
   REQUIRE(rc == TILEDB_OK);
   CHECK(is_open == 0);
-
   rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -814,7 +877,6 @@ TEST_CASE_METHOD(
 
   // Open key-value store in READ mode
   rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
 
   int dirty;
   rc = tiledb_kv_is_dirty(ctx_, kv, &dirty);
@@ -850,6 +912,45 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     KVFx, "C API: Test key-value write, read and iter", "[capi], [kv]") {
   std::string array_name;
+
+  if (supports_s3_) {
+    // S3
+    create_temp_dir(S3_TEMP_DIR);
+    array_name = S3_TEMP_DIR + KV_NAME;
+    create_kv(array_name);
+    check_write(array_name);
+    check_single_read(array_name);
+    check_iter(array_name);
+    remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_hdfs_) {
+    create_temp_dir(HDFS_TEMP_DIR);
+    array_name = HDFS_TEMP_DIR + KV_NAME;
+    create_kv(array_name);
+    check_write(array_name);
+    check_single_read(array_name);
+    check_iter(array_name);
+    remove_temp_dir(HDFS_TEMP_DIR);
+  } else {
+    // File
+    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + KV_NAME;
+    create_kv(array_name);
+    check_kv_item();
+    check_write(array_name);
+    check_single_read(array_name);
+    check_iter(array_name);
+    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  }
+}
+
+TEST_CASE_METHOD(
+    KVFx,
+    "C API: Test encrypted key-value write, read and iter",
+    "[capi], [kv], [encryption]") {
+  std::string array_name;
+
+  encryption_type = TILEDB_AES_256_GCM;
+  encryption_key = "0123456789abcdeF0123456789abcdeF";
 
   if (supports_s3_) {
     // S3

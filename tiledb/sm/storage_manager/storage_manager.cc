@@ -393,7 +393,11 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   return Status::Ok();
 }
 
-Status StorageManager::array_consolidate(const char* array_name) {
+Status StorageManager::array_consolidate(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
   // Check array URI
   URI array_uri(array_name);
   if (array_uri.is_invalid()) {
@@ -408,7 +412,8 @@ Status StorageManager::array_consolidate(const char* array_name) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot consolidate array; Array does not exist"));
   }
-  return consolidator_->consolidate(array_name);
+  return consolidator_->consolidate(
+      array_name, encryption_type, encryption_key, key_length);
 }
 
 Status StorageManager::array_create(

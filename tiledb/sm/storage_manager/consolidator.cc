@@ -60,14 +60,18 @@ Consolidator::~Consolidator() = default;
 /*               API              */
 /* ****************************** */
 
-Status Consolidator::consolidate(const char* array_name) {
+Status Consolidator::consolidate(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
   std::vector<URI> old_fragment_uris;
   URI array_uri = URI(array_name);
 
   // Open array for reading
   Array array_for_reads(array_uri, storage_manager_);
   RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0))
+      QueryType::READ, encryption_type, encryption_key, key_length))
   if (array_for_reads.is_empty()) {
     RETURN_NOT_OK(array_for_reads.close());
     return Status::Ok();
@@ -77,7 +81,7 @@ Status Consolidator::consolidate(const char* array_name) {
   Array array_for_writes(array_uri, storage_manager_);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
-          QueryType::WRITE, EncryptionType::NO_ENCRYPTION, nullptr, 0),
+          QueryType::WRITE, encryption_type, encryption_key, key_length),
       array_for_reads.close());
 
   // Get schema
