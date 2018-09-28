@@ -171,6 +171,7 @@ Status TileIO::read_generic_tile_header(
       uri, file_offset, header_buff.get(), GenericTileHeader::BASE_SIZE));
 
   // Read header individual values
+  RETURN_NOT_OK(header_buff->read(&header->version_number, sizeof(uint32_t)));
   RETURN_NOT_OK(header_buff->read(&header->persisted_size, sizeof(uint64_t)));
   RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
   RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(char)));
@@ -222,6 +223,8 @@ Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
 Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
   // Write to buffer
   auto buff = new Buffer();
+  RETURN_NOT_OK_ELSE(
+      buff->write(&header->version_number, sizeof(uint32_t)), delete buff);
   RETURN_NOT_OK_ELSE(
       buff->write(&header->persisted_size, sizeof(uint64_t)), delete buff);
   RETURN_NOT_OK_ELSE(

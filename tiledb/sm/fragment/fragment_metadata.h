@@ -511,8 +511,8 @@ class FragmentMetadata {
    */
   std::vector<std::vector<uint64_t>> tile_var_sizes_;
 
-  /** The version of the library that created this metadata. */
-  int version_[3];
+  /** The format version of this metadata. */
+  uint32_t version_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -614,7 +614,7 @@ class FragmentMetadata {
    */
   Status load_tile_var_sizes(ConstBuffer* buff);
 
-  /** Loads the library version from the buffer. */
+  /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
   /**
@@ -679,7 +679,7 @@ class FragmentMetadata {
    */
   Status write_tile_var_sizes(Buffer* buff);
 
-  /** Writes the library version to the buffer. */
+  /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
 };
 

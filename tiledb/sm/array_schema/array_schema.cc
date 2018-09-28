@@ -56,7 +56,7 @@ ArraySchema::ArraySchema() {
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
-  std::memcpy(version_, constants::version, sizeof(version_));
+  version_ = constants::format_version;
 
   // Set up default filter pipelines for coords and offsets
   coords_filters_.add_filter(CompressionFilter(
@@ -74,7 +74,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
-  std::memcpy(version_, constants::version, sizeof(version_));
+  version_ = constants::format_version;
 
   // Set up default filter pipelines for coords and offsets
   coords_filters_.add_filter(CompressionFilter(
@@ -112,7 +112,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   coords_filters_ = array_schema->coords_filters_;
   coords_size_ = array_schema->coords_size_;
   tile_order_ = array_schema->tile_order_;
-  std::memcpy(version_, array_schema->version_, sizeof(version_));
+  version_ = array_schema->version_;
 }
 
 ArraySchema::~ArraySchema() {
@@ -369,7 +369,7 @@ bool ArraySchema::is_kv() const {
 }
 
 // ===== FORMAT =====
-// version (int[3])
+// version (uint32_t)
 // array_type (char)
 // is_kv (bool)
 // tile_order (char)
@@ -384,7 +384,7 @@ bool ArraySchema::is_kv() const {
 //   ...
 Status ArraySchema::serialize(Buffer* buff) const {
   // Write version
-  RETURN_NOT_OK(buff->write(constants::version, sizeof(constants::version)));
+  RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
 
   // Write array type
   auto array_type = (char)array_type_;
@@ -483,7 +483,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 }
 
 // ===== FORMAT =====
-// version (int[3])
+// version (uint32_t)
 // array_type (char)
 // is_kv (bool)
 // tile_order (char)
@@ -500,7 +500,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   is_kv_ = is_kv;
 
   // Load version
-  RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
+  RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
 
   // Load array type
   char array_type;

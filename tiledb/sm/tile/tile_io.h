@@ -59,7 +59,9 @@ class TileIO {
   struct GenericTileHeader {
     /** Size in bytes of the non-filters part of the serialized header. */
     static const uint64_t BASE_SIZE =
-        3 * sizeof(uint64_t) + 2 * sizeof(char) + sizeof(uint32_t);
+        3 * sizeof(uint64_t) + 2 * sizeof(char) + 2 * sizeof(uint32_t);
+    /** Format version number of the tile. */
+    uint32_t version_number;
     /** Persisted (e.g. compressed) size of the tile. */
     uint64_t persisted_size;
     /** Uncompressed size of the tile. */
@@ -77,7 +79,8 @@ class TileIO {
 
     /** Constructor. */
     GenericTileHeader()
-        : persisted_size(0)
+        : version_number(constants::format_version)
+        , persisted_size(0)
         , tile_size(0)
         , datatype((char)Datatype::ANY)
         , cell_size(0)
