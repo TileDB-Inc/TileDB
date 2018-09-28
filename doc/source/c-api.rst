@@ -98,6 +98,8 @@ Enumerations
     :project: TileDB-C
 .. doxygenenum:: tiledb_vfs_mode_t
     :project: TileDB-C
+.. doxygenenum:: tiledb_encryption_type_t
+    :project: TileDB-C
 
 Context
 -------
@@ -160,6 +162,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_open_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_reopen
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_close
@@ -168,7 +172,11 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_create
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_create_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_consolidate_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_schema
     :project: TileDB-C
@@ -210,6 +218,8 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_check
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_load
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_load_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_array_type
     :project: TileDB-C
@@ -371,9 +381,15 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_create
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_create_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_consolidate
     :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_consolidate_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_open
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_open_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_is_open
     :project: TileDB-C
@@ -408,6 +424,8 @@ Key-value Schema
 .. doxygenfunction:: tiledb_kv_schema_check
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_load
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_schema_load_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_get_attribute_num
     :project: TileDB-C

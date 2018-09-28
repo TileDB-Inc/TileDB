@@ -36,8 +36,22 @@
 using namespace tiledb;
 
 struct CPPMapFx {
+  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
+  const char* encryption_key = nullptr;
+
   CPPMapFx()
       : vfs(ctx) {
+  }
+
+  ~CPPMapFx() {
+    if (vfs.is_dir("cpp_unit_map"))
+      vfs.remove_dir("cpp_unit_map");
+  }
+
+  Context ctx;
+  VFS vfs;
+
+  void create_map() {
     using namespace tiledb;
 
     if (vfs.is_dir("cpp_unit_map"))
@@ -51,19 +65,19 @@ struct CPPMapFx {
     MapSchema schema(ctx);
     schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
     schema.set_capacity(10);
-    Map::create("cpp_unit_map", schema);
+    if (encryption_type == TILEDB_NO_ENCRYPTION) {
+      Map::create("cpp_unit_map", schema);
+    } else {
+      auto key_len = (uint32_t)strlen(encryption_key);
+      Map::create(
+          "cpp_unit_map", schema, encryption_type, encryption_key, key_len);
+    }
   }
-
-  ~CPPMapFx() {
-    if (vfs.is_dir("cpp_unit_map"))
-      vfs.remove_dir("cpp_unit_map");
-  }
-
-  Context ctx;
-  VFS vfs;
 };
 
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
+  create_map();
+
   Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
   CHECK(map.is_open());
   CHECK(!map.is_dirty());
@@ -149,6 +163,8 @@ TEST_CASE_METHOD(
     CPPMapFx,
     "C++ API: Map Issue 606 segault in Reader::zero_out_buffer_sizes()",
     "[cppapi], [cppapi-map]") {
+  create_map();
+
   Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
 
   int simple_key = 1;
@@ -300,4 +316,98 @@ TEST_CASE_METHOD(
   CHECK(std::count(vals.begin(), vals.end(), "123") == 1);
 
   map.close();
+}
+
+TEST_CASE_METHOD(
+    CPPMapFx,
+    "C++ API: Encrypted map",
+    "[cppapi], [cppapi-map], [encryption]") {
+  encryption_type = TILEDB_AES_256_GCM;
+  encryption_key = "0123456789abcdeF0123456789abcdeF";
+  auto key_len = (uint32_t)strlen(encryption_key);
+  create_map();
+
+  REQUIRE_THROWS_AS(
+      [&]() { Map map(ctx, "cpp_unit_map", TILEDB_WRITE); }(),
+      tiledb::TileDBError);
+
+  Map map(
+      ctx,
+      "cpp_unit_map",
+      TILEDB_WRITE,
+      TILEDB_AES_256_GCM,
+      encryption_key,
+      key_len);
+  CHECK(map.is_open());
+  CHECK(!map.is_dirty());
+
+  int simple_key = 10;
+  std::vector<double> compound_key = {2.43, 214};
+
+  // Via independent item
+  auto i1 = Map::create_item(ctx, simple_key);
+  i1.set("a1", 1.234);
+  i1["a2"] = std::string("someval");
+  i1["a3"] = std::array<double, 2>({{3, 2.4}});
+
+  CHECK_THROWS(map.add_item(i1));
+  i1["a1"] = 1;
+  map.add_item(i1);
+
+  CHECK(map.is_dirty());
+
+  map.flush();
+
+  CHECK(!map.is_dirty());
+
+  map.close();
+  CHECK(!map.is_open());
+
+  REQUIRE_THROWS_AS(map.open(TILEDB_READ), tiledb::TileDBError);
+  map.open(TILEDB_READ, TILEDB_AES_256_GCM, encryption_key, key_len);
+  CHECK(map.is_open());
+
+  auto schema = map.schema();
+  CHECK(schema.capacity() == 10);
+
+  using my_cell_t = std::tuple<int, std::string, std::array<double, 2>>;
+
+  // write via tuple
+  my_cell_t ret = map[simple_key][{"a1", "a2", "a3"}];
+
+  CHECK(std::get<0>(ret) == 1);
+  CHECK(std::get<1>(ret) == "someval");
+  CHECK(std::get<2>(ret).size() == 2);
+  CHECK(std::get<2>(ret)[0] == 3);
+
+  map.close();
+  CHECK(!map.is_open());
+
+  map.open(TILEDB_WRITE, TILEDB_AES_256_GCM, encryption_key, key_len);
+  CHECK(map.is_open());
+
+  map[compound_key][{"a1", "a2", "a3"}] = my_cell_t(2, "aaa", {{4.2, 1}});
+
+  map.flush();
+  map.close();
+  CHECK(!map.is_open());
+
+  map.open(TILEDB_READ, TILEDB_AES_256_GCM, encryption_key, key_len);
+  CHECK(map.is_open());
+  CHECK(map.has_key(simple_key));
+  CHECK(map.has_key(compound_key));
+  CHECK(!map.has_key(3453463));
+
+  CHECK((int)map[simple_key]["a1"] == 1);
+  CHECK(map.get_item(simple_key).get<std::string>("a2") == "someval");
+  CHECK((map[simple_key].get<std::array<double, 2>>("a3").size()) == 2);
+
+  ret = map[compound_key][{"a1", "a2", "a3"}];
+  CHECK(std::get<0>(ret) == 2);
+  CHECK(std::get<1>(ret) == "aaa");
+  CHECK(std::get<2>(ret).size() == 2);
+  CHECK(std::get<2>(ret)[0] == 4.2);
+
+  map.close();
+  CHECK(!map.is_open());
 }
