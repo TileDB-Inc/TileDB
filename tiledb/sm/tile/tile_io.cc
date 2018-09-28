@@ -110,7 +110,6 @@ Status TileIO::read_generic(
   GenericTileHeader header;
   RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
-  RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
 
   if (encryption_key.encryption_type() !=
       (EncryptionType)header.encryption_type)
@@ -119,6 +118,8 @@ Status TileIO::read_generic(
         encryption_type_str((EncryptionType)header.encryption_type) +
         " but given key is for " +
         encryption_type_str(encryption_key.encryption_type())));
+
+  RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
 
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(

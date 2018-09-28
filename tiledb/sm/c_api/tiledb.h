@@ -1934,8 +1934,8 @@ TILEDB_EXPORT int tiledb_array_schema_check(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @param array_uri The array whose schema will be retrieved.
+ * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_load(
@@ -1955,16 +1955,16 @@ TILEDB_EXPORT int tiledb_array_schema_load(
  * tiledb_array_schema_t* array_schema;
  * tiledb_array_schema_load_with_key(
  *     ctx, "s3://tiledb_bucket/my_array", TILEDB_AES_256_GCM,
- *     key, sizeof(key), array_schema);
+ *     key, sizeof(key), &array_schema);
  * // Make sure to free the array schema in the end
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @param array_uri The array whose schema will be retrieved.
  * @param encryption_type The encryption type to use.
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
+ * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int tiledb_array_schema_load_with_key(
@@ -2945,6 +2945,34 @@ TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri);
 
 /**
+ * Consolidates the fragments of an encrypted array into a single fragment.
+ *
+ * You must first finalize all queries to the array before consolidation can
+ * begin (as consolidation temporarily acquires an exclusive lock on the array).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t key[32] = ...;
+ * tiledb_array_consolidate_with_key(ctx, "hdfs:///tiledb_arrays/my_array",
+ *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array to be consolidated.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int tiledb_array_consolidate_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
+
+/**
  * Retrieves the non-empty domain from an array. This is the union of the
  * non-empty domains of the array fragments.
  *
@@ -3269,6 +3297,38 @@ TILEDB_EXPORT int tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema);
 
 /**
+ * Retrieves the schema of an encrypted key-value store from the disk, creating
+ * a key-value schema struct.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_kv_schema_t* kv_schema;
+ * tiledb_kv_schema_load_with_key(
+ *     ctx, "file:///my_kv", TILEDB_AES_256_GCM,
+ *     key, sizeof(key), &kv_schema);
+ * // Make sure to free the kv schema in the end
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_uri The key-value store whose schema will be retrieved.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @param kv_schema The key-value schema to be retrieved, or NULL upon error.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_schema_load_with_key(
+    tiledb_ctx_t* ctx,
+    const char* kv_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    tiledb_kv_schema_t** kv_schema);
+
+/**
  * Retrieves the capacity.
  *
  * **Example:**
@@ -3537,6 +3597,36 @@ TILEDB_EXPORT int tiledb_kv_create(
     tiledb_ctx_t* ctx, const char* kv_uri, const tiledb_kv_schema_t* kv_schema);
 
 /**
+ * Creates an encrypted key-value store from the input key-value schema.
+ *
+ * Encrypted key-value stores can only be created through this function.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t key[32] = ...;
+ * tiledb_kv_create_with_key(
+ *     ctx, "my_kv", kv_schema,
+ *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_uri The URI of the key-value store.
+ * @param kv_schema The key-value store schema.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_create_with_key(
+    tiledb_ctx_t* ctx,
+    const char* kv_uri,
+    const tiledb_kv_schema_t* kv_schema,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
+
+/**
  * Consolidates the fragments of a key-value store into a single fragment.
  *
  * **Example:**
@@ -3550,6 +3640,32 @@ TILEDB_EXPORT int tiledb_kv_create(
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
+
+/**
+ * Consolidates the fragments of an encrypted key-value store into a single
+ * fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t key[32] = ...;
+ * tiledb_kv_consolidate_with_key(ctx, "my_kv",
+ *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_uri The name of the TileDB key-value store to be consolidated.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int tiledb_kv_consolidate_with_key(
+    tiledb_ctx_t* ctx,
+    const char* kv_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
 
 /**
  * Creates a key-value store object.
@@ -3591,6 +3707,40 @@ TILEDB_EXPORT int tiledb_kv_alloc(
  */
 TILEDB_EXPORT int tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type);
+
+/**
+ * Prepares an encrypted key-value store for reading/writing.
+ *
+ * An encrypted key-value store must be opened with this function before queries
+ * can be issued to it.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * tiledb_kv_open_with_key(ctx, kv, TILEDB_READ,
+ *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object to be opened.
+ * @param query_type The mode in which the key-value store is opened
+ *     (read or write).
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int tiledb_kv_open_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    tiledb_query_type_t query_type,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
 
 /**
  * Checks if the key-value store is open.

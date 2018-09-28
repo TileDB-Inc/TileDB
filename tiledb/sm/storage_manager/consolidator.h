@@ -68,8 +68,21 @@ class Consolidator {
   /*                API                */
   /* ********************************* */
 
-  /** Consolidates the fragments of the input array. */
-  Status consolidate(const char* array_name);
+  /**
+   * Consolidates the fragments of the input array.
+   *
+   * @param array_name URI of array to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @return Status
+   */
+  Status consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
 
  private:
   /* ********************************* */
