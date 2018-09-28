@@ -357,8 +357,8 @@ class ArraySchema {
    */
   Layout tile_order_;
 
-  /** The version under which this object was created. */
-  int version_[3];
+  /** The format version of this array schema. */
+  uint32_t version_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

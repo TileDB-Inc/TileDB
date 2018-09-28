@@ -81,9 +81,9 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
 /* ****************************** */
 
 void tiledb_version(int* major, int* minor, int* rev) {
-  *major = tiledb::sm::constants::version[0];
-  *minor = tiledb::sm::constants::version[1];
-  *rev = tiledb::sm::constants::version[2];
+  *major = tiledb::sm::constants::library_version[0];
+  *minor = tiledb::sm::constants::library_version[1];
+  *rev = tiledb::sm::constants::library_version[2];
 }
 
 /* ********************************* */

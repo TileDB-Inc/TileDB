@@ -61,7 +61,7 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri) {
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
-  std::memcpy(version_, constants::version, sizeof(version_));
+  version_ = constants::format_version;
   tile_index_base_ = 0;
 
   auto attributes = array_schema_->attributes();
@@ -959,9 +959,9 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
 }
 
 // ===== FORMAT =====
-// version (int[3])
+// version (uint32_t)
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
-  RETURN_NOT_OK(buff->read(version_, sizeof(version_)));
+  RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   return Status::Ok();
 }
 
@@ -1209,9 +1209,9 @@ Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
 }
 
 // ===== FORMAT =====
-// version (int[3])
+// version (uint32_t)
 Status FragmentMetadata::write_version(Buffer* buff) {
-  RETURN_NOT_OK(buff->write(constants::version, sizeof(constants::version)));
+  RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
   return Status::Ok();
 }
 

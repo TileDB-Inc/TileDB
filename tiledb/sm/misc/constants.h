@@ -362,8 +362,11 @@ extern const std::string unordered_str;
 /** The string representation of null. */
 extern const std::string null_str;
 
-/** The version in format { major, minor, revision }. */
-extern const int version[3];
+/** The TileDB library version in format { major, minor, revision }. */
+extern const int library_version[3];
+
+/** The TileDB serialization format version number. */
+extern const uint32_t format_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
