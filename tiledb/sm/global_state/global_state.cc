@@ -33,7 +33,9 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/openssl_state.h"
 #include "tiledb/sm/global_state/signal_handlers.h"
+#include "tiledb/sm/global_state/tbb_state.h"
 #include "tiledb/sm/global_state/watchdog.h"
+#include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
 namespace sm {
@@ -51,6 +53,11 @@ GlobalState::GlobalState() {
 
 Status GlobalState::initialize(Config* config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
+
+  // initialize tbb with configured number of threads
+  RETURN_NOT_OK(init_tbb(config));
+
+  // run these operations once
   if (!initialized_) {
     if (config != nullptr) {
       config_ = *config;
@@ -62,6 +69,7 @@ Status GlobalState::initialize(Config* config) {
     RETURN_NOT_OK(init_openssl());
     initialized_ = true;
   }
+
   return Status::Ok();
 }
 

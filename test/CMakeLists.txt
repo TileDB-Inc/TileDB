@@ -74,6 +74,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-lru_cache.cc
   src/unit-s3.cc
   src/unit-status.cc
+  src/unit-tbb.cc
   src/unit-threadpool.cc
   src/unit-uri.cc
   src/unit-uuid.cc
@@ -127,6 +128,10 @@ endif()
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+if (TILEDB_TBB)
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.
