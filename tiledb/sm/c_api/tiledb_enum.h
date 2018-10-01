@@ -197,7 +197,7 @@
 
 #ifdef TILEDB_QUERY_STATUS_ENUM
     /** Query failed */
-    TILEDB_QUERY_STATUS_ENUM(FAILED) = -1,
+    TILEDB_QUERY_STATUS_ENUM(FAILED) = static_cast<char>(-1),
     /** Query completed (all data has been read) */
     TILEDB_QUERY_STATUS_ENUM(COMPLETED) = 0,
     /** Query is in progress */
