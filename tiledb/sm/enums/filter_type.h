@@ -51,7 +51,7 @@ enum class FilterType : char {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
   /** Internally used encryption with AES-256-GCM. */
-  INTERNAL_FILTER_AES_256_GCM,
+  INTERNAL_FILTER_AES_256_GCM = 17,
 };
 
 /** Returns the string representation of the input filter type. */
