@@ -447,20 +447,20 @@ int Domain::cell_order_cmp(const T* coords_a, const T* coords_b) const {
 }
 
 // ===== FORMAT =====
-// type (char)
-// dim_num (unsigned int)
+// type (uint8_t)
+// dim_num (uint32_t)
 // dimension #1
 // dimension #2
 // ...
 Status Domain::deserialize(ConstBuffer* buff) {
   // Load type
-  char type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(char)));
+  uint8_t type;
+  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
   type_ = static_cast<Datatype>(type);
 
   // Load dimensions
-  RETURN_NOT_OK(buff->read(&dim_num_, sizeof(unsigned int)));
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
+  for (uint32_t i = 0; i < dim_num_; ++i) {
     auto dim = new Dimension();
     dim->deserialize(buff, type_);
     dimensions_.emplace_back(dim);
@@ -751,18 +751,18 @@ bool Domain::null_tile_extents() const {
 }
 
 // ===== FORMAT =====
-// type (char)
-// dim_num (unsigned int)
+// type (uint8_t)
+// dim_num (uint32_t)
 // dimension #1
 // dimension #2
 // ...
 Status Domain::serialize(Buffer* buff) {
   // Write type
-  auto type = static_cast<char>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(char)));
+  auto type = static_cast<uint8_t>(type_);
+  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
 
   // Write dimensions
-  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(unsigned int)));
+  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
   for (auto dim : dimensions_)
     dim->serialize(buff);
 

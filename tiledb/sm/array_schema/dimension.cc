@@ -87,18 +87,18 @@ Dimension::~Dimension() {
 /* ********************************* */
 
 // ===== FORMAT =====
-// dimension_name_size (unsigned int)
+// dimension_name_size (uint32_t)
 // dimension_name (string)
 // domain (void* - 2*type_size)
-// null_tile_extent (bool)
+// null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
 Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   // Set type
   type_ = type;
 
   // Load dimension name
-  unsigned int dimension_name_size;
-  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(unsigned int)));
+  uint32_t dimension_name_size;
+  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
   name_.resize(dimension_name_size);
   RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
 
@@ -114,9 +114,9 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   // Load tile extent
   std::free(tile_extent_);
   tile_extent_ = nullptr;
-  bool null_tile_extent;
-  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(bool)));
-  if (!null_tile_extent) {
+  uint8_t null_tile_extent;
+  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
+  if (null_tile_extent == 0) {
     tile_extent_ = std::malloc(datatype_size(type_));
     if (tile_extent_ == nullptr) {
       return LOG_STATUS(Status::DimensionError(
@@ -155,10 +155,10 @@ bool Dimension::is_anonymous() const {
 }
 
 // ===== FORMAT =====
-// dimension_name_size (unsigned int)
+// dimension_name_size (uint32_t)
 // dimension_name (string)
 // domain (void* - 2*type_size)
-// null_tile_extent (bool)
+// null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
 Status Dimension::serialize(Buffer* buff) {
   // Sanity check
@@ -168,16 +168,16 @@ Status Dimension::serialize(Buffer* buff) {
   }
 
   // Write dimension name
-  auto dimension_name_size = (unsigned int)name_.size();
-  RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(unsigned int)));
+  auto dimension_name_size = (uint32_t)name_.size();
+  RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(uint32_t)));
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
 
   // Write domain and tile extent
   uint64_t domain_size = 2 * datatype_size(type_);
   RETURN_NOT_OK(buff->write(domain_, domain_size));
 
-  bool null_tile_extent = (tile_extent_ == nullptr);
-  RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(bool)));
+  auto null_tile_extent = (uint8_t)((tile_extent_ == nullptr) ? 1 : 0);
+  RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
   if (tile_extent_ != nullptr)
     RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
 

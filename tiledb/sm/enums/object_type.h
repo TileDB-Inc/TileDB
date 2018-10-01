@@ -37,7 +37,7 @@
 namespace tiledb {
 namespace sm {
 
-enum class ObjectType : char {
+enum class ObjectType : uint8_t {
 #define TILEDB_OBJECT_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_OBJECT_TYPE_ENUM

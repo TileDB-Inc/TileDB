@@ -43,7 +43,7 @@ namespace tiledb {
 namespace sm {
 
 /** Defines the array type. */
-enum class ArrayType : char {
+enum class ArrayType : uint8_t {
 #define TILEDB_ARRAY_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_ARRAY_TYPE_ENUM

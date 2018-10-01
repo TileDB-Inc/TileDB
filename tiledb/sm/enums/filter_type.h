@@ -46,7 +46,7 @@ namespace sm {
  *
  * Note: not all of these are exposed in the C API.
  */
-enum class FilterType : char {
+enum class FilterType : uint8_t {
 #define TILEDB_FILTER_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
