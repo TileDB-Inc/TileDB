@@ -2777,6 +2777,8 @@ TILEDB_EXPORT int tiledb_array_is_open(
  * `tiledb_array_reopen` without closing. This function will be generally
  * faster than the former alternative.
  *
+ * Note: reopening encrypted arrays does not require the encryption key.
+ *
  * **Example:**
  *
  * @code{.c}

@@ -129,7 +129,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array, tiledb_query_type_t type)
       : ctx_(ctx)
-      , schema_(ctx, array.uri()) {
+      , schema_(array.schema()) {
     tiledb_query_t* q;
     ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
@@ -162,7 +162,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array)
       : ctx_(ctx)
-      , schema_(ctx, array.uri()) {
+      , schema_(array.schema()) {
     tiledb_query_t* q;
     auto type = array.query_type();
     ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));

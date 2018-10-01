@@ -471,3 +471,71 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  const char key[] = "0123456789abcdeF0123456789abcdeF";
+  uint32_t key_len = (uint32_t)strlen(key);
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
+
+  REQUIRE_THROWS_AS(
+      [&]() { ArraySchema schema_read(ctx, array_name); }(),
+      tiledb::TileDBError);
+  REQUIRE_NOTHROW([&]() {
+    ArraySchema schema_read(ctx, array_name, TILEDB_AES_256_GCM, key, key_len);
+  }());
+
+  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
+  REQUIRE_NOTHROW(
+      Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key, key_len));
+
+  REQUIRE_THROWS_AS(
+      [&]() { Array array(ctx, array_name, TILEDB_WRITE); }(),
+      tiledb::TileDBError);
+
+  Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  array.close();
+  REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
+  array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+
+  REQUIRE_THROWS_AS(
+      [&]() { Array array2(ctx, array_name, TILEDB_WRITE); }(),
+      tiledb::TileDBError);
+
+  Query query(ctx, array);
+  query.set_layout(TILEDB_ROW_MAJOR);
+  std::vector<int> a_values = {1, 2, 3, 4};
+  query.set_buffer("a", a_values);
+  query.submit();
+  array.close();
+
+  array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+  array.reopen();
+
+  std::vector<int> subarray = {0, 3};
+  std::vector<int> a_read(4);
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_read);
+  query_r.submit();
+  array.close();
+
+  for (unsigned i = 0; i < 4; i++)
+    REQUIRE(a_values[i] == a_read[i]);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

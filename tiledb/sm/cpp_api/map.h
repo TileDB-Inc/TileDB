@@ -670,12 +670,33 @@ class Map {
   Map(const Context& ctx,
       const std::string& uri,
       tiledb_query_type_t query_type)
+      : Map(ctx, uri, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0) {
+  }
+
+  /**
+   * Load an existing encrypted map for reading/writing.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  Map(const Context& ctx,
+      const std::string& uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length)
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
       , uri_(uri) {
     tiledb_kv_t* kv;
     ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
-    ctx.handle_error(tiledb_kv_open(ctx, kv, query_type));
+    ctx.handle_error(tiledb_kv_open_with_key(
+        ctx, kv, query_type, encryption_type, encryption_key, key_length));
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
@@ -846,10 +867,34 @@ class Map {
   /**
    * Opens the Map, preparing it for reading/writing. This is called
    * automatically by the constructor.
+   *
+   * @param query_type The type of queries the Map will be receiving.
    */
   void open(tiledb_query_type_t query_type) {
+    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Opens the Map, for encrypted Maps.
+   *
+   * @param query_type The type of queries the Map will be receiving.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_open(ctx, kv_.get(), query_type));
+    ctx.handle_error(tiledb_kv_open_with_key(
+        ctx,
+        kv_.get(),
+        query_type,
+        encryption_type,
+        encryption_key,
+        key_length));
 
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
@@ -868,6 +913,8 @@ class Map {
    * Reopens the Map. This is useful when there were updates to the
    * Map after it got opened. This function reopens the Map so that it can "see"
    * the new fragments.
+   *
+   * Note: reopening encrypted Maps does not require the encryption key.
    *
    * **Example:**
    * @code{.cpp}
@@ -930,9 +977,43 @@ class Map {
    * @param schema Schema for the map
    */
   static void create(const std::string& uri, const MapSchema& schema) {
+    create(uri, schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Create a new encrypted empty map at the given URI with the given schema.
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Make the map
+   * tiledb::MapSchema schema(ctx);
+   * schema.add_attribute(Attribute::create<T>(...));
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * Map::create("my_map", schema, TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @param uri URI where the map will be created
+   * @param schema Schema for the map
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static void create(
+      const std::string& uri,
+      const MapSchema& schema,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
     auto& ctx = schema.context();
     schema.check();
-    ctx.handle_error(tiledb_kv_create(ctx, uri.c_str(), schema.ptr().get()));
+    ctx.handle_error(tiledb_kv_create_with_key(
+        ctx,
+        uri.c_str(),
+        schema.ptr().get(),
+        encryption_type,
+        encryption_key,
+        key_length));
   }
 
   /**
@@ -969,11 +1050,52 @@ class Map {
       const std::string& uri,
       const MapT& map,
       const std::string& attr_name) {
+    create(ctx, uri, map, attr_name, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Create an encrypted TileDB map from a `std::map`.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Create map
+   * std::map<int, std::string> map;
+   * map[0] = "0";
+   * map[1] = "12";
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * Map::create(ctx, "map_name", map, "attr",
+   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @tparam MapT `std::map` type
+   * @tparam Key Key type for `std::map`
+   * @tparam Value Value type for `std::map`
+   * @param ctx TileDB context
+   * @param uri URI of map to create
+   * @param map `std::map` instance to read from
+   * @param attr_name Name of attribute to create
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  template <
+      typename MapT,
+      typename Key = typename MapT::key_type,
+      typename Value = typename MapT::mapped_type>
+  static void create(
+      const Context& ctx,
+      const std::string& uri,
+      const MapT& map,
+      const std::string& attr_name,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
     MapSchema schema(ctx);
     auto a = Attribute::create<Value>(ctx, attr_name);
     schema.add_attribute(a);
     create(uri, schema);
-    Map m(ctx, uri, TILEDB_WRITE);
+    Map m(ctx, uri, TILEDB_WRITE, encryption_type, encryption_key, key_length);
     for (const auto& p : map) {
       m[p.first][attr_name] = p.second;
     }
@@ -988,7 +1110,26 @@ class Map {
    * @param uri URI of map
    */
   static void consolidate(const Context& ctx, const std::string& uri) {
-    ctx.handle_error(tiledb_kv_consolidate(ctx, uri.c_str()));
+    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Consolidates the fragments of an encrypted Map into a single fragment.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static void consolidate(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
+    ctx.handle_error(tiledb_kv_consolidate_with_key(
+        ctx, uri.c_str(), encryption_type, encryption_key, key_length));
   }
 
  private:

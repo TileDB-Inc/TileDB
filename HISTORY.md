@@ -4,6 +4,7 @@
 
 ## New features
 
+* All array data can now be encrypted at rest using AES-256-GCM symmetric encryption. #968
 * Negative and real-valued domain types are now fully supported. #885
 * New filter pipeline for compression, etc. #912
 * Current filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.
@@ -34,6 +35,13 @@
 * Added `tiledb_attribute_{set,get}_filter_list`, `tiledb_array_schema_{set,get}_coords_filter_list`, `tiledb_array_schema_{set,get}_offsets_filter_list` functions.
 * Added `tiledb_query_get_buffer` and `tiledb_query_get_buffer_var`.
 * Added `tiledb_array_get_uri`
+* Added `tiledb_encryption_type_t`
+* Added `tiledb_array_create_with_key`, `tiledb_array_open_with_key`, `tiledb_array_schema_load_with_key`, `tiledb_array_consolidate_with_key`
+* Added `tiledb_kv_create_with_key`, `tiledb_kv_open_with_key`, `tiledb_kv_schema_load_with_key`, `tiledb_kv_consolidate_with_key`
+
+### C++ API
+
+* Added encryption overloads for `Array()`, `Array::open()`, `Array::create()`, `ArraySchema()`, `Map()`, `Map::open()`, `Map::create()` and `MapSchema()`.
 
 ## Breaking changes
 

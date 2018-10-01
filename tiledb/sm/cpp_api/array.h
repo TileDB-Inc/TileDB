@@ -87,12 +87,45 @@ class Array {
       const Context& ctx,
       const std::string& array_uri,
       tiledb_query_type_t query_type)
+      : Array(ctx, array_uri, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0) {
+  }
+
+  /**
+   * Constructor. This opens an encrypted array for the given query type. The
+   * destructor calls the `close()` method.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the encrypted array for reading
+   * tiledb::Context ctx;
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ,
+   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param array_uri The array URI.
+   * @param query_type Query type to open the array for.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
     tiledb_array_t* array;
     ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
-    ctx.handle_error(tiledb_array_open(ctx, array, query_type));
+    ctx.handle_error(tiledb_array_open_with_key(
+        ctx, array, query_type, encryption_type, encryption_key, key_length));
 
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
@@ -168,8 +201,42 @@ class Array {
    * @throws TileDBError if the array is already open or other error occurred.
    */
   void open(tiledb_query_type_t query_type) {
+    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Opens the array, for encrypted arrays.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * // Open the encrypted array for writing
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_WRITE,
+   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * // Close and open again for reading.
+   * array.close();
+   * array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @param query_type The type of queries the array object will be receiving.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_open(ctx, array_.get(), query_type));
+    ctx.handle_error(tiledb_array_open_with_key(
+        ctx,
+        array_.get(),
+        query_type,
+        encryption_type,
+        encryption_key,
+        key_length));
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
@@ -182,6 +249,8 @@ class Array {
    * close the array and open with `open()`, or just use
    * `reopen()` without closing. This function will be generally
    * faster than the former alternative.
+   *
+   * Note: reopening encrypted arrays does not require the encryption key.
    *
    * **Example:**
    * @code{.cpp}
@@ -231,7 +300,38 @@ class Array {
    * @param array_uri The URI of the TileDB array to be consolidated.
    */
   static void consolidate(const Context& ctx, const std::string& uri) {
-    ctx.handle_error(tiledb_array_consolidate(ctx, uri.c_str()));
+    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Consolidates the fragments of an encrypted array into a single fragment.
+   *
+   * You must first finalize all queries to the array before consolidation can
+   * begin (as consolidation temporarily acquires an exclusive lock on the
+   * array).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * tiledb::Array::consolidate(ctx, "s3://bucket-name/array-name",
+   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static void consolidate(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
+    ctx.handle_error(tiledb_array_consolidate_with_key(
+        ctx, uri.c_str(), encryption_type, encryption_key, key_length));
   }
 
   /**
@@ -246,9 +346,36 @@ class Array {
    * @param schema The array schema.
    */
   static void create(const std::string& uri, const ArraySchema& schema) {
+    create(uri, schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * Creates a new encrypted TileDB array given an input schema.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * tiledb::Array::create("s3://bucket-name/array-name", schema,
+   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * @endcode
+   *
+   * @param uri URI where array will be created.
+   * @param schema The array schema.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static void create(
+      const std::string& uri,
+      const ArraySchema& schema,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
     auto& ctx = schema.context();
     ctx.handle_error(tiledb_array_schema_check(ctx, schema));
-    ctx.handle_error(tiledb_array_create(ctx, uri.c_str(), schema));
+    ctx.handle_error(tiledb_array_create_with_key(
+        ctx, uri.c_str(), schema, encryption_type, encryption_key, key_length));
   }
 
   /**

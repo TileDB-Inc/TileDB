@@ -83,15 +83,39 @@ class MapSchema : public Schema {
   }
 
   /**
-   * Loads the schema of an existing array with the given URI.
+   * Loads the schema of an existing Map with the given URI.
    *
    * @param ctx TileDB context
    * @param uri URI of map to load
    */
   MapSchema(const Context& ctx, const std::string& uri)
+      : MapSchema(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0) {
+  }
+
+  /**
+   * Loads the schema of an existing encrypted Map with the given URI.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to load
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  MapSchema(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length)
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
-    ctx.handle_error(tiledb_kv_schema_load(ctx, uri.c_str(), &schema));
+    ctx.handle_error(tiledb_kv_schema_load_with_key(
+        ctx,
+        uri.c_str(),
+        encryption_type,
+        encryption_key,
+        key_length,
+        &schema));
     schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
   }
 
