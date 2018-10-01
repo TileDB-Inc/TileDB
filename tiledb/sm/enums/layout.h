@@ -43,7 +43,7 @@ namespace tiledb {
 namespace sm {
 
 /** Defines a layout for the cell or tile order. */
-enum class Layout : char {
+enum class Layout : uint8_t {
 #define TILEDB_LAYOUT_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_LAYOUT_ENUM

@@ -370,15 +370,14 @@ bool ArraySchema::is_kv() const {
 
 // ===== FORMAT =====
 // version (uint32_t)
-// array_type (char)
-// is_kv (bool)
-// tile_order (char)
-// cell_order (char)
+// array_type (uint8_t)
+// tile_order (uint8_t)
+// cell_order (uint8_t)
 // capacity (uint64_t)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
-// attribute_num (unsigned int)
+// attribute_num (uint32_t)
 //   attribute #1
 //   attribute #2
 //   ...
@@ -387,14 +386,14 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
 
   // Write array type
-  auto array_type = (char)array_type_;
-  RETURN_NOT_OK(buff->write(&array_type, sizeof(char)));
+  auto array_type = (uint8_t)array_type_;
+  RETURN_NOT_OK(buff->write(&array_type, sizeof(uint8_t)));
 
   // Write tile and cell order
-  auto tile_order = (char)tile_order_;
-  RETURN_NOT_OK(buff->write(&tile_order, sizeof(char)));
-  auto cell_order = (char)cell_order_;
-  RETURN_NOT_OK(buff->write(&cell_order, sizeof(char)));
+  auto tile_order = (uint8_t)tile_order_;
+  RETURN_NOT_OK(buff->write(&tile_order, sizeof(uint8_t)));
+  auto cell_order = (uint8_t)cell_order_;
+  RETURN_NOT_OK(buff->write(&cell_order, sizeof(uint8_t)));
 
   // Write capacity
   RETURN_NOT_OK(buff->write(&capacity_, sizeof(uint64_t)));
@@ -409,8 +408,8 @@ Status ArraySchema::serialize(Buffer* buff) const {
   domain_->serialize(buff);
 
   // Write attributes
-  auto attribute_num = attributes_.size();
-  RETURN_NOT_OK(buff->write(&attribute_num, sizeof(unsigned int)));
+  auto attribute_num = (uint32_t)attributes_.size();
+  RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
     RETURN_NOT_OK(attr->serialize(buff));
 
@@ -484,15 +483,14 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 
 // ===== FORMAT =====
 // version (uint32_t)
-// array_type (char)
-// is_kv (bool)
-// tile_order (char)
-// cell_order (char)
+// array_type (uint8_t)
+// tile_order (uint8_t)
+// cell_order (uint8_t)
 // capacity (uint64_t)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
 // domain
-// attribute_num (unsigned int)
+// attribute_num (uint32_t)
 //   attribute #1
 //   attribute #2
 //   ...
@@ -503,18 +501,18 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
 
   // Load array type
-  char array_type;
-  RETURN_NOT_OK(buff->read(&array_type, sizeof(char)));
+  uint8_t array_type;
+  RETURN_NOT_OK(buff->read(&array_type, sizeof(uint8_t)));
   array_type_ = (ArrayType)array_type;
 
   // Load tile order
-  char tile_order;
-  RETURN_NOT_OK(buff->read(&tile_order, sizeof(char)));
+  uint8_t tile_order;
+  RETURN_NOT_OK(buff->read(&tile_order, sizeof(uint8_t)));
   tile_order_ = (Layout)tile_order;
 
   // Load cell order
-  char cell_order;
-  RETURN_NOT_OK(buff->read(&cell_order, sizeof(char)));
+  uint8_t cell_order;
+  RETURN_NOT_OK(buff->read(&cell_order, sizeof(uint8_t)));
   cell_order_ = (Layout)cell_order;
 
   // Load capacity
@@ -531,9 +529,9 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   RETURN_NOT_OK(domain_->deserialize(buff));
 
   // Load attributes
-  unsigned attribute_num;
-  RETURN_NOT_OK(buff->read(&attribute_num, sizeof(unsigned int)));
-  for (unsigned int i = 0; i < attribute_num; ++i) {
+  uint32_t attribute_num;
+  RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
+  for (uint32_t i = 0; i < attribute_num; ++i) {
     auto attr = new Attribute();
     RETURN_NOT_OK_ELSE(attr->deserialize(buff), delete attr);
     attributes_.emplace_back(attr);

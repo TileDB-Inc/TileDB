@@ -94,25 +94,25 @@ int Attribute::compression_level() const {
 }
 
 // ===== FORMAT =====
-// attribute_name_size (unsigned int)
+// attribute_name_size (uint32_t)
 // attribute_name (string)
-// type (char)
-// cell_val_num (unsigned int)
+// type (uint8_t)
+// cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
 Status Attribute::deserialize(ConstBuffer* buff) {
   // Load attribute name
-  unsigned int attribute_name_size;
-  RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(unsigned int)));
+  uint32_t attribute_name_size;
+  RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(uint32_t)));
   name_.resize(attribute_name_size);
   RETURN_NOT_OK(buff->read(&name_[0], attribute_name_size));
 
   // Load type
-  char type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(char)));
+  uint8_t type;
+  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
   type_ = (Datatype)type;
 
   // Load cell_val_num_
-  RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(unsigned int)));
+  RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(uint32_t)));
 
   // Load filter pipeline
   RETURN_NOT_OK(filters_.deserialize(buff));
@@ -148,23 +148,23 @@ bool Attribute::is_anonymous() const {
 }
 
 // ===== FORMAT =====
-// attribute_name_size (unsigned int)
+// attribute_name_size (uint32_t)
 // attribute_name (string)
-// type (char)
-// cell_val_num (unsigned int)
+// type (uint8_t)
+// cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
 Status Attribute::serialize(Buffer* buff) {
   // Write attribute name
-  auto attribute_name_size = (unsigned int)name_.size();
-  RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(unsigned int)));
+  auto attribute_name_size = (uint32_t)name_.size();
+  RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));
   RETURN_NOT_OK(buff->write(name_.c_str(), attribute_name_size));
 
   // Write type
-  auto type = (char)type_;
-  RETURN_NOT_OK(buff->write(&type, sizeof(char)));
+  auto type = (uint8_t)type_;
+  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
 
   // Write cell_val_num_
-  RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(unsigned int)));
+  RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
 
   // Write filter pipeline
   RETURN_NOT_OK(filters_.serialize(buff));

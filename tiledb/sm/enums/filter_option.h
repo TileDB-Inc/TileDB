@@ -42,7 +42,7 @@ namespace tiledb {
 namespace sm {
 
 /** Defines the filter type. */
-enum class FilterOption : char {
+enum class FilterOption : uint8_t {
 #define TILEDB_FILTER_OPTION_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILTER_OPTION_ENUM

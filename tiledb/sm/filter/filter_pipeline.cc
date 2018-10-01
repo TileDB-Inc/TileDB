@@ -437,8 +437,8 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
 }
 
 // ===== FORMAT =====
-// max_chunk_size (unsigned int)
-// num_filters (unsigned int)
+// max_chunk_size (uint32_t)
+// num_filters (uint32_t)
 // filter0 metadata (see Filter::serialize)
 // filter1...
 Status FilterPipeline::serialize(Buffer* buff) const {

@@ -42,7 +42,7 @@ namespace tiledb {
 namespace sm {
 
 /** Defines the query type. */
-enum class QueryType : char {
+enum class QueryType : uint8_t {
 #define TILEDB_QUERY_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM

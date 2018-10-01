@@ -102,8 +102,8 @@ Status Filter::set_option(FilterOption option, const void* value) {
 }
 
 Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
-  char type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(char)));
+  uint8_t type;
+  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
   uint32_t filter_metadata_len;
   RETURN_NOT_OK(buff->read(&filter_metadata_len, sizeof(uint32_t)));
 
@@ -126,12 +126,12 @@ Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
 }
 
 // ===== FORMAT =====
-// filter type (char)
-// filter metadata num bytes (unsigned int -- may be 0)
+// filter type (uint8_t)
+// filter metadata num bytes (uint32_t -- may be 0)
 // filter metadata (char[])
 Status Filter::serialize(Buffer* buff) const {
-  char type = static_cast<char>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(char)));
+  auto type = static_cast<uint8_t>(type_);
+  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
 
   // Save a pointer to store the actual length of the metadata.
   uint32_t metadata_len = 0;

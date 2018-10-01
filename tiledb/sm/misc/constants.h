@@ -39,8 +39,8 @@
 namespace tiledb {
 namespace sm {
 
-enum class Datatype : char;
-enum class Compressor : char;
+enum class Datatype : uint8_t;
+enum class Compressor : uint8_t;
 
 namespace constants {
 

@@ -37,7 +37,7 @@
 namespace tiledb {
 namespace sm {
 
-enum class WalkOrder : char {
+enum class WalkOrder : uint8_t {
 #define TILEDB_WALK_ORDER_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_WALK_ORDER_ENUM
