@@ -24,6 +24,7 @@
 * Added contribution guidelines #899
 * Enable building TileDB in Cygwin environment on Windows #890
 * Added a simple benchmarking script and several benchmark programs #889
+* Changed C API and disk format integer types to have explicit bit widths.
 
 ## API additions
 

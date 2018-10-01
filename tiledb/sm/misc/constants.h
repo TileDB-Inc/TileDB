@@ -183,13 +183,13 @@ extern const uint64_t vfs_min_parallel_size;
 extern const uint64_t vfs_file_max_parallel_ops;
 
 /** The maximum name length. */
-extern const unsigned uri_max_len;
+extern const uint32_t uri_max_len;
 
 /** The maximum file path length (depending on platform). */
-extern const unsigned path_max_len;
+extern const uint32_t path_max_len;
 
 /** Special value indicating a variable number of elements. */
-extern const unsigned int var_num;
+extern const uint32_t var_num;
 
 /** String describing no compression. */
 extern const std::string no_compression_str;
@@ -363,7 +363,7 @@ extern const std::string unordered_str;
 extern const std::string null_str;
 
 /** The TileDB library version in format { major, minor, revision }. */
-extern const int library_version[3];
+extern const int32_t library_version[3];
 
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;

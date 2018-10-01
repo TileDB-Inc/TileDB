@@ -60,11 +60,11 @@ const char* tiledb_coords() {
   return tiledb::sm::constants::coords.c_str();
 }
 
-unsigned int tiledb_var_num() {
+uint32_t tiledb_var_num() {
   return tiledb::sm::constants::var_num;
 }
 
-unsigned int tiledb_max_path() {
+uint32_t tiledb_max_path() {
   return tiledb::sm::constants::path_max_len;
 }
 
@@ -80,7 +80,7 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
 /*            VERSION             */
 /* ****************************** */
 
-void tiledb_version(int* major, int* minor, int* rev) {
+void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
@@ -191,7 +191,7 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   return true;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
     LOG_STATUS(st);
@@ -201,7 +201,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
+inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
   if (config == nullptr || config->config_ == nullptr) {
     auto st =
         tiledb::sm::Status::Error("Cannot set config; Invalid config object");
@@ -214,7 +214,7 @@ inline int sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(
+inline int32_t sanity_check(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
   if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
     auto st = tiledb::sm::Status::Error(
@@ -228,7 +228,7 @@ inline int sanity_check(
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx) {
   if (ctx == nullptr)
     return TILEDB_ERR;
   if (ctx->ctx_ == nullptr || ctx->ctx_->storage_manager() == nullptr) {
@@ -240,7 +240,7 @@ inline int sanity_check(tiledb_ctx_t* ctx) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
   if (err == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB error object");
     LOG_STATUS(st);
@@ -250,7 +250,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   if (attr == nullptr || attr->attr_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB attribute object");
     LOG_STATUS(st);
@@ -260,7 +260,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
   if (filter == nullptr || filter->filter_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB filter object");
     LOG_STATUS(st);
@@ -270,7 +270,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(
+inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_filter_list_t* filter_list) {
   if (filter_list == nullptr || filter_list->pipeline_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB filter list object");
@@ -281,7 +281,7 @@ inline int sanity_check(
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
   if (dim == nullptr || dim->dim_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB dimension object");
     LOG_STATUS(st);
@@ -291,7 +291,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(
+inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array schema object");
@@ -302,7 +302,7 @@ inline int sanity_check(
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
   if (domain == nullptr || domain->domain_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB domain object");
     LOG_STATUS(st);
@@ -312,7 +312,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB query object");
     LOG_STATUS(st);
@@ -322,7 +322,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(
+inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema) {
   if (kv_schema == nullptr || kv_schema->array_schema_ == nullptr) {
     auto st =
@@ -334,7 +334,7 @@ inline int sanity_check(
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   if (kv == nullptr || kv->kv_ == nullptr) {
     auto st =
         tiledb::sm::Status::Error("Invalid TileDB key-value store object");
@@ -345,7 +345,8 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_t* kv) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_iter_t* kv_iter) {
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_kv_iter_t* kv_iter) {
   if (kv_iter == nullptr || kv_iter->kv_iter_ == nullptr) {
     auto st =
         tiledb::sm::Status::Error("Invalid TileDB key-value iterator object");
@@ -356,7 +357,8 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_iter_t* kv_iter) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_item_t* kv_item) {
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_kv_item_t* kv_item) {
   if (kv_item == nullptr || kv_item->kv_item_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB key-value item object");
     LOG_STATUS(st);
@@ -366,7 +368,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_kv_item_t* kv_item) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
   if (vfs == nullptr || vfs->vfs_ == nullptr) {
     auto st =
         tiledb::sm::Status::Error("Invalid TileDB virtual filesystem object");
@@ -377,7 +379,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
   return TILEDB_OK;
 }
 
-inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
   if (fh == nullptr || fh->vfs_fh_ == nullptr) {
     auto st = tiledb::sm::Status::Error(
         "Invalid TileDB virtual filesystem file handle");
@@ -388,7 +390,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
   return TILEDB_OK;
 }
 
-inline int check_filter_type(
+inline int32_t check_filter_type(
     tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t type) {
   auto cpp_type = static_cast<tiledb::sm::FilterType>(type);
   if (filter->filter_->type() != cpp_type) {
@@ -405,7 +407,7 @@ inline int check_filter_type(
 /*              ERROR                */
 /* ********************************* */
 
-int tiledb_error_message(tiledb_error_t* err, const char** errmsg) {
+int32_t tiledb_error_message(tiledb_error_t* err, const char** errmsg) {
   if (err == nullptr)
     return TILEDB_ERR;
   if (err->errmsg_.empty())
@@ -426,7 +428,7 @@ void tiledb_error_free(tiledb_error_t** err) {
 /*            CONFIG              */
 /* ****************************** */
 
-int tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error) {
+int32_t tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error) {
   // Create a new config struct
   *config = new (std::nothrow) tiledb_config_t;
   if (*config == nullptr) {
@@ -460,7 +462,7 @@ void tiledb_config_free(tiledb_config_t** config) {
   }
 }
 
-int tiledb_config_set(
+int32_t tiledb_config_set(
     tiledb_config_t* config,
     const char* param,
     const char* value,
@@ -475,7 +477,7 @@ int tiledb_config_set(
   return TILEDB_OK;
 }
 
-int tiledb_config_get(
+int32_t tiledb_config_get(
     tiledb_config_t* config,
     const char* param,
     const char** value,
@@ -490,7 +492,7 @@ int tiledb_config_get(
   return TILEDB_OK;
 }
 
-int tiledb_config_load_from_file(
+int32_t tiledb_config_load_from_file(
     tiledb_config_t* config, const char* filename, tiledb_error_t** error) {
   if (sanity_check(config, error) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -509,7 +511,7 @@ int tiledb_config_load_from_file(
   return TILEDB_OK;
 }
 
-int tiledb_config_save_to_file(
+int32_t tiledb_config_save_to_file(
     tiledb_config_t* config, const char* filename, tiledb_error_t** error) {
   if (sanity_check(config, error) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -528,7 +530,7 @@ int tiledb_config_save_to_file(
   return TILEDB_OK;
 }
 
-int tiledb_config_unset(
+int32_t tiledb_config_unset(
     tiledb_config_t* config, const char* param, tiledb_error_t** error) {
   if (sanity_check(config, error) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -544,7 +546,7 @@ int tiledb_config_unset(
 /*           CONFIG ITER          */
 /* ****************************** */
 
-int tiledb_config_iter_alloc(
+int32_t tiledb_config_iter_alloc(
     tiledb_config_t* config,
     const char* prefix,
     tiledb_config_iter_t** config_iter,
@@ -578,7 +580,7 @@ int tiledb_config_iter_alloc(
   return TILEDB_OK;
 }
 
-int tiledb_config_iter_reset(
+int32_t tiledb_config_iter_reset(
     tiledb_config_t* config,
     tiledb_config_iter_t* config_iter,
     const char* prefix,
@@ -602,7 +604,7 @@ void tiledb_config_iter_free(tiledb_config_iter_t** config_iter) {
   }
 }
 
-int tiledb_config_iter_here(
+int32_t tiledb_config_iter_here(
     tiledb_config_iter_t* config_iter,
     const char** param,
     const char** value,
@@ -622,7 +624,7 @@ int tiledb_config_iter_here(
   return TILEDB_OK;
 }
 
-int tiledb_config_iter_next(
+int32_t tiledb_config_iter_next(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
   if (sanity_check(config_iter, error) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -633,12 +635,12 @@ int tiledb_config_iter_next(
   return TILEDB_OK;
 }
 
-int tiledb_config_iter_done(
-    tiledb_config_iter_t* config_iter, int* done, tiledb_error_t** error) {
+int32_t tiledb_config_iter_done(
+    tiledb_config_iter_t* config_iter, int32_t* done, tiledb_error_t** error) {
   if (sanity_check(config_iter, error) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *done = (int)config_iter->config_iter_->end();
+  *done = (int32_t)config_iter->config_iter_->end();
 
   *error = nullptr;
   return TILEDB_OK;
@@ -648,7 +650,7 @@ int tiledb_config_iter_done(
 /*            CONTEXT             */
 /* ****************************** */
 
-int tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
+int32_t tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx) {
   if (config != nullptr && config->config_ == nullptr)
     return TILEDB_ERR;
 
@@ -687,7 +689,7 @@ void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   }
 }
 
-int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
+int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
   // Create a new config struct
   *config = new (std::nothrow) tiledb_config_t;
   if (*config == nullptr)
@@ -704,7 +706,7 @@ int tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
   return TILEDB_OK;
 }
 
-int tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
+int32_t tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   // sanity check
   if (ctx == nullptr || ctx->ctx_ == nullptr)
     return TILEDB_ERR;
@@ -729,18 +731,18 @@ int tiledb_ctx_get_last_error(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   return TILEDB_OK;
 }
 
-int tiledb_ctx_is_supported_fs(
-    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int* is_supported) {
+int32_t tiledb_ctx_is_supported_fs(
+    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_supported = (int)ctx->ctx_->storage_manager()->vfs()->supports_fs(
+  *is_supported = (int32_t)ctx->ctx_->storage_manager()->vfs()->supports_fs(
       static_cast<tiledb::sm::Filesystem>(fs));
 
   return TILEDB_OK;
 }
 
-int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
+int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -754,7 +756,7 @@ int tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
 /*              GROUP             */
 /* ****************************** */
 
-int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
+int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -779,7 +781,7 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
 /*              FILTER               */
 /* ********************************* */
 
-int tiledb_filter_alloc(
+int32_t tiledb_filter_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -818,7 +820,7 @@ void tiledb_filter_free(tiledb_filter_t** filter) {
   }
 }
 
-int tiledb_filter_get_type(
+int32_t tiledb_filter_get_type(
     tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, filter) == TILEDB_ERR)
@@ -829,7 +831,7 @@ int tiledb_filter_get_type(
   return TILEDB_OK;
 }
 
-int tiledb_filter_set_option(
+int32_t tiledb_filter_set_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
@@ -848,7 +850,7 @@ int tiledb_filter_set_option(
   return TILEDB_OK;
 }
 
-int tiledb_filter_get_option(
+int32_t tiledb_filter_get_option(
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
@@ -871,7 +873,7 @@ int tiledb_filter_get_option(
 /*            FILTER LIST            */
 /* ********************************* */
 
-int tiledb_filter_list_alloc(
+int32_t tiledb_filter_list_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -909,7 +911,7 @@ void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) {
   }
 }
 
-int tiledb_filter_list_add_filter(
+int32_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     tiledb_filter_t* filter) {
@@ -924,7 +926,7 @@ int tiledb_filter_list_add_filter(
   return TILEDB_OK;
 }
 
-int tiledb_filter_list_set_max_chunk_size(
+int32_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) {
@@ -937,10 +939,10 @@ int tiledb_filter_list_set_max_chunk_size(
   return TILEDB_OK;
 }
 
-int tiledb_filter_list_get_nfilters(
+int32_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
-    unsigned int* nfilters) {
+    uint32_t* nfilters) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, filter_list) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -950,16 +952,16 @@ int tiledb_filter_list_get_nfilters(
   return TILEDB_OK;
 }
 
-int tiledb_filter_list_get_filter_from_index(
+int32_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
-    unsigned int index,
+    uint32_t index,
     tiledb_filter_t** filter) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, filter_list) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  unsigned int nfilters = filter_list->pipeline_->size();
+  uint32_t nfilters = filter_list->pipeline_->size();
   if (nfilters == 0 && index == 0) {
     *filter = nullptr;
     return TILEDB_OK;
@@ -996,7 +998,7 @@ int tiledb_filter_list_get_filter_from_index(
   return TILEDB_OK;
 }
 
-int tiledb_filter_list_get_max_chunk_size(
+int32_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) {
@@ -1013,7 +1015,7 @@ int tiledb_filter_list_get_max_chunk_size(
 /*            ATTRIBUTE              */
 /* ********************************* */
 
-int tiledb_attribute_alloc(
+int32_t tiledb_attribute_alloc(
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -1055,7 +1057,7 @@ void tiledb_attribute_free(tiledb_attribute_t** attr) {
   }
 }
 
-int tiledb_attribute_set_filter_list(
+int32_t tiledb_attribute_set_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_filter_list_t* filter_list) {
@@ -1070,11 +1072,11 @@ int tiledb_attribute_set_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_set_compressor(
+int32_t tiledb_attribute_set_compressor(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_compressor_t compressor,
-    int compression_level) {
+    int32_t compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   attr->attr_->set_compressor(static_cast<tiledb::sm::Compressor>(compressor));
@@ -1082,8 +1084,8 @@ int tiledb_attribute_set_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_set_cell_val_num(
-    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, unsigned int cell_val_num) {
+int32_t tiledb_attribute_set_cell_val_num(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint32_t cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   if (save_error(ctx, attr->attr_->set_cell_val_num(cell_val_num)))
@@ -1091,7 +1093,7 @@ int tiledb_attribute_set_cell_val_num(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_name(
+int32_t tiledb_attribute_get_name(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1105,7 +1107,7 @@ int tiledb_attribute_get_name(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_type(
+int32_t tiledb_attribute_get_type(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     tiledb_datatype_t* type) {
@@ -1115,7 +1117,7 @@ int tiledb_attribute_get_type(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_filter_list(
+int32_t tiledb_attribute_get_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_filter_list_t** filter_list) {
@@ -1147,11 +1149,11 @@ int tiledb_attribute_get_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_compressor(
+int32_t tiledb_attribute_get_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     tiledb_compressor_t* compressor,
-    int* compression_level) {
+    int32_t* compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   *compressor = static_cast<tiledb_compressor_t>(attr->attr_->compressor());
@@ -1159,17 +1161,15 @@ int tiledb_attribute_get_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_cell_val_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    unsigned int* cell_val_num) {
+int32_t tiledb_attribute_get_cell_val_num(
+    tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint32_t* cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
   *cell_val_num = attr->attr_->cell_val_num();
   return TILEDB_OK;
 }
 
-int tiledb_attribute_get_cell_size(
+int32_t tiledb_attribute_get_cell_size(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, uint64_t* cell_size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1177,7 +1177,7 @@ int tiledb_attribute_get_cell_size(
   return TILEDB_OK;
 }
 
-int tiledb_attribute_dump(
+int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1189,7 +1189,7 @@ int tiledb_attribute_dump(
 /*              DOMAIN               */
 /* ********************************* */
 
-int tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
+int32_t tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1224,7 +1224,7 @@ void tiledb_domain_free(tiledb_domain_t** domain) {
   }
 }
 
-int tiledb_domain_get_type(
+int32_t tiledb_domain_get_type(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
@@ -1233,8 +1233,8 @@ int tiledb_domain_get_type(
   return TILEDB_OK;
 }
 
-int tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, unsigned int* ndim) {
+int32_t tiledb_domain_get_ndim(
+    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1242,7 +1242,7 @@ int tiledb_domain_get_ndim(
   return TILEDB_OK;
 }
 
-int tiledb_domain_add_dimension(
+int32_t tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
@@ -1254,7 +1254,7 @@ int tiledb_domain_add_dimension(
   return TILEDB_OK;
 }
 
-int tiledb_domain_dump(
+int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
@@ -1267,7 +1267,7 @@ int tiledb_domain_dump(
 /*             DIMENSION             */
 /* ********************************* */
 
-int tiledb_dimension_alloc(
+int32_t tiledb_dimension_alloc(
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -1325,7 +1325,7 @@ void tiledb_dimension_free(tiledb_dimension_t** dim) {
   }
 }
 
-int tiledb_dimension_get_name(
+int32_t tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1333,7 +1333,7 @@ int tiledb_dimension_get_name(
   return TILEDB_OK;
 }
 
-int tiledb_dimension_get_type(
+int32_t tiledb_dimension_get_type(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1341,7 +1341,7 @@ int tiledb_dimension_get_type(
   return TILEDB_OK;
 }
 
-int tiledb_dimension_get_domain(
+int32_t tiledb_dimension_get_domain(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1349,7 +1349,7 @@ int tiledb_dimension_get_domain(
   return TILEDB_OK;
 }
 
-int tiledb_dimension_get_tile_extent(
+int32_t tiledb_dimension_get_tile_extent(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1357,7 +1357,7 @@ int tiledb_dimension_get_tile_extent(
   return TILEDB_OK;
 }
 
-int tiledb_dimension_dump(
+int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1365,16 +1365,16 @@ int tiledb_dimension_dump(
   return TILEDB_OK;
 }
 
-int tiledb_domain_get_dimension_from_index(
+int32_t tiledb_domain_get_dimension_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
-    unsigned int index,
+    uint32_t index,
     tiledb_dimension_t** dim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  unsigned int ndim = domain->domain_->dim_num();
+  uint32_t ndim = domain->domain_->dim_num();
   if (ndim == 0 && index == 0) {
     *dim = nullptr;
     return TILEDB_OK;
@@ -1409,7 +1409,7 @@ int tiledb_domain_get_dimension_from_index(
   return TILEDB_OK;
 }
 
-int tiledb_domain_get_dimension_from_name(
+int32_t tiledb_domain_get_dimension_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     const char* name,
@@ -1418,7 +1418,7 @@ int tiledb_domain_get_dimension_from_name(
       sanity_check(ctx, domain) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  unsigned int ndim = domain->domain_->dim_num();
+  uint32_t ndim = domain->domain_->dim_num();
   if (ndim == 0) {
     *dim = nullptr;
     return TILEDB_OK;
@@ -1427,7 +1427,7 @@ int tiledb_domain_get_dimension_from_name(
   const tiledb::sm::Dimension* found_dim = nullptr;
   if (name_string.empty()) {  // anonymous dimension
     bool found_anonymous = false;
-    for (unsigned int i = 0; i < ndim; i++) {
+    for (uint32_t i = 0; i < ndim; i++) {
       auto dim = domain->domain_->dimension(i);
       if (dim->is_anonymous()) {
         if (found_anonymous) {
@@ -1476,7 +1476,7 @@ int tiledb_domain_get_dimension_from_name(
 /*           ARRAY SCHEMA         */
 /* ****************************** */
 
-int tiledb_array_schema_alloc(
+int32_t tiledb_array_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
     tiledb_array_schema_t** array_schema) {
@@ -1518,7 +1518,7 @@ void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   }
 }
 
-int tiledb_array_schema_add_attribute(
+int32_t tiledb_array_schema_add_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_attribute_t* attr) {
@@ -1531,7 +1531,7 @@ int tiledb_array_schema_add_attribute(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_domain(
+int32_t tiledb_array_schema_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_domain_t* domain) {
@@ -1543,7 +1543,7 @@ int tiledb_array_schema_set_domain(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_capacity(
+int32_t tiledb_array_schema_set_capacity(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint64_t capacity) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
@@ -1552,7 +1552,7 @@ int tiledb_array_schema_set_capacity(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_cell_order(
+int32_t tiledb_array_schema_set_cell_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_layout_t cell_order) {
@@ -1564,7 +1564,7 @@ int tiledb_array_schema_set_cell_order(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_tile_order(
+int32_t tiledb_array_schema_set_tile_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_layout_t tile_order) {
@@ -1576,7 +1576,7 @@ int tiledb_array_schema_set_tile_order(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_coords_filter_list(
+int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list) {
@@ -1594,11 +1594,11 @@ int tiledb_array_schema_set_coords_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_coords_compressor(
+int32_t tiledb_array_schema_set_coords_compressor(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_compressor_t compressor,
-    int compression_level) {
+    int32_t compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1608,7 +1608,7 @@ int tiledb_array_schema_set_coords_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_offsets_filter_list(
+int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list) {
@@ -1626,11 +1626,11 @@ int tiledb_array_schema_set_offsets_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_offsets_compressor(
+int32_t tiledb_array_schema_set_offsets_compressor(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_compressor_t compressor,
-    int compression_level) {
+    int32_t compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1641,7 +1641,7 @@ int tiledb_array_schema_set_offsets_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_check(
+int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
@@ -1653,7 +1653,7 @@ int tiledb_array_schema_check(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_load(
+int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
@@ -1661,7 +1661,7 @@ int tiledb_array_schema_load(
       ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, array_schema);
 }
 
-int tiledb_array_schema_load_with_key(
+int32_t tiledb_array_schema_load_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
@@ -1708,7 +1708,7 @@ int tiledb_array_schema_load_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_array_type(
+int32_t tiledb_array_schema_get_array_type(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_array_type_t* array_type) {
@@ -1720,7 +1720,7 @@ int tiledb_array_schema_get_array_type(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_capacity(
+int32_t tiledb_array_schema_get_capacity(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     uint64_t* capacity) {
@@ -1731,7 +1731,7 @@ int tiledb_array_schema_get_capacity(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_cell_order(
+int32_t tiledb_array_schema_get_cell_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_layout_t* cell_order) {
@@ -1743,7 +1743,7 @@ int tiledb_array_schema_get_cell_order(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_coords_filter_list(
+int32_t tiledb_array_schema_get_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list) {
@@ -1776,11 +1776,11 @@ int tiledb_array_schema_get_coords_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_coords_compressor(
+int32_t tiledb_array_schema_get_coords_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,
-    int* compression_level) {
+    int32_t* compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1791,7 +1791,7 @@ int tiledb_array_schema_get_coords_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_offsets_filter_list(
+int32_t tiledb_array_schema_get_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list) {
@@ -1824,11 +1824,11 @@ int tiledb_array_schema_get_offsets_filter_list(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_offsets_compressor(
+int32_t tiledb_array_schema_get_offsets_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,
-    int* compression_level) {
+    int32_t* compression_level) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1840,7 +1840,7 @@ int tiledb_array_schema_get_offsets_compressor(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_domain(
+int32_t tiledb_array_schema_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_domain_t** domain) {
@@ -1872,7 +1872,7 @@ int tiledb_array_schema_get_domain(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_tile_order(
+int32_t tiledb_array_schema_get_tile_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_layout_t* tile_order) {
@@ -1884,10 +1884,10 @@ int tiledb_array_schema_get_tile_order(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_attribute_num(
+int32_t tiledb_array_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    unsigned int* attribute_num) {
+    uint32_t* attribute_num) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1895,7 +1895,7 @@ int tiledb_array_schema_get_attribute_num(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_dump(
+int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
@@ -1904,16 +1904,16 @@ int tiledb_array_schema_dump(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_attribute_from_index(
+int32_t tiledb_array_schema_get_attribute_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    unsigned int index,
+    uint32_t index,
     tiledb_attribute_t** attr) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  unsigned int attribute_num = array_schema->array_schema_->attribute_num();
+  uint32_t attribute_num = array_schema->array_schema_->attribute_num();
   if (attribute_num == 0) {
     *attr = nullptr;
     return TILEDB_OK;
@@ -1954,7 +1954,7 @@ int tiledb_array_schema_get_attribute_from_index(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_attribute_from_name(
+int32_t tiledb_array_schema_get_attribute_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
@@ -1963,7 +1963,7 @@ int tiledb_array_schema_get_attribute_from_name(
       sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  unsigned int attribute_num = array_schema->array_schema_->attribute_num();
+  uint32_t attribute_num = array_schema->array_schema_->attribute_num();
   if (attribute_num == 0) {
     *attr = nullptr;
     return TILEDB_OK;
@@ -2004,7 +2004,7 @@ int tiledb_array_schema_get_attribute_from_name(
 /*              QUERY             */
 /* ****************************** */
 
-int tiledb_query_alloc(
+int32_t tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -2069,7 +2069,7 @@ int tiledb_query_alloc(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_subarray(
+int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
@@ -2082,7 +2082,7 @@ int tiledb_query_set_subarray(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_buffer(
+int32_t tiledb_query_set_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* attribute,
@@ -2108,7 +2108,7 @@ int tiledb_query_set_buffer(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_buffer_var(
+int32_t tiledb_query_set_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* attribute,
@@ -2150,7 +2150,7 @@ int tiledb_query_set_buffer_var(
   return TILEDB_OK;
 }
 
-int tiledb_query_get_buffer(
+int32_t tiledb_query_get_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* attribute,
@@ -2168,7 +2168,7 @@ int tiledb_query_get_buffer(
   return TILEDB_OK;
 }
 
-int tiledb_query_get_buffer_var(
+int32_t tiledb_query_get_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* attribute,
@@ -2194,7 +2194,7 @@ int tiledb_query_get_buffer_var(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_layout(
+int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
@@ -2209,7 +2209,7 @@ int tiledb_query_set_layout(
   return TILEDB_OK;
 }
 
-int tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Trivial case
   if (query == nullptr)
     return TILEDB_OK;
@@ -2233,7 +2233,7 @@ void tiledb_query_free(tiledb_query_t** query) {
   }
 }
 
-int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2244,7 +2244,7 @@ int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
-int tiledb_query_submit_async(
+int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void (*callback)(void*),
@@ -2259,8 +2259,8 @@ int tiledb_query_submit_async(
   return TILEDB_OK;
 }
 
-int tiledb_query_has_results(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, int* has_results) {
+int32_t tiledb_query_has_results(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2270,7 +2270,7 @@ int tiledb_query_has_results(
   return TILEDB_OK;
 }
 
-int tiledb_query_get_status(
+int32_t tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
@@ -2281,7 +2281,7 @@ int tiledb_query_get_status(
   return TILEDB_OK;
 }
 
-int tiledb_query_get_type(
+int32_t tiledb_query_get_type(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
@@ -2296,7 +2296,7 @@ int tiledb_query_get_type(
 /*              ARRAY             */
 /* ****************************** */
 
-int tiledb_array_alloc(
+int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
   if (sanity_check(ctx) == TILEDB_ERR) {
     *array = nullptr;
@@ -2343,13 +2343,13 @@ int tiledb_array_alloc(
   return TILEDB_OK;
 }
 
-int tiledb_array_open(
+int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   return tiledb_array_open_with_key(
       ctx, array, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_array_open_with_key(
+int32_t tiledb_array_open_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
@@ -2372,17 +2372,17 @@ int tiledb_array_open_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_array_is_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, int* is_open) {
+int32_t tiledb_array_is_open(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_open = (int)array->array_->is_open();
+  *is_open = (int32_t)array->array_->is_open();
 
   return TILEDB_OK;
 }
 
-int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2393,7 +2393,7 @@ int tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   return TILEDB_OK;
 }
 
-int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
+int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2412,7 +2412,7 @@ void tiledb_array_free(tiledb_array_t** array) {
   }
 }
 
-int tiledb_array_get_schema(
+int32_t tiledb_array_get_schema(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_array_schema_t** array_schema) {
@@ -2444,7 +2444,7 @@ int tiledb_array_get_schema(
   return TILEDB_OK;
 }
 
-int tiledb_array_get_query_type(
+int32_t tiledb_array_get_query_type(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -2462,7 +2462,7 @@ int tiledb_array_get_query_type(
   return TILEDB_OK;
 }
 
-int tiledb_array_create(
+int32_t tiledb_array_create(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema) {
@@ -2470,7 +2470,7 @@ int tiledb_array_create(
       ctx, array_uri, array_schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_array_create_with_key(
+int32_t tiledb_array_create_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema,
@@ -2512,12 +2512,12 @@ int tiledb_array_create_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
+int32_t tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
   return tiledb_array_consolidate_with_key(
       ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_array_consolidate_with_key(
+int32_t tiledb_array_consolidate_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
@@ -2539,8 +2539,8 @@ int tiledb_array_consolidate_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int* is_empty) {
+int32_t tiledb_array_get_non_empty_domain(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2552,12 +2552,12 @@ int tiledb_array_get_non_empty_domain(
               array->array_, domain, &is_empty_b)))
     return TILEDB_ERR;
 
-  *is_empty = (int)is_empty_b;
+  *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
 }
 
-int tiledb_array_max_buffer_size(
+int32_t tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* attribute,
@@ -2574,7 +2574,7 @@ int tiledb_array_max_buffer_size(
   return TILEDB_OK;
 }
 
-int tiledb_array_max_buffer_size_var(
+int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* attribute,
@@ -2593,7 +2593,7 @@ int tiledb_array_max_buffer_size_var(
   return TILEDB_OK;
 }
 
-int tiledb_array_get_uri(
+int32_t tiledb_array_get_uri(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -2608,7 +2608,7 @@ int tiledb_array_get_uri(
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */
 
-int tiledb_object_type(
+int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2623,7 +2623,7 @@ int tiledb_object_type(
   return TILEDB_OK;
 }
 
-int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
+int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   if (save_error(ctx, ctx->ctx_->storage_manager()->object_remove(path)))
@@ -2631,7 +2631,7 @@ int tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
   return TILEDB_OK;
 }
 
-int tiledb_object_move(
+int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2641,11 +2641,11 @@ int tiledb_object_move(
   return TILEDB_OK;
 }
 
-int tiledb_object_walk(
+int32_t tiledb_object_walk(
     tiledb_ctx_t* ctx,
     const char* path,
     tiledb_walk_order_t order,
-    int (*callback)(const char*, tiledb_object_t, void*),
+    int32_t (*callback)(const char*, tiledb_object_t, void*),
     void* data) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -2671,7 +2671,7 @@ int tiledb_object_walk(
   const char* obj_name;
   tiledb::sm::ObjectType obj_type;
   bool has_next;
-  int rc = 0;
+  int32_t rc = 0;
   do {
     if (save_error(
             ctx,
@@ -2693,10 +2693,10 @@ int tiledb_object_walk(
   return TILEDB_OK;
 }
 
-int tiledb_object_ls(
+int32_t tiledb_object_ls(
     tiledb_ctx_t* ctx,
     const char* path,
-    int (*callback)(const char*, tiledb_object_t, void*),
+    int32_t (*callback)(const char*, tiledb_object_t, void*),
     void* data) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
@@ -2721,7 +2721,7 @@ int tiledb_object_ls(
   const char* obj_name;
   tiledb::sm::ObjectType obj_type;
   bool has_next;
-  int rc = 0;
+  int32_t rc = 0;
   do {
     if (save_error(
             ctx,
@@ -2747,7 +2747,8 @@ int tiledb_object_ls(
 /*         KEY-VALUE SCHEMA       */
 /* ****************************** */
 
-int tiledb_kv_schema_alloc(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
+int32_t tiledb_kv_schema_alloc(
+    tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -2793,7 +2794,7 @@ void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema) {
   }
 }
 
-int tiledb_kv_schema_add_attribute(
+int32_t tiledb_kv_schema_add_attribute(
     tiledb_ctx_t* ctx,
     tiledb_kv_schema_t* kv_schema,
     tiledb_attribute_t* attr) {
@@ -2806,7 +2807,7 @@ int tiledb_kv_schema_add_attribute(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_set_capacity(
+int32_t tiledb_kv_schema_set_capacity(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, uint64_t capacity) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
@@ -2815,7 +2816,8 @@ int tiledb_kv_schema_set_capacity(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
+int32_t tiledb_kv_schema_check(
+    tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2826,13 +2828,13 @@ int tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_load(
+int32_t tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema) {
   return tiledb_kv_schema_load_with_key(
       ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, kv_schema);
 }
 
-int tiledb_kv_schema_load_with_key(
+int32_t tiledb_kv_schema_load_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
@@ -2879,7 +2881,7 @@ int tiledb_kv_schema_load_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_get_capacity(
+int32_t tiledb_kv_schema_get_capacity(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     uint64_t* capacity) {
@@ -2890,10 +2892,10 @@ int tiledb_kv_schema_get_capacity(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_get_attribute_num(
+int32_t tiledb_kv_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
-    unsigned int* attribute_num) {
+    uint32_t* attribute_num) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2903,10 +2905,10 @@ int tiledb_kv_schema_get_attribute_num(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_get_attribute_from_index(
+int32_t tiledb_kv_schema_get_attribute_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
-    unsigned int index,
+    uint32_t index,
     tiledb_attribute_t** attr) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR) {
@@ -2916,7 +2918,7 @@ int tiledb_kv_schema_get_attribute_from_index(
   // Important! Skips the first two special attributes in the key-value schema
   index += 2;
 
-  unsigned int attribute_num = kv_schema->array_schema_->attribute_num();
+  uint32_t attribute_num = kv_schema->array_schema_->attribute_num();
   if (attribute_num == 0) {
     *attr = nullptr;
     return TILEDB_OK;
@@ -2955,7 +2957,7 @@ int tiledb_kv_schema_get_attribute_from_index(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_get_attribute_from_name(
+int32_t tiledb_kv_schema_get_attribute_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     const char* name,
@@ -2964,7 +2966,7 @@ int tiledb_kv_schema_get_attribute_from_name(
       sanity_check(ctx, kv_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  unsigned int attribute_num = kv_schema->array_schema_->attribute_num();
+  uint32_t attribute_num = kv_schema->array_schema_->attribute_num();
   if (attribute_num == 0) {
     *attr = nullptr;
     return TILEDB_OK;
@@ -2999,7 +3001,7 @@ int tiledb_kv_schema_get_attribute_from_name(
   return TILEDB_OK;
 }
 
-int tiledb_kv_schema_dump(
+int32_t tiledb_kv_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema, FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
@@ -3012,7 +3014,7 @@ int tiledb_kv_schema_dump(
 /*          KEY-VALUE ITEM        */
 /* ****************************** */
 
-int tiledb_kv_item_alloc(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item) {
+int32_t tiledb_kv_item_alloc(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3050,7 +3052,7 @@ void tiledb_kv_item_free(tiledb_kv_item_t** kv_item) {
   }
 }
 
-int tiledb_kv_item_set_key(
+int32_t tiledb_kv_item_set_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void* key,
@@ -3069,7 +3071,7 @@ int tiledb_kv_item_set_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_item_set_value(
+int32_t tiledb_kv_item_set_value(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const char* attribute,
@@ -3109,7 +3111,7 @@ int tiledb_kv_item_set_value(
   return TILEDB_OK;
 }
 
-int tiledb_kv_item_get_key(
+int32_t tiledb_kv_item_get_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void** key,
@@ -3127,7 +3129,7 @@ int tiledb_kv_item_get_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_item_get_value(
+int32_t tiledb_kv_item_get_value(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const char* attribute,
@@ -3171,7 +3173,7 @@ int tiledb_kv_item_get_value(
   return TILEDB_OK;
 }
 
-int tiledb_kv_get_item(
+int32_t tiledb_kv_get_item(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     const void* key,
@@ -3212,13 +3214,13 @@ int tiledb_kv_get_item(
   return TILEDB_OK;
 }
 
-int tiledb_kv_has_key(
+int32_t tiledb_kv_has_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     const void* key,
     tiledb_datatype_t key_type,
     uint64_t key_size,
-    int* has_key) {
+    int32_t* has_key) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3233,7 +3235,7 @@ int tiledb_kv_has_key(
               &has_key_b)))
     return TILEDB_ERR;
 
-  *has_key = (int)has_key_b;
+  *has_key = (int32_t)has_key_b;
 
   // Success
   return TILEDB_OK;
@@ -3243,7 +3245,7 @@ int tiledb_kv_has_key(
 /*             KEY-VALUE          */
 /* ****************************** */
 
-int tiledb_kv_create(
+int32_t tiledb_kv_create(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     const tiledb_kv_schema_t* kv_schema) {
@@ -3251,7 +3253,7 @@ int tiledb_kv_create(
       ctx, kv_uri, kv_schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_kv_create_with_key(
+int32_t tiledb_kv_create_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     const tiledb_kv_schema_t* kv_schema,
@@ -3293,12 +3295,12 @@ int tiledb_kv_create_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
+int32_t tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
   return tiledb_kv_consolidate_with_key(
       ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_kv_consolidate_with_key(
+int32_t tiledb_kv_consolidate_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
@@ -3319,7 +3321,8 @@ int tiledb_kv_consolidate_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv) {
+int32_t tiledb_kv_alloc(
+    tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3364,13 +3367,13 @@ int tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_open(
+int32_t tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type) {
   return tiledb_kv_open_with_key(
       ctx, kv, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0);
 }
 
-int tiledb_kv_open_with_key(
+int32_t tiledb_kv_open_with_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     tiledb_query_type_t query_type,
@@ -3394,16 +3397,17 @@ int tiledb_kv_open_with_key(
   return TILEDB_OK;
 }
 
-int tiledb_kv_is_open(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_open) {
+int32_t tiledb_kv_is_open(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_open) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *is_open = (int)kv->kv_->is_open();
+  *is_open = (int32_t)kv->kv_->is_open();
 
   return TILEDB_OK;
 }
 
-int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+int32_t tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3414,7 +3418,7 @@ int tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+int32_t tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3432,7 +3436,7 @@ void tiledb_kv_free(tiledb_kv_t** kv) {
   }
 }
 
-int tiledb_kv_get_schema(
+int32_t tiledb_kv_get_schema(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_schema_t** kv_schema) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -3461,7 +3465,8 @@ int tiledb_kv_get_schema(
   return TILEDB_OK;
 }
 
-int tiledb_kv_is_dirty(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_dirty) {
+int32_t tiledb_kv_is_dirty(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_dirty) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3469,12 +3474,12 @@ int tiledb_kv_is_dirty(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int* is_dirty) {
   if (save_error(ctx, kv->kv_->is_dirty(&dirty)))
     return TILEDB_ERR;
 
-  *is_dirty = (int)dirty;
+  *is_dirty = (int32_t)dirty;
 
   return TILEDB_OK;
 }
 
-int tiledb_kv_add_item(
+int32_t tiledb_kv_add_item(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_item_t* kv_item) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR ||
       sanity_check(ctx, kv_item) == TILEDB_ERR)
@@ -3486,7 +3491,7 @@ int tiledb_kv_add_item(
   return TILEDB_OK;
 }
 
-int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
+int32_t tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3500,7 +3505,7 @@ int tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
 /*          KEY-VALUE ITER        */
 /* ****************************** */
 
-int tiledb_kv_iter_alloc(
+int32_t tiledb_kv_iter_alloc(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_iter_t** kv_iter) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3546,7 +3551,7 @@ void tiledb_kv_iter_free(tiledb_kv_iter_t** kv_iter) {
   }
 }
 
-int tiledb_kv_iter_here(
+int32_t tiledb_kv_iter_here(
     tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, tiledb_kv_item_t** kv_item) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_iter) == TILEDB_ERR)
@@ -3570,7 +3575,7 @@ int tiledb_kv_iter_here(
   return TILEDB_OK;
 }
 
-int tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
+int32_t tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_iter) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3581,8 +3586,8 @@ int tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
   return TILEDB_OK;
 }
 
-int tiledb_kv_iter_done(
-    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int* done) {
+int32_t tiledb_kv_iter_done(
+    tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int32_t* done) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_iter) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3592,7 +3597,7 @@ int tiledb_kv_iter_done(
   return TILEDB_OK;
 }
 
-int tiledb_kv_iter_reset(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
+int32_t tiledb_kv_iter_reset(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, kv_iter) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3607,7 +3612,7 @@ int tiledb_kv_iter_reset(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter) {
 /*        VIRTUAL FILESYSTEM      */
 /* ****************************** */
 
-int tiledb_vfs_alloc(
+int32_t tiledb_vfs_alloc(
     tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3663,7 +3668,7 @@ void tiledb_vfs_free(tiledb_vfs_t** vfs) {
   }
 }
 
-int tiledb_vfs_get_config(
+int32_t tiledb_vfs_get_config(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3686,7 +3691,7 @@ int tiledb_vfs_get_config(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_create_bucket(
+int32_t tiledb_vfs_create_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3697,7 +3702,7 @@ int tiledb_vfs_create_bucket(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_remove_bucket(
+int32_t tiledb_vfs_remove_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3708,7 +3713,7 @@ int tiledb_vfs_remove_bucket(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_empty_bucket(
+int32_t tiledb_vfs_empty_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3719,21 +3724,21 @@ int tiledb_vfs_empty_bucket(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_is_empty_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_empty) {
+int32_t tiledb_vfs_is_empty_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool b;
   if (save_error(ctx, vfs->vfs_->is_empty_bucket(tiledb::sm::URI(uri), &b)))
     return TILEDB_ERR;
-  *is_empty = (int)b;
+  *is_empty = (int32_t)b;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_is_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_bucket) {
+int32_t tiledb_vfs_is_bucket(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3741,12 +3746,12 @@ int tiledb_vfs_is_bucket(
   if (save_error(ctx, vfs->vfs_->is_bucket(tiledb::sm::URI(uri), &exists)))
     return TILEDB_ERR;
 
-  *is_bucket = (int)exists;
+  *is_bucket = (int32_t)exists;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_create_dir(
+int32_t tiledb_vfs_create_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3757,20 +3762,20 @@ int tiledb_vfs_create_dir(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_is_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_dir) {
+int32_t tiledb_vfs_is_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool exists;
   if (save_error(ctx, vfs->vfs_->is_dir(tiledb::sm::URI(uri), &exists)))
     return TILEDB_ERR;
-  *is_dir = (int)exists;
+  *is_dir = (int32_t)exists;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_remove_dir(
+int32_t tiledb_vfs_remove_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3781,20 +3786,20 @@ int tiledb_vfs_remove_dir(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_is_file(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int* is_file) {
+int32_t tiledb_vfs_is_file(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_file) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool exists;
   if (save_error(ctx, vfs->vfs_->is_file(tiledb::sm::URI(uri), &exists)))
     return TILEDB_ERR;
-  *is_file = (int)exists;
+  *is_file = (int32_t)exists;
 
   return TILEDB_OK;
 }
 
-int tiledb_vfs_remove_file(
+int32_t tiledb_vfs_remove_file(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3805,7 +3810,7 @@ int tiledb_vfs_remove_file(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_file_size(
+int32_t tiledb_vfs_file_size(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3816,7 +3821,7 @@ int tiledb_vfs_file_size(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_move_file(
+int32_t tiledb_vfs_move_file(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -3833,7 +3838,7 @@ int tiledb_vfs_move_file(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_move_dir(
+int32_t tiledb_vfs_move_dir(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -3850,7 +3855,7 @@ int tiledb_vfs_move_dir(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_open(
+int32_t tiledb_vfs_open(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -3905,7 +3910,7 @@ int tiledb_vfs_open(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+int32_t tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3915,7 +3920,7 @@ int tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   return TILEDB_OK;
 }
 
-int tiledb_vfs_read(
+int32_t tiledb_vfs_read(
     tiledb_ctx_t* ctx,
     tiledb_vfs_fh_t* fh,
     uint64_t offset,
@@ -3930,7 +3935,7 @@ int tiledb_vfs_read(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_write(
+int32_t tiledb_vfs_write(
     tiledb_ctx_t* ctx,
     tiledb_vfs_fh_t* fh,
     const void* buffer,
@@ -3944,7 +3949,7 @@ int tiledb_vfs_write(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3962,8 +3967,8 @@ void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
   }
 }
 
-int tiledb_vfs_fh_is_closed(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int* is_closed) {
+int32_t tiledb_vfs_fh_is_closed(
+    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3972,7 +3977,8 @@ int tiledb_vfs_fh_is_closed(
   return TILEDB_OK;
 }
 
-int tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+int32_t tiledb_vfs_touch(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3986,8 +3992,8 @@ int tiledb_vfs_touch(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
 /*              URI               */
 /* ****************************** */
 
-int tiledb_uri_to_path(
-    tiledb_ctx_t* ctx, const char* uri, char* path_out, unsigned* path_length) {
+int32_t tiledb_uri_to_path(
+    tiledb_ctx_t* ctx, const char* uri, char* path_out, uint32_t* path_length) {
   if (sanity_check(ctx) == TILEDB_ERR || uri == nullptr ||
       path_out == nullptr || path_length == nullptr)
     return TILEDB_ERR;
@@ -3997,7 +4003,7 @@ int tiledb_uri_to_path(
     *path_length = 0;
     return TILEDB_ERR;
   } else {
-    *path_length = static_cast<unsigned>(path.length());
+    *path_length = static_cast<uint32_t>(path.length());
     path.copy(path_out, path.length());
     path_out[path.length()] = '\0';
     return TILEDB_OK;
@@ -4008,22 +4014,22 @@ int tiledb_uri_to_path(
 /*             Stats              */
 /* ****************************** */
 
-int tiledb_stats_enable() {
+int32_t tiledb_stats_enable() {
   tiledb::sm::stats::all_stats.set_enabled(true);
   return TILEDB_OK;
 }
 
-int tiledb_stats_disable() {
+int32_t tiledb_stats_disable() {
   tiledb::sm::stats::all_stats.set_enabled(false);
   return TILEDB_OK;
 }
 
-int tiledb_stats_reset() {
+int32_t tiledb_stats_reset() {
   tiledb::sm::stats::all_stats.reset();
   return TILEDB_OK;
 }
 
-int tiledb_stats_dump(FILE* out) {
+int32_t tiledb_stats_dump(FILE* out) {
   tiledb::sm::stats::all_stats.dump(out);
   return TILEDB_OK;
 }
@@ -4032,7 +4038,7 @@ int tiledb_stats_dump(FILE* out) {
 /*            C++ API             */
 /* ****************************** */
 
-int tiledb::impl::tiledb_query_submit_async_func(
+int32_t tiledb::impl::tiledb_query_submit_async_func(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void* callback_func,
