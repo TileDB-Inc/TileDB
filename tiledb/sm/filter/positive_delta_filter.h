@@ -52,7 +52,6 @@ namespace sm {
  * Input metadata is not compressed or modified.
  *
  * The forward output metadata has the format:
- *   uint32_t - Original input number of bytes
  *   uint32_t - Number of windows
  *   window0_md
  *   ...
