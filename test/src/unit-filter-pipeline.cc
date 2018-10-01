@@ -1290,10 +1290,6 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
         buff.value<uint32_t>();  // First chunk metadata size
     buff.advance_offset(sizeof(uint32_t));
 
-    CHECK(
-        buff.value<uint32_t>() == nelts * sizeof(uint64_t));  // Original length
-    buff.advance_offset(sizeof(uint32_t));
-
     auto max_win_size =
         pipeline.get_filter<PositiveDeltaFilter>()->max_window_size();
     auto expected_num_win =
