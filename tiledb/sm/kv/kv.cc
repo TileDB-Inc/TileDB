@@ -228,20 +228,14 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
   uint64_t value_size = 0;
   Datatype key_type = Datatype::CHAR;
   bool key_found = false;
-  bool key_type_found = false;
   for (const auto& attr : attributes_) {
-    // Set key
+    // Set key type and key
     if (attr == constants::key_attr_name) {
-      key = read_buffers_[attr].second;
-      key_size = read_buffer_sizes_[attr].second;
+      auto key_and_type = static_cast<char*>(read_buffers_[attr].second);
+      key_type = static_cast<Datatype>(*key_and_type);
+      key = key_and_type + sizeof(char);
+      key_size = read_buffer_sizes_[attr].second - sizeof(char);
       key_found = true;
-      continue;
-    }
-
-    // Set key type
-    if (attr == constants::key_type_attr_name) {
-      key_type = static_cast<Datatype>(((char*)read_buffers_[attr].first)[0]);
-      key_type_found = true;
       continue;
     }
 
@@ -262,8 +256,8 @@ Status KV::get_item(const KVItem::Hash& hash, KVItem** kv_item) {
   }
 
   // Set key
-  assert(key_found && key_type_found);
-  if (key_found && key_type_found) {
+  assert(key_found);
+  if (key_found) {
     auto st = (*kv_item)->set_key(key, key_type, key_size, hash);
     if (!st.ok()) {
       delete *kv_item;
@@ -397,16 +391,15 @@ Status KV::add_key(const KVItem::Key& key) {
   auto& buff_coords = *write_buffers_[constants::coords].first;
   auto& buff_key_offsets = *write_buffers_[constants::key_attr_name].first;
   auto& buff_keys = *write_buffers_[constants::key_attr_name].second;
-  auto& buff_key_types = *write_buffers_[constants::key_type_attr_name].first;
 
   RETURN_NOT_OK(buff_coords.write(&(key.hash_.first), sizeof(key.hash_.first)));
   RETURN_NOT_OK(
       buff_coords.write(&(key.hash_.second), sizeof(key.hash_.second)));
   uint64_t offset = buff_keys.size();
   RETURN_NOT_OK(buff_key_offsets.write(&offset, sizeof(offset)));
-  RETURN_NOT_OK(buff_keys.write(key.key_, key.key_size_));
   auto key_type_c = static_cast<char>(key.key_type_);
-  RETURN_NOT_OK(buff_key_types.write(&key_type_c, sizeof(key_type_c)));
+  RETURN_NOT_OK(buff_keys.write(&key_type_c, sizeof(key_type_c)));
+  RETURN_NOT_OK(buff_keys.write(key.key_, key.key_size_));
 
   return Status::Ok();
 }
@@ -465,8 +458,7 @@ Status KV::populate_write_buffers() {
     RETURN_NOT_OK(add_key(*key));
     for (const auto& attr : attributes_) {
       // Skip the special attributes
-      if (attr == constants::coords || attr == constants::key_type_attr_name ||
-          attr == constants::key_attr_name)
+      if (attr == constants::coords || attr == constants::key_attr_name)
         continue;
       auto value = (item.second)->value(attr);
       assert(value != nullptr);

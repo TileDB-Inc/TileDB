@@ -98,8 +98,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
 
   for (auto attr : array_schema->attributes_) {
-    if (attr->name() != constants::key_attr_name &&
-        attr->name() != constants::key_type_attr_name)
+    if (attr->name() != constants::key_attr_name)
       add_attribute(attr);
   }
   for (const auto& attr : attributes_)
@@ -751,15 +750,8 @@ Status ArraySchema::set_kv_attributes() {
   // Add key attribute
   auto key_attr =
       new Attribute(constants::key_attr_name, constants::key_attr_type);
-  key_attr->set_cell_val_num(constants::var_num);
   key_attr->set_compressor(constants::key_attr_compressor);
   attributes_.emplace_back(key_attr);
-
-  // Add key type attribute
-  auto key_type_attr = new Attribute(
-      constants::key_type_attr_name, constants::key_type_attr_type);
-  key_type_attr->set_compressor(constants::key_type_attr_compressor);
-  attributes_.emplace_back(key_type_attr);
 
   return Status::Ok();
 }

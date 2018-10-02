@@ -383,17 +383,8 @@ extern const std::string key_attr_name;
 /** The key attribute type. */
 extern Datatype key_attr_type;
 
-/** The key type attribute name. */
-extern const std::string key_type_attr_name;
-
-/** The key type attribute type. */
-extern Datatype key_type_attr_type;
-
 /** The key attribute compressor. */
 extern Compressor key_attr_compressor;
-
-/** The key type attribute compressor. */
-extern Compressor key_type_attr_compressor;
 
 /**
  * The name of the first key dimension (recall that a key in a
