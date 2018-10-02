@@ -173,7 +173,7 @@ else()
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.
-  if (NOT APPLE)
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
   endif()
 endif()
