@@ -196,15 +196,15 @@ const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
 const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
 
 /** The maximum name length. */
-const unsigned uri_max_len = 256;
+const uint32_t uri_max_len = 256;
 
 /** The maximum file path length (depending on platform). */
 #ifndef _WIN32
-const unsigned path_max_len = PATH_MAX;
+const uint32_t path_max_len = PATH_MAX;
 #endif
 
 /** Special value indicating a variable number of elements. */
-const unsigned int var_num = std::numeric_limits<unsigned int>::max();
+const uint32_t var_num = std::numeric_limits<unsigned int>::max();
 
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";
@@ -381,7 +381,7 @@ const std::string unordered_str = "unordered";
 const std::string null_str = "null";
 
 /** The version in format { major, minor, revision }. */
-const int library_version[3] = {
+const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
