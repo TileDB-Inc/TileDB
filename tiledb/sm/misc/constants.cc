@@ -400,19 +400,10 @@ const std::string default_dim_name = "__dim";
 const std::string key_attr_name = "__key";
 
 /** The key attribute type. */
-Datatype key_attr_type = Datatype::CHAR;
-
-/** The key type attribute name. */
-const std::string key_type_attr_name = "__key_type";
-
-/** The key type attribute type. */
-Datatype key_type_attr_type = Datatype::CHAR;
+Datatype key_attr_type = Datatype::ANY;
 
 /** The key attribute compressor. */
 Compressor key_attr_compressor = Compressor::ZSTD;
-
-/** The key type attribute compressor. */
-Compressor key_type_attr_compressor = Compressor::ZSTD;
 
 /**
  * The name of the first key dimension (recall that a key in a

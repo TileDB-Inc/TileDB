@@ -92,8 +92,7 @@ Status KVItem::good(
   for (unsigned i = 0; i < attribute_num; ++i) {
     // Skip the special attributes
     if (attributes[i] == constants::coords ||
-        attributes[i] == constants::key_attr_name ||
-        attributes[i] == constants::key_type_attr_name)
+        attributes[i] == constants::key_attr_name)
       continue;
 
     auto it = values_.find(attributes[i]);

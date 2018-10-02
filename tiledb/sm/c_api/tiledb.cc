@@ -2900,8 +2900,8 @@ int32_t tiledb_kv_schema_get_attribute_num(
       sanity_check(ctx, kv_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // -2 because of the first two special attributes in the key-value schema
-  *attribute_num = kv_schema->array_schema_->attribute_num() - 2;
+  // -1 because of the special key attribute in the key-value schema
+  *attribute_num = kv_schema->array_schema_->attribute_num() - 1;
   return TILEDB_OK;
 }
 
@@ -2915,8 +2915,8 @@ int32_t tiledb_kv_schema_get_attribute_from_index(
     return TILEDB_ERR;
   }
 
-  // Important! Skips the first two special attributes in the key-value schema
-  index += 2;
+  // Important! Skips the first special key attributes in the key-value schema
+  index += 1;
 
   uint32_t attribute_num = kv_schema->array_schema_->attribute_num();
   if (attribute_num == 0) {
