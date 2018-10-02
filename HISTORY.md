@@ -6,7 +6,7 @@
 
 * All array data can now be encrypted at rest using AES-256-GCM symmetric encryption. #968
 * Negative and real-valued domain types are now fully supported. #885
-* New filter pipeline for compression, etc. #912
+* New filter API for transforming attribute data with an ordered list of filters. #912
 * Current filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.
     * The bitshuffle filter uses an implementation by [Kiyoshi Masui](https://github.com/kiyo-masui/bitshuffle).
     * The byteshuffle filter uses an implementation by [Francesc Alted](https://github.com/Blosc/c-blosc) (from the Blosc project).
@@ -43,6 +43,8 @@
 ### C++ API
 
 * Added encryption overloads for `Array()`, `Array::open()`, `Array::create()`, `ArraySchema()`, `Map()`, `Map::open()`, `Map::create()` and `MapSchema()`.
+* Added `Filter` and `FilterList` classes
+* Added `Attribute::filter_list()`, `Attribute::set_filter_list()`, `ArraySchema::coords_filter_list()`, `ArraySchema::set_coords_filter_list()`, `ArraySchema::offsets_filter_list()`, `ArraySchema::set_offsets_filter_list()` functions.
 
 ## Breaking changes
 

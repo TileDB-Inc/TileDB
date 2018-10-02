@@ -45,6 +45,8 @@
 #include "dimension.h"
 #include "domain.h"
 #include "exception.h"
+#include "filter.h"
+#include "filter_list.h"
 #include "group.h"
 #include "map.h"
 #include "map_schema.h"

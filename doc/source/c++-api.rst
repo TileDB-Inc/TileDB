@@ -62,6 +62,18 @@ Query
     :project: TileDB-C++
     :members:
 
+Filter
+------
+.. doxygenclass:: tiledb::Filter
+    :project: TileDB-C++
+    :members:
+
+Filter List
+-----------
+.. doxygenclass:: tiledb::FilterList
+    :project: TileDB-C++
+    :members:
+
 Compressor
 ----------
 .. doxygenclass:: tiledb::Compressor
