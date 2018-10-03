@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -116,7 +117,7 @@ void ConsolidationFx::create_dense_array() {
   tiledb_attribute_t* a1;
   rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
@@ -124,7 +125,7 @@ void ConsolidationFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
@@ -132,7 +133,7 @@ void ConsolidationFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);
@@ -208,21 +209,21 @@ void ConsolidationFx::create_sparse_array() {
   tiledb_attribute_t* a1;
   rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
   rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
   rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);
@@ -279,7 +280,15 @@ void ConsolidationFx::create_kv() {
   tiledb_attribute_t* a1;
   int rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BZIP2, -1);
+  tiledb_filter_t* filter;
+  tiledb_filter_list_t* list;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BZIP2, &filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_alloc(ctx_, &list);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, list, filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, a1, list);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
@@ -312,6 +321,8 @@ void ConsolidationFx::create_kv() {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&list);
   tiledb_attribute_free(&a1);
   tiledb_kv_schema_free(&kv_schema);
 }

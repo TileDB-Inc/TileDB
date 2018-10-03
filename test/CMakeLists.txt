@@ -39,6 +39,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 
 # Gather the test source files
 set(TILEDB_TEST_SOURCES
+  src/helpers.h
   src/unit-buffer.cc
   src/unit-capi-any.cc
   src/unit-capi-array_schema.cc

@@ -51,7 +51,9 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   auto a2 = Attribute::create<std::string>(ctx, "a2");
   auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
   auto a4 = Attribute::create<std::vector<uint32_t>>(ctx, "a4");
-  a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+  FilterList filters(ctx);
+  filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+  a1.set_filter_list(filters);
 
   SECTION("Dense Array Schema") {
     ArraySchema schema(ctx, TILEDB_DENSE);
@@ -64,8 +66,14 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     schema.add_attribute(a4);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
-    schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
-    schema.set_coords_compressor({TILEDB_ZSTD, -1});
+
+    FilterList offsets_filters(ctx);
+    offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
+    schema.set_offsets_filter_list(offsets_filters);
+
+    FilterList coords_filters(ctx);
+    coords_filters.add_filter({ctx, TILEDB_FILTER_ZSTD});
+    schema.set_coords_filter_list(coords_filters);
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);
@@ -75,7 +83,9 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
-    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
+    CHECK(
+        schema.attribute("a1").filter_list().filter(0).filter_type() ==
+        TILEDB_FILTER_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
@@ -103,8 +113,14 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     schema.add_attribute(a4);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
-    schema.set_offsets_compressor({TILEDB_DOUBLE_DELTA, -1});
-    schema.set_coords_compressor({TILEDB_ZSTD, -1});
+
+    FilterList offsets_filters(ctx);
+    offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
+    schema.set_offsets_filter_list(offsets_filters);
+
+    FilterList coords_filters(ctx);
+    coords_filters.add_filter({ctx, TILEDB_FILTER_ZSTD});
+    schema.set_coords_filter_list(coords_filters);
 
     auto attrs = schema.attributes();
     CHECK(attrs.count("a1") == 1);
@@ -114,7 +130,9 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
-    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
+    CHECK(
+        schema.attribute("a1").filter_list().filter(0).filter_type() ==
+        TILEDB_FILTER_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
@@ -148,7 +166,9 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(0).name() == "a1");
     CHECK(schema.attribute(1).name() == "a2");
     CHECK(schema.attribute(2).name() == "a3");
-    CHECK(schema.attribute("a1").compressor().compressor() == TILEDB_BLOSC_LZ);
+    CHECK(
+        schema.attribute("a1").filter_list().filter(0).filter_type() ==
+        TILEDB_FILTER_BLOSC_LZ);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);

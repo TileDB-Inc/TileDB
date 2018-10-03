@@ -11,6 +11,10 @@
     * The bitshuffle filter uses an implementation by [Kiyoshi Masui](https://github.com/kiyo-masui/bitshuffle).
     * The byteshuffle filter uses an implementation by [Francesc Alted](https://github.com/Blosc/c-blosc) (from the Blosc project).
 
+## Deprecations
+
+* The C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version.
+
 ## Bug fixes
 
 * Fix issue where performing a read query with empty result could cause future reads to return empty #882

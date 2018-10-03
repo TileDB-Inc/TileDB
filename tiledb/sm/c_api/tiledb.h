@@ -1209,8 +1209,11 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
  * @param compressor The compressor to be set.
  * @param compression_level The compression level (use `-1` for default).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_attribute_set_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_attribute_set_compressor(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_compressor_t compressor,
@@ -1315,8 +1318,11 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
  * @param compressor The compressor to be retrieved.
  * @param compression_level The compression level to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_attribute_get_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_attribute_get_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     tiledb_compressor_t* compressor,
@@ -1850,8 +1856,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_filter_list(
  * @param compression_level The coordinates compression level (use `-1` for
  *     default).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_array_schema_set_coords_compressor(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_compressor_t compressor,
@@ -1897,8 +1907,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
  * @param compression_level The coordinates compression level (use `-1` for
  *     default).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_array_schema_set_offsets_compressor(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_compressor_t compressor,
@@ -2076,8 +2090,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
  * @param compressor The compressor to be retrieved.
  * @param compression_level The compression level to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_array_schema_get_coords_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,
@@ -2121,8 +2139,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
  * @param compressor The compressor to be retrieved.
  * @param compression_level The compression level to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function is deprecated and will be removed in a future version.
+ *       The filter API should be used instead.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_compressor(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_array_schema_get_offsets_compressor(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_compressor_t* compressor,

@@ -197,7 +197,15 @@ void SparseRealFx::create_sparse_array(const std::string& path) {
   tiledb_attribute_t* a;
   rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a, TILEDB_BLOSC_LZ, -1);
+  tiledb_filter_t* filter;
+  tiledb_filter_list_t* list;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BLOSC_LZ, &filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_alloc(ctx_, &list);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, list, filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, a, list);
   CHECK(rc == TILEDB_OK);
 
   // Create array schema
