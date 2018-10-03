@@ -61,6 +61,8 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter_list.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_schema.h

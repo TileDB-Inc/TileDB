@@ -114,6 +114,14 @@ class Deleter {
     tiledb_vfs_free(&p);
   }
 
+  void operator()(tiledb_filter_t* p) const {
+    tiledb_filter_free(&p);
+  }
+
+  void operator()(tiledb_filter_list_t* p) const {
+    tiledb_filter_list_free(&p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

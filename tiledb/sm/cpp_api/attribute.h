@@ -39,6 +39,7 @@
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
+#include "filter_list.h"
 #include "object.h"
 #include "tiledb.h"
 #include "type.h"
@@ -120,6 +121,17 @@ class Attribute {
       : ctx_(ctx) {
     init_from_type(name, type);
     set_compressor(compressor);
+  }
+
+  /** Construct an attribute with an enumerated type and given filter list. */
+  Attribute(
+      const Context& ctx,
+      const std::string& name,
+      tiledb_datatype_t type,
+      const FilterList& filter_list)
+      : ctx_(ctx) {
+    init_from_type(name, type);
+    set_filter_list(filter_list);
   }
 
   Attribute(const Attribute& attr) = default;
@@ -251,6 +263,35 @@ class Attribute {
     return *this;
   }
 
+  /**
+   * Returns a copy of the FilterList of the attribute.
+   * To change the filter list, use `set_filter_list()`.
+   *
+   * @return Copy of the attribute FilterList.
+   */
+  FilterList filter_list() const {
+    auto& ctx = ctx_.get();
+    tiledb_filter_list_t* filter_list;
+    ctx.handle_error(
+        tiledb_attribute_get_filter_list(ctx, attr_.get(), &filter_list));
+    return FilterList(ctx, filter_list);
+  }
+
+  /**
+   * Sets the attribute filter list, which is an ordered list of filters that
+   * will be used to process and/or transform the attribute data (such as
+   * compression).
+   *
+   * @param filter_list Filter list to set
+   * @return Reference to this Attribute
+   */
+  Attribute& set_filter_list(const FilterList& filter_list) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_attribute_set_filter_list(ctx, attr_.get(), filter_list));
+    return *this;
+  }
+
   /** Returns the C TileDB attribute object pointer. */
   std::shared_ptr<tiledb_attribute_t> ptr() const {
     return attr_;
@@ -329,6 +370,37 @@ class Attribute {
       const Compressor& compressor) {
     auto a = create<T>(ctx, name);
     a.set_compressor(compressor);
+    return a;
+  }
+
+  /**
+   * Factory function for creating a new attribute with datatype T and
+   * a FilterList.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::FilterList filter_list(ctx);
+   * filter_list.add_filter({ctx, TILEDB_FILTER_BYTESHUFFLE})
+   *     .add_filter({ctx, TILEDB_FILTER_BZIP2});
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1", filter_list);
+   * @endcode
+   *
+   * @tparam T Datatype of the attribute. Can either be arithmetic type,
+   *         C-style array, `std::string`, `std::vector`, or any trivially
+   *         copyable classes (defined by `std::is_trivially_copyable`).
+   * @param ctx The TileDB context.
+   * @param name The attribute name.
+   * @param filter_list FilterList to use for attribute
+   * @return A new Attribute object.
+   */
+  template <typename T>
+  static Attribute create(
+      const Context& ctx,
+      const std::string& name,
+      const FilterList& filter_list) {
+    auto a = create<T>(ctx, name);
+    a.set_filter_list(filter_list);
     return a;
   }
 

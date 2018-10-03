@@ -970,7 +970,7 @@ TILEDB_EXPORT int32_t tiledb_filter_set_option(
  *
  * @param ctx TileDB context.
  * @param filter The target filter.
- * @param option Filter option to set.
+ * @param option Filter option to get.
  * @param value Buffer that option value will be written to.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
