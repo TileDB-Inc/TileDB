@@ -838,7 +838,7 @@ Status StorageManager::load_array_schema(
   Status st = (*array_schema)->deserialize(cbuff, is_kv);
   delete cbuff;
   if (!st.ok()) {
-    delete array_schema;
+    delete *array_schema;
     *array_schema = nullptr;
   }
 
