@@ -36,6 +36,7 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -204,21 +205,21 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_attribute_t* a1;
   int rc = tiledb_attribute_alloc(ctx_, ATTR_1.c_str(), TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
   rc = tiledb_attribute_alloc(ctx_, ATTR_2, TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
   rc = tiledb_attribute_alloc(ctx_, ATTR_3, TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);

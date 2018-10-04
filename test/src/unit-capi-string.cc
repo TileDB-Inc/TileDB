@@ -32,6 +32,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -93,7 +94,7 @@ void StringFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx, a2, TILEDB_FILTER_GZIP, -1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create variable-sized UTF-16 attribute
@@ -102,7 +103,7 @@ void StringFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx, a3, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx, a3, TILEDB_BLOSC_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx, a3, TILEDB_FILTER_ZSTD, -1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array schema

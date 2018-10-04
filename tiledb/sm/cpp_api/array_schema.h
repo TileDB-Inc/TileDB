@@ -293,15 +293,12 @@ class ArraySchema : public Schema {
    * coordinate compressor, use `set_coords_compressor()`.
    *
    * @return Copy of the coordinates Compressor.
+   *
+   * @note This function is deprecated and will be removed in a future version.
+   *       The filter API should be used instead.
    */
-  Compressor coords_compressor() const {
-    auto& ctx = ctx_.get();
-    tiledb_compressor_t compressor;
-    int level;
-    ctx.handle_error(tiledb_array_schema_get_coords_compressor(
-        ctx, schema_.get(), &compressor, &level));
-    Compressor cmp(compressor, level);
-    return cmp;
+  TILEDB_DEPRECATED Compressor coords_compressor() const {
+    return get_compressor(coords_filter_list());
   }
 
   /**
@@ -316,11 +313,22 @@ class ArraySchema : public Schema {
    *
    * @param c Compressor to use
    * @return Reference to this `ArraySchema` instance.
+   *
+   * @note This function is deprecated and will be removed in a future version.
+   *       The filter API should be used instead.
    */
-  ArraySchema& set_coords_compressor(const Compressor& c) {
+  TILEDB_DEPRECATED ArraySchema& set_coords_compressor(const Compressor& c) {
+    if (coords_filter_list().nfilters() > 0)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Cannot add second filter with "
+          "deprecated API.");
+
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_schema_set_coords_compressor(
-        ctx, schema_.get(), c.compressor(), c.level()));
+    FilterList filter_list(ctx);
+    Filter filter(ctx, Compressor::to_filter(c.compressor()));
+    int32_t level = c.level();
+    filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    set_coords_filter_list(filter_list);
     return *this;
   }
 
@@ -329,15 +337,12 @@ class ArraySchema : public Schema {
    * attributes. To change the compressor, use `set_offsets_compressor()`.
    *
    * @return Copy of the offsets Compressor.
+   *
+   * @note This function is deprecated and will be removed in a future version.
+   *       The filter API should be used instead.
    */
-  Compressor offsets_compressor() const {
-    auto& ctx = ctx_.get();
-    tiledb_compressor_t compressor;
-    int level;
-    ctx.handle_error(tiledb_array_schema_get_offsets_compressor(
-        ctx, schema_.get(), &compressor, &level));
-    Compressor cmp(compressor, level);
-    return cmp;
+  TILEDB_DEPRECATED Compressor offsets_compressor() const {
+    return get_compressor(offsets_filter_list());
   }
 
   /**
@@ -352,11 +357,22 @@ class ArraySchema : public Schema {
    *
    * @param c Compressor to use
    * @return Reference to this `ArraySchema` instance.
+   *
+   * @note This function is deprecated and will be removed in a future version.
+   *       The filter API should be used instead.
    */
-  ArraySchema& set_offsets_compressor(const Compressor& c) {
+  TILEDB_DEPRECATED ArraySchema& set_offsets_compressor(const Compressor& c) {
+    if (offsets_filter_list().nfilters() > 0)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Cannot add second filter with "
+          "deprecated API.");
+
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_schema_set_offsets_compressor(
-        ctx, schema_.get(), c.compressor(), c.level()));
+    FilterList filter_list(ctx);
+    Filter filter(ctx, Compressor::to_filter(c.compressor()));
+    int32_t level = c.level();
+    filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    set_offsets_filter_list(filter_list);
     return *this;
   }
 
@@ -615,6 +631,58 @@ class ArraySchema : public Schema {
 
   /** The pointer to the C TileDB array schema object. */
   std::shared_ptr<tiledb_array_schema_t> schema_;
+
+  /**
+   * Helper function to get the compression filter, if one exists. This will be
+   * removed when Compressor is removed.
+   */
+  Compressor get_compressor(const FilterList& filters) const {
+    for (uint32_t i = 0; i < filters.nfilters(); i++) {
+      auto f = filters.filter(i);
+      int32_t level;
+      switch (f.filter_type()) {
+        case TILEDB_FILTER_GZIP:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_GZIP, level};
+        case TILEDB_FILTER_ZSTD:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_ZSTD, level};
+        case TILEDB_FILTER_LZ4:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_LZ4, level};
+        case TILEDB_FILTER_RLE:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_RLE, level};
+        case TILEDB_FILTER_BZIP2:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BZIP2, level};
+        case TILEDB_FILTER_DOUBLE_DELTA:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_DOUBLE_DELTA, level};
+        case TILEDB_FILTER_BLOSC_LZ:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_LZ, level};
+        case TILEDB_FILTER_BLOSC_LZ4:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_LZ4, level};
+        case TILEDB_FILTER_BLOSC_LZ4HC:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_LZ4HC, level};
+        case TILEDB_FILTER_BLOSC_SNAPPY:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_SNAPPY, level};
+        case TILEDB_FILTER_BLOSC_ZLIB:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_ZLIB, level};
+        case TILEDB_FILTER_BLOSC_ZSTD:
+          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_BLOSC_ZSTD, level};
+        default:
+          continue;
+      }
+    }
+    return {TILEDB_NO_COMPRESSION, -1};
+  }
 };
 
 /* ********************************* */

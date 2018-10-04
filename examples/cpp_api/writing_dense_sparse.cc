@@ -56,7 +56,6 @@ void create_array() {
   // The array will be dense.
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.set_coords_compressor({TILEDB_NO_COMPRESSION, -1});
 
   // Add a single attribute "a" so each (i,j) cell can store an integer.
   schema.add_attribute(Attribute::create<int>(ctx, "a"));

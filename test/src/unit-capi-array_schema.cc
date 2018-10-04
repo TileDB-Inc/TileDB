@@ -353,13 +353,28 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   CHECK(type == TILEDB_DENSE);
 
   // Check coordinates compression
-  tiledb_compressor_t coords_compression;
-  int coords_compression_level;
-  rc = tiledb_array_schema_get_coords_compressor(
-      ctx_, array_schema, &coords_compression, &coords_compression_level);
+  tiledb_filter_list_t* coords_filters;
+  rc = tiledb_array_schema_get_coords_filter_list(
+      ctx_, array_schema, &coords_filters);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_ZSTD);
+  uint32_t nfilters;
+  rc = tiledb_filter_list_get_nfilters(ctx_, coords_filters, &nfilters);
+  CHECK(nfilters == 1);
+  tiledb_filter_t* coords_filter;
+  rc = tiledb_filter_list_get_filter_from_index(
+      ctx_, coords_filters, 0, &coords_filter);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_type_t coords_compression;
+  int32_t coords_compression_level;
+  rc = tiledb_filter_get_type(ctx_, coords_filter, &coords_compression);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_option(
+      ctx_, coords_filter, TILEDB_COMPRESSION_LEVEL, &coords_compression_level);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(coords_compression == TILEDB_FILTER_ZSTD);
   CHECK(coords_compression_level == -1);
+  tiledb_filter_free(&coords_filter);
+  tiledb_filter_list_free(&coords_filters);
 
   // Check attribute
   tiledb_attribute_t* attr;
@@ -393,13 +408,12 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK(attr_type == ATTR_TYPE);
 
-  tiledb_compressor_t attr_compressor;
-  int attr_compression_level;
-  rc = tiledb_attribute_get_compressor(
-      ctx_, attr, &attr_compressor, &attr_compression_level);
+  tiledb_filter_list_t* attr_filters;
+  rc = tiledb_attribute_get_filter_list(ctx_, attr, &attr_filters);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(attr_compressor == ATTR_COMPRESSOR);
-  CHECK(attr_compression_level == ATTR_COMPRESSION_LEVEL);
+  rc = tiledb_filter_list_get_nfilters(ctx_, attr_filters, &nfilters);
+  CHECK(nfilters == 0);
+  tiledb_filter_list_free(&attr_filters);
 
   unsigned int cell_val_num;
   rc = tiledb_attribute_get_cell_val_num(ctx_, attr, &cell_val_num);

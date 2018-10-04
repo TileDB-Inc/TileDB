@@ -60,7 +60,9 @@ struct CPPMapFx {
     auto a1 = Attribute::create<int>(ctx, "a1");
     auto a2 = Attribute::create<std::string>(ctx, "a2");
     auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
-    a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+    FilterList filters(ctx);
+    filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+    a1.set_filter_list(filters);
 
     MapSchema schema(ctx);
     schema.add_attribute(a1).add_attribute(a2).add_attribute(a3);
@@ -205,7 +207,9 @@ struct CPPMapFx1A {
       vfs.remove_dir("cpp_unit_map");
 
     auto a1 = Attribute::create<int>(ctx, "a1");
-    a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+    FilterList filters(ctx);
+    filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+    a1.set_filter_list(filters);
 
     MapSchema schema(ctx);
     schema.add_attribute(a1);

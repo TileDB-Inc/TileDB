@@ -40,6 +40,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include "test/src/helpers.h"
+
 #include <cassert>
 #include <cstring>
 #include <ctime>
@@ -117,7 +119,7 @@ struct SparseArrayFx {
   static std::string random_bucket_name(const std::string& prefix);
   void check_sorted_reads(
       const std::string& array_name,
-      tiledb_compressor_t compressor,
+      tiledb_filter_type_t compressor,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order);
 
@@ -144,7 +146,7 @@ struct SparseArrayFx {
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
       const uint64_t capacity,
-      const tiledb_compressor_t compressor,
+      const tiledb_filter_type_t compressor,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order);
 
@@ -310,7 +312,7 @@ void SparseArrayFx::create_sparse_array_2D(
     const int64_t domain_1_lo,
     const int64_t domain_1_hi,
     const uint64_t capacity,
-    const tiledb_compressor_t compressor,
+    const tiledb_filter_type_t compressor,
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order) {
   // Prepare and set the array schema object and data structures
@@ -320,8 +322,22 @@ void SparseArrayFx::create_sparse_array_2D(
   tiledb_attribute_t* a;
   int rc = tiledb_attribute_alloc(ctx_, ATTR_NAME.c_str(), ATTR_TYPE, &a);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
-  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_filter_t* filter;
+  tiledb_filter_list_t* list;
+  rc = tiledb_filter_alloc(ctx_, compressor, &filter);
+  CHECK(rc == TILEDB_OK);
+  if (compressor != TILEDB_FILTER_NONE) {
+    rc = tiledb_filter_set_option(
+        ctx_, filter, TILEDB_COMPRESSION_LEVEL, &COMPRESSION_LEVEL);
+    CHECK(rc == TILEDB_OK);
+  }
+  rc = tiledb_filter_list_alloc(ctx_, &list);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, list, filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, a, list);
+  CHECK(rc == TILEDB_OK);
 
   // Create dimensions
   tiledb_dimension_t* d1;
@@ -668,7 +684,7 @@ void SparseArrayFx::test_random_subarrays(
 
 void SparseArrayFx::check_sorted_reads(
     const std::string& array_name,
-    tiledb_compressor_t compressor,
+    tiledb_filter_type_t compressor,
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order) {
   // Parameters used in this test
@@ -681,7 +697,7 @@ void SparseArrayFx::check_sorted_reads(
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
   int64_t capacity = 100000;
-  int iter_num = (compressor != TILEDB_BZIP2) ? ITER_NUM : 1;
+  int iter_num = (compressor != TILEDB_FILTER_BZIP2) ? ITER_NUM : 1;
 
   create_sparse_array_2D(
       array_name,
@@ -724,20 +740,20 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
   tiledb_attribute_t* a1;
   rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a1, TILEDB_BLOSC_LZ, -1);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_BLOSC_LZ, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a2;
   rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a2, TILEDB_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
   CHECK(rc == TILEDB_OK);
   tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   tiledb_attribute_t* a3;
   rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_compressor(ctx_, a3, TILEDB_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);
@@ -2112,26 +2128,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     }
   }
 
@@ -2140,26 +2147,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_COL_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_COL_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_COL_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2168,26 +2166,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name,
-          TILEDB_NO_COMPRESSION,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2196,17 +2185,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     }
   }
 
@@ -2215,17 +2204,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     }
   }
 
@@ -2234,17 +2223,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2253,17 +2242,26 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_BLOSC_LZ,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_BLOSC_LZ,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BLOSC_LZ, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_BLOSC_LZ,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     }
   }
 
@@ -2272,17 +2270,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2291,17 +2289,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2310,17 +2308,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2329,17 +2327,17 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     }
   }
 
@@ -2348,17 +2346,26 @@ TEST_CASE_METHOD(
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_DOUBLE_DELTA,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_DOUBLE_DELTA,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
-          array_name, TILEDB_DOUBLE_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+          array_name,
+          TILEDB_FILTER_DOUBLE_DELTA,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
     }
   }
 }
@@ -2429,7 +2436,7 @@ TEST_CASE_METHOD(
   ATTR_NAME = "";
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "anon_attr";
   check_sorted_reads(
-      array_name, TILEDB_NO_COMPRESSION, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+      array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
 }
 
 TEST_CASE_METHOD(
@@ -2717,16 +2724,16 @@ TEST_CASE_METHOD(
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
     check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   } else if (supports_hdfs_) {
     // HDFS
     array_name = HDFS_TEMP_DIR + ARRAY;
     check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   } else {
     // File
     array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
     check_sorted_reads(
-        array_name, TILEDB_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 }
