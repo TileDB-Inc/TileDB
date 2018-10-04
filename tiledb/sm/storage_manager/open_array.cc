@@ -52,10 +52,8 @@ OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
 
 OpenArray::~OpenArray() {
   delete array_schema_;
-  for (auto& fragment_vec : fragment_metadata_) {
-    for (auto& fragment : fragment_vec)
-      delete fragment;
-  }
+  for (auto& fragment : fragment_metadata_)
+    delete fragment;
 }
 
 /* ****************************** */
@@ -82,16 +80,10 @@ void OpenArray::cnt_incr() {
   ++cnt_;
 }
 
-bool OpenArray::is_empty(uint64_t snapshot) const {
+bool OpenArray::is_empty(uint64_t timestamp) const {
   std::lock_guard<std::mutex> lck(mtx_);
-  for (uint64_t i = 0; i < fragment_metadata_.size(); ++i) {
-    if (snapshot < i)
-      break;
-
-    if (!fragment_metadata_[i].empty())
-      return false;
-  }
-  return true;
+  return fragment_metadata_.empty() ||
+         (*fragment_metadata_.cbegin())->timestamp() > timestamp;
 }
 
 Status OpenArray::file_lock(VFS* vfs) {
@@ -112,30 +104,24 @@ Status OpenArray::file_unlock(VFS* vfs) {
 }
 
 std::vector<FragmentMetadata*> OpenArray::fragment_metadata(
-    uint64_t snapshot) const {
+    uint64_t timestamp) const {
   if (query_type_ == QueryType::WRITE)
     return std::vector<FragmentMetadata*>();
 
   std::vector<FragmentMetadata*> ret;
-  for (uint64_t i = 0; i < fragment_metadata_.size(); ++i) {
-    if (snapshot >= i) {
-      for (auto& f : fragment_metadata_[i])
-        ret.push_back(f);
-    } else {
+  for (auto& metadata : fragment_metadata_) {
+    if (metadata->timestamp() <= timestamp)
+      ret.push_back(metadata);
+    else
       break;
-    }
   }
 
   return ret;
 }
 
-FragmentMetadata* OpenArray::fragment_metadata_get(
-    const URI& fragment_uri) const {
-  auto it = fragment_metadata_map_.find(fragment_uri.to_string());
-  if (it == fragment_metadata_map_.end())
-    return nullptr;
-
-  return it->second;
+bool OpenArray::fragment_metadata_exists(const URI& uri) const {
+  return fragment_metadata_set_.find(uri.to_string()) !=
+         fragment_metadata_set_.end();
 }
 
 void OpenArray::mtx_lock() {
@@ -146,10 +132,6 @@ void OpenArray::mtx_unlock() {
   mtx_.unlock();
 }
 
-uint64_t OpenArray::next_snapshot() const {
-  return fragment_metadata_.size();
-}
-
 QueryType OpenArray::query_type() const {
   return query_type_;
 }
@@ -158,11 +140,10 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
-void OpenArray::push_back_fragment_metadata(
-    const std::vector<FragmentMetadata*>& metadata) {
-  for (const auto& f : metadata)
-    fragment_metadata_map_[f->fragment_uri().to_string()] = f;
-  fragment_metadata_.push_back(metadata);
+void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
+  assert(metadata != nullptr);
+  fragment_metadata_.insert(metadata);
+  fragment_metadata_set_.insert(metadata->fragment_uri().to_string());
 }
 
 /* ****************************** */

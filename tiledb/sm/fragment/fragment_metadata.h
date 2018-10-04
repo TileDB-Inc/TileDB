@@ -57,9 +57,14 @@ class FragmentMetadata {
    * @param array_schema The schema of the array the fragment belongs to.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param fragment_uri The fragment URI.
+   * @param timestamp The timestamp of the fragment creation. In TileDB,
+   * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
   FragmentMetadata(
-      const ArraySchema* array_schema, bool dense, const URI& fragment_uri);
+      const ArraySchema* array_schema,
+      bool dense,
+      const URI& fragment_uri,
+      uint64_t timestamp);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -429,6 +434,15 @@ class FragmentMetadata {
    */
   uint64_t tile_var_size(const std::string& attribute, uint64_t tile_idx) const;
 
+  /** The creation timestamp of the fragment. */
+  uint64_t timestamp() const;
+
+  /**
+   * Returns `true` if the timestamp of the first operand is smaller,
+   * breaking ties based on the URI string.
+   */
+  bool operator<(const FragmentMetadata& metadata) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -513,6 +527,9 @@ class FragmentMetadata {
 
   /** The format version of this metadata. */
   uint32_t version_;
+
+  /** The creation timestamp of the fragment. */
+  uint64_t timestamp_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

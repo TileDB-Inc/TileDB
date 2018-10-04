@@ -203,9 +203,10 @@ double coverage(const T* a, const T* b, unsigned dim_num);
 namespace time {
 
 /**
- * Returns the current time in milliseconds.
+ * Returns the current time in milliseconds since
+ * 1970-01-01 00:00:00 +0000 (UTC).
  */
-uint64_t timestamp_ms();
+uint64_t timestamp_now_ms();
 
 }  // namespace time
 

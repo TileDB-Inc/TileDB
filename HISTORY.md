@@ -34,6 +34,7 @@
 
 ### C API
 
+* Added `tiledb_{array,kv}_open_at` and `tiledb_{array,kv}_open_at_with_key`.
 * Added `tiledb_kv_is_open`
 * Added `tiledb_filter_t` `tiledb_filter_type_t`, `tiledb_filter_option_t`, and `tiledb_filter_list_t` types
 * Added `tiledb_filter_*` and `tiledb_filter_list_*` functions.
@@ -49,6 +50,7 @@
 * Added encryption overloads for `Array()`, `Array::open()`, `Array::create()`, `ArraySchema()`, `Map()`, `Map::open()`, `Map::create()` and `MapSchema()`.
 * Added `Filter` and `FilterList` classes
 * Added `Attribute::filter_list()`, `Attribute::set_filter_list()`, `ArraySchema::coords_filter_list()`, `ArraySchema::set_coords_filter_list()`, `ArraySchema::offsets_filter_list()`, `ArraySchema::set_offsets_filter_list()` functions.
+* Added overloads for `Array()`, `Array::open()`, `Map()`, `Map::open()` for handling timestamps.
 
 ## Breaking changes
 

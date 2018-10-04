@@ -335,6 +335,43 @@ We illustrate an example using the code snippet below.
   TileDB sorts the fragments based on the timestamp in their names,
   which is calculated based on the machine clock.
 
+Reading arrays at given timestamps
+----------------------------------
+
+TileDB allows users to *open an array for reads at a specific timestamp* (this
+functionality is not applicable to writes). Opening an array at a timestamp
+effectively allows the user to view a particular snapshot of the array
+considering only writes that happened before or at the given timestamp
+(i.e., including only fragments created before or at the timestamp). This is
+useful for example in situations where multiple machines are reading from
+the same array (and potentially perform some collective task), and the
+user wants to make sure that all machines work on a common array snapshot.
+
+The API is similar to that used for opening the array:
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+        // Create an array at a timestamp
+        Array array(ctx, array_name, TILEDB_READ, timestamp);
+        Array array(ctx, array_name, TILEDB_READ encryption_type, key, key_length, timestamp);
+
+        // Open an array at a timestamp
+        array.open(TILEDB_READ, timestamp);
+        array.open(TILEDB_READ, encryption_type, key, key_length, timestamp);
+
+Note that ``timestamp`` here must represent time in milliseconds ellapsed since
+1970-01-01 00:00:00 +0000 (UTC).
+
+.. note::
+
+  Similar to the case of writes, when you open the array for reads at
+  a timestamp with multiple worker nodes, make sure
+  that the machine *clocks* are synchronized.
 
 On key-value stores
 -------------------

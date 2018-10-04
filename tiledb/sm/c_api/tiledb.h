@@ -192,6 +192,9 @@ TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
  */
 TILEDB_EXPORT uint64_t tiledb_offset_size();
 
+/** Returns the current time in milliseconds. */
+TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms();
+
 /**
  * @name Constants wrapping special functions
  */
@@ -204,6 +207,8 @@ TILEDB_EXPORT uint64_t tiledb_offset_size();
 #define TILEDB_MAX_PATH tiledb_max_path()
 /** The size (in bytes) of an offset (used in variable-sized attributes). */
 #define TILEDB_OFFSET_SIZE tiledb_offset_size()
+/** The current time in milliseconds. */
+#define TILEDB_TIMESTAMP_NOW_MS tiledb_timestamp_now_ms()
 /**@}*/
 
 /* ****************************** */
@@ -2365,7 +2370,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  * **Example:**
  *
  * @code{.c}
- * int a1[100];
+ * int32_t a1[100];
  * uint64_t a1_size = sizeof(a1);
  * tiledb_query_set_buffer(ctx, query, "a1", a1, &a1_size);
  * @endcode
@@ -2748,6 +2753,41 @@ TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * Similar to `tiledb_array_open`, but this function takes as input a
+ * timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
+ * timestamp provides a view of the array with all writes/updates that
+ * happened at or before `timestamp` (i.e., excluding those that
+ * occurred after `timestamp`). This function is useful to ensure
+ * consistency at a potential distributed setting, where machines
+ * need to operate on the same view of the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * // Assuming `timestamp` is time represented in milliseconds:
+ * tiledb_array_open_at(ctx, array, TILEDB_READ, timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be opened.
+ * @param query_type The type of queries the array object will be receiving.
+ * @param timestamp The timestamp to open the array at.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the same array object is opened again without being closed,
+ *     an error will be thrown.
+ * @note This function is applicable only to read queries.
+ */
+TILEDB_EXPORT int32_t tiledb_array_open_at(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    uint64_t timestamp);
+
+/**
  * Opens an encrypted array using the given encryption key. This function has
  * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
  *
@@ -2780,6 +2820,50 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length);
+
+/**
+ * Similar to `tiledb_array_open_with_key`, but this function takes as
+ * input a timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
+ * timestamp provides a view of the array with all writes/updates that
+ * happened at or before `timestamp` (i.e., excluding those that
+ * occurred after `timestamp`). This function is useful to ensure
+ * consistency at a potential distributed setting, where machines
+ * need to operate on the same view of the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * // Assuming `timestamp` is time represented in milliseconds:
+ * tiledb_array_open_at_with_key(ctx, array, TILEDB_READ,
+ *     TILEDB_AES_256_GCM, key, sizeof(key), timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be opened.
+ * @param query_type The type of queries the array object will be receiving.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @param timestamp The timestamp to open the array at.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the same array object is opened again without being closed,
+ *     an error will be thrown.
+ * @note This function is applicable only to read queries.
+ */
+TILEDB_EXPORT int32_t tiledb_array_open_at_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_type_t query_type,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    uint64_t timestamp);
 
 /**
  * Checks if the array is open.
@@ -3580,7 +3664,7 @@ TILEDB_EXPORT int32_t tiledb_kv_item_get_key(
  * **Example:**
  *
  * @code{.c}
- * const int* v; // A pointer will be retrieved - not a new int object
+ * const int32_t* v; // A pointer will be retrieved - not a new int object
  * uint64_t v_size;
  * tiledb_datatype_t v_type;
  * tiledb_kv_item_get_value(ctx, kv_item, &v, &v_type, &v_size);
@@ -3737,6 +3821,42 @@ TILEDB_EXPORT int32_t tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type);
 
 /**
+ * Similar to `tiledb_kv_open`, but this function takes as input a
+ * timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
+ * timestamp provides a view of the array with all writes/updates that
+ * happened at or before `timestamp` (i.e., excluding those that
+ * occurred after `timestamp`). This function is useful to ensure
+ * consistency at a potential distributed setting, where machines
+ * need to operate on the same view of the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * // Assuming `timestamp` is time represented in milliseconds:
+ * tiledb_kv_open_at(ctx, kv, TILEDB_READ, timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object to be opened.
+ * @param query_type The mode in which the key-value store is opened
+ *     (read or write).
+ * @param timestamp The timestamp to open the key-value store at.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key-value store is already open, the function throws
+ *     an error.
+ * @note This function is applicable only to read queries.
+ */
+TILEDB_EXPORT int32_t tiledb_kv_open_at(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    tiledb_query_type_t query_type,
+    uint64_t timestamp);
+
+/**
  * Prepares an encrypted key-value store for reading/writing.
  *
  * An encrypted key-value store must be opened with this function before queries
@@ -3769,6 +3889,51 @@ TILEDB_EXPORT int32_t tiledb_kv_open_with_key(
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length);
+
+/**
+ * Similar to `tiledb_kv_open_with_key`, but this function takes as input a
+ * timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
+ * timestamp provides a view of the array with all writes/updates that
+ * happened at or before `timestamp` (i.e., excluding those that
+ * occurred after `timestamp`). This function is useful to ensure
+ * consistency at a potential distributed setting, where machines
+ * need to operate on the same view of the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Load AES-256 key from disk, environment variable, etc.
+ * uint8_t key[32] = ...;
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * // Assuming `timestamp` is time represented in milliseconds:
+ * tiledb_kv_open_at_with_key(ctx, kv, TILEDB_READ,
+ *     TILEDB_AES_256_GCM, key, sizeof(key), timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The key-value store object to be opened.
+ * @param query_type The mode in which the key-value store is opened
+ *     (read or write).
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @param timestamp The timestamp to open the key-value store at.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key-value store is already open, the function throws
+ *     an error.
+ * @note This function is applicable only to read queries.
+ */
+TILEDB_EXPORT int32_t tiledb_kv_open_at_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_kv_t* kv,
+    tiledb_query_type_t query_type,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    uint64_t timestamp);
 
 /**
  * Checks if the key-value store is open.

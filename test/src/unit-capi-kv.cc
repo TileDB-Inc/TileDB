@@ -89,8 +89,8 @@ struct KVFx {
   bool supports_hdfs_;
 
   // Encryption parameters
-  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
-  const char* encryption_key = nullptr;
+  tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
+  const char* encryption_key_ = nullptr;
 
   // Functions
   KVFx();
@@ -101,6 +101,7 @@ struct KVFx {
   void check_kv_item(tiledb_kv_item_t* kv_item);
   void check_write(const std::string& path);
   void create_kv(const std::string& path);
+  void create_simple_kv(const std::string& path);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
@@ -196,7 +197,7 @@ void KVFx::remove_temp_dir(const std::string& path) {
 std::string KVFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::time::timestamp_ms();
+     << TILEDB_TIMESTAMP_NOW_MS;
   return ss.str();
 }
 
@@ -242,16 +243,16 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Create key-value store
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_create(ctx_, path.c_str(), kv_schema);
   } else {
     rc = tiledb_kv_create_with_key(
         ctx_,
         path.c_str(),
         kv_schema,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
   }
   CHECK(rc == TILEDB_OK);
 
@@ -262,15 +263,15 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_kv_schema_free(&kv_schema);
 
   // Load schema
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_schema_load(ctx_, path.c_str(), &kv_schema);
   } else {
     rc = tiledb_kv_schema_load_with_key(
         ctx_,
         path.c_str(),
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key),
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
         &kv_schema);
   }
   CHECK(rc == TILEDB_OK);
@@ -281,6 +282,42 @@ void KVFx::create_kv(const std::string& path) {
   CHECK(capacity == 10);
 
   // Clean up again
+  tiledb_kv_schema_free(&kv_schema);
+}
+
+void KVFx::create_simple_kv(const std::string& path) {
+  // Create attribute
+  tiledb_attribute_t* a;
+  int rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
+  CHECK(rc == TILEDB_OK);
+
+  // Create key-value schema
+  tiledb_kv_schema_t* kv_schema;
+  rc = tiledb_kv_schema_alloc(ctx_, &kv_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_schema_add_attribute(ctx_, kv_schema, a);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_kv_schema_check(ctx_, kv_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create key-value store
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_create(ctx_, path.c_str(), kv_schema);
+  } else {
+    rc = tiledb_kv_create_with_key(
+        ctx_,
+        path.c_str(),
+        kv_schema,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a);
   tiledb_kv_schema_free(&kv_schema);
 }
 
@@ -337,16 +374,16 @@ void KVFx::check_write(const std::string& path) {
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
   } else {
     rc = tiledb_kv_open_with_key(
         ctx_,
         kv,
         TILEDB_WRITE,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
   }
   REQUIRE(rc == TILEDB_OK);
 
@@ -492,15 +529,15 @@ void KVFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // Consolidate
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_consolidate(ctx_, path.c_str());
   } else {
     rc = tiledb_kv_consolidate_with_key(
         ctx_,
         path.c_str(),
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
   }
   REQUIRE(rc == TILEDB_OK);
 
@@ -526,16 +563,16 @@ void KVFx::check_single_read(const std::string& path) {
   rc = tiledb_kv_reopen(ctx_, kv);
   REQUIRE(rc == TILEDB_ERR);
 
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
   } else {
     rc = tiledb_kv_open_with_key(
         ctx_,
         kv,
         TILEDB_READ,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
   }
   REQUIRE(rc == TILEDB_OK);
 
@@ -786,16 +823,16 @@ void KVFx::check_iter(const std::string& path) {
   tiledb_kv_t* kv;
   int rc = tiledb_kv_alloc(ctx_, path.c_str(), &kv);
   REQUIRE(rc == TILEDB_OK);
-  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
   } else {
     rc = tiledb_kv_open_with_key(
         ctx_,
         kv,
         TILEDB_READ,
-        encryption_type,
-        encryption_key,
-        (uint32_t)strlen(encryption_key));
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
   }
   REQUIRE(rc == TILEDB_OK);
   tiledb_kv_iter_t* kv_iter;
@@ -950,8 +987,8 @@ TEST_CASE_METHOD(
     "[capi], [kv], [encryption]") {
   std::string array_name;
 
-  encryption_type = TILEDB_AES_256_GCM;
-  encryption_key = "0123456789abcdeF0123456789abcdeF";
+  encryption_type_ = TILEDB_AES_256_GCM;
+  encryption_key_ = "0123456789abcdeF0123456789abcdeF";
 
   if (supports_s3_) {
     // S3
@@ -1028,4 +1065,200 @@ TEST_CASE_METHOD(
   tiledb_kv_schema_free(&kv_schema);
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    KVFx,
+    "C API: Test opening key-value store at timestamp",
+    "[capi], [kv], [kv-open-at]") {
+  std::string temp_dir;
+  if (supports_s3_)
+    temp_dir = S3_TEMP_DIR;
+  else if (supports_hdfs_)
+    temp_dir = HDFS_TEMP_DIR;
+  else
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string kv_name = temp_dir + "kv-open-at";
+
+  SECTION("- without encryption") {
+    encryption_type_ = TILEDB_NO_ENCRYPTION;
+    encryption_key_ = nullptr;
+  }
+
+  SECTION("- with encryption") {
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+  }
+
+  create_temp_dir(temp_dir);
+  create_simple_kv(kv_name);
+
+  // --- WRITE ---
+  // Open KV for writes
+  tiledb_kv_t* kv;
+  int rc = tiledb_kv_alloc(ctx_, kv_name.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_open_at(ctx_, kv, TILEDB_WRITE, 0);
+  CHECK(rc == TILEDB_ERR);  // open_at is applicable only to reads
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open(ctx_, kv, TILEDB_WRITE);
+  } else {
+    rc = tiledb_kv_open_with_key(
+        ctx_,
+        kv,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Add a key-value item
+  tiledb_kv_item_t* item;
+  rc = tiledb_kv_item_alloc(ctx_, &item);
+  int v = 10;
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_key(ctx_, item, "key", TILEDB_CHAR, strlen("key"));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_item_set_value(ctx_, item, "a", &v, TILEDB_INT32, sizeof(v));
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_kv_add_item(ctx_, kv, item);
+  CHECK(rc == TILEDB_OK);
+
+  // Flush
+  rc = tiledb_kv_flush(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close kv
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&item);
+
+  // --- NORMAL OPEN AND READ ---
+  // Open key-value store
+  rc = tiledb_kv_alloc(ctx_, kv_name.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open(ctx_, kv, TILEDB_READ);
+  } else {
+    rc = tiledb_kv_open_with_key(
+        ctx_,
+        kv,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // For retrieving values
+  const void* read_v;
+  uint64_t read_v_size;
+  tiledb_datatype_t read_v_type;
+  const char* key = "key";
+  uint64_t key_size = strlen(key);
+  tiledb_datatype_t key_type = TILEDB_CHAR;
+
+  // Check if key exists
+  int has_key;
+  rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 1);
+
+  // Get key-value item
+  tiledb_kv_item_t* read_item;
+  rc = tiledb_kv_get_item(ctx_, kv, key, key_type, key_size, &read_item);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_get_value(
+      ctx_, read_item, "a", &read_v, &read_v_type, &read_v_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(read_v_type == TILEDB_INT32);
+  CHECK(read_v_size == sizeof(int));
+  CHECK(*(const int*)read_v == 10);
+
+  // Close key-value store
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&read_item);
+
+  // --- OPEN AT ZERO TIMESTAMP ---
+  // Open key-value store
+  rc = tiledb_kv_alloc(ctx_, kv_name.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open_at(ctx_, kv, TILEDB_READ, 0);
+  } else {
+    rc = tiledb_kv_open_at_with_key(
+        ctx_,
+        kv,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        0);
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check if key exists
+  rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 0);
+
+  // Close key-value store
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&read_item);
+
+  // --- OPEN AT A LATER TIMESTAMP ---
+  // Open key-value store
+  rc = tiledb_kv_alloc(ctx_, kv_name.c_str(), &kv);
+  REQUIRE(rc == TILEDB_OK);
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_kv_open_at(ctx_, kv, TILEDB_READ, timestamp);
+  } else {
+    rc = tiledb_kv_open_at_with_key(
+        ctx_,
+        kv,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        timestamp);
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check if key exists
+  rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 1);
+
+  // Get key-value item
+  rc = tiledb_kv_get_item(ctx_, kv, key, key_type, key_size, &read_item);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_get_value(
+      ctx_, read_item, "a", &read_v, &read_v_type, &read_v_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(read_v_type == TILEDB_INT32);
+  CHECK(read_v_size == sizeof(int));
+  CHECK(*(const int*)read_v == 10);
+
+  // Close key-value store
+  rc = tiledb_kv_close(ctx_, kv);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_kv_free(&kv);
+  tiledb_kv_item_free(&read_item);
+
+  remove_temp_dir(temp_dir);
 }

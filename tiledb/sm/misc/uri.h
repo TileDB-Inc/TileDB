@@ -175,6 +175,12 @@ class URI {
   /** Returns the URI string. */
   std::string to_string() const;
 
+  /** For comparing URIs alphanumerically. */
+  bool operator<(const URI& uri) const;
+
+  /** For comparing URIs alphanumerically. */
+  bool operator>(const URI& uri) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

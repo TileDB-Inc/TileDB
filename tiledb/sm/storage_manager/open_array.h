@@ -52,11 +52,12 @@ namespace sm {
  *
  * Each time an open array object is opened, the potentially new fragment
  * metadata (that did not exist before) are loaded and stored in the
- * object. These metadata are stored separately in a different "snapshot".
+ * object. Each fragment metadata is timestamped.
  * This class then enables retrieving all the metadata loaded before or
- * at a given snapshot. This attributes flexibility to handling consistency
+ * at a given timestamp. This attributes flexibility to handling consistency
  * of queries associated with open array objects at different times during
- * the lifetime of these objects.
+ * the lifetime of these objects. In TileDB, asll timestamps are in ms
+ * elapsed since 1970-01-01 00:00:00 +0000 (UTC).
  */
 class OpenArray {
  public:
@@ -90,10 +91,10 @@ class OpenArray {
   void cnt_incr();
 
   /**
-   * Returns true if the array is empty at the given snapshot. The array is
-   * empty if there are no fragments at or before the given snapshot.
+   * Returns true if the array is empty at the given timestamp. The array is
+   * empty if there are no fragments at or before the given timestamp.
    */
-  bool is_empty(uint64_t snapshot) const;
+  bool is_empty(uint64_t timestamp) const;
 
   /** Retrieves a (shared) filelock for the array. */
   Status file_lock(VFS* vfs);
@@ -104,22 +105,20 @@ class OpenArray {
   /**
    * Returns the fragment metadata. In case the array was opened for writes,
    * an empty vector is returned. In case of reads, all the fragment metadata
-   * loaded at or before `snapshot` will be returned.
+   * loaded at or before the input timestamp will be returned.
    *
-   * @param snapshot The snapshot at or before the result fragment metadata
+   * @param timestamp The timestamp at or before the result fragment metadata
    *     got loaded into the open array.
-   * @return
+   * @return A vector with the requested metadata. The metadata is sorted
+   *     in ascending time order.
    */
-  std::vector<FragmentMetadata*> fragment_metadata(uint64_t snapshot) const;
+  std::vector<FragmentMetadata*> fragment_metadata(uint64_t timestamp) const;
 
   /**
-   * Returns the fragment metadata object given a URI, or `nullptr` if
-   * the fragment metadata have not been loaded for that URI yet.
-   *
-   * @param fragment_uri The fragment URI.
-   * @return Status
+   * Returns `true` if the fragment metadata of the input URI are already
+   * loaded in this open array.
    */
-  FragmentMetadata* fragment_metadata_get(const URI& fragment_uri) const;
+  bool fragment_metadata_exists(const URI& uri) const;
 
   /** Locks the array mutex. */
   void mtx_lock();
@@ -127,26 +126,30 @@ class OpenArray {
   /** Unlocks the array mutex. */
   void mtx_unlock();
 
-  /**
-   * Returns the next snapshot identifier. This is essentially equal to
-   * the size of `fragment_metadata_`, since it will be used to identify
-   * at which point new fragment metadata got loaded into the open array
-   * object.
-   */
-  uint64_t next_snapshot() const;
-
   /** The query type the array was opened with. */
   QueryType query_type() const;
+
+  /**
+   * Inserts the input fragment metadata. Note that all fragment
+   * metadata must be sorted in ascending timestamp of creation.
+   * This function will guarantee that the ordering is maintained.
+   */
+  void insert_fragment_metadata(FragmentMetadata* metadata);
 
   /** Sets an array schema. */
   void set_array_schema(ArraySchema* array_schema);
 
-  /**
-   * Pushes the fragment metadata at the end of the vector of
-   * fragment metadata snapshots.
-   */
-  void push_back_fragment_metadata(
-      const std::vector<FragmentMetadata*>& metadata);
+  /** Custom comparator for comparing fragment metadata pointers. */
+  struct cmp_frag_meta_ptr {
+    /**
+     * Returns `true` if the timestamp of the first operand is smaller,
+     * breaking ties based on the URI string.
+     */
+    bool operator()(
+        const FragmentMetadata* meta_a, const FragmentMetadata* meta_b) const {
+      return *meta_a < *meta_b;
+    }
+  };
 
  private:
   /* ********************************* */
@@ -165,25 +168,14 @@ class OpenArray {
   /** Filelock handle. */
   filelock_t filelock_;
 
-  /**
-   * The fragment metadata of the open array. Each outer vector element is
-   * created when `push_back_fragment_metadata` is called, which effectively
-   * means that a new set of fragment metadata is loaded into the already
-   * open array.
-   *
-   * In other words, there is one element in this vector per opening of the
-   * array. E.g. suppose the array is empty when it was opened, this will
-   * contain one element corresponding to the opening, but that element will be
-   * an empty vector (since there were no fragments). Suppose then there were
-   * two writes made and the array was then reopened. This vector will then have
-   * two elements: the first empty vector from the first opening, and then a
-   * vector from the second opening. The second opening's vector will have two
-   * elements (one per fragment).
-   */
-  std::vector<std::vector<FragmentMetadata*>> fragment_metadata_;
+  /** The fragment metadata of the open array. */
+  std::set<FragmentMetadata*, cmp_frag_meta_ptr> fragment_metadata_;
 
-  /** A map from fragment URI to metadata object. */
-  std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_map_;
+  /**
+   * The set of the URI strings for the metadata that already have been
+   * loaded in `fragment_metadata_`.
+   */
+  std::set<std::string> fragment_metadata_set_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

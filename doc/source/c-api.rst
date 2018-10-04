@@ -164,6 +164,10 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_with_key
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_open_at
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_open_at_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_reopen
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_close
@@ -390,6 +394,10 @@ Key-value
 .. doxygenfunction:: tiledb_kv_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_open_with_key
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_open_at
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_open_at_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_is_open
     :project: TileDB-C

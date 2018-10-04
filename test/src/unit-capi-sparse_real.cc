@@ -167,7 +167,7 @@ void SparseRealFx::remove_temp_dir(const std::string& path) {
 std::string SparseRealFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::time::timestamp_ms();
+     << TILEDB_TIMESTAMP_NOW_MS;
   return ss.str();
 }
 

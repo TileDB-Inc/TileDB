@@ -103,6 +103,24 @@ class Array {
       const void* encryption_key,
       uint32_t key_length);
 
+  /**
+   * Opens the array for reading/writing at a given timestamp.
+   *
+   * @param query_type The mode in which the array is opened.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param timestamp The timestamp at which to open the array.
+   * @return Status
+   */
+  Status open_at(
+      QueryType query_type,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      uint64_t timestamp);
+
   /** Closes the array and frees all memory. */
   Status close();
 
@@ -182,8 +200,11 @@ class Array {
   /** The open array that will receive the read or write queries. */
   OpenArray* open_array_;
 
-  /** The snapshot at which the `open_array_` got opened. */
-  uint64_t snapshot_;
+  /**
+   * The timestamp at which the `open_array_` got opened. In TileDB,
+   * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
+   */
+  uint64_t timestamp_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

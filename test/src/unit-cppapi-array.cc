@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
@@ -537,6 +538,197 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
 
   for (unsigned i = 0; i < 4; i++)
     REQUIRE(a_values[i] == a_read[i]);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cppapi_open_array_at";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  REQUIRE_THROWS_AS(
+      Array(ctx, array_name, TILEDB_WRITE, 0), tiledb::TileDBError);
+
+  // Write array
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR);
+  std::vector<int> a_w = {1, 2, 3, 4};
+  query_w.set_buffer("a", a_w);
+  query_w.submit();
+  array_w.close();
+
+  // Normal read
+  Array array_r(ctx, array_name, TILEDB_READ);
+  std::vector<int> subarray = {1, 4};
+  std::vector<int> a_r(4);
+  Query query_r(ctx, array_r);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r);
+  query_r.submit();
+  array_r.close();
+  CHECK(std::equal(a_r.begin(), a_r.end(), a_w.begin()));
+
+  // Read from 0 timestamp
+  Array array_r_at_0(ctx, array_name, TILEDB_READ, 0);
+
+  SECTION("Testing Array::Array") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Array::open") {
+    array_r_at_0.close();
+    array_r_at_0.open(TILEDB_READ, 0);
+  }
+
+  std::vector<int> a_r_at_0(4);
+  Query query_r_at_0(ctx, array_r_at_0);
+  query_r_at_0.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r_at_0);
+  query_r_at_0.submit();
+  array_r_at_0.close();
+  auto result = query_r_at_0.result_buffer_elements();
+  CHECK(result["a"].second == 0);
+  CHECK(!std::equal(a_r_at_0.begin(), a_r_at_0.end(), a_w.begin()));
+
+  // Read from later timestamp
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  Array array_r_at(ctx, array_name, TILEDB_READ, timestamp);
+
+  SECTION("Testing Array::Array") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Array::open") {
+    array_r_at.close();
+    array_r_at.open(TILEDB_READ, timestamp);
+  }
+
+  std::vector<int> a_r_at(4);
+  Query query_r_at(ctx, array_r_at);
+  query_r_at.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r_at_0);
+  query_r_at.submit();
+  array_r_at.close();
+  CHECK(!std::equal(a_r_at.begin(), a_r_at.end(), a_w.begin()));
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Open encrypted array at",
+    "[cppapi], [cppapi-open-encrypted-array-at]") {
+  const char key[] = "0123456789abcdeF0123456789abcdeF";
+  uint32_t key_len = (uint32_t)strlen(key);
+
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cppapi_open_encrypted_array_at";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
+
+  REQUIRE_THROWS_AS(
+      Array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len, 0),
+      tiledb::TileDBError);
+
+  // Write array
+  Array array_w(
+      ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR);
+  std::vector<int> a_w = {1, 2, 3, 4};
+  query_w.set_buffer("a", a_w);
+  query_w.submit();
+  array_w.close();
+
+  // Normal read
+  Array array_r(ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
+  std::vector<int> subarray = {1, 4};
+  std::vector<int> a_r(4);
+  Query query_r(ctx, array_r);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r);
+  query_r.submit();
+  array_r.close();
+  CHECK(std::equal(a_r.begin(), a_r.end(), a_w.begin()));
+
+  // Read from 0 timestamp
+  Array array_r_at_0(
+      ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+
+  SECTION("Testing Array::Array") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Array::open") {
+    array_r_at_0.close();
+    array_r_at_0.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, 0);
+  }
+
+  std::vector<int> a_r_at_0(4);
+  Query query_r_at_0(ctx, array_r_at_0);
+  query_r_at_0.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r_at_0);
+  query_r_at_0.submit();
+  array_r_at_0.close();
+  auto result = query_r_at_0.result_buffer_elements();
+  CHECK(result["a"].second == 0);
+  CHECK(!std::equal(a_r_at_0.begin(), a_r_at_0.end(), a_w.begin()));
+
+  // Read from later timestamp
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  Array array_r_at(
+      ctx,
+      array_name,
+      TILEDB_READ,
+      TILEDB_AES_256_GCM,
+      key,
+      key_len,
+      timestamp);
+
+  SECTION("Testing Array::Array") {
+    // Nothing to do - just for clarity
+  }
+
+  SECTION("Testing Array::open") {
+    array_r_at.close();
+    array_r_at.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len, timestamp);
+  }
+
+  std::vector<int> a_r_at(4);
+  Query query_r_at(ctx, array_r_at);
+  query_r_at.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r_at_0);
+  query_r_at.submit();
+  array_r_at.close();
+  CHECK(!std::equal(a_r_at.begin(), a_r_at.end(), a_w.begin()));
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
