@@ -642,6 +642,33 @@ class StorageManager {
 
  private:
   /* ********************************* */
+  /*        PRIVATE DATATYPES          */
+  /* ********************************* */
+
+  /**
+   * Helper RAII struct that increments 'queries_in_progress' in the constructor
+   * and decrements in the destructor, on the given StorageManager instance.
+   *
+   * This ensures that the counter is decremented even in the case of
+   * exceptions.
+   */
+  struct QueryInProgress {
+    /** The StorageManager instance. */
+    StorageManager* sm;
+
+    /** Constructor. Calls increment_in_progress() on given StorageManager. */
+    QueryInProgress(StorageManager* sm)
+        : sm(sm) {
+      sm->increment_in_progress();
+    }
+
+    /** Destructor. Calls decrement_in_progress() on given StorageManager. */
+    ~QueryInProgress() {
+      sm->decrement_in_progress();
+    }
+  };
+
+  /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 

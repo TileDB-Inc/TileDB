@@ -1139,9 +1139,8 @@ Status StorageManager::query_submit(Query* query) {
   STATS_FUNC_IN(sm_query_submit);
 
   // Process the query
-  increment_in_progress();
+  QueryInProgress in_progress(this);
   auto st = query->process();
-  decrement_in_progress();
 
   return st;
 
