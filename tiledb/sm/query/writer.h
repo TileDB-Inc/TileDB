@@ -267,6 +267,14 @@ class Writer {
   bool check_coord_dups_;
 
   /**
+   * If `true`, a check for coordinates lying out-of-bounds (i.e.,
+   * outside the array domain) will be performed upon
+   * sparse writes and appropriate errors will be thrown in case
+   * such coordinates are found.
+   */
+  bool check_coord_oob_;
+
+  /**
    * If `true`, deduplication of coordinates/cells will happen upon
    * sparse writes. Ties are broken arbitrarily.
    *
@@ -313,6 +321,24 @@ class Writer {
    * @return Status
    */
   Status check_coord_dups(const std::vector<uint64_t>& cell_pos) const;
+
+  /**
+   * Throws an error if there are coordinates falling out-of-bounds, i.e.,
+   * outside the array domain.
+   *
+   * @return Status
+   */
+  Status check_coord_oob() const;
+
+  /**
+   * Throws an error if there are coordinates falling out-of-bounds, i.e.,
+   * outside the array domain.
+   *
+   * @tparam T The coordinates type.
+   * @return Status
+   */
+  template <class T>
+  Status check_coord_oob() const;
 
   /**
    * Throws an error if there are coordinate duplicates. This function

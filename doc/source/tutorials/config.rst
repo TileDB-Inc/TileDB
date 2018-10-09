@@ -80,6 +80,7 @@ in this program and explain the output.
         Default settings:
         "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
+        "sm.check_coord_oob" : "true"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
@@ -140,6 +141,7 @@ in this program and explain the output.
         Default settings:
         "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
+        "sm.check_coord_oob" : "true"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
@@ -276,6 +278,7 @@ The corresponding output is (note that we ran this on a machine with
    Default settings:
    "sm.array_schema_cache_size" : "10000000"
    "sm.check_coord_dups" : "true"
+   "sm.check_coord_oob" : "true"
    "sm.dedup_coords" : "false"
    "sm.enable_signal_handlers" : "true"
    "sm.fragment_metadata_cache_size" : "10000000"
@@ -416,6 +419,7 @@ Inspecting the contents of the exported config file, we get the following:
   $ cat tiledb_config.txt
   sm.array_schema_cache_size 10000000
   sm.check_coord_dups true
+  sm.check_coord_oob true
   sm.dedup_coords false
   sm.enable_signal_handlers true
   sm.fragment_metadata_cache_size 10000000
@@ -464,6 +468,9 @@ along with their description and default values.
                                                                       duplicates, the duplicates will be written without
                                                                       errors, but the TileDB behavior could be
                                                                       unpredictable.
+    ``"sm.check_coord_oob"``                  ``"true"``              If ``true``, an error will be thrown if
+                                                                      there are cells with coordinates lying outside
+                                                                      the array domain during sparse array writes.
     ``"sm.dedup_coords"``                     ``"false"``             If ``true``, cells with duplicate coordinates
                                                                       will be removed during sparse array writes. Note
                                                                       that ties during deduplication are broken

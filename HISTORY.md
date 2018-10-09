@@ -24,6 +24,7 @@
 
 ## Improvements
 
+* Added check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param `sm.check_coord_oob` to enable/disable the check (enabled by default).
 * Add config params `sm.num_reader_threads` and `sm.num_writer_threads` for separately controlling I/O parallelism from compression parallelism.
 * Added contribution guidelines #899
 * Enable building TileDB in Cygwin environment on Windows #890

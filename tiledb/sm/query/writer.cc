@@ -150,13 +150,14 @@ Status Writer::init() {
   optimize_layout_for_1D();
 
   // Get configuration parameters
-  const char* check_coord_dups;
-  const char* dedup_coords;
+  const char *check_coord_dups, *dedup_coords, *check_coord_oob;
   auto config = storage_manager_->config();
   RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
+  RETURN_NOT_OK(config.get("sm.check_coord_oob", &check_coord_oob));
   RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  check_coord_oob_ = !strcmp(check_coord_oob, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   initialized_ = true;
 
@@ -334,6 +335,9 @@ void* Writer::subarray() const {
 Status Writer::write() {
   STATS_FUNC_IN(writer_write);
 
+  if (check_coord_oob_)
+    RETURN_NOT_OK(check_coord_oob());
+
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(ordered_write());
   } else if (layout_ == Layout::UNORDERED) {
@@ -467,6 +471,85 @@ Status Writer::check_coord_dups() const {
   return Status::Ok();
 
   STATS_FUNC_OUT(writer_check_coord_dups_global);
+}
+
+Status Writer::check_coord_oob() const {
+  switch (array_schema_->domain()->type()) {
+    case Datatype::INT8:
+      return check_coord_oob<int8_t>();
+    case Datatype::UINT8:
+      return check_coord_oob<uint8_t>();
+    case Datatype::INT16:
+      return check_coord_oob<int16_t>();
+    case Datatype::UINT16:
+      return check_coord_oob<uint16_t>();
+    case Datatype::INT32:
+      return check_coord_oob<int32_t>();
+    case Datatype::UINT32:
+      return check_coord_oob<uint32_t>();
+    case Datatype::INT64:
+      return check_coord_oob<int64_t>();
+    case Datatype::UINT64:
+      return check_coord_oob<uint64_t>();
+    case Datatype::FLOAT32:
+      return check_coord_oob<float>();
+    case Datatype::FLOAT64:
+      return check_coord_oob<double>();
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      return LOG_STATUS(
+          Status::WriterError("Cannot perform out-of-bounds check on "
+                              "coordinates; Domain type not supported"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Writer::check_coord_oob() const {
+  auto coords_it = attr_buffers_.find(constants::coords);
+
+  // Applicable only to sparse writes - exit if coordinates do not exist
+  if (coords_it == attr_buffers_.end())
+    return Status::Ok();
+
+  // Get coordinates buffer
+  auto coords_buff = (T*)coords_it->second.buffer_;
+  auto coords_buff_size = *(coords_it->second.buffer_size_);
+  auto coords_num = coords_buff_size / array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  auto domain = (T*)array_schema_->domain()->domain();
+
+  // Check if all coordinates fall in the domain in parallel
+  auto statuses = parallel_for(0, coords_num, [&](uint64_t i) {
+    if (!utils::geometry::coords_in_rect<T>(
+            &coords_buff[i * dim_num], domain, dim_num)) {
+      std::stringstream ss;
+      ss << "Write failed; Coordinates (" << coords_buff[i * dim_num];
+      for (unsigned int j = 1; j < dim_num; ++j)
+        ss << "," << coords_buff[i * dim_num + j];
+      ss << ") are out of bounds";
+      return LOG_STATUS(Status::WriterError(ss.str()));
+    }
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses) {
+    if (!st.ok())
+      return st;
+  }
+
+  // Success
+  return Status::Ok();
 }
 
 Status Writer::check_subarray() const {
