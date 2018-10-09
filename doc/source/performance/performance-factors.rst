@@ -141,6 +141,13 @@ Coordinate deduplication -- ``sm.dedup_coords`` and ``sm.check_coord_dups``
     error if any are found. Disabling these checks can lead to better performance
     on writes.
 
+Coordinate out-of-bounds-check -- ``sm.check_coord_oob``
+    During sparse writes, setting ``sm.check_coord_oob`` to ``true`` (default) will
+    cause TileDB to internally check whether the given coordinates fall outside
+    the domain or not. If you are certain that this is not possible in your
+    application, you can set this param to ``false``, avoiding the check and
+    thus boosting performance.
+
 Async query concurrency -- ``sm.num_async_threads``
     By default only one thread is allocated to handle async queries. Increasing
     this parameter value can lead to better performance if you are issuing many

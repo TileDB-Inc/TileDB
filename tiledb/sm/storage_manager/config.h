@@ -62,6 +62,7 @@ class Config {
     uint64_t tile_cache_size_;
     bool dedup_coords_;
     bool check_coord_dups_;
+    bool check_coord_oob_;
 
     SMParams() {
       array_schema_cache_size_ = constants::array_schema_cache_size;
@@ -74,6 +75,7 @@ class Config {
       tile_cache_size_ = constants::tile_cache_size;
       dedup_coords_ = false;
       check_coord_dups_ = true;
+      check_coord_oob_ = true;
     }
   };
 
@@ -193,6 +195,10 @@ class Config {
    *    coordinates during sparse array writes. If `false` and there are
    *    duplicates, the duplicates will be written without errors, but the
    *    TileDB behavior could be unpredictable. <br>
+   *    **Default**: true
+   * - `sm.check_coord_oob` <br>
+   *    If `true`, an error will be thrown if there are cells with coordinates
+   *    falling outside the array domain during sparse array writes. <br>
    *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
@@ -357,6 +363,9 @@ class Config {
 
   /** Sets the check for coordinates duplicates parameter. */
   Status set_sm_check_coord_dups(const std::string& value);
+
+  /** Sets the check for out-of-bound coordinates parameter. */
+  Status set_sm_check_coord_oob(const std::string& value);
 
   /** Sets the array metadata cache size, properly parsing the input value. */
   Status set_sm_array_schema_cache_size(const std::string& value);

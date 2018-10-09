@@ -84,7 +84,9 @@ struct ArrayFx {
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   void create_sparse_vector(const std::string& path);
+  void create_sparse_array(const std::string& path);
   void create_dense_vector(const std::string& path);
+  void create_dense_array(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
   void set_supported_fs();
 };
@@ -227,6 +229,58 @@ void ArrayFx::create_sparse_vector(const std::string& path) {
   tiledb_array_schema_free(&array_schema);
 }
 
+void ArrayFx::create_sparse_array(const std::string& path) {
+  int rc;
+  int64_t dim_domain[] = {1, 10, 1, 10};
+  int64_t tile_extent = 2;
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_INT64, dim_domain, &tile_extent, &dim_1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim_1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_INT64, &dim_domain[2], &tile_extent, &dim_2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim_2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim_1);
+  tiledb_dimension_free(&dim_2);
+  tiledb_array_schema_free(&array_schema);
+}
+
 void ArrayFx::create_dense_vector(const std::string& path) {
   int rc;
   int64_t dim_domain[] = {1, 10};
@@ -279,6 +333,58 @@ void ArrayFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim);
+  tiledb_array_schema_free(&array_schema);
+}
+
+void ArrayFx::create_dense_array(const std::string& path) {
+  int rc;
+  int64_t dim_domain[] = {1, 10, 1, 10};
+  int64_t tile_extent = 2;
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_INT64, dim_domain, &tile_extent, &dim_1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim_1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_INT64, &dim_domain[2], &tile_extent, &dim_2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, dim_2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim_1);
+  tiledb_dimension_free(&dim_2);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -893,6 +999,169 @@ TEST_CASE_METHOD(
   // Check correctness
   CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
   CHECK(buffer_read_size == sizeof(buffer_read_c));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "C API: Check writing coordinates out of bounds",
+    "[capi], [array], [array-write-coords-oob]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "array-write-coords-oob";
+  create_temp_dir(temp_dir);
+
+  int64_t buffer_coords[6];
+  int buffer_a1[3];
+  uint64_t buffer_a1_size, buffer_coords_size;
+  int rc;
+  bool check_coords_oob = true;
+
+  // Create TileDB context
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  tiledb_ctx_t* ctx = nullptr;
+
+  SECTION("- Check out-of-bounds coordinates") {
+    check_coords_oob = true;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    rc = tiledb_config_set(config, "sm.check_coord_oob", "true", &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+
+    SECTION("** 1D") {
+      SECTION("### dense") {
+        create_dense_vector(array_name);
+      }
+
+      SECTION("### sparse") {
+        create_dense_vector(array_name);
+      }
+
+      // Prepare cell buffers
+      buffer_coords[0] = 1;
+      buffer_coords[1] = 2;
+      buffer_coords[2] = 30;
+      buffer_a1[0] = 1;
+      buffer_a1[1] = 2;
+      buffer_a1[2] = 3;
+      buffer_coords_size = 3 * sizeof(int64_t);
+      buffer_a1_size = 3 * sizeof(int);
+    }
+
+    SECTION("** 2D") {
+      SECTION("### dense") {
+        create_dense_array(array_name);
+      }
+
+      SECTION("### sparse") {
+        create_dense_array(array_name);
+      }
+
+      // Prepare cell buffers
+      buffer_coords[0] = 1;
+      buffer_coords[1] = 1;
+      buffer_coords[2] = 2;
+      buffer_coords[3] = 30;
+      buffer_coords[4] = 3;
+      buffer_coords[5] = 3;
+      buffer_a1[0] = 1;
+      buffer_a1[1] = 2;
+      buffer_a1[2] = 3;
+      buffer_coords_size = 6 * sizeof(int64_t);
+      buffer_a1_size = 3 * sizeof(int);
+    }
+  }
+
+  SECTION("- Do not check out-of-bounds coordinates") {
+    check_coords_oob = false;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    rc = tiledb_config_set(config, "sm.check_coord_oob", "false", &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+
+    SECTION("** 1D") {
+      SECTION("### dense") {
+        create_dense_vector(array_name);
+      }
+
+      SECTION("### sparse") {
+        create_dense_vector(array_name);
+      }
+
+      // Prepare cell buffers
+      buffer_coords[0] = 1;
+      buffer_coords[1] = 2;
+      buffer_coords[2] = 30;
+      buffer_a1[0] = 1;
+      buffer_a1[1] = 2;
+      buffer_a1[2] = 3;
+      buffer_coords_size = 3 * sizeof(int64_t);
+      buffer_a1_size = 3 * sizeof(int);
+    }
+
+    SECTION("** 2D") {
+      SECTION("### dense") {
+        create_dense_array(array_name);
+      }
+
+      SECTION("### sparse") {
+        create_sparse_array(array_name);
+      }
+
+      // Prepare cell buffers
+      buffer_coords[0] = 1;
+      buffer_coords[1] = 1;
+      buffer_coords[2] = 2;
+      buffer_coords[3] = 30;
+      buffer_coords[4] = 3;
+      buffer_coords[5] = 3;
+      buffer_a1[0] = 1;
+      buffer_a1[1] = 2;
+      buffer_a1[2] = 3;
+      buffer_coords_size = 6 * sizeof(int64_t);
+      buffer_a1_size = 3 * sizeof(int);
+    }
+  }
+
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  tiledb_config_free(&config);
+
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx, query, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx, query);
+  if (check_coords_oob)
+    CHECK(rc == TILEDB_ERR);
+  else
+    CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_ctx_free(&ctx);
 
   remove_temp_dir(temp_dir);
 }

@@ -181,6 +181,7 @@ void check_save_to_file() {
   std::stringstream ss;
   ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.check_coord_dups true\n";
+  ss << "sm.check_coord_oob true\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
@@ -351,6 +352,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> all_param_values;
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
+  all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.array_schema_cache_size"] = "1000";
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
@@ -525,7 +527,7 @@ TEST_CASE("C API: Test config from file", "[capi], [config]") {
 }
 
 TEST_CASE(
-    "C API: Test boolean config values are normalized", "[capi][config]") {
+    "C API: Test boolean config values are normalized", "[capi], [config]") {
   tiledb_error_t* err;
   tiledb_config_t* config = nullptr;
   int rc = tiledb_config_alloc(&config, &err);

@@ -63,6 +63,12 @@ namespace constants {
  */
 const bool check_coord_dups = true;
 
+/**
+ * If `true`, this will check for out-of-bound coordinates upon sparse
+ * writes.
+ */
+const bool check_coord_oob = true;
+
 /** If `true`, this will deduplicate coordinates upon sparse writes. */
 const bool dedup_coords = false;
 

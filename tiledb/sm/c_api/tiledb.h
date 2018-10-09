@@ -382,6 +382,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    duplicates, the duplicates will be written without errors, but the
  *    TileDB behavior could be unpredictable. <br>
  *    **Default**: true
+ * - `sm.check_coord_oob` <br>
+ *    If `true`, an error will be thrown if there are cells with coordinates
+ *    lying outside the domain during sparse array writes.  <br>
+ *    **Default**: true
  * - `sm.tile_cache_size` <br>
  *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
  *    **Default**: 10,000,000

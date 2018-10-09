@@ -161,6 +161,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_dedup_coords(value));
   } else if (param == "sm.check_coord_dups") {
     RETURN_NOT_OK(set_sm_check_coord_dups(value));
+  } else if (param == "sm.check_coord_oob") {
+    RETURN_NOT_OK(set_sm_check_coord_oob(value));
   } else if (param == "sm.tile_cache_size") {
     RETURN_NOT_OK(set_sm_tile_cache_size(value));
   } else if (param == "sm.array_schema_cache_size") {
@@ -255,6 +257,11 @@ Status Config::unset(const std::string& param) {
     sm_params_.check_coord_dups_ = constants::check_coord_dups;
     value << (sm_params_.check_coord_dups_ ? "true" : "false");
     param_values_["sm.check_coord_dups"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.check_coord_oob") {
+    sm_params_.check_coord_oob_ = constants::check_coord_oob;
+    value << (sm_params_.check_coord_oob_ ? "true" : "false");
+    param_values_["sm.check_coord_oob"] = value.str();
     value.str(std::string());
   } else if (param == "sm.tile_cache_size") {
     sm_params_.tile_cache_size_ = constants::tile_cache_size;
@@ -431,6 +438,10 @@ void Config::set_default_param_values() {
   param_values_["sm.check_coord_dups"] = value.str();
   value.str(std::string());
 
+  value << (sm_params_.check_coord_oob_ ? "true" : "false");
+  param_values_["sm.check_coord_oob"] = value.str();
+  value.str(std::string());
+
   value << sm_params_.tile_cache_size_;
   param_values_["sm.tile_cache_size"] = value.str();
   value.str(std::string());
@@ -579,6 +590,16 @@ Status Config::set_sm_check_coord_dups(const std::string& value) {
         "Cannot set parameter; Invalid check coords duplicates value"));
   }
   sm_params_.check_coord_dups_ = v;
+  return Status::Ok();
+}
+
+Status Config::set_sm_check_coord_oob(const std::string& value) {
+  bool v = false;
+  if (!parse_bool(value, &v).ok()) {
+    return LOG_STATUS(Status::ConfigError(
+        "Cannot set parameter; Invalid check out-of-bounds coords value"));
+  }
+  sm_params_.check_coord_oob_ = v;
   return Status::Ok();
 }
 
