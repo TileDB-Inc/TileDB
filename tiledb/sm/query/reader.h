@@ -624,6 +624,32 @@ class Reader {
       const OverlappingCellRangeList& cell_ranges);
 
   /**
+   * Computes offsets into destination buffers for the given attribute's offset
+   * and variable-length data, for the given list of cell ranges.
+   *
+   * @param attribute The variable-length attribute
+   * @param cell_ranges The cell ranges to compute destinations for.
+   * @param offset_offsets_per_cr Output to hold one vector per cell range, and
+   *    one element per cell in the range. The elements are the destination
+   *    offsets for the attribute's offsets.
+   * @param var_offsets_per_cr Output to hold one vector per cell range, and
+   *    one element per cell in the range. The elements are the destination
+   *    offsets for the attribute's variable-length data.
+   * @param total_offset_size Output set to the total size in bytes of the
+   *    offsets in the given list of cell ranges.
+   * @param total_var_size Output set to the total size in bytes of the
+   *    attribute's variable-length in the given list of cell ranges.
+   * @return Status
+   */
+  Status compute_var_cell_destinations(
+      const std::string& attribute,
+      const OverlappingCellRangeList& cell_ranges,
+      std::vector<std::vector<uint64_t>>* offset_offsets_per_cr,
+      std::vector<std::vector<uint64_t>>* var_offsets_per_cr,
+      uint64_t* total_offset_size,
+      uint64_t* total_var_size) const;
+
+  /**
    * Deduplicates the input coordinates, breaking ties giving preference
    * to the largest fragment index (i.e., it prefers more recent fragments).
    *

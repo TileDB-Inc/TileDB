@@ -1054,95 +1054,157 @@ Status Reader::copy_var_cells(
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_size = it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
-  uint64_t buffer_offset = 0;
-  uint64_t buffer_var_offset = 0;
   uint64_t offset_size = constants::cell_var_offset_size;
-  uint64_t cell_var_size;
   auto type = array_schema_->type(attribute);
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
-  // Copy cells
-  for (const auto& cr : cell_ranges) {
-    auto cell_num_in_range = cr.end_ - cr.start_ + 1;
-    // Check if offset buffers can fit the result
-    if (buffer_offset + cell_num_in_range * offset_size > *buffer_size) {
-      read_state_.overflowed_ = true;
-      return Status::Ok();
-    }
+  // Compute the destinations of offsets and var-len data in the buffers.
+  std::vector<std::vector<uint64_t>> offset_offsets_per_cr;
+  std::vector<std::vector<uint64_t>> var_offsets_per_cr;
+  uint64_t total_offset_size, total_var_size;
+  RETURN_NOT_OK(compute_var_cell_destinations(
+      attribute,
+      cell_ranges,
+      &offset_offsets_per_cr,
+      &var_offsets_per_cr,
+      &total_offset_size,
+      &total_var_size));
 
-    // Handle empty range
-    if (cr.tile_ == nullptr) {
-      // Check if result can fit in the buffer
-      if (buffer_var_offset + cell_num_in_range * fill_size >
-          *buffer_var_size) {
-        read_state_.overflowed_ = true;
-        return Status::Ok();
-      }
-
-      // Fill with empty
-      for (auto i = cr.start_; i <= cr.end_; ++i) {
-        // Offsets
-        std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
-        buffer_offset += offset_size;
-
-        // Handle overflow
-        if (buffer_var_offset + fill_size > *buffer_var_size) {
-          read_state_.overflowed_ = true;
-          return Status::Ok();
-        }
-
-        // Values
-        std::memcpy(buffer_var + buffer_var_offset, fill_value, fill_size);
-        buffer_var_offset += fill_size;
-      }
-
-      continue;
-    }
-
-    // Non-empty range
-    const auto& tile_pair = cr.tile_->attr_tiles_.find(attribute)->second;
-    const auto& tile = tile_pair.first;
-    const auto& tile_var = tile_pair.second;
-    const auto offsets = (uint64_t*)tile.data();
-    auto data = (unsigned char*)tile_var.data();
-    auto cell_num = tile.cell_num();
-    auto tile_var_size = tile_var.size();
-
-    for (auto i = cr.start_; i <= cr.end_; ++i) {
-      // Copy offsets
-      std::memcpy(buffer + buffer_offset, &buffer_var_offset, offset_size);
-      buffer_offset += offset_size;
-
-      // Check if next variable-sized cell fits in the result buffer
-      cell_var_size = (i != cell_num - 1) ?
-                          offsets[i + 1] - offsets[i] :
-                          tile_var_size - (offsets[i] - offsets[0]);
-
-      if (buffer_var_offset + cell_var_size > *buffer_var_size) {
-        read_state_.overflowed_ = true;
-        return Status::Ok();
-      }
-
-      // Copy variable-sized values
-      std::memcpy(
-          buffer_var + buffer_var_offset,
-          &data[offsets[i] - offsets[0]],
-          cell_var_size);
-      buffer_var_offset += cell_var_size;
-    }
+  // Check for overflow and return early (without copying) in that case.
+  if (total_offset_size > *buffer_size || total_var_size > *buffer_var_size) {
+    read_state_.overflowed_ = true;
+    return Status::Ok();
   }
 
+  // Copy cell ranges in parallel.
+  const auto num_cr = cell_ranges.size();
+  auto statuses = parallel_for(0, num_cr, [&](uint64_t cr_idx) {
+    const auto& cr = cell_ranges[cr_idx];
+    const auto& offset_offsets = offset_offsets_per_cr[cr_idx];
+    const auto& var_offsets = var_offsets_per_cr[cr_idx];
+
+    // Get tile information, if the range is nonempty.
+    uint64_t* tile_offsets = nullptr;
+    unsigned char* tile_var_data = nullptr;
+    uint64_t tile_cell_num = 0;
+    uint64_t tile_var_size = 0;
+    if (cr.tile_ != nullptr) {
+      const auto& tile_pair = cr.tile_->attr_tiles_.find(attribute)->second;
+      const auto& tile = tile_pair.first;
+      const auto& tile_var = tile_pair.second;
+      tile_offsets = (uint64_t*)tile.data();
+      tile_var_data = (unsigned char*)tile_var.data();
+      tile_cell_num = tile.cell_num();
+      tile_var_size = tile_var.size();
+    }
+
+    // Copy each cell in the range
+    for (auto cell_idx = cr.start_; cell_idx <= cr.end_; cell_idx++) {
+      uint64_t dest_vec_idx = cell_idx - cr.start_;
+      auto offset_dest = buffer + offset_offsets[dest_vec_idx];
+      auto var_offset = var_offsets[dest_vec_idx];
+      auto var_dest = buffer_var + var_offset;
+
+      // Copy offset
+      std::memcpy(offset_dest, &var_offset, offset_size);
+
+      // Copy variable-sized value
+      if (cr.tile_ == nullptr) {
+        std::memcpy(var_dest, &fill_value, fill_size);
+      } else {
+        uint64_t cell_var_size =
+            (cell_idx != tile_cell_num - 1) ?
+                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
+                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+        std::memcpy(
+            var_dest,
+            &tile_var_data[tile_offsets[cell_idx] - tile_offsets[0]],
+            cell_var_size);
+      }
+    }
+
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
   // Update buffer offsets
-  *(attr_buffers_[attribute].buffer_size_) = buffer_offset;
-  *(attr_buffers_[attribute].buffer_var_size_) = buffer_var_offset;
+  *(attr_buffers_[attribute].buffer_size_) = total_offset_size;
+  *(attr_buffers_[attribute].buffer_var_size_) = total_var_size;
   STATS_COUNTER_ADD(
-      reader_num_var_cell_bytes_copied, buffer_offset + buffer_var_offset);
+      reader_num_var_cell_bytes_copied, total_offset_size + total_var_size);
 
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_copy_var_cells);
+}
+
+Status Reader::compute_var_cell_destinations(
+    const std::string& attribute,
+    const OverlappingCellRangeList& cell_ranges,
+    std::vector<std::vector<uint64_t>>* offset_offsets_per_cr,
+    std::vector<std::vector<uint64_t>>* var_offsets_per_cr,
+    uint64_t* total_offset_size,
+    uint64_t* total_var_size) const {
+  // For easy reference
+  auto num_cr = cell_ranges.size();
+  auto offset_size = constants::cell_var_offset_size;
+  auto type = array_schema_->type(attribute);
+  auto fill_size = datatype_size(type);
+
+  // Resize the output vectors
+  offset_offsets_per_cr->resize(num_cr);
+  var_offsets_per_cr->resize(num_cr);
+
+  // Compute the destinations for all cell ranges.
+  *total_offset_size = 0;
+  *total_var_size = 0;
+  for (uint64_t cr_idx = 0; cr_idx < num_cr; cr_idx++) {
+    const auto& cr = cell_ranges[cr_idx];
+    auto cell_num_in_range = cr.end_ - cr.start_ + 1;
+    (*offset_offsets_per_cr)[cr_idx].resize(cell_num_in_range);
+    (*var_offsets_per_cr)[cr_idx].resize(cell_num_in_range);
+
+    // Get tile information, if the range is nonempty.
+    uint64_t* tile_offsets = nullptr;
+    uint64_t tile_cell_num = 0;
+    uint64_t tile_var_size = 0;
+    if (cr.tile_ != nullptr) {
+      const auto& tile_pair = cr.tile_->attr_tiles_.find(attribute)->second;
+      const auto& tile = tile_pair.first;
+      const auto& tile_var = tile_pair.second;
+      tile_offsets = (uint64_t*)tile.data();
+      tile_cell_num = tile.cell_num();
+      tile_var_size = tile_var.size();
+    }
+
+    // Compute the destinations for each cell in the range.
+    for (auto cell_idx = cr.start_; cell_idx <= cr.end_; cell_idx++) {
+      uint64_t dest_vec_idx = cell_idx - cr.start_;
+      // Get size of variable-sized cell
+      uint64_t cell_var_size = 0;
+      if (cr.tile_ == nullptr) {
+        cell_var_size = fill_size;
+      } else {
+        cell_var_size =
+            (cell_idx != tile_cell_num - 1) ?
+                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
+                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+      }
+
+      // Record destination offsets.
+      (*offset_offsets_per_cr)[cr_idx][dest_vec_idx] = *total_offset_size;
+      (*var_offsets_per_cr)[cr_idx][dest_vec_idx] = *total_var_size;
+      *total_offset_size += offset_size;
+      *total_var_size += cell_var_size;
+    }
+  }
+
+  return Status::Ok();
 }
 
 template <class T>
