@@ -92,17 +92,21 @@ Status OpenSSL::encrypt_aes256gcm(
   // Copy IV to output arg.
   std::memcpy(output_iv->cur_data(), iv_buf, iv_len);
 
+  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+  if (ctx == nullptr)
+    return LOG_STATUS(Status::EncryptionError(
+        "OpenSSL error; cannot encrypt: context allocation failed."));
+
   // Initialize the cipher. We use the default parameter lengths for the IV and
   // tag, so no further configuration is needed for the cipher.
-  EVP_CIPHER_CTX ctx;
-  EVP_CIPHER_CTX_init(&ctx);
+  EVP_CIPHER_CTX_init(ctx);
   if (EVP_EncryptInit_ex(
-          &ctx,
+          ctx,
           EVP_aes_256_gcm(),
           nullptr,
           (unsigned char*)key->data(),
           iv_buf) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error initializing cipher."));
   }
@@ -110,12 +114,12 @@ Status OpenSSL::encrypt_aes256gcm(
   // Encrypt the input.
   int output_len;
   if (EVP_EncryptUpdate(
-          &ctx,
+          ctx,
           (unsigned char*)output->cur_data(),
           &output_len,
           (const unsigned char*)input->data(),
           (int)input->size()) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error encrypting data."));
   }
@@ -124,8 +128,8 @@ Status OpenSSL::encrypt_aes256gcm(
 
   // Finalize encryption.
   if (EVP_EncryptFinal_ex(
-          &ctx, (unsigned char*)output->cur_data(), &output_len) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+          ctx, (unsigned char*)output->cur_data(), &output_len) == 0) {
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error finalizing encryption."));
   }
@@ -134,19 +138,17 @@ Status OpenSSL::encrypt_aes256gcm(
 
   // Get the tag.
   if (EVP_CIPHER_CTX_ctrl(
-          &ctx,
+          ctx,
           EVP_CTRL_GCM_GET_TAG,
           Encryption::AES256GCM_TAG_BYTES,
           (char*)output_tag->data()) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error getting tag."));
   }
 
   // Clean up.
-  if (EVP_CIPHER_CTX_cleanup(&ctx) == 0)
-    return LOG_STATUS(
-        Status::EncryptionError("OpenSSL error; error cleaning up context."));
+  EVP_CIPHER_CTX_free(ctx);
 
   return Status::Ok();
 }
@@ -172,17 +174,21 @@ Status OpenSSL::decrypt_aes256gcm(
         "OpenSSL error; cannot decrypt: output buffer too small."));
   }
 
+  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+  if (ctx == nullptr)
+    return LOG_STATUS(Status::EncryptionError(
+        "OpenSSL error; cannot decrypt: context allocation failed."));
+
   // Initialize the cipher. We use the default parameter lengths for the IV and
   // tag, so no further configuration is needed for the cipher.
-  EVP_CIPHER_CTX ctx;
-  EVP_CIPHER_CTX_init(&ctx);
+  EVP_CIPHER_CTX_init(ctx);
   if (EVP_DecryptInit_ex(
-          &ctx,
+          ctx,
           EVP_aes_256_gcm(),
           nullptr,
           (unsigned char*)key->data(),
           (unsigned char*)iv->data()) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error initializing cipher."));
   }
@@ -190,12 +196,12 @@ Status OpenSSL::decrypt_aes256gcm(
   // Decrypt the input.
   int output_len;
   if (EVP_DecryptUpdate(
-          &ctx,
+          ctx,
           (unsigned char*)output->cur_data(),
           &output_len,
           (const unsigned char*)input->data(),
           (int)input->size()) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error decrypting data."));
   }
@@ -205,19 +211,19 @@ Status OpenSSL::decrypt_aes256gcm(
 
   // Set the tag (which will be checked during finalization).
   if (EVP_CIPHER_CTX_ctrl(
-          &ctx,
+          ctx,
           EVP_CTRL_GCM_SET_TAG,
           Encryption::AES256GCM_TAG_BYTES,
           (char*)tag->data()) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error setting tag."));
   }
 
   // Finalize decryption.
   if (EVP_DecryptFinal_ex(
-          &ctx, (unsigned char*)output->cur_data(), &output_len) == 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
+          ctx, (unsigned char*)output->cur_data(), &output_len) == 0) {
+    EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
         Status::EncryptionError("OpenSSL error; error finalizing decryption."));
   }
@@ -226,9 +232,7 @@ Status OpenSSL::decrypt_aes256gcm(
   output->advance_offset((uint64_t)output_len);
 
   // Clean up.
-  if (EVP_CIPHER_CTX_cleanup(&ctx) == 0)
-    return LOG_STATUS(
-        Status::EncryptionError("OpenSSL error; error cleaning up context."));
+  EVP_CIPHER_CTX_free(ctx);
 
   return Status::Ok();
 }
