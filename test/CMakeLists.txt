@@ -40,6 +40,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 # Gather the test source files
 set(TILEDB_TEST_SOURCES
   src/helpers.h
+  src/unit-backwards_compat.cc
   src/unit-buffer.cc
   src/unit-capi-any.cc
   src/unit-capi-array_schema.cc
@@ -137,6 +138,10 @@ endif()
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
 target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+
+target_compile_definitions(tiledb_unit PRIVATE
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
+)
 
 add_test(
   NAME "tiledb_unit"
