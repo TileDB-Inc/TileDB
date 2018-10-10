@@ -132,6 +132,7 @@ class Attribute {
     Filter filter(ctx, Compressor::to_filter(compressor.compressor()));
     int32_t level = compressor.level();
     filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    filter_list.add_filter(filter);
     set_filter_list(filter_list);
   }
 
@@ -324,6 +325,7 @@ class Attribute {
     Filter filter(ctx, Compressor::to_filter(c.compressor()));
     int32_t level = c.level();
     filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    filter_list.add_filter(filter);
     set_filter_list(filter_list);
     return *this;
   }
@@ -440,6 +442,7 @@ class Attribute {
     Filter filter(ctx, Compressor::to_filter(compressor.compressor()));
     int32_t level = compressor.level();
     filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    filter_list.add_filter(filter);
 
     auto a = create<T>(ctx, name);
     a.set_filter_list(filter_list);
