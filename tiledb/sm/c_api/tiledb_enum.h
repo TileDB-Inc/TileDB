@@ -109,11 +109,6 @@
 #endif
 
 #ifdef TILEDB_COMPRESSOR_ENUM
-#undef BLOSC_LZ4
-#undef BLOSC_LZ4HC
-#undef BLOSC_SNAPPY
-#undef BLOSC_ZLIB
-#undef BLOSC_ZSTD
     /** No compressor */
     TILEDB_COMPRESSOR_ENUM(NO_COMPRESSION) = 0,
     /** Gzip compressor */
@@ -122,24 +117,12 @@
     TILEDB_COMPRESSOR_ENUM(ZSTD) = 2,
     /** LZ4 compressor */
     TILEDB_COMPRESSOR_ENUM(LZ4) = 3,
-    /** Blosc compressor using LZ */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_LZ) = 4,
-    /** Blosc compressor using LZ4 */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_LZ4) = 5,
-    /** Blosc compressor using LZ4HC */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_LZ4HC) = 6,
-    /** Blosc compressor using Snappy */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_SNAPPY) = 7,
-    /** Blosc compressor using zlib */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_ZLIB) = 8,
-    /** Blosc compressor using Zstandard */
-    TILEDB_COMPRESSOR_ENUM(BLOSC_ZSTD) = 9,
     /** Run-length encoding compressor */
-    TILEDB_COMPRESSOR_ENUM(RLE) = 10,
+    TILEDB_COMPRESSOR_ENUM(RLE) = 4,
     /** Bzip2 compressor */
-    TILEDB_COMPRESSOR_ENUM(BZIP2) = 11,
+    TILEDB_COMPRESSOR_ENUM(BZIP2) = 5,
     /** Double-delta compressor */
-    TILEDB_COMPRESSOR_ENUM(DOUBLE_DELTA) = 12,
+    TILEDB_COMPRESSOR_ENUM(DOUBLE_DELTA) = 6,
 #endif
 
 #ifdef TILEDB_FILTER_TYPE_ENUM
@@ -157,26 +140,14 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BZIP2) = 5,
     /** Double-delta compressor */
     TILEDB_FILTER_TYPE_ENUM(FILTER_DOUBLE_DELTA) = 6,
-    /** Blosc compressor using LZ */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ) = 7,
-    /** Blosc compressor using LZ4 */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ4) = 8,
-    /** Blosc compressor using LZ4HC */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_LZ4HC) = 9,
-    /** Blosc compressor using Snappy */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_SNAPPY) = 10,
-    /** Blosc compressor using zlib */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZLIB) = 11,
-    /** Blosc compressor using Zstandard */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BLOSC_ZSTD) = 12,
     /** Bit width reduction filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION) = 13,
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION) = 7,
     /** Bitshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE) = 14,
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE) = 8,
     /** Byteshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE) = 15,
+    TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE) = 9,
     /** Positive-delta encoding filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA) = 16,
+    TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA) = 10,
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM

@@ -199,7 +199,7 @@ void SparseRealFx::create_sparse_array(const std::string& path) {
   CHECK(rc == TILEDB_OK);
   tiledb_filter_t* filter;
   tiledb_filter_list_t* list;
-  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BLOSC_LZ, &filter);
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_LZ4, &filter);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_filter_list_alloc(ctx_, &list);
   CHECK(rc == TILEDB_OK);

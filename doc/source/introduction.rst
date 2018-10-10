@@ -103,7 +103,7 @@ Compression
 TileDB offers high compression ratios while allowing efficient
 slicing via its tile-based approach. TileDB can compress array data with a
 growing number of compressors, such as GZIP, BZIP2,
-LZ4, ZStandard, Blosc, double-delta and run-length encoding.
+LZ4, ZStandard, double-delta and run-length encoding.
 
 Parallelism
 ^^^^^^^^^^^

@@ -60,18 +60,6 @@ inline const std::string& compressor_str(Compressor type) {
       return constants::zstd_str;
     case Compressor::LZ4:
       return constants::lz4_str;
-    case Compressor::BLOSC_LZ:
-      return constants::blosc_lz_str;
-    case Compressor::BLOSC_LZ4:
-      return constants::blosc_lz4_str;
-    case Compressor::BLOSC_LZ4HC:
-      return constants::blosc_lz4hc_str;
-    case Compressor::BLOSC_SNAPPY:
-      return constants::blosc_snappy_str;
-    case Compressor::BLOSC_ZLIB:
-      return constants::blosc_zlib_str;
-    case Compressor::BLOSC_ZSTD:
-      return constants::blosc_zstd_str;
     case Compressor::RLE:
       return constants::rle_str;
     case Compressor::BZIP2:
@@ -95,18 +83,6 @@ inline Status compressor_enum(
     *compressor = Compressor::ZSTD;
   else if (compressor_type_str == constants::lz4_str)
     *compressor = Compressor::LZ4;
-  else if (compressor_type_str == constants::blosc_lz_str)
-    *compressor = Compressor::BLOSC_LZ;
-  else if (compressor_type_str == constants::blosc_lz4_str)
-    *compressor = Compressor::BLOSC_LZ4;
-  else if (compressor_type_str == constants::blosc_lz4hc_str)
-    *compressor = Compressor::BLOSC_LZ4HC;
-  else if (compressor_type_str == constants::blosc_snappy_str)
-    *compressor = Compressor::BLOSC_SNAPPY;
-  else if (compressor_type_str == constants::blosc_zlib_str)
-    *compressor = Compressor::BLOSC_ZLIB;
-  else if (compressor_type_str == constants::blosc_zstd_str)
-    *compressor = Compressor::BLOSC_ZSTD;
   else if (compressor_type_str == constants::rle_str)
     *compressor = Compressor::RLE;
   else if (compressor_type_str == constants::bzip2_str)

@@ -92,7 +92,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/preallocated_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/lru_cache.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/blosc_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
@@ -303,7 +302,6 @@ endif()
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
-find_package(Blosc_EP REQUIRED)
 find_package(Bzip2_EP REQUIRED)
 find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
@@ -311,7 +309,6 @@ find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
-    Blosc::Blosc
     Bzip2::Bzip2
     LZ4::LZ4
     Spdlog::Spdlog
@@ -379,7 +376,6 @@ if (TILEDB_STATIC)
     endif()
   endmacro()
 
-  append_dep_lib(Blosc::Blosc)
   append_dep_lib(Bzip2::Bzip2)
   append_dep_lib(Curl::Curl)
   append_dep_lib(LZ4::LZ4)

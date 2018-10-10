@@ -51,7 +51,7 @@ enum class FilterType : uint8_t {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILTER_TYPE_ENUM
   /** Internally used encryption with AES-256-GCM. */
-  INTERNAL_FILTER_AES_256_GCM = 17,
+  INTERNAL_FILTER_AES_256_GCM = 11,
 };
 
 /** Returns the string representation of the input filter type. */
@@ -63,18 +63,6 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::zstd_str;
     case FilterType::FILTER_LZ4:
       return constants::lz4_str;
-    case FilterType::FILTER_BLOSC_LZ:
-      return constants::blosc_lz_str;
-    case FilterType::FILTER_BLOSC_LZ4:
-      return constants::blosc_lz4_str;
-    case FilterType::FILTER_BLOSC_LZ4HC:
-      return constants::blosc_lz4hc_str;
-    case FilterType::FILTER_BLOSC_SNAPPY:
-      return constants::blosc_snappy_str;
-    case FilterType::FILTER_BLOSC_ZLIB:
-      return constants::blosc_zlib_str;
-    case FilterType::FILTER_BLOSC_ZSTD:
-      return constants::blosc_zstd_str;
     case FilterType::FILTER_RLE:
       return constants::rle_str;
     case FilterType::FILTER_BZIP2:
@@ -96,18 +84,6 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_ZSTD;
   else if (filter_type_str == constants::lz4_str)
     *filter_type = FilterType::FILTER_LZ4;
-  else if (filter_type_str == constants::blosc_lz_str)
-    *filter_type = FilterType::FILTER_BLOSC_LZ;
-  else if (filter_type_str == constants::blosc_lz4_str)
-    *filter_type = FilterType::FILTER_BLOSC_LZ4;
-  else if (filter_type_str == constants::blosc_lz4hc_str)
-    *filter_type = FilterType::FILTER_BLOSC_LZ4HC;
-  else if (filter_type_str == constants::blosc_snappy_str)
-    *filter_type = FilterType::FILTER_BLOSC_SNAPPY;
-  else if (filter_type_str == constants::blosc_zlib_str)
-    *filter_type = FilterType::FILTER_BLOSC_ZLIB;
-  else if (filter_type_str == constants::blosc_zstd_str)
-    *filter_type = FilterType::FILTER_BLOSC_ZSTD;
   else if (filter_type_str == constants::rle_str)
     *filter_type = FilterType::FILTER_RLE;
   else if (filter_type_str == constants::bzip2_str)

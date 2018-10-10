@@ -22,7 +22,7 @@ Learn more and see examples and tutorials in the [official documentation](https:
 
 * **Novel Format.** TileDB introduces a novel multi-dimensional array format that effectively handles both dense and sparse data with fast updates. Contrary to other popular systems like HDF5 that are optimized mostly for dense arrays, TileDB is optimized for both dense and sparse arrays, exposing a unified API. TileDB enables efficient updates through its concept of immutable, append-only "fragments."
 * **Multiple Backends.** Transparently store and access your arrays on AWS S3 (or other S3 compatiable store) or HDFS with a single API.
-* **Compression.** Achieve high compression ratios with TileDB's tile-based compression approach. TileDB can compress array data with a growing number of compressors, such as GZIP, BZIP2, LZ4, ZStandard, Blosc, double-delta and run-length encoding.
+* **Compression.** Achieve high compression ratios with TileDB's tile-based compression approach. TileDB can compress array data with a growing number of compressors, such as GZIP, BZIP2, LZ4, ZStandard, double-delta and run-length encoding.
 * **Parallelism.** Use every core with TileDB's parallelized I/O and compression systems (using Intel TBB), and build powerful parallel analytics on top of the TileDB array storage manager (e.g., using OpenMP or MPI) leveraging TileDB's thread-/process-safety.
 * **Portability.** TileDB works on Linux, macOS and Windows, offering easy installation packages, binaries and Docker containerization.
 * **Language Bindings.** Enable your NumPy data science applications to work with immense amounts of data using TileDB's Python API. Other APIs include Golang, R and Java.

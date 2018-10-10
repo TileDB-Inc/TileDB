@@ -767,8 +767,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
   SECTION("- Simple") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(
-        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked
@@ -787,8 +786,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 
   SECTION("- With checksum stage") {
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(
-        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked
@@ -809,8 +807,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     CHECK(pipeline.add_filter(Add1InPlace()).ok());
     CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
     CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(
-        pipeline.add_filter(CompressionFilter(Compressor::BLOSC_LZ4, 5)).ok());
+    CHECK(pipeline.add_filter(CompressionFilter(Compressor::LZ4, 5)).ok());
 
     CHECK(pipeline.run_forward(&tile).ok());
     // Check compression worked

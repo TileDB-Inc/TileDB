@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/compressors/blosc_compressor.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/compressors/gzip_compressor.h"
@@ -90,18 +89,6 @@ FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
       return FilterType::FILTER_ZSTD;
     case Compressor::LZ4:
       return FilterType::FILTER_LZ4;
-    case Compressor::BLOSC_LZ:
-      return FilterType::FILTER_BLOSC_LZ;
-    case Compressor::BLOSC_LZ4:
-      return FilterType::FILTER_BLOSC_LZ4;
-    case Compressor::BLOSC_LZ4HC:
-      return FilterType::FILTER_BLOSC_LZ4HC;
-    case Compressor::BLOSC_SNAPPY:
-      return FilterType::FILTER_BLOSC_SNAPPY;
-    case Compressor::BLOSC_ZLIB:
-      return FilterType::FILTER_BLOSC_ZLIB;
-    case Compressor::BLOSC_ZSTD:
-      return FilterType::FILTER_BLOSC_ZSTD;
     case Compressor::RLE:
       return FilterType::FILTER_RLE;
     case Compressor::BZIP2:
@@ -124,18 +111,6 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
       return Compressor::ZSTD;
     case FilterType::FILTER_LZ4:
       return Compressor::LZ4;
-    case FilterType::FILTER_BLOSC_LZ:
-      return Compressor::BLOSC_LZ;
-    case FilterType::FILTER_BLOSC_LZ4:
-      return Compressor::BLOSC_LZ4;
-    case FilterType::FILTER_BLOSC_LZ4HC:
-      return Compressor::BLOSC_LZ4HC;
-    case FilterType::FILTER_BLOSC_SNAPPY:
-      return Compressor::BLOSC_SNAPPY;
-    case FilterType::FILTER_BLOSC_ZLIB:
-      return Compressor::BLOSC_ZLIB;
-    case FilterType::FILTER_BLOSC_ZSTD:
-      return Compressor::BLOSC_ZSTD;
     case FilterType::FILTER_RLE:
       return Compressor::RLE;
     case FilterType::FILTER_BZIP2:
@@ -267,7 +242,6 @@ Status CompressionFilter::compress_part(
   auto tile = pipeline_->current_tile();
   auto cell_size = tile->cell_size();
   auto type = tile->type();
-  auto type_size = datatype_size(type);
 
   // Invoke the proper compressor
   uint32_t orig_size = (uint32_t)output->size();
@@ -280,35 +254,6 @@ Status CompressionFilter::compress_part(
       break;
     case Compressor::LZ4:
       RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
-      break;
-    case Compressor::BLOSC_LZ:
-      RETURN_NOT_OK(
-          Blosc::compress("blosclz", type_size, level_, &input_buffer, output));
-      break;
-#undef BLOSC_LZ4
-    case Compressor::BLOSC_LZ4:
-      RETURN_NOT_OK(
-          Blosc::compress("lz4", type_size, level_, &input_buffer, output));
-      break;
-#undef BLOSC_LZ4HC
-    case Compressor::BLOSC_LZ4HC:
-      RETURN_NOT_OK(
-          Blosc::compress("lz4hc", type_size, level_, &input_buffer, output));
-      break;
-#undef BLOSC_SNAPPY
-    case Compressor::BLOSC_SNAPPY:
-      RETURN_NOT_OK(
-          Blosc::compress("snappy", type_size, level_, &input_buffer, output));
-      break;
-#undef BLOSC_ZLIB
-    case Compressor::BLOSC_ZLIB:
-      RETURN_NOT_OK(
-          Blosc::compress("zlib", type_size, level_, &input_buffer, output));
-      break;
-#undef BLOSC_ZSTD
-    case Compressor::BLOSC_ZSTD:
-      RETURN_NOT_OK(
-          Blosc::compress("zstd", type_size, level_, &input_buffer, output));
       break;
     case Compressor::RLE:
       RETURN_NOT_OK(RLE::compress(cell_size, &input_buffer, output));
@@ -375,19 +320,6 @@ Status CompressionFilter::decompress_part(
     case Compressor::LZ4:
       st = LZ4::decompress(&input_buffer, &output_buffer);
       break;
-    case Compressor::BLOSC_LZ:
-#undef BLOSC_LZ4
-    case Compressor::BLOSC_LZ4:
-#undef BLOSC_LZ4HC
-    case Compressor::BLOSC_LZ4HC:
-#undef BLOSC_SNAPPY
-    case Compressor::BLOSC_SNAPPY:
-#undef BLOSC_ZLIB
-    case Compressor::BLOSC_ZLIB:
-#undef BLOSC_ZSTD
-    case Compressor::BLOSC_ZSTD:
-      st = Blosc::decompress(&input_buffer, &output_buffer);
-      break;
     case Compressor::RLE:
       st = RLE::decompress(cell_size, &input_buffer, &output_buffer);
       break;
@@ -418,18 +350,6 @@ uint64_t CompressionFilter::overhead(uint64_t nbytes) const {
       return ZStd::overhead(nbytes);
     case Compressor::LZ4:
       return LZ4::overhead(nbytes);
-    case Compressor::BLOSC_LZ:
-#undef BLOSC_LZ4
-    case Compressor::BLOSC_LZ4:
-#undef BLOSC_LZ4HC
-    case Compressor::BLOSC_LZ4HC:
-#undef BLOSC_SNAPPY
-    case Compressor::BLOSC_SNAPPY:
-#undef BLOSC_ZLIB
-    case Compressor::BLOSC_ZLIB:
-#undef BLOSC_ZSTD
-    case Compressor::BLOSC_ZSTD:
-      return Blosc::overhead(nbytes);
     case Compressor::RLE:
       return RLE::overhead(nbytes, cell_size);
     case Compressor::BZIP2:

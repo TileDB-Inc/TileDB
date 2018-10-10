@@ -57,6 +57,7 @@
 
 ### C API
 
+* Removed Blosc compressors.
 * Removed `tiledb_kv_set_max_buffered_items`.
 * Modified `tiledb_kv_open` to not take an attribute subselection, but instead take as input the 
 query type (similar to arrays). This makes the key-value store behave similarly to arrays,
@@ -67,6 +68,7 @@ invoked explicitly.
 
 ### C++ API
 
+* Removed Blosc compressors.
 * Removed `Map::set_max_buffered_items`.
 * Modified `Map::Map` and `Map::open` to not take an attribute subselection, but instead take as input the 
 query type (similar to arrays). This makes the key-value store behave similarly to arrays,

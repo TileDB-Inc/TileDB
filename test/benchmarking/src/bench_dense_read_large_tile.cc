@@ -46,8 +46,11 @@ class Benchmark : public BenchmarkBase {
     domain.add_dimension(
         Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}));
     schema.set_domain(domain);
+    FilterList filters(ctx_);
+    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
+        .add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(
-        Attribute::create<int32_t>(ctx_, "a", {TILEDB_BLOSC_LZ4, 5}));
+        Attribute::create<int32_t>(ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
     data_.resize(array_rows * array_cols);

@@ -54,8 +54,11 @@ class Benchmark : public BenchmarkBase {
         tile_cols));
     schema.set_domain(domain);
     schema.set_capacity(capacity);
+    FilterList filters(ctx_);
+    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
+        .add_filter({ctx_, TILEDB_FILTER_LZ4});
     schema.add_attribute(
-        Attribute::create<int32_t>(ctx_, "a", {TILEDB_BLOSC_LZ4, 5}));
+        Attribute::create<int32_t>(ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
     // RNG coords are expensive to generate. Just make the data "sparse"
