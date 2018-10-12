@@ -344,15 +344,16 @@ Let us look at the contents of the array of this example on disk.
    $ ls -l multi_attribute/__3f4622ed4ec1486ea3450f66c905f8cc_1529357638905/
    total 24
    -rwx------  1 stavros  staff  124 Jun 18 17:33 __fragment_metadata.tdb
-   -rwx------  1 stavros  staff   16 Jun 18 17:33 a1.tdb
-   -rwx------  1 stavros  staff  128 Jun 18 17:33 a2.tdb
+   -rwx------  1 stavros  staff   36 Jun 18 17:33 a1.tdb
+   -rwx------  1 stavros  staff  148 Jun 18 17:33 a2.tdb
 
 TileDB created two separate attribute files in fragment subdirectory
 ``__3f4622ed4ec1486ea3450f66c905f8cc_1529357638905``: ``a1.tdb`` that stores the cell values
-on attribute ``a1`` (observe the file size is ``16`` bytes, equal to the size
-required for storing 16 1-byte characters), and ``a2.tdb`` that stores the cell
-values on attribute ``a2`` (observe the file size is ``128`` bytes, equal to the
+on attribute ``a1`` (the file size is ``16`` bytes, equal to the size
+required for storing 16 1-byte characters, plus 20 bytes of metadata overhead),
+and ``a2.tdb`` that stores the cell
+values on attribute ``a2`` (the file size is ``128`` bytes, equal to the
 size required for storing 32 4-byte floats, recalling that each cell stores
-two floats).
+two floats, plus the 20 bytes of metadata).
 
 

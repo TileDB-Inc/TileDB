@@ -20,28 +20,30 @@ parallelization within the query. TileDB uses the
 `Intel Threaded Building Blocks <https://www.threadingbuildingblocks.org/>`__
 library for efficient scheduling and load balancing.
 
-Compression
-~~~~~~~~~~~
+Filtering
+~~~~~~~~~
 
-For compression during read queries, TileDB uses the following nested
-parallelism strategy::
+For filtering (such as compression) during read queries, TileDB uses the
+following nested parallelism strategy::
 
     parallel_for_each attribute being read:
       parallel_for_each tile of the attribute overlapping the subarray:
         parallel_for_each chunk of the tile:
-          decompress chunk
+          filter chunk
 
-The "chunks" of a tile are controlled by an internal TileDB parameter
-set to 64KB that is currently not modifiable by users. The nested parallelism
-in reads allows
-for maximum utilization of the available cores for decompression, in either
-the case where the query intersects few large tiles or many small tiles.
-For writes, TileDB uses the same strategy as reads::
+The "chunks" of a tile are controlled by a TileDB filter list parameter
+that defaults to 64KB. See the :ref:`filters` tutorial to see how.
+
+The nested parallelism in reads allows for maximum utilization of the available
+cores for filtering (e.g. decompression), in either the case where the query
+intersects few large tiles or many small tiles. For writes, TileDB uses the same
+strategy as reads::
+
 
     parallel_for_each attribute being written:
       parallel_for_each tile of the attribute being written:
         parallel_for_each chunk of the tile:
-          compress chunk
+          filter chunk
 
 The configuration parameter ``sm.num_async_threads`` controls the number of
 threads available for use by asynchronous queries. It does not impact the
@@ -52,7 +54,7 @@ not recommended to modify this configuration parameter from its default setting.
 I/O
 ~~~
 
-After the tiles are compressed during a write query (or before decompression
+After the tiles are filtered during a write query (or before filtering
 during read queries), I/O operations are issued
 to the underlying persistent storage via TileDB's virtual filesystem (VFS)
 layer. For write queries, the configuration parameter ``sm.num_writer_threads``

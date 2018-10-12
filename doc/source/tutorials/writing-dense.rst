@@ -390,29 +390,6 @@ in the figure below.
    :scale: 40 %
 
 
-Let us inspect the contents of the array folder, after running the above
-example:
-
-.. code-block:: bash
-
-  $ ls -l writing_dense_padding/
-  total 8
-  drwx------  4 stavros  staff  136 Jun 25 10:28 __76679576e9454d1eb08e8a2f5bf8fd29_1529936885146
-  -rwx------  1 stavros  staff  109 Jun 25 10:28 __array_schema.tdb
-  -rwx------  1 stavros  staff    0 Jun 25 10:28 __lock.tdb
-  $ ls -l writing_dense_padding/__76679576e9454d1eb08e8a2f5bf8fd29_1529936885146/
-  total 16
-  -rwx------  1 stavros  staff  106 Jun 25 10:28 __fragment_metadata.tdb
-  -rwx------  1 stavros  staff   32 Jun 25 10:28 a.tdb
-
-As expected, there is a single fragment subdirectory. Observe the size of
-attribute file ``a.tdb``, which is 32 bytes. Given that the attribute type
-is ``int32`` (and since there is no compression), this implies that 8 cell
-values were written to the file, i.e., *two tiles*. This confirms that
-*padding* applies only to partially written tiles, whereas completely
-empty tiles are not materialized at all.
-
-
 Multiple writes / Updates
 -------------------------
 
@@ -728,6 +705,6 @@ Writing and performance
 -----------------------
 
 The writing performance can be affected by various factors, such as the
-tiling, compression and query layout. See the
+tiling, filters and query layout. See the
 :ref:`performance/introduction` tutorial for
 more information about the TileDB performance.
