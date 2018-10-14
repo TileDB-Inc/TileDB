@@ -268,6 +268,8 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_type
     :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_filter_list
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_cell_val_num
