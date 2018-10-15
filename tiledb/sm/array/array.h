@@ -177,6 +177,17 @@ class Array {
    */
   Status reopen();
 
+  /**
+   * Re-opens the array at a specific timestamp.
+   *
+   * @note Applicable only for reads, it errors if the array was opened
+   *     for writes.
+   */
+  Status reopen_at(uint64_t timestamp);
+
+  /** Returns the timestamp at which the array was opened. */
+  uint64_t timestamp() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

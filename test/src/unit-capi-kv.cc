@@ -1137,6 +1137,9 @@ TEST_CASE_METHOD(
   tiledb_kv_free(&kv);
   tiledb_kv_item_free(&item);
 
+  // Get timestamp after first write
+  uint64_t first_timestamp = TILEDB_TIMESTAMP_NOW_MS;
+
   // --- NORMAL OPEN AND READ ---
   // Open key-value store
   rc = tiledb_kv_alloc(ctx_, kv_name.c_str(), &kv);
@@ -1205,6 +1208,12 @@ TEST_CASE_METHOD(
   }
   REQUIRE(rc == TILEDB_OK);
 
+  // Check timestamp
+  uint64_t timestamp_get;
+  rc = tiledb_kv_get_timestamp(ctx_, kv, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == 0);
+
   // Check if key exists
   rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);
   CHECK(rc == TILEDB_OK);
@@ -1236,6 +1245,39 @@ TEST_CASE_METHOD(
         timestamp);
   }
   REQUIRE(rc == TILEDB_OK);
+
+  // Check timestamp
+  rc = tiledb_kv_get_timestamp(ctx_, kv, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == timestamp);
+
+  // Check if key exists
+  rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(has_key == 1);
+
+  // Get key-value item
+  rc = tiledb_kv_get_item(ctx_, kv, key, key_type, key_size, &read_item);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_kv_item_get_value(
+      ctx_, read_item, "a", &read_v, &read_v_type, &read_v_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(read_v_type == TILEDB_INT32);
+  CHECK(read_v_size == sizeof(int));
+  CHECK(*(const int*)read_v == 10);
+
+  // Clean up but don't close the KV yet.
+  tiledb_kv_item_free(&read_item);
+
+  // --- REOPEN AT FIRST TIMESTAMP ---
+  // Reopen key-value store
+  rc = tiledb_kv_reopen_at(ctx_, kv, first_timestamp);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check timestamp
+  rc = tiledb_kv_get_timestamp(ctx_, kv, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == first_timestamp);
 
   // Check if key exists
   rc = tiledb_kv_has_key(ctx_, kv, key, key_type, key_size, &has_key);

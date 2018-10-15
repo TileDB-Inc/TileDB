@@ -1064,6 +1064,33 @@ class Map {
   }
 
   /**
+   * Reopens the Map at a specific timestamp.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load a map
+   * tiledb::Map map(...);
+   * uint64_t timestamp = tiledb_timestamp_now_ms();
+   * map.reopen_at(timestamp);
+   * @endcode
+   */
+  void reopen_at(uint64_t timestamp) {
+    auto& ctx = context();
+    ctx.handle_error(tiledb_kv_reopen_at(ctx, kv_.get(), timestamp));
+    tiledb_kv_schema_t* kv_schema;
+    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    schema_ = MapSchema(ctx, kv_schema);
+  }
+
+  /** Returns the timestamp at which the Map was opened. */
+  uint64_t timestamp() const {
+    auto& ctx = context();
+    uint64_t timestamp;
+    ctx.handle_error(tiledb_kv_get_timestamp(ctx, kv_.get(), &timestamp));
+    return timestamp;
+  }
+
+  /**
    * Close the map. All buffered written items will be flushed to persistent
    * storage. This is called automatically by the Map destructor.
    */

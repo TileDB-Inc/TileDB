@@ -393,6 +393,27 @@ Status KV::reopen() {
   return array_->reopen();
 }
 
+Status KV::reopen_at(uint64_t timestamp) {
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  QueryType query_type;
+  RETURN_NOT_OK(array_->get_query_type(&query_type));
+  if (query_type != QueryType::READ)
+    return LOG_STATUS(
+        Status::KVError("Cannot reopen key-value store; Key-value store was "
+                        "not opened in read mode"));
+
+  if (!is_open())
+    return LOG_STATUS(Status::KVError(
+        "Cannot reopen key-value store; Key-value store is not open"));
+
+  return array_->reopen_at(timestamp);
+}
+
+uint64_t KV::timestamp() const {
+  return array_->timestamp();
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */

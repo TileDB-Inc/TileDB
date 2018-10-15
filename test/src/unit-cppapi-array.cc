@@ -570,6 +570,9 @@ TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
   query_w.submit();
   array_w.close();
 
+  // Get timestamp after write
+  auto first_timestamp = TILEDB_TIMESTAMP_NOW_MS;
+
   // Normal read
   Array array_r(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray = {1, 4};
@@ -584,6 +587,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
 
   // Read from 0 timestamp
   Array array_r_at_0(ctx, array_name, TILEDB_READ, 0);
+  CHECK(array_r_at_0.timestamp() == 0);
 
   SECTION("Testing Array::Array") {
     // Nothing to do - just for clarity
@@ -624,8 +628,19 @@ TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", a_r_at_0);
   query_r_at.submit();
-  array_r_at.close();
   CHECK(!std::equal(a_r_at.begin(), a_r_at.end(), a_w.begin()));
+
+  // Reopen at first timestamp.
+  array_r_at.reopen_at(first_timestamp);
+  CHECK(array_r_at.timestamp() == first_timestamp);
+  std::vector<int> a_r_reopen_at(4);
+  Query query_r_reopen_at(ctx, array_r_at);
+  query_r_reopen_at.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_r_reopen_at);
+  query_r_reopen_at.submit();
+  CHECK(std::equal(a_r_reopen_at.begin(), a_r_reopen_at.end(), a_w.begin()));
+  array_r_at.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

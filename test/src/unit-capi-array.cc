@@ -898,6 +898,12 @@ TEST_CASE_METHOD(
   }
   CHECK(rc == TILEDB_OK);
 
+  // Check timestamp
+  uint64_t timestamp_get;
+  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == 0);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
@@ -961,6 +967,7 @@ TEST_CASE_METHOD(
   CHECK(buffer_read_size == sizeof(buffer_read_at_c));
 
   // ---- READ AT LATER TIMESTAMP ----
+  uint64_t first_timestamp = timestamp;
   timestamp = TILEDB_TIMESTAMP_NOW_MS;
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -979,6 +986,36 @@ TEST_CASE_METHOD(
   }
   CHECK(rc == TILEDB_OK);
 
+  // Check timestamp
+  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == timestamp);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up but don't close the array yet (we will reopen it).
+  tiledb_query_free(&query);
+
+  // Check correctness
+  CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_c));
+
+  // ---- REOPEN AT FIRST TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Reopen array
+  rc = tiledb_array_reopen_at(ctx_, array, first_timestamp);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
@@ -993,12 +1030,14 @@ TEST_CASE_METHOD(
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_array_free(&array);
 
   // Check correctness
-  CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
-  CHECK(buffer_read_size == sizeof(buffer_read_c));
+  int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(
+      buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
 
   remove_temp_dir(temp_dir);
 }
