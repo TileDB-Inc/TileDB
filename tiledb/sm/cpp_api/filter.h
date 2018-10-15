@@ -188,18 +188,6 @@ class Filter {
         return "BZIP2";
       case TILEDB_FILTER_DOUBLE_DELTA:
         return "DOUBLE_DELTA";
-      case TILEDB_FILTER_BLOSC_LZ:
-        return "BLOSC_LZ";
-      case TILEDB_FILTER_BLOSC_LZ4:
-        return "BLOSC_LZ4";
-      case TILEDB_FILTER_BLOSC_LZ4HC:
-        return "BLOSC_LZ4HC";
-      case TILEDB_FILTER_BLOSC_SNAPPY:
-        return "BLOSC_SNAPPY";
-      case TILEDB_FILTER_BLOSC_ZLIB:
-        return "BLOSC_ZLIB";
-      case TILEDB_FILTER_BLOSC_ZSTD:
-        return "BLOSC_ZSTD";
       case TILEDB_FILTER_BIT_WIDTH_REDUCTION:
         return "BIT_WIDTH_REDUCTION";
       case TILEDB_FILTER_BITSHUFFLE:

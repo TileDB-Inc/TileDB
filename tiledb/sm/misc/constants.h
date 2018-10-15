@@ -266,24 +266,6 @@ extern const std::string zstd_str;
 /** String describing LZ4. */
 extern const std::string lz4_str;
 
-/** String describing BLOSC. */
-extern const std::string blosc_lz_str;
-
-/** String describing BLOSC_LZ4. */
-extern const std::string blosc_lz4_str;
-
-/** String describing BLOSC_LZ4HC. */
-extern const std::string blosc_lz4hc_str;
-
-/** String describing BLOSC_SNAPPY. */
-extern const std::string blosc_snappy_str;
-
-/** String describing BLOSC_ZLIB. */
-extern const std::string blosc_zlib_str;
-
-/** String describing BLOSC_ZSTD. */
-extern const std::string blosc_zstd_str;
-
 /** String describing RLE. */
 extern const std::string rle_str;
 

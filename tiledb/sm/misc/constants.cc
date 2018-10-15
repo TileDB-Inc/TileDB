@@ -284,24 +284,6 @@ const std::string zstd_str = "ZSTD";
 /** String describing LZ4. */
 const std::string lz4_str = "LZ4";
 
-/** String describing BLOSC. */
-const std::string blosc_lz_str = "BLOSC_LZ";
-
-/** String describing BLOSC_LZ4. */
-const std::string blosc_lz4_str = "BLOSC_LZ4";
-
-/** String describing BLOSC_LZ4HC. */
-const std::string blosc_lz4hc_str = "BLOSC_LZ4HC";
-
-/** String describing BLOSC_SNAPPY. */
-const std::string blosc_snappy_str = "BLOSC_SNAPPY";
-
-/** String describing BLOSC_ZLIB. */
-const std::string blosc_zlib_str = "BLOSC_ZLIB";
-
-/** String describing BLOSC_ZSTD. */
-const std::string blosc_zstd_str = "BLOSC_ZSTD";
-
 /** String describing RLE. */
 const std::string rle_str = "RLE";
 

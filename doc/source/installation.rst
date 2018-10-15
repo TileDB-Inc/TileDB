@@ -433,7 +433,6 @@ For compression, TileDB relies on the following libraries:
 * `LZ4 <http://lz4.github.io/lz4/>`_
 * `bzip2 <http://www.bzip.org/>`_
 * `Zstandard <http://facebook.github.io/zstd/>`_
-* `Blosc <http://blosc.org/pages/blosc-in-depth/>`_
 
 When building from source, TileDB will locate these dependencies if already
 installed on your system, and locally install (not system-wide) any of them

@@ -65,7 +65,7 @@ struct CPPArrayFx {
         Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
     auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point))
     FilterList filters(ctx);
-    filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+    filters.add_filter({ctx, TILEDB_FILTER_LZ4});
     a1.set_filter_list(filters);
 
     ArraySchema schema(ctx, TILEDB_DENSE);

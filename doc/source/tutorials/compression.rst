@@ -127,7 +127,6 @@ TileDB offers a variety of compressors to choose from:
 
     -  `GZIP <http://www.zlib.net/>`__
     -  `Zstandard <http://facebook.github.io/zstd/>`__
-    -  `Blosc <http://blosc.org/>`__
     -  `LZ4 <https://github.com/lz4/lz4>`__
     -  `RLE <https://en.wikipedia.org/wiki/Run-length_encoding>`__
     -  `Bzip2 <http://www.bzip.org/>`__
@@ -141,16 +140,12 @@ contrast to Gorilla’s variable bitsize). This makes the implementation a
 bit simpler, but also allows computing directly on the compressed data
 (which we are exploring in the future).
 
-Blosc utilizes a blocking technique that divides the data in blocks that
+TileDB utilizes a blocking technique that divides the data in blocks that
 are small enough to fit in L1 cache of modern processors and perform
 compression/decompression there. This reduces the activity on the
 memory bus and allows leveraging the SIMD capabilities of the processor, thus
-leading to a performance speed up. Moreover, Blosc
-applies a shuffle filter before compression, which results in
-improved compression ratio. Note that Blosc comes with multiple
-compressors; BloscLZ is the default one, but it works also in combination
-with LZ4, LZ4HC, Snappy, Zlib, and Zstandard. TileDB allows the user to
-specify any of these compressors with Blosc.
+leading to a performance speed up. TileDB also allows you to apply a shuffle
+filter before compression, which can result in improved compression ratio.
 
 Choosing the right compressor for your application is quite challenging,
 as the effectiveness of a compressor heavily depends on the data being

@@ -740,7 +740,7 @@ void SparseArrayFx::create_sparse_array(const std::string& array_name) {
   tiledb_attribute_t* a1;
   rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
   CHECK(rc == TILEDB_OK);
-  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_BLOSC_LZ, -1);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_LZ4, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
   CHECK(rc == TILEDB_OK);
@@ -2234,34 +2234,6 @@ TEST_CASE_METHOD(
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
-  }
-
-  SECTION("- blosc compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_BLOSC_LZ,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_BLOSC_LZ,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_BLOSC_LZ,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
     }
   }
 

@@ -32,8 +32,6 @@
 
 #ifdef STATS_DEFINE_FUNC_STAT
 // Compressors
-STATS_DEFINE_FUNC_STAT(compressor_blosc_compress)
-STATS_DEFINE_FUNC_STAT(compressor_blosc_decompress)
 STATS_DEFINE_FUNC_STAT(compressor_bzip_compress)
 STATS_DEFINE_FUNC_STAT(compressor_bzip_decompress)
 STATS_DEFINE_FUNC_STAT(compressor_dd_compress)
@@ -143,8 +141,6 @@ STATS_DEFINE_FUNC_STAT(vfs_s3_write_multipart)
 
 #ifdef STATS_INIT_FUNC_STAT
 // Compressors
-STATS_INIT_FUNC_STAT(compressor_blosc_compress)
-STATS_INIT_FUNC_STAT(compressor_blosc_decompress)
 STATS_INIT_FUNC_STAT(compressor_bzip_compress)
 STATS_INIT_FUNC_STAT(compressor_bzip_decompress)
 STATS_INIT_FUNC_STAT(compressor_dd_compress)
@@ -255,8 +251,6 @@ STATS_INIT_FUNC_STAT(vfs_s3_write_multipart)
 
 #ifdef STATS_REPORT_FUNC_STAT
 // Compressors
-STATS_REPORT_FUNC_STAT(compressor_blosc_compress)
-STATS_REPORT_FUNC_STAT(compressor_blosc_decompress)
 STATS_REPORT_FUNC_STAT(compressor_bzip_compress)
 STATS_REPORT_FUNC_STAT(compressor_bzip_decompress)
 STATS_REPORT_FUNC_STAT(compressor_dd_compress)

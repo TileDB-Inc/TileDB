@@ -62,7 +62,7 @@ struct CPPMapFx {
     auto a2 = Attribute::create<std::string>(ctx, "a2");
     auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
     FilterList filters(ctx);
-    filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+    filters.add_filter({ctx, TILEDB_FILTER_LZ4});
     a1.set_filter_list(filters);
 
     MapSchema schema(ctx);
@@ -209,7 +209,7 @@ struct CPPMapFx1A {
 
     auto a1 = Attribute::create<int>(ctx, "a1");
     FilterList filters(ctx);
-    filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+    filters.add_filter({ctx, TILEDB_FILTER_LZ4});
     a1.set_filter_list(filters);
 
     MapSchema schema(ctx);

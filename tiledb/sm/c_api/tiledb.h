@@ -1210,7 +1210,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
  * **Example:**
  *
  * @code{.c}
- * tiledb_attribute_set_compressor(ctx, attr, TILEDB_BLOSC_ZSTD, -1);
+ * tiledb_attribute_set_compressor(ctx, attr, TILEDB_ZSTD, -1);
  * @endcode
  *
  * @param ctx The TileDB context.

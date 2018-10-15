@@ -77,9 +77,14 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
 if (NOT ZSTD_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Zstd as an external project")
+
     if (WIN32)
       set(ARCH_SPEC -A X64)
+      set(LDFLAGS_DEF "")
+    else()
+      set(LDFLAGS_DEF "-DCMAKE_C_FLAGS=-fPIC")
     endif()
+
     ExternalProject_Add(ep_zstd
       PREFIX "externals"
       URL "https://github.com/facebook/zstd/archive/v1.3.4.zip"
@@ -87,6 +92,7 @@ if (NOT ZSTD_FOUND)
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
         ${ARCH_SPEC}
+        ${LDFLAGS_DEF}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
       UPDATE_COMMAND ""

@@ -63,12 +63,6 @@ Filter* Filter::create(FilterType type) {
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
-    case FilterType::FILTER_BLOSC_LZ:
-    case FilterType::FILTER_BLOSC_LZ4:
-    case FilterType::FILTER_BLOSC_LZ4HC:
-    case FilterType::FILTER_BLOSC_SNAPPY:
-    case FilterType::FILTER_BLOSC_ZLIB:
-    case FilterType::FILTER_BLOSC_ZSTD:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:

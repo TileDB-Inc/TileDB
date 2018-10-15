@@ -52,7 +52,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
   auto a4 = Attribute::create<std::vector<uint32_t>>(ctx, "a4");
   FilterList filters(ctx);
-  filters.add_filter({ctx, TILEDB_FILTER_BLOSC_LZ});
+  filters.add_filter({ctx, TILEDB_FILTER_LZ4});
   a1.set_filter_list(filters);
 
   SECTION("Dense Array Schema") {
@@ -85,7 +85,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(2).name() == "a3");
     CHECK(
         schema.attribute("a1").filter_list().filter(0).filter_type() ==
-        TILEDB_FILTER_BLOSC_LZ);
+        TILEDB_FILTER_LZ4);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
@@ -132,7 +132,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(2).name() == "a3");
     CHECK(
         schema.attribute("a1").filter_list().filter(0).filter_type() ==
-        TILEDB_FILTER_BLOSC_LZ);
+        TILEDB_FILTER_LZ4);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
@@ -168,7 +168,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(schema.attribute(2).name() == "a3");
     CHECK(
         schema.attribute("a1").filter_list().filter(0).filter_type() ==
-        TILEDB_FILTER_BLOSC_LZ);
+        TILEDB_FILTER_LZ4);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);

@@ -659,24 +659,6 @@ class ArraySchema : public Schema {
         case TILEDB_FILTER_DOUBLE_DELTA:
           f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
           return {TILEDB_DOUBLE_DELTA, level};
-        case TILEDB_FILTER_BLOSC_LZ:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_LZ, level};
-        case TILEDB_FILTER_BLOSC_LZ4:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_LZ4, level};
-        case TILEDB_FILTER_BLOSC_LZ4HC:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_LZ4HC, level};
-        case TILEDB_FILTER_BLOSC_SNAPPY:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_SNAPPY, level};
-        case TILEDB_FILTER_BLOSC_ZLIB:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_ZLIB, level};
-        case TILEDB_FILTER_BLOSC_ZSTD:
-          f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
-          return {TILEDB_BLOSC_ZSTD, level};
         default:
           continue;
       }

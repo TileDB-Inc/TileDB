@@ -52,7 +52,7 @@ namespace tiledb {
  *
  * @code{.cpp}
  * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
- * a1.set_compressor({TILEDB_BLOSC_LZ, -1});
+ * a1.set_compressor({TILEDB_BZIP2, -1});
  * @endcode
  *
  * @note This class is deprecated and will be removed in a future version.
@@ -111,18 +111,6 @@ class Compressor {
         return "ZSTD";
       case TILEDB_LZ4:
         return "LZ4";
-      case TILEDB_BLOSC_LZ:
-        return "BLOSC_LZ";
-      case TILEDB_BLOSC_LZ4:
-        return "BLOSC_LZ4";
-      case TILEDB_BLOSC_LZ4HC:
-        return "BLOSC_LZ4HC";
-      case TILEDB_BLOSC_SNAPPY:
-        return "BLOSC_SNAPPY";
-      case TILEDB_BLOSC_ZLIB:
-        return "BLOSC_ZLIB";
-      case TILEDB_BLOSC_ZSTD:
-        return "BLOSC_ZSTD";
       case TILEDB_RLE:
         return "RLE";
       case TILEDB_BZIP2:
@@ -144,18 +132,6 @@ class Compressor {
         return TILEDB_FILTER_ZSTD;
       case TILEDB_LZ4:
         return TILEDB_FILTER_LZ4;
-      case TILEDB_BLOSC_LZ:
-        return TILEDB_FILTER_BLOSC_LZ;
-      case TILEDB_BLOSC_LZ4:
-        return TILEDB_FILTER_BLOSC_LZ4;
-      case TILEDB_BLOSC_LZ4HC:
-        return TILEDB_FILTER_BLOSC_LZ4HC;
-      case TILEDB_BLOSC_SNAPPY:
-        return TILEDB_FILTER_BLOSC_SNAPPY;
-      case TILEDB_BLOSC_ZLIB:
-        return TILEDB_FILTER_BLOSC_ZLIB;
-      case TILEDB_BLOSC_ZSTD:
-        return TILEDB_FILTER_BLOSC_ZSTD;
       case TILEDB_RLE:
         return TILEDB_FILTER_RLE;
       case TILEDB_BZIP2:
