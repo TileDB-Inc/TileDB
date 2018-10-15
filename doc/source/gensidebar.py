@@ -91,6 +91,7 @@ def generate_sidebar(conf, conf_api):
     write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
     write('Variable-length Attributes', 'tutorials/variable-length-attributes')
     write('Compression', 'tutorials/compression')
+    write('Encryption', 'tutorials/encryption')
     write('Catching Errors', 'tutorials/errors')
     write('Working with S3', 'tutorials/working-with-s3')
     write('Working with HDFS', 'tutorials/working-with-hdfs')
