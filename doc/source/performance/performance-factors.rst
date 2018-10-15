@@ -58,12 +58,13 @@ Dimensions vs. attributes
     on dimensions (i.e. a read query can specify only a subset of attributes should
     be read, but it must always specify all dimensions).
 
-Compression
-    Compression of attributes can reduce persistent storage consumption, but
-    at the expense of increased time to read/write tiles from/to the array. However,
-    tiles on disk that are smaller due to compression can be read from disk in
-    less time, which can improve performance. Finally, many compressors offer
-    different levels of compression, which can be used to fine-tune the tradeoff.
+Filtering
+    Filtering (such as compression) of attributes can reduce persistent storage
+    consumption, but at the expense of increased time to read/write tiles
+    from/to the array. However, tiles on disk that are smaller due to
+    compression can be read from disk in less time, which can improve
+    performance. Additionally, many compressors offer different levels of
+    compression, which can be used to fine-tune the tradeoff.
 
 Queries
 -------

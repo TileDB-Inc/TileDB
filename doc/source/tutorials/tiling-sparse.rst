@@ -57,7 +57,7 @@ would produce 4 data tiles with 3 (upper left), 12 (upper right),
    :align: center
    :scale: 30 %
 
-Recall that the data tile in TileDB is the atomic unit of IO and compression.
+Recall that the data tile in TileDB is the atomic unit of IO and filtering.
 The **tile size imbalance** that may result from space tiling can
 lead to ineffective compression (if numerous data tiles contain only a
 handful of values), and inefficient reads (if the subarray you wish

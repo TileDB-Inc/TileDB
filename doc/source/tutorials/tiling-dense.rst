@@ -33,7 +33,7 @@ Basic concepts and definitions
       dense TileDB arrays, for each space tile, there is a corresponding
       data tile **per attribute** that stores the values of the cells on
       this attribute contained in the space tile. A data tile is the
-      **atomic unit of I/O and compression**.
+      **atomic unit of I/O and filtering**.
 
 .. toggle-header::
     :header: **Tile order**

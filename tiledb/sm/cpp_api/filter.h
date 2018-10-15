@@ -49,7 +49,8 @@ namespace tiledb {
  * @code{.cpp}
  * tiledb::Context ctx;
  * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
- * f.set_option(TILEDB_COMPRESSION_LEVEL, 5);
+ * int level = 5;
+ * f.set_option(TILEDB_COMPRESSION_LEVEL, &level);
  * @endcode
  */
 class Filter {
@@ -117,7 +118,8 @@ class Filter {
    *
    * @code{.cpp}
    * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
-   * f.set_option(TILEDB_COMPRESSION_LEVEL, 5);
+   * int level = 5;
+   * f.set_option(TILEDB_COMPRESSION_LEVEL, &level);
    * @endcode
    *
    * @param option Enumerated option to set.
