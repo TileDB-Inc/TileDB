@@ -87,10 +87,10 @@ class VFSFilebuf : public std::streambuf {
    * @param vfs Tiledb VFS
    */
   explicit VFSFilebuf(const VFS& vfs);
-  VFSFilebuf(const VFSFilebuf& buf) = default;
-  VFSFilebuf(VFSFilebuf&& buf) = default;
+  VFSFilebuf(const VFSFilebuf&) = default;
+  VFSFilebuf(VFSFilebuf&&) = default;
   VFSFilebuf& operator=(const VFSFilebuf&) = default;
-  VFSFilebuf& operator=(VFSFilebuf&& o) = default;
+  VFSFilebuf& operator=(VFSFilebuf&&) = default;
   ~VFSFilebuf() override {
     close();
   }

@@ -129,9 +129,9 @@ class MapSchema : public Schema {
   }
 
   MapSchema(const MapSchema&) = default;
-  MapSchema(MapSchema&& o) = default;
+  MapSchema(MapSchema&&) = default;
   MapSchema& operator=(const MapSchema&) = default;
-  MapSchema& operator=(MapSchema&& o) = default;
+  MapSchema& operator=(MapSchema&&) = default;
 
   /* ********************************* */
   /*                API                */

@@ -73,9 +73,9 @@ class Dimension {
   }
 
   Dimension(const Dimension&) = default;
-  Dimension(Dimension&& o) = default;
+  Dimension(Dimension&&) = default;
   Dimension& operator=(const Dimension&) = default;
-  Dimension& operator=(Dimension&& o) = default;
+  Dimension& operator=(Dimension&&) = default;
 
   /* ********************************* */
   /*                API                */

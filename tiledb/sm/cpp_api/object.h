@@ -96,10 +96,10 @@ class Object {
   }
 
   Object();
-  Object(const Object& o) = default;
-  Object(Object&& o) = default;
-  Object& operator=(const Object& o) = default;
-  Object& operator=(Object&& o) = default;
+  Object(const Object&) = default;
+  Object(Object&&) = default;
+  Object& operator=(const Object&) = default;
+  Object& operator=(Object&&) = default;
 
   /* ********************************* */
   /*                API                */

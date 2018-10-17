@@ -92,9 +92,9 @@ class Filter {
 
   Filter() = default;
   Filter(const Filter&) = default;
-  Filter(Filter&& o) = default;
+  Filter(Filter&&) = default;
   Filter& operator=(const Filter&) = default;
-  Filter& operator=(Filter&& o) = default;
+  Filter& operator=(Filter&&) = default;
 
   /* ********************************* */
   /*                 API               */

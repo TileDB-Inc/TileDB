@@ -178,9 +178,9 @@ class ArraySchema : public Schema {
 
   ArraySchema() = default;
   ArraySchema(const ArraySchema&) = default;
-  ArraySchema(ArraySchema&& o) = default;
+  ArraySchema(ArraySchema&&) = default;
   ArraySchema& operator=(const ArraySchema&) = default;
-  ArraySchema& operator=(ArraySchema&& o) = default;
+  ArraySchema& operator=(ArraySchema&&) = default;
 
   /* ********************************* */
   /*                API                */

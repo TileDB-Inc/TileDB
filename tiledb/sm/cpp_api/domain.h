@@ -102,10 +102,10 @@ class Domain {
     domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
   }
 
-  Domain(const Domain& domain) = default;
-  Domain(Domain&& domain) = default;
-  Domain& operator=(const Domain& domain) = default;
-  Domain& operator=(Domain&& domain) = default;
+  Domain(const Domain&) = default;
+  Domain(Domain&&) = default;
+  Domain& operator=(const Domain&) = default;
+  Domain& operator=(Domain&&) = default;
 
   /* ********************************* */
   /*                API                */
