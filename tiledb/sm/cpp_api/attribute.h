@@ -147,10 +147,10 @@ class Attribute {
     set_filter_list(filter_list);
   }
 
-  Attribute(const Attribute& attr) = default;
-  Attribute(Attribute&& o) = default;
+  Attribute(const Attribute&) = default;
+  Attribute(Attribute&&) = default;
   Attribute& operator=(const Attribute&) = default;
-  Attribute& operator=(Attribute&& o) = default;
+  Attribute& operator=(Attribute&&) = default;
 
   /* ********************************* */
   /*                API                */

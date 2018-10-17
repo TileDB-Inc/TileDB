@@ -170,9 +170,9 @@ class Query {
   }
 
   Query(const Query&) = default;
-  Query(Query&& o) = default;
+  Query(Query&&) = default;
   Query& operator=(const Query&) = default;
-  Query& operator=(Query&& o) = default;
+  Query& operator=(Query&&) = default;
 
   /* ********************************* */
   /*                API                */

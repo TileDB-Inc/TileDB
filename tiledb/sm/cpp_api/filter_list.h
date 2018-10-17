@@ -92,9 +92,9 @@ class FilterList {
 
   FilterList() = default;
   FilterList(const FilterList&) = default;
-  FilterList(FilterList&& o) = default;
+  FilterList(FilterList&&) = default;
   FilterList& operator=(const FilterList&) = default;
-  FilterList& operator=(FilterList&& o) = default;
+  FilterList& operator=(FilterList&&) = default;
 
   /* ********************************* */
   /*                 API               */

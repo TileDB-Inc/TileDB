@@ -68,9 +68,9 @@ class MapItem {
   }
 
   MapItem(const MapItem&) = default;
-  MapItem(MapItem&& o) = default;
+  MapItem(MapItem&&) = default;
   MapItem& operator=(const MapItem&) = default;
-  MapItem& operator=(MapItem&& o) = default;
+  MapItem& operator=(MapItem&&) = default;
 
   /* ********************************* */
   /*                API                */
@@ -776,9 +776,9 @@ class Map {
   }
 
   Map(const Map&) = default;
-  Map(Map&& o) = default;
+  Map(Map&&) = default;
   Map& operator=(const Map&) = default;
-  Map& operator=(Map&& o) = default;
+  Map& operator=(Map&&) = default;
 
   /**
    * Destructor. Calls `close()` on this map.

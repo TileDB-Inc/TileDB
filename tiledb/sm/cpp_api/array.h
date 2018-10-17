@@ -236,9 +236,9 @@ class Array {
   }
 
   Array(const Array&) = default;
-  Array(Array&& array) = default;
+  Array(Array&&) = default;
   Array& operator=(const Array&) = default;
-  Array& operator=(Array&& o) = default;
+  Array& operator=(Array&&) = default;
 
   /** Destructor; calls `close()`. */
   ~Array() {

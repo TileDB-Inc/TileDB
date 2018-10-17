@@ -164,7 +164,7 @@ class ObjectIter {
         , objs_(std::move(objs)) {
     }
 
-    iterator(const iterator& o) = default;
+    iterator(const iterator&) = default;
     iterator(iterator&&) = default;
     iterator& operator=(const iterator&) = default;
     iterator& operator=(iterator&&) = default;
