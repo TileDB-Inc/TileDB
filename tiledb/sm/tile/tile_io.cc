@@ -174,9 +174,9 @@ Status TileIO::read_generic_tile_header(
   RETURN_NOT_OK(header_buff->read(&header->version_number, sizeof(uint32_t)));
   RETURN_NOT_OK(header_buff->read(&header->persisted_size, sizeof(uint64_t)));
   RETURN_NOT_OK(header_buff->read(&header->tile_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(char)));
+  RETURN_NOT_OK(header_buff->read(&header->datatype, sizeof(uint8_t)));
   RETURN_NOT_OK(header_buff->read(&header->cell_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(header_buff->read(&header->encryption_type, sizeof(char)));
+  RETURN_NOT_OK(header_buff->read(&header->encryption_type, sizeof(uint8_t)));
   RETURN_NOT_OK(
       header_buff->read(&header->filter_pipeline_size, sizeof(uint32_t)));
 
@@ -229,11 +229,12 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
       buff->write(&header->persisted_size, sizeof(uint64_t)), delete buff);
   RETURN_NOT_OK_ELSE(
       buff->write(&header->tile_size, sizeof(uint64_t)), delete buff);
-  RETURN_NOT_OK_ELSE(buff->write(&header->datatype, sizeof(char)), delete buff);
+  RETURN_NOT_OK_ELSE(
+      buff->write(&header->datatype, sizeof(uint8_t)), delete buff);
   RETURN_NOT_OK_ELSE(
       buff->write(&header->cell_size, sizeof(uint64_t)), delete buff);
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->encryption_type, sizeof(char)), delete buff);
+      buff->write(&header->encryption_type, sizeof(uint8_t)), delete buff);
 
   // Write placeholder value for pipeline size.
   uint64_t pipeline_size_offset = buff->offset();
@@ -289,9 +290,9 @@ Status TileIO::init_generic_tile_header(
     GenericTileHeader* header,
     const EncryptionKey& encryption_key) const {
   header->tile_size = tile->size();
-  header->datatype = (char)tile->type();
+  header->datatype = (uint8_t)tile->type();
   header->cell_size = tile->cell_size();
-  header->encryption_type = (char)encryption_key.encryption_type();
+  header->encryption_type = (uint8_t)encryption_key.encryption_type();
 
   RETURN_NOT_OK(header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,

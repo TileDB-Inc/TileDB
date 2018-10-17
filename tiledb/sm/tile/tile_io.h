@@ -67,11 +67,11 @@ class TileIO {
     /** Uncompressed size of the tile. */
     uint64_t tile_size;
     /** Datatype of the tile. */
-    char datatype;
+    uint8_t datatype;
     /** Cell size of the tile. */
     uint64_t cell_size;
     /** The type of the encryption used in filtering. */
-    char encryption_type;
+    uint8_t encryption_type;
     /** Number of bytes in the serialized filter pipeline instance. */
     uint32_t filter_pipeline_size;
     /** Filter pipeline used to filter the tile. */
@@ -82,9 +82,9 @@ class TileIO {
         : version_number(constants::format_version)
         , persisted_size(0)
         , tile_size(0)
-        , datatype((char)Datatype::ANY)
+        , datatype((uint8_t)Datatype::ANY)
         , cell_size(0)
-        , encryption_type((char)EncryptionType::NO_ENCRYPTION)
+        , encryption_type((uint8_t)EncryptionType::NO_ENCRYPTION)
         , filter_pipeline_size(0) {
     }
   };
