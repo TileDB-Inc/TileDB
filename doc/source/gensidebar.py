@@ -116,6 +116,7 @@ def generate_sidebar(conf, conf_api):
     write('Asynchronous Queries', 'tutorials/async')
     write('Parallelism', 'tutorials/parallelism')
     write('Concurrency and Consistency', 'tutorials/concurrency-consistency')
+    write('Format description', 'tutorials/format-description')
     endl()
 
     toctree('Performance')
