@@ -13,13 +13,18 @@ variable-length attributes.
   ====================================  =============================================================
   **Program**                           **Links**
   ------------------------------------  -------------------------------------------------------------
-  ``filters``                           |filterscpp|
+  ``filters``                           |filterscpp| |filterspy|
   ====================================  =============================================================
 
 .. |filterscpp| image:: ../figures/cpp.png
    :align: middle
    :width: 30
    :target: {tiledb_src_root_url}/examples/cpp_api/filters.cc
+
+.. |filterspy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/filters.py
 
 Basic concepts and definitions
 ------------------------------
@@ -71,7 +76,7 @@ which are then set on attributes in the array schema.
         // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
         Domain domain(ctx);
         domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
-            .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+              .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
 
         // The array will be sparse.
         ArraySchema schema(ctx, TILEDB_SPARSE);
@@ -147,6 +152,67 @@ which are then set on attributes in the array schema.
             .add_filter(compression_zstd);
         schema.set_offsets_filter_list(offsets_filters);
 
+   .. tab-container:: python
+      :title: Python
+
+      To start, create a simple sparse array domain.
+
+      .. code-block:: python
+
+        # Create a TileDB context
+        ctx = tiledb.Ctx()
+
+        # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
+        dom = tiledb.Domain(ctx,
+                            tiledb.Dim(ctx, name="rows", domain=(1, 4), tile=4, dtype=np.int32),
+                            tiledb.Dim(ctx, name="cols", domain=(1, 4), tile=4, dtype=np.int32))
+
+      Attribute ``a1`` will be filtered by bit width reduction followed by Zstd
+      compression. First, create filter objects for the two filtering
+      operations:
+
+      .. code-block:: python
+
+        bit_width_reduction = tiledb.BitWidthReductionFilter(ctx)
+        compression_zstd = tiledb.ZstdFilter(ctx)
+
+      Next, create a ``FilterList`` object with the two filters. Note that
+      the order you specify filter objects to a ``FilterList`` is the order that
+      the filtering will occur.
+
+      .. code-block:: python
+
+        a1_filters = tiledb.FilterList(ctx, [bit_width_reduction, compression_zstd])
+
+      Attribute ``a2`` will be filtered just with a single gzip compression
+      filter:
+
+      .. code-block:: python
+
+        a2_filters = tiledb.FilterList(ctx, [tiledb.GzipFilter(ctx)])
+
+      Add the attributes to the array schema and create the array:
+
+      .. code-block:: python
+
+        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+                                    attrs=[tiledb.Attr(ctx, name="a1", dtype=np.uint32, filters=a1_filters),
+                                           tiledb.Attr(ctx, name="a2", dtype=np.int32, filters=a2_filters)])
+        tiledb.SparseArray.create(array_name, schema)
+
+      TileDB also allows you to set filter lists to be used on the offsets data
+      for variable-length attributes as well as the coordinates for sparse
+      fragments. For example, to set a filter list for the offsets you could do
+      the following:
+
+      .. code-block:: python
+
+        offsets_filters = [tiledb.PositiveDeltaFilter(ctx), tiledb.BitWidthReductionFilter(ctx), tiledb.ZstdFilter(ctx)]
+        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+                                    offsets_filters=offsets_filters,
+                                    attrs=[...]])
+
+
 Now when data for attributes ``a1`` and ``a2`` is written to the array, the data
 will first be transformed by the filter lists you specified in the array schema.
 
@@ -187,6 +253,23 @@ compression.
         int level_get;
         compression_bzip2.get_option(TILEDB_COMPRESSION_LEVEL, &level_get);
         // Now level_get == 5
+
+
+   .. tab-container:: python
+      :title: Python
+
+      To set the compression level to level 5 on a bzip2 compression filter:
+
+      .. code-block:: python
+
+        compression_bzip2 = tiledb.Bzip2Filter(ctx, level=5)
+
+      You can also retrieve option values from filters:
+
+      .. code-block:: python
+
+        level_get = compression_bzip2.level
+        # Now level_get == 5
 
 The options supported by each filter are documented below.
 
@@ -371,3 +454,12 @@ a filter list:
         FilterList filter_list(ctx);
         // Use a max chunk size of 10,000 bytes for this filter list:
         filter_list.set_max_chunk_size(10000);
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        ctx = tiledb.Ctx()
+        # Use a max chunk size of 10,000 bytes for this filter list:
+        filter_list = tiledb.FilterList(ctx, [tiledb.GzipFilter(ctx)], chunksize=10000)
