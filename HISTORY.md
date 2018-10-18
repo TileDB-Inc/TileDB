@@ -1,6 +1,8 @@
-# In progress
+# TileDB v1.4.0 Release Notes
 
-**Note:** TileDB v1.4.0 changes the on-disk array format. Existing arrays should be re-written using TileDB v1.4.0 before use.
+The 1.4.0 release brings two new major features, attribute filter lists and at-rest array encryption, along with bugfixes and performance improvements.
+
+**Note:** TileDB v1.4.0 changes the on-disk array format. Existing arrays should be re-written using TileDB v1.4.0 before use. Starting from v1.4.0 and on, backwards compatibility for reading old-versioned arrays will be fully supported.
 
 ## New features
 
@@ -10,10 +12,12 @@
 * Current filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.
     * The bitshuffle filter uses an implementation by [Kiyoshi Masui](https://github.com/kiyo-masui/bitshuffle).
     * The byteshuffle filter uses an implementation by [Francesc Alted](https://github.com/Blosc/c-blosc) (from the Blosc project).
+* Arrays can now be opened at specific timestamps. #984
 
 ## Deprecations
 
-* The C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version.
+* The C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version. #1008
+* Removed Blosc compressors (obviated by byteshuffle -> compressor filter list).
 
 ## Bug fixes
 
@@ -24,12 +28,12 @@
 
 ## Improvements
 
-* Added check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param `sm.check_coord_oob` to enable/disable the check (enabled by default).
+* Added check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param `sm.check_coord_oob` to enable/disable the check (enabled by default). #996
 * Add config params `sm.num_reader_threads` and `sm.num_writer_threads` for separately controlling I/O parallelism from compression parallelism.
 * Added contribution guidelines #899
 * Enable building TileDB in Cygwin environment on Windows #890
 * Added a simple benchmarking script and several benchmark programs #889
-* Changed C API and disk format integer types to have explicit bit widths.
+* Changed C API and disk format integer types to have explicit bit widths. #981
 
 ## API additions
 
