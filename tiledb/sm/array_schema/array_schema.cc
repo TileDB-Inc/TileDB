@@ -90,6 +90,15 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   is_kv_ = array_schema->is_kv_;
   domain_ = nullptr;
 
+  capacity_ = array_schema->capacity_;
+  cell_order_ = array_schema->cell_order_;
+  cell_sizes_ = array_schema->cell_sizes_;
+  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
+  coords_filters_ = array_schema->coords_filters_;
+  coords_size_ = array_schema->coords_size_;
+  tile_order_ = array_schema->tile_order_;
+  version_ = array_schema->version_;
+
   if (is_kv_) {
     set_kv_attributes();
     set_kv_domain();
@@ -103,15 +112,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
-
-  capacity_ = array_schema->capacity_;
-  cell_order_ = array_schema->cell_order_;
-  cell_sizes_ = array_schema->cell_sizes_;
-  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
-  coords_filters_ = array_schema->coords_filters_;
-  coords_size_ = array_schema->coords_size_;
-  tile_order_ = array_schema->tile_order_;
-  version_ = array_schema->version_;
 }
 
 ArraySchema::~ArraySchema() {
