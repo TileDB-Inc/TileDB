@@ -175,6 +175,12 @@ class KV {
   /** Re-opens the key-value store for reads. */
   Status reopen();
 
+  /** Re-opens the key-value store for reads at a specific timestamp. */
+  Status reopen_at(uint64_t timestamp);
+
+  /** Returns the timestamp at which the KV was opened. */
+  uint64_t timestamp() const;
+
   /** The open array used for dispatching read/write queries. */
   Array* array() const;
 

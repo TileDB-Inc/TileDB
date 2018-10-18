@@ -2487,6 +2487,28 @@ int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_reopen_at(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Reopen array
+  if (SAVE_ERROR_CATCH(ctx, array->array_->reopen_at(timestamp)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_timestamp(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp = array->array_->timestamp();
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3571,6 +3593,28 @@ int32_t tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv) {
   // Re-open kv
   if (SAVE_ERROR_CATCH(ctx, kv->kv_->reopen()))
     return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_kv_reopen_at(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Re-open kv
+  if (SAVE_ERROR_CATCH(ctx, kv->kv_->reopen_at(timestamp)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_kv_get_timestamp(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* timestamp) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, kv) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *timestamp = kv->kv_->timestamp();
 
   return TILEDB_OK;
 }

@@ -2910,6 +2910,58 @@ TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
+ * Reopens a TileDB array (the array must be already open) at a specific
+ * timestamp.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * uint64_t timestamp = tiledb_timestamp_now_ms();
+ * tiledb_array_reopen_at(ctx, array, timestamp);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array object to be re-opened.
+ * @param timestamp Timestamp at which to reopen.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This is applicable only to arrays opened for reads.
+ */
+TILEDB_EXPORT int32_t tiledb_array_reopen_at(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp);
+
+/**
+ * Returns the timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC), at which the array was opened. See also the
+ * documentation of `tiledb_array_open_at`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * // Get the timestamp the array at which the array was opened.
+ * uint64_t timestamp;
+ * tiledb_array_get_timestamp(ctx, array, &timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to retrieve the timestamp for.
+ * @param timestamp Set to the timestamp at which the array was opened.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The array does not need to be opened via `tiledb_array_open_at` to use
+ *      this function.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
+
+/**
  * Closes a TileDB array.
  *
  * **Example:**
@@ -3972,6 +4024,57 @@ tiledb_kv_is_open(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_open);
  * @note This is applicable only to arrays opened for reads.
  */
 TILEDB_EXPORT int32_t tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+
+/**
+ * Reopens a key-value store at a specific timestamp.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "my_kv", &kv);
+ * tiledb_kv_open(ctx, kv, TILEDB_READ);
+ * // Some code here
+ * uint64_t timestamp = tiledb_timestamp_now_ms();
+ * tiledb_kv_reopen_at(ctx, kv, timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv An opened key-value store object.
+ * @param timestamp Timestamp at which to reopen.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This is applicable only to arrays opened for reads.
+ */
+TILEDB_EXPORT int32_t
+tiledb_kv_reopen_at(tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t timestamp);
+
+/**
+ * Returns the timestamp, representing time in milliseconds ellapsed since
+ * 1970-01-01 00:00:00 +0000 (UTC), at which the KV was opened. See also the
+ * documentation of `tiledb_kv_open_at`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_kv_t* kv;
+ * tiledb_kv_alloc(ctx, "s3://tiledb_bucket/my_kv", &kv);
+ * tiledb_kv_open(ctx, kv, TILEDB_READ);
+ * // Get the timestamp at which the kv was opened.
+ * uint64_t timestamp;
+ * tiledb_kv_get_timestamp(ctx, kv, &timestamp);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv The KV to retrieve the timestamp for.
+ * @param timestamp Set to the timestamp at which the KV was opened.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The KV does not need to be opened via `tiledb_kv_open_at` to use
+ *      this function.
+ */
+TILEDB_EXPORT int32_t tiledb_kv_get_timestamp(
+    tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* timestamp);
 
 /**
  * Closes a key-value store and frees all memory. All buffered written items

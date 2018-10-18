@@ -438,6 +438,9 @@ TEST_CASE("C++ API: Open map at", "[cppapi], [cppapi-open-map-at]") {
   map_w.flush();
   map_w.close();
 
+  // Get timestamp after write
+  auto first_timestamp = TILEDB_TIMESTAMP_NOW_MS;
+
   // Normal read
   Map map_r(ctx, map_name, TILEDB_READ);
   CHECK(map_r.has_key("key"));
@@ -446,6 +449,7 @@ TEST_CASE("C++ API: Open map at", "[cppapi], [cppapi-open-map-at]") {
 
   // Read from 0 timestamp
   Map map_r_at_0(ctx, map_name, TILEDB_READ, 0);
+  CHECK(map_r_at_0.timestamp() == 0);
 
   SECTION("Testing Map::Map") {
     // Nothing to do - just for clarity
@@ -472,6 +476,12 @@ TEST_CASE("C++ API: Open map at", "[cppapi], [cppapi-open-map-at]") {
     map_r_at.open(TILEDB_READ, timestamp);
   }
 
+  CHECK(map_r_at.has_key("key"));
+  CHECK((int)map_r_at["key"]["a"] == 10);
+
+  // Reopen at first timestamp.
+  map_r_at.reopen_at(first_timestamp);
+  CHECK(map_r_at.timestamp() == first_timestamp);
   CHECK(map_r_at.has_key("key"));
   CHECK((int)map_r_at["key"]["a"] == 10);
   map_r_at.close();

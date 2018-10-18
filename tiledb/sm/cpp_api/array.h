@@ -464,6 +464,36 @@ class Array {
   }
 
   /**
+   * Reopens the array at a specific timestamp.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Open the array for reading
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * uint64_t timestamp = tiledb_timestamp_now_ms();
+   * array.reopen_at(timestamp);
+   * @endcode
+   *
+   * @throws TileDBError if the array was not already open or other error
+   * occurred.
+   */
+  void reopen_at(uint64_t timestamp) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_reopen_at(ctx, array_.get(), timestamp));
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  /** Returns the timestamp at which the array was opened. */
+  uint64_t timestamp() const {
+    auto& ctx = ctx_.get();
+    uint64_t timestamp;
+    ctx.handle_error(tiledb_array_get_timestamp(ctx, array_.get(), &timestamp));
+    return timestamp;
+  }
+
+  /**
    * Closes the array. The destructor calls this automatically.
    *
    * **Example:**

@@ -282,6 +282,10 @@ const EncryptionKey& Array::get_encryption_key() const {
 }
 
 Status Array::reopen() {
+  return reopen_at(utils::time::timestamp_now_ms());
+}
+
+Status Array::reopen_at(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (!is_open())
@@ -290,15 +294,19 @@ Status Array::reopen() {
 
   if (open_array_->query_type() != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Key-value store was "
+        Status::ArrayError("Cannot reopen array; Array store was "
                            "not opened in read mode"));
 
   clear_last_max_buffer_sizes();
 
-  timestamp_ = utils::time::timestamp_now_ms();
+  timestamp_ = timestamp;
 
   return storage_manager_->array_reopen(
       open_array_, encryption_key_, timestamp_);
+}
+
+uint64_t Array::timestamp() const {
+  return timestamp_;
 }
 
 /* ********************************* */
