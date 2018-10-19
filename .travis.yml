@@ -16,6 +16,9 @@ matrix:
 
     - os: osx
 
+before_install:
+    - git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
+
 install:
     # Install clangformat (v5.0)
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
