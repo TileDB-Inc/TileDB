@@ -199,7 +199,7 @@ text_replacements = {
     "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/1.4.0",
     "{tiledb_py_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Py/blob/0.3.0",
     "{tiledb_R_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-R/blob/master",
-    "{tiledb_go_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Go/blob/master"
+    "{tiledb_go_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Go/blob/v0.2.0"
 }
 
 # -- Custom setup -----------------------------------------------------------
