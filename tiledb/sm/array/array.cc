@@ -515,7 +515,9 @@ Status Array::open(
 
   query_type_ = QueryType::READ;
   if (remote_) {
+    Config config = this->storage_manager_->config();
     RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
+        &config,
         rest_server_,
         array_uri_.to_string(),
         serialization_type_,
@@ -560,7 +562,9 @@ Status Array::open(
 
   query_type_ = query_type;
   if (remote_) {
+    Config config = this->storage_manager_->config();
     RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
+        &config,
         rest_server_,
         array_uri_.to_string(),
         serialization_type_,

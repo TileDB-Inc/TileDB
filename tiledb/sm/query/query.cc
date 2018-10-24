@@ -102,7 +102,9 @@ Status Query::finalize() {
 
   if (array_->is_remote()) {
     array_->array_schema()->set_array_uri(array_->array_uri());
+    Config config = this->storage_manager_->config();
     return tiledb::rest::finalize_query_to_rest(
+        &config,
         array_->get_rest_server(),
         array_->array_uri().to_string(),
         array_->get_serialization_type(),
@@ -1675,7 +1677,9 @@ Status Query::submit() {  // Do nothing if the query is completed or failed
   RETURN_NOT_OK(init());
   if (array_->is_remote()) {
     array_->array_schema()->set_array_uri(array_->array_uri());
+    Config config = this->storage_manager_->config();
     return tiledb::rest::submit_query_to_rest(
+        &config,
         array_->get_rest_server(),
         array_->array_uri().to_string(),
         array_->get_serialization_type(),

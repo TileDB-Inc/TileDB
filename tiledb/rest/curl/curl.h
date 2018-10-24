@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <string>
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/storage_manager/config.h"
 
 // TODO: replace this with config option
 #define CURL_MAX_RETRIES 3
@@ -78,13 +79,15 @@ CURLcode curl_fetch_url(
  * Simple wrapper for posting data to server
  *
  * @param curl instance
+ * @param config tiledb config used to get auth information
  * @param url to post to
  * @param dataString data encoded string for posting
- * @param memoryStruct where response is stored
+ * @param returned_data where response is stored
  * @return
  */
-CURLcode post_data(
+tiledb::sm::Status post_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* data,
@@ -94,27 +97,31 @@ CURLcode post_data(
  * Simple wrapper for getting data from server
  *
  * @param curl instance
+ * @param config tiledb config used to get auth information
  * @param url to get
  * @param serialization_type format data is serialized in, effects headers
- * @param memoryStruct response is stored
+ * @param returned_data response is stored
  * @return
  */
-CURLcode get_data(
+tiledb::sm::Status get_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data);
 
 /**
  * Simple wraper for sending delete requests to server
- * @param curl
- * @param url
- * @param serialization_type
- * @param returned_data
+ * @param curl instance
+ * @param config tiledb config used to get auth information
+ * @param url to get
+ * @param serialization_type format data is serialized in, effects headers
+ * @param returned_data response is stored
  * @return
  */
-CURLcode delete_data(
+tiledb::sm::Status delete_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data);

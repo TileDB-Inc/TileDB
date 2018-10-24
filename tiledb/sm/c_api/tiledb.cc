@@ -197,13 +197,21 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
   return true;
 }
 
+int get_ctx_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
+  *config = nullptr;
+  if (tiledb_ctx_get_config(ctx, config) == TILEDB_ERR) {
+    if (config != nullptr)
+      tiledb_config_free(config);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 const std::string get_rest_server(tiledb_ctx_t* ctx) {
   tiledb_config_t* config = nullptr;
-  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR) {
-    if (config != nullptr)
-      tiledb_config_free(&config);
+  if (get_ctx_config(ctx, &config) != TILEDB_OK)
     return "";
-  }
+
   const char* rest_server = nullptr;
   std::string rest_server_str;
   tiledb_error_t* error = NULL;
@@ -231,11 +239,10 @@ int get_rest_server_serialization_format(
     save_error(ctx, st);
     return TILEDB_ERR;
   }
-  if (tiledb_ctx_get_config(ctx, &config) == TILEDB_ERR) {
-    if (config != nullptr)
-      tiledb_config_free(&config);
+
+  if (get_ctx_config(ctx, &config) != TILEDB_OK)
     return TILEDB_ERR;
-  }
+
   const char* config_serialization_type = nullptr;
   tiledb_error_t* error = NULL;
   if (tiledb_config_get(
@@ -1795,7 +1802,15 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get context config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     auto st = tiledb::rest::get_array_schema_from_rest(
+        config->config_,
         rest_server,
         array_uri,
         static_cast<tiledb::sm::SerializationType>(serialization_type),
@@ -2835,7 +2850,15 @@ int32_t tiledb_array_create_with_key(
       return TILEDB_ERR;
     }
 
+    tiledb_config_t* config;
+    if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+      auto st = tiledb::sm::Status::Error("Failed to get context config");
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     auto st = tiledb::rest::post_array_schema_to_rest(
+        config->config_,
         rest_server,
         array_uri,
         static_cast<tiledb::sm::SerializationType>(serialization_type),
@@ -2908,10 +2931,21 @@ int32_t tiledb_array_get_non_empty_domain(
     // Check for REST server configuration
     std::string rest_server = get_rest_server(ctx);
     if (!rest_server.empty()) {
+      tiledb_config_t* config;
+      if (get_ctx_config(ctx, &config) == TILEDB_ERR) {
+        auto st = tiledb::sm::Status::Error("Failed to get context config");
+        save_error(ctx, st);
+        return TILEDB_ERR;
+      }
+
       if (save_error(
               ctx,
               tiledb::rest::get_array_non_empty_domain(
-                  rest_server, array->array_, domain, &is_empty_b)))
+                  config->config_,
+                  rest_server,
+                  array->array_,
+                  domain,
+                  &is_empty_b)))
         return TILEDB_ERR;
     } else {
       auto st = tiledb::sm::Status::Error(

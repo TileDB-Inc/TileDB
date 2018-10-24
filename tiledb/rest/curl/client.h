@@ -43,6 +43,7 @@ namespace rest {
 /**
  * Get a data encoded array schema from rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being loaded
  * @param serialization_type format to serialize in
@@ -50,6 +51,7 @@ namespace rest {
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status get_array_schema_from_rest(
+    tiledb::sm::Config* config,
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
@@ -58,6 +60,7 @@ tiledb::sm::Status get_array_schema_from_rest(
 /**
  * Post a data array schema to rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being created
  * @param serialization_type format to serialize in
@@ -65,6 +68,7 @@ tiledb::sm::Status get_array_schema_from_rest(
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status post_array_schema_to_rest(
+    tiledb::sm::Config* config,
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
@@ -73,6 +77,7 @@ tiledb::sm::Status post_array_schema_to_rest(
 /**
  * Get a data encoded array schema from rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being loaded
  * @param serialization_type format to serialize in
@@ -80,6 +85,7 @@ tiledb::sm::Status post_array_schema_to_rest(
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status delete_array_schema_from_rest(
+    tiledb::sm::Config* config,
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type);
@@ -87,6 +93,7 @@ tiledb::sm::Status delete_array_schema_from_rest(
 /**
  * Get array's non_empty domain from rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being loaded
  * @param domain The domain to be retrieved.
@@ -95,6 +102,7 @@ tiledb::sm::Status delete_array_schema_from_rest(
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status get_array_non_empty_domain(
+    tiledb::sm::Config* config,
     std::string rest_server,
     tiledb::sm::Array* array,
     void* domain,
@@ -103,6 +111,7 @@ tiledb::sm::Status get_array_non_empty_domain(
 /**
  * Post a data query to rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being queried
  * @param serialization_type format to serialize in
@@ -110,6 +119,7 @@ tiledb::sm::Status get_array_non_empty_domain(
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status submit_query_to_rest(
+    tiledb::sm::Config* config,
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,
@@ -118,6 +128,7 @@ tiledb::sm::Status submit_query_to_rest(
 /**
  * Post a data query to rest server
  *
+ * @param config tiledb config used to get auth information
  * @param rest_server url
  * @param uri of array being queried
  * @param serialization_type format to serialize in
@@ -125,6 +136,7 @@ tiledb::sm::Status submit_query_to_rest(
  * @return Status Ok() on success Error() on failures
  */
 tiledb::sm::Status finalize_query_to_rest(
+    tiledb::sm::Config* config,
     std::string rest_server,
     std::string uri,
     tiledb::sm::SerializationType serialization_type,

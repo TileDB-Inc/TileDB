@@ -123,6 +123,8 @@ CURLcode curl_fetch_url(
     /* If we are here, then curl returned an error */
     /* Free allocated memory for return as we are now going to retry */
     free(fetch->memory);
+    fetch->memory = nullptr;
+    fetch->size = 0;
   }
 
   /* return */
@@ -130,13 +132,36 @@ CURLcode curl_fetch_url(
   STATS_FUNC_OUT(serialization_curl_fetch_url);
 }
 
-CURLcode post_data(
+tiledb::sm::Status set_auth(CURL* curl, tiledb::sm::Config* config) {
+  // Get username
+  const char* username = nullptr;
+  auto st = config->get("rest.username", &username);
+  if (!st.ok())
+    return st;
+  // Get password
+  const char* password = nullptr;
+  st = config->get("rest.password", &password);
+  if (!st.ok())
+    return st;
+  std::string basic_auth = username + std::string(":") + password;
+  curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+  curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+  return tiledb::sm::Status::Ok();
+}
+
+tiledb::sm::Status post_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* data,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_post_data);
+
+  // Set auth for server
+  auto st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
 
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -156,16 +181,34 @@ CURLcode post_data(
 
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
-  return ret;
+
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest post_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_post_data);
 }
 
-CURLcode get_data(
+tiledb::sm::Status get_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_get_data);
+
+  // Set auth for server
+  auto st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
 
   struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
@@ -178,16 +221,33 @@ CURLcode get_data(
 
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
-  return ret;
+
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest get_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_get_data);
 }
 
-CURLcode delete_data(
+tiledb::sm::Status delete_data(
     CURL* curl,
+    tiledb::sm::Config* config,
     std::string url,
     tiledb::sm::SerializationType serialization_type,
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_delete_data);
+
+  // Set auth for server
+  auto st = set_auth(curl, config);
+  if (!st.ok())
+    return st;
 
   /* HTTP DELETE please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -204,6 +264,16 @@ CURLcode delete_data(
   CURLcode ret = curl_fetch_url(curl, url.c_str(), returned_data);
   curl_slist_free_all(headers);
 
-  return ret;
+  // Check for errors
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  if (ret != CURLE_OK || httpCode >= 400) {
+    // TODO: Should see if message has error data object
+    return tiledb::sm::Status::Error(
+        std::string("rest delete_data() failed: ") +
+        ((returned_data->size > 0) ? returned_data->memory :
+                                     " No error message from server"));
+  }
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_delete_data);
 }
