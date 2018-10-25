@@ -49,14 +49,18 @@ tiledb::sm::Status get_array_schema_from_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped;
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped;
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  tiledb::sm::Status res =
-      get_data(curl, config, url, serialization_type, &returned_data);
+  res = get_data(curl, config, url, serialization_type, &returned_data);
   curl_easy_cleanup(curl);
   // Check for errors
   if (!res.ok()) {
@@ -96,15 +100,19 @@ tiledb::sm::Status post_array_schema_to_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped;
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped;
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  tiledb::sm::Status res =
-      post_data(curl, config, url, serialization_type, &data, &returned_data);
+  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
   /* Check for errors */
   curl_easy_cleanup(curl);
   // Cleanup initial data
@@ -130,15 +138,18 @@ tiledb::sm::Status delete_array_schema_from_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/group/group1/project/project1/uri/" +
-                    uri_escaped;
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped;
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  tiledb::sm::Status res =
-      delete_data(curl, config, url, serialization_type, &returned_data);
+  res = delete_data(curl, config, url, serialization_type, &returned_data);
   curl_easy_cleanup(curl);
   // Check for errors
   if (!res.ok()) {
@@ -170,15 +181,19 @@ tiledb::sm::Status get_array_non_empty_domain(
     return tiledb::sm::Status::Error(
         "Error in get array non_empty_domain, array uri is null");
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   std::string uri = array->array_uri().to_string();
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url = std::string(rest_server) +
-                    "/v1/arrays/organization_place_holder/" + uri_escaped +
-                    "/non_empty_domain";
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped + "/non_empty_domain";
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data;
-  tiledb::sm::Status res = get_data(
+  res = get_data(
       curl, config, url, tiledb::sm::SerializationType::JSON, &returned_data);
   curl_easy_cleanup(curl);
   // Check for errors
@@ -346,17 +361,20 @@ tiledb::sm::Status submit_query_to_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url =
-      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
-      uri_escaped +
-      "/query/submit?type=" + tiledb::sm::query_type_str(query->type());
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped + "/query/submit?type=" +
+                    tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  tiledb::sm::Status res =
-      post_data(curl, config, url, serialization_type, &data, &returned_data);
+  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
 
   // Cleanup initial data
   curl_easy_cleanup(curl);
@@ -400,17 +418,20 @@ tiledb::sm::Status finalize_query_to_rest(
   // init the curl session
   CURL* curl = curl_easy_init();
 
+  const char* organization;
+  tiledb::sm::Status res = config->get("rest.organization", &organization);
+  if (!res.ok())
+    return res;
+
   // Build the url
   char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
-  std::string url =
-      std::string(rest_server) + "/v1/arrays/organization_place_holder/" +
-      uri_escaped +
-      "/query/finalize?type=" + tiledb::sm::query_type_str(query->type());
+  std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
+                    "/" + uri_escaped + "/query/finalize?type=" +
+                    tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
   struct MemoryStruct returned_data = {nullptr, 0};
-  tiledb::sm::Status res =
-      post_data(curl, config, url, serialization_type, &data, &returned_data);
+  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
   curl_easy_cleanup(curl);
   // Cleanup initial data
   delete[] data.memory;

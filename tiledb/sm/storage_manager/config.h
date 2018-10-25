@@ -74,12 +74,16 @@ class Config {
     std::string server_serialization_format_;
     std::string username_;
     std::string password_;
+    std::string token_;
+    std::string organization_;
 
     RESTParams() {
       server_address_ = "";
       server_serialization_format_ = constants::serialization_default_format;
       username_ = "";
       password_ = "";
+      token_ = "";
+      organization_ = "";
     }
   };
 
@@ -235,6 +239,19 @@ class Config {
    *
    * **Parameters**
    *
+   * - `rest.server_address` <br>
+   *   url for rest server
+   * - `rest.server_serialization_format` <br>
+   *   serialization format
+   * - `rest.username` <br>
+   *   username for rest server (can use token instead)
+   * - `rest.password` <br>
+   *   password for login to rest server
+   * - `rest.token` <br>
+   *   authentication token (used instead of username/password)
+   * - `rest.organization` <br>
+   *   organization to use for array
+   * <br>
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse array writes. Note that ties during deduplication are
@@ -523,6 +540,12 @@ class Config {
 
   /** Set the rest server password for auth */
   Status set_rest_password(const std::string& value);
+
+  /** Set the rest server token for auth */
+  Status set_rest_token(const std::string& value);
+
+  /** Set the rest server organization */
+  Status set_rest_organization(const std::string& value);
 
   /** Sets the number of VFS threads. */
   Status set_vfs_num_threads(const std::string& value);

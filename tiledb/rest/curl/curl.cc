@@ -50,7 +50,7 @@ size_t WriteMemoryCallback(
   struct MemoryStruct* mem = (struct MemoryStruct*)userp;
 
   mem->memory = (char*)realloc(mem->memory, mem->size + realsize + 1);
-  if (mem->memory == NULL) {
+  if (mem->memory == nullptr) {
     /* out of memory! */
     printf("not enough memory (realloc returned NULL)\n");
     return 0;
@@ -80,7 +80,7 @@ CURLcode curl_fetch_url(
     fetch->memory = (char*)calloc(1, sizeof(fetch->memory));
 
     /* check memory */
-    if (fetch->memory == NULL) {
+    if (fetch->memory == nullptr) {
       /* log error */
       fprintf(stderr, "ERROR: Failed to allocate memory in curl_fetch_url");
       /* return error */
@@ -132,20 +132,27 @@ CURLcode curl_fetch_url(
   STATS_FUNC_OUT(serialization_curl_fetch_url);
 }
 
-tiledb::sm::Status set_auth(CURL* curl, tiledb::sm::Config* config) {
-  // Get username
-  const char* username = nullptr;
-  auto st = config->get("rest.username", &username);
-  if (!st.ok())
-    return st;
-  // Get password
-  const char* password = nullptr;
-  st = config->get("rest.password", &password);
-  if (!st.ok())
-    return st;
-  std::string basic_auth = username + std::string(":") + password;
-  curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-  curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+tiledb::sm::Status set_auth(
+    CURL* curl, tiledb::sm::Config* config, struct curl_slist** headers) {
+  const char* token = nullptr;
+  if (config->get("rest.token", &token).ok()) {
+    *headers = curl_slist_append(
+        *headers, (std::string("X-TILEDB-REST-API-Key: ") + token).c_str());
+  } else {
+    // Get username
+    const char* username = nullptr;
+    auto st = config->get("rest.username", &username);
+    if (!st.ok())
+      return st;
+    // Get password
+    const char* password = nullptr;
+    st = config->get("rest.password", &password);
+    if (!st.ok())
+      return st;
+    std::string basic_auth = username + std::string(":") + password;
+    curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+  }
   return tiledb::sm::Status::Ok();
 }
 
@@ -158,8 +165,9 @@ tiledb::sm::Status post_data(
     MemoryStruct* returned_data) {
   STATS_FUNC_IN(serialization_post_data);
 
+  struct curl_slist* headers = nullptr;
   // Set auth for server
-  auto st = set_auth(curl, config);
+  auto st = set_auth(curl, config, &headers);
   if (!st.ok())
     return st;
 
@@ -170,7 +178,6 @@ tiledb::sm::Status post_data(
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data->memory);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->size);
 
-  struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
   else
@@ -206,11 +213,11 @@ tiledb::sm::Status get_data(
   STATS_FUNC_IN(serialization_get_data);
 
   // Set auth for server
-  auto st = set_auth(curl, config);
+  struct curl_slist* headers = nullptr;
+  auto st = set_auth(curl, config, &headers);
   if (!st.ok())
     return st;
 
-  struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
   else
@@ -245,14 +252,14 @@ tiledb::sm::Status delete_data(
   STATS_FUNC_IN(serialization_delete_data);
 
   // Set auth for server
-  auto st = set_auth(curl, config);
+  struct curl_slist* headers = nullptr;
+  auto st = set_auth(curl, config, &headers);
   if (!st.ok())
     return st;
 
   /* HTTP DELETE please */
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 
-  struct curl_slist* headers = NULL;
   if (serialization_type == tiledb::sm::SerializationType::JSON)
     headers = curl_slist_append(headers, "Content-Type: application/json");
   else
