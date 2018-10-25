@@ -69,6 +69,10 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager, bool remote)
     : array_uri_(array_uri)
     , storage_manager_(storage_manager)
     , remote_(remote) {
+  is_open_ = false;
+  timestamp_ = 0;
+  last_max_buffer_sizes_subarray_ = nullptr;
+
   tiledb::sm::Status st = tiledb::sm::serialization_type_enum(
       tiledb::sm::constants::serialization_default_format,
       &serialization_type_);
@@ -118,6 +122,8 @@ const URI& Array::array_uri() const {
 
 Status Array::capnp(::Array::Builder* arrayBuilder) const {
   STATS_FUNC_IN(serialization_array_to_capnp);
+  // arrayBuilder->setQueryType(query_type_str(this->open_array_->query_type()));
+  arrayBuilder->setUri(this->array_uri_.to_string());
   arrayBuilder->setTimestamp(this->timestamp());
   arrayBuilder->setEncryptionKey(kj::arrayPtr(
       static_cast<const kj::byte*>(this->encryption_key_.key().data()),
@@ -223,6 +229,21 @@ Status Array::capnp(::Array::Builder* arrayBuilder) const {
 tiledb::sm::Status Array::from_capnp(::Array::Reader array) {
   STATS_FUNC_IN(serialization_array_from_capnp);
   this->timestamp_ = array.getTimestamp();
+  this->array_uri_ = tiledb::sm::URI(array.getUri().cStr());
+
+  /*  // set default encryption to avoid uninitialized warnings
+    QueryType queryType = QueryType::READ;
+    auto st = query_type_enum(array.getQueryType(), &queryType);
+    if (!st.ok()) {
+      return st;
+    }*/
+
+  /*  if (this->open_array_ != nullptr) {
+      tiledb::sm::ArraySchema *arraySchema = new
+    tiledb::sm::ArraySchema(this->array_schema()); delete this->open_array_;
+      this->open_array_ = new tiledb::sm::OpenArray(this->array_uri_,
+    queryType); this->open_array_->set_array_schema(arraySchema);
+    }*/
 
   // set default encryption to avoid uninitialized warnings
   EncryptionType encryptionType = EncryptionType::NO_ENCRYPTION;

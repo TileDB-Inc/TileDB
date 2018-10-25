@@ -294,7 +294,8 @@ void Writer::set_array(const Array* array) {
 }
 
 void Writer::reset_global_write_state() {
-  global_write_state_.reset(nullptr);
+  if (global_write_state_ != nullptr)
+    global_write_state_.reset(nullptr);
 }
 
 void Writer::set_array_schema(const ArraySchema* array_schema) {
@@ -1165,8 +1166,12 @@ Status Writer::finalize_global_write_state() {
       global_write_state_.reset(nullptr);
       return LOG_STATUS(Status::WriterError(
           "Failed to finalize global write state; Number "
-          "of cells written is different from the number of "
-          "cells expected for the query subarray"));
+          "of cells written(" +
+          std::to_string(cells_written) +
+          ") is different from the number of "
+          "cells expected(" +
+          std::to_string(array_schema_->domain()->cell_num<T>((T*)subarray_)) +
+          ") for the query subarray"));
     }
   }
 

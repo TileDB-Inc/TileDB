@@ -1674,7 +1674,6 @@ Status Query::set_subarray(const void* subarray) {
 }
 
 Status Query::submit() {  // Do nothing if the query is completed or failed
-  RETURN_NOT_OK(init());
   if (array_->is_remote()) {
     array_->array_schema()->set_array_uri(array_->array_uri());
     Config config = this->storage_manager_->config();
@@ -1685,6 +1684,7 @@ Status Query::submit() {  // Do nothing if the query is completed or failed
         array_->get_serialization_type(),
         this);
   }
+  RETURN_NOT_OK(init());
   return storage_manager_->query_submit(this);
 }
 

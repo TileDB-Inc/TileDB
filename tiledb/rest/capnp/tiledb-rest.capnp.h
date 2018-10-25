@@ -77,7 +77,7 @@ struct Array {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 1, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 1, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -958,6 +958,12 @@ class Array::Reader {
   inline bool hasLastMaxBufferSizesSubarray() const;
   inline ::DomainArray::Reader getLastMaxBufferSizesSubarray() const;
 
+  inline bool hasQueryType() const;
+  inline ::capnp::Text::Reader getQueryType() const;
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1029,6 +1035,20 @@ class Array::Builder {
   inline void adoptLastMaxBufferSizesSubarray(
       ::capnp::Orphan<::DomainArray>&& value);
   inline ::capnp::Orphan<::DomainArray> disownLastMaxBufferSizesSubarray();
+
+  inline bool hasQueryType();
+  inline ::capnp::Text::Builder getQueryType();
+  inline void setQueryType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initQueryType(unsigned int size);
+  inline void adoptQueryType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownQueryType();
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -6229,6 +6249,79 @@ inline ::capnp::Orphan<::DomainArray>
 Array::Builder::disownLastMaxBufferSizesSubarray() {
   return ::capnp::_::PointerHelpers<::DomainArray>::disown(
       _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool Array::Reader::hasQueryType() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Array::Builder::hasQueryType() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Array::Reader::getQueryType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Array::Builder::getQueryType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void Array::Builder::setQueryType(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Array::Builder::initQueryType(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void Array::Builder::adoptQueryType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Array::Builder::disownQueryType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
+inline bool Array::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Array::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Array::Reader::getUri() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Array::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void Array::Builder::setUri(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Array::Builder::initUri(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      size);
+}
+inline void Array::Builder::adoptUri(::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Array::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
 }
 
 inline bool ArraySchema::Reader::hasArrayType() const {

@@ -2868,6 +2868,7 @@ int32_t tiledb_array_create_with_key(
       save_error(ctx, st);
       return TILEDB_ERR;
     }
+    tiledb_config_free(&config);
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;

@@ -285,6 +285,14 @@ RestDenseArrayFx::RestDenseArrayFx() {
               tiledb::sm::SerializationType::CAPNP)
               .c_str(),
           &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "rest.username", "seth", &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "rest.password", "password", &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "rest.organization", "unit_test", &error) ==
+      TILEDB_OK);
   if (supports_s3_) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
     REQUIRE(
@@ -342,13 +350,16 @@ void RestDenseArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  int is_supported = 0;
+  /*int is_supported = 0;
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   supports_s3_ = (bool)is_supported;
   rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   supports_hdfs_ = (bool)is_supported;
+  */
+  supports_s3_ = false;
+  supports_hdfs_ = false;
 
   tiledb_ctx_free(&ctx);
 }
