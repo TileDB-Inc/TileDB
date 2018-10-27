@@ -175,6 +175,16 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
+  // Check that aws access key id is not serialized.
+  rc = tiledb_config_set(config, "vfs.s3.aws_access_key_id", "keyid", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  // Check that aws secret access key is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.s3.aws_secret_access_key", "secret", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
 
@@ -368,6 +378,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
+  all_param_values["vfs.s3.aws_access_key_id"] = "";
+  all_param_values["vfs.s3.aws_secret_access_key"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
   all_param_values["vfs.s3.max_parallel_ops"] =
@@ -394,6 +406,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
+  vfs_param_values["s3.aws_access_key_id"] = "";
+  vfs_param_values["s3.aws_secret_access_key"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
   vfs_param_values["s3.max_parallel_ops"] =
@@ -415,6 +429,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
   s3_param_values["region"] = "us-east-1";
+  s3_param_values["aws_access_key_id"] = "";
+  s3_param_values["aws_secret_access_key"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
   s3_param_values["max_parallel_ops"] =
