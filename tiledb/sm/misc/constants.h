@@ -427,6 +427,12 @@ extern const uint64_t s3_multipart_part_size;
 /** S3 region. */
 extern const std::string s3_region;
 
+/** S3 aws access key id. */
+extern const std::string aws_access_key_id;
+
+/** S3 aws secret access key. */
+extern const std::string aws_secret_access_key;
+
 /** S3 endpoint override. */
 extern const std::string s3_endpoint_override;
 

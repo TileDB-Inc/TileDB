@@ -49,7 +49,10 @@ namespace sm {
 const char Config::COMMENT_START = '#';
 
 const std::set<std::string> Config::unserialized_params_ = {
-    "vfs.s3.proxy_username", "vfs.s3.proxy_password"};
+    "vfs.s3.proxy_username",
+    "vfs.s3.proxy_password",
+    "vfs.s3.aws_access_key_id",
+    "vfs.s3.aws_secret_access_key"};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -183,6 +186,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_file_max_parallel_ops(value));
   } else if (param == "vfs.s3.region") {
     RETURN_NOT_OK(set_vfs_s3_region(value));
+  } else if (param == "vfs.s3.aws_access_key_id") {
+    RETURN_NOT_OK(set_vfs_s3_aws_access_key_id(value));
+  } else if (param == "vfs.s3.aws_secret_access_key") {
+    RETURN_NOT_OK(set_vfs_s3_aws_secret_access_key(value));
   } else if (param == "vfs.s3.scheme") {
     RETURN_NOT_OK(set_vfs_s3_scheme(value));
   } else if (param == "vfs.s3.endpoint_override") {
@@ -324,6 +331,16 @@ Status Config::unset(const std::string& param) {
     vfs_params_.s3_params_.region_ = constants::s3_region;
     value << vfs_params_.s3_params_.region_;
     param_values_["vfs.s3.region"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.aws_access_key_id") {
+    vfs_params_.s3_params_.aws_access_key_id = "";
+    value << vfs_params_.s3_params_.aws_access_key_id;
+    param_values_["vfs.s3.aws_access_key_id"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.aws_secret_access_key") {
+    vfs_params_.s3_params_.aws_secret_access_key = "";
+    value << vfs_params_.s3_params_.aws_secret_access_key;
+    param_values_["vfs.s3.aws_secret_access_key"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.scheme") {
     vfs_params_.s3_params_.scheme_ = constants::s3_scheme;
@@ -488,6 +505,14 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.region_;
   param_values_["vfs.s3.region"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.aws_access_key_id;
+  param_values_["vfs.s3.aws_access_key_id"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.aws_secret_access_key;
+  param_values_["vfs.s3.aws_secret_access_key"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.s3_params_.scheme_;
@@ -693,6 +718,16 @@ Status Config::set_vfs_file_max_parallel_ops(const std::string& value) {
 
 Status Config::set_vfs_s3_region(const std::string& value) {
   vfs_params_.s3_params_.region_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_aws_access_key_id(const std::string& value) {
+  vfs_params_.s3_params_.aws_access_key_id = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_aws_secret_access_key(const std::string& value) {
+  vfs_params_.s3_params_.aws_secret_access_key = value;
   return Status::Ok();
 }
 

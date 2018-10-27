@@ -446,6 +446,12 @@ const uint64_t s3_multipart_part_size = 5 * 1024 * 1024;
 /** S3 region. */
 const std::string s3_region = "us-east-1";
 
+/** S3 aws access key id. */
+const std::string aws_access_key_id = "";
+
+/** S3 aws secret access key. */
+const std::string aws_secret_access_key = "";
+
 /** S3 endpoint override. */
 const std::string s3_endpoint_override = "";
 
