@@ -37,8 +37,8 @@
 #include <signal.h>
 
 #ifdef _WIN32
-#include <Windows.h>
 #include <io.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
@@ -101,7 +101,7 @@ extern "C" void tiledb_signal_handler(int signum) {
 /*       Win32 implementations       */
 /* ********************************* */
 
-static BOOL win_ctrl_handler(DWORD dwCtrlType) {
+static BOOL WINAPI win_ctrl_handler(DWORD dwCtrlType) {
   switch (dwCtrlType) {
     case CTRL_BREAK_EVENT:
       tiledb_signal_handler(SIGINT);
@@ -118,7 +118,7 @@ Status SignalHandlers::initialize() {
   }
 
   // Win32 applications should also handle Ctrl-Break.
-  if (SetConsoleCtrlHandler(win_ctrl_handler, true) == 0) {
+  if (SetConsoleCtrlHandler(win_ctrl_handler, TRUE) == 0) {
     return Status::Error(std::string("Failed to install Win32 ctrl handler"));
   }
   return Status::Ok();
