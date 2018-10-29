@@ -69,7 +69,7 @@ class Array {
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
-   * query, for the input attributes.
+   * query, for a given subarray and set of attributes.
    *
    * @param subarray The subarray to focus on. Note that it must have the same
    *     underlying type as the array domain.
@@ -88,7 +88,7 @@ class Array {
           max_buffer_sizes) const;
 
   /**
-   * Opens the array for reading/writing at the current timestamp.
+   * Opens the array for reading/writing.
    *
    * @param query_type The mode in which the array is opened.
    * @param encryption_type The encryption type of the array
@@ -104,22 +104,48 @@ class Array {
       uint32_t key_length);
 
   /**
-   * Opens the array for reading/writing at a given timestamp.
+   * Opens the array for reading, loading only the input fragments.
+   * Note that the order of the input fragments matters; later
+   * fragments in the list may overwrite earlier ones.
    *
-   * @param query_type The mode in which the array is opened.
+   * @param query_type The query type. This should always be READ. It
+   *    is here only for sanity check.
+   * @param fragments The fragments to open the array with.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
-   * @param timestamp The timestamp at which to open the array.
    * @return Status
+   *
+   * @note Applicable only to reads.
    */
-  Status open_at(
+  Status open(
       QueryType query_type,
+      const std::vector<FragmentInfo>& fragments,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length,
-      uint64_t timestamp);
+      uint32_t key_length);
+
+  /**
+   * Opens the array for reading at a given timestamp.
+   *
+   * @param query_type The query type. This should always be READ. It
+   *    is here only for sanity check.
+   * @param timestamp The timestamp at which to open the array.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @return Status
+   *
+   * @note Applicable only to reads.
+   */
+  Status open(
+      QueryType query_type,
+      uint64_t timestamp,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
 
   /** Closes the array and frees all memory. */
   Status close();
@@ -183,7 +209,7 @@ class Array {
    * @note Applicable only for reads, it errors if the array was opened
    *     for writes.
    */
-  Status reopen_at(uint64_t timestamp);
+  Status reopen(uint64_t timestamp);
 
   /** Returns the timestamp at which the array was opened. */
   uint64_t timestamp() const;
@@ -192,6 +218,9 @@ class Array {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The array schema. */
+  ArraySchema* array_schema_;
 
   /** The array URI. */
   URI array_uri_;
@@ -205,11 +234,14 @@ class Array {
    */
   EncryptionKey encryption_key_;
 
+  /** The metadata of the fragments the array was opened with. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
+
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
 
-  /** The open array that will receive the read or write queries. */
-  OpenArray* open_array_;
+  /** The query type the array was opened for. */
+  QueryType query_type_;
 
   /**
    * The timestamp at which the `open_array_` got opened. In TileDB,
@@ -231,7 +263,7 @@ class Array {
   void* last_max_buffer_sizes_subarray_;
 
   /** Mutex for thread-safety. */
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -245,6 +277,45 @@ class Array {
    * which are cached locally in the instance.
    */
   Status compute_max_buffer_sizes(const void* subarray);
+
+  /**
+   * Computes an upper bound on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes. Note that
+   * the attributes are already set in `max_buffer_sizes`
+   *
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param max_buffer_sizes The buffer sizes to be retrieved. This is a map
+   * from the attribute (or coordinates) name to a pair of sizes (in bytes). For
+   * fixed-sized attributes, the second size is ignored. For var-sized
+   *     attributes, the first is the offsets size and the second is the
+   *     values size.
+   * @return Status
+   */
+  Status compute_max_buffer_sizes(
+      const void* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          max_buffer_sizes_) const;
+
+  /**
+   * Computes an upper bound on the buffer sizes required for a read
+   * query, for a given subarray and set of attributes. Note that
+   * the attributes are already set in `max_buffer_sizes`
+   *
+   * @tparam T The domain type
+   * @param subarray The subarray to focus on. Note that it must have the same
+   *     underlying type as the array domain.
+   * @param max_buffer_sizes The buffer sizes to be retrieved. This is a map
+   *     from an attribute to a size pair. For fixed-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first size
+   *     is the offsets size, and the second size is the values size.
+   * @return Status
+   */
+  template <class T>
+  Status compute_max_buffer_sizes(
+      const T* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          max_buffer_sizes) const;
 };
 
 }  // namespace sm

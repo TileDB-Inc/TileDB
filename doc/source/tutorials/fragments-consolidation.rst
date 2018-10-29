@@ -2,7 +2,7 @@ Fragments and Consolidation
 ===========================
 
 In this tutorial we will explain in more detail the concept of array
-fragments and introduce the feature of consolidation. It is strongly
+fragments and introduce the basics of consolidation. It is strongly
 recommended that you read the tutorials on writing dense and sparse
 arrays first.
 
@@ -42,7 +42,7 @@ Basic concepts and definitions
 .. toggle-header::
     :header: **Consolidation**
 
-      To mitigate the potential performance degradation resutling from
+      To mitigate the potential performance degradation resulting from
       the existence of numerous fragments, TileDB enables you to
       consolidate the fragments, i.e., merge all fragments into a single
       one.
@@ -91,11 +91,11 @@ contains three subdirectories with weird names:
         Cell (4, 4) has data -2147483648
         $ ls -l fragments_consolidation/
         total 8
-        drwx------  5 stavros  staff  170 Jun 27 13:56 __31372fdd407f448fb341dc81cfc37a2b_1530122217138
-        drwx------  4 stavros  staff  136 Jun 27 13:56 __967e8bc52f194928b8fb08ead588a1c9_1530122217123
-        -rwx------  1 stavros  staff  109 Jun 27 13:56 __array_schema.tdb
-        drwx------  4 stavros  staff  136 Jun 27 13:56 __ba566f83462e497fb9ad1af592dce1ba_1530122217131
-        -rwx------  1 stavros  staff    0 Jun 27 13:56 __lock.tdb
+        drwx------  5 stavros  staff  170 Dec 24 12:38 __13f149611c6541ad807d285dec1b1257_1545673114154
+        drwx------  4 stavros  staff  136 Dec 24 12:38 __374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
+        -rwx------  1 stavros  staff  149 Dec 24 12:38 __array_schema.tdb
+        drwx------  4 stavros  staff  136 Dec 24 12:38 __f42df6e8846543af8d43415ab3ef2f7d_1545673114147
+        -rwx------  1 stavros  staff    0 Dec 24 12:38 __lock.tdb
 
    .. tab-container:: python
       :title: Python
@@ -121,11 +121,11 @@ contains three subdirectories with weird names:
          Cell (4, 4) has data -2147483648
          $ ls -l fragments_consolidation/
          total 8
-         drwx------  5 stavros  staff  170 Jun 27 13:56 __31372fdd407f448fb341dc81cfc37a2b_1530122217138
-         drwx------  4 stavros  staff  136 Jun 27 13:56 __967e8bc52f194928b8fb08ead588a1c9_1530122217123
-         -rwx------  1 stavros  staff  109 Jun 27 13:56 __array_schema.tdb
-         drwx------  4 stavros  staff  136 Jun 27 13:56 __ba566f83462e497fb9ad1af592dce1ba_1530122217131
-         -rwx------  1 stavros  staff    0 Jun 27 13:56 __lock.tdb
+         drwx------  5 stavros  staff  170 Dec 24 12:38 __13f149611c6541ad807d285dec1b1257_1545673114154
+         drwx------  4 stavros  staff  136 Dec 24 12:38 __374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
+         -rwx------  1 stavros  staff  149 Dec 24 12:38 __array_schema.tdb
+         drwx------  4 stavros  staff  136 Dec 24 12:38 __f42df6e8846543af8d43415ab3ef2f7d_1545673114147
+         -rwx------  1 stavros  staff    0 Dec 24 12:38 __lock.tdb
 
 Each subdirectory corresponds to a **fragment**, i.e., to an array snapshot
 containing the cells written in a write operation. *How can we tell which
@@ -139,9 +139,9 @@ a *unique identifier*, specific to a process-thread pair. In a later tutorial
 we will explain that this enables concurrent threads/processes writing
 to the same array. The timestamp records the time
 when the fragment got created. Inspecting the fragment names, we derive that
-``__967e8bc52f194928b8fb08ead588a1c9_1530122217123`` corresponds to the
-first write, ``__ba566f83462e497fb9ad1af592dce1ba_1530122217131`` to the
-second, and ``__31372fdd407f448fb341dc81cfc37a2b_1530122217138`` to the
+``__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138`` corresponds to the
+first write, ``__f42df6e8846543af8d43415ab3ef2f7d_1545673114147`` to the
+second, and ``__13f149611c6541ad807d285dec1b1257_1545673114154`` to the
 third, reading the fragment timestamps in ascending order.
 
 There are two takeaways so far: (i) *every fragment is immutable*, i.e.,
@@ -165,7 +165,7 @@ what happens each time a different fragment is deleted:
       .. code-block:: bash
 
         $ cp -R fragments_consolidation/ temp
-        $ rm -rf fragments_consolidation/__967e8bc52f194928b8fb08ead588a1c9_1530122217123
+        $ rm -rf fragments_consolidation/__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 201
         Cell (1, 2) has data -2147483648
@@ -185,7 +185,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+        $ rm -rf fragments_consolidation/__f42df6e8846543af8d43415ab3ef2f7d_1545673114147
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 201
         Cell (1, 2) has data 2
@@ -205,7 +205,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+        $ rm -rf fragments_consolidation/__13f149611c6541ad807d285dec1b1257_1545673114154
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 1
         Cell (1, 2) has data 2
@@ -231,7 +231,7 @@ what happens each time a different fragment is deleted:
       .. code-block:: bash
 
         $ cp -R fragments_consolidation/ temp
-        $ rm -rf fragments_consolidation/__967e8bc52f194928b8fb08ead588a1c9_1530122217123
+        $ rm -rf fragments_consolidation/__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
         $ python fragments_consolidation.py
         Cell (1, 1) has data 201
         Cell (1, 2) has data -2147483648
@@ -251,7 +251,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf __ba566f83462e497fb9ad1af592dce1ba_1530122217131
+        $ rm -rf fragments_consolidation/__f42df6e8846543af8d43415ab3ef2f7d_1545673114147
         $ python fragments_consolidation.py
         Cell (1, 1) has data 201
         Cell (1, 2) has data 2
@@ -271,7 +271,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf __31372fdd407f448fb341dc81cfc37a2b_1530122217138
+        $ rm -rf fragments_consolidation/__13f149611c6541ad807d285dec1b1257_1545673114154
         $ python fragments_consolidation.py
         Cell (1, 1) has data 1
         Cell (1, 2) has data 2
@@ -379,13 +379,13 @@ to the program) consolidates the three fragments into one before reading.
         Cell (4, 4) has data -2147483648
         $ ls -l fragments_consolidation
         total 8
-        drwx------  4 stavros  staff  136 Jun 27 15:21 __d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383
-        -rwx------  1 stavros  staff  109 Jun 27 15:21 __array_schema.tdb
-        -rwx------  1 stavros  staff    0 Jun 27 15:21 __lock.tdb
-        $ ls -l fragments_consolidation/__d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383/
+        drwx------  4 stavros  staff  136 Dec 24 12:44 __9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
+        -rwx------  1 stavros  staff  149 Dec 24 12:44 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Dec 24 12:44 __lock.tdb
+        $ ls -l fragments_consolidation_array/__9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
         total 16
-        -rwx------  1 stavros  staff  108 Jun 27 15:21 __fragment_metadata.tdb
-        -rwx------  1 stavros  staff   64 Jun 27 15:21 a.tdb
+        -rwx------  1 stavros  staff  137 Dec 24 12:44 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff  144 Dec 24 12:44 a.tdb
 
 
    .. tab-container:: python
@@ -412,13 +412,13 @@ to the program) consolidates the three fragments into one before reading.
         Cell (4, 4) has data -2147483648
         $ ls -l fragments_consolidation
         total 8
-        drwx------  4 stavros  staff  136 Jun 27 15:21 __d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383
-        -rwx------  1 stavros  staff  109 Jun 27 15:21 __array_schema.tdb
-        -rwx------  1 stavros  staff    0 Jun 27 15:21 __lock.tdb
-        $ ls -l fragments_consolidation/__d9d15b3f27c8459ca9cbb9c9f27638a3_1530141040402_1530141040383/
+        drwx------  4 stavros  staff  136 Dec 24 12:44 __9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
+        -rwx------  1 stavros  staff  149 Dec 24 12:44 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Dec 24 12:44 __lock.tdb
+        $ ls -l fragments_consolidation_array/__9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
         total 16
-        -rwx------  1 stavros  staff  108 Jun 27 15:21 __fragment_metadata.tdb
-        -rwx------  1 stavros  staff   64 Jun 27 15:21 a.tdb
+        -rwx------  1 stavros  staff  137 Dec 24 12:44 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff  144 Dec 24 12:44 a.tdb
 
 As expected, the result is the same as before.
 However, listing the contents of the array we now see a single fragment.
@@ -437,9 +437,8 @@ are being created during the reads.
 
 The second observation is that the merged fragment is *dense* (notice that
 ``__coords.tdb`` is missing). Upon consolidation, TileDB calculates the
-subdomain that stores only non-empty cells (expanding it to a hyper-rectangle
-that contains integral tiles). In this example, this subdomain happens
-to be ``[1,4], [1,4]`` (in the general case, the subdomain may be much
+subdomain that stores only non-empty cells. In this example, this subdomain
+happens to be ``[1,3], [1,4]`` (in the general case, the subdomain may be much
 smaller than the entire domain). Then it materializes this subdomain
 in a dense fragment, i.e., it stores the special fill value for every
 empty cell. This is shown in the figure below, and is also evident by
@@ -454,6 +453,17 @@ difference is that, since a sparse array can have only sparse fragments,
 the resulting merged fragment will also be *sparse* (without extra
 empty cell materialization required).
 
+.. warning::
+
+    Currently, consolidation process-safety is not guaranteed on S3. This
+    is due to S3's eventual consistency model, which does not allow us
+    to exclusively "lock" an array when consolidation takes place
+    (TileDB is using filelocking that works well on strongly consistent
+    filesystems). We are working on a solution that will appear in a
+    future release. Until then, make sure to avoid reading the
+    array when it is being consolidated.
+
+
 Fragments and performance
 -------------------------
 
@@ -464,8 +474,10 @@ of fragments may affect the overall *read performance*. In cases
 where there are numerous fragments produced, you should use the
 consolidation feature that enables you to merge multiple fragments
 in a single one. The *consolidation performance* naturally depends on
-the number and size of fragments being consolidated. We provide a more detailed
-discussion on fragments and performance in a later tutorial.
+the number and size of fragments being consolidated. There are
+many ways to improve consolidation (and overall ingestion/update)
+performance. See :ref:`advanced-consolidation` for
+more details on tuning the consolidation process.
 
 
 

@@ -80,7 +80,7 @@ Number of array fragments
     read queries, as TileDB must internally sort and determine potential overlap
     of cell data across all fragments. It therefore improves performance to
     consolidate arrays with a large number of fragments; consolidation collapses
-    all fragments into a single one.
+    a set of fragments into a single one.
 
 Attribute subsetting
     A benefit of the column-oriented nature of attribute storage in TileDB is
@@ -155,6 +155,9 @@ Coordinate global order check -- ``sm.check_global_order``
     coordinates obey the global order. If you are certain that this is not possible
     in your application, you can set this param to ``false``, avoiding the check and
     thus boosting performance.
+
+Consolidation parameters -- ``sm.consolidation.*``
+    The effect of all these parameters is explained in :ref:`advanced-consolidation`.
 
 Async query concurrency -- ``sm.num_async_threads``
     By default only one thread is allocated to handle async queries. Increasing

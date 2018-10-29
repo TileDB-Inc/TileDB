@@ -91,6 +91,7 @@ Reader::Reader() {
   read_state_.subarray_ = nullptr;
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
+  sparse_mode_ = false;
 }
 
 Reader::~Reader() {
@@ -245,6 +246,7 @@ Status Reader::next_subarray_partition() {
   void* next_partition = nullptr;
   do {
     // Pop next partition
+    std::free(next_partition);
     next_partition = read_state_.subarray_partitions_.front();
     read_state_.subarray_partitions_.pop_front();
 
@@ -268,11 +270,8 @@ Status Reader::next_subarray_partition() {
         break;
       }
     }
-    if (no_results) {
-      std::free(next_partition);
-      next_partition = nullptr;
+    if (no_results)
       continue;
-    }
 
     // Handle case of split
     auto must_split = false;
@@ -351,7 +350,7 @@ Status Reader::read() {
     reset_buffer_sizes();
 
     // Perform dense or sparse read if there are fragments
-    if (array_schema_->dense()) {
+    if (array_schema_->dense() && !sparse_mode_) {
       RETURN_NOT_OK(dense_read());
     } else {
       RETURN_NOT_OK(sparse_read());
@@ -408,7 +407,7 @@ Status Reader::set_buffer(
   if (attribute != constants::coords &&
       array_schema_->attribute(attribute) == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
+        Status::ReaderError("Cannot set buffer; Invalid attribute"));
 
   // Check that attribute is fixed-sized
   bool var_size =
@@ -498,6 +497,28 @@ Status Reader::set_layout(Layout layout) {
 
   layout_ = layout;
 
+  return Status::Ok();
+}
+
+Status Reader::set_sparse_mode(bool sparse_mode) {
+  if (!array_schema_->dense())
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set sparse mode; Only applicable to dense arrays"));
+
+  bool all_sparse = true;
+  for (const auto& f : fragment_metadata_) {
+    if (f->dense()) {
+      all_sparse = false;
+      break;
+    }
+  }
+
+  if (!all_sparse)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set sparse mode; Only applicable to opened "
+                            "dense arrays having only sparse fragments"));
+
+  sparse_mode_ = sparse_mode;
   return Status::Ok();
 }
 
@@ -1476,7 +1497,7 @@ Status Reader::filter_all_tiles(
   // Prepare attributes
   std::set<std::string> all_attributes;
   for (const auto& attr : attributes_) {
-    if (array_schema_->dense() && attr == constants::coords)
+    if (array_schema_->dense() && attr == constants::coords && !sparse_mode_)
       continue;  // Skip coords in dense case - no actual tiles to filter
     all_attributes.insert(attr);
   }
@@ -1631,6 +1652,7 @@ Status Reader::handle_coords_in_dense_cell_range(
       // Coords unary range
       overlapping_cell_ranges->emplace_back(
           (*coords_it)->tile_, (*coords_it)->pos_, (*coords_it)->pos_);
+
       // Update start
       *start = *coords_pos + 1;
 
@@ -1822,7 +1844,7 @@ Status Reader::read_all_tiles(
   // Prepare attributes
   std::set<std::string> all_attributes;
   for (const auto& attr : attributes_) {
-    if (array_schema_->dense() && attr == constants::coords)
+    if (array_schema_->dense() && attr == constants::coords && !sparse_mode_)
       continue;  // Skip coords in dense case - no actual tiles to read
     all_attributes.insert(attr);
   }

@@ -521,9 +521,13 @@ class Array {
    *
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param config Configuration parameters for the consolidation.
    */
-  static void consolidate(const Context& ctx, const std::string& uri) {
-    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  static void consolidate(
+      const Context& ctx,
+      const std::string& uri,
+      const Config& config = Config()) {
+    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
   }
 
   /**
@@ -546,15 +550,22 @@ class Array {
    * @param encryption_type The encryption type to use.
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation.
    */
   static void consolidate(
       const Context& ctx,
       const std::string& uri,
       tiledb_encryption_type_t encryption_type,
       const void* encryption_key,
-      uint32_t key_length) {
+      uint32_t key_length,
+      const Config& config = Config()) {
     ctx.handle_error(tiledb_array_consolidate_with_key(
-        ctx, uri.c_str(), encryption_type, encryption_key, key_length));
+        ctx,
+        uri.c_str(),
+        encryption_type,
+        encryption_key,
+        key_length,
+        config.ptr().get()));
   }
 
   /**

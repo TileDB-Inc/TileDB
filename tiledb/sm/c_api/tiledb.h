@@ -394,8 +394,8 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
  *    **Default**: 10,000,000
  * - `sm.array_schema_cache_size` <br>
- *    The array schema cache size in bytes. Any `uint64_t` value is acceptable.
- * <br>
+ *    The array schema cache size in bytes. Any `uint64_t` value is
+ *    acceptable. <br>
  *    **Default**: 10,000,000
  * - `sm.fragment_metadata_cache_size` <br>
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
@@ -419,6 +419,33 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    be modified from the default. See also the documentation for TBB's
  *    `task_scheduler_init` class.<br>
  *    **Default**: TBB automatic
+ * - `sm.consolidation.amplification` <br>
+ *    The factor by which the size of the dense fragment resulting
+ *    from consolidating a set of fragments (containing at least one
+ *    dense fragment) can be amplified. This is important when
+ *    the union of the non-empty domains of the fragments to be
+ *    consolidated have a lot of empty cells, which the consolidated
+ *    fragment will have to fill with the special fill value
+ *    (since the resulting fragment is dense). <br>
+ *    **Default**: 1.0
+ * - `sm.consolidation.buffer_size` <br>
+ *    The size (in bytes) of the attribute buffers used during
+ *    consolidation. <br>
+ *    **Default**: 50,000,000
+ * - `sm.consolidation.steps` <br>
+ *    The number of consolidation steps to be performed when executing
+ *    the consolidation algorithm.<br>
+ *    **Default**: 1
+ * - `sm.consolidation.step_min_frags` <br>
+ *    The minimum number of fragments to consolidate in a single step.<br>
+ *    **Default**: UINT32_MAX
+ * - `sm.consolidation.step_max_frags` <br>
+ *    The maximum number of fragments to consolidate in a single step.<br>
+ *    **Default**: UINT32_MAX
+ * - `sm.consolidation.step_size_ratio` <br>
+ *    The size ratio that two ("adjacent") fragments must satisfy to be
+ *    considered for consolidation in a single step.<br>
+ *    **Default**: 0.0
  * - `vfs.num_threads` <br>
  *    The number of threads allocated for VFS operations (any backend), per VFS
  *    instance. <br>
@@ -3119,15 +3146,17 @@ TILEDB_EXPORT int32_t tiledb_array_create_with_key(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_consolidate(ctx, "hdfs:///tiledb_arrays/my_array");
+ * tiledb_array_consolidate(ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param array_uri The name of the TileDB array to be consolidated.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t
-tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri);
+TILEDB_EXPORT int32_t tiledb_array_consolidate(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
  * Consolidates the fragments of an encrypted array into a single fragment.
@@ -3140,7 +3169,7 @@ tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri);
  * @code{.c}
  * uint8_t key[32] = ...;
  * tiledb_array_consolidate_with_key(ctx, "hdfs:///tiledb_arrays/my_array",
- *     TILEDB_AES_256_GCM, key, sizeof(key));
+ *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3148,6 +3177,9 @@ tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri);
  * @param encryption_type The encryption type to use.
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default).
+ *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_consolidate_with_key(
@@ -3155,7 +3187,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_with_key(
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length);
+    uint32_t key_length,
+    tiledb_config_t* config);
 
 /**
  * Retrieves the non-empty domain from an array. This is the union of the
@@ -3817,15 +3850,17 @@ TILEDB_EXPORT int32_t tiledb_kv_create_with_key(
  * **Example:**
  *
  * @code{.c}
- * tiledb_kv_consolidate(ctx, "my_kv");
+ * tiledb_kv_consolidate(ctx, "my_kv", nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param kv_uri The name of the TileDB key-value store to be consolidated.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t
-tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
+TILEDB_EXPORT int32_t tiledb_kv_consolidate(
+    tiledb_ctx_t* ctx, const char* kv_uri, tiledb_config_t* config);
 
 /**
  * Consolidates the fragments of an encrypted key-value store into a single
@@ -3836,7 +3871,7 @@ tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
  * @code{.c}
  * uint8_t key[32] = ...;
  * tiledb_kv_consolidate_with_key(ctx, "my_kv",
- *     TILEDB_AES_256_GCM, key, sizeof(key));
+ *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3844,6 +3879,8 @@ tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri);
  * @param encryption_type The encryption type to use.
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_kv_consolidate_with_key(
@@ -3851,7 +3888,8 @@ TILEDB_EXPORT int32_t tiledb_kv_consolidate_with_key(
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length);
+    uint32_t key_length,
+    tiledb_config_t* config);
 
 /**
  * Creates a key-value store object.

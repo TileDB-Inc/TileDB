@@ -81,6 +81,13 @@ in this program and explain the output.
         "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
+        "sm.check_global_order" : "true"
+        "sm.consolidation.amplification" : "1"
+        "sm.consolidation.buffer_size" : "50000000"
+        "sm.consolidation.step_max_frags" : "4294967295"
+        "sm.consolidation.step_min_frags" : "4294967295"
+        "sm.consolidation.step_size_ratio" : "0"
+        "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
@@ -93,8 +100,12 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
+        "vfs.max_batch_read_amplification" : "1"
+        "vfs.max_batch_read_size" : "104857600"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
+        "vfs.s3.aws_access_key_id" : ""
+        "vfs.s3.aws_secret_access_key" : ""
         "vfs.s3.connect_max_tries" : "5"
         "vfs.s3.connect_scale_factor" : "25"
         "vfs.s3.connect_timeout_ms" : "3000"
@@ -112,6 +123,8 @@ in this program and explain the output.
         "vfs.s3.use_virtual_addressing" : "true"
 
         VFS S3 settings:
+        "aws_access_key_id" : ""
+        "aws_secret_access_key" : ""
         "connect_max_tries" : "5"
         "connect_scale_factor" : "25"
         "connect_timeout_ms" : "3000"
@@ -142,6 +155,13 @@ in this program and explain the output.
         "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
+        "sm.check_global_order" : "true"
+        "sm.consolidation.amplification" : "1"
+        "sm.consolidation.buffer_size" : "50000000"
+        "sm.consolidation.step_max_frags" : "4294967295"
+        "sm.consolidation.step_min_frags" : "4294967295"
+        "sm.consolidation.step_size_ratio" : "0"
+        "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
         "sm.fragment_metadata_cache_size" : "10000000"
@@ -154,8 +174,12 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
+        "vfs.max_batch_read_amplification" : "1"
+        "vfs.max_batch_read_size" : "104857600"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
+        "vfs.s3.aws_access_key_id" : ""
+        "vfs.s3.aws_secret_access_key" : ""
         "vfs.s3.connect_max_tries" : "5"
         "vfs.s3.connect_scale_factor" : "25"
         "vfs.s3.connect_timeout_ms" : "3000"
@@ -173,6 +197,8 @@ in this program and explain the output.
         "vfs.s3.use_virtual_addressing" : "true"
 
         VFS S3 settings:
+        "aws_access_key_id" : ""
+        "aws_secret_access_key" : ""
         "connect_max_tries" : "5"
         "connect_scale_factor" : "25"
         "connect_timeout_ms" : "3000"
@@ -275,39 +301,50 @@ The corresponding output is (note that we ran this on a machine with
 
 .. code-block:: bash
 
-   Default settings:
-   "sm.array_schema_cache_size" : "10000000"
-   "sm.check_coord_dups" : "true"
-   "sm.check_coord_oob" : "true"
-   "sm.dedup_coords" : "false"
-   "sm.enable_signal_handlers" : "true"
-   "sm.fragment_metadata_cache_size" : "10000000"
-   "sm.num_async_threads" : "1"
-   "sm.num_reader_threads" : "1"
-   "sm.num_tbb_threads" : "-1"
-   "sm.num_writer_threads" : "1"
-   "sm.tile_cache_size" : "10000000"
-   "vfs.file.max_parallel_ops" : "8"
-   "vfs.hdfs.kerb_ticket_cache_path" : ""
-   "vfs.hdfs.name_node_uri" : ""
-   "vfs.hdfs.username" : ""
-   "vfs.min_parallel_size" : "10485760"
-   "vfs.num_threads" : "8"
-   "vfs.s3.connect_max_tries" : "5"
-   "vfs.s3.connect_scale_factor" : "25"
-   "vfs.s3.connect_timeout_ms" : "3000"
-   "vfs.s3.endpoint_override" : ""
-   "vfs.s3.max_parallel_ops" : "8"
-   "vfs.s3.multipart_part_size" : "5242880"
-   "vfs.s3.proxy_host" : ""
-   "vfs.s3.proxy_password" : ""
-   "vfs.s3.proxy_port" : "0"
-   "vfs.s3.proxy_scheme" : "https"
-   "vfs.s3.proxy_username" : ""
-   "vfs.s3.region" : "us-east-1"
-   "vfs.s3.request_timeout_ms" : "3000"
-   "vfs.s3.scheme" : "https"
-   "vfs.s3.use_virtual_addressing" : "true"
+        Default settings:
+        "sm.array_schema_cache_size" : "10000000"
+        "sm.check_coord_dups" : "true"
+        "sm.check_coord_oob" : "true"
+        "sm.check_global_order" : "true"
+        "sm.consolidation.amplification" : "1"
+        "sm.consolidation.buffer_size" : "50000000"
+        "sm.consolidation.step_max_frags" : "4294967295"
+        "sm.consolidation.step_min_frags" : "4294967295"
+        "sm.consolidation.step_size_ratio" : "0"
+        "sm.consolidation.steps" : "4294967295"
+        "sm.dedup_coords" : "false"
+        "sm.enable_signal_handlers" : "true"
+        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.num_async_threads" : "1"
+        "sm.num_reader_threads" : "1"
+        "sm.num_tbb_threads" : "-1"
+        "sm.num_writer_threads" : "1"
+        "sm.tile_cache_size" : "10000000"
+        "vfs.file.max_parallel_ops" : "8"
+        "vfs.hdfs.kerb_ticket_cache_path" : ""
+        "vfs.hdfs.name_node_uri" : ""
+        "vfs.hdfs.username" : ""
+        "vfs.max_batch_read_amplification" : "1"
+        "vfs.max_batch_read_size" : "104857600"
+        "vfs.min_parallel_size" : "10485760"
+        "vfs.num_threads" : "8"
+        "vfs.s3.aws_access_key_id" : ""
+        "vfs.s3.aws_secret_access_key" : ""
+        "vfs.s3.connect_max_tries" : "5"
+        "vfs.s3.connect_scale_factor" : "25"
+        "vfs.s3.connect_timeout_ms" : "3000"
+        "vfs.s3.endpoint_override" : ""
+        "vfs.s3.max_parallel_ops" : "8"
+        "vfs.s3.multipart_part_size" : "5242880"
+        "vfs.s3.proxy_host" : ""
+        "vfs.s3.proxy_password" : ""
+        "vfs.s3.proxy_port" : "0"
+        "vfs.s3.proxy_scheme" : "https"
+        "vfs.s3.proxy_username" : ""
+        "vfs.s3.region" : "us-east-1"
+        "vfs.s3.request_timeout_ms" : "3000"
+        "vfs.s3.scheme" : "https"
+        "vfs.s3.use_virtual_addressing" : "true"
 
 
 TileDB allows you also to iterate only over the config parameters
@@ -345,22 +382,24 @@ is *stripped* from the retrieved parameter names.
 
 .. code-block:: bash
 
-   VFS S3 settings:
-   "connect_max_tries" : "5"
-   "connect_scale_factor" : "25"
-   "connect_timeout_ms" : "3000"
-   "endpoint_override" : ""
-   "max_parallel_ops" : "8"
-   "multipart_part_size" : "5242880"
-   "proxy_host" : ""
-   "proxy_password" : ""
-   "proxy_port" : "0"
-   "proxy_scheme" : "https"
-   "proxy_username" : ""
-   "region" : "us-east-1"
-   "request_timeout_ms" : "3000"
-   "scheme" : "https"
-   "use_virtual_addressing" : "true"
+        VFS S3 settings:
+        "aws_access_key_id" : ""
+        "aws_secret_access_key" : ""
+        "connect_max_tries" : "5"
+        "connect_scale_factor" : "25"
+        "connect_timeout_ms" : "3000"
+        "endpoint_override" : ""
+        "max_parallel_ops" : "8"
+        "multipart_part_size" : "5242880"
+        "proxy_host" : ""
+        "proxy_password" : ""
+        "proxy_port" : "0"
+        "proxy_scheme" : "https"
+        "proxy_username" : ""
+        "region" : "us-east-1"
+        "request_timeout_ms" : "3000"
+        "scheme" : "https"
+        "use_virtual_addressing" : "true"
 
 Saving/Loading config to/from file
 ----------------------------------
@@ -420,6 +459,13 @@ Inspecting the contents of the exported config file, we get the following:
   sm.array_schema_cache_size 10000000
   sm.check_coord_dups true
   sm.check_coord_oob true
+  sm.check_global_order true
+  sm.consolidation.amplification 1
+  sm.consolidation.buffer_size 50000000
+  sm.consolidation.step_max_frags 4294967295
+  sm.consolidation.step_min_frags 4294967295
+  sm.consolidation.step_size_ratio 0
+  sm.consolidation.steps 4294967295
   sm.dedup_coords false
   sm.enable_signal_handlers true
   sm.fragment_metadata_cache_size 10000000
@@ -429,6 +475,8 @@ Inspecting the contents of the exported config file, we get the following:
   sm.num_writer_threads 1
   sm.tile_cache_size 0
   vfs.file.max_parallel_ops 8
+  vfs.max_batch_read_amplification 1
+  vfs.max_batch_read_size 104857600
   vfs.min_parallel_size 10485760
   vfs.num_threads 8
   vfs.s3.connect_max_tries 5
@@ -475,6 +523,26 @@ along with their description and default values.
                                                                       the coordinates are not in the global order.
                                                                       Applicable only to sparse writes in the global
                                                                       order.
+    ``"sm.consolidation.amplification"``      ``"1.0"``               The factor by which the size of the dense fragment
+                                                                      resulting from consolidating a set of fragments
+                                                                      (containing at least one dense fragment) can be
+                                                                      amplified. This is important when the union of the
+                                                                      non-empty domains of the fragments to be
+                                                                      consolidated have a lot of empty cells, which the
+                                                                      consolidated fragment will have to fill with the
+                                                                      special fill value (since the resulting fragment
+                                                                      is dense).
+    ``"sm.consolidation.buffer_size"``        ``"50000000"``          The size (in bytes) of the attribute buffers used
+                                                                      during consolidation.
+    ``"sm.consolidation.step_max_frags"``     ``"4294967295"``        The maximum number of fragments to consolidate in
+                                                                      a single step.
+    ``"sm.consolidation.step_min_frags"``     ``"4294967295"``        The minimum number of fragments to consolidate in
+                                                                      a single step.
+    ``"sm.consolidation.step_size_ratio"``    ``"0"``                 The size ratio of two ("adjacent") fragments
+                                                                      must be larger than this value to be considered
+                                                                      for consolidation in a single step.
+    ``"sm.consolidation.steps"``              ``"4294967295"``        The number of consolidation steps to be performed
+                                                                      when executing the consolidation algorithm.
     ``"sm.dedup_coords"``                     ``"false"``             If ``true``, cells with duplicate coordinates
                                                                       will be removed during sparse array writes. Note
                                                                       that ties during deduplication are broken

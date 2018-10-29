@@ -2407,12 +2407,12 @@ int32_t tiledb_array_open_at(
   // Open array
   if (SAVE_ERROR_CATCH(
           ctx,
-          array->array_->open_at(
+          array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              timestamp,
               static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
               nullptr,
-              0,
-              timestamp)))
+              0)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2455,12 +2455,12 @@ int32_t tiledb_array_open_at_with_key(
   // Open array
   if (SAVE_ERROR_CATCH(
           ctx,
-          array->array_->open_at(
+          array->array_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
+              timestamp,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
-              key_length,
-              timestamp)))
+              key_length)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2493,7 +2493,7 @@ int32_t tiledb_array_reopen_at(
     return TILEDB_ERR;
 
   // Reopen array
-  if (SAVE_ERROR_CATCH(ctx, array->array_->reopen_at(timestamp)))
+  if (SAVE_ERROR_CATCH(ctx, array->array_->reopen(timestamp)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2628,9 +2628,10 @@ int32_t tiledb_array_create_with_key(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array_uri) {
+int32_t tiledb_array_consolidate(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   return tiledb_array_consolidate_with_key(
-      ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+      ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
 }
 
 int32_t tiledb_array_consolidate_with_key(
@@ -2638,7 +2639,8 @@ int32_t tiledb_array_consolidate_with_key(
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length) {
+    uint32_t key_length,
+    tiledb_config_t* config) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2649,7 +2651,8 @@ int32_t tiledb_array_consolidate_with_key(
               array_uri,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
-              key_length)))
+              key_length,
+              (config == nullptr) ? nullptr : config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3412,9 +3415,10 @@ int32_t tiledb_kv_create_with_key(
   return TILEDB_OK;
 }
 
-int32_t tiledb_kv_consolidate(tiledb_ctx_t* ctx, const char* kv_uri) {
+int32_t tiledb_kv_consolidate(
+    tiledb_ctx_t* ctx, const char* kv_uri, tiledb_config_t* config) {
   return tiledb_kv_consolidate_with_key(
-      ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+      ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
 }
 
 int32_t tiledb_kv_consolidate_with_key(
@@ -3422,7 +3426,8 @@ int32_t tiledb_kv_consolidate_with_key(
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length) {
+    uint32_t key_length,
+    tiledb_config_t* config) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -3432,7 +3437,8 @@ int32_t tiledb_kv_consolidate_with_key(
               kv_uri,
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
-              key_length)))
+              key_length,
+              (config == nullptr) ? nullptr : config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3515,7 +3521,7 @@ int32_t tiledb_kv_open_at(
   // Prepare the key-value store
   if (SAVE_ERROR_CATCH(
           ctx,
-          kv->kv_->open_at(
+          kv->kv_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
               static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
               nullptr,
@@ -3565,7 +3571,7 @@ int32_t tiledb_kv_open_at_with_key(
   // Prepare the key-value store
   if (SAVE_ERROR_CATCH(
           ctx,
-          kv->kv_->open_at(
+          kv->kv_->open(
               static_cast<tiledb::sm::QueryType>(query_type),
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
@@ -3603,7 +3609,7 @@ int32_t tiledb_kv_reopen_at(
     return TILEDB_ERR;
 
   // Re-open kv
-  if (SAVE_ERROR_CATCH(ctx, kv->kv_->reopen_at(timestamp)))
+  if (SAVE_ERROR_CATCH(ctx, kv->kv_->reopen(timestamp)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

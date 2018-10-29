@@ -424,6 +424,25 @@ class Reader {
    */
   Status set_layout(Layout layout);
 
+  /**
+   * This is applicable only to dense arrays (errors out for sparse arrays),
+   * and only in the case where the array is opened in a way that all its
+   * fragments are sparse. If the input is `true`, then the dense array
+   * will be read in "sparse mode", i.e., the sparse read algorithm will
+   * be executing, returning results only for the non-empty cells.
+   * The sparse mode is useful particularly in consolidation, when the
+   * algorithm determines that the subset of fragments to consolidate
+   * in the next step are all sparse. In that case, the consolidator
+   * needs to read only the non-empty cells of those fragments, which
+   * can be achieved by opening the dense array in the sparse mode
+   * (otherwise the dense array would return special values for all
+   * empty cells).
+   *
+   * @param sparse_mode This sets the sparse mode.
+   * @return Status
+   */
+  Status set_sparse_mode(bool sparse_mode);
+
   /** Sets the storage manager. */
   void set_storage_manager(StorageManager* storage_manager);
 
@@ -436,10 +455,7 @@ class Reader {
    */
   Status set_subarray(const void* subarray);
 
-  /*
-   * Return the subarray
-   * @return subarray
-   */
+  /** Returns the subarray. */
   void* subarray() const;
 
  private:
@@ -471,6 +487,13 @@ class Reader {
 
   /** To handle incomplete read queries. */
   ReadState read_state_;
+
+  /**
+   * If `true`, then the dense array will be read in "sparse mode", i.e.,
+   * the sparse read algorithm will be executing, returning results only
+   * for the non-empty cells.
+   */
+  bool sparse_mode_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;

@@ -53,7 +53,7 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
-			<string>{{335.62499499879783, 261.61529137752956}, {56, 22}}</string>
+			<string>{{160.33355143204727, 233.40473127020951}, {52, 22}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FitText</key>
@@ -101,7 +101,7 @@
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
 \f0\fs18 \cf0 Materialized \
-with fill values}</string>
+with fill value}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -115,8 +115,8 @@ with fill values}</string>
 			<integer>389</integer>
 			<key>Points</key>
 			<array>
-				<string>{355.31249470543122, 287.83748589608126}</string>
-				<string>{321.19673856872595, 294.61539542181293}</string>
+				<string>{202.04677911843689, 259.87967499908302}</string>
+				<string>{244.32597370900149, 269.29823960648383}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -296,6 +296,24 @@ with fill values}</string>
 			<dict>
 				<key>Pad</key>
 				<integer>0</integer>
+				<key>RTFD</key>
+				<data>
+				BAtzdHJlYW10eXBlZIHoA4QBQISEhBJOU0F0dHJpYnV0
+				ZWRTdHJpbmcAhIQITlNPYmplY3QAhZKEhIQITlNTdHJp
+				bmcBlIQBKwMyMDKGhAJpSQEDkoSEhAxOU0RpY3Rpb25h
+				cnkAlIQBaQOShJaWB05TQ29sb3KGkoSEhAdOU0NvbG9y
+				AJSEAWMBhARmZmZmAQAAAYaShJaWEE5TUGFyYWdyYXBo
+				U3R5bGWGkoSEhBdOU011dGFibGVQYXJhZ3JhcGhTdHls
+				ZQCEhBBOU1BhcmFncmFwaFN0eWxlAJSEBENDQFMCAISE
+				hAdOU0FycmF5AJSZDJKEhIQJTlNUZXh0VGFiAJSEAkNm
+				AByGkoSjogA4hpKEo6IAVIaShKOiAHCGkoSjogCBjACG
+				koSjogCBqACGkoSjogCBxACGkoSjogCB4ACGkoSjogCB
+				/ACGkoSjogCBGAGGkoSjogCBNAGGkoSjogCBUAGGhoEA
+				CIQEWzFmXYPNzEw9hpKElpYGTlNGb250hpKEhIQGTlNG
+				b250HpSZMIQFWzQ4Y10GAAAAKAAAAP/+QwBvAHUAcgBp
+				AGUAcgBOAGUAdwBQAFMALQBCAG8AbABkAE0AVACEAWYM
+				mwCbAZsAmwCGhoY=
+				</data>
 				<key>Text</key>
 				<string>{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf830
 \cocoascreenfonts1{\fonttbl\f0\fmodern\fcharset0 CourierNewPS-BoldMT;}
@@ -361,6 +379,24 @@ with fill values}</string>
 			<dict>
 				<key>Pad</key>
 				<integer>0</integer>
+				<key>RTFD</key>
+				<data>
+				BAtzdHJlYW10eXBlZIHoA4QBQISEhBJOU0F0dHJpYnV0
+				ZWRTdHJpbmcAhIQITlNPYmplY3QAhZKEhIQITlNTdHJp
+				bmcBlIQBKwMyMDGGhAJpSQEDkoSEhAxOU0RpY3Rpb25h
+				cnkAlIQBaQOShJaWB05TQ29sb3KGkoSEhAdOU0NvbG9y
+				AJSEAWMBhARmZmZmAQAAAYaShJaWEE5TUGFyYWdyYXBo
+				U3R5bGWGkoSEhBdOU011dGFibGVQYXJhZ3JhcGhTdHls
+				ZQCEhBBOU1BhcmFncmFwaFN0eWxlAJSEBENDQFMCAISE
+				hAdOU0FycmF5AJSZDJKEhIQJTlNUZXh0VGFiAJSEAkNm
+				AByGkoSjogA4hpKEo6IAVIaShKOiAHCGkoSjogCBjACG
+				koSjogCBqACGkoSjogCBxACGkoSjogCB4ACGkoSjogCB
+				/ACGkoSjogCBGAGGkoSjogCBNAGGkoSjogCBUAGGhoEA
+				CIQEWzFmXYPNzEw9hpKElpYGTlNGb250hpKEhIQGTlNG
+				b250HpSZMIQFWzQ4Y10GAAAAKAAAAP/+QwBvAHUAcgBp
+				AGUAcgBOAGUAdwBQAFMALQBCAG8AbABkAE0AVACEAWYM
+				mwCbAZsAmwCGhoY=
+				</data>
 				<key>Text</key>
 				<string>{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf830
 \cocoascreenfonts1{\fonttbl\f0\fmodern\fcharset0 CourierNewPS-BoldMT;}
@@ -1345,6 +1381,8 @@ with fill values}</string>
 						<key>r</key>
 						<string>0.501961</string>
 					</dict>
+					<key>Draws</key>
+					<string>NO</string>
 				</dict>
 				<key>shadow</key>
 				<dict>
@@ -1380,6 +1418,8 @@ with fill values}</string>
 						<key>r</key>
 						<string>0.501961</string>
 					</dict>
+					<key>Draws</key>
+					<string>NO</string>
 				</dict>
 				<key>shadow</key>
 				<dict>
@@ -1415,6 +1455,8 @@ with fill values}</string>
 						<key>r</key>
 						<string>0.501961</string>
 					</dict>
+					<key>Draws</key>
+					<string>NO</string>
 				</dict>
 				<key>shadow</key>
 				<dict>
@@ -1450,6 +1492,8 @@ with fill values}</string>
 						<key>r</key>
 						<string>0.501961</string>
 					</dict>
+					<key>Draws</key>
+					<string>NO</string>
 				</dict>
 				<key>shadow</key>
 				<dict>
@@ -1994,7 +2038,7 @@ with fill values}</string>
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2018-06-27 20:26:56 +0000</string>
+	<string>2018-12-24 17:49:50 +0000</string>
 	<key>Modifier</key>
 	<string>Stavros Papadopoulos</string>
 	<key>NotesVisible</key>
@@ -2036,16 +2080,6 @@ with fill values}</string>
 		<array>
 			<string>int</string>
 			<string>0</string>
-		</array>
-		<key>NSPrinter</key>
-		<array>
-			<string>coded</string>
-			<string>BAtzdHJlYW10eXBlZIHoA4QBQISEhAlOU1ByaW50ZXIAhIQITlNPYmplY3QAhZKEhIQITlNTdHJpbmcBlIQBKyFUZWQgQlcgQ29waWVyIChDMykgQCBDSUMgQWlyUHJpbnSGhg==</string>
-		</array>
-		<key>NSPrinterName</key>
-		<array>
-			<string>string</string>
-			<string>Ted BW Copier (C3) @ CIC AirPrint</string>
 		</array>
 		<key>NSRightMargin</key>
 		<array>
@@ -2104,15 +2138,15 @@ with fill values}</string>
 		<key>SidebarWidth</key>
 		<integer>120</integer>
 		<key>VisibleRegion</key>
-		<string>{{-67, -47}, {889.89898132652718, 647.47474123757536}}</string>
+		<string>{{113.7426875210882, 89.181284560236236}, {515.20466686929922, 375.43858811587972}}</string>
 		<key>Zoom</key>
-		<real>0.99000000953674316</real>
+		<real>1.7100000381469727</real>
 		<key>ZoomValues</key>
 		<array>
 			<array>
 				<string>Canvas 1</string>
-				<real>0.99000000953674316</real>
-				<real>1.0199999809265137</real>
+				<real>1.7100000381469727</real>
+				<real>1.6599999666213989</real>
 			</array>
 		</array>
 	</dict>

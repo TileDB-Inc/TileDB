@@ -50,6 +50,25 @@ class Config {
   /*         TYPE DEFINITIONS          */
   /* ********************************* */
 
+  /** Consolidation parameters. */
+  struct ConsolidationParams {
+    float amplification_;
+    uint64_t buffer_size_;
+    uint32_t steps_;
+    uint32_t step_min_frags_;
+    uint32_t step_max_frags_;
+    float step_size_ratio_;
+
+    ConsolidationParams() {
+      amplification_ = constants::consolidation_amplification;
+      steps_ = constants::consolidation_steps;
+      buffer_size_ = constants::consolidation_buffer_size;
+      step_min_frags_ = constants::consolidation_step_min_frags;
+      step_max_frags_ = constants::consolidation_step_max_frags;
+      step_size_ratio_ = constants::consolidation_step_size_ratio;
+    }
+  };
+
   /** Storage manager parameters. */
   struct SMParams {
     uint64_t array_schema_cache_size_;
@@ -64,6 +83,7 @@ class Config {
     bool check_coord_dups_;
     bool check_coord_oob_;
     bool check_global_order_;
+    ConsolidationParams consolidation_params_;
 
     SMParams() {
       array_schema_cache_size_ = constants::array_schema_cache_size;
@@ -185,6 +205,9 @@ class Config {
   /** Returns the storage manager parameters. */
   SMParams sm_params() const;
 
+  /** Returns the consolidation parameters. */
+  ConsolidationParams consolidation_params() const;
+
   /** Returns the VFS parameters. */
   VFSParams vfs_params() const;
 
@@ -246,6 +269,33 @@ class Config {
    *    be modified from the default. See also the documentation for TBB's
    *    `task_scheduler_init` class.<br>
    *    **Default**: TBB automatic
+   * - `sm.consolidation.amplification` <br>
+   *    The factor by which the size of the dense fragment resulting
+   *    from consolidating a set of fragments (containing at least one
+   *    dense fragment) can be amplified. This is important when
+   *    the union of the non-empty domains of the fragments to be
+   *    consolidated have a lot of empty cells, which the consolidated
+   *    fragment will have to fill with the special fill value
+   *    (since the resulting fragments is dense). <br>
+   *    **Default**: FLOAT_MAX
+   * - `sm.consolidation.buffer_size` <br>
+   *    The size (in bytes) of the attribute buffers used during
+   *    consolidation. <br>
+   *    **Default**: 50,000,000
+   * - `sm.consolidation.steps` <br>
+   *    The number of consolidation steps to be performed when executing
+   *    the consolidation algorithm.<br>
+   *    **Default**: 1
+   * - `sm.consolidation.step_min_frags` <br>
+   *    The minimum number of fragments to consolidate in a single step.<br>
+   *    **Default**: UINT32_MAX
+   * - `sm.consolidation.step_max_frags` <br>
+   *    The maximum number of fragments to consolidate in a single step.<br>
+   *    **Default**: UINT32_MAX
+   * - `sm.consolidation.step_size_ratio` <br>
+   *    The size ratio that two ("adjacent") fragments must satisfy to be
+   *    considered for consolidation in a single step.<br>
+   *    **Default**: 0.0
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>
@@ -420,6 +470,24 @@ class Config {
 
   /** Sets the number of TBB threads, properly parsing the input value.*/
   Status set_sm_num_tbb_threads(const std::string& value);
+
+  /** Sets the number of consolidation steps.*/
+  Status set_consolidation_steps(const std::string& value);
+
+  /** Sets the minimum number of fragments to consolidate in a step.*/
+  Status set_consolidation_step_min_frags(const std::string& value);
+
+  /** Sets the maximum number of fragments to consolidate in a step.*/
+  Status set_consolidation_step_max_frags(const std::string& value);
+
+  /** Sets the size ratio requirement for two "adjacent" fragments in a step. */
+  Status set_consolidation_step_size_ratio(const std::string& value);
+
+  /** Sets the consolidation amplification, properly parsing the input value. */
+  Status set_consolidation_amplification(const std::string& value);
+
+  /** Sets the consolidation buffer size, properly parsing the input value. */
+  Status set_consolidation_buffer_size(const std::string& value);
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);

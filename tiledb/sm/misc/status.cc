@@ -144,8 +144,8 @@ std::string Status::code_to_string() const {
     case StatusCode::Domain:
       type = "[TileDB::Domain] Error";
       break;
-    case StatusCode::Consolidation:
-      type = "[TileDB::Consolidation] Error";
+    case StatusCode::Consolidator:
+      type = "[TileDB::Consolidator] Error";
       break;
     case StatusCode::LRUCache:
       type = "[TileDB::LRUCache] Error";

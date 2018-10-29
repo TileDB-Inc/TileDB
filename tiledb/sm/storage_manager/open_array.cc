@@ -119,9 +119,9 @@ std::vector<FragmentMetadata*> OpenArray::fragment_metadata(
   return ret;
 }
 
-bool OpenArray::fragment_metadata_exists(const URI& uri) const {
-  return fragment_metadata_set_.find(uri.to_string()) !=
-         fragment_metadata_set_.end();
+FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
+  auto it = fragment_metadata_set_.find(uri.to_string());
+  return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
 }
 
 void OpenArray::mtx_lock() {
@@ -143,7 +143,7 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
 void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
   assert(metadata != nullptr);
   fragment_metadata_.insert(metadata);
-  fragment_metadata_set_.insert(metadata->fragment_uri().to_string());
+  fragment_metadata_set_[metadata->fragment_uri().to_string()] = metadata;
 }
 
 /* ****************************** */

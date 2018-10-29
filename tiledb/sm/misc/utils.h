@@ -64,6 +64,9 @@ Status convert(const std::string& str, long* value);
 /** Converts the input string into a `uint64_t` value. */
 Status convert(const std::string& str, uint64_t* value);
 
+/** Converts the input string into a `uint32_t` value. */
+Status convert(const std::string& str, uint32_t* value);
+
 /** Converts the input string into a `float` value. */
 Status convert(const std::string& str, float* value);
 
@@ -134,6 +137,36 @@ Status check_template_type_to_datatype(Datatype datatype);
 namespace geometry {
 
 /**
+ * Returns the number of cells in the input rectangle. Applicable
+ * only to integers.
+ *
+ * @tparam T The rectangle domain type.
+ * @param rect The input rectangle.
+ * @param dim_num The number of dimensions of the rectangle.
+ * @return The number of cells in the rectangle.
+ */
+template <
+    class T,
+    typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
+uint64_t cell_num(const T* rect, unsigned dim_num) {
+  uint64_t ret = 1;
+  for (unsigned i = 0; i < dim_num; ++i)
+    ret *= rect[2 * i + 1] - rect[2 * i] + 1;
+  return ret;
+}
+
+/** Non-applicable to non-integers. */
+template <
+    class T,
+    typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
+uint64_t cell_num(const T* rect, unsigned dim_num) {
+  assert(false);
+  (void)rect;
+  (void)dim_num;
+  return 0;
+}
+
+/**
  * Checks if `coords` are inside `rect`.
  *
  * @tparam T The type of the cell and subarray.
@@ -148,6 +181,18 @@ template <class T>
 bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
 
 /**
+ * Checks if `rect_a` is inside `rect_b`.
+ *
+ * @tparam T The domain type.
+ * @param rect_a The first rectangle.
+ * @param rect_b The second rectangle.
+ * @param dim_num The number of dimensions.
+ * @return `true` if `rect_a` is inside `rect_b` and `false` otherwise.
+ */
+template <class T>
+bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
+
+/**
  * Expands the input MBR so that it encompasses the input coordinates.
  *
  * @tparam T The type of the MBR and coordinates.
@@ -158,6 +203,18 @@ bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
  */
 template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
+
+/**
+ * Expands `mbr_a` so that it encompasses `mbr_b`.
+ *
+ * @tparam T The type of the MBR and coordinates.
+ * @param mbr_a The MBR to be expanded.
+ * @param mbr_b The MBR used to expnad `mbr_a`.
+ * @param dim_num The number of dimensions of the MBRs.
+ * @return void
+ */
+template <class T>
+void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num);
 
 /** Returns *true* if hyper-rectangles `a` overlaps with `b`. */
 template <class T>

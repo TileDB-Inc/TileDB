@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
 
   // Optionally consolidate
   if (argc > 1 && !strcmp(argv[1], "consolidate"))
-    tiledb_array_consolidate(ctx, array_name);
+    tiledb_array_consolidate(ctx, array_name, NULL);
 
   read_array();
 
