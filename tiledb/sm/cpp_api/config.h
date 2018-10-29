@@ -239,6 +239,10 @@ class Config {
    *    If `true`, an error will be thrown if there are cells with coordinates
    *    lying outside the domain during sparse array writes.  <br>
    *    **Default**: true
+   * - `sm.check_global_order` <br>
+   *    Checks if the coordinates obey the global array order. Applicable only
+   *    to sparse writes in global order.
+   *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
    *    **Default**: 10,000,000

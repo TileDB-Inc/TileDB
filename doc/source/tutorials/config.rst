@@ -471,6 +471,10 @@ along with their description and default values.
     ``"sm.check_coord_oob"``                  ``"true"``              If ``true``, an error will be thrown if
                                                                       there are cells with coordinates lying outside
                                                                       the array domain during sparse array writes.
+    ``"sm.check_global_order"``               ``"true"``              If ``true``, an error will be thrown if
+                                                                      the coordinates are not in the global order.
+                                                                      Applicable only to sparse writes in the global
+                                                                      order.
     ``"sm.dedup_coords"``                     ``"false"``             If ``true``, cells with duplicate coordinates
                                                                       will be removed during sparse array writes. Note
                                                                       that ties during deduplication are broken
