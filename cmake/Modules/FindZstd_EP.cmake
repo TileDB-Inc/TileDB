@@ -93,6 +93,7 @@ if (NOT ZSTD_FOUND)
         ${CMAKE_COMMAND}
         ${ARCH_SPEC}
         ${LDFLAGS_DEF}
+        -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
       UPDATE_COMMAND ""

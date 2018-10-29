@@ -1,3 +1,17 @@
+# In progress
+
+## Bug fixes
+
+## Improvements
+
+# TileDB v1.4.1 Release Notes
+
+## Bug fixes
+
+## Improvements
+
+* Set LZ4, Zlib and Zstd compressors to build in release mode. [#1034](https://github.com/TileDB-Inc/TileDB/pull/1034)
+
 # TileDB v1.4.0 Release Notes
 
 The 1.4.0 release brings two new major features, attribute filter lists and at-rest array encryption, along with bugfixes and performance improvements.
