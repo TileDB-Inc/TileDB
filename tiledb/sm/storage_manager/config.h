@@ -95,6 +95,8 @@ class Config {
     unsigned proxy_port_;
     std::string proxy_username_;
     std::string proxy_password_;
+    std::string aws_access_key_id;
+    std::string aws_secret_access_key;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -112,6 +114,8 @@ class Config {
       proxy_port_ = constants::s3_proxy_port;
       proxy_username_ = constants::s3_proxy_username;
       proxy_password_ = constants::s3_proxy_password;
+      aws_access_key_id = constants::aws_access_key_id;
+      aws_secret_access_key = constants::aws_secret_access_key;
     }
   };
 
@@ -245,6 +249,10 @@ class Config {
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
+   * - `vfs.s3.aws_access_key_id` <br>
+   *    Set the AWS_ACCESS_KEY_ID
+   * - `vfs.s3.aws_secret_access_key` <br>
+   *    Set the AWS_SECRET_ACCESS_KEY
    * - `vfs.s3.scheme` <br>
    *    The S3 scheme (`http` or `https`), if S3 is enabled. <br>
    *    **Default**: https
@@ -402,6 +410,12 @@ class Config {
 
   /** Sets the S3 region. */
   Status set_vfs_s3_region(const std::string& value);
+
+  /** Sets the S3 AWS_ACCESS_KEY_ID. */
+  Status set_vfs_s3_aws_access_key_id(const std::string& value);
+
+  /** Sets the S3 AWS_SECRET_ACCESS_KEY. */
+  Status set_vfs_s3_aws_secret_access_key(const std::string& value);
 
   /** Sets the S3 scheme. */
   Status set_vfs_s3_scheme(const std::string& value);
