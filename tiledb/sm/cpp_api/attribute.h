@@ -279,6 +279,7 @@ class Attribute {
           return {TILEDB_BZIP2, level};
         case TILEDB_FILTER_DOUBLE_DELTA:
           f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+          return {TILEDB_DOUBLE_DELTA, level};
         default:
           continue;
       }
