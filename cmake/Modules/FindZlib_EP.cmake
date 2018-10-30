@@ -69,12 +69,22 @@ endif()
 if (NOT ZLIB_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Zlib as an external project")
+
+    if (WIN32)
+      set(CFLAGS_DEF "")
+    else()
+      set(CFLAGS_DEF "-DCMAKE_C_FLAGS=-fPIC")
+    endif()
+
     ExternalProject_Add(ep_zlib
       PREFIX "externals"
       URL "http://prdownloads.sourceforge.net/libpng/zlib1211.zip?download"
       URL_HASH SHA1=bccd93ad3cee39c3d08eee68d45b3e11910299f2
       DOWNLOAD_NAME "zlib1211.zip"
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX} -DCMAKE_BUILD_TYPE=Release
+      CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_BUILD_TYPE=Release
+        ${CFLAGS_DEF}
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
