@@ -275,6 +275,12 @@ class Writer {
   bool check_coord_oob_;
 
   /**
+   * If `true`, the coordinates will be checked whether the
+   * obey the global array order and appropriate errors will be thrown.
+   */
+  bool check_global_order_;
+
+  /**
    * If `true`, deduplication of coordinates/cells will happen upon
    * sparse writes. Ties are broken arbitrarily.
    *
@@ -348,6 +354,24 @@ class Writer {
    * @return Status
    */
   Status check_coord_dups() const;
+
+  /**
+   * Throws an error if there are coordinates that do not obey the
+   * global order.
+   *
+   * @return Status
+   */
+  Status check_global_order() const;
+
+  /**
+   * Throws an error if there are coordinates that do not obey the
+   * global order.
+   *
+   * @tparam T The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status check_global_order() const;
 
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;

@@ -150,14 +150,17 @@ Status Writer::init() {
   optimize_layout_for_1D();
 
   // Get configuration parameters
-  const char *check_coord_dups, *dedup_coords, *check_coord_oob;
+  const char *check_coord_dups, *check_coord_oob, *check_global_order;
+  const char* dedup_coords;
   auto config = storage_manager_->config();
   RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
   RETURN_NOT_OK(config.get("sm.check_coord_oob", &check_coord_oob));
+  RETURN_NOT_OK(config.get("sm.check_global_order", &check_global_order));
   RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ = !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
+  check_global_order_ = !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   initialized_ = true;
 
@@ -550,6 +553,96 @@ Status Writer::check_coord_oob() const {
 
   // Success
   return Status::Ok();
+}
+
+Status Writer::check_global_order() const {
+  switch (array_schema_->domain()->type()) {
+    case Datatype::INT8:
+      return check_global_order<int8_t>();
+    case Datatype::UINT8:
+      return check_global_order<uint8_t>();
+    case Datatype::INT16:
+      return check_global_order<int16_t>();
+    case Datatype::UINT16:
+      return check_global_order<uint16_t>();
+    case Datatype::INT32:
+      return check_global_order<int32_t>();
+    case Datatype::UINT32:
+      return check_global_order<uint32_t>();
+    case Datatype::INT64:
+      return check_global_order<int64_t>();
+    case Datatype::UINT64:
+      return check_global_order<uint64_t>();
+    case Datatype::FLOAT32:
+      return check_global_order<float>();
+    case Datatype::FLOAT64:
+      return check_global_order<double>();
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      return LOG_STATUS(
+          Status::WriterError("Cannot perform global order check on "
+                              "coordinates; Domain type not supported"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Writer::check_global_order() const {
+  STATS_FUNC_IN(writer_check_global_order);
+
+  auto coords_it = attr_buffers_.find(constants::coords);
+
+  // Applicable only to sparse writes - exit if coordinates do not exist
+  if (coords_it == attr_buffers_.end())
+    return Status::Ok();
+
+  // Get coordinates buffer
+  auto coords_buff = (T*)coords_it->second.buffer_;
+  auto coords_buff_size = *(coords_it->second.buffer_size_);
+  auto coords_num = coords_buff_size / array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  auto domain = array_schema_->domain();
+
+  // Check if all coordinates fall in the domain in parallel
+  auto statuses = parallel_for(0, coords_num - 1, [&](uint64_t i) {
+    auto tile_cmp = domain->tile_order_cmp<T>(
+        &coords_buff[i * dim_num], &coords_buff[(i + 1) * dim_num]);
+    auto fail = (tile_cmp > 0) ||
+                ((tile_cmp == 0) && domain->cell_order_cmp<T>(
+                                        &coords_buff[i * dim_num],
+                                        &coords_buff[(i + 1) * dim_num]) > 0);
+    if (fail) {
+      std::stringstream ss;
+      ss << "Write failed; Coordinates (" << coords_buff[i * dim_num];
+      for (unsigned int j = 1; j < dim_num; ++j)
+        ss << "," << coords_buff[i * dim_num + j];
+      ss << ") succeed (" << coords_buff[(i + 1) * dim_num];
+      for (unsigned int j = 1; j < dim_num; ++j)
+        ss << "," << coords_buff[(i + 1) * dim_num + j];
+      ss << ") in the global order";
+      return LOG_STATUS(Status::WriterError(ss.str()));
+    }
+    return Status::Ok();
+  });
+
+  // Check all statuses
+  for (auto& st : statuses) {
+    if (!st.ok())
+      return st;
+  }
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_check_global_order);
 }
 
 Status Writer::check_subarray() const {
@@ -1019,8 +1112,12 @@ Status Writer::global_write() {
   // Check for coordinate duplicates
   bool has_coords =
       attr_buffers_.find(constants::coords) != attr_buffers_.end();
-  if (has_coords && check_coord_dups_ && !dedup_coords_)
-    RETURN_CANCEL_OR_ERROR(check_coord_dups());
+  if (has_coords) {
+    if (check_coord_dups_ && !dedup_coords_)
+      RETURN_CANCEL_OR_ERROR(check_coord_dups());
+    if (check_global_order_)
+      RETURN_CANCEL_OR_ERROR(check_global_order());
+  }
 
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;
