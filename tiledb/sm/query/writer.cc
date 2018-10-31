@@ -556,6 +556,8 @@ Status Writer::check_coord_oob() const {
 }
 
 Status Writer::check_global_order() const {
+  STATS_FUNC_IN(writer_check_global_order);
+
   switch (array_schema_->domain()->type()) {
     case Datatype::INT8:
       return check_global_order<int8_t>();
@@ -593,12 +595,12 @@ Status Writer::check_global_order() const {
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(writer_check_global_order);
 }
 
 template <class T>
 Status Writer::check_global_order() const {
-  STATS_FUNC_IN(writer_check_global_order);
-
   auto coords_it = attr_buffers_.find(constants::coords);
 
   // Applicable only to sparse writes - exit if coordinates do not exist
@@ -641,8 +643,6 @@ Status Writer::check_global_order() const {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_check_global_order);
 }
 
 Status Writer::check_subarray() const {
