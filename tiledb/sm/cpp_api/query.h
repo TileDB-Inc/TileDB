@@ -311,8 +311,8 @@ class Query {
    * Returns the number of elements in the result buffers from a read query.
    * This is a map from the attribute name to a pair of values.
    *
-   * The first is number of elements for var size attributes, and the second
-   * is number of elements in the data buffer. For fixed sized attributes
+   * The first is number of elements (offsets) for var size attributes, and the
+   * second is number of elements in the data buffer. For fixed sized attributes
    * (and coordinates), the first is always 0.
    *
    * For variable sized attributes: the first value is the
@@ -321,7 +321,7 @@ class Query {
    * example, a read query on a variable-length `float` attribute that reads
    * three cells would return 3 for the first number in the pair. If the total
    * amount of `floats` read across the three cells was 10, then the second
-   * number in the pair would be 10 (totaling `10*sizeof(float)` bytes of data).
+   * number in the pair would be 10.
    *
    * For fixed-length attributes, the first value is always 0. The second value
    * is the total number of elements in the data buffer. For example, a read
@@ -339,7 +339,7 @@ class Query {
    *
    * // For fixed-sized attributes, `.second` is the number of elements
    * // that were read for the attribute across all cells. Note: number of
-   * // elements
+   * // elements and not number of bytes.
    * auto num_a1_elements = result_el["a1"].second;
    *
    * // Coords are also fixed-sized.

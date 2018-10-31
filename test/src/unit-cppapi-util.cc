@@ -64,6 +64,17 @@ TEST_CASE("C++ API: Utils", "[cppapi]") {
     CHECK(std::string(ret[2].begin(), ret[2].end()) == "ghi");
   }
 
+  SECTION("Group by cell, int values") {
+    std::vector<int32_t> buf = {1, 2, 3, 4, 5};
+    std::vector<uint64_t> offsets = {0, 3 * sizeof(int)};
+    auto ret = group_by_cell(offsets, buf, offsets.size(), buf.size());
+    CHECK(ret.size() == 2);
+    CHECK(ret[0].size() == 3);
+    CHECK((ret[0][0] == 1 && ret[0][1] == 2 && ret[0][2] == 3));
+    CHECK(ret[1].size() == 2);
+    CHECK((ret[1][0] == 4 && ret[1][1] == 5));
+  }
+
   SECTION("Unpack var buffer") {
     auto grouped = group_by_cell(buf, 3);
     auto ungrouped = ungroup_var_buffer(grouped);
@@ -75,6 +86,28 @@ TEST_CASE("C++ API: Utils", "[cppapi]") {
     for (int i = 0; i < 9; i++) {
       CHECK(ungrouped.second[i] == buf[i]);
     }
+  }
+
+  SECTION("Ungroup-group is idempotent") {
+    std::vector<std::vector<int32_t>> grouped = {{1, 2, 3}, {4, 5}};
+    auto ungrouped = ungroup_var_buffer(grouped);
+    CHECK(ungrouped.first.size() == 2);
+    CHECK(ungrouped.first[0] == 0);
+    CHECK(ungrouped.first[1] == 3 * sizeof(int32_t));
+    CHECK(ungrouped.second.size() == 5);
+    for (int i = 0; i < 5; i++)
+      CHECK(ungrouped.second[i] == i + 1);
+
+    auto ret = group_by_cell(
+        ungrouped.first,
+        ungrouped.second,
+        ungrouped.first.size(),
+        ungrouped.second.size());
+    CHECK(ret.size() == 2);
+    CHECK(ret[0].size() == 3);
+    CHECK((ret[0][0] == 1 && ret[0][1] == 2 && ret[0][2] == 3));
+    CHECK(ret[1].size() == 2);
+    CHECK((ret[1][0] == 4 && ret[1][1] == 5));
   }
 
   SECTION("Flatten") {

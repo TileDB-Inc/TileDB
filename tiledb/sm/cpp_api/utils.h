@@ -48,6 +48,8 @@ namespace tiledb {
  * for "unpacking" variable-length attribute data from a read query result in
  * offsets + data form to a vector of per-cell data.
  *
+ * The offsets must be given in units of bytes.
+ *
  * **Example:**
  * @code{.cpp}
  * std::vector<uint64_t> offsets;
@@ -75,8 +77,8 @@ namespace tiledb {
  * @tparam E Cell type. usually ``std::vector<T>`` or ``std::string``. Must be
  *         constructable by ``{std::vector<T>::iterator,
  *         std::vector<T>::iterator}``
- * @param offsets Offsets vector. This specifies the start offset of each
- *        cell in the data vector.
+ * @param offsets Offsets vector. This specifies the start offset in bytes
+ *        of each cell in the data vector.
  * @param data Data vector. Flat data buffer with cell contents.
  * @param num_offsets Number of offset elements populated by query. If the
  *        entire buffer is to be grouped, pass ``offsets.size()``.
@@ -94,9 +96,9 @@ std::vector<E> group_by_cell(
   ret.reserve(num_offsets);
   for (unsigned i = 0; i < num_offsets; ++i) {
     ret.emplace_back(
-        data.begin() + offsets[i],
+        data.begin() + (offsets[i] / sizeof(T)),
         (i == num_offsets - 1) ? data.begin() + num_data :
-                                 data.begin() + offsets[i + 1]);
+                                 data.begin() + (offsets[i + 1] / sizeof(T)));
   }
   return ret;
 }
@@ -105,6 +107,8 @@ std::vector<E> group_by_cell(
  * Convert an (offset, data) vector pair into a single vector of vectors. Useful
  * for "unpacking" variable-length attribute data from a read query result in
  * offsets + data form to a vector of per-cell data.
+ *
+ * The offsets must be given in units of bytes.
  *
  * **Example:**
  * @code{.cpp}
@@ -145,6 +149,7 @@ std::vector<E> group_by_cell(
 
 /**
  * Convert a generic (offset, data) vector pair into a single vector of vectors.
+ * The offsets must be given in units of bytes.
  *
  * **Example:**
  * @code{.cpp}
@@ -305,6 +310,7 @@ std::vector<std::array<T, N>> group_by_cell(const std::vector<T>& buff) {
 
 /**
  * Unpack a vector of variable sized attributes into a data and offset buffer.
+ * The offset buffer result is in units of bytes.
  *
  * **Example:**
  * @code{.cpp}
@@ -332,7 +338,7 @@ std::pair<std::vector<uint64_t>, std::vector<R>> ungroup_var_buffer(
   ret.first.push_back(0);
   for (const auto& v : data) {
     ret.second.insert(std::end(ret.second), std::begin(v), std::end(v));
-    ret.first.push_back(ret.first.back() + v.size());
+    ret.first.push_back(ret.first.back() + v.size() * sizeof(R));
   }
   ret.first.pop_back();
   return ret;
