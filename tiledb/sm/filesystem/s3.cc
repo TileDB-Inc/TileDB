@@ -140,10 +140,11 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   // If the user set config variables for aws keys use them
   if (!s3_config.aws_access_key_id.empty() &&
       !s3_config.aws_secret_access_key.empty()) {
+    Aws::String access_key_id(s3_config.aws_access_key_id.c_str());
+    Aws::String secret_access_key(s3_config.aws_secret_access_key.c_str());
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
-        Aws::Auth::AWSCredentials(
-            s3_config.aws_access_key_id, s3_config.aws_secret_access_key),
+        Aws::Auth::AWSCredentials(access_key_id, secret_access_key),
         config,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         s3_config.use_virtual_addressing_);
