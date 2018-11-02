@@ -98,7 +98,8 @@ namespace sm {
 namespace global_state {
 
 Status init_tbb(Config* config) {
-  return Status::OK();
+  (void)config;
+  return Status::Ok();
 }
 
 }  // namespace global_state
