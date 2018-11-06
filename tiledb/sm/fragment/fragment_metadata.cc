@@ -362,6 +362,10 @@ uint64_t FragmentMetadata::file_var_sizes(const std::string& attribute) const {
   return file_var_sizes_[attribute_id];
 }
 
+uint32_t FragmentMetadata::format_version() const {
+  return version_;
+}
+
 const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
 }

@@ -11,6 +11,7 @@
 ## Improvements
 
 * Set LZ4, Zlib and Zstd compressors to build in release mode. [#1034](https://github.com/TileDB-Inc/TileDB/pull/1034)
+* Changed coordinates to always be split before filtering. #1054 
 
 # TileDB v1.4.0 Release Notes
 
