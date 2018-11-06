@@ -123,7 +123,11 @@ Status TileIO::read_generic(
 
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(
-      (*tile)->init((Datatype)header.datatype, header.cell_size, 0),
+      (*tile)->init(
+          header.version_number,
+          (Datatype)header.datatype,
+          header.cell_size,
+          0),
       delete *tile);
 
   auto tile_data_offset =

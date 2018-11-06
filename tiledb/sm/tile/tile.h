@@ -106,9 +106,14 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @param format_version The format version of the data in this tile.
    * @return Status
    */
-  Status init(Datatype type, uint64_t cell_size, unsigned int dim_num);
+  Status init(
+      uint32_t format_version,
+      Datatype type,
+      uint64_t cell_size,
+      unsigned int dim_num);
 
   /**
    * Tile initializer.
@@ -119,9 +124,11 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @param format_version The format version of the data in this tile.
    * @return Status
    */
   Status init(
+      uint32_t format_version,
       Datatype type,
       uint64_t tile_size,
       uint64_t cell_size,
@@ -164,6 +171,9 @@ class Tile {
    * user buffers (decompressed, etc).
    */
   bool filtered() const;
+
+  /** Gets the format version number of the data in this Tile. */
+  uint32_t format_version() const;
 
   /** Checks if the tile is full. */
   bool full() const;
@@ -282,6 +292,9 @@ class Tile {
 
   /** The current state of the in-memory tile data with respect to filtering. */
   bool filtered_;
+
+  /** The format version of the data in this tile. */
+  uint32_t format_version_;
 
   /**
    * If *true* the tile object will delete *buff* upon

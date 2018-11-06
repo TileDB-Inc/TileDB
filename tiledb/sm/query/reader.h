@@ -813,22 +813,28 @@ class Reader {
   /**
    * Initializes a fixed-sized tile.
    *
+   * @param format_version The format version of the tile.
    * @param attribute The attribute the tile belongs to.
    * @param tile The tile to be initialized.
    * @return Status
    */
-  Status init_tile(const std::string& attribute, Tile* tile) const;
+  Status init_tile(
+      uint32_t format_version, const std::string& attribute, Tile* tile) const;
 
   /**
    * Initializes a var-sized tile.
    *
+   * @param format_version The format version of the tile.
    * @param attribute The attribute the tile belongs to.
    * @param tile The offsets tile to be initialized.
    * @param tile_var The var-sized data tile to be initialized.
    * @return Status
    */
   Status init_tile(
-      const std::string& attribute, Tile* tile, Tile* tile_var) const;
+      uint32_t format_version,
+      const std::string& attribute,
+      Tile* tile,
+      Tile* tile_var) const;
 
   /**
    * Initializes the fragment dense cell range iterators. There is one vector

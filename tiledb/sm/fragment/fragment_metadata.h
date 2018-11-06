@@ -220,6 +220,9 @@ class FragmentMetadata {
   /** Returns the size of the input variable attribute. */
   uint64_t file_var_sizes(const std::string& attribute) const;
 
+  /** Returns the format version of this fragment. */
+  uint32_t format_version() const;
+
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
 

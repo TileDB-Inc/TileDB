@@ -95,10 +95,15 @@ uint64_t Tile::cell_num() const {
   return size() / cell_size_;
 }
 
-Status Tile::init(Datatype type, uint64_t cell_size, unsigned int dim_num) {
+Status Tile::init(
+    uint32_t format_version,
+    Datatype type,
+    uint64_t cell_size,
+    unsigned int dim_num) {
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
+  format_version_ = format_version;
 
   buffer_ = new Buffer();
   if (buffer_ == nullptr)
@@ -109,6 +114,7 @@ Status Tile::init(Datatype type, uint64_t cell_size, unsigned int dim_num) {
 }
 
 Status Tile::init(
+    uint32_t format_version,
     Datatype type,
     uint64_t tile_size,
     uint64_t cell_size,
@@ -116,6 +122,7 @@ Status Tile::init(
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
+  format_version_ = format_version;
 
   buffer_ = new Buffer();
   if (buffer_ == nullptr)
@@ -160,6 +167,10 @@ bool Tile::empty() const {
 
 bool Tile::filtered() const {
   return filtered_;
+}
+
+uint32_t Tile::format_version() const {
+  return format_version_;
 }
 
 bool Tile::full() const {

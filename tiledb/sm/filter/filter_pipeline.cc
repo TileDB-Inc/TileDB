@@ -353,9 +353,8 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 
   current_tile_ = tile;
 
-  // Split the coords if the tile is compressed, otherwise it is wasted effort.
-  bool using_compression = get_filter<CompressionFilter>() != nullptr;
-  if (using_compression && tile->stores_coords())
+  // Split the coords if the tile stores coordinates.
+  if (tile->stores_coords())
     tile->split_coordinates();
 
   // Compute the chunks.
@@ -426,10 +425,15 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
   // Replace the tile's buffer with the unfiltered buffer.
   RETURN_NOT_OK(tile->buffer()->swap(unfiltered_tile));
 
-  // Zip the coords if the tile was compressed, otherwise they were not split.
-  bool using_compression = get_filter<CompressionFilter>() != nullptr;
-  if (using_compression && tile->stores_coords())
-    tile->zip_coordinates();
+  // Zip the coords.
+  if (tile->stores_coords()) {
+    // Note that format version < 2 only split the coordinates when compression
+    // was used. See https://github.com/TileDB-Inc/TileDB/issues/1053
+    bool using_compression = get_filter<CompressionFilter>() != nullptr;
+    if (tile->format_version() > 1 || using_compression) {
+      tile->zip_coordinates();
+    }
+  }
 
   return Status::Ok();
 
