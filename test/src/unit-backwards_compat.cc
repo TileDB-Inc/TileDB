@@ -62,6 +62,31 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
+    "[backwards-compat]") {
+  Context ctx;
+  std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
+  Array array(ctx, array_uri, TILEDB_READ);
+  std::vector<int> subarray = {1, 4, 10, 10};
+  auto max_el = array.max_buffer_elements(subarray);
+  std::vector<int> a_read;
+  a_read.resize(max_el["a"].second);
+  std::vector<int> coords_read;
+  coords_read.resize(max_el[TILEDB_COORDS].second);
+
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_read)
+      .set_coordinates(coords_read);
+  query_r.submit();
+  array.close();
+
+  for (int i = 0; i < 4; i++)
+    REQUIRE(a_read[i] == i + 1);
+}
+
+TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "
     "version of tiledb",
     "[backwards-compat]") {

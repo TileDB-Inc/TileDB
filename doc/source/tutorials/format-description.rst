@@ -9,7 +9,7 @@ describes the tile-based format shared by all files written by TileDB
 to each tile for filtering. The second section describes the byte format of
 the tile data written in each file in a TileDB array.
 
-The current TileDB format version number is **1** (``uint32_t``).
+The current TileDB format version number is **2** (``uint32_t``).
 
 .. note::
 
@@ -96,6 +96,12 @@ instead stored in the array schema and fragment metadata files), so an attribute
 | Tile data               | ``uint8_t[]``        | Array of filtered tile data     |
 |                         |                      | bytes.                          |
 +-------------------------+----------------------+---------------------------------+
+
+A coordinate ``Tile`` is additionally processed by "splitting" coordinate tuples
+across dimensions. As an example, 3D coordinates are given by users in the form
+``[x1, y1, z1, x2, y2, z2, ...]``. Before being filtered, the coordinate values
+stored in the tile data are rearranged to be
+``[x1, x2, ..., xN, y1, y2, ..., yN, z1, z2, ..., zN]``.
 
 To account for filtering, some additional metadata is prepended in the tile data
 bytes in each tile. This filter pipeline metadata informs TileDB how the

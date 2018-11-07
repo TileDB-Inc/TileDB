@@ -1675,7 +1675,8 @@ Status Reader::init_read_state() {
   return Status::Ok();
 }
 
-Status Reader::init_tile(const std::string& attribute, Tile* tile) const {
+Status Reader::init_tile(
+    uint32_t format_version, const std::string& attribute, Tile* tile) const {
   // For easy reference
   auto domain = array_schema_->domain();
   auto cell_size = array_schema_->cell_size(attribute);
@@ -1688,13 +1689,17 @@ Status Reader::init_tile(const std::string& attribute, Tile* tile) const {
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
-  RETURN_NOT_OK(tile->init(type, tile_size, cell_size, dim_num));
+  RETURN_NOT_OK(
+      tile->init(format_version, type, tile_size, cell_size, dim_num));
 
   return Status::Ok();
 }
 
 Status Reader::init_tile(
-    const std::string& attribute, Tile* tile, Tile* tile_var) const {
+    uint32_t format_version,
+    const std::string& attribute,
+    Tile* tile,
+    Tile* tile_var) const {
   // For easy reference
   auto domain = array_schema_->domain();
   auto capacity = array_schema_->capacity();
@@ -1705,11 +1710,13 @@ Status Reader::init_tile(
 
   // Initialize
   RETURN_NOT_OK(tile->init(
+      format_version,
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
       0));
-  RETURN_NOT_OK(tile_var->init(type, tile_size, datatype_size(type), 0));
+  RETURN_NOT_OK(
+      tile_var->init(format_version, type, tile_size, datatype_size(type), 0));
   return Status::Ok();
 }
 
@@ -1860,10 +1867,12 @@ Status Reader::read_tiles(
     auto& tile_pair = it->second;
     auto& t = tile_pair.first;
     auto& t_var = tile_pair.second;
+    auto& fragment = fragment_metadata_[tile->fragment_idx_];
+    auto format_version = fragment->format_version();
     if (!var_size) {
-      RETURN_NOT_OK(init_tile(attribute, &t));
+      RETURN_NOT_OK(init_tile(format_version, attribute, &t));
     } else {
-      RETURN_NOT_OK(init_tile(attribute, &t, &t_var));
+      RETURN_NOT_OK(init_tile(format_version, attribute, &t, &t_var));
     }
 
     // Enqueue the read task in the Reader thread pool.
