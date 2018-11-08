@@ -2,6 +2,8 @@
 
 ## Bug fixes
 
+* Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. 
+
 ## Improvements
 
 # TileDB v1.4.1 Release Notes
