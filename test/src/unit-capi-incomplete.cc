@@ -625,7 +625,8 @@ void IncompleteFx::check_dense_shrink_buffer_size() {
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Check new buffer contents
-  CHECK(buffer_sizes[0] == 0);
+  CHECK(buffer_sizes[0] == 4);
+  CHECK(buffer_a1[0] == 2);
 
   // Free/finalize query
   rc = tiledb_query_finalize(ctx_, query);
@@ -687,6 +688,9 @@ void IncompleteFx::check_dense_unsplittable_overflow() {
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_INCOMPLETE);
+
+  CHECK(buffer_sizes[0] == 0);
+  CHECK(buffer_sizes[1] == 0);
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);

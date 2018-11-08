@@ -1204,3 +1204,52 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    ArrayFx, "C API: Test empty array", "[capi], [array], [array-empty]") {
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "array_empty";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  create_sparse_vector(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Buffers
+  int buff_a[10];
+  uint64_t buff_a_size = sizeof(buff_a);
+
+  // Submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", buff_a, &buff_a_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check status
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // No results
+  CHECK(buff_a_size == 0);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}

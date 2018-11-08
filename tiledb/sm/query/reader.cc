@@ -208,6 +208,23 @@ Layout Reader::layout() const {
 Status Reader::next_subarray_partition() {
   STATS_FUNC_IN(reader_next_subarray_partition);
 
+  auto domain = array_schema_->domain();
+  read_state_.unsplittable_ = false;
+
+  // Handle case of overflow - the current partition must be split
+  if (read_state_.overflowed_) {
+    void *subarray_1 = nullptr, *subarray_2 = nullptr;
+    Status st = domain->split_subarray(
+        read_state_.cur_subarray_partition_, layout_, &subarray_1, &subarray_2);
+    if (subarray_1 != nullptr && subarray_2 != nullptr) {
+      read_state_.subarray_partitions_.push_front(subarray_2);
+      read_state_.subarray_partitions_.push_front(subarray_1);
+    } else {  // Unsplittable partition
+      read_state_.unsplittable_ = true;
+      return Status::Ok();
+    }
+  }
+
   if (read_state_.subarray_partitions_.empty()) {
     std::free(read_state_.cur_subarray_partition_);
     read_state_.cur_subarray_partition_ = nullptr;
@@ -226,7 +243,6 @@ Status Reader::next_subarray_partition() {
   std::unordered_map<std::string, std::pair<double, double>> est_buffer_sizes;
   bool found = false;
   void* next_partition = nullptr;
-  auto domain = array_schema_->domain();
   do {
     // Pop next partition
     next_partition = read_state_.subarray_partitions_.front();
@@ -283,6 +299,7 @@ Status Reader::next_subarray_partition() {
       // Not splittable, return the original subarray as result
       if (subarray_1 == nullptr || subarray_2 == nullptr) {
         found = true;
+        read_state_.unsplittable_ = true;
       } else {
         read_state_.subarray_partitions_.push_front(subarray_2);
         read_state_.subarray_partitions_.push_front(subarray_1);
@@ -328,10 +345,9 @@ Status Reader::read() {
     return Status::Ok();
   }
 
-  bool no_results = false;
-  read_state_.overflowed_ = false;
-
+  bool no_results;
   do {
+    read_state_.overflowed_ = false;
     reset_buffer_sizes();
 
     // Perform dense or sparse read if there are fragments
@@ -341,21 +357,25 @@ Status Reader::read() {
       RETURN_NOT_OK(sparse_read());
     }
 
-    // Return if the buffers could not fit the results.
-    // Do not advance to the next partition. This is equivalent to
-    // having no results.
-    if (read_state_.overflowed_) {
+    // Zero out the buffer sizes if this partition led to an overflow.
+    // In the case of overflow, `next_subarray_partition` below will
+    // split further the current partition and continue with the loop.
+    if (read_state_.overflowed_)
+      zero_out_buffer_sizes();
+
+    // Advance to the next subarray partition
+    RETURN_NOT_OK(next_subarray_partition());
+
+    // If no new subarray partition is found because the current one
+    // is unsplittable, and the current partition had led to an
+    // overflow, zero out the buffer sizes and return
+    if (read_state_.unsplittable_ && read_state_.overflowed_) {
       zero_out_buffer_sizes();
       return Status::Ok();
     }
 
-    // Advance to the next subarray partition
-    RETURN_NOT_OK(next_subarray_partition());
     no_results = this->no_results();
   } while (no_results && read_state_.cur_subarray_partition_ != nullptr);
-
-  if (no_results)
-    zero_out_buffer_sizes();
 
   return Status::Ok();
 
@@ -1656,19 +1676,6 @@ Status Reader::init_read_state() {
   read_state_.subarray_partitions_.push_back(first_partition);
 
   RETURN_NOT_OK(next_subarray_partition());
-
-  // If there is no next subarray partition, then the original subarray is
-  // not splittable. Set the current subarray to the original subarray
-  if (read_state_.cur_subarray_partition_ == nullptr) {
-    read_state_.cur_subarray_partition_ = std::malloc(subarray_size);
-    if (read_state_.cur_subarray_partition_ == nullptr)
-      return LOG_STATUS(Status::ReaderError(
-          "Cannot initialize read state; Memory allocation failed"));
-    std::memcpy(
-        read_state_.cur_subarray_partition_,
-        read_state_.subarray_,
-        subarray_size);
-  }
 
   read_state_.initialized_ = true;
 
