@@ -89,6 +89,8 @@ class Reader {
      * some buffer.
      */
     bool overflowed_;
+    /** True if the current subarray partition is unsplittable. */
+    bool unsplittable_;
   };
 
   /**
