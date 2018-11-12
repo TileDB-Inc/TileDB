@@ -393,7 +393,7 @@ Other helpful build targets:
 Cygwin
 ~~~~~~
 
-`Cygwin <https://https://cygwin.com/>`_ is a Unix like environment and command line interface for
+`Cygwin <https://cygwin.com/>`_ is a Unix like environment and command line interface for
 Microsoft Windows that provides a large collection of GNU / OpenSource tools (including the gcc toolchain) and
 supporting libraries that provide substantial POSIX API functionality.
 TileDB is able to compile from source in the Cygwin environment if Intel TBB is disabled 
