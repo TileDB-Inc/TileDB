@@ -2,7 +2,8 @@
 
 ## Bug fixes
 
-* Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. 
+* Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. #1056
+* Fixed error in linking against static TileDB on Windows. #1058
 
 ## Improvements
 
