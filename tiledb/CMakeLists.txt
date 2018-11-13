@@ -187,6 +187,23 @@ target_include_directories(TILEDB_CORE_OBJECTS
     "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
 )
 
+# Build a separate copy of the object library for use with static TileDB
+# on Windows. See https://github.com/TileDB-Inc/TileDB/issues/673
+if (WIN32 AND TILEDB_STATIC)
+  add_library(TILEDB_CORE_OBJECTS_STATIC OBJECT
+    ${TILEDB_CORE_SOURCES}
+    ${TILEDB_EXTERNALS_SOURCES}
+  )
+
+  # Compile all core sources with PIC
+  set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+  target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
+    PRIVATE
+      -DTILEDB_STATIC_DEFINE
+  )
+endif()
+
 if (TILEDB_CPP_API)
   target_include_directories(TILEDB_CORE_OBJECTS
     PRIVATE
@@ -415,20 +432,47 @@ target_link_libraries(tiledb_shared
 )
 
 if (TILEDB_STATIC)
-  add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-  set_target_properties(tiledb_static
-    PROPERTIES
-      OUTPUT_NAME "tiledb"
-  )
+  if (WIN32)
+    # Copy over all include directories, compile options, etc, from the regular
+    # core objects.
+    target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
+      PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,COMPILE_DEFINITIONS>
+    )
+    target_compile_options(TILEDB_CORE_OBJECTS_STATIC
+      PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,COMPILE_OPTIONS>
+    )
+    target_include_directories(TILEDB_CORE_OBJECTS_STATIC
+      PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
+    )
+    # Create the target
+    add_library(tiledb_static STATIC
+      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>
+    )
+    target_compile_definitions(tiledb_static
+      INTERFACE
+        -DTILEDB_STATIC_DEFINE
+    )
+    # On Windows we must name the static library something else to avoid
+    # name clash with the DLL's "import library" .lib file.
+    set_target_properties(tiledb_static
+      PROPERTIES
+        OUTPUT_NAME "tiledbstatic"
+    )
+  else()
+    add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+    set_target_properties(tiledb_static
+      PROPERTIES
+        OUTPUT_NAME "tiledb"
+    )
+  endif()
+
   target_link_libraries(tiledb_static
     PRIVATE
       $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
   )
-  # On Windows we must name the static library something else to avoid
-  # name clash with the DLL's "import library" .lib file.
-  if (WIN32)
-    set_target_properties(tiledb_static PROPERTIES OUTPUT_NAME "tiledbstatic")
-  endif()
 endif()
 
 ############################################################
