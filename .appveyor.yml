@@ -101,6 +101,8 @@ test_script:
 
     .\Release\ExampleExe.exe
 
+    .\Release\ExampleExe_static.exe
+
     cd $env:APPVEYOR_BUILD_FOLDER\build
 
     mkdir dist
