@@ -40,7 +40,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of kv store.
-const char* kv_name = "quickstart_kv";
+const char* kv_name = "quickstart_kv_array";
 
 void create_kv() {
   // Create TileDB context

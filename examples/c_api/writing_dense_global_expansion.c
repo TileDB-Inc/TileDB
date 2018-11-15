@@ -41,7 +41,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "writing_dense_global_expansion";
+const char* array_name = "writing_dense_global_expansion_array";
 
 void create_array() {
   // Create TileDB context

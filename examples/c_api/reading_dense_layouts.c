@@ -41,7 +41,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "reading_dense_layouts";
+const char* array_name = "reading_dense_layouts_array";
 
 void create_array() {
   // Create TileDB context

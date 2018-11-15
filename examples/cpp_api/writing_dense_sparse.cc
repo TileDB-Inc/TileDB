@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("writing_dense_sparse");
+std::string array_name("writing_dense_sparse_array");
 
 void create_array() {
   // Create a TileDB context.

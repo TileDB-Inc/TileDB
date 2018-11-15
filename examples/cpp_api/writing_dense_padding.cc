@@ -40,7 +40,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("writing_dense_padding");
+std::string array_name("writing_dense_padding_array");
 
 void create_array() {
   // Create a TileDB context.

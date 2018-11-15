@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("global_order_sparse");
+std::string array_name("global_order_sparse_array");
 
 void create_array() {
   // Create a TileDB context.

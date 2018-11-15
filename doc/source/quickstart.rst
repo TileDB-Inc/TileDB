@@ -160,7 +160,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       .. code-block:: c++
 
          // Name of array.
-         std::string array_name("quickstart_dense");
+         std::string array_name("quickstart_dense_array");
 
          void create_array() {
            // Create a TileDB context.
@@ -255,7 +255,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       .. code-block:: go
 
          // Name of array.
-         var arrayName = "quickstart_dense"
+         var arrayName = "quickstart_dense_array"
 
          func createDenseArray() {
                  // Create a TileDB context.
@@ -564,7 +564,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       .. code-block:: c++
 
          // Name of array.
-         std::string array_name("quickstart_sparse");
+         std::string array_name("quickstart_sparse_array");
 
          void create_array() {
            // Create a TileDB context.
@@ -659,7 +659,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       .. code-block:: go
 
          // Name of array.
-         var sparseArrayName = "quickstart_sparse"
+         var sparseArrayName = "quickstart_sparse_array"
 
          func createSparseArray() {
            // Create a TileDB context.

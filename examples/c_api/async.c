@@ -39,7 +39,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "async";
+const char* array_name = "async_array";
 
 void create_array() {
   // Create TileDB context

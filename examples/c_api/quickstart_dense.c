@@ -39,7 +39,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "quickstart_dense";
+const char* array_name = "quickstart_dense_array";
 
 void create_array() {
   // Create TileDB context

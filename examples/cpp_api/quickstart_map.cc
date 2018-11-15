@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of map.
-std::string map_name("quickstart_map");
+std::string map_name("quickstart_map_array");
 
 void create_map() {
   // Create TileDB context

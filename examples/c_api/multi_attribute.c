@@ -40,7 +40,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "multi_attribute";
+const char* array_name = "multi_attribute_array";
 
 void create_array() {
   // Create TileDB context

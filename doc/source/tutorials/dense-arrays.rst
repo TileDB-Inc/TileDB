@@ -172,7 +172,7 @@ will essentially persist the array schema we just created on disk.
 
       .. code-block:: c++
 
-        std::string array_name("quickstart_dense");
+        std::string array_name("quickstart_dense_array");
         Array::create(array_name, schema);
 
 

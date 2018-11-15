@@ -40,7 +40,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "quickstart_sparse";
+const char* array_name = "quickstart_sparse_array";
 
 void create_array() {
   // Create TileDB context

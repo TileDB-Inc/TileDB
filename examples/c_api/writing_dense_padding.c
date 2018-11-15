@@ -39,7 +39,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "writing_dense_padding";
+const char* array_name = "writing_dense_padding_array";
 
 void create_array() {
   // Create TileDB context
