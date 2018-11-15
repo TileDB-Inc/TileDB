@@ -118,6 +118,38 @@ class Filter {
    *
    * @code{.cpp}
    * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
+   * f.set_option(TILEDB_COMPRESSION_LEVEL, 5);
+   * @endcode
+   *
+   * @tparam T Type of value of option to set.
+   * @param option Enumerated option to set.
+   * @param value Value of option to set.
+   * @return Reference to this Filter
+   *
+   * @throws TileDBError if the option cannot be set on the filter.
+   * @throws std::invalid_argument if the option value is the wrong type.
+   */
+  template <
+      typename T,
+      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  Filter& set_option(tiledb_filter_option_t option, T value) {
+    auto& ctx = ctx_.get();
+    option_value_typecheck<T>(option);
+    ctx.handle_error(
+        tiledb_filter_set_option(ctx, filter_.get(), option, &value));
+    return *this;
+  }
+
+  /**
+   * Sets an option on the filter. Options are filter dependent; this function
+   * throws an error if the given option is not valid for the given filter.
+   *
+   * This version of set_option performs no type checks.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
    * int level = 5;
    * f.set_option(TILEDB_COMPRESSION_LEVEL, &level);
    * @endcode
@@ -127,6 +159,8 @@ class Filter {
    * @return Reference to this Filter
    *
    * @throws TileDBError if the option cannot be set on the filter.
+   *
+   * @note set_option<T>(option, T value) is preferred as it is safer.
    */
   Filter& set_option(tiledb_filter_option_t option, const void* value) {
     auto& ctx = ctx_.get();
@@ -147,6 +181,7 @@ class Filter {
    * // level == -1 (the default compression level)
    * @endcode
    *
+   * @tparam T Type of option value to get.
    * @param option Enumerated option to get.
    * @param value Buffer that option value will be written to.
    *
@@ -154,6 +189,41 @@ class Filter {
    *    option value.
    *
    * @throws TileDBError if the option cannot be retrieved from the filter.
+   * @throws std::invalid_argument if the option value is the wrong type.
+   */
+  template <
+      typename T,
+      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  void get_option(tiledb_filter_option_t option, T* value) {
+    auto& ctx = ctx_.get();
+    option_value_typecheck<T>(option);
+    ctx.handle_error(
+        tiledb_filter_get_option(ctx, filter_.get(), option, value));
+  }
+
+  /**
+   * Gets an option value from the filter.
+   *
+   * This version of get_option performs no type checks.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
+   * int32_t level;
+   * f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
+   * // level == -1 (the default compression level)
+   * @endcode
+   *
+   * @param option Enumerated option to get.
+   * @param value Buffer that option value will be written to.
+   *
+   * @note The buffer pointed to by `value` must be large enough to hold the
+   *    option value.
+   *
+   * @throws TileDBError if the option cannot be retrieved from the filter.
+   *
+   * @note get_option<T>(option, T* value) is preferred as it is safer.
    */
   void get_option(tiledb_filter_option_t option, void* value) {
     auto& ctx = ctx_.get();
@@ -215,6 +285,31 @@ class Filter {
 
   /** The pointer to the C TileDB filter object. */
   std::shared_ptr<tiledb_filter_t> filter_;
+
+  /**
+   * Throws an exception if the value type is not suitable for the given filter
+   * option.
+   *
+   * @tparam T Value type of filter option
+   * @param option Option to check
+   * @throws invalid_argument If the value type is invalid
+   */
+  template <typename T>
+  void option_value_typecheck(tiledb_filter_option_t option) {
+    switch (option) {
+      case TILEDB_COMPRESSION_LEVEL:
+        if (!std::is_same<int32_t, T>::value)
+          throw std::invalid_argument("Option value must be int32_t.");
+        break;
+      case TILEDB_BIT_WIDTH_MAX_WINDOW:
+      case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
+        if (!std::is_same<uint32_t, T>::value)
+          throw std::invalid_argument("Option value must be uint32_t.");
+        break;
+      default:
+        throw std::invalid_argument("Invalid option type");
+    }
+  }
 };
 
 /** Gets a string representation of a filter for an output stream. */
