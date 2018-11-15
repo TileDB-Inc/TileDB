@@ -42,7 +42,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("variable_length");
+std::string array_name("variable_length_array");
 
 void create_array() {
   // Create a TileDB context

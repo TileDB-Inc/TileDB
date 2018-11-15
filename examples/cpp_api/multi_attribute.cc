@@ -42,7 +42,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("multi_attribute");
+std::string array_name("multi_attribute_array");
 
 void create_array() {
   // Create a TileDB context.

@@ -40,7 +40,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "writing_sparse_global";
+const char* array_name = "writing_sparse_global_array";
 
 void create_array() {
   // Create TileDB context

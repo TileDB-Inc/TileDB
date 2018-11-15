@@ -41,7 +41,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* kv_name = "kv";
+const char* kv_name = "kv_array";
 
 void create_kv() {
   // Create TileDB context

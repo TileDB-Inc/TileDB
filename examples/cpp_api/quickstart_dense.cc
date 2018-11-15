@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_dense");
+std::string array_name("quickstart_dense_array");
 
 void create_array() {
   // Create a TileDB context.

@@ -42,7 +42,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("reading_sparse_layouts");
+std::string array_name("reading_sparse_layouts_array");
 
 void create_array() {
   // Create a TileDB context.

@@ -40,7 +40,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "fragments_consolidation";
+const char* array_name = "fragments_consolidation_array";
 
 void create_array() {
   // Create TileDB context

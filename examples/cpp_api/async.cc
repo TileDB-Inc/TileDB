@@ -40,7 +40,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("async");
+std::string array_name("async_array");
 
 void create_array() {
   // Create a TileDB context.

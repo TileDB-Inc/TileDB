@@ -42,7 +42,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "variable_length";
+const char* array_name = "variable_length_array";
 
 void create_array() {
   // Create TileDB context

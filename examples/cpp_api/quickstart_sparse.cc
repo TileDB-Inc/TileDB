@@ -41,7 +41,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_sparse");
+std::string array_name("quickstart_sparse_array");
 
 void create_array() {
   // Create a TileDB context.

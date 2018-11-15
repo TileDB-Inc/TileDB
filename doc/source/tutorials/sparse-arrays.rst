@@ -137,7 +137,7 @@ will essentially persist the array schema we just created on disk.
 
       .. code-block:: c++
 
-        std::string array_name("quickstart_sparse");
+        std::string array_name("quickstart_sparse_array");
         Array::create(array_name, schema);
 
    .. tab-container:: python

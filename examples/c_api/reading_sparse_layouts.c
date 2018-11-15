@@ -42,7 +42,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "reading_sparse_layouts";
+const char* array_name = "reading_sparse_layouts_array";
 
 void create_array() {
   // Create TileDB context
