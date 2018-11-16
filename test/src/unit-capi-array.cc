@@ -1253,3 +1253,73 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "C API: Test open array copies array schema",
+    "[capi][array][array-schema]") {
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "array_empty";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  create_sparse_vector(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_get_schema(ctx_, array, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close and delete the array object
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  REQUIRE(array == nullptr);
+
+  tiledb_array_type_t array_type;
+  tiledb_array_schema_get_array_type(ctx_, array_schema, &array_type);
+  CHECK(array_type == TILEDB_SPARSE);
+
+  tiledb_domain_t* array_domain;
+  rc = tiledb_array_schema_get_domain(ctx_, array_schema, &array_domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  uint32_t dim_num = 0;
+  rc = tiledb_domain_get_ndim(ctx_, array_domain, &dim_num);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(dim_num == 1);
+
+  tiledb_dimension_t* dim1;
+  rc = tiledb_domain_get_dimension_from_index(ctx_, array_domain, 0, &dim1);
+  REQUIRE(rc == TILEDB_OK);
+
+  const char* dim_name;
+  rc = tiledb_dimension_get_name(ctx_, dim1, &dim_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(dim_name, Catch::Equals("d0"));
+
+  uint32_t attr_num = 0;
+  rc = tiledb_array_schema_get_attribute_num(ctx_, array_schema, &attr_num);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(attr_num == 1);
+
+  tiledb_attribute_t* attr;
+  rc = tiledb_array_schema_get_attribute_from_index(
+      ctx_, array_schema, 0, &attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  const char* attr_name;
+  rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK_THAT(attr_name, Catch::Equals("a"));
+
+  tiledb_array_schema_free(&array_schema);
+  tiledb_domain_free(&array_domain);
+  tiledb_dimension_free(&dim1);
+  tiledb_attribute_free(&attr);
+}
