@@ -1117,9 +1117,11 @@ Status Writer::global_write_handle_last_tile() {
 
     if (!last_tile.empty()) {
       std::vector<Tile>& tiles = attribute_tiles[i];
-      tiles.push_back(last_tile);
+      // Note making shallow clones here, as it's not necessary to copy the
+      // underlying tile Buffers.
+      tiles.push_back(last_tile.clone(false));
       if (!last_tile_var.empty())
-        tiles.push_back(last_tile_var);
+        tiles.push_back(last_tile_var.clone(false));
       if (attr == constants::coords)
         RETURN_NOT_OK(compute_coords_metadata<T>(tiles, meta));
       RETURN_NOT_OK(filter_tiles(attr, &tiles));
