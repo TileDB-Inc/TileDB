@@ -12,6 +12,7 @@
 * Added missing check if coordinates obey the global order in global order sparse writes. [#1039](https://github.com/TileDB-Inc/TileDB/pull/1039)
 * Changed coordinates to always be split before filtering. #1054 
 * Added type-safe filter option methods to C++ API. #1062
+* Fixed performance bug during global order write finalization. #1065
 
 # TileDB v1.4.0 Release Notes
 

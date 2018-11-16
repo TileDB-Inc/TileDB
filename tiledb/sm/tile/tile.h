@@ -86,11 +86,26 @@ class Tile {
       Buffer* buff,
       bool owns_buff);
 
-  /** Copy constructor. */
+  /**
+   * Copy constructor. This performs a deep copy (including potential memcpy of
+   * underlying buffers).
+   */
   Tile(const Tile& tile);
+
+  /** Move constructor. */
+  Tile(Tile&& tile);
 
   /** Destructor. */
   ~Tile();
+
+  /**
+   * Copy-assign operator. This performs a deep copy (including potential memcpy
+   * of underlying buffers).
+   */
+  Tile& operator=(const Tile& tile);
+
+  /** Move-assign operator. */
+  Tile& operator=(Tile&& tile);
 
   /* ********************************* */
   /*                API                */
@@ -142,6 +157,16 @@ class Tile {
 
   /** Returns the cell size. */
   uint64_t cell_size() const;
+
+  /**
+   * Returns a shallow or deep copy of this Tile.
+   *
+   * @param deep_copy If true, a deep copy is performed, including potentially
+   *    memcpying the underlying Buffer. If false, a shallow copy is performed,
+   *    which sets the clone's Buffer equal to Tile's buffer pointer.
+   * @return New Tile
+   */
+  Tile clone(bool deep_copy) const;
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
@@ -270,9 +295,6 @@ class Tile {
    */
   void zip_coordinates();
 
-  /** Copy operator. */
-  Tile& operator=(const Tile& tile);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -311,6 +333,9 @@ class Tile {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(Tile& tile);
 };
 
 }  // namespace sm
