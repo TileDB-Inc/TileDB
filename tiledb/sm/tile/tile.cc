@@ -78,13 +78,43 @@ Tile::Tile(
 }
 
 Tile::Tile(const Tile& tile) {
-  owns_buff_ = false;
-  *this = tile;
+  // Make a deep-copy clone
+  auto clone = tile.clone(true);
+  // Swap with the clone
+  swap(clone);
+}
+
+Tile::Tile(Tile&& tile) {
+  // Swap with the argument
+  swap(tile);
 }
 
 Tile::~Tile() {
   if (owns_buff_)
     delete buffer_;
+}
+
+Tile& Tile::operator=(const Tile& tile) {
+  // Free existing buffer if owned.
+  if (owns_buff_) {
+    delete buffer_;
+    buffer_ = nullptr;
+    owns_buff_ = false;
+  }
+
+  // Make a deep-copy clone
+  auto clone = tile.clone(true);
+  // Swap with the clone
+  swap(clone);
+
+  return *this;
+}
+
+Tile& Tile::operator=(Tile&& tile) {
+  // Swap with the argument
+  swap(tile);
+
+  return *this;
 }
 
 /* ****************************** */
@@ -139,6 +169,33 @@ void Tile::advance_offset(uint64_t nbytes) {
 
 Buffer* Tile::buffer() const {
   return buffer_;
+}
+
+Tile Tile::clone(bool deep_copy) const {
+  Tile clone;
+  clone.cell_size_ = cell_size_;
+  clone.dim_num_ = dim_num_;
+  clone.filtered_ = filtered_;
+  clone.format_version_ = format_version_;
+  clone.pre_filtered_size_ = pre_filtered_size_;
+  clone.type_ = type_;
+
+  if (deep_copy) {
+    clone.owns_buff_ = owns_buff_;
+    if (owns_buff_ && buffer_ != nullptr) {
+      clone.buffer_ = new Buffer();
+      // Calls Buffer copy-assign, which calls memcpy.
+      *clone.buffer_ = *buffer_;
+    } else {
+      // this->buffer_ is either nullptr, or not owned. Just copy the pointer.
+      clone.buffer_ = buffer_;
+    }
+  } else {
+    clone.owns_buff_ = false;
+    clone.buffer_ = buffer_;
+  }
+
+  return clone;
 }
 
 uint64_t Tile::cell_size() const {
@@ -314,37 +371,21 @@ void Tile::zip_coordinates() {
   std::free((void*)tile_tmp);
 }
 
-Tile& Tile::operator=(const Tile& tile) {
-  if (owns_buff_) {
-    delete buffer_;
-    buffer_ = nullptr;
-  }
-
-  cell_size_ = tile.cell_size_;
-  dim_num_ = tile.dim_num_;
-  filtered_ = tile.filtered_;
-  owns_buff_ = tile.owns_buff_;
-  pre_filtered_size_ = tile.pre_filtered_size_;
-  type_ = tile.type_;
-
-  if (!tile.owns_buff_) {
-    buffer_ = tile.buffer_;
-  } else {
-    if (tile.buffer_ == nullptr)
-      buffer_ = nullptr;
-    else {
-      if (buffer_ == nullptr)
-        buffer_ = new Buffer();
-      *buffer_ = *tile.buffer_;
-    }
-  }
-
-  return *this;
-}
-
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+void Tile::swap(Tile& tile) {
+  // Note swapping buffer pointers here.
+  std::swap(buffer_, tile.buffer_);
+  std::swap(cell_size_, tile.cell_size_);
+  std::swap(dim_num_, tile.dim_num_);
+  std::swap(filtered_, tile.filtered_);
+  std::swap(format_version_, tile.format_version_);
+  std::swap(owns_buff_, tile.owns_buff_);
+  std::swap(pre_filtered_size_, tile.pre_filtered_size_);
+  std::swap(type_, tile.type_);
+}
 
 }  // namespace sm
 }  // namespace tiledb
