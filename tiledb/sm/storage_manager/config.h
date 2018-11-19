@@ -256,9 +256,11 @@ class Config {
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
    * - `vfs.s3.aws_access_key_id` <br>
-   *    Set the AWS_ACCESS_KEY_ID
+   *    Set the AWS_ACCESS_KEY_ID <br>
+   *    **Default**: ""
    * - `vfs.s3.aws_secret_access_key` <br>
-   *    Set the AWS_SECRET_ACCESS_KEY
+   *    Set the AWS_SECRET_ACCESS_KEY <br>
+   *    **Default**: ""
    * - `vfs.s3.scheme` <br>
    *    The S3 scheme (`http` or `https`), if S3 is enabled. <br>
    *    **Default**: https
