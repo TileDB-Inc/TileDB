@@ -1,22 +1,17 @@
-# In progress
-
-## Bug fixes
-
-* Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. #1056
-* Fixed error in linking against static TileDB on Windows. #1058
-
-## Improvements
-
 # TileDB v1.4.1 Release Notes
 
 ## Bug fixes
 
+* Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. [#1056](https://github.com/TileDB-Inc/TileDB/pull/1056)
+* Fixed performance bug during global order write finalization. [#1065](https://github.com/TileDB-Inc/TileDB/pull/1065)
+* Fixed error in linking against static TileDB on Windows. [#1058](https://github.com/TileDB-Inc/TileDB/pull/1058)
+* Fixed build error when building without TBB. [#1051](https://github.com/TileDB-Inc/TileDB/pull/1051)
+
 ## Improvements
 
 * Set LZ4, Zlib and Zstd compressors to build in release mode. [#1034](https://github.com/TileDB-Inc/TileDB/pull/1034)
-* Changed coordinates to always be split before filtering. #1054 
-* Added type-safe filter option methods to C++ API. #1062
-* Fixed performance bug during global order write finalization. #1065
+* Changed coordinates to always be split before filtering. [#1054](https://github.com/TileDB-Inc/TileDB/pull/1054) 
+* Added type-safe filter option methods to C++ API. [#1062](https://github.com/TileDB-Inc/TileDB/pull/1062)
 
 # TileDB v1.4.0 Release Notes
 
@@ -26,34 +21,34 @@ The 1.4.0 release brings two new major features, attribute filter lists and at-r
 
 ## New features
 
-* All array data can now be encrypted at rest using AES-256-GCM symmetric encryption. #968
-* Negative and real-valued domain types are now fully supported. #885
-* New filter API for transforming attribute data with an ordered list of filters. #912
+* All array data can now be encrypted at rest using AES-256-GCM symmetric encryption. [#968](https://github.com/TileDB-Inc/TileDB/pull/968)
+* Negative and real-valued domain types are now fully supported. [#885](https://github.com/TileDB-Inc/TileDB/pull/885)
+* New filter API for transforming attribute data with an ordered list of filters. [#912](https://github.com/TileDB-Inc/TileDB/pull/912)
 * Current filters include: previous compressors, bit width reduction, bitshuffle, byteshuffle, and positive-delta encoding.
     * The bitshuffle filter uses an implementation by [Kiyoshi Masui](https://github.com/kiyo-masui/bitshuffle).
     * The byteshuffle filter uses an implementation by [Francesc Alted](https://github.com/Blosc/c-blosc) (from the Blosc project).
-* Arrays can now be opened at specific timestamps. #984
+* Arrays can now be opened at specific timestamps. [#984](https://github.com/TileDB-Inc/TileDB/pull/984)
 
 ## Deprecations
 
-* The C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version. #1008
+* The C and C++ APIs for compression have been deprecated. The corresponding filter API should be used instead. The compression API will be removed in a future TileDB version. [#1008](https://github.com/TileDB-Inc/TileDB/pull/1008)
 * Removed Blosc compressors (obviated by byteshuffle -> compressor filter list).
 
 ## Bug fixes
 
-* Fix issue where performing a read query with empty result could cause future reads to return empty #882
-* Fix TBB initialization bug with multiple contexts #898 
-* Fix bug in max buffer sizes estimation #903
-* Fix Buffer allocation size being incorrectly set on realloc #911
+* Fix issue where performing a read query with empty result could cause future reads to return empty [#882](https://github.com/TileDB-Inc/TileDB/pull/882)
+* Fix TBB initialization bug with multiple contexts [#898](https://github.com/TileDB-Inc/TileDB/pull/898) 
+* Fix bug in max buffer sizes estimation [#903](https://github.com/TileDB-Inc/TileDB/pull/903)
+* Fix Buffer allocation size being incorrectly set on realloc [#911](https://github.com/TileDB-Inc/TileDB/pull/911)
 
 ## Improvements
 
-* Added check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param `sm.check_coord_oob` to enable/disable the check (enabled by default). #996
+* Added check if the coordinates fall out-of-bounds (i.e., outside the array domain) during sparse writes, and added config param `sm.check_coord_oob` to enable/disable the check (enabled by default). [#996](https://github.com/TileDB-Inc/TileDB/pull/996)
 * Add config params `sm.num_reader_threads` and `sm.num_writer_threads` for separately controlling I/O parallelism from compression parallelism.
-* Added contribution guidelines #899
-* Enable building TileDB in Cygwin environment on Windows #890
-* Added a simple benchmarking script and several benchmark programs #889
-* Changed C API and disk format integer types to have explicit bit widths. #981
+* Added contribution guidelines [#899](https://github.com/TileDB-Inc/TileDB/pull/899)
+* Enable building TileDB in Cygwin environment on Windows [#890](https://github.com/TileDB-Inc/TileDB/pull/890)
+* Added a simple benchmarking script and several benchmark programs [#889](https://github.com/TileDB-Inc/TileDB/pull/889)
+* Changed C API and disk format integer types to have explicit bit widths. [#981](https://github.com/TileDB-Inc/TileDB/pull/981)
 
 ## API additions
 
