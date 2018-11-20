@@ -220,3 +220,40 @@ TEST_CASE(
   delete decomp_out_buff;
   delete[] data;
 }
+
+TEST_CASE(
+    "Compression-DoubleDelta: Test uncompressible case",
+    "[compression], [double-delta]") {
+  // Compress
+  int8_t data[] = {-100, -101, 100, 101};
+  auto comp_in_buff = new tiledb::sm::ConstBuffer(data, sizeof(data));
+  auto comp_out_buff = new tiledb::sm::Buffer();
+  auto st = tiledb::sm::DoubleDelta::compress(
+      tiledb::sm::Datatype::INT8, comp_in_buff, comp_out_buff);
+  REQUIRE(st.ok());
+
+  // Decompress
+  auto decomp_in_buff = new tiledb::sm::ConstBuffer(
+      comp_out_buff->data(), comp_out_buff->offset());
+  auto decomp_out_buff = new tiledb::sm::Buffer();
+  st = decomp_out_buff->realloc(sizeof(data));
+  REQUIRE(st.ok());
+  tiledb::sm::PreallocatedBuffer prealloc_buf(
+      decomp_out_buff->data(), decomp_out_buff->alloced_size());
+  st = tiledb::sm::DoubleDelta::decompress(
+      tiledb::sm::Datatype::INT8, decomp_in_buff, &prealloc_buf);
+  REQUIRE(st.ok());
+
+  // Check data
+  auto decomp_data = (int8_t*)decomp_out_buff->data();
+  REQUIRE(decomp_data[0] == data[0]);
+  REQUIRE(decomp_data[1] == data[1]);
+  REQUIRE(decomp_data[2] == data[2]);
+  REQUIRE(decomp_data[3] == data[3]);
+
+  // Clean up
+  delete comp_in_buff;
+  delete comp_out_buff;
+  delete decomp_in_buff;
+  delete decomp_out_buff;
+}
