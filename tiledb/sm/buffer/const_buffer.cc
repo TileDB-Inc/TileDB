@@ -59,6 +59,10 @@ void ConstBuffer::advance_offset(uint64_t nbytes) {
   offset_ += nbytes;
 }
 
+const void* ConstBuffer::cur_data() const {
+  return (char*)data_ + offset_;
+}
+
 const void* ConstBuffer::data() const {
   return data_;
 }

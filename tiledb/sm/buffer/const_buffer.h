@@ -75,6 +75,9 @@ class ConstBuffer {
   /** Advances the offset by *nbytes*. */
   void advance_offset(uint64_t nbytes);
 
+  /** Returns pointer to data at the current offset. */
+  const void* cur_data() const;
+
   /** Returns the buffer data. */
   const void* data() const;
 
