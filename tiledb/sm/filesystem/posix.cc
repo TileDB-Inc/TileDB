@@ -443,36 +443,39 @@ Status Posix::sync(const std::string& path) {
 
 Status Posix::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) {
+  Status st;
   uint64_t file_offset = 0;
-  if (is_file(path) && !file_size(path, &file_offset).ok()) {
-    return LOG_STATUS(
-        Status::IOError(std::string("Cannot write to file '") + path));
+  if (is_file(path)) {
+    st = file_size(path, &file_offset);
+    if (!st.ok()) {
+      std::stringstream errmsg;
+      errmsg << "Cannot write to file '" << path << "'; " << st.message();
+      return LOG_STATUS(Status::IOError(errmsg.str()));
+    }
   }
-
   // Open or create file.
   int fd = open(path.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
   if (fd == -1) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
   }
-
   // Ensure that each thread is responsible for at least min_parallel_size
   // bytes, and cap the number of parallel operations at the thread pool size.
   uint64_t num_ops = std::min(
       std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
       vfs_params_.file_params_.max_parallel_ops_);
-
   if (num_ops == 1) {
-    if (!write_at(fd, file_offset, buffer, buffer_size).ok()) {
+    st = write_at(fd, file_offset, buffer, buffer_size);
+    if (!st.ok()) {
       close(fd);
-      return LOG_STATUS(
-          Status::IOError(std::string("Cannot write to file '") + path));
+      std::stringstream errmsg;
+      errmsg << "Cannot write to file '" << path << "'; " << st.message();
+      return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   } else {
     STATS_COUNTER_ADD(vfs_posix_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,
                end =
@@ -486,21 +489,19 @@ Status Posix::write(
                 fd, thread_file_offset, thread_buffer, thread_nbytes);
           }));
     }
-
-    bool all_ok = vfs_thread_pool_->wait_all(results);
-    if (!all_ok) {
+    st = vfs_thread_pool_->wait_all(results);
+    if (!st.ok()) {
       close(fd);
-      return LOG_STATUS(
-          Status::IOError(std::string("Cannot write to file '") + path));
+      std::stringstream errmsg;
+      errmsg << "Cannot write to file '" << path << "'; " << st.message();
+      return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   }
-
   if (close(fd) != 0) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot close file '") + path + "'; " + strerror(errno)));
   }
-
-  return Status::Ok();
+  return st;
 }
 
 Status Posix::write_at(
@@ -531,8 +532,6 @@ Status Posix::write_at(
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file; File writing error")));
   }
-
-  // Success
   return Status::Ok();
 }
 

@@ -101,9 +101,10 @@ class ThreadPool {
    * Wait on all the given tasks to complete.
    *
    * @param tasks Task list to wait on.
-   * @return True if all tasks returned Status::Ok, false otherwise.
+   * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
+   * error status is returned
    */
-  bool wait_all(std::vector<std::future<Status>>& tasks);
+  Status wait_all(std::vector<std::future<Status>>& tasks);
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return

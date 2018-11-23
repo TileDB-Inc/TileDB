@@ -837,13 +837,14 @@ Status S3::write_multipart(
 
     // Unlock, so the threads can take the lock as necessary.
     multipart_lck.unlock();
-
-    bool all_ok = vfs_thread_pool_->wait_all(results);
-    return all_ok ?
-               Status::Ok() :
-               LOG_STATUS(Status::S3Error("S3 parallel write_multipart error"));
+    Status st = vfs_thread_pool_->wait_all(results);
+    if (!st.ok()) {
+      std::stringstream errmsg;
+      errmsg << "S3 parallel write multipart error; " << st.message();
+      LOG_STATUS(Status::S3Error(errmsg.str()));
+    }
+    return st;
   }
-
   STATS_FUNC_OUT(vfs_s3_write_multipart);
 }
 

@@ -426,6 +426,7 @@ Status Win::sync(const std::string& path) const {
 
 Status Win::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) const {
+  Status st;
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
       path.c_str(),
@@ -439,7 +440,6 @@ Status Win::write(
     return LOG_STATUS(Status::IOError(
         "Cannot write to file '" + path + "'; File opening error"));
   }
-
   // Get the current file size.
   LARGE_INTEGER file_size_lg_int;
   if (!GetFileSizeEx(file_h, &file_size_lg_int)) {
@@ -448,13 +448,11 @@ Status Win::write(
         "Cannot write to file '" + path + "'; File size error"));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
-
   // Ensure that each thread is responsible for at least min_parallel_size
   // bytes, and cap the number of parallel operations at the thread pool size.
   uint64_t num_ops = std::min(
       std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
       vfs_params_.file_params_.max_parallel_ops_);
-
   if (num_ops == 1) {
     if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
       CloseHandle(file_h);
@@ -465,7 +463,6 @@ Status Win::write(
     STATS_COUNTER_ADD(vfs_win32_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,
                end =
@@ -479,22 +476,20 @@ Status Win::write(
                 file_h, thread_file_offset, thread_buffer, thread_nbytes);
           }));
     }
-
-    bool all_ok = vfs_thread_pool_->wait_all(results);
-    if (!all_ok) {
+    st = vfs_thread_pool_->wait_all(results);
+    if (!st.ok()) {
       CloseHandle(file_h);
-      return LOG_STATUS(
-          Status::IOError(std::string("Cannot write to file '") + path));
+      std::stringstream errmsg;
+      errmsg << "Cannot write to file '" << path << "'; " << st.message();
+      return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   }
-
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status::IOError(
         "Cannot write to file '" + path + "'; File closing error"));
   }
-
-  return Status::Ok();
+  return st;
 }
 
 Status Win::write_at(
