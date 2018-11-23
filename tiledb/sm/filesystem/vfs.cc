@@ -764,10 +764,14 @@ Status VFS::read(
             return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
           }));
     }
-
-    bool all_ok = thread_pool_->wait_all(results);
-    return all_ok ? Status::Ok() :
-                    LOG_STATUS(Status::VFSError("VFS parallel read error"));
+    Status st = thread_pool_->wait_all(results);
+    if (!st.ok()) {
+      std::stringstream errmsg;
+      errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
+             << st.message();
+      return LOG_STATUS(Status::VFSError(errmsg.str()));
+    }
+    return st;
   }
 
   STATS_FUNC_OUT(vfs_read);

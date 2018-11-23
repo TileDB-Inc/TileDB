@@ -116,13 +116,14 @@ uint64_t ThreadPool::num_threads() const {
   return threads_.size();
 }
 
-bool ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
-  bool all_ok = true;
+Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
   auto statuses = wait_all_status(tasks);
   for (auto& st : statuses) {
-    all_ok &= st.ok();
+    if (!st.ok()) {
+      return st;
+    }
   }
-  return all_ok;
+  return Status::Ok();
 }
 
 std::vector<Status> ThreadPool::wait_all_status(

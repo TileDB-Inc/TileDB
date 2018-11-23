@@ -54,7 +54,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
       return Status::Ok();
     }));
   }
-  CHECK(pool.wait_all(results));
+  CHECK(pool.wait_all(results).ok());
   CHECK(result == 100);
 }
 
@@ -69,7 +69,7 @@ TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
       return Status::Ok();
     }));
   }
-  CHECK(pool.wait_all(results));
+  CHECK(pool.wait_all(results).ok());
   CHECK(result == 100);
 }
 
@@ -84,7 +84,7 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
       return i == 50 ? Status::Error("Generic error") : Status::Ok();
     }));
   }
-  CHECK(!pool.wait_all(results));
+  CHECK(!pool.wait_all(results).ok());
   CHECK(result == 100);
 }
 
