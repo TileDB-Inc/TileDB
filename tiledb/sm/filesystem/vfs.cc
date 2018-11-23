@@ -39,6 +39,7 @@
 #include "tiledb/sm/storage_manager/config.h"
 
 #include <iostream>
+#include <list>
 #include <unordered_map>
 
 namespace tiledb {
@@ -142,6 +143,40 @@ Status VFS::create_dir(const URI& uri) const {
       Status::Error(std::string("Unsupported URI scheme: ") + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_create_dir);
+}
+
+Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
+  // Sanity check
+  bool is_dir;
+  RETURN_NOT_OK(this->is_dir(dir_name, &is_dir));
+  if (!is_dir)
+    return LOG_STATUS(Status::VFSError(
+        std::string("Cannot get directory size; Input '") +
+        dir_name.to_string() + "' is not a directory"));
+
+  // Get all files in the tree rooted at `dir_name` and add their sizes
+  *dir_size = 0;
+  uint64_t size;
+  std::list<URI> to_ls;
+  bool is_file;
+  to_ls.push_front(dir_name);
+  do {
+    auto uri = to_ls.front();
+    to_ls.pop_front();
+    std::vector<URI> children;
+    RETURN_NOT_OK(ls(uri, &children));
+    for (const auto& child : children) {
+      RETURN_NOT_OK(this->is_file(child, &is_file));
+      if (is_file) {
+        RETURN_NOT_OK(file_size(child, &size));
+        *dir_size += size;
+      } else {
+        to_ls.push_back(child);
+      }
+    }
+  } while (!to_ls.empty());
+
+  return Status::Ok();
 }
 
 Status VFS::touch(const URI& uri) const {

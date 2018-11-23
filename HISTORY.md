@@ -1,11 +1,25 @@
 # In progress
 
 ## Bug fixes
+
 * Fixed double-delta decompression bug on reads for uncompressible chunks. [#1074](https://github.com/TileDB-Inc/TileDB/pull/1074)
+
 ## Improvements
 
 * Added config params `vfs.s3.aws_access_key_id` and `vfs.s3.aws_secret_access_key` for configure s3 access at runtime. [#1036](https://github.com/TileDB-Inc/TileDB/pull/1036)
 * Added missing check if coordinates obey the global order in global order sparse writes. [#1039](https://github.com/TileDB-Inc/TileDB/pull/1039)
+
+## API additions
+
+### C API
+
+* Added function `tiledb_vfs_dir_size`.
+* Added function `tiledb_vfs_ls`.
+
+### C++ API
+
+* Added function `VFS::dir_size`.
+* Added function `VFS::ls`.
 
 # TileDB v1.4.1 Release Notes
 

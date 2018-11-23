@@ -2819,7 +2819,7 @@ int32_t tiledb_object_ls(
     return TILEDB_ERR;
   if (callback == nullptr) {
     auto st = tiledb::sm::Status::Error(
-        "Cannot initiate ls; Invalid callback function");
+        "Cannot initiate object ls; Invalid callback function");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -4013,6 +4013,17 @@ int32_t tiledb_vfs_remove_file(
   return TILEDB_OK;
 }
 
+int32_t tiledb_vfs_dir_size(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, vfs->vfs_->dir_size(tiledb::sm::URI(uri), size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_vfs_file_size(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
@@ -4159,6 +4170,40 @@ int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   if (SAVE_ERROR_CATCH(ctx, fh->vfs_fh_->sync()))
     return TILEDB_ERR;
 
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_ls(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    int32_t (*callback)(const char*, void*),
+    void* data) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (callback == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Cannot initiate VFS ls; Invalid callback function");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Get children
+  std::vector<tiledb::sm::URI> children;
+  auto st = vfs->vfs_->ls(tiledb::sm::URI(path), &children);
+
+  // Apply the callback to every child
+  int rc = 1;
+  for (const auto& uri : children) {
+    rc = callback(uri.to_string().c_str(), data);
+    if (rc != 1)
+      break;
+  }
+
+  if (rc == -1)
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 

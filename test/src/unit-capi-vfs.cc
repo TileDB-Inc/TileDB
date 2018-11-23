@@ -45,7 +45,7 @@
 #include <thread>
 
 struct VFSFx {
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
+  const std::string HDFS_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
@@ -74,6 +74,7 @@ struct VFSFx {
   void check_move(const std::string& path);
   void check_read(const std::string& path);
   void check_append(const std::string& path);
+  void check_ls(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
   void set_supported_fs();
   void set_num_vfs_threads(unsigned num_threads);
@@ -292,6 +293,9 @@ void VFSFx::check_vfs(const std::string& path) {
   // Move
   check_move(path);
 
+  // Ls
+  check_ls(path);
+
   if (supports_s3_ && path == S3_TEMP_DIR) {
     int is_empty;
     rc = tiledb_vfs_is_empty_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_empty);
@@ -490,6 +494,69 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(file_size == to_write.size());
 
+  // Write a second file
+  auto file2 = path + "file2";
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  if (is_file) {
+    rc = tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
+  tiledb_vfs_fh_t* fh2;
+  rc = tiledb_vfs_open(ctx_, vfs_, file2.c_str(), TILEDB_VFS_WRITE, &fh2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh2, &is_closed);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_closed == 0);
+  rc = tiledb_vfs_write(ctx_, fh2, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, fh2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_fh_is_closed(ctx_, fh2, &is_closed);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_closed == 1);
+  tiledb_vfs_fh_free(&fh2);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_file_size(ctx_, vfs_, file2.c_str(), &file_size);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(file_size == to_write.size());
+
+  // Directory size
+  uint64_t dir_size;
+  rc = tiledb_vfs_dir_size(ctx_, vfs_, path.c_str(), &dir_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(dir_size == 2 * to_write.size());
+
+  // Write another file in a subdir
+  std::string subdir = path + "subdir";
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str());
+  auto file3 = subdir + "file3";
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  if (is_file) {
+    rc = tiledb_vfs_remove_file(ctx_, vfs_, file3.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
+  tiledb_vfs_fh_t* fh3;
+  rc = tiledb_vfs_open(ctx_, vfs_, file3.c_str(), TILEDB_VFS_WRITE, &fh3);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_write(ctx_, fh3, to_write.c_str(), to_write.size());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_close(ctx_, fh3);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_fh_free(&fh3);
+
+  rc = tiledb_vfs_dir_size(ctx_, vfs_, path.c_str(), &dir_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(dir_size == 3 * to_write.size());
+
   // Check correctness with read
   std::string to_read;
   to_read.resize(to_write.size());
@@ -618,6 +685,65 @@ void VFSFx::check_read(const std::string& path) {
   // Remove file
   rc = tiledb_vfs_remove_file(ctx_, vfs_, file.c_str());
   REQUIRE(rc == TILEDB_OK);
+}
+
+int ls_getter(const char* path, void* data) {
+  auto vec = static_cast<std::vector<std::string>*>(data);
+  vec->emplace_back(path);
+  return 1;
+}
+
+void VFSFx::check_ls(const std::string& path) {
+  std::string dir = path + "ls_dir";
+  std::string file = dir + "/file";
+  std::string file2 = dir + "/file2";
+  std::string subdir = dir + "/subdir";
+  std::string subdir2 = dir + "/subdir2";
+  std::string subdir_file = subdir + "/file";
+  std::string subdir_file2 = subdir2 + "/file2";
+
+  // Create directories and files
+  int rc = tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, subdir2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(ctx_, vfs_, file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(ctx_, vfs_, file2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(ctx_, vfs_, subdir_file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_touch(ctx_, vfs_, subdir_file2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  // List
+  std::vector<std::string> children;
+  rc = tiledb_vfs_ls(ctx_, vfs_, (dir + "/").c_str(), ls_getter, &children);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Normalization
+  for (auto& child : children) {
+    if (child.back() == '/')
+      child.pop_back();
+  }
+
+#ifdef _WIN32
+  // Normalization only for Windows
+  file = tiledb::sm::Win::uri_from_path(file);
+  file2 = tiledb::sm::Win::uri_from_path(file2);
+  subdir = tiledb::sm::Win::uri_from_path(subdir);
+  subdir2 = tiledb::sm::Win::uri_from_path(subdir2);
+#endif
+
+  // Check results
+  std::sort(children.begin(), children.end());
+  REQUIRE(children.size() == 4);
+  CHECK(children[0] == file);
+  CHECK(children[1] == file2);
+  CHECK(children[2] == subdir);
+  CHECK(children[3] == subdir2);
 }
 
 std::string VFSFx::random_bucket_name(const std::string& prefix) {

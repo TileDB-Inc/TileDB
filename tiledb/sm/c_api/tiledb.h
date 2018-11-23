@@ -3341,7 +3341,7 @@ TILEDB_EXPORT int32_t tiledb_object_walk(
 
 /**
  * Similar to `tiledb_walk`, but now the function visits only the children of
- * `path` (i.e., it does not recursively continue to the children directories.
+ * `path` (i.e., it does not recursively continue to the children directories).
  *
  * **Example:**
  *
@@ -4589,6 +4589,26 @@ TILEDB_EXPORT int32_t
 tiledb_vfs_remove_file(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
 
 /**
+ * Retrieves the size of a directory. This function is **recursive**, i.e.,
+ * it will consider all files in the directory tree rooted at `uri`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t dir_size;
+ * tiledb_vfs_dir_size(ctx, vfs, "hdfs:///temp/my_dir", &dir_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the directory.
+ * @param size The directory size to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_dir_size(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size);
+
+/**
  * Retrieves the size of a file.
  *
  * **Example:**
@@ -4774,6 +4794,36 @@ TILEDB_EXPORT int32_t tiledb_vfs_write(
  * @note This has no effect for S3.
  */
 TILEDB_EXPORT int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh);
+
+/**
+ * The function visits only the children of `path` (i.e., it does not
+ * recursively continue to the children directories) and applies the `callback`
+ * function using the input `data`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_ls(ctx, vfs, "my_dir", NULL, NULL);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param path The path in which the traversal will occur.
+ * @param callback The callback function to be applied on every visited object.
+ *     The callback should return `0` if the iteration must stop, and `1`
+ *     if the iteration must continue. It takes as input the currently visited
+ *     path, the type of that path (e.g., array or group), and the data
+ *     provided by the user for the callback. The callback returns `-1` upon
+ *     error. Note that `path` in the callback will be an **absolute** path.
+ * @param data The data passed in the callback as the last argument.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_ls(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    int32_t (*callback)(const char*, void*),
+    void* data);
 
 /**
  * Frees a file handle.
