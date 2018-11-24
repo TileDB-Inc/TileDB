@@ -529,6 +529,10 @@ VFS
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_remove_file
     :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_dir_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_ls
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_file_size
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_move_dir

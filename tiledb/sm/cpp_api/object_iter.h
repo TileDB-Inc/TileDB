@@ -233,7 +233,8 @@ class ObjectIter {
    *
    * @param path The path of a visited TileDB object
    * @param type The type of the visited TileDB object.
-   * @param obj_vec The vector where the visited object will be stored.
+   * @param data To be casted to the vector where the visited object will
+   *     be stored.
    * @return If `1` then the walk should continue to the next object.
    */
   static int obj_getter(const char* path, tiledb_object_t type, void* data) {
