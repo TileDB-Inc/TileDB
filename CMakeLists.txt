@@ -79,6 +79,7 @@ option(TILEDB_TBB "Enables use of TBB for parallelization." ON)
 option(TILEDB_TBB_SHARED "If TBB is enabled, builds TBB as a shared library instead of static." OFF)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
+option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
 if (WIN32 AND NOT TILEDB_TBB_SHARED)
@@ -204,6 +205,11 @@ add_subdirectory(examples)
 # Build unit tests
 if (TILEDB_TESTS)
   add_subdirectory(test)
+endif()
+
+# Build tools
+if (TILEDB_TOOLS)
+  add_subdirectory(tools)
 endif()
 
 ###########################################################

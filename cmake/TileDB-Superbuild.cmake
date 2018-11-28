@@ -35,6 +35,7 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_TBB_SHARED=${TILEDB_TBB_SHARED}
   -DTILEDB_STATIC=${TILEDB_STATIC}
   -DTILEDB_TESTS=${TILEDB_TESTS}
+  -DTILEDB_TOOLS=${TILEDB_TOOLS}
   -DTILEDB_INSTALL_LIBDIR=${TILEDB_INSTALL_LIBDIR}
 )
 
@@ -85,6 +86,10 @@ endif()
 
 if (TILEDB_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
+endif()
+
+if (TILEDB_TOOLS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindClipp_EP.cmake)
 endif()
 
 ############################################################
@@ -139,6 +144,7 @@ if (${CLANG_FORMAT_FOUND})
     `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
     ${CMAKE_CURRENT_SOURCE_DIR}/test/src
     ${CMAKE_CURRENT_SOURCE_DIR}/examples
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
     -name \\*.cc -or -name \\*.c -or -name \\*.h`)
 
   # runs clang format and exits with a non-zero exit code if any files need to be reformatted
@@ -146,6 +152,7 @@ if (${CLANG_FORMAT_FOUND})
     `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
     ${CMAKE_CURRENT_SOURCE_DIR}/test/src
     ${CMAKE_CURRENT_SOURCE_DIR}/examples
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools
     -name \\*.cc -or -name \\*.c -or -name \\*.h`)
 endif()
 
