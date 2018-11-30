@@ -1,6 +1,9 @@
 # TileDB v1.4.2 Release Notes
 
 ## Bug fixes
+
+* Bug fix in the case of dense reads in the presence of both dense and sparse fragments. [#1079](https://github.com/TileDB-Inc/TileDB/pull/1074)
+
 * Fixed double-delta decompression bug on reads for uncompressible chunks. [#1074](https://github.com/TileDB-Inc/TileDB/pull/1074)
 
 ## Improvements

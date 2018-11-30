@@ -98,11 +98,14 @@ struct DenseArrayFx {
   void check_cancel_and_retry_writes(const std::string& path);
   void check_return_coords(const std::string& path);
   void check_non_empty_domain(const std::string& path);
+  void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& array_name);
   void create_dense_array_1_attribute(const std::string& array_name);
+  void write_dense_vector_mixed(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
   void write_dense_array_missing_attributes(const std::string& array_name);
   void write_partial_dense_array(const std::string& array_name);
+  void read_dense_vector_mixed(const std::string& array_name);
   void read_dense_array_with_coords_full_global(const std::string& array_name);
   void read_dense_array_with_coords_full_row(const std::string& array_name);
   void read_dense_array_with_coords_full_col(const std::string& array_name);
@@ -391,6 +394,65 @@ void DenseArrayFx::check_buffer_after_updates(
   }
 }
 
+void DenseArrayFx::create_dense_vector(const std::string& path) {
+  // Create dimensions
+  uint64_t dim_domain[] = {1, 410};
+  uint64_t tile_extents[] = {10};
+  tiledb_dimension_t* d;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
+  } else {
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        path.c_str(),
+        array_schema,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
 void DenseArrayFx::create_dense_array_2D(
     const std::string& array_name,
     const int64_t tile_extent_0,
@@ -650,6 +712,109 @@ void DenseArrayFx::update_dense_array_2D(
   CHECK(array == nullptr);
   tiledb_query_free(&query);
   CHECK(query == nullptr);
+}
+
+void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
+  // Prepare cell buffers for 4 writes
+  int a_1[300];
+  for (int i = 0; i < 300; ++i)
+    a_1[i] = i;
+  uint64_t a_1_size = sizeof(a_1);
+  int a_2[] = {1050, 1100, 1150};
+  uint64_t a_2_size = sizeof(a_2);
+  uint64_t coords_2[] = {50, 100, 150};
+  uint64_t coords_2_size = sizeof(coords_2);
+  int a_3[] = {1025, 1075, 1125};
+  uint64_t a_3_size = sizeof(a_3);
+  uint64_t coords_3[] = {25, 75, 125};
+  uint64_t coords_3_size = sizeof(coords_3);
+  int a_4[110];
+  for (int i = 0; i < 110; ++i)
+    a_4[i] = 300 + i;
+  uint64_t a_4_size = sizeof(a_4);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query #1 - Dense
+  tiledb_query_t* query_1;
+  uint64_t subarray[] = {1, 300};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query_1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_1, "a", a_1, &a_1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query_1);
+
+  // Submit query #2
+  tiledb_query_t* query_2;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query_2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_2);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query_2);
+
+  // Submit query #3
+  tiledb_query_t* query_3;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query_3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query_3, TILEDB_COORDS, coords_3, &coords_3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_3);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query_3);
+
+  // Submit query #4
+  tiledb_query_t* query_4;
+  subarray[0] = 301;
+  subarray[1] = 410;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query_4);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query_4);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query_4);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
 void DenseArrayFx::write_dense_array_by_tiles(
@@ -1756,6 +1921,68 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
+  // Correct buffer
+  int c_a[410];
+  for (int i = 0; i < 410; ++i)
+    c_a[i] = i;
+  c_a[49] = 1050;
+  c_a[99] = 1100;
+  c_a[149] = 1150;
+  c_a[24] = 1025;
+  c_a[74] = 1075;
+  c_a[124] = 1125;
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Preparation
+  int a[410];
+  uint64_t a_size = sizeof(a);
+
+  // Submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(sizeof(c_a) == a_size);
+  for (int i = 0; i < 410; ++i)
+    CHECK(a[i] == c_a[i]);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -3759,4 +3986,24 @@ TEST_CASE_METHOD(
     check_sorted_reads(FILE_URI_PREFIX + FILE_TEMP_DIR);
     remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   }
+}
+TEST_CASE_METHOD(
+    DenseArrayFx,
+    "C API: Test dense vector, mixed dense and sparse fragments",
+    "[capi], [dense], [dense-mixed]") {
+  std::string path;
+  if (supports_s3_) {
+    path = S3_TEMP_DIR;
+  } else if (supports_hdfs_) {
+    path = HDFS_TEMP_DIR;
+  } else {
+    path = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  }
+  std::string array_name = path + "test_dense_mixed";
+
+  create_temp_dir(path);
+  create_dense_vector(array_name);
+  write_dense_vector_mixed(array_name);
+  read_dense_vector_mixed(array_name);
+  remove_temp_dir(path);
 }
