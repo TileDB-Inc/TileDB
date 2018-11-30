@@ -781,7 +781,6 @@ class Reader {
    * @param coords_size The coordintes size.
    * @param coords The list of coordinates.
    * @param coords_it The iterator pointing at the current coordinates.
-   * @param coords_tile The tile where the current coordinates belong to.
    * @param coords_pos The position of the current coordinates in their tile.
    * @param coords_fidx The fragment index of the current coordinates.
    * @param coords_tile_coords The global tile coordinates of the tile the
@@ -800,7 +799,6 @@ class Reader {
       uint64_t coords_size,
       const OverlappingCoordsList<T>& coords,
       typename OverlappingCoordsList<T>::const_iterator* coords_it,
-      const OverlappingTile* coords_tile,
       uint64_t* coords_pos,
       unsigned* coords_fidx,
       std::vector<T>* coords_tile_coords,

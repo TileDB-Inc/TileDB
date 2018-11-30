@@ -2,6 +2,7 @@
 
 ## Bug fixes
 
+* Bug fix in the case of dense reads in the presence of both dense and sparse fragments. 
 * Fixed double-delta decompression bug on reads for uncompressible chunks. [#1074](https://github.com/TileDB-Inc/TileDB/pull/1074)
 
 ## Improvements

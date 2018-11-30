@@ -780,12 +780,10 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
   coords_tile_coords.resize(dim_num);
   uint64_t coords_pos = 0;
   unsigned coords_fidx = 0;
-  const OverlappingTile* coords_tile = nullptr;
   if (coords_it != coords_end) {
     domain->get_tile_coords(coords_it->coords_, &coords_tile_coords[0]);
     RETURN_NOT_OK(domain->get_cell_pos<T>(coords_it->coords_, &coords_pos));
     coords_fidx = coords_it->tile_->fragment_idx_;
-    coords_tile = coords_it->tile_;
   }
 
   // Compute overlapping tiles and cell ranges
@@ -834,7 +832,6 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
         coords_size,
         coords,
         &coords_it,
-        coords_tile,
         &coords_pos,
         &coords_fidx,
         &coords_tile_coords,
@@ -863,7 +860,6 @@ Status Reader::compute_dense_overlapping_tiles_and_cell_ranges(
       coords_size,
       coords,
       &coords_it,
-      coords_tile,
       &coords_pos,
       &coords_fidx,
       &coords_tile_coords,
@@ -1604,7 +1600,6 @@ Status Reader::handle_coords_in_dense_cell_range(
     uint64_t coords_size,
     const OverlappingCoordsList<T>& coords,
     typename OverlappingCoordsList<T>::const_iterator* coords_it,
-    const OverlappingTile* coords_tile,
     uint64_t* coords_pos,
     unsigned* coords_fidx,
     std::vector<T>* coords_tile_coords,
@@ -1625,7 +1620,6 @@ Status Reader::handle_coords_in_dense_cell_range(
         RETURN_NOT_OK(
             domain->get_cell_pos<T>((*coords_it)->coords_, coords_pos));
         *coords_fidx = (*coords_it)->tile_->fragment_idx_;
-        coords_tile = (*coords_it)->tile_;
       }
       continue;
     } else {  // Break dense range
@@ -1636,7 +1630,7 @@ Status Reader::handle_coords_in_dense_cell_range(
       }
       // Coords unary range
       overlapping_cell_ranges->emplace_back(
-          coords_tile, (*coords_it)->pos_, (*coords_it)->pos_);
+          (*coords_it)->tile_, (*coords_it)->pos_, (*coords_it)->pos_);
       // Update start
       *start = *coords_pos + 1;
 
@@ -1648,7 +1642,6 @@ Status Reader::handle_coords_in_dense_cell_range(
         RETURN_NOT_OK(
             domain->get_cell_pos<T>((*coords_it)->coords_, coords_pos));
         *coords_fidx = (*coords_it)->tile_->fragment_idx_;
-        coords_tile = (*coords_it)->tile_;
       }
     }
   }
