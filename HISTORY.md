@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* Added lazy creation of S3 client instance on first request. [#1084](https://github.com/TileDB-Inc/TileDB/pull/1084)
 * Added config params `vfs.s3.aws_access_key_id` and `vfs.s3.aws_secret_access_key` for configure s3 access at runtime. [#1036](https://github.com/TileDB-Inc/TileDB/pull/1036)
 * Added missing check if coordinates obey the global order in global order sparse writes. [#1039](https://github.com/TileDB-Inc/TileDB/pull/1039)
 
