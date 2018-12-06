@@ -306,8 +306,23 @@ class S3 {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The S3 client. */
-  std::shared_ptr<Aws::S3::S3Client> client_;
+  /**
+   * The lazily-initialized S3 client. This is mutable so that nominally const
+   * functions can call init_client().
+   */
+  mutable std::shared_ptr<Aws::S3::S3Client> client_;
+
+  /**
+   * Mutex protecting client initialization. This is mutable so that nominally
+   * const functions can call init_client().
+   */
+  mutable std::mutex client_init_mtx_;
+
+  /** Configuration object used to initialize the client. */
+  std::unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+
+  /** Credentials object used to initialize the client. */
+  std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;
@@ -352,9 +367,19 @@ class S3 {
   /** Pointer to thread pool owned by parent VFS instance. */
   ThreadPool* vfs_thread_pool_;
 
+  /** Whether or not to use virtual addressing. */
+  bool use_virtual_addressing_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Initializes the client, if it has not already been initialized.
+   *
+   * @return Status
+   */
+  Status init_client() const;
 
   /**
    * Copies an object.

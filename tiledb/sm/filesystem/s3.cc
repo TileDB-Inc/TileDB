@@ -109,8 +109,11 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   multipart_part_size_ = s3_config.multipart_part_size_;
   file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
   region_ = s3_config.region_;
+  use_virtual_addressing_ = s3_config.use_virtual_addressing_;
 
-  Aws::Client::ClientConfiguration config;
+  client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
+      new Aws::Client::ClientConfiguration);
+  auto& config = *client_config_.get();
   if (!s3_config.region_.empty())
     config.region = s3_config.region_.c_str();
   if (!s3_config.endpoint_override_.empty())
@@ -136,30 +139,21 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
       s3_config.connect_max_tries_,
       s3_config.connect_scale_factor_);
 
-  // Connect S3 client
-  // If the user set config variables for aws keys use them
+  // If the user set config variables for AWS keys use them.
   if (!s3_config.aws_access_key_id.empty() &&
       !s3_config.aws_secret_access_key.empty()) {
     Aws::String access_key_id(s3_config.aws_access_key_id.c_str());
     Aws::String secret_access_key(s3_config.aws_secret_access_key.c_str());
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
-        Aws::Auth::AWSCredentials(access_key_id, secret_access_key),
-        config,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        s3_config.use_virtual_addressing_);
-  } else {
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
-        config,
-        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-        s3_config.use_virtual_addressing_);
+    client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
+        new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
   }
 
   return Status::Ok();
 }
 
 Status S3::create_bucket(const URI& bucket) const {
+  RETURN_NOT_OK(init_client());
+
   if (!bucket.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + bucket.to_string())));
@@ -196,6 +190,8 @@ Status S3::create_bucket(const URI& bucket) const {
 }
 
 Status S3::remove_bucket(const URI& bucket) const {
+  RETURN_NOT_OK(init_client());
+
   // Empty bucket
   RETURN_NOT_OK(empty_bucket(bucket));
 
@@ -213,6 +209,8 @@ Status S3::remove_bucket(const URI& bucket) const {
 }
 
 Status S3::disconnect() {
+  RETURN_NOT_OK(init_client());
+
   for (const auto& record : multipart_upload_request_) {
     auto completed_multipart_upload = multipart_upload_[record.first];
     auto complete_multipart_upload_request = record.second;
@@ -232,11 +230,15 @@ Status S3::disconnect() {
 }
 
 Status S3::empty_bucket(const URI& bucket) const {
+  RETURN_NOT_OK(init_client());
+
   auto uri_dir = bucket.add_trailing_slash();
   return remove_dir(uri_dir);
 }
 
 Status S3::flush_object(const URI& uri) {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -308,6 +310,8 @@ Status S3::flush_object(const URI& uri) {
 }
 
 Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
+  RETURN_NOT_OK(init_client());
+
   if (!is_bucket(bucket))
     return LOG_STATUS(Status::S3Error(
         "Cannot check if bucket is empty; Bucket does not exist"));
@@ -332,6 +336,8 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 }
 
 bool S3::is_bucket(const URI& bucket) const {
+  init_client();
+
   if (!bucket.is_s3()) {
     return false;
   }
@@ -344,6 +350,8 @@ bool S3::is_bucket(const URI& bucket) const {
 }
 
 bool S3::is_object(const URI& uri) const {
+  init_client();
+
   if (!uri.is_s3())
     return false;
 
@@ -356,6 +364,8 @@ bool S3::is_object(const URI& uri) const {
 }
 
 Status S3::is_dir(const URI& uri, bool* exists) const {
+  RETURN_NOT_OK(init_client());
+
   // Potentially add `/` to the end of `uri`
   auto uri_dir = uri.add_trailing_slash();
   std::vector<std::string> paths;
@@ -369,6 +379,8 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
+  RETURN_NOT_OK(init_client());
+
   auto prefix_str = prefix.to_string();
   if (!prefix.is_s3()) {
     return LOG_STATUS(
@@ -416,12 +428,16 @@ Status S3::ls(
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
   RETURN_NOT_OK(copy_object(old_uri, new_uri));
   RETURN_NOT_OK(remove_object(old_uri));
   return Status::Ok();
 }
 
 Status S3::move_dir(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(old_uri, &paths, ""));
   for (const auto& path : paths) {
@@ -434,6 +450,8 @@ Status S3::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -462,6 +480,8 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
 
 Status S3::read(
     const URI& uri, off_t offset, void* buffer, uint64_t length) const {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -495,6 +515,8 @@ Status S3::read(
 }
 
 Status S3::remove_object(const URI& uri) const {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -518,6 +540,8 @@ Status S3::remove_object(const URI& uri) const {
 }
 
 Status S3::remove_dir(const URI& uri) const {
+  RETURN_NOT_OK(init_client());
+
   std::vector<std::string> paths;
   auto uri_dir = uri.add_trailing_slash();
   RETURN_NOT_OK(ls(uri_dir, &paths, ""));
@@ -527,6 +551,8 @@ Status S3::remove_dir(const URI& uri) const {
 }
 
 Status S3::touch(const URI& uri) const {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(std::string(
         "Cannot create file; URI is not an S3 URI: " + uri.to_string())));
@@ -555,6 +581,8 @@ Status S3::touch(const URI& uri) const {
 }
 
 Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
+  RETURN_NOT_OK(init_client());
+
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -601,7 +629,33 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
+Status S3::init_client() const {
+  std::lock_guard<std::mutex> lck(client_init_mtx_);
+
+  if (client_.get() != nullptr)
+    return Status::Ok();
+
+  if (client_creds_.get() == nullptr) {
+    client_ = Aws::MakeShared<Aws::S3::S3Client>(
+        constants::s3_allocation_tag.c_str(),
+        *client_config_,
+        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+        use_virtual_addressing_);
+  } else {
+    client_ = Aws::MakeShared<Aws::S3::S3Client>(
+        constants::s3_allocation_tag.c_str(),
+        *client_creds_,
+        *client_config_,
+        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+        use_virtual_addressing_);
+  }
+
+  return Status::Ok();
+}
+
 Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
   Aws::Http::URI src_uri = old_uri.c_str();
   Aws::Http::URI dst_uri = new_uri.c_str();
   Aws::S3::Model::CopyObjectRequest copy_object_request;
@@ -652,6 +706,8 @@ std::string S3::remove_front_slash(const std::string& path) const {
 }
 
 Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
+  RETURN_NOT_OK(init_client());
+
   if (buff->size() > 0) {
     RETURN_NOT_OK(write_multipart(uri, buff->data(), buff->size(), last_part));
     buff->reset_size();
@@ -677,6 +733,8 @@ Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
 }
 
 Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
+  RETURN_NOT_OK(init_client());
+
   auto& path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
   Aws::S3::Model::CreateMultipartUploadRequest multipart_upload_request;
@@ -722,6 +780,8 @@ std::string S3::join_authority_and_path(
 
 bool S3::wait_for_object_to_propagate(
     const Aws::String& bucketName, const Aws::String& objectKey) const {
+  init_client();
+
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
     Aws::S3::Model::HeadObjectRequest head_object_request;
@@ -740,6 +800,8 @@ bool S3::wait_for_object_to_propagate(
 
 bool S3::wait_for_object_to_be_deleted(
     const Aws::String& bucketName, const Aws::String& objectKey) const {
+  init_client();
+
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
     Aws::S3::Model::HeadObjectRequest head_object_request;
@@ -757,6 +819,8 @@ bool S3::wait_for_object_to_be_deleted(
 }
 
 bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
+  init_client();
+
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
     if (is_bucket(bucket_uri)) {
@@ -772,6 +836,8 @@ bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
 Status S3::write_multipart(
     const URI& uri, const void* buffer, uint64_t length, bool last_part) {
   STATS_FUNC_IN(vfs_s3_write_multipart);
+
+  RETURN_NOT_OK(init_client());
 
   // Ensure that each thread is responsible for exactly multipart_part_size_
   // bytes (except if this is the last write_multipart, in which case the final
@@ -854,6 +920,8 @@ Status S3::make_upload_part_req(
     uint64_t length,
     const Aws::String& upload_id,
     int upload_part_num) {
+  RETURN_NOT_OK(init_client());
+
   Aws::Http::URI aws_uri = uri.c_str();
   auto& path = aws_uri.GetPath();
   std::string path_c_str = path.c_str();
