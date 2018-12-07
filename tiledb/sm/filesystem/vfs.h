@@ -288,6 +288,18 @@ class VFS {
   Status read(
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
+  /**
+   * Reads multiple regions from a file.
+   *
+   * @param uri The URI of the file.
+   * @param regions The list of regions to read. Each region is a tuple
+   *    `(file_offset, dest_buffer, nbytes)`.
+   * @return Status
+   */
+  Status read_all(
+      const URI& uri,
+      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) const;
+
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 
@@ -342,9 +354,38 @@ class VFS {
   Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
 
  private:
-/* ********************************* */
-/*         PRIVATE ATTRIBUTES        */
-/* ********************************* */
+  /* ********************************* */
+  /*        PRIVATE DATATYPES          */
+  /* ********************************* */
+
+  /**
+   * Helper type holding information about a batched read operation.
+   */
+  struct BatchedRead {
+    /** Construct a BatchedRead consisting of the single given region. */
+    BatchedRead(const std::tuple<uint64_t, void*, uint64_t>& region) {
+      offset = std::get<0>(region);
+      nbytes = std::get<2>(region);
+      regions.push_back(region);
+    }
+
+    /** Offset of the batch. */
+    uint64_t offset;
+
+    /** Number of bytes in the batch. */
+    uint64_t nbytes;
+
+    /**
+     * Original regions making up the batch. Vector of tuples of the form
+     * (offset, dest_buffer, nbytes).
+     */
+    std::vector<std::tuple<uint64_t, void*, uint64_t>> regions;
+  };
+
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
 #ifdef HAVE_S3
   S3 s3_;
 #endif
@@ -367,6 +408,19 @@ class VFS {
 
   /** Thread pool for parallel I/O operations. */
   std::unique_ptr<ThreadPool> thread_pool_;
+
+  /**
+   * Groups the given vector of regions to be read into a possibly smaller
+   * vector of batched reads.
+   *
+   * @param regions Vector of individual regions to be read. Each region is a
+   *    tuple `(file_offset, dest_buffer, nbytes)`.
+   * @param batches Vector storing the batched read information.
+   * @return Status
+   */
+  Status compute_read_batches(
+      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+      std::vector<BatchedRead>* batches) const;
 
   /**
    * Reads from a file by calling the specific backend read function.

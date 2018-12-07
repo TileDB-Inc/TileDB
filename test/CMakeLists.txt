@@ -79,6 +79,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-threadpool.cc
   src/unit-uri.cc
   src/unit-uuid.cc
+  src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
 )

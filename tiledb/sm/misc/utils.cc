@@ -117,6 +117,20 @@ Status convert(const std::string& str, uint64_t* value) {
   return Status::Ok();
 }
 
+Status convert(const std::string& str, float* value) {
+  try {
+    *value = std::stof(str);
+  } catch (std::invalid_argument& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to float32_t; Invalid argument"));
+  } catch (std::out_of_range& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to float32_t; Value out of range"));
+  }
+
+  return Status::Ok();
+}
+
 bool is_int(const std::string& str) {
   // Check if empty
   if (str.empty())

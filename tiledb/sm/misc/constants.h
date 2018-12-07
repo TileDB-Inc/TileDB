@@ -185,6 +185,12 @@ extern const uint64_t vfs_num_threads;
 /** The default minimum number of bytes in a parallel VFS operation. */
 extern const uint64_t vfs_min_parallel_size;
 
+/** The default maximum number of bytes in a batched VFS read operation. */
+extern const uint64_t vfs_max_batch_read_size;
+
+/** The default maximum amplification factor for batched VFS read operations. */
+extern const float vfs_max_batch_read_amplification;
+
 /** The default maximum number of parallel file:/// operations. */
 extern const uint64_t vfs_file_max_parallel_ops;
 

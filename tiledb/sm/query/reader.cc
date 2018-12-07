@@ -1855,6 +1855,8 @@ Status Reader::read_tiles(
   bool var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(tiles->size());
 
+  // Populate the list of regions per file to be read.
+  std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
   for (uint64_t i = 0; i < num_tiles; i++) {
     auto& tile = (*tiles)[i];
     auto it = tile->attr_tiles_.find(attribute);
@@ -1875,73 +1877,80 @@ Status Reader::read_tiles(
       RETURN_NOT_OK(init_tile(format_version, attribute, &t, &t_var));
     }
 
-    // Enqueue the read task in the Reader thread pool.
-    auto task = storage_manager_->reader_thread_pool()->enqueue([&attribute,
-                                                                 &tile,
-                                                                 &t,
-                                                                 &t_var,
-                                                                 var_size,
-                                                                 this]() {
-      // Get information about the tile in its fragment
-      auto& fragment = fragment_metadata_[tile->fragment_idx_];
-      auto tile_attr_uri = fragment->attr_uri(attribute);
-      auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
-      auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
-      auto tile_persisted_size =
-          fragment->persisted_tile_size(attribute, tile->tile_idx_);
+    // Get information about the tile in its fragment
+    auto tile_attr_uri = fragment->attr_uri(attribute);
+    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+    auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
+    auto tile_persisted_size =
+        fragment->persisted_tile_size(attribute, tile->tile_idx_);
 
-      // Try the cache first.
-      bool cache_hit;
+    // Try the cache first.
+    bool cache_hit;
+    RETURN_NOT_OK(storage_manager_->read_from_cache(
+        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+    if (cache_hit) {
+      t.set_filtered(true);
+      STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
+    } else {
+      // Add the region of the fragment to be read.
+      RETURN_NOT_OK(t.buffer()->realloc(tile_persisted_size));
+      t.buffer()->set_size(tile_persisted_size);
+      t.buffer()->reset_offset();
+      all_regions[tile_attr_uri].emplace_back(
+          tile_attr_offset, t.buffer()->data(), tile_persisted_size);
+
+      STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
+    }
+
+    if (var_size) {
+      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      auto tile_attr_var_offset =
+          fragment->file_var_offset(attribute, tile->tile_idx_);
+      auto tile_var_size = fragment->tile_var_size(attribute, tile->tile_idx_);
+      auto tile_var_persisted_size =
+          fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
+
       RETURN_NOT_OK(storage_manager_->read_from_cache(
-          tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+          tile_attr_var_uri,
+          tile_attr_var_offset,
+          t_var.buffer(),
+          tile_var_size,
+          &cache_hit));
+
       if (cache_hit) {
-        t.set_filtered(true);
+        t_var.set_filtered(true);
         STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
       } else {
-        // Read from disk if it missed.
-        RETURN_NOT_OK(storage_manager_->read(
-            tile_attr_uri, tile_attr_offset, t.buffer(), tile_persisted_size));
-        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
-      }
-
-      if (var_size) {
-        auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
-        auto tile_attr_var_offset =
-            fragment->file_var_offset(attribute, tile->tile_idx_);
-        auto tile_var_size =
-            fragment->tile_var_size(attribute, tile->tile_idx_);
-        auto tile_var_persisted_size =
-            fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
-
-        RETURN_NOT_OK(storage_manager_->read_from_cache(
-            tile_attr_var_uri,
+        // Add the region of the fragment to be read.
+        RETURN_NOT_OK(t_var.buffer()->realloc(tile_var_persisted_size));
+        t_var.buffer()->set_size(tile_var_persisted_size);
+        t_var.buffer()->reset_offset();
+        all_regions[tile_attr_var_uri].emplace_back(
             tile_attr_var_offset,
-            t_var.buffer(),
-            tile_var_size,
-            &cache_hit));
+            t_var.buffer()->data(),
+            tile_var_persisted_size);
 
-        if (cache_hit) {
-          t_var.set_filtered(true);
-          STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
-        } else {
-          RETURN_NOT_OK(storage_manager_->read(
-              tile_attr_var_uri,
-              tile_attr_var_offset,
-              t_var.buffer(),
-              tile_var_persisted_size));
-          STATS_COUNTER_ADD(
-              reader_num_tile_bytes_read, tile_var_persisted_size);
-          STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t.size());
-          STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t_var.size());
-        }
-      } else {
-        STATS_COUNTER_ADD_IF(
-            !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
+        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
+        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t.size());
+        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t_var.size());
       }
+    } else {
+      STATS_COUNTER_ADD_IF(
+          !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
+    }
+  }
 
-      return Status::Ok();
-    });
-
+  // Enqueue all regions to be read.
+  for (const auto& item : all_regions) {
+    // Note capturing the URI and region vector by value (implying a copy) so
+    // that the closure is valid once the regions map goes out of scope.
+    const auto& uri = item.first;
+    const auto& regions = item.second;
+    auto task =
+        storage_manager_->reader_thread_pool()->enqueue([uri, regions, this]() {
+          RETURN_NOT_OK(storage_manager_->vfs()->read_all(uri, regions));
+          return Status::Ok();
+        });
     tasks->push_back(std::move(task));
   }
 
