@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/encryption/encryption_win32.h"
@@ -49,6 +50,8 @@ Status Encryption::encrypt_aes256gcm(
     Buffer* output,
     PreallocatedBuffer* output_iv,
     PreallocatedBuffer* output_tag) {
+  STATS_FUNC_IN(encryption_encrypt_aes256gcm);
+
   if (key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
         Status::EncryptionError("AES-256-GCM error; unexpected key length."));
@@ -69,6 +72,8 @@ Status Encryption::encrypt_aes256gcm(
   return OpenSSL::encrypt_aes256gcm(
       key, iv, input, output, output_iv, output_tag);
 #endif
+
+  STATS_FUNC_OUT(encryption_encrypt_aes256gcm);
 }
 
 Status Encryption::decrypt_aes256gcm(
@@ -77,6 +82,8 @@ Status Encryption::decrypt_aes256gcm(
     ConstBuffer* tag,
     ConstBuffer* input,
     Buffer* output) {
+  STATS_FUNC_IN(encryption_decrypt_aes256gcm);
+
   if (key == nullptr || key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
         Status::EncryptionError("AES-256-GCM error; invalid key."));
@@ -92,6 +99,8 @@ Status Encryption::decrypt_aes256gcm(
 #else
   return OpenSSL::decrypt_aes256gcm(key, iv, tag, input, output);
 #endif
+
+  STATS_FUNC_OUT(encryption_decrypt_aes256gcm);
 }
 
 }  // namespace sm

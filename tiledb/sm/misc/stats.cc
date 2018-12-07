@@ -87,12 +87,14 @@ void Statistics::dump_read_summary(FILE* out) const {
       counter_reader_num_fixed_cell_bytes_read +
           counter_reader_num_var_cell_bytes_read);
 
+  // Read compression ratio is num bytes after decompression / num bytes read.
+  // Note it does not incorporate data tile cache hits. It also counts all
+  // filters as "compressors."
   report_ratio(
       out,
       "  Read compression ratio",
       "bytes",
-      counter_reader_num_fixed_cell_bytes_read +
-          counter_reader_num_var_cell_bytes_read +
+      counter_reader_num_bytes_after_filtering +
           counter_tileio_read_num_resulting_bytes,
       counter_reader_num_tile_bytes_read + counter_tileio_read_num_bytes_read);
 }
@@ -108,11 +110,14 @@ void Statistics::dump_write_summary(FILE* out) const {
       "  Tiles written: %" PRIu64 "\n",
       uint64_t(counter_writer_num_attr_tiles_written));
 
+  // Write compression ratio is num bytes before compression / num bytes after
+  // compression. It also counts all filters as "compressors."
   report_ratio(
       out,
       "  Write compression ratio",
       "bytes",
-      counter_writer_num_input_bytes + counter_tileio_write_num_input_bytes,
+      counter_writer_num_bytes_before_filtering +
+          counter_tileio_write_num_input_bytes,
       counter_writer_num_bytes_written +
           counter_tileio_write_num_bytes_written);
 }

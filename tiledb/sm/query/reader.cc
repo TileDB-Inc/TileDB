@@ -1595,6 +1595,8 @@ Status Reader::filter_tile(
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);
 
+  STATS_COUNTER_ADD(reader_num_bytes_after_filtering, tile->size());
+
   return Status::Ok();
 }
 
@@ -1953,12 +1955,13 @@ Status Reader::read_tiles(
             tile_var_persisted_size);
 
         STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
-        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t.size());
-        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, t_var.size());
+        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, tile_persisted_size);
+        STATS_COUNTER_ADD(
+            reader_num_var_cell_bytes_read, tile_var_persisted_size);
       }
     } else {
       STATS_COUNTER_ADD_IF(
-          !cache_hit, reader_num_fixed_cell_bytes_read, t.size());
+          !cache_hit, reader_num_fixed_cell_bytes_read, tile_persisted_size);
     }
   }
 
@@ -1976,7 +1979,8 @@ Status Reader::read_tiles(
     tasks->push_back(std::move(task));
   }
 
-  STATS_COUNTER_ADD(reader_num_attr_tiles_touched, num_tiles);
+  STATS_COUNTER_ADD(
+      reader_num_attr_tiles_touched, ((var_size ? 2 : 1) * num_tiles));
 
   return Status::Ok();
 }

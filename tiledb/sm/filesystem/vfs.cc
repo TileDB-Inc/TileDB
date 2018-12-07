@@ -146,6 +146,8 @@ Status VFS::create_dir(const URI& uri) const {
 }
 
 Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
+  STATS_FUNC_IN(vfs_dir_size);
+
   // Sanity check
   bool is_dir;
   RETURN_NOT_OK(this->is_dir(dir_name, &is_dir));
@@ -177,6 +179,8 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
   } while (!to_ls.empty());
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_dir_size);
 }
 
 Status VFS::touch(const URI& uri) const {

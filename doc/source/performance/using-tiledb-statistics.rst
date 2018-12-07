@@ -115,10 +115,12 @@ Total tile data copy-to-read ratio
 
 Read compression ratio
     Ratio expressing the effective compression ratio of data read from disk. The numerator
-    is the total number of bytes returned from disk reads after decompressing. The
-    denominator is the total number of bytes read from disk, whether compressed or
-    decompressed. This is different than the tile copy-to-read ratios due to extra
-    read operations for array and fragment metadata.
+    is the total number of bytes returned from disk reads after filtering. The
+    denominator is the total number of bytes read from disk, whether filtered or
+    not. This is different than the tile copy-to-read ratios due to extra
+    read operations for array and fragment metadata. For simplicity, this ratio currently
+    counts all filters as "compressors", so the ratio may not be exactly the compression
+    ratio in the case that other filters besides compressors are involved.
 
 Write query submits
     The number of times a write query submit call was made.
@@ -128,8 +130,9 @@ Tiles written
 
 Write compression ratio
     Ratio expressing the effective compression ratio of data written to disk. The numerator
-    is the total number of uncompressed bytes requested to be written to disk. The
-    denominator is the total number of bytes written from disk, after compression.
+    is the total number of un-filtered bytes requested to be written to disk. The
+    denominator is the total number of bytes written from disk, after filtering. Similarly
+    to the read compression ratio, this value counts all filters as compressors.
 
 .. note::
     The TileDB library is built by default with statistics enabled. You can disable
@@ -259,10 +262,10 @@ The report printed for this experiment is:
     Reads:
       Read query submits: 1
       Tile cache hit ratio: 0 / 1  (0.0%)
-      Fixed-length tile data copy-to-read ratio: 144000000 / 576000000 bytes (25.0%)
+      Fixed-length tile data copy-to-read ratio: 144000000 / 576105488 bytes (25.0%)
       Var-length tile data copy-to-read ratio: 0 / 0 bytes
-      Total tile data copy-to-read ratio: 144000000 / 576000000 bytes (25.0%)
-      Read compression ratio: 576000245 / 576000274 bytes (1.0x)
+      Total tile data copy-to-read ratio: 144000000 / 576105488 bytes (25.0%)
+      Read compression ratio: 576000000 / 576105488 bytes (1.0x)
     Writes:
       Write query submits: 0
       Tiles written: 0
@@ -310,11 +313,10 @@ the following statistics:
     Reads:
       Read query submits: 1
       Tile cache hit ratio: 0 / 3000  (0.0%)
-      Fixed-length tile data copy-to-read ratio: 144000000 / 144000000 bytes (100.0%)
+      Fixed-length tile data copy-to-read ratio: 144000000 / 144060000 bytes (100.0%)
       Var-length tile data copy-to-read ratio: 0 / 0 bytes
-      Total tile data copy-to-read ratio: 144000000 / 144000000 bytes (100.0%)
-      Read compression ratio: 144384213 / 144035239 bytes (1.0x)
-
+      Total tile data copy-to-read ratio: 144000000 / 144060000 bytes (100.0%)
+      Read compression ratio: 144000000 / 144060000 bytes (1.0x)
 
 Now the denominator of the tile cache hit ratio tells us that 3,000 tiles were accessed,
 which is as expected because we requested 3,000 rows. Note also the difference in the
@@ -324,8 +326,8 @@ amount of data is reduced from the entire array to only the tiles (rows) require
 
 You may notice the "read compression ratio" metric reports more bytes read and used than just
 the tile data. The difference is accounted for by the array and fragment metadata,
-which TileDB must also read in order to determine which tiles should be read and decompressed.
-Metadata reads are not included in the "copy-to-read" ratios.
+which TileDB must also read in order to determine which tiles should be read and decompressed,
+and the serialization overhead introduced by the TileDB filter pipeline.
 
 Finally, we will issue two overlapping queries back-to-back, first the same
 ``[1:3000, 1:12000]`` subarray followed by subarray ``[2000:4000, 1:12000]``, i.e.:
@@ -372,13 +374,13 @@ This yields the following report:
 
     Reads:
       Read query submits: 2
-      Tile cache hit ratio: 1 / 5001  (0.0%)
-      Fixed-length tile data copy-to-read ratio: 240048000 / 240000000 bytes (100.0%)
+      Tile cache hit ratio: 198 / 5001  (4.0%)
+      Fixed-length tile data copy-to-read ratio: 240048000 / 230640060 bytes (104.1%)
       Var-length tile data copy-to-read ratio: 0 / 0 bytes
-      Total tile data copy-to-read ratio: 240048000 / 240000000 bytes (100.0%)
-      Read compression ratio: 240384213 / 240035239 bytes (1.0x)
+      Total tile data copy-to-read ratio: 240048000 / 230640060 bytes (104.1%)
+      Read compression ratio: 230544000 / 230640060 bytes (1.0x)
 
-Several things have changed, most notably now there was one hit in the tile cache out of the
+Several things have changed, most notably now there were several hits in the tile cache out of the
 5,001 tiles accessed. However, we may have expected that 1,001 tiles would hit in the cache,
 since the two queries overlapped on rows 2000--3000 (inclusive). The reason we do not see
 this in the statistics is that the default tile cache configuration does not allow many tiles
@@ -428,13 +430,13 @@ The stats summary now reads:
 
     Reads:
       Read query submits: 2
-      Tile cache hit ratio: 752 / 5001  (15.0%)
-      Fixed-length tile data copy-to-read ratio: 240048000 / 203952000 bytes (117.7%)
+      Tile cache hit ratio: 697 / 5001  (13.9%)
+      Fixed-length tile data copy-to-read ratio: 240048000 / 206678080 bytes (116.1%)
       Var-length tile data copy-to-read ratio: 0 / 0 bytes
-      Total tile data copy-to-read ratio: 240048000 / 203952000 bytes (117.7%)
-      Read compression ratio: 204336213 / 203987239 bytes (1.0x)
+      Total tile data copy-to-read ratio: 240048000 / 206678080 bytes (116.1%)
+      Read compression ratio: 206592000 / 206678080 bytes (1.0x)
 
-We now have many more hits in the cache. Also notice that the copy-to-read ratio now exceeds
+We now have more hits in the cache. Also notice that the copy-to-read ratio now exceeds
 100%, because although the same number of bytes were copied into the query buffers, many
 of those bytes did not have to be read from disk twice (as they were hits in the cache).
 
@@ -487,7 +489,7 @@ With attribute ``a`` uncompressed as before, this gives the following report in 
     Writes:
       Write query submits: 1
       Tiles written: 12000
-      Write compression ratio: 576384146 / 576035065 bytes (1.0x)
+      Write compression ratio: 576384160 / 576284005 bytes (1.0x)
 
 As expected, because each row was a single tile, writing 12,000 rows causes 12,000 tiles to
 be written. Because ``a`` is uncompressed, the compression ratio is nearly exactly
@@ -502,7 +504,7 @@ e.g. bzip2 at its default compression level, we see the change in the report:
     Writes:
       Write query submits: 1
       Tiles written: 12000
-      Write compression ratio: 576384146 / 52992598 bytes (10.9x)
+      Write compression ratio: 576384160 / 53136720 bytes (10.8x)
 
 Because our synthetic array data is very predictable, bzip2 does a good job compressing
 it, and this is reflected in the reported compression ratio.
@@ -528,13 +530,11 @@ primarily for TileDB developers to diagnose internal performance issues.
     Individual function statistics:
       Function name                                                          # calls       Total time (ns)
       ----------------------------------------------------------------------------------------------------
-      compressor_blosc_compress,                                                   0,                   0
-      compressor_blosc_decompress,                                                 0,                   0
-      compressor_bzip_compress,                                                12000,         84484067674
+      compressor_bzip_compress,                                                12000,         63560889145
       compressor_bzip_decompress,                                                  0,                   0
       compressor_dd_compress,                                                      0,                   0
       compressor_dd_decompress,                                                    0,                   0
-      compressor_gzip_compress,                                                    6,             3141858
+      compressor_gzip_compress,                                                    6,             2988746
       compressor_gzip_decompress,                                                  0,                   0
       compressor_lz4_compress,                                                     0,                   0
       compressor_lz4_decompress,                                                   0,                   0
@@ -542,8 +542,13 @@ primarily for TileDB developers to diagnose internal performance issues.
       compressor_rle_decompress,                                                   0,                   0
       compressor_zstd_compress,                                                    0,                   0
       compressor_zstd_decompress,                                                  0,                   0
+      encryption_encrypt_aes256gcm,                                                0,                   0
+      encryption_decrypt_aes256gcm,                                                0,                   0
+      filter_pipeline_run_forward,                                             12001,         63850960757
+      filter_pipeline_run_reverse,                                                 0,                   0
       cache_lru_evict,                                                             0,                   0
       cache_lru_insert,                                                            0,                   0
+      cache_lru_invalidate,                                                        0,                   0
       cache_lru_read,                                                              0,                   0
       cache_lru_read_partial,                                                      0,                   0
       reader_compute_cell_ranges,                                                  0,                   0
@@ -551,12 +556,13 @@ primarily for TileDB developers to diagnose internal performance issues.
       reader_compute_dense_overlapping_tiles_and_cell_ranges,                      0,                   0
       reader_compute_overlapping_coords,                                           0,                   0
       reader_compute_overlapping_tiles,                                            0,                   0
-      reader_compute_tile_coordinates,                                             0,                   0
+      reader_compute_tile_coords,                                                  0,                   0
       reader_copy_fixed_cells,                                                     0,                   0
       reader_copy_var_cells,                                                       0,                   0
       reader_dedup_coords,                                                         0,                   0
       reader_dense_read,                                                           0,                   0
       reader_fill_coords,                                                          0,                   0
+      reader_filter_tiles,                                                         0,                   0
       reader_init_tile_fragment_dense_cell_range_iters,                            0,                   0
       reader_next_subarray_partition,                                              0,                   0
       reader_read,                                                                 0,                   0
@@ -565,49 +571,51 @@ primarily for TileDB developers to diagnose internal performance issues.
       reader_sparse_read,                                                          0,                   0
       writer_check_coord_dups,                                                     0,                   0
       writer_check_coord_dups_global,                                              0,                   0
+      writer_check_global_order,                                                   0,                   0
       writer_compute_coord_dups,                                                   0,                   0
       writer_compute_coord_dups_global,                                            0,                   0
       writer_compute_coords_metadata,                                              0,                   0
-      writer_compute_write_cell_ranges,                                        12000,            20427826
-      writer_create_fragment,                                                      1,              320940
+      writer_compute_write_cell_ranges,                                        12000,            44097834
+      writer_create_fragment,                                                      1,              621921
+      writer_filter_tiles,                                                         1,         63885761123
       writer_global_write,                                                         0,                   0
       writer_init_global_write_state,                                              0,                   0
-      writer_init_tile_dense_cell_range_iters,                                     1,            11207721
-      writer_ordered_write,                                                        1,         87014290508
+      writer_init_tile_dense_cell_range_iters,                                     1,            14082371
+      writer_ordered_write,                                                        1,         66025258154
       writer_prepare_full_tiles_fixed,                                             0,                   0
       writer_prepare_full_tiles_var,                                               0,                   0
       writer_prepare_tiles_fixed,                                                  0,                   0
-      writer_prepare_tiles_ordered,                                                1,           468057969
+      writer_prepare_tiles_ordered,                                                1,           403377491
       writer_prepare_tiles_var,                                                    0,                   0
       writer_sort_coords,                                                          0,                   0
       writer_unordered_write,                                                      0,                   0
-      writer_write,                                                                1,         87014293320
-      writer_write_tiles,                                                          1,         86400299458
-      sm_array_close,                                                              0,                   0
-      sm_array_open,                                                               0,                   0
+      writer_write,                                                                1,         66025267985
+      writer_write_all_tiles,                                                      1,          1565860616
+      sm_array_close_for_reads,                                                    0,                   0
+      sm_array_close_for_writes,                                                   0,                   0
+      sm_array_open_for_reads,                                                     0,                   0
+      sm_array_open_for_writes,                                                    0,                   0
+      sm_array_reopen,                                                             0,                   0
       sm_read_from_cache,                                                          0,                   0
       sm_write_to_cache,                                                           0,                   0
-      sm_query_submit,                                                             1,         87014315821
-      tileio_read,                                                                 0,                   0
-      tileio_write,                                                            12000,         86387230601
-      tileio_compress_tile,                                                    12001,         84596499202
-      tileio_compress_one_tile,                                                12001,         84593672539
-      tileio_decompress_tile,                                                      0,                   0
-      tileio_decompress_one_tile,                                                  0,                   0
-      vfs_abs_path,                                                                4,               85652
-      vfs_close_file,                                                              2,              424409
+      sm_query_submit,                                                             1,         66025270927
+      tileio_is_generic_tile,                                                      0,                   0
+      tileio_read_generic,                                                         0,                   0
+      tileio_write_generic,                                                        1,             1671328
+      vfs_abs_path,                                                                4,              201980
+      vfs_close_file,                                                              2,              104927
       vfs_constructor,                                                             0,                   0
       vfs_create_bucket,                                                           0,                   0
-      vfs_create_dir,                                                              1,               76902
+      vfs_create_dir,                                                              1,               94723
       vfs_create_file,                                                             0,                   0
-      vfs_destructor,                                                              0,                   0
+      vfs_dir_size,                                                                0,                   0
       vfs_empty_bucket,                                                            0,                   0
       vfs_file_size,                                                               0,                   0
       vfs_filelock_lock,                                                           0,                   0
       vfs_filelock_unlock,                                                         0,                   0
       vfs_init,                                                                    0,                   0
       vfs_is_bucket,                                                               0,                   0
-      vfs_is_dir,                                                                  2,               51775
+      vfs_is_dir,                                                                  2,               48002
       vfs_is_empty_bucket,                                                         0,                   0
       vfs_is_file,                                                                 0,                   0
       vfs_ls,                                                                      0,                   0
@@ -615,12 +623,13 @@ primarily for TileDB developers to diagnose internal performance issues.
       vfs_move_dir,                                                                0,                   0
       vfs_open_file,                                                               0,                   0
       vfs_read,                                                                    0,                   0
+      vfs_read_all,                                                                0,                   0
       vfs_remove_bucket,                                                           0,                   0
       vfs_remove_file,                                                             0,                   0
       vfs_remove_dir,                                                              0,                   0
       vfs_supports_fs,                                                             0,                   0
       vfs_sync,                                                                    0,                   0
-      vfs_write,                                                               12002,          1782145962
+      vfs_write,                                                               12002,          1553079894
       vfs_s3_fill_file_buffer,                                                     0,                   0
       vfs_s3_write_multipart,                                                      0,                   0
 
@@ -630,12 +639,17 @@ primarily for TileDB developers to diagnose internal performance issues.
       cache_lru_inserts,                                                           0
       cache_lru_read_hits,                                                         0
       cache_lru_read_misses,                                                       0
+      reader_attr_tile_cache_hits,                                                 0
       reader_num_attr_tiles_touched,                                               0
+      reader_num_bytes_after_filtering,                                            0
       reader_num_fixed_cell_bytes_copied,                                          0
       reader_num_fixed_cell_bytes_read,                                            0
+      reader_num_tile_bytes_read,                                                  0
       reader_num_var_cell_bytes_copied,                                            0
       reader_num_var_cell_bytes_read,                                              0
       writer_num_attr_tiles_written,                                           12000
+      writer_num_bytes_before_filtering,                                   576000000
+      writer_num_bytes_written,                                             53101395
       sm_contexts_created,                                                         0
       sm_query_submit_layout_col_major,                                            0
       sm_query_submit_layout_row_major,                                            1
@@ -643,14 +657,14 @@ primarily for TileDB developers to diagnose internal performance issues.
       sm_query_submit_layout_unordered,                                            0
       sm_query_submit_read,                                                        0
       sm_query_submit_write,                                                       1
-      tileio_read_cache_hits,                                                      0
       tileio_read_num_bytes_read,                                                  0
       tileio_read_num_resulting_bytes,                                             0
-      tileio_write_num_bytes_written,                                       52992598
-      tileio_write_num_input_bytes,                                        576384146
+      tileio_write_num_bytes_written,                                          35325
+      tileio_write_num_input_bytes,                                           384160
       vfs_read_total_bytes,                                                        0
-      vfs_write_total_bytes,                                                52992598
+      vfs_write_total_bytes,                                                53136720
       vfs_read_num_parallelized,                                                   0
+      vfs_read_all_total_regions,                                                  0
       vfs_posix_write_num_parallelized,                                            0
       vfs_win32_write_num_parallelized,                                            0
       vfs_s3_num_parts_written,                                                    0

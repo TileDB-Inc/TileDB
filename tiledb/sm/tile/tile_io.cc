@@ -81,6 +81,8 @@ uint64_t TileIO::file_size() const {
 
 Status TileIO::is_generic_tile(
     const StorageManager* sm, const URI& uri, bool* is_generic_tile) {
+  STATS_FUNC_IN(tileio_is_generic_tile);
+
   *is_generic_tile = false;
 
   bool is_file;
@@ -103,10 +105,14 @@ Status TileIO::is_generic_tile(
 
   *is_generic_tile = true;
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_is_generic_tile);
 }
 
 Status TileIO::read_generic(
     Tile** tile, uint64_t file_offset, const EncryptionKey& encryption_key) {
+  STATS_FUNC_IN(tileio_read_generic);
+
   GenericTileHeader header;
   RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
@@ -155,6 +161,7 @@ Status TileIO::read_generic(
     // Filter
     RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
 
+    STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
     STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, (*tile)->size());
 
     RETURN_NOT_OK(storage_manager_->write_to_cache(
@@ -162,6 +169,8 @@ Status TileIO::read_generic(
   }
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_read_generic);
 }
 
 Status TileIO::read_generic_tile_header(
@@ -203,6 +212,8 @@ Status TileIO::read_generic_tile_header(
 }
 
 Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
+  STATS_FUNC_IN(tileio_write_generic);
+
   // Reset the tile and buffer offset
   tile->reset_offset();
 
@@ -222,6 +233,8 @@ Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
   STATS_COUNTER_ADD(tileio_write_num_bytes_written, tile->buffer()->size());
 
   return Status::Ok();
+
+  STATS_FUNC_OUT(tileio_write_generic);
 }
 
 Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
