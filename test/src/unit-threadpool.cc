@@ -169,6 +169,19 @@ TEST_CASE(
   }
 }
 
+TEST_CASE("ThreadPool: Test enqueue with empty pool", "[threadpool]") {
+  ThreadPool pool;
+  std::atomic<int> result(0);
+  auto status = pool.enqueue([&result]() {
+    result = 100;
+    return Status::Ok();
+  });
+
+  Status st = status.get();
+  CHECK(!st.ok());
+  CHECK(result == 0);
+}
+
 // TODO: This test is too aggressive, as it can/will exhaust memory, which
 // is a problem both on some CI machines as well as development machines.
 // TEST_CASE("ThreadPool: Too many threads", "[threadpool]") {
