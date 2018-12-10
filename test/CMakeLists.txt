@@ -125,6 +125,10 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_HDFS)
+  target_include_directories(tiledb_unit PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+    )
 endif()
 
 if (TILEDB_S3)
