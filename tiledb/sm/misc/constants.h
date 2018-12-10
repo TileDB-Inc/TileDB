@@ -451,6 +451,9 @@ extern const std::string s3_proxy_username;
 /** S3 proxy password. */
 extern const std::string s3_proxy_password;
 
+/** S3 log level. */
+extern const std::string s3_log_level;
+
 /** HDFS default kerb ticket cache path. */
 extern const std::string hdfs_kerb_ticket_cache_path;
 

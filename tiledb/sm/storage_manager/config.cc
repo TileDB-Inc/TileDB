@@ -220,6 +220,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_proxy_username(value));
   } else if (param == "vfs.s3.proxy_password") {
     RETURN_NOT_OK(set_vfs_s3_proxy_password(value));
+  } else if (param == "vfs.s3.log_level") {
+    RETURN_NOT_OK(set_vfs_s3_log_level(value))
   } else if (param == "vfs.hdfs.name_node") {
     RETURN_NOT_OK(set_vfs_hdfs_name_node(value));
   } else if (param == "vfs.hdfs.username") {
@@ -426,6 +428,11 @@ Status Config::unset(const std::string& param) {
     value << vfs_params_.s3_params_.proxy_password_;
     param_values_["vfs.s3.proxy_password"] = value.str();
     value.str(std::string());
+  } else if (param == "vfs.s3.log_level") {
+    vfs_params_.s3_params_.log_level_ = constants::s3_log_level;
+    value << vfs_params_.s3_params_.log_level_;
+    param_values_["vfs.s3.log_level"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.hdfs.name_node") {
     vfs_params_.hdfs_params_.name_node_uri_ = constants::hdfs_name_node_uri;
     value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -443,7 +450,6 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.hdfs.kerb_ticket_cache_path"] = value.str();
     value.str(std::string());
   }
-
   return Status::Ok();
 }
 
@@ -581,6 +587,10 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.proxy_password_;
   param_values_["vfs.s3.proxy_password"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.log_level_;
+  param_values_["vfs.s3.log_level"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -844,6 +854,21 @@ Status Config::set_vfs_s3_proxy_username(const std::string& value) {
 
 Status Config::set_vfs_s3_proxy_password(const std::string& value) {
   vfs_params_.s3_params_.proxy_password_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_log_level(const std::string& value) {
+  if (value != "off" && value != "fatal" && value != "error" &&
+      value != "warn" && value != "info" && value != "debug" &&
+      value != "trace") {
+    std::stringstream errmsg;
+    errmsg << "Cannot set parameter; Invalid S3 log level value: '" << value
+           << "'"
+           << " must be 'off', 'fatal', 'error' 'warn', 'info', 'debug' or "
+              "'trace'";
+    return LOG_STATUS(Status::ConfigError(errmsg.str()));
+  }
+  vfs_params_.s3_params_.log_level_ = value;
   return Status::Ok();
 }
 

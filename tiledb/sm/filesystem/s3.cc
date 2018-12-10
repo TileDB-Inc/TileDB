@@ -87,8 +87,9 @@ S3::S3() {
 }
 
 S3::~S3() {
-  for (auto& buff : file_buffers_)
+  for (auto& buff : file_buffers_) {
     delete buff.second;
+  }
 }
 
 /* ********************************* */
@@ -99,6 +100,24 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   if (thread_pool == nullptr) {
     return LOG_STATUS(
         Status::S3Error("Can't initialize with null thread pool."));
+  }
+
+  // If the user set an explicit SDK log level, set the API logLevel option
+  if (s3_config.log_level_ != "off") {
+    options_.loggingOptions.defaultLogPrefix = "tiledb_vfs_s3";
+    if (s3_config.log_level_ == "fatal") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Fatal;
+    } else if (s3_config.log_level_ == "error") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Error;
+    } else if (s3_config.log_level_ == "warn") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Warn;
+    } else if (s3_config.log_level_ == "info") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Info;
+    } else if (s3_config.log_level_ == "debug") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Debug;
+    } else if (s3_config.log_level_ == "trace") {
+      options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Trace;
+    }
   }
 
   // Initialize the library once per process.
@@ -225,7 +244,6 @@ Status S3::disconnect() {
     }
   }
   Aws::ShutdownAPI(options_);
-
   return Status::Ok();
 }
 

@@ -99,6 +99,7 @@ class Config {
     std::string proxy_password_;
     std::string aws_access_key_id;
     std::string aws_secret_access_key;
+    std::string log_level_;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -118,6 +119,7 @@ class Config {
       proxy_password_ = constants::s3_proxy_password;
       aws_access_key_id = constants::aws_access_key_id;
       aws_secret_access_key = constants::aws_secret_access_key;
+      log_level_ = constants::s3_log_level;
     }
   };
 
@@ -310,6 +312,10 @@ class Config {
    *    The proxy password. Note: this parameter is not serialized by
    *    `tiledb_config_save_to_file`. <br>
    *    **Default**: ""
+   * - `vfs.s3.log_level` <br>
+   *    The S3 SDK log level, must be 'off', 'fatal', 'error' 'warn', 'info',
+   * 'debug' or 'trace'.
+   *    **Default**: "off"
    * - `vfs.hdfs.name_node"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -469,6 +475,9 @@ class Config {
 
   /** Sets the S3 proxy password. */
   Status set_vfs_s3_proxy_password(const std::string& value);
+
+  /** Sets the S3 SDK log level. */
+  Status set_vfs_s3_log_level(const std::string& value);
 
   /** Sets the HDFS namenode hostname and port (uri) */
   Status set_vfs_hdfs_name_node(const std::string& value);

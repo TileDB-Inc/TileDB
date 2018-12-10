@@ -509,6 +509,11 @@ along with their description and default values.
     ``"vfs.s3.connect_timeout_ms"``           ``"3000"``              The connection timeout in ms. Any ``long`` value
                                                                       is acceptable.
     ``"vfs.s3.endpoint_override"``            ``""``                  The S3 endpoint, if S3 is enabled.
+    ``"vfs.s3.log_level"``                    ``"off"``               Sets the AWS SDK S3 backend log level.
+                                                                      Valid values are ``"off"``, ``"fatal"``,
+                                                                      ``"error"``, ``"warn"``, ``"info"``,
+                                                                      ``"debug"``, and ``"trace"``.  Log output is saved
+                                                                      to a local file with prefix `tiledb_vfs_s3`.
     ``"vfs.s3.max_parallel_ops"``             ``vfs.num_threads``     The maximum number of S3 backend parallel
                                                                       operations.
     ``"vfs.s3.multipart_part_size"``          ``"5242880"``           The part size (in bytes) used in S3 multipart
