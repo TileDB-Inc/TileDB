@@ -127,6 +127,10 @@ if (TILEDB_HDFS)
   )
 endif()
 
+if (TILEDB_S3)
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
+endif()
+
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)

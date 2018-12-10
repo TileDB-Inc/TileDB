@@ -92,6 +92,13 @@ std::future<Status> ThreadPool::enqueue(
 std::future<Status> ThreadPool::enqueue(
     const std::function<Status()>& function,
     const std::function<void()>& on_cancel) {
+  if (threads_.empty()) {
+    std::promise<Status> error_task;
+    error_task.set_value(
+        Status::Error("Cannot enqueue task; thread pool has no threads."));
+    return error_task.get_future();
+  }
+
   std::packaged_task<Status(bool)> task(
       [function, on_cancel](bool should_cancel) {
         if (should_cancel) {

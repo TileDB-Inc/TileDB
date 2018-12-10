@@ -59,12 +59,13 @@ struct S3Fx {
 
 S3Fx::S3Fx() {
   // Connect
-  S3::S3Config s3_config;
+  Config::S3Params s3_config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   s3_config.endpoint_override_ = "localhost:9999";
   s3_config.scheme_ = "http";
   s3_config.use_virtual_addressing_ = false;
 #endif
+  REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(s3_.init(s3_config, &thread_pool_).ok());
 
   // Create bucket
@@ -97,7 +98,7 @@ S3Fx::~S3Fx() {
 std::string S3Fx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::timestamp_ms();
+     << tiledb::sm::utils::time::timestamp_now_ms();
   return ss.str();
 }
 
