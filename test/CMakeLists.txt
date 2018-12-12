@@ -148,6 +148,13 @@ target_compile_definitions(tiledb_unit PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
 )
 
+# Linking dl is only needed on linux with gcc
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set_target_properties(tiledb_unit PROPERTIES
+      LINK_FLAGS "-Wl,--no-as-needed -ldl"
+    )
+endif()
+
 add_test(
   NAME "tiledb_unit"
   COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
