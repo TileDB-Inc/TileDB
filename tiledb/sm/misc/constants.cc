@@ -233,10 +233,10 @@ const bool enable_signal_handlers = true;
 /** The number of threads allocated per StorageManager for async queries. */
 const uint64_t num_async_threads = 1;
 
-/** The number of threads allocated per StorageManager for async queries. */
+/** The number of threads allocated per StorageManager for the Reader pool. */
 const uint64_t num_reader_threads = 1;
 
-/** The number of threads allocated per StorageManager for async queries. */
+/** The number of threads allocated per StorageManager for the Writer pool. */
 const uint64_t num_writer_threads = 1;
 
 /** The number of threads allocated for TBB. */
