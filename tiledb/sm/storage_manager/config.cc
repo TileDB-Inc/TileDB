@@ -178,6 +178,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_enable_signal_handlers(value));
   } else if (param == "sm.num_async_threads") {
     RETURN_NOT_OK(set_sm_num_async_threads(value));
+  } else if (param == "sm.num_reader_threads") {
+    RETURN_NOT_OK(set_sm_num_reader_threads(value));
+  } else if (param == "sm.num_writer_threads") {
+    RETURN_NOT_OK(set_sm_num_writer_threads(value));
   } else if (param == "sm.num_tbb_threads") {
     RETURN_NOT_OK(set_sm_num_tbb_threads(value));
   } else if (param == "vfs.num_threads") {
