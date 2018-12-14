@@ -403,10 +403,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The number of threads allocated for async queries. <br>
  *    **Default**: 1
  * - `sm.num_reader_threads` <br>
- *    The number of threads allocated for filesystem read operations. <br>
+ *    The number of threads allocated for issuing reads to VFS in parallel. <br>
  *    **Default**: 1
  * - `sm.num_writer_threads` <br>
- *    The number of threads allocated for filesystem write operations. <br>
+ *    The number of threads allocated for issuing writes to VFS in
+ *    parallel.<br>
  *    **Default**: 1
  * - `sm.num_tbb_threads` <br>
  *    The number of threads allocated for the TBB thread pool (if TBB is
