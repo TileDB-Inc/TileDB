@@ -147,10 +147,15 @@ class Config {
     FileParams file_params_;
     uint64_t num_threads_;
     uint64_t min_parallel_size_;
+    uint64_t max_batch_read_size_;
+    float max_batch_read_amplification_;
 
     VFSParams() {
       num_threads_ = constants::vfs_num_threads;
       min_parallel_size_ = constants::vfs_min_parallel_size;
+      max_batch_read_size_ = constants::vfs_max_batch_read_size;
+      max_batch_read_amplification_ =
+          constants::vfs_max_batch_read_amplification;
     }
   };
 
@@ -248,6 +253,13 @@ class Config {
    *    (except parallel S3 writes, which are controlled by
    *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.max_batch_read_size` <br>
+   *    The maximum number of bytes in a batched VFS read operation. <br>
+   *    **Default**: 100MB
+   * - `vfs.max_batch_read_amplification` <br>
+   *    The maximum amplification factor (>= 1.0) of batched VFS read
+   *    operations. <br>
+   *    **Default**: 1.0
    * - `vfs.file.max_parallel_ops` <br>
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
@@ -415,6 +427,12 @@ class Config {
 
   /** Sets the min number of bytes of a VFS parallel operation. */
   Status set_vfs_min_parallel_size(const std::string& value);
+
+  /** Sets the max number of bytes of a batched VFS read operation. */
+  Status set_vfs_max_batch_read_size(const std::string& value);
+
+  /** Sets the max read amplification for batched VFS read operations. */
+  Status set_vfs_max_batch_read_amplification(const std::string& value);
 
   /** Sets the max number of allowed file:/// parallel operations. */
   Status set_vfs_file_max_parallel_ops(const std::string& value);

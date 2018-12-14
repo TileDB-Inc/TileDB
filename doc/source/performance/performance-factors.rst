@@ -193,6 +193,16 @@ VFS parallelism -- ``vfs.min_parallel_size`` and ``vfs.file.max_parallel_ops``
     the maximum number of parallel operations for ``file:///`` URIs, independently
     of the thread pool size, allowing you to over- or under-subscribe VFS threads.
 
+VFS read batching -- ``vfs.max_batch_read_size`` and ``vfs.max_batch_read_amplification``
+    During read queries, the VFS system will batch reads for distinct tiles that
+    are physically close together (not necessarily adjacent) in the same file.
+    The ``vfs.max_batch_read_size`` parameter sets the maximum size in bytes that
+    a single batched read operation can be. The ``vfs.max_batch_read_amplification``
+    parameter controls the maximum allowed amplification factor for batch reads.
+    Larger amplification factors allow batching of farther apart regions, at the
+    cost of more of the batched region being "wasted" bytes. The default
+    amplification factor of 1.0 allows batching only of directly adjacent regions.
+
 S3 parallelism -- ``vfs.s3.max_parallel_ops``
     This controls the maximum number of parallel operations for ``s3://`` URIs
     independently of the VFS thread pool size, allowing you to over- or

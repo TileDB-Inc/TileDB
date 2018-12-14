@@ -64,6 +64,9 @@ Status convert(const std::string& str, long* value);
 /** Converts the input string into a `uint64_t` value. */
 Status convert(const std::string& str, uint64_t* value);
 
+/** Converts the input string into a `float` value. */
+Status convert(const std::string& str, float* value);
+
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);
 

@@ -191,7 +191,6 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   }
   CHECK(allok == true);
 
-  CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
   CHECK(
       tiledb::sm::stats::all_stats.counter_vfs_win32_write_num_parallelized >
       0);
