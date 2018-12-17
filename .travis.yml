@@ -25,7 +25,7 @@ before_install:
 install:
     # Install clangformat (v5.0)
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        sudo scripts/install-clangformat.sh;
+        sudo ci/install-clangformat.sh;
       fi
 
     # Install doxygen
@@ -52,14 +52,14 @@ install:
 
     # Start HDFS server if enabled
     - if [[ "$TILEDB_HDFS" == "ON" ]]; then
-        source scripts/install-hadoop.sh;
-        source scripts/run-hadoop.sh;
+        source ci/install-hadoop.sh;
+        source ci/run-hadoop.sh;
       fi
 
     # Start minio server if S3 is enabled
     - if [[ "$TILEDB_S3" == "ON" ]]; then
-        source scripts/install-minio.sh;
-        source scripts/run-minio.sh;
+        source ci/install-minio.sh;
+        source ci/run-minio.sh;
       fi
 
     - mkdir -p $TRAVIS_BUILD_DIR/build && cd $TRAVIS_BUILD_DIR/build

@@ -135,7 +135,7 @@ endif()
 # "make format" and "make check-format" targets
 ############################################################
 
-set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ci")
 
 find_package(ClangTools)
 if (${CLANG_FORMAT_FOUND})

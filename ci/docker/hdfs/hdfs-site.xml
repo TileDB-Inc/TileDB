@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///hdfsdata/namenode</value>
+    </property>
+
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///hdfsdata/datanode1</value>
+    </property>
+
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+
+    <!-- libhdfs3 -->
+
+    <property>
+        <name>dfs.default.replica</name>
+        <value>1</value>
+    </property>
+
+    <property>
+        <name>output.replace-datanode-on-failure</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>dfs.client.read.shortcircuit</name>
+        <value>false</value>
+    </property>
+
+    <property>
+        <name>rpc.client.connect.retry</name>
+        <value>10</value>
+    </property>
+
+    <property>
+        <name>rpc.client.read.timeout</name>
+        <value>3600000</value>
+    </property>
+
+    <property>
+        <name>rpc.client.write.timeout</name>
+        <value>3600000</value>
+    </property>
+
+</configuration>
