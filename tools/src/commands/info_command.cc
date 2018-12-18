@@ -48,20 +48,34 @@ clipp::group InfoCommand::get_cli() {
   auto array_arg =
       ((option("-a", "--array").required(true) & value("uri", array_uri_)) %
        "URI of TileDB array");
+
+  auto schema_info =
+      "array-schema: Prints basic information about the array's schema." %
+      (command("array-schema").set(type_, InfoType::ArraySchema), array_arg);
+
   auto tile_sizes =
       "tile-sizes: Prints statistics about tile sizes in the array." %
       (command("tile-sizes").set(type_, InfoType::TileSizes), array_arg);
+
   auto svg_mbrs =
       "svg-mbrs: Produces an SVG visualizing the MBRs (2D arrays only)" %
       (command("svg-mbrs").set(type_, InfoType::SVGMBRs),
        array_arg,
        option("-o", "--output").doc("Path to write output SVG") &
-           value("path", svg_path_),
+           value("path", output_path_),
        option("-w", "--width").doc("Width of output SVG") &
            value("N", svg_width_),
        option("-h", "--height").doc("Height of output SVG") &
            value("N", svg_height_));
-  auto cli = tile_sizes | svg_mbrs;
+
+  auto dump_mbrs =
+      "dump-mbrs: Dumps the MBRs in the array to text output." %
+      (command("dump-mbrs").set(type_, InfoType::DumpMBRs),
+       array_arg,
+       option("-o", "--output").doc("Path to write output text file") &
+           value("path", output_path_));
+
+  auto cli = schema_info | tile_sizes | dump_mbrs | svg_mbrs;
   return cli;
 }
 
@@ -74,6 +88,12 @@ void InfoCommand::run() {
       break;
     case InfoType::SVGMBRs:
       write_svg_mbrs();
+      break;
+    case InfoType::DumpMBRs:
+      write_text_mbrs();
+      break;
+    case InfoType::ArraySchema:
+      print_schema_info();
       break;
   }
 }
@@ -92,26 +112,67 @@ void InfoCommand::print_tile_sizes() const {
   const auto* schema = array.array_schema();
   auto fragment_metadata = array.fragment_metadata();
   auto attributes = schema->attributes();
-  std::cout << "Array URI: " << uri.to_string() << std::endl;
-  std::cout << "Mean persisted tile sizes: " << std::endl;
-  for (const auto& attr : attributes) {
-    uint64_t persisted_tile_size = 0;
+  uint64_t total_persisted_size = 0, total_in_memory_size = 0;
+
+  // Helper function for processing each attribute.
+  auto process_attr = [&](const std::string& name, bool var_size) {
+    uint64_t persisted_tile_size = 0, in_memory_tile_size = 0;
     uint64_t num_tiles = 0;
     for (const auto& f : fragment_metadata) {
       uint64_t tile_num = f->tile_num();
-      num_tiles += tile_num;
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        persisted_tile_size += f->persisted_tile_size(attr->name(), tile_idx);
-        if (attr->var_size())
-          persisted_tile_size +=
-              f->persisted_tile_var_size(attr->name(), tile_idx);
+        persisted_tile_size += f->persisted_tile_size(name, tile_idx);
+        in_memory_tile_size += f->tile_size(name, tile_idx);
+        num_tiles++;
+        if (var_size) {
+          persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
+          in_memory_tile_size += f->tile_var_size(name, tile_idx);
+          num_tiles++;
+        }
       }
     }
+    total_persisted_size += persisted_tile_size;
+    total_in_memory_size += in_memory_tile_size;
 
-    double mean_persisted_tile_size = persisted_tile_size / double(num_tiles);
-    std::cout << "  - " << attr->name() << ": " << mean_persisted_tile_size
+    std::cout << "- " << name << " (" << num_tiles << " tiles):" << std::endl;
+    std::cout << "  Total persisted tile size: " << persisted_tile_size
               << " bytes." << std::endl;
-  }
+    std::cout << "  Total in-memory tile size: " << in_memory_tile_size
+              << " bytes." << std::endl;
+  };
+
+  // Print header
+  std::cout << "Array URI: " << uri.to_string() << std::endl;
+  std::cout << "Tile stats (per attribute):" << std::endl;
+
+  // Dump info about coords for sparse arrays.
+  if (!schema->dense())
+    process_attr(constants::coords, false);
+
+  // Dump info about the rest of the attributes
+  for (const auto* attr : attributes)
+    process_attr(attr->name(), attr->var_size());
+
+  std::cout << "Sum of attribute persisted size: " << total_persisted_size
+            << " bytes." << std::endl;
+  std::cout << "Sum of attribute in-memory size: " << total_in_memory_size
+            << " bytes." << std::endl;
+
+  // Close the array.
+  THROW_NOT_OK(array.close());
+}
+
+void InfoCommand::print_schema_info() const {
+  StorageManager sm;
+  THROW_NOT_OK(sm.init(nullptr));
+
+  // Open the array
+  URI uri(array_uri_);
+  Array array(uri, &sm);
+  THROW_NOT_OK(
+      array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+  array.array_schema()->dump(stdout);
 
   // Close the array.
   THROW_NOT_OK(array.close());
@@ -179,11 +240,50 @@ void InfoCommand::write_svg_mbrs() const {
   svg << "</g>\n";
   svg << "</svg>";
 
-  if (svg_path_.empty()) {
+  if (output_path_.empty()) {
     std::cout << svg.str() << std::endl;
   } else {
-    std::ofstream os(svg_path_, std::ios::out | std::ios::trunc);
+    std::ofstream os(output_path_, std::ios::out | std::ios::trunc);
     os << svg.str() << std::endl;
+  }
+
+  // Close the array.
+  THROW_NOT_OK(array.close());
+}
+
+void InfoCommand::write_text_mbrs() const {
+  StorageManager sm;
+  THROW_NOT_OK(sm.init(nullptr));
+
+  // Open the array
+  URI uri(array_uri_);
+  Array array(uri, &sm);
+  THROW_NOT_OK(
+      array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+  const auto* schema = array.array_schema();
+  auto dim_num = schema->dim_num();
+  auto fragment_metadata = array.fragment_metadata();
+  auto coords_type = schema->coords_type();
+  std::stringstream text;
+  for (const auto& f : fragment_metadata) {
+    auto mbrs = f->mbrs();
+    for (void* mbr : mbrs) {
+      auto str_mbr = mbr_to_string(mbr, coords_type, dim_num);
+      for (unsigned i = 0; i < dim_num; i++) {
+        text << str_mbr[2 * i + 0] << "," << str_mbr[2 * i + 1];
+        if (i < dim_num - 1)
+          text << "\t";
+      }
+      text << std::endl;
+    }
+  }
+
+  if (output_path_.empty()) {
+    std::cout << text.str() << std::endl;
+  } else {
+    std::ofstream os(output_path_, std::ios::out | std::ios::trunc);
+    os << text.str() << std::endl;
   }
 
   // Close the array.
@@ -228,6 +328,80 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
   x = static_cast<const T*>(mbr)[2];
   width = static_cast<const T*>(mbr)[3] - x + 1;
   return std::make_tuple(x, y, width, height);
+}
+
+std::vector<std::string> InfoCommand::mbr_to_string(
+    const void* mbr, Datatype coords_type, unsigned dim_num) const {
+  std::vector<std::string> result;
+  for (unsigned i = 0; i < dim_num; i++) {
+    switch (coords_type) {
+      case Datatype::INT8:
+        result.push_back(
+            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::UINT8:
+        result.push_back(
+            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::INT16:
+        result.push_back(
+            std::to_string(static_cast<const int16_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const int16_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::UINT16:
+        result.push_back(
+            std::to_string(static_cast<const uint16_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const uint16_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::INT32:
+        result.push_back(
+            std::to_string(static_cast<const int*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const int*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::UINT32:
+        result.push_back(
+            std::to_string(static_cast<const unsigned*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const unsigned*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::INT64:
+        result.push_back(
+            std::to_string(static_cast<const int64_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const int64_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::UINT64:
+        result.push_back(
+            std::to_string(static_cast<const uint64_t*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const uint64_t*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::FLOAT32:
+        result.push_back(
+            std::to_string(static_cast<const float*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const float*>(mbr)[2 * i + 1]));
+        break;
+      case Datatype::FLOAT64:
+        result.push_back(
+            std::to_string(static_cast<const double*>(mbr)[2 * i + 0]));
+        result.push_back(
+            std::to_string(static_cast<const double*>(mbr)[2 * i + 1]));
+        break;
+      default:
+        throw std::invalid_argument(
+            "Cannot get MBR; Unsupported coordinates type");
+    }
+  }
+
+  return result;
 }
 
 // Explicit template instantiations

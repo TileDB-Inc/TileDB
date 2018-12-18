@@ -53,7 +53,7 @@ class InfoCommand : public Command {
 
  private:
   /** Types of information that can be displayed. */
-  enum class InfoType { None, TileSizes, SVGMBRs };
+  enum class InfoType { None, TileSizes, SVGMBRs, DumpMBRs, ArraySchema };
 
   /** Type of information to display. */
   InfoType type_ = InfoType::None;
@@ -61,8 +61,8 @@ class InfoCommand : public Command {
   /** Array to print info for. */
   std::string array_uri_;
 
-  /** Output path for SVG. */
-  std::string svg_path_ = "";
+  /** Path to write any output. */
+  std::string output_path_ = "";
 
   /** Width of output SVG. */
   unsigned svg_width_ = 600;
@@ -73,8 +73,14 @@ class InfoCommand : public Command {
   /** Prints information about the array's tile sizes. */
   void print_tile_sizes() const;
 
+  /** Prints basic information about the array schema. */
+  void print_schema_info() const;
+
   /** Dumps array MBRs to SVG. */
   void write_svg_mbrs() const;
+
+  /** Dumps array MBRs to text. */
+  void write_text_mbrs() const;
 
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   std::tuple<double, double, double, double> get_mbr(
@@ -83,6 +89,20 @@ class InfoCommand : public Command {
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   template <typename T>
   std::tuple<double, double, double, double> get_mbr(const void* mbr) const;
+
+  /**
+   * Converts an opaque MBR to a string vector. The vector contents are strings:
+   * [dim0_min, dim0_max, dim1_min, dim1_max, ...]
+   *
+   * @param mbr MBR to convert
+   * @param coords_type Datatype of MBR values
+   * @param dim_num Number of dimensions in MBR
+   * @return String vector of MBR.
+   */
+  std::vector<std::string> mbr_to_string(
+      const void* mbr,
+      tiledb::sm::Datatype coords_type,
+      unsigned dim_num) const;
 };
 
 }  // namespace cli
