@@ -80,12 +80,12 @@ class FragmentMetadata {
   uint64_t cell_num(uint64_t tile_pos) const;
 
   /**
-   * Computes an upper bound on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`.
+   * Computes an upper bound on the buffer sizes needed when reading one or more
+   * subarrays from the fragment, for a given set of attributes. Note that these
+   * upper bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
-   * @param subarray The targeted subarray.
+   * @param subarrays The targeted subarrays.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first is the
@@ -94,15 +94,15 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;
 
   /**
-   * Computes an upper bound on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`. Applicable only to the dense
-   * case.
+   * Computes an upper bound on the buffer sizes needed when reading one or more
+   * subarrays from the fragment, for a given set of attributes. Note that these
+   * upper bounds is added to those in `buffer_sizes`. Applicable only to the
+   * dense case.
    *
    * @tparam T The coordinates type.
    * @param subarray The targeted subarray.
@@ -114,18 +114,18 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_dense(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;
 
   /**
-   * Computes an upper bound on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`. Applicable only to the sparse
-   * case.
+   * Computes an upper bound on the buffer sizes needed when reading one or more
+   * subarrays from the fragment, for a given set of attributes. Note that these
+   * upper bounds is added to those in `buffer_sizes`. Applicable only to the
+   * sparse case.
    *
    * @tparam T The coordinates type.
-   * @param subarray The targeted subarray.
+   * @param subarrays The targeted subarrays.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first is the
@@ -134,7 +134,7 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_sparse(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes) const;
 

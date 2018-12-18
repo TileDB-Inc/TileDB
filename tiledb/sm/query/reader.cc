@@ -88,7 +88,6 @@ Reader::Reader() {
   storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   read_state_.cur_subarray_partition_ = nullptr;
-  read_state_.subarray_ = nullptr;
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
   sparse_mode_ = false;
@@ -185,8 +184,8 @@ Status Reader::init() {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize query; Attributes not set"));
 
-  if (read_state_.subarray_ == nullptr)
-    RETURN_NOT_OK(set_subarray(nullptr));
+  if (read_state_.subarrays_.empty())
+    RETURN_NOT_OK(set_subarrays({}));
 
   optimize_layout_for_1D();
 
@@ -526,29 +525,34 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
 
-Status Reader::set_subarray(const void* subarray) {
-  if (read_state_.subarray_ != nullptr)
+Status Reader::set_subarrays(const std::vector<const void*>& subarrays) {
+  if (!read_state_.subarrays_.empty())
     clear_read_state();
 
-  auto subarray_size = 2 * array_schema_->coords_size();
-  read_state_.subarray_ = std::malloc(subarray_size);
-  if (read_state_.subarray_ == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Memory allocation for read state subarray failed"));
-
-  if (subarray != nullptr)
-    std::memcpy(read_state_.subarray_, subarray, subarray_size);
-  else
-    std::memcpy(
-        read_state_.subarray_,
-        array_schema_->domain()->domain(),
-        subarray_size);
+  const auto subarray_size = 2 * array_schema_->coords_size();
+  if (subarrays.empty()) {
+    void* copy = std::malloc(subarray_size);
+    if (copy == nullptr)
+      return LOG_STATUS(Status::ReaderError(
+          "Memory allocation for read state subarray failed"));
+    std::memcpy(copy, array_schema_->domain()->domain(), subarray_size);
+    read_state_.subarrays_.push_back(copy);
+  } else {
+    for (const void* subarray : subarrays) {
+      void* copy = std::malloc(subarray_size);
+      if (copy == nullptr)
+        return LOG_STATUS(Status::ReaderError(
+            "Memory allocation for read state subarray failed"));
+      std::memcpy(copy, subarray, subarray_size);
+      read_state_.subarrays_.push_back(copy);
+    }
+  }
 
   return Status::Ok();
 }
 
-void* Reader::subarray() const {
-  return read_state_.subarray_;
+std::vector<void*> Reader::subarrays() const {
+  return {read_state_.subarrays_};
 }
 
 /* ****************************** */
@@ -560,8 +564,9 @@ void Reader::clear_read_state() {
     std::free(p);
   read_state_.subarray_partitions_.clear();
 
-  std::free(read_state_.subarray_);
-  read_state_.subarray_ = nullptr;
+  for (void* subarray : read_state_.subarrays_)
+    std::free(subarray);
+  read_state_.subarrays_.clear();
   std::free(read_state_.cur_subarray_partition_);
   read_state_.cur_subarray_partition_ = nullptr;
 
@@ -1689,7 +1694,7 @@ Status Reader::init_read_state() {
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize read state; Memory allocation failed"));
 
-  std::memcpy(first_partition, read_state_.subarray_, subarray_size);
+  std::memcpy(first_partition, read_state_.subarrays_[0], subarray_size);
   read_state_.subarray_partitions_.push_back(first_partition);
 
   RETURN_NOT_OK(next_subarray_partition());

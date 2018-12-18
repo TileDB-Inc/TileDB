@@ -58,11 +58,10 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   is_open_ = false;
   array_schema_ = nullptr;
   timestamp_ = 0;
-  last_max_buffer_sizes_subarray_ = nullptr;
 }
 
 Array::~Array() {
-  std::free(last_max_buffer_sizes_subarray_);
+  clear_last_max_buffer_sizes();
 }
 
 /* ********************************* */
@@ -80,7 +79,7 @@ const URI& Array::array_uri() const {
 }
 
 Status Array::compute_max_buffer_sizes(
-    const void* subarray,
+    const std::vector<const void*>& subarrays,
     const std::vector<std::string>& attributes,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         max_buffer_sizes) const {
@@ -104,7 +103,7 @@ Status Array::compute_max_buffer_sizes(
   max_buffer_sizes->clear();
   for (const auto& attr : attributes)
     (*max_buffer_sizes)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray, max_buffer_sizes));
+  RETURN_NOT_OK(compute_max_buffer_sizes(subarrays, max_buffer_sizes));
 
   // Close array
   return Status::Ok();
@@ -281,7 +280,9 @@ Status Array::get_query_type(QueryType* query_type) const {
 }
 
 Status Array::get_max_buffer_size(
-    const char* attribute, const void* subarray, uint64_t* buffer_size) {
+    const char* attribute,
+    const std::vector<const void*>& subarrays,
+    uint64_t* buffer_size) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   // Check if array is open
@@ -300,7 +301,7 @@ Status Array::get_max_buffer_size(
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Attribute is null"));
 
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
+  RETURN_NOT_OK(compute_max_buffer_sizes(subarrays));
 
   // Normalize attribute name
   std::string norm_attribute;
@@ -328,7 +329,7 @@ Status Array::get_max_buffer_size(
 
 Status Array::get_max_buffer_size(
     const char* attribute,
-    const void* subarray,
+    const std::vector<const void*>& subarrays,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
   std::unique_lock<std::mutex> lck(mtx_);
@@ -349,7 +350,7 @@ Status Array::get_max_buffer_size(
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Attribute is null"));
 
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
+  RETURN_NOT_OK(compute_max_buffer_sizes(subarrays));
 
   // Normalize attribute name
   std::string norm_attribute;
@@ -421,45 +422,46 @@ uint64_t Array::timestamp() const {
 
 void Array::clear_last_max_buffer_sizes() {
   last_max_buffer_sizes_.clear();
-  std::free(last_max_buffer_sizes_subarray_);
-  last_max_buffer_sizes_subarray_ = nullptr;
+  for (void* p : last_max_buffer_sizes_subarrays_)
+    std::free(p);
+  last_max_buffer_sizes_subarrays_.clear();
 }
 
-Status Array::compute_max_buffer_sizes(const void* subarray) {
-  // Allocate space for max buffer sizes subarray
-  auto subarray_size = 2 * array_schema_->coords_size();
-  if (last_max_buffer_sizes_subarray_ == nullptr) {
-    last_max_buffer_sizes_subarray_ = std::malloc(subarray_size);
-    if (last_max_buffer_sizes_subarray_ == nullptr)
-      return LOG_STATUS(Status::ArrayError(
-          "Cannot compute max buffer sizes; Subarray allocation failed"));
-  }
+Status Array::compute_max_buffer_sizes(
+    const std::vector<const void*>& subarrays) {
+  bool recompute =
+      last_max_buffer_sizes_.empty() || !compare_subarray_vector(subarrays);
+  if (!recompute)
+    return Status::Ok();
 
   // Compute max buffer sizes
-  if (last_max_buffer_sizes_.empty() ||
-      std::memcmp(last_max_buffer_sizes_subarray_, subarray, subarray_size) !=
-          0) {
-    last_max_buffer_sizes_.clear();
+  clear_last_max_buffer_sizes();
 
-    // Get all attributes and coordinates
-    auto attributes = array_schema_->attributes();
-    last_max_buffer_sizes_.clear();
-    for (const auto& attr : attributes)
-      last_max_buffer_sizes_[attr->name()] =
-          std::pair<uint64_t, uint64_t>(0, 0);
-    last_max_buffer_sizes_[constants::coords] =
+  // Get all attributes and coordinates
+  auto attributes = array_schema_->attributes();
+  for (const auto& attr : attributes)
+    last_max_buffer_sizes_[attr->name()] =
         std::pair<uint64_t, uint64_t>(0, 0);
-    RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
-  }
+  last_max_buffer_sizes_[constants::coords] =
+      std::pair<uint64_t, uint64_t>(0, 0);
+  RETURN_NOT_OK(compute_max_buffer_sizes(subarrays, &last_max_buffer_sizes_));
 
-  // Update subarray
-  std::memcpy(last_max_buffer_sizes_subarray_, subarray, subarray_size);
+  // Copy the subarrays vector.
+  auto subarray_size = 2 * array_schema_->coords_size();
+  for (const void* subarray : subarrays) {
+    void* copy = std::malloc(subarray_size);
+    if (copy == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot compute max buffer sizes; Subarray allocation failed"));
+    std::memcpy(copy, subarray, subarray_size);
+    last_max_buffer_sizes_subarrays_.push_back(copy);
+  }
 
   return Status::Ok();
 }
 
 Status Array::compute_max_buffer_sizes(
-    const void* subarray,
+    const std::vector<const void*>& subarrays,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   // Return if there are no metadata
@@ -470,34 +472,34 @@ Status Array::compute_max_buffer_sizes(
   switch (array_schema_->coords_type()) {
     case Datatype::INT32:
       return compute_max_buffer_sizes<int>(
-          static_cast<const int*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int*>(subarrays), buffer_sizes);
     case Datatype::INT64:
       return compute_max_buffer_sizes<int64_t>(
-          static_cast<const int64_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int64_t*>(subarrays), buffer_sizes);
     case Datatype::FLOAT32:
       return compute_max_buffer_sizes<float>(
-          static_cast<const float*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const float*>(subarrays), buffer_sizes);
     case Datatype::FLOAT64:
       return compute_max_buffer_sizes<double>(
-          static_cast<const double*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const double*>(subarrays), buffer_sizes);
     case Datatype::INT8:
       return compute_max_buffer_sizes<int8_t>(
-          static_cast<const int8_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int8_t*>(subarrays), buffer_sizes);
     case Datatype::UINT8:
       return compute_max_buffer_sizes<uint8_t>(
-          static_cast<const uint8_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint8_t*>(subarrays), buffer_sizes);
     case Datatype::INT16:
       return compute_max_buffer_sizes<int16_t>(
-          static_cast<const int16_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int16_t*>(subarrays), buffer_sizes);
     case Datatype::UINT16:
       return compute_max_buffer_sizes<uint16_t>(
-          static_cast<const uint16_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint16_t*>(subarrays), buffer_sizes);
     case Datatype::UINT32:
       return compute_max_buffer_sizes<uint32_t>(
-          static_cast<const uint32_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint32_t*>(subarrays), buffer_sizes);
     case Datatype::UINT64:
       return compute_max_buffer_sizes<uint64_t>(
-          static_cast<const uint64_t*>(subarray), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint64_t*>(subarrays), buffer_sizes);
     default:
       return LOG_STATUS(Status::ArrayError(
           "Cannot compute max read buffer sizes; Invalid coordinates type"));
@@ -508,7 +510,7 @@ Status Array::compute_max_buffer_sizes(
 
 template <class T>
 Status Array::compute_max_buffer_sizes(
-    const T* subarray,
+    const std::vector<const T*>& subarrays,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         max_buffer_sizes) const {
   // Sanity check
@@ -518,11 +520,11 @@ Status Array::compute_max_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_)
-    RETURN_NOT_OK(meta->add_max_buffer_sizes(subarray, max_buffer_sizes));
+    RETURN_NOT_OK(meta->add_max_buffer_sizes<T>(subarrays, max_buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema_->dense()) {
-    auto cell_num = array_schema_->domain()->cell_num(subarray);
+    auto cell_num = array_schema_->domain()->cell_num(subarrays);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -541,7 +543,7 @@ Status Array::compute_max_buffer_sizes(
   // Rectify bound for sparse arrays with integer domain
   if (!array_schema_->dense() &&
       datatype_is_integer(array_schema_->domain()->type())) {
-    auto cell_num = array_schema_->domain()->cell_num(subarray);
+    auto cell_num = array_schema_->domain()->cell_num(subarrays);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -560,6 +562,22 @@ Status Array::compute_max_buffer_sizes(
   }
 
   return Status::Ok();
+}
+
+bool Array::compare_subarray_vector(
+    const std::vector<const void*>& subarrays) const {
+  if (subarrays.size() != last_max_buffer_sizes_subarrays_.size())
+    return false;
+
+  const auto subarray_size = 2 * open_array_->array_schema()->coords_size();
+  for (size_t i = 0; i < subarrays.size(); i++) {
+    if (std::memcmp(
+            subarrays[i], last_max_buffer_sizes_subarrays_[i], subarray_size) !=
+        0)
+      return false;
+  }
+
+  return true;
 }
 
 }  // namespace sm

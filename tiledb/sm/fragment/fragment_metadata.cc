@@ -204,20 +204,25 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes(
-    const T* subarray,
+    const std::vector<const T*>& subarrays,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   if (dense_)
-    return add_max_buffer_sizes_dense(subarray, buffer_sizes);
-  return add_max_buffer_sizes_sparse(subarray, buffer_sizes);
+    return add_max_buffer_sizes_dense(subarrays, buffer_sizes);
+  return add_max_buffer_sizes_sparse<T>(subarrays, buffer_sizes);
 }
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_dense(
-    const T* subarray,
+    const std::vector<const T*>& subarrays,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
+  if (subarrays.size() > 1)
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot compute max buffer sizes; multiple subarrays on dense arrays "
+        "is not yet supported."));
   // Calculate the ids of all tiles overlapping with subarray
+  const T* subarray = subarrays[0];
   auto tids = compute_overlapping_tile_ids(subarray);
 
   // Compute buffer sizes
@@ -238,21 +243,27 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_sparse(
-    const T* subarray,
+    const std::vector<const T*>& subarrays,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   unsigned tid = 0;
   auto dim_num = array_schema_->dim_num();
   for (auto& mbr : mbrs_) {
-    if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
-      for (auto& it : *buffer_sizes) {
-        if (array_schema_->var_size(it.first)) {
-          auto cell_num = this->cell_num(tid);
-          it.second.first += cell_num * constants::cell_var_offset_size;
-          it.second.second += tile_var_size(it.first, tid);
-        } else {
-          it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
+    for (const T* subarray : subarrays) {
+      if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
+        for (auto& it : *buffer_sizes) {
+          if (array_schema_->var_size(it.first)) {
+            auto cell_num = this->cell_num(tid);
+            it.second.first += cell_num * constants::cell_var_offset_size;
+            it.second.second += tile_var_size(it.first, tid);
+          } else {
+            it.second.first +=
+                cell_num(tid) * array_schema_->cell_size(it.first);
+          }
         }
+        // We only need the union of MBRs intersecting all the subarrays, so we
+        // can break early on the first intersecting subarray.
+        break;
       }
     }
     tid++;
@@ -1256,43 +1267,43 @@ template Status FragmentMetadata::set_mbr<double>(
     uint64_t tile, const void* mbr);
 
 template Status FragmentMetadata::add_max_buffer_sizes<int8_t>(
-    const int8_t* subarray,
+    const std::vector<const int8_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<uint8_t>(
-    const uint8_t* subarray,
+    const std::vector<const uint8_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<int16_t>(
-    const int16_t* subarray,
+    const std::vector<const int16_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<uint16_t>(
-    const uint16_t* subarray,
+    const std::vector<const uint16_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<int>(
-    const int* subarray,
+    const std::vector<const int*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<unsigned>(
-    const unsigned* subarray,
+    const std::vector<const unsigned*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<int64_t>(
-    const int64_t* subarray,
+    const std::vector<const int64_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<uint64_t>(
-    const uint64_t* subarray,
+    const std::vector<const uint64_t*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<float>(
-    const float* subarray,
+    const std::vector<const float*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 template Status FragmentMetadata::add_max_buffer_sizes<double>(
-    const double* subarray,
+    const std::vector<const double*>& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const;
 

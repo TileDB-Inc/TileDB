@@ -191,6 +191,22 @@ class Domain {
   template <class T>
   uint64_t cell_num(const T* domain) const;
 
+  /**
+   * Returns the number of cells in the input domains. Note that this is
+   * applicable only to integer array domains (otherwise the output is 0).
+   * Also note that it is assummed that the input domain is expanded
+   * such that it aligns with the tile extents.
+   *
+   * Note: if the input domains overlap, cells belonging to overlapping domains
+   * are counted more than once in the return value.
+   *
+   * @tparam T The domain type.
+   * @param domain The domain to be checked.
+   * @return The number of cells in the domain.
+   */
+  template <typename T>
+  uint64_t cell_num(const std::vector<const T*>& domains) const;
+
   /** Returns the number of cells per tile (only for the dense case). */
   uint64_t cell_num_per_tile() const;
 

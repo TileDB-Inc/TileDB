@@ -528,7 +528,7 @@ Status KV::read_item(const KVItem::Hash& hash, bool* found) {
 
   // Compute max buffer sizes
   RETURN_NOT_OK(array_->compute_max_buffer_sizes(
-      subarray, attributes_, &read_buffer_sizes_));
+      {subarray}, attributes_, &read_buffer_sizes_));
 
   // If the max buffer sizes are 0, then the item is not found
   if (read_buffer_sizes_.begin()->second.first == 0) {

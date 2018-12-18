@@ -333,7 +333,7 @@ Status Query::set_subarray(const void* subarray) {
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(writer_.set_subarray(subarray));
   } else {  // READ
-    RETURN_NOT_OK(reader_.set_subarray(subarray));
+    RETURN_NOT_OK(reader_.set_subarrays({subarray}));
   }
 
   status_ = QueryStatus::UNINITIALIZED;

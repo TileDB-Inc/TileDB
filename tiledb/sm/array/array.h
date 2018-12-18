@@ -71,8 +71,8 @@ class Array {
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
+   * @param subarrays The subarrays to focus on. Note that they must have the
+   *     same underlying type as the array domain.
    * @param attributes The attributes to focus on.
    * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
    *     the attribute (or coordinates) name to a pair of sizes (in bytes).
@@ -82,7 +82,7 @@ class Array {
    * @return Status
    */
   Status compute_max_buffer_sizes(
-      const void* subarray,
+      const std::vector<const void*>& subarrays,
       const std::vector<std::string>& attributes,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes) const;
@@ -173,18 +173,20 @@ class Array {
 
   /**
    * Returns the max buffer size given a fixed-sized attribute and
-   * a subarray. Errors if the array is not open.
-   */
-  Status get_max_buffer_size(
-      const char* attribute, const void* subarray, uint64_t* buffer_size);
-
-  /**
-   * Returns the max buffer size given a var-sized attribute and
-   * a subarray. Errors if the array is not open.
+   * a list of subarrays. Errors if the array is not open.
    */
   Status get_max_buffer_size(
       const char* attribute,
-      const void* subarray,
+      const std::vector<const void*>& subarrays,
+      uint64_t* buffer_size);
+
+  /**
+   * Returns the max buffer size given a var-sized attribute and
+   * a list of subarrays. Errors if the array is not open.
+   */
+  Status get_max_buffer_size(
+      const char* attribute,
+      const std::vector<const void*>& subarrays,
       uint64_t* buffer_off_size,
       uint64_t* buffer_val_size);
 
@@ -257,10 +259,10 @@ class Array {
       last_max_buffer_sizes_;
 
   /**
-   * This is the last subarray used by the user to retrieve the
+   * This is the last subarrays used by the user to retrieve the
    * max buffer sizes.
    */
-  void* last_max_buffer_sizes_subarray_;
+  std::vector<void*> last_max_buffer_sizes_subarrays_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
@@ -273,8 +275,8 @@ class Array {
   void clear_last_max_buffer_sizes();
 
   /**
-   * Computes the maximum buffer sizes for all attributes given a subarray,
-   * which are cached locally in the instance.
+   * Computes the maximum buffer sizes for all attributes given a list of
+   * subarrays, which are cached locally in the instance.
    */
   Status compute_max_buffer_sizes(const void* subarray);
 
@@ -316,6 +318,15 @@ class Array {
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes) const;
+
+  /**
+   * Compares the given vector of subarray with the last max buffer sizes
+   * subarray vector, and returns true if they are equivalent.
+   *
+   * @param subarrays Subarrays to compare with
+   * @return bool
+   */
+  bool compare_subarray_vector(const std::vector<const void*>& subarrays) const;
 };
 
 }  // namespace sm

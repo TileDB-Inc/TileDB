@@ -128,6 +128,24 @@ namespace datatype {
 template <class T>
 Status check_template_type_to_datatype(Datatype datatype);
 
+/**
+ * Creates a copy of the given vector by static_casting its elements to a new
+ * type.
+ *
+ * @tparam S Source type
+ * @tparam T Target type
+ * @param vec Vector to copy
+ * @return Copy of vec with recasted elements
+ */
+template <typename S, typename T>
+std::vector<T> recast_vector_elements(const std::vector<S>& vec) {
+  std::vector<T> result;
+  std::transform(vec.begin(), vec.end(), std::back_inserter(result), [](S s) {
+    return static_cast<T>(s);
+  });
+  return result;
+}
+
 }  // namespace datatype
 
 /* ********************************* */

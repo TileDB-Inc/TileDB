@@ -2687,7 +2687,8 @@ int32_t tiledb_array_max_buffer_size(
 
   if (SAVE_ERROR_CATCH(
           ctx,
-          array->array_->get_max_buffer_size(attribute, subarray, buffer_size)))
+          array->array_->get_max_buffer_size(
+              attribute, {subarray}, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2706,7 +2707,7 @@ int32_t tiledb_array_max_buffer_size_var(
   if (SAVE_ERROR_CATCH(
           ctx,
           array->array_->get_max_buffer_size(
-              attribute, subarray, buffer_off_size, buffer_val_size)))
+              attribute, {subarray}, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

@@ -425,6 +425,15 @@ uint64_t Domain::cell_num(const T* domain) const {
   return cell_num;
 }
 
+template <typename T>
+uint64_t Domain::cell_num(const std::vector<const T*>& domains) const {
+  uint64_t result = 0;
+  for (const T* domain : domains) {
+    result += cell_num(domain);
+  }
+  return result;
+}
+
 uint64_t Domain::cell_num_per_tile() const {
   return cell_num_per_tile_;
 }
@@ -1404,6 +1413,27 @@ template uint64_t Domain::cell_num<int64_t>(const int64_t* domain) const;
 template uint64_t Domain::cell_num<uint64_t>(const uint64_t* domain) const;
 template uint64_t Domain::cell_num<float>(const float* domain) const;
 template uint64_t Domain::cell_num<double>(const double* domain) const;
+
+template uint64_t Domain::cell_num<int8_t>(
+    const std::vector<const int8_t*>& domains) const;
+template uint64_t Domain::cell_num<uint8_t>(
+    const std::vector<const uint8_t*>& domains) const;
+template uint64_t Domain::cell_num<int16_t>(
+    const std::vector<const int16_t*>& domains) const;
+template uint64_t Domain::cell_num<uint16_t>(
+    const std::vector<const uint16_t*>& domains) const;
+template uint64_t Domain::cell_num<int>(
+    const std::vector<const int*>& domains) const;
+template uint64_t Domain::cell_num<unsigned>(
+    const std::vector<const unsigned*>& domains) const;
+template uint64_t Domain::cell_num<int64_t>(
+    const std::vector<const int64_t*>& domains) const;
+template uint64_t Domain::cell_num<uint64_t>(
+    const std::vector<const uint64_t*>& domains) const;
+template uint64_t Domain::cell_num<float>(
+    const std::vector<const float*>& domains) const;
+template uint64_t Domain::cell_num<double>(
+    const std::vector<const double*>& domains) const;
 
 template int Domain::cell_order_cmp<int>(
     const int* coords_a, const int* coords_b) const;

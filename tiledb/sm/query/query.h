@@ -326,22 +326,22 @@ class Query {
   Status submit_async(std::function<void(void*)> callback, void* callback_data);
 
   /**
-   * Return the query subarray
-   * @tparam T
-   * @return vector containing copy of the subarray
+   * Return the query subarrays.
+   *
+   * @tparam T Domain datatype
+   * @return Vector containing copy of the subarrays
    */
   template <class T>
-  std::vector<T> subarray() const {
-    void* subarray = nullptr;
+  std::vector<std::vector<T>> subarrays() const {
+    std::vector<void*> subarrays;
     if (type_ == QueryType::WRITE) {
-      subarray = writer_.subarray();
+      subarrays.push_back(writer_.subarray());
     } else {  // READ
-      subarray = reader_.subarray();
+      subarrays = reader_.subarrays();
     }
 
-    if (subarray == nullptr) {
-      LOG_STATUS(
-          Status::QueryError("Cannot get subarray; subarray is nullptr"));
+    if (subarrays.empty()) {
+      LOG_STATUS(Status::QueryError("Cannot get subarray; subarrays is empty"));
       return {};
     }
 
@@ -362,11 +362,18 @@ class Query {
              array_schema->domain()->type())
              .ok())
       return {};
-    // Return a copy of the subarray using the iterator constructor for vector
-    // casting to templated type The templated type has already been validated
+
+    // Return a copy of the subarrays using the iterator constructor for vector
+    // casting to templated type. The templated type has already been validated
     // in the above switch statement
-    return std::vector<T>(
-        static_cast<T*>(subarray), static_cast<T*>(subarray) + subarray_length);
+    std::vector<std::vector<T>> result;
+    for (const void* subarray : subarrays) {
+      result.push_back(std::vector<T>(
+          static_cast<T*>(subarray),
+          static_cast<T*>(subarray) + subarray_length));
+    }
+
+    return result;
   };
 
   /** Returns the query status. */

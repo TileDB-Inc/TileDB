@@ -75,8 +75,8 @@ class Reader {
   struct ReadState {
     /** The current subarray the query is constrained on. */
     void* cur_subarray_partition_;
-    /** The original subarray set by the user. */
-    void* subarray_;
+    /** Copies of the original subarrays set by the user. */
+    std::vector<void*> subarrays_;
     /**
      * A list of subarray partitions. The head of the list is the partition
      * to be split next.
@@ -447,16 +447,18 @@ class Reader {
   void set_storage_manager(StorageManager* storage_manager);
 
   /**
-   * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain.
+   * Sets the query subarrays. If the vector is empty, then a single subarray
+   * will be set for the entire domain.
    *
-   * @param subarray The subarray to be set.
+   * @param subarrays The subarrays to be copied.
    * @return Status
    */
-  Status set_subarray(const void* subarray);
+  Status set_subarrays(const std::vector<const void*>& subarrays);
 
-  /** Returns the subarray. */
-  void* subarray() const;
+  /*
+   * Returns the subarrays set by the user.
+   */
+  std::vector<void*> subarrays() const;
 
  private:
   /* ********************************* */
