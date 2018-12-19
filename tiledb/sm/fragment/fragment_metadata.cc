@@ -463,6 +463,22 @@ const std::vector<void*>& FragmentMetadata::mbrs() const {
   return mbrs_;
 }
 
+Status FragmentMetadata::mbr(uint64_t tile, void** mbr) const {
+  if (tile > mbrs_.size())
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot get MBR; tile index out of range."));
+
+  uint64_t domain_size = 2 * array_schema_->coords_size();
+  *mbr = std::malloc(domain_size);
+  if (*mbr == nullptr)
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot get MBR; memory allocation failed."));
+
+  std::memcpy(*mbr, mbrs_[tile], domain_size);
+
+  return Status::Ok();
+}
+
 const void* FragmentMetadata::non_empty_domain() const {
   return non_empty_domain_;
 }

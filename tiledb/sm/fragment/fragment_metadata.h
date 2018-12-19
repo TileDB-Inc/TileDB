@@ -252,6 +252,17 @@ class FragmentMetadata {
   /** Returns the MBRs. */
   const std::vector<void*>& mbrs() const;
 
+  /**
+   * Gets a copy of the MBR of the given tile.
+   *
+   * Note: it is the caller's responsibility to free the returned MBR.
+   *
+   * @param tile Tile index to retrieve MBR for
+   * @param mbr Will be set to point to a newly allocated MBR.
+   * @return Status
+   */
+  Status mbr(uint64_t tile, void** mbr) const;
+
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
 

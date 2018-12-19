@@ -110,6 +110,8 @@ class Reader {
     uint64_t tile_idx_;
     /** `true` if the overlap is full, and `false` if it is partial. */
     bool full_overlap_;
+    /** `true` if the tile is valid (should be used). */
+    bool valid_;
     /**
      * Maps attribute names to attribute tiles. Note that the coordinates
      * are a special attribute as well.
@@ -124,7 +126,8 @@ class Reader {
         bool full_overlap = false)
         : fragment_idx_(fragment_idx)
         , tile_idx_(tile_idx)
-        , full_overlap_(full_overlap) {
+        , full_overlap_(full_overlap)
+        , valid_(true) {
       attr_tiles_[constants::coords] = std::make_pair(Tile(), Tile());
       for (const auto& attr : attributes) {
         if (attr != constants::coords)
@@ -903,6 +906,15 @@ class Reader {
           overlapping_tile_idx_coords);
 
   /**
+   * Invalidate tiles in the given vector that do not intersect with any
+   * subarrays in the read state.
+   *
+   * @param tiles Vector of overlapping tiles
+   * @return Status
+   */
+  Status invalidate_irrelevant_tiles(OverlappingTileVec* tiles) const;
+
+  /**
    * Optimize the layout for 1D arrays. Specifically, if the array
    * is 1D, the layout should be global order which produces
    * equivalent results offering faster processing.
@@ -960,6 +972,17 @@ class Reader {
       const void* rect,
       void* overlap,
       bool* overlaps) const;
+
+  /**
+   * Determines if a given subarray overlaps a given tile.
+   *
+   * @param subarray The subarray to use
+   * @param tile The tile to check for overlap
+   * @param overlaps Set to `true` if the subarray and tile overlap
+   * @return Status
+   */
+  Status subarray_overlaps_tile(
+      const void* subarray, const OverlappingTile* tile, bool* overlaps) const;
 
   /**
    * Sorts the input coordinates according to the input layout.

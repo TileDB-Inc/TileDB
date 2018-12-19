@@ -956,6 +956,9 @@ Status Reader::compute_overlapping_coords(
   STATS_FUNC_IN(reader_compute_overlapping_coords);
 
   for (const auto& tile : tiles) {
+    if (!tile->valid_)
+      continue;
+
     if (tile->full_overlap_) {
       RETURN_NOT_OK(get_all_coords<T>(tile.get(), coords));
     } else {
@@ -974,12 +977,20 @@ Status Reader::compute_overlapping_coords(
   auto dim_num = array_schema_->dim_num();
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
   auto coords_num = t.cell_num();
-  auto subarray = (T*)read_state_.cur_subarray_partition_;
   auto c = (T*)t.data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
-    if (utils::geometry::coords_in_rect<T>(&c[pos], &subarray[0], dim_num))
-      coords->emplace_back(tile, &c[pos], i);
+    if (!utils::geometry::coords_in_rect<T>(
+            &c[pos], (T*)read_state_.cur_subarray_partition_, dim_num))
+      continue;
+
+    for (const void* subarray : read_state_.subarrays_) {
+      if (utils::geometry::coords_in_rect<T>(
+              &c[pos], (const T*)subarray, dim_num)) {
+        coords->emplace_back(tile, &c[pos], i);
+        break;
+      }
+    }
   }
 
   return Status::Ok();
@@ -1656,6 +1667,9 @@ Status Reader::filter_tiles(
   auto num_tiles = static_cast<uint64_t>(tiles->size());
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = (*tiles)[i];
+    if (!tile->valid_)
+      return Status::Ok();
+
     auto it = tile->attr_tiles_.find(attribute);
     // Skip non-existent attributes (e.g. coords in the dense case).
     if (it == tile->attr_tiles_.end())
@@ -1735,8 +1749,15 @@ Status Reader::get_all_coords(
   auto coords_num = t.cell_num();
   auto c = (T*)t.data();
 
-  for (uint64_t i = 0; i < coords_num; ++i)
-    coords->emplace_back(tile, &c[i * dim_num], i);
+  for (uint64_t i = 0; i < coords_num; ++i) {
+    for (const void* subarray : read_state_.subarrays_) {
+      if (utils::geometry::coords_in_rect<T>(
+              &c[i * dim_num], (const T*)subarray, dim_num)) {
+        coords->emplace_back(tile, &c[i * dim_num], i);
+        break;
+      }
+    }
+  }
 
   return Status::Ok();
 }
@@ -1959,6 +1980,42 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_init_tile_fragment_dense_cell_range_iters);
+}
+
+Status Reader::invalidate_irrelevant_tiles(OverlappingTileVec* tiles) const {
+  if (array_schema_->dense())
+    return LOG_STATUS(
+        Status::ReaderError("Cannot invalidate irrelevant tiles; not yet "
+                            "implemented for dense arrays."));
+
+  auto num_tiles = static_cast<uint64_t>(tiles->size());
+  for (uint64_t i = 0; i < num_tiles; i++) {
+    auto& tile = (*tiles)[i];
+
+    bool useful_tile = false;
+    for (const void* subarray : read_state_.subarrays_) {
+      bool overlaps;
+      RETURN_NOT_OK(subarray_overlaps_tile(subarray, tile.get(), &overlaps));
+      if (overlaps) {
+        useful_tile = true;
+        break;
+      }
+    }
+
+    if (!useful_tile) {
+      tile->valid_ = false;
+      for (auto& it : tile->attr_tiles_) {
+        auto& attr_tile = it.second.first;
+        if (attr_tile.buffer() != nullptr)
+          attr_tile.buffer()->clear();
+        auto& attr_var_tile = it.second.first;
+        if (attr_var_tile.buffer() != nullptr)
+          attr_var_tile.buffer()->clear();
+      }
+    }
+  }
+
+  return Status::Ok();
 }
 
 void Reader::optimize_layout_for_1D() {
@@ -2222,6 +2279,93 @@ Status Reader::compute_subarray_overlap(
   return Status::Ok();
 }
 
+Status Reader::subarray_overlaps_tile(
+    const void* subarray, const OverlappingTile* tile, bool* overlaps) const {
+  *overlaps = false;
+
+  auto* fragment = fragment_metadata_[tile->fragment_idx_];
+  if (fragment->dense())
+    return LOG_STATUS(
+        Status::ReaderError("Cannot determine subarray-tile intersection; not "
+                            "yet implemented for dense fragments."));
+
+  void* mbr;
+  RETURN_NOT_OK(fragment->mbr(tile->tile_idx_, &mbr));
+
+  auto coords_type = array_schema_->coords_type();
+  auto dim_num = array_schema_->dim_num();
+  switch (coords_type) {
+    case Datatype::INT8:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const int8_t*>(subarray),
+          static_cast<const int8_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::UINT8:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const uint8_t*>(subarray),
+          static_cast<const uint8_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::INT16:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const int16_t*>(subarray),
+          static_cast<const int16_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::UINT16:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const uint16_t*>(subarray),
+          static_cast<const uint16_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::INT32:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const int*>(subarray),
+          static_cast<const int*>(mbr),
+          dim_num);
+      break;
+    case Datatype::UINT32:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const unsigned*>(subarray),
+          static_cast<const unsigned*>(mbr),
+          dim_num);
+      break;
+    case Datatype::INT64:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const int64_t*>(subarray),
+          static_cast<const int64_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::UINT64:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const uint64_t*>(subarray),
+          static_cast<const uint64_t*>(mbr),
+          dim_num);
+      break;
+    case Datatype::FLOAT32:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const float*>(subarray),
+          static_cast<const float*>(mbr),
+          dim_num);
+      break;
+    case Datatype::FLOAT64:
+      *overlaps = utils::geometry::overlap(
+          static_cast<const double*>(subarray),
+          static_cast<const double*>(mbr),
+          dim_num);
+      break;
+    default:
+      std::free(mbr);
+      return LOG_STATUS(
+          Status::ReaderError("Cannot determine subarray-tile intersection; "
+                              "Unsupported domain type"));
+  }
+
+  std::free(mbr);
+  return Status::Ok();
+}
+
 template <class T>
 Status Reader::sort_coords(OverlappingCoordsList<T>* coords) const {
   STATS_FUNC_IN(reader_sort_coords);
@@ -2283,6 +2427,9 @@ Status Reader::sparse_read() {
 
   // Read tiles
   RETURN_CANCEL_OR_ERROR(read_all_tiles(&tiles));
+
+  // Prevent irrelevant tiles from being further processed.
+  RETURN_CANCEL_OR_ERROR(invalidate_irrelevant_tiles(&tiles));
 
   // Filter tiles
   RETURN_CANCEL_OR_ERROR(filter_all_tiles(&tiles));
