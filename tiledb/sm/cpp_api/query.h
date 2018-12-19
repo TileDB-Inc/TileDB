@@ -435,6 +435,21 @@ class Query {
     return set_subarray(pairs.data(), pairs.size());
   }
 
+  template <typename T>
+  Query& set_subarrays(const std::vector<std::vector<T>>& subarrays) {
+    impl::type_check<T>(schema_.domain().type());
+    auto& ctx = ctx_.get();
+
+    std::vector<const void*> c_subarrays(subarrays.size());
+    for (uint64_t i = 0; i < subarrays.size(); i++)
+      c_subarrays[i] = subarrays[i].data();
+
+    ctx.handle_error(tiledb_query_set_subarrays(
+        ctx, query_.get(), subarrays.size(), c_subarrays.data()));
+
+    return *this;
+  }
+
   /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only

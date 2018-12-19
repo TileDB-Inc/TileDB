@@ -663,7 +663,7 @@ Status KV::submit_read_query(const uint64_t* subarray) {
   // Create and send query
   auto query = new Query(storage_manager_, array_);
   RETURN_NOT_OK_ELSE(set_read_query_buffers(query), delete query);
-  RETURN_NOT_OK_ELSE(query->set_subarray(subarray), delete query);
+  RETURN_NOT_OK_ELSE(query->set_subarrays({subarray}), delete query);
   RETURN_NOT_OK_ELSE(query->submit(), delete query);
   delete query;
 

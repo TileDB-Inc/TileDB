@@ -715,6 +715,14 @@ class Array {
   template <typename T>
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(const std::vector<T>& subarray) {
+    std::vector<std::vector<T>> subarrays;
+    subarrays.push_back(subarray);
+    return max_buffer_elements<T>(subarrays);
+  }
+
+  template <typename T>
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+  max_buffer_elements(const std::vector<std::vector<T>>& subarrays) {
     auto ctx = ctx_.get();
     impl::type_check<T>(schema_.domain().type(), 1);
 
@@ -723,6 +731,10 @@ class Array {
     auto schema_attrs = schema_.attributes();
     uint64_t attr_size, type_size;
 
+    std::vector<const void*> c_subarrays(subarrays.size());
+    for (uint64_t i = 0; i < subarrays.size(); i++)
+      c_subarrays[i] = subarrays[i].data();
+
     for (const auto& a : schema_attrs) {
       auto var = a.second.cell_val_num() == TILEDB_VAR_NUM;
       auto name = a.second.name();
@@ -730,26 +742,37 @@ class Array {
 
       if (var) {
         uint64_t size_off, size_val;
-        ctx.handle_error(tiledb_array_max_buffer_size_var(
+        ctx.handle_error(tiledb_array_max_buffer_size_var_subarrays(
             ctx,
             array_.get(),
             name.c_str(),
-            subarray.data(),
+            subarrays.size(),
+            c_subarrays.data(),
             &size_off,
             &size_val));
         ret[a.first] = std::pair<uint64_t, uint64_t>(
             size_off / TILEDB_OFFSET_SIZE, size_val / type_size);
       } else {
-        ctx.handle_error(tiledb_array_max_buffer_size(
-            ctx, array_.get(), name.c_str(), subarray.data(), &attr_size));
+        ctx.handle_error(tiledb_array_max_buffer_size_subarrays(
+            ctx,
+            array_.get(),
+            name.c_str(),
+            subarrays.size(),
+            c_subarrays.data(),
+            &attr_size));
         ret[a.first] = std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
       }
     }
 
     // Handle coordinates
     type_size = tiledb_datatype_size(schema_.domain().type());
-    ctx.handle_error(tiledb_array_max_buffer_size(
-        ctx, array_.get(), TILEDB_COORDS, subarray.data(), &attr_size));
+    ctx.handle_error(tiledb_array_max_buffer_size_subarrays(
+        ctx,
+        array_.get(),
+        TILEDB_COORDS,
+        subarrays.size(),
+        c_subarrays.data(),
+        &attr_size));
     ret[TILEDB_COORDS] =
         std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
 

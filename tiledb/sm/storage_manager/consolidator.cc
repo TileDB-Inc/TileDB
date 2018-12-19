@@ -524,7 +524,10 @@ Status Consolidator::create_queries(
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   if (!(*query_r)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_w)->set_layout(layout));
-  RETURN_NOT_OK((*query_w)->set_subarray(subarray));
+  std::vector<const void*> subarrays;
+  if (subarray != nullptr)
+    subarrays.push_back(subarray);
+  RETURN_NOT_OK((*query_w)->set_subarrays(subarrays));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
 

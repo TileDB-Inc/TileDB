@@ -306,13 +306,13 @@ class Query {
   Status set_sparse_mode(bool sparse_mode);
 
   /**
-   * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain.
+   * Sets the query subarrays. If the vector is empty, then the subarray will be
+   * set to the entire domain.
    *
-   * @param subarray The subarray to be set.
+   * @param subarrays The subarrays to be set.
    * @return Status
    */
-  Status set_subarray(const void* subarray);
+  Status set_subarrays(const std::vector<const void*>& subarrays);
 
   /** Submits the query to the storage manager. */
   Status submit();

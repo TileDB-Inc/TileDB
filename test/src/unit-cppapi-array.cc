@@ -815,3 +815,99 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Multi-subarray read", "[cppapi], [multi-subarray]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d1", {{0, 9}}, 2));
+  domain.add_dimension(Dimension::create<int>(ctx, "d2", {{0, 9}}, 2));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+  auto write_data = [&ctx, &array_name]() {
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array);
+    query.set_layout(TILEDB_UNORDERED);
+    std::vector<int> a_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::vector<int> coords = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4,
+                               5, 5, 6, 6, 7, 7, 8, 8, 9, 9};
+    query.set_buffer("a", a_values).set_coordinates(coords);
+    query.submit();
+    array.close();
+  };
+
+  auto read_and_check_data = [&ctx, &array_name]() {
+    Array array(ctx, array_name, TILEDB_READ);
+    std::vector<int> subarray_1 = {0, 1, 0, 1}, subarray_2 = {3, 4, 3, 4},
+                     subarray_3 = {7, 9, 7, 9};
+    std::vector<std::vector<int>> all_subarrays = {
+        subarray_1, subarray_2, subarray_3};
+    auto max_el = array.max_buffer_elements(all_subarrays);
+    std::vector<int> a_read, coords_read;
+    a_read.resize(max_el["a"].second);
+    coords_read.resize(max_el[TILEDB_COORDS].second);
+    Query query_r(ctx, array);
+    query_r.set_subarrays(all_subarrays)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_coordinates(coords_read)
+        .set_buffer("a", a_read);
+    query_r.submit();
+    array.close();
+
+    auto result_el = query_r.result_buffer_elements();
+    CHECK(result_el[TILEDB_COORDS].second == 14);
+    CHECK(result_el["a"].second == 7);
+
+    CHECK(coords_read[0] == 0);
+    CHECK(coords_read[1] == 0);
+    CHECK(coords_read[2] == 1);
+    CHECK(coords_read[3] == 1);
+    CHECK(coords_read[4] == 3);
+    CHECK(coords_read[5] == 3);
+    CHECK(coords_read[6] == 4);
+    CHECK(coords_read[7] == 4);
+    CHECK(coords_read[8] == 7);
+    CHECK(coords_read[9] == 7);
+    CHECK(coords_read[10] == 8);
+    CHECK(coords_read[11] == 8);
+    CHECK(coords_read[12] == 9);
+    CHECK(coords_read[13] == 9);
+    CHECK(a_read[0] == 1);
+    CHECK(a_read[1] == 2);
+    CHECK(a_read[2] == 4);
+    CHECK(a_read[3] == 5);
+    CHECK(a_read[4] == 8);
+    CHECK(a_read[5] == 9);
+    CHECK(a_read[6] == 10);
+  };
+
+  SECTION("- Single-cell capacity") {
+    schema.set_capacity(1);
+    Array::create(array_name, schema);
+    write_data();
+    read_and_check_data();
+  }
+
+  SECTION("- Multi-cell capacity") {
+    schema.set_capacity(2);
+    Array::create(array_name, schema);
+    write_data();
+    read_and_check_data();
+  }
+
+  SECTION("- Default capacity") {
+    Array::create(array_name, schema);
+    write_data();
+    read_and_check_data();
+  }
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

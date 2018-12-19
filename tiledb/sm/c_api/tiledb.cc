@@ -2110,7 +2110,27 @@ int32_t tiledb_query_set_subarray(
     return TILEDB_ERR;
 
   // Set subarray
-  if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray)))
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarrays({subarray})))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint64_t num_subarrays,
+    const void** subarrays) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  std::vector<const void*> subarrays_vec(num_subarrays);
+  for (uint64_t i = 0; i < num_subarrays; i++)
+    subarrays_vec[i] = subarrays[i];
+
+  // Set subarrays
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarrays(subarrays_vec)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2694,6 +2714,29 @@ int32_t tiledb_array_max_buffer_size(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_max_buffer_size_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* attribute,
+    uint64_t num_subarrays,
+    const void** subarrays,
+    uint64_t* buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  std::vector<const void*> subarrays_vec(num_subarrays);
+  for (uint64_t i = 0; i < num_subarrays; i++)
+    subarrays_vec[i] = subarrays[i];
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->get_max_buffer_size(
+              attribute, subarrays_vec, buffer_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -2708,6 +2751,30 @@ int32_t tiledb_array_max_buffer_size_var(
           ctx,
           array->array_->get_max_buffer_size(
               attribute, {subarray}, buffer_off_size, buffer_val_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_max_buffer_size_var_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* attribute,
+    uint64_t num_subarrays,
+    const void** subarrays,
+    uint64_t* buffer_off_size,
+    uint64_t* buffer_val_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  std::vector<const void*> subarrays_vec(num_subarrays);
+  for (uint64_t i = 0; i < num_subarrays; i++)
+    subarrays_vec[i] = subarrays[i];
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->get_max_buffer_size(
+              attribute, subarrays_vec, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

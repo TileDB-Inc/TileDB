@@ -2411,6 +2411,12 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
 TILEDB_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
+TILEDB_EXPORT int32_t tiledb_query_set_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint64_t num_subarrays,
+    const void** subarrays);
+
 /**
  * Sets the buffer for a fixed-sized attribute to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
@@ -3246,6 +3252,14 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
     const void* subarray,
     uint64_t* buffer_size);
 
+TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* attribute,
+    uint64_t num_subarrays,
+    const void** subarrays,
+    uint64_t* buffer_size);
+
 /**
  * Computes an upper bound on the buffer size (in bytes) required for a read
  * query, for a given **var-sized* attribute and subarray.
@@ -3277,6 +3291,15 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var(
     tiledb_array_t* array,
     const char* attribute,
     const void* subarray,
+    uint64_t* buffer_off_size,
+    uint64_t* buffer_val_size);
+
+TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var_subarrays(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* attribute,
+    uint64_t num_subarrays,
+    const void** subarrays,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size);
 
