@@ -418,7 +418,7 @@ Status StorageManager::array_reopen(
 Status StorageManager::array_compute_est_read_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
-    const void* subarray,
+    const std::vector<const void*>& subarrays,
     std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   // Return if there are no metadata
   if (fragment_metadata.empty())
@@ -430,61 +430,71 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
       return array_compute_est_read_buffer_sizes<int>(
           array_schema,
           fragment_metadata,
-          static_cast<const int*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const int*>(
+              subarrays),
           buffer_sizes);
     case Datatype::INT64:
       return array_compute_est_read_buffer_sizes<int64_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const int64_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const int64_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::FLOAT32:
       return array_compute_est_read_buffer_sizes<float>(
           array_schema,
           fragment_metadata,
-          static_cast<const float*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const float*>(
+              subarrays),
           buffer_sizes);
     case Datatype::FLOAT64:
       return array_compute_est_read_buffer_sizes<double>(
           array_schema,
           fragment_metadata,
-          static_cast<const double*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const double*>(
+              subarrays),
           buffer_sizes);
     case Datatype::INT8:
       return array_compute_est_read_buffer_sizes<int8_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const int8_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const int8_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::UINT8:
       return array_compute_est_read_buffer_sizes<uint8_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const uint8_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const uint8_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::INT16:
       return array_compute_est_read_buffer_sizes<int16_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const int16_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const int16_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::UINT16:
       return array_compute_est_read_buffer_sizes<uint16_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const uint16_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const uint16_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::UINT32:
       return array_compute_est_read_buffer_sizes<uint32_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const uint32_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const uint32_t*>(
+              subarrays),
           buffer_sizes);
     case Datatype::UINT64:
       return array_compute_est_read_buffer_sizes<uint64_t>(
           array_schema,
           fragment_metadata,
-          static_cast<const uint64_t*>(subarray),
+          utils::datatype::recast_vector_elements<const void*, const uint64_t*>(
+              subarrays),
           buffer_sizes);
     default:
       return LOG_STATUS(
@@ -1566,7 +1576,7 @@ template <class T>
 Status StorageManager::array_compute_est_read_buffer_sizes(
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
-    const T* subarray,
+    const std::vector<const T*>& subarrays,
     std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   // Sanity check
   assert(!metadata.empty());
@@ -1575,11 +1585,11 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : metadata)
-    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(subarray, buffer_sizes));
+    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(subarrays, buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema->dense()) {
-    auto cell_num = array_schema->domain()->cell_num(subarray);
+    auto cell_num = array_schema->domain()->cell_num(subarrays);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
@@ -1596,7 +1606,7 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   // Rectify bound for sparse arrays with integer domain
   if (!array_schema->dense() &&
       datatype_is_integer(array_schema->domain()->type())) {
-    auto cell_num = array_schema->domain()->cell_num(subarray);
+    auto cell_num = array_schema->domain()->cell_num(subarrays);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {

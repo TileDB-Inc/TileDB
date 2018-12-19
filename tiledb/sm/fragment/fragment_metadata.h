@@ -144,7 +144,7 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
-   * @param subarray The targeted subarray.
+   * @param subarrays The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first is the
@@ -153,7 +153,7 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
       const;
 
@@ -164,7 +164,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
-   * @param subarray The targeted subarray.
+   * @param subarrays The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first is the
@@ -173,7 +173,7 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_dense(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
       const;
 
@@ -184,7 +184,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
-   * @param subarray The targeted subarray.
+   * @param subarrays The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first is the
@@ -193,7 +193,7 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_sparse(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
       const;
 

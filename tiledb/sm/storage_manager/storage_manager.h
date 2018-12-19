@@ -202,12 +202,12 @@ class StorageManager {
 
   /**
    * Computes an estimate on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
+   * query, for a given list of subarrays and set of attributes.
    *
    * @param array_schema The array schema
    * @param fragment_metadata The fragment metadata of the array.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
+   * @param subarrays The subarrays to focus on. Note that they must have the
+   *     same underlying type as the array domain.
    * @param buffer_sizes The buffer sizes to be retrieved. This is a map
    *     from an attribute to a size pair. For fixed-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first size
@@ -217,7 +217,7 @@ class StorageManager {
   Status array_compute_est_read_buffer_sizes(
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
-      const void* subarray,
+      const std::vector<const void*>& subarrays,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
@@ -790,13 +790,13 @@ class StorageManager {
 
   /**
    * Computes an estimate on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
+   * query, for a given list of subarrays and set of attributes.
    *
    * @tparam T The domain type
    * @param array_schema The array schema.
    * @param fragment_metadata The fragment metadata of the array.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
+   * @param subarrays The subarrays to focus on. Note that they must have the
+   *     same underlying type as the array domain.
    * @param buffer_sizes The buffer sizes to be retrieved. This is a map
    *     from an attribute to a size pair. For fixed-sized attributes, only
    *     the first size is useful. For var-sized attributes, the first size
@@ -807,7 +807,7 @@ class StorageManager {
   Status array_compute_est_read_buffer_sizes(
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**

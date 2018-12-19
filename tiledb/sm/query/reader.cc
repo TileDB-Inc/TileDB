@@ -88,6 +88,7 @@ Reader::Reader() {
   storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   read_state_.cur_subarray_partition_ = nullptr;
+  read_state_.subarray_bounds_ = nullptr;
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
   sparse_mode_ = false;
@@ -243,17 +244,56 @@ Status Reader::next_subarray_partition() {
   std::unordered_map<std::string, std::pair<double, double>> est_buffer_sizes;
   bool found = false;
   void* next_partition = nullptr;
+
+  // Some memory-safe containers for storing subarray overlaps.
+  const auto subarray_size = 2 * array_schema_->coords_size();
+  std::vector<std::unique_ptr<uint8_t>> next_partition_subarrays;
+  std::vector<const void*> next_partition_subarrays_ptrs;
+  std::unique_ptr<uint8_t> partition_overlap(new (std::nothrow)
+                                                 uint8_t[subarray_size]);
+  if (partition_overlap.get() == nullptr) {
+    clear_read_state();
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot get next subarray partition; memory allocation failed."));
+  }
+
   do {
     // Pop next partition
     std::free(next_partition);
     next_partition = read_state_.subarray_partitions_.front();
     read_state_.subarray_partitions_.pop_front();
 
+    // For each subarray, compute the overlap with the next partition. This
+    // "cropped" subarrays will be used for buffer size estimation.
+    next_partition_subarrays.clear();
+    next_partition_subarrays_ptrs.clear();
+    for (void* subarray : read_state_.subarrays_) {
+      bool overlaps;
+      RETURN_NOT_OK(compute_subarray_overlap(
+          subarray, next_partition, partition_overlap.get(), &overlaps));
+      if (overlaps) {
+        next_partition_subarrays.emplace_back(new (std::nothrow)
+                                                  uint8_t[subarray_size]);
+        void* p = next_partition_subarrays.back().get();
+        if (p == nullptr) {
+          std::free(next_partition);
+          clear_read_state();
+          return LOG_STATUS(Status::ReaderError(
+              "Cannot get next subarray partition; memory allocation failed."));
+        }
+        std::memcpy(p, partition_overlap.get(), subarray_size);
+        next_partition_subarrays_ptrs.push_back(p);
+      }
+    }
+
     // Get estimated buffer sizes
     for (const auto& attr_it : buffer_sizes_map)
       est_buffer_sizes[attr_it.first] = std::pair<double, double>(0, 0);
     auto st = storage_manager_->array_compute_est_read_buffer_sizes(
-        array_schema_, fragment_metadata_, next_partition, &est_buffer_sizes);
+        array_schema_,
+        fragment_metadata_,
+        next_partition_subarrays_ptrs,
+        &est_buffer_sizes);
 
     if (!st.ok()) {
       std::free(next_partition);
@@ -548,6 +588,14 @@ Status Reader::set_subarrays(const std::vector<const void*>& subarrays) {
     }
   }
 
+  // Allocate and compute subarray bounds
+  read_state_.subarray_bounds_ = std::malloc(subarray_size);
+  if (read_state_.subarray_bounds_ == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Memory allocation for read state subarray failed"));
+  RETURN_NOT_OK(compute_subarray_bounds(
+      read_state_.subarrays_, read_state_.subarray_bounds_));
+
   return Status::Ok();
 }
 
@@ -569,6 +617,8 @@ void Reader::clear_read_state() {
   read_state_.subarrays_.clear();
   std::free(read_state_.cur_subarray_partition_);
   read_state_.cur_subarray_partition_ = nullptr;
+  std::free(read_state_.subarray_bounds_);
+  read_state_.subarray_bounds_ = nullptr;
 
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
@@ -1249,6 +1299,78 @@ Status Reader::compute_var_cell_destinations(
   return Status::Ok();
 }
 
+Status Reader::compute_subarray_bounds(
+    const std::vector<void*>& subarrays, void* bounds) const {
+  switch (array_schema_->coords_type()) {
+    case Datatype::INT32:
+      return compute_subarray_bounds<int>(
+          utils::datatype::recast_vector_elements<void*, int*>(subarrays),
+          static_cast<int*>(bounds));
+    case Datatype::INT64:
+      return compute_subarray_bounds<int64_t>(
+          utils::datatype::recast_vector_elements<void*, int64_t*>(subarrays),
+          static_cast<int64_t*>(bounds));
+    case Datatype::FLOAT32:
+      return compute_subarray_bounds<float>(
+          utils::datatype::recast_vector_elements<void*, float*>(subarrays),
+          static_cast<float*>(bounds));
+    case Datatype::FLOAT64:
+      return compute_subarray_bounds<double>(
+          utils::datatype::recast_vector_elements<void*, double*>(subarrays),
+          static_cast<double*>(bounds));
+    case Datatype::INT8:
+      return compute_subarray_bounds<int8_t>(
+          utils::datatype::recast_vector_elements<void*, int8_t*>(subarrays),
+          static_cast<int8_t*>(bounds));
+    case Datatype::UINT8:
+      return compute_subarray_bounds<uint8_t>(
+          utils::datatype::recast_vector_elements<void*, uint8_t*>(subarrays),
+          static_cast<uint8_t*>(bounds));
+    case Datatype::INT16:
+      return compute_subarray_bounds<int16_t>(
+          utils::datatype::recast_vector_elements<void*, int16_t*>(subarrays),
+          static_cast<int16_t*>(bounds));
+    case Datatype::UINT16:
+      return compute_subarray_bounds<uint16_t>(
+          utils::datatype::recast_vector_elements<void*, uint16_t*>(subarrays),
+          static_cast<uint16_t*>(bounds));
+    case Datatype::UINT32:
+      return compute_subarray_bounds<uint32_t>(
+          utils::datatype::recast_vector_elements<void*, uint32_t*>(subarrays),
+          static_cast<uint32_t*>(bounds));
+    case Datatype::UINT64:
+      return compute_subarray_bounds<uint64_t>(
+          utils::datatype::recast_vector_elements<void*, uint64_t*>(subarrays),
+          static_cast<uint64_t*>(bounds));
+    default:
+      return LOG_STATUS(Status::StorageManagerError(
+          "Cannot compute subarray bounds; Invalid coordinates type"));
+  }
+}
+
+template <typename T>
+Status Reader::compute_subarray_bounds(
+    const std::vector<T*>& subarrays, T* bounds) const {
+  if (subarrays.empty())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot compute subarray bounds; subarrays vector is empty."));
+
+  auto dim_num = array_schema_->dim_num();
+  for (unsigned i = 0; i < dim_num; i++) {
+    bounds[2 * i + 0] = subarrays[0][2 * i + 0];
+    bounds[2 * i + 1] = subarrays[0][2 * i + 1];
+  }
+
+  for (const T* subarray : subarrays) {
+    for (unsigned i = 0; i < dim_num; i++) {
+      bounds[2 * i + 0] = std::min<T>(bounds[2 * i + 0], subarray[2 * i + 0]);
+      bounds[2 * i + 1] = std::max<T>(bounds[2 * i + 1], subarray[2 * i + 1]);
+    }
+  }
+
+  return Status::Ok();
+}
+
 template <class T>
 Status Reader::dedup_coords(OverlappingCoordsList<T>* coords) const {
   STATS_FUNC_IN(reader_dedup_coords);
@@ -1694,7 +1816,11 @@ Status Reader::init_read_state() {
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize read state; Memory allocation failed"));
 
-  std::memcpy(first_partition, read_state_.subarrays_[0], subarray_size);
+  if (read_state_.subarray_bounds_ == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize read state; Subarray bounds are not set"));
+
+  std::memcpy(first_partition, read_state_.subarray_bounds_, subarray_size);
   read_state_.subarray_partitions_.push_back(first_partition);
 
   RETURN_NOT_OK(next_subarray_partition());
@@ -1996,6 +2122,104 @@ void Reader::reset_buffer_sizes() {
     if (it.second.buffer_var_size_ != nullptr)
       *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
   }
+}
+
+Status Reader::compute_subarray_overlap(
+    const void* subarray,
+    const void* rect,
+    void* overlap,
+    bool* overlaps) const {
+  *overlaps = false;
+  auto coords_type = array_schema_->coords_type();
+  auto dim_num = array_schema_->dim_num();
+  switch (coords_type) {
+    case Datatype::INT8:
+      utils::geometry::overlap(
+          static_cast<const int8_t*>(subarray),
+          static_cast<const int8_t*>(rect),
+          dim_num,
+          static_cast<int8_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::UINT8:
+      utils::geometry::overlap(
+          static_cast<const uint8_t*>(subarray),
+          static_cast<const uint8_t*>(rect),
+          dim_num,
+          static_cast<uint8_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::INT16:
+      utils::geometry::overlap(
+          static_cast<const int16_t*>(subarray),
+          static_cast<const int16_t*>(rect),
+          dim_num,
+          static_cast<int16_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::UINT16:
+      utils::geometry::overlap(
+          static_cast<const uint16_t*>(subarray),
+          static_cast<const uint16_t*>(rect),
+          dim_num,
+          static_cast<uint16_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::INT32:
+      utils::geometry::overlap(
+          static_cast<const int*>(subarray),
+          static_cast<const int*>(rect),
+          dim_num,
+          static_cast<int*>(overlap),
+          overlaps);
+      break;
+    case Datatype::UINT32:
+      utils::geometry::overlap(
+          static_cast<const unsigned*>(subarray),
+          static_cast<const unsigned*>(rect),
+          dim_num,
+          static_cast<unsigned*>(overlap),
+          overlaps);
+      break;
+    case Datatype::INT64:
+      utils::geometry::overlap(
+          static_cast<const int64_t*>(subarray),
+          static_cast<const int64_t*>(rect),
+          dim_num,
+          static_cast<int64_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::UINT64:
+      utils::geometry::overlap(
+          static_cast<const uint64_t*>(subarray),
+          static_cast<const uint64_t*>(rect),
+          dim_num,
+          static_cast<uint64_t*>(overlap),
+          overlaps);
+      break;
+    case Datatype::FLOAT32:
+      utils::geometry::overlap(
+          static_cast<const float*>(subarray),
+          static_cast<const float*>(rect),
+          dim_num,
+          static_cast<float*>(overlap),
+          overlaps);
+      break;
+    case Datatype::FLOAT64:
+      utils::geometry::overlap(
+          static_cast<const double*>(subarray),
+          static_cast<const double*>(rect),
+          dim_num,
+          static_cast<double*>(overlap),
+          overlaps);
+      break;
+    default:
+      return LOG_STATUS(
+          Status::ReaderError("Cannot determine subarray-tile intersection; "
+                              "Unsupported domain type"));
+  }
+
+  return Status::Ok();
 }
 
 template <class T>

@@ -77,6 +77,8 @@ class Reader {
     void* cur_subarray_partition_;
     /** Copies of the original subarrays set by the user. */
     std::vector<void*> subarrays_;
+    /** Bounding box calculated for the user's subarrays. */
+    void* subarray_bounds_;
     /**
      * A list of subarray partitions. The head of the list is the partition
      * to be split next.
@@ -677,6 +679,29 @@ class Reader {
       uint64_t* total_var_size) const;
 
   /**
+   * Computes a bounding box over the given list of subarrays and stores it in
+   * the given destination buffer.
+   *
+   * @param subarrays Subarrays to compute bounds for
+   * @param bounds Destination buffer to store bounding box
+   * @return Status
+   */
+  Status compute_subarray_bounds(
+      const std::vector<void*>& subarrays, void* bounds) const;
+
+  /**
+   * Computes a bounding box over the given list of subarrays and stores it in
+   * the given destination buffer.
+   *
+   * @param subarrays Subarrays to compute bounds for
+   * @param bounds Destination buffer to store bounding box
+   * @return Status
+   */
+  template <typename T>
+  Status compute_subarray_bounds(
+      const std::vector<T*>& subarrays, T* bounds) const;
+
+  /**
    * Deduplicates the input coordinates, breaking ties giving preference
    * to the largest fragment index (i.e., it prefers more recent fragments).
    *
@@ -919,6 +944,22 @@ class Reader {
    * the useful data (results) written in the buffers.
    */
   void reset_buffer_sizes();
+
+  /**
+   * Computes the overlap (if any) between the given subarray and the given
+   * hyper-rectangle.
+   *
+   * @param subarray The subarray
+   * @param rect The hyper-rectangle to intersect with
+   * @param overlap Set to the computed overlap of the subarray with the rect
+   * @param overlaps Set to true if the subarray overlaps the rectangle
+   * @return Status
+   */
+  Status compute_subarray_overlap(
+      const void* subarray,
+      const void* rect,
+      void* overlap,
+      bool* overlaps) const;
 
   /**
    * Sorts the input coordinates according to the input layout.
