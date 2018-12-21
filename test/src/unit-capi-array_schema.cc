@@ -951,6 +951,24 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
+    "C API: Test NAN and INF in dimensions",
+    "[capi][array-schema][array-schema-nan-inf]") {
+  // Create dimension with INF
+  tiledb_dimension_t* d;
+  float dim_domain[] = {0, std::numeric_limits<float>::infinity()};
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT32, dim_domain, nullptr, &d);
+  CHECK(rc == TILEDB_ERR);
+
+  // Create dimension with NAN
+  dim_domain[0] = std::numeric_limits<float>::quiet_NaN();
+  rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT32, dim_domain, nullptr, &d);
+  CHECK(rc == TILEDB_ERR);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
     "C API: Test array schema offsets/coords filter lists",
     "[capi], [array-schema], [filter]") {
   // Create array schema

@@ -398,12 +398,59 @@ class Query {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Correctness checks on the bounds of `subarray`. */
-  Status check_subarray_bounds(const void* subarray) const;
+  /** Correctness checks on `subarray`. */
+  Status check_subarray(const void* subarray) const;
 
-  /** Correctness checks for `subarray`. */
-  template <class T>
-  Status check_subarray_bounds(const T* subarray) const;
+  /** Correctness checks on `subarray`. */
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  Status check_subarray(const T* subarray) const {
+    auto array_schema = this->array_schema();
+    auto domain = array_schema->domain();
+    auto dim_num = domain->dim_num();
+
+    // Check subarray bounds
+    for (unsigned int i = 0; i < dim_num; ++i) {
+      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
+      if (subarray[2 * i] < dim_domain[0] ||
+          subarray[2 * i + 1] > dim_domain[1])
+        return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+      if (subarray[2 * i] > subarray[2 * i + 1])
+        return LOG_STATUS(Status::QueryError(
+            "Subarray lower bound is larger than upper bound"));
+    }
+
+    return Status::Ok();
+  }
+
+  template <
+      typename T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  Status check_subarray(const T* subarray) const {
+    auto array_schema = this->array_schema();
+    auto domain = array_schema->domain();
+    auto dim_num = domain->dim_num();
+
+    // Check for NaN
+    for (unsigned int i = 0; i < dim_num; ++i) {
+      if (std::isnan(subarray[2 * i]) || std::isnan(subarray[2 * i + 1]))
+        return LOG_STATUS(Status::QueryError("Subarray contains NaN"));
+    }
+
+    // Check subarray bounds
+    for (unsigned int i = 0; i < dim_num; ++i) {
+      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
+      if (subarray[2 * i] < dim_domain[0] ||
+          subarray[2 * i + 1] > dim_domain[1])
+        return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+      if (subarray[2 * i] > subarray[2 * i + 1])
+        return LOG_STATUS(Status::QueryError(
+            "Subarray lower bound is larger than upper bound"));
+    }
+
+    return Status::Ok();
+  }
 };
 
 }  // namespace sm

@@ -241,9 +241,7 @@ Status Domain::split_subarray_global(
   }
   auto s1 = (T*)(*subarray_1);
   auto s2 = (T*)(*subarray_2);
-  T e = (std::numeric_limits<T>::is_integer) ?
-            1 :
-            std::numeric_limits<T>::epsilon();
+
   for (int i = 0; i < (int)dim_num_; ++i) {
     if (i != dim_to_split) {
       s1[2 * i] = s[2 * i];
@@ -254,8 +252,15 @@ Status Domain::split_subarray_global(
       s1[2 * i] = s[2 * i];
       s1[2 * i + 1] =
           s1[2 * i] + MAX(1, floor(tiles_apart / 2)) * tile_extents[i];
-      s1[2 * i + 1] = floor_to_tile(s1[2 * i + 1], i) - e;
-      s2[2 * i] = s1[2 * i + 1] + e;
+
+      if (std::numeric_limits<T>::is_integer) {
+        s1[2 * i + 1] = floor_to_tile(s1[2 * i + 1], i) - 1;
+        s2[2 * i] = s1[2 * i + 1] + 1;
+      } else {
+        s2[2 * i] = floor_to_tile(s1[2 * i + 1], i);
+        s1[2 * i + 1] =
+            std::nextafter(s2[2 * i], std::numeric_limits<T>::lowest());
+      }
       s2[2 * i + 1] = s[2 * i + 1];
 
       assert(s1[2 * i + 1] >= s1[2 * i]);
@@ -314,9 +319,6 @@ Status Domain::split_subarray_cell(
   }
   auto s1 = (T*)(*subarray_1);
   auto s2 = (T*)(*subarray_2);
-  T e = (std::numeric_limits<T>::is_integer) ?
-            1 :
-            std::numeric_limits<T>::epsilon();
   for (int i = 0; i < (int)dim_num_; ++i) {
     if (i != dim_to_split) {
       s1[2 * i] = s[2 * i];
@@ -325,8 +327,20 @@ Status Domain::split_subarray_cell(
       s2[2 * i + 1] = s[2 * i + 1];
     } else {
       s1[2 * i] = s[2 * i];
-      s1[2 * i + 1] = s[2 * i] + (s[2 * i + 1] - s[2 * i]) / 2;
-      s2[2 * i] = s1[2 * i + 1] + e;
+      if (std::numeric_limits<T>::is_integer) {  // Integers
+        s1[2 * i + 1] = s[2 * i] + (s[2 * i + 1] - s[2 * i]) / 2;
+        s2[2 * i] = s1[2 * i + 1] + 1;
+      } else {  // Reals
+        if (std::nextafter(s[2 * i], std::numeric_limits<T>::max()) ==
+            s[2 * i + 1]) {
+          s1[2 * i + 1] = s[2 * i];
+          s2[2 * i] = s[2 * i + 1];
+        } else {
+          s1[2 * i + 1] = s[2 * i] + (s[2 * i + 1] - s[2 * i]) / 2;
+          s2[2 * i] =
+              std::nextafter(s1[2 * i + 1], std::numeric_limits<T>::max());
+        }
+      }
       s2[2 * i + 1] = s[2 * i + 1];
     }
   }

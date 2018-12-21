@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -348,30 +347,6 @@ Status Dimension::check_domain() const {
       return LOG_STATUS(Status::DimensionError(
           "Domain check failed; Invalid dimension domain type"));
   }
-}
-
-template <class T>
-Status Dimension::check_domain() const {
-  assert(domain_ != nullptr);
-
-  // Upper bound should not be smaller than lower
-  auto domain = static_cast<const T*>(domain_);
-  if (domain[1] < domain[0])
-    return LOG_STATUS(
-        Status::DimensionError("Domain check failed; Upper domain bound should "
-                               "not be smaller than the lower one"));
-
-  // Domain range must not exceed the maximum uint64_t number
-  // for integer domains
-  if (std::is_integral<T>::value) {
-    uint64_t diff = domain[1] - domain[0];
-    if (diff == std::numeric_limits<uint64_t>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum uint64 number"));
-  }
-
-  return Status::Ok();
 }
 
 Status Dimension::check_tile_extent() const {

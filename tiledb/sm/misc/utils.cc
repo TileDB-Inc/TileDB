@@ -510,9 +510,13 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
   auto add = int(std::is_integral<T>::value);
 
   for (unsigned i = 0; i < dim_num; ++i) {
-    auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
-    auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
-    c *= a_range / b_range;
+    if (b[2 * i] == b[2 * i + 1]) {
+      c *= 1;
+    } else {
+      auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
+      auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
+      c *= a_range / b_range;
+    }
   }
   return c;
 }
