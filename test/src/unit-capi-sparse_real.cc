@@ -73,7 +73,9 @@ struct SparseRealFx {
   void remove_temp_dir(const std::string& path);
   void create_sparse_array(const std::string& path);
   void write_sparse_array(const std::string& path);
+  void write_sparse_array_next_partition_bug(const std::string& path);
   void read_sparse_array(const std::string& path);
+  void read_sparse_array_next_partition_bug(const std::string& path);
   static std::string random_bucket_name(const std::string& prefix);
   void set_supported_fs();
 };
@@ -274,6 +276,43 @@ void SparseRealFx::write_sparse_array(const std::string& path) {
   tiledb_query_free(&query);
 }
 
+void SparseRealFx::write_sparse_array_next_partition_bug(
+    const std::string& path) {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  int a[] = {1, 2};
+  uint64_t a_size = sizeof(a);
+  float coords[] = {-180.0f, 1.0f, -180.0f, 2.0f};
+  uint64_t coords_size = sizeof(coords);
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void SparseRealFx::read_sparse_array(const std::string& path) {
   // Open array
   tiledb_array_t* array;
@@ -321,6 +360,51 @@ void SparseRealFx::read_sparse_array(const std::string& path) {
   tiledb_query_free(&query);
 }
 
+void SparseRealFx::read_sparse_array_next_partition_bug(
+    const std::string& path) {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  int a[1];
+  uint64_t a_size = sizeof(a);
+  float coords[8];
+  uint64_t coords_size = sizeof(coords);
+  tiledb_query_t* query;
+  float subarray[] = {-180.0f, 180.0f, -90.0f, 90.0f};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  CHECK(a_size == sizeof(int));
+  CHECK(a[0] == 1);
+  CHECK(coords[0] == -180.0f);
+  CHECK(coords[1] == 1.0f);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 TEST_CASE_METHOD(
     SparseRealFx,
     "C API: Test 2d sparse array with real domain",
@@ -331,6 +415,63 @@ TEST_CASE_METHOD(
   create_sparse_array(vector_name);
   write_sparse_array(vector_name);
   read_sparse_array(vector_name);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    SparseRealFx,
+    "C API: Test 2d sparse array with real domain, next subarray partition bug",
+    "[capi][sparse-real][sparse-real-next-partition-bug]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_real_next_partition_bug";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  create_sparse_array(array_name);
+  write_sparse_array_next_partition_bug(array_name);
+  read_sparse_array_next_partition_bug(array_name);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    SparseRealFx,
+    "C API: Test 2d sparse array with real domain, NaN in subarray",
+    "[capi][sparse-real][sparse-real-nan-subarray]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_real_nan_subarray";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  create_sparse_array(array_name);
+  write_sparse_array(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check Nan
+  float subarray[] = {
+      -180.0f, std::numeric_limits<float>::quiet_NaN(), -90.0f, 90.0f};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check infinity
+  subarray[1] = std::numeric_limits<float>::infinity();
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }

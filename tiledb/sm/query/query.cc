@@ -321,7 +321,7 @@ Status Query::set_layout(Layout layout) {
 }
 
 Status Query::set_subarray(const void* subarray) {
-  RETURN_NOT_OK(check_subarray_bounds(subarray));
+  RETURN_NOT_OK(check_subarray(subarray));
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(writer_.set_subarray(subarray));
   } else {  // READ
@@ -358,7 +358,7 @@ QueryType Query::type() const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Query::check_subarray_bounds(const void* subarray) const {
+Status Query::check_subarray(const void* subarray) const {
   if (subarray == nullptr)
     return Status::Ok();
 
@@ -369,34 +369,25 @@ Status Query::check_subarray_bounds(const void* subarray) const {
 
   switch (array_schema->domain()->type()) {
     case Datatype::INT8:
-      return check_subarray_bounds<int8_t>(
-          static_cast<const int8_t*>(subarray));
+      return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
     case Datatype::UINT8:
-      return check_subarray_bounds<uint8_t>(
-          static_cast<const uint8_t*>(subarray));
+      return check_subarray<uint8_t>(static_cast<const uint8_t*>(subarray));
     case Datatype::INT16:
-      return check_subarray_bounds<int16_t>(
-          static_cast<const int16_t*>(subarray));
+      return check_subarray<int16_t>(static_cast<const int16_t*>(subarray));
     case Datatype::UINT16:
-      return check_subarray_bounds<uint16_t>(
-          static_cast<const uint16_t*>(subarray));
+      return check_subarray<uint16_t>(static_cast<const uint16_t*>(subarray));
     case Datatype::INT32:
-      return check_subarray_bounds<int32_t>(
-          static_cast<const int32_t*>(subarray));
+      return check_subarray<int32_t>(static_cast<const int32_t*>(subarray));
     case Datatype::UINT32:
-      return check_subarray_bounds<uint32_t>(
-          static_cast<const uint32_t*>(subarray));
+      return check_subarray<uint32_t>(static_cast<const uint32_t*>(subarray));
     case Datatype::INT64:
-      return check_subarray_bounds<int64_t>(
-          static_cast<const int64_t*>(subarray));
+      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
     case Datatype::UINT64:
-      return check_subarray_bounds<uint64_t>(
-          static_cast<const uint64_t*>(subarray));
+      return check_subarray<uint64_t>(static_cast<const uint64_t*>(subarray));
     case Datatype::FLOAT32:
-      return check_subarray_bounds<float>(static_cast<const float*>(subarray));
+      return check_subarray<float>(static_cast<const float*>(subarray));
     case Datatype::FLOAT64:
-      return check_subarray_bounds<double>(
-          static_cast<const double*>(subarray));
+      return check_subarray<double>(static_cast<const double*>(subarray));
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -408,24 +399,6 @@ Status Query::check_subarray_bounds(const void* subarray) const {
       // Not supported domain type
       assert(false);
       break;
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Query::check_subarray_bounds(const T* subarray) const {
-  // Check subarray bounds
-  auto array_schema = this->array_schema();
-  auto domain = array_schema->domain();
-  auto dim_num = domain->dim_num();
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-    if (subarray[2 * i] < dim_domain[0] || subarray[2 * i + 1] > dim_domain[1])
-      return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
-    if (subarray[2 * i] > subarray[2 * i + 1])
-      return LOG_STATUS(Status::QueryError(
-          "Subarray lower bound is larger than upper bound"));
   }
 
   return Status::Ok();

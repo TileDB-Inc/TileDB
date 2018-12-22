@@ -38,6 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -157,12 +158,65 @@ class Dimension {
 
   /**
    * Returns an error if the set domain is invalid.
+   * Applicable only to integer domains
    *
    * @tparam T The type of the dimension domain.
    * @return Status
    */
-  template <class T>
-  Status check_domain() const;
+  template <
+      typename T,
+      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+  Status check_domain() const {
+    assert(domain_ != nullptr);
+    auto domain = static_cast<const T*>(domain_);
+
+    // Upper bound should not be smaller than lower
+    if (domain[1] < domain[0])
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; Upper domain bound should "
+          "not be smaller than the lower one"));
+
+    // Domain range must not exceed the maximum uint64_t number
+    // for integer domains
+    uint64_t diff = domain[1] - domain[0];
+    if (diff == std::numeric_limits<uint64_t>::max())
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; Domain range (upper + lower + 1) is larger "
+          "than the maximum uint64 number"));
+
+    return Status::Ok();
+  }
+
+  /**
+   * Returns an error if the set domain is invalid.
+   * Applicable only to real domains.
+   *
+   * @tparam T The type of the dimension domain.
+   * @return Status
+   */
+  template <
+      typename T,
+      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+  Status check_domain() const {
+    assert(domain_ != nullptr);
+    auto domain = static_cast<const T*>(domain_);
+
+    // Check for NAN and INF
+    if (std::isinf(domain[0]) || std::isinf(domain[1]))
+      return LOG_STATUS(
+          Status::DimensionError("Domain check failed; domain contains NaN"));
+    if (std::isnan(domain[0]) || std::isnan(domain[1]))
+      return LOG_STATUS(
+          Status::DimensionError("Domain check failed; domain contains NaN"));
+
+    // Upper bound should not be smaller than lower
+    if (domain[1] < domain[0])
+      return LOG_STATUS(Status::DimensionError(
+          "Domain check failed; Upper domain bound should "
+          "not be smaller than the lower one"));
+
+    return Status::Ok();
+  }
 
   /** Returns an error if the set tile extent is invalid. */
   Status check_tile_extent() const;
