@@ -193,6 +193,12 @@ void check_save_to_file() {
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
+  ss << "sm.consolidation.amplification 1\n";
+  ss << "sm.consolidation.buffer_size 50000000\n";
+  ss << "sm.consolidation.step_max_frags 4294967295\n";
+  ss << "sm.consolidation.step_min_frags 4294967295\n";
+  ss << "sm.consolidation.step_size_ratio 0\n";
+  ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
@@ -287,8 +293,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
-      "argument");
+      "[TileDB::Utils] Error: Failed to convert string 'xadf' to uint64_t; "
+      "Invalid argument");
   tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
@@ -297,8 +303,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
-      "argument");
+      "[TileDB::Utils] Error: Failed to convert string '10xadf' to uint64_t; "
+      "Invalid argument");
   tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
@@ -307,8 +313,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Invalid "
-      "argument");
+      "[TileDB::Utils] Error: Failed to convert string '-10' to uint64_t; "
+      "Invalid argument");
   tiledb_error_free(&error);
 
   // Check invalid parameters are ignored
@@ -331,8 +337,8 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Utils] Error: Failed to convert string to uint64_t; Value out "
-      "of range");
+      "[TileDB::Utils] Error: Failed to convert string '100000000000000000000' "
+      "to uint64_t; Value out of range");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
 }
@@ -375,6 +381,12 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.num_reader_threads"] = "1";
   all_param_values["sm.num_writer_threads"] = "1";
   all_param_values["sm.num_tbb_threads"] = "-1";
+  all_param_values["sm.consolidation.amplification"] = "1";
+  all_param_values["sm.consolidation.steps"] = "4294967295";
+  all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
+  all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
+  all_param_values["sm.consolidation.buffer_size"] = "50000000";
+  all_param_values["sm.consolidation.step_size_ratio"] = "0";
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_parallel_size"] = "10485760";

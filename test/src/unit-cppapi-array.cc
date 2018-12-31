@@ -500,10 +500,6 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
     ArraySchema schema_read(ctx, array_name, TILEDB_AES_256_GCM, key, key_len);
   }());
 
-  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
-  REQUIRE_NOTHROW(
-      Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key, key_len));
-
   REQUIRE_THROWS_AS(
       [&]() { Array array(ctx, array_name, TILEDB_WRITE); }(),
       tiledb::TileDBError);
@@ -523,6 +519,21 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
   query.set_buffer("a", a_values);
   query.submit();
   array.close();
+
+  // Write a second time, as consolidation needs at least two fragments
+  // to trigger an error with encryption (consolidation is a noop for
+  // single-fragment arrays and, thus, always succeeds)
+  Array array_2(
+      ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  Query query_2(ctx, array_2);
+  query_2.set_layout(TILEDB_ROW_MAJOR);
+  query_2.set_buffer("a", a_values);
+  query_2.submit();
+  array_2.close();
+
+  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
+  REQUIRE_NOTHROW(
+      Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key, key_len));
 
   array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, key_len);
   array.reopen();

@@ -159,7 +159,7 @@ class KV {
    * @param timestamp The timestamp at which to open the array.
    * @return Status
    */
-  Status open_at(
+  Status open(
       QueryType query_type,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -176,7 +176,7 @@ class KV {
   Status reopen();
 
   /** Re-opens the key-value store for reads at a specific timestamp. */
-  Status reopen_at(uint64_t timestamp);
+  Status reopen(uint64_t timestamp);
 
   /** Returns the timestamp at which the KV was opened. */
   uint64_t timestamp() const;

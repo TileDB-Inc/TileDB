@@ -50,6 +50,7 @@
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
@@ -106,128 +107,98 @@ class StorageManager {
   /* ********************************* */
 
   /**
-   * Closes an array.
+   * Closes an array opened for reads.
    *
    * @param array_uri The array URI
-   * @param query_type The query type the array was opened with.
    * @return Status
    */
-  Status array_close(const URI& array_uri, QueryType query_type);
+  Status array_close_for_reads(const URI& array_uri);
 
   /**
-   * Opens an array, retrieving its schema and fragment metadata. If the
-   * array is opened in read mode and this array is exclusively locked
-   * with `array_xlock`, this function will wait until the array is
-   * unlocked with `array_xunlock`.
+   * Closes an array opened for writes.
+   *
+   * @param array_uri The array URI
+   * @return Status
+   */
+  Status array_close_for_writes(const URI& array_uri);
+
+  /**
+   * Opens an array for reads at a timestamp. All the metadata of the
+   * fragments created before or at the input timestamp are retrieved.
    *
    * @param array_uri The array URI.
-   * @param query_type The type of queries the array is opened for.
-   * @param encryption_key The encryption key to use.
-   * @param open_array The open array object to be retrieved.
-   * @param timestamp The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC). This timestamp is meaningful only
-   *     when opening the array for reading.
-   * @return Status
-   *
-   * @note The same array can be opened for both reads and writes. However,
-   *    two different `OpenArray` objects will be created and exist at the
-   *    storage manager; one for reads and one for writes.
-   */
-  Status array_open(
-      const URI& array_uri,
-      QueryType query_type,
-      const EncryptionKey& encryption_key,
-      OpenArray** open_array,
-      uint64_t timestamp);
-
-  /**
-   * Reopens an already open array, loading the fragment metadata of any new
-   * fragments and acquiring a new timestamp.
-   * This is applicable only to arrays opened for reads.
-   * When the new timestamp is used in future queries, the queries
-   * will see the fragments in the array created at or before this timestamp.
-   *
-   * @param open_array The open array to be reopened.
-   * @param encryption_key The encryption key to use.
    * @param timestamp The timestamp at which the array will be opened.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved after the
+   *     array is opened.
+   * @param fragment_metadata The fragment metadata to be retrieved
+   *     after the array is opened.
+   * @return Status
+   */
+  Status array_open_for_reads(
+      const URI& array_uri,
+      uint64_t timestamp,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema,
+      std::vector<FragmentMetadata*>* fragment_metadata);
+
+  /**
+   * Opens an array for reads, focusing only on a given list of fragments.
+   * Only the metadata of the input fragments are retrieved.
+   *
+   * @param array_uri The array URI.
+   * @param fragments The fragments to open the array with.
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved after the
+   *     array is opened.
+   * @param fragment_metadata The fragment metadata to be retrieved
+   *     after the array is opened.
+   * @return Status
+   */
+  Status array_open_for_reads(
+      const URI& array_uri,
+      const std::vector<FragmentInfo>& fragments,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema,
+      std::vector<FragmentMetadata*>* fragment_metadata);
+
+  /** Opens an array for writes.
+   *
+   * @param array_uri The array URI.
+   * @param encryption_key The encryption key.
+   * @param array_schema The array schema to be retrieved after the
+   *     array is opened.
+   * @return
+   */
+  Status array_open_for_writes(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema);
+
+  /**
+   * Reopens an already open array at a potentially new timestamp,
+   * retrieving the fragment metadata of any new fragments written
+   * in the array.
+   *
+   * @param array_uri The array URI.
+   * @param timestamp The timestamp at which the array will be opened.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved after the
+   *     array is opened.
+   * @param fragment_metadata The fragment metadata to be retrieved
+   *     after the array is opened.
    * @return Status
    */
   Status array_reopen(
-      OpenArray* open_array,
+      const URI& array_uri,
+      uint64_t timestamp,
       const EncryptionKey& encryption_key,
-      uint64_t timestamp);
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for all array attributes plus coordinates.
-   *
-   * @param open_array The opened array.
-   * @param timestamp The timestamp that indicates which fragment metadata
-   * should be loaded from `open_array`.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
-   *     the attribute (or coordinates) name to a pair of sizes (in bytes).
-   *     For fixed-sized attributes, the second size is ignored. For var-sized
-   *     attributes, the first is the offsets size and the second is the
-   *     values size.
-   * @return Status
-   */
-  Status array_compute_max_buffer_sizes(
-      OpenArray* open_array,
-      uint64_t timestamp,
-      const void* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes_);
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @param open_array The opened array.
-   * @param timestamp The timestamp that indicates which fragment metadata
-   * should be loaded from `open_array`.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param attributes The attributes to focus on.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
-   *     the attribute (or coordinates) name to a pair of sizes (in bytes).
-   *     For fixed-sized attributes, the second size is ignored. For var-sized
-   *     attributes, the first is the offsets size and the second is the
-   *     values size.
-   * @return Status
-   */
-  Status array_compute_max_buffer_sizes(
-      OpenArray* open_array,
-      uint64_t timestamp,
-      const void* subarray,
-      const std::vector<std::string>& attributes,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes);
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @param array_schema The array schema
-   * @param fragment_metadata The fragment metadata of the array.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
-   *     from an attribute to a size pair. For fixed-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first size
-   *     is the offsets size, and the second size is the values size.
-   * @return Status
-   */
-  Status array_compute_max_buffer_sizes(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      const void* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes);
+      ArraySchema** array_schema,
+      std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Computes an estimate on the buffer sizes required for a read
@@ -257,13 +228,16 @@ class StorageManager {
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default).
    * @return Status
    */
   Status array_consolidate(
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length,
+      const Config* config);
 
   /**
    * Creates a TileDB array storing its schema.
@@ -333,6 +307,39 @@ class StorageManager {
 
   /** Creates an empty file with the input URI. */
   Status touch(const URI& uri);
+
+  /**
+   * Gets the fragment information for a given array at a particular
+   * timestamp.
+   *
+   * @param array_schema The array schema.
+   * @param timestamp The function will consider fragments created
+   *     at or before this timestamp.
+   * @param fragment_info The fragment information to be retrieved.
+   *     The fragments are sorted in chronological creation order.
+   * @param encryption_key The encryption key in case the array is encrypted.
+   * @return Status
+   */
+  Status get_fragment_info(
+      const ArraySchema* array_schema,
+      uint64_t timestamp,
+      const EncryptionKey& encryption_key,
+      std::vector<FragmentInfo>* fragment_info);
+
+  /**
+   * Gets the fragment info for a single fragment URI.
+   *
+   * @param array_schema The array schema.
+   * @param encryption_key The encryption key.
+   * @param fragment_uri The fragment URI.
+   * @param fragment_info The fragment info to retrieve.
+   * @return Status
+   */
+  Status get_fragment_info(
+      const ArraySchema* array_schema,
+      const EncryptionKey& encryption_key,
+      const URI& fragment_uri,
+      FragmentInfo* fragment_info);
 
   /**
    * Creates a TileDB group.
@@ -690,9 +697,6 @@ class StorageManager {
   /** Stores the TileDB configuration parameters. */
   Config config_;
 
-  /** Object that handles array consolidation. */
-  Consolidator* consolidator_;
-
   /** Stores exclusive filelocks for arrays. */
   std::unordered_map<std::string, filelock_t> xfilelocks_;
 
@@ -772,29 +776,6 @@ class StorageManager {
       T* domain);
 
   /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @tparam T The domain type
-   * @param array_schema The array schema
-   * @param fragment_metadata The fragment metadata of the array.
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map
-   *     from an attribute to a size pair. For fixed-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first size
-   *     is the offsets size, and the second size is the values size.
-   * @return Status
-   */
-  template <class T>
-  Status array_compute_max_buffer_sizes(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentMetadata*>& fragment_metadata,
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes);
-
-  /**
    * Computes an estimate on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
@@ -816,31 +797,20 @@ class StorageManager {
       const T* subarray,
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
-  /** Closes an array for reads. */
-  Status array_close_for_reads(const URI& array_uri);
-
-  /** Closes an array for writes. */
-  Status array_close_for_writes(const URI& array_uri);
-
   /**
-   * Opens an array for reads.
+   * This is an auxiliary function to the other `array_open*` functions.
+   * It opens the array, retrieves an `OpenArray` instance, acquires
+   * its mutex and increases its counter. The array schema of the array
+   * is loaded, but not any fragment metadata at this point.
    *
    * @param array_uri The array URI.
-   * @param encryption_key The encryption key to use.
-   * @param open_array The open array object to be created
-   * @param timestamp The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param encryption_key The encryption key.
+   * @param open_array The `OpenArray` instance retrieved after opening
+   *      the array. Note that its mutex will be locked and its counter
+   *      will have been incremented when the function returns.
    * @return Status
    */
-  Status array_open_for_reads(
-      const URI& array_uri,
-      const EncryptionKey& encryption_key,
-      OpenArray** open_array,
-      uint64_t timestamp);
-
-  /** Opens an array for writes. */
-  Status array_open_for_writes(
+  Status array_open_without_fragments(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       OpenArray** open_array);
@@ -888,31 +858,39 @@ class StorageManager {
       bool* in_cache);
 
   /**
-   * Retrieves the fragment metadata of an open array that are not already
-   * loaded.
+   * Loads the fragment metadata of an open array given a vector of
+   * fragment URIs `fragments_to_load`. If the fragment metadata
+   * are not already loaded into the array, the function loads them.
+   * The function stores the fragment metadata of each fragment
+   * in `fragments_to_load` into vector `fragment_metadata`, such
+   * that there is a one-to-one correspondence between the two vectors.
    *
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
+   * @param fragments_to_load The fragments whose metadata to load. This
+   *     is a vector of pairs (timestamp, URI).
    * @param in_cache Set to true if any metdata was retrieved from the cache
-   * @param timestamp The timestamp at which the array will be opened.
-   *     In TileDB, timestamps are in ms elapsed since
-   *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param fragment_metadata The fragment metadata retrieved in a
+   *     vector.
    * @return Status
    */
   Status load_fragment_metadata(
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
+      const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
       bool* in_cache,
-      uint64_t timestamp);
+      std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
-   * Sorts the fragment URIs (in the first input) in ascending timestamp
-   * order, breaking ties using the process id. The sorted fragment
-   * URIs are stored in the second input, including the fragment
-   * timestamps.
+   * Gets the sorted fragment URIs based on the first input
+   * in ascending timestamp order, breaking ties with lexicographic sorting
+   * of UUID. Only the fragments with timestamp smaller than or equal to
+   * `timestamp` are considered. The sorted fragment URIs are stored in
+   * the second input, including the fragment timestamps.
    */
-  void sort_fragment_uris(
+  void get_sorted_fragment_uris(
       const std::vector<URI>& fragment_uris,
+      uint64_t timestamp,
       std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const;
 
   /** Block until there are zero in-progress queries. */

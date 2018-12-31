@@ -530,14 +530,15 @@ void KVFx::check_write(const std::string& path) {
 
   // Consolidate
   if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_kv_consolidate(ctx_, path.c_str());
+    rc = tiledb_kv_consolidate(ctx_, path.c_str(), nullptr);
   } else {
     rc = tiledb_kv_consolidate_with_key(
         ctx_,
         path.c_str(),
         encryption_type_,
         encryption_key_,
-        (uint32_t)strlen(encryption_key_));
+        (uint32_t)strlen(encryption_key_),
+        nullptr);
   }
   REQUIRE(rc == TILEDB_OK);
 

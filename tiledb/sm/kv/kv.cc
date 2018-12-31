@@ -94,7 +94,7 @@ Status KV::open(
   return Status::Ok();
 }
 
-Status KV::open_at(
+Status KV::open(
     QueryType query_type,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -110,8 +110,8 @@ Status KV::open_at(
         Status::KVError("Cannot open key-value store at timestamp; This is "
                         "applicable only to reads"));
 
-  RETURN_NOT_OK(array_->open_at(
-      query_type, encryption_type, encryption_key, key_length, timestamp));
+  RETURN_NOT_OK(array_->open(
+      query_type, timestamp, encryption_type, encryption_key, key_length));
 
   prepare_attributes_and_read_buffer_sizes();
 
@@ -393,7 +393,7 @@ Status KV::reopen() {
   return array_->reopen();
 }
 
-Status KV::reopen_at(uint64_t timestamp) {
+Status KV::reopen(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   QueryType query_type;
@@ -407,7 +407,7 @@ Status KV::reopen_at(uint64_t timestamp) {
     return LOG_STATUS(Status::KVError(
         "Cannot reopen key-value store; Key-value store is not open"));
 
-  return array_->reopen_at(timestamp);
+  return array_->reopen(timestamp);
 }
 
 uint64_t KV::timestamp() const {

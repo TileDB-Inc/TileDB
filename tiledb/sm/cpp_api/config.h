@@ -218,8 +218,7 @@ class Config {
     return config_.get();
   }
 
-  /**
-   * Sets a config parameter-value pair.
+  /** Sets a config parameter.
    *
    * **Parameters**
    *
@@ -237,7 +236,7 @@ class Config {
    *    **Default**: true
    * - `sm.check_coord_oob` <br>
    *    If `true`, an error will be thrown if there are cells with coordinates
-   *    lying outside the domain during sparse array writes.  <br>
+   *    falling outside the array domain during sparse array writes. <br>
    *    **Default**: true
    * - `sm.check_global_order` <br>
    *    Checks if the coordinates obey the global array order. Applicable only
@@ -247,8 +246,8 @@ class Config {
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
    *    **Default**: 10,000,000
    * - `sm.array_schema_cache_size` <br>
-   *    The array schema cache size in bytes. Any `uint64_t` value is
-   *    acceptable. <br>
+   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
+   * <br>
    *    **Default**: 10,000,000
    * - `sm.fragment_metadata_cache_size` <br>
    *    The fragment metadata cache size in bytes. Any `uint64_t` value is
@@ -274,6 +273,33 @@ class Config {
    *    be modified from the default. See also the documentation for TBB's
    *    `task_scheduler_init` class.<br>
    *    **Default**: TBB automatic
+   * - `sm.consolidation.amplification` <br>
+   *    The factor by which the size of the dense fragment resulting
+   *    from consolidating a set of fragments (containing at least one
+   *    dense fragment) can be amplified. This is important when
+   *    the union of the non-empty domains of the fragments to be
+   *    consolidated have a lot of empty cells, which the consolidated
+   *    fragment will have to fill with the special fill value
+   *    (since the resulting fragments is dense). <br>
+   *    **Default**: 1.0
+   * - `sm.consolidation.buffer_size` <br>
+   *    The size (in bytes) of the attribute buffers used during
+   *    consolidation. <br>
+   *    **Default**: 50,000,000
+   * - `sm.consolidation.steps` <br>
+   *    The number of consolidation steps to be performed when executing
+   *    the consolidation algorithm.<br>
+   *    **Default**: 1
+   * - `sm.consolidation.step_min_frags` <br>
+   *    The minimum number of fragments to consolidate in a single step.<br>
+   *    **Default**: UINT32_MAX
+   * - `sm.consolidation.step_max_frags` <br>
+   *    The maximum number of fragments to consolidate in a single step.<br>
+   *    **Default**: UINT32_MAX
+   * - `sm.consolidation.step_size_ratio` <br>
+   *    The size ratio that two ("adjacent") fragments must satisfy to be
+   *    considered for consolidation in a single step.<br>
+   *    **Default**: 0.0
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>

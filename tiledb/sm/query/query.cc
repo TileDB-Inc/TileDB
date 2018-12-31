@@ -320,6 +320,14 @@ Status Query::set_layout(Layout layout) {
   return reader_.set_layout(layout);
 }
 
+Status Query::set_sparse_mode(bool sparse_mode) {
+  if (type_ != QueryType::READ)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set sparse mode; Only applicable to read queries"));
+
+  return reader_.set_sparse_mode(sparse_mode);
+}
+
 Status Query::set_subarray(const void* subarray) {
   RETURN_NOT_OK(check_subarray(subarray));
   if (type_ == QueryType::WRITE) {

@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* Added an advanced, tunable consolidation algorithm
 * Added config params `vfs.s3.aws_access_key_id` and `vfs.s3.aws_secret_access_key` for configure s3 access at runtime. [#1036](https://github.com/TileDB-Inc/TileDB/pull/1036)
 * Added missing check if coordinates obey the global order in global order sparse writes. [#1039](https://github.com/TileDB-Inc/TileDB/pull/1039)
 * Small tiles are now batched for larger VFS read operations, improving read performance in some cases.
@@ -22,8 +23,18 @@
 
 ### C++ API
 
+* `{Array,Map}::consolidate{_with_key}` now takes a `Config` as an optional argument.
 * Added function `VFS::dir_size`.
 * Added function `VFS::ls`.
+
+## Breaking changes
+
+### C API
+
+* `tiledb_{array,kv}_consolidate{_with_key}` now takes a `tiledb_config_t*` as argument.
+
+### C++ API
+
 
 # TileDB v1.4.1 Release Notes
 

@@ -37,6 +37,14 @@
 #include <cassert>
 #include <iostream>
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 namespace tiledb {
 namespace sm {
 
@@ -48,7 +56,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_uri_(array_uri)
     , storage_manager_(storage_manager) {
   is_open_ = false;
-  open_array_ = nullptr;
+  array_schema_ = nullptr;
   timestamp_ = 0;
   last_max_buffer_sizes_subarray_ = nullptr;
 }
@@ -62,16 +70,12 @@ Array::~Array() {
 /* ********************************* */
 
 ArraySchema* Array::array_schema() const {
-  if (!is_open())
-    return nullptr;
-
-  open_array_->mtx_lock();
-  auto array_schema = open_array_->array_schema();
-  open_array_->mtx_unlock();
-  return array_schema;
+  std::unique_lock<std::mutex> lck(mtx_);
+  return array_schema_;
 }
 
 const URI& Array::array_uri() const {
+  std::unique_lock<std::mutex> lck(mtx_);
   return array_uri_;
 }
 
@@ -80,12 +84,30 @@ Status Array::compute_max_buffer_sizes(
     const std::vector<std::string>& attributes,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         max_buffer_sizes) const {
-  if (!is_open())
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  // Error if the array is not open
+  if (!is_open_)
     return LOG_STATUS(Status::ArrayError(
         "Cannot compute max buffer sizes; Array is not open"));
 
-  return storage_manager_->array_compute_max_buffer_sizes(
-      open_array_, timestamp_, subarray, attributes, max_buffer_sizes);
+  // Error if the array was not opened in read mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot compute max read buffer sizes; "
+                           "Array was not opened in read mode"));
+
+  // Check attributes
+  RETURN_NOT_OK(array_schema_->check_attributes(attributes));
+
+  // Compute buffer sizes
+  max_buffer_sizes->clear();
+  for (const auto& attr : attributes)
+    (*max_buffer_sizes)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
+  RETURN_NOT_OK(compute_max_buffer_sizes(subarray, max_buffer_sizes));
+
+  // Close array
+  return Status::Ok();
 }
 
 Status Array::open(
@@ -93,9 +115,52 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  if (is_open())
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  if (is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
+
+  // Copy the key bytes.
+  RETURN_NOT_OK(
+      encryption_key_.set_key(encryption_type, encryption_key, key_length));
+
+  if (query_type == QueryType::READ) {
+    timestamp_ = utils::time::timestamp_now_ms();
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+        array_uri_,
+        timestamp_,
+        encryption_key_,
+        &array_schema_,
+        &fragment_metadata_));
+  } else {
+    timestamp_ = 0;
+    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
+        array_uri_, encryption_key_, &array_schema_));
+  }
+
+  query_type_ = query_type;
+  is_open_ = true;
+
+  return Status::Ok();
+}
+
+Status Array::open(
+    QueryType query_type,
+    const std::vector<FragmentInfo>& fragments,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  if (is_open_)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array with fragments; Array already open"));
+
+  if (query_type != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot open array with fragments; The array can "
+                           "opened at a timestamp only in read mode"));
 
   // Copy the key bytes.
   RETURN_NOT_OK(
@@ -104,28 +169,35 @@ Status Array::open(
   timestamp_ = utils::time::timestamp_now_ms();
 
   // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open(
-      array_uri_, query_type, encryption_key_, &open_array_, timestamp_));
+  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+      array_uri_,
+      fragments,
+      encryption_key_,
+      &array_schema_,
+      &fragment_metadata_));
 
+  query_type_ = QueryType::READ;
   is_open_ = true;
 
   return Status::Ok();
 }
 
-Status Array::open_at(
+Status Array::open(
     QueryType query_type,
+    uint64_t timestamp,
     EncryptionType encryption_type,
     const void* encryption_key,
-    uint32_t key_length,
-    uint64_t timestamp) {
-  if (is_open())
+    uint32_t key_length) {
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  if (is_open_)
     return LOG_STATUS(Status::ArrayError(
         "Cannot open array at timestamp; Array already open"));
 
   if (query_type != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot open array at timestamp; This is applicable "
-                           "only to read queries"));
+        Status::ArrayError("Cannot open array at timestamp; The array can "
+                           "opened at a timestamp only in read mode"));
 
   // Copy the key bytes.
   RETURN_NOT_OK(
@@ -134,9 +206,14 @@ Status Array::open_at(
   timestamp_ = timestamp;
 
   // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open(
-      array_uri_, query_type, encryption_key_, &open_array_, timestamp));
+  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+      array_uri_,
+      timestamp_,
+      encryption_key_,
+      &array_schema_,
+      &fragment_metadata_));
 
+  query_type_ = query_type;
   is_open_ = true;
 
   return Status::Ok();
@@ -145,64 +222,78 @@ Status Array::open_at(
 Status Array::close() {
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (!is_open())
+  if (!is_open_)
     return Status::Ok();
 
   is_open_ = false;
   clear_last_max_buffer_sizes();
-  RETURN_NOT_OK(
-      storage_manager_->array_close(array_uri_, open_array_->query_type()));
-  open_array_ = nullptr;
+  array_schema_ = nullptr;
+  fragment_metadata_.clear();
+
+  if (query_type_ == QueryType::READ) {
+    RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
+  } else {
+    RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+  }
 
   return Status::Ok();
 }
 
 bool Array::is_empty() const {
-  return is_open() && open_array_->is_empty(timestamp_);
+  std::unique_lock<std::mutex> lck(mtx_);
+  return fragment_metadata_.empty();
 }
 
 bool Array::is_open() const {
-  return open_array_ != nullptr && is_open_;
+  std::unique_lock<std::mutex> lck(mtx_);
+  return is_open_;
 }
 
 std::vector<FragmentMetadata*> Array::fragment_metadata() const {
-  if (!is_open())
-    return std::vector<FragmentMetadata*>();
-
-  open_array_->mtx_lock();
-  auto metadata = open_array_->fragment_metadata(timestamp_);
-  open_array_->mtx_unlock();
-  return metadata;
+  std::unique_lock<std::mutex> lck(mtx_);
+  return fragment_metadata_;
 }
 
 Status Array::get_array_schema(ArraySchema** array_schema) const {
+  std::unique_lock<std::mutex> lck(mtx_);
+
   // Error if the array is not open
-  if (!is_open())
+  if (!is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot get array schema; Array is not open"));
 
-  *array_schema = open_array_->array_schema();
+  *array_schema = array_schema_;
 
   return Status::Ok();
 }
 
 Status Array::get_query_type(QueryType* query_type) const {
+  std::unique_lock<std::mutex> lck(mtx_);
+
   // Error if the array is not open
-  if (!is_open())
+  if (!is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot get query_type; Array is not open"));
 
-  *query_type = open_array_->query_type();
+  *query_type = query_type_;
 
   return Status::Ok();
 }
 
 Status Array::get_max_buffer_size(
     const char* attribute, const void* subarray, uint64_t* buffer_size) {
+  std::unique_lock<std::mutex> lck(mtx_);
+
   // Check if array is open
-  if (!is_open())
+  if (!is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Array is not open"));
+
+  // Error if the array was not opened in read mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get max buffer size; "
+                           "Array was not opened in read mode"));
 
   // Check if attribute is null
   if (attribute == nullptr)
@@ -224,7 +315,7 @@ Status Array::get_max_buffer_size(
         norm_attribute + "' does not exist"));
 
   // Check if attribute is fixed sized
-  if (open_array_->array_schema()->var_size(norm_attribute))
+  if (array_schema_->var_size(norm_attribute))
     return LOG_STATUS(Status::ArrayError(
         std::string("Cannot get max buffer size; Attribute '") +
         norm_attribute + "' is var-sized"));
@@ -240,10 +331,18 @@ Status Array::get_max_buffer_size(
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
+  std::unique_lock<std::mutex> lck(mtx_);
+
   // Check if array is open
-  if (!is_open())
+  if (!is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot get max buffer size; Array is not open"));
+
+  // Error if the array was not opened in read mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get max buffer size; "
+                           "Array was not opened in read mode"));
 
   // Check if attribute is null
   if (attribute == nullptr)
@@ -265,7 +364,7 @@ Status Array::get_max_buffer_size(
         norm_attribute + "' does not exist"));
 
   // Check if attribute is var-sized
-  if (!open_array_->array_schema()->var_size(norm_attribute))
+  if (!array_schema_->var_size(norm_attribute))
     return LOG_STATUS(Status::ArrayError(
         std::string("Cannot get max buffer size; Attribute '") +
         norm_attribute + "' is fixed-sized"));
@@ -278,21 +377,22 @@ Status Array::get_max_buffer_size(
 }
 
 const EncryptionKey& Array::get_encryption_key() const {
+  std::unique_lock<std::mutex> lck(mtx_);
   return encryption_key_;
 }
 
 Status Array::reopen() {
-  return reopen_at(utils::time::timestamp_now_ms());
+  return reopen(utils::time::timestamp_now_ms());
 }
 
-Status Array::reopen_at(uint64_t timestamp) {
+Status Array::reopen(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
 
-  if (!is_open())
+  if (!is_open_)
     return LOG_STATUS(
         Status::ArrayError("Cannot reopen array; Array is not open"));
 
-  if (open_array_->query_type() != QueryType::READ)
+  if (query_type_ != QueryType::READ)
     return LOG_STATUS(
         Status::ArrayError("Cannot reopen array; Array store was "
                            "not opened in read mode"));
@@ -300,12 +400,18 @@ Status Array::reopen_at(uint64_t timestamp) {
   clear_last_max_buffer_sizes();
 
   timestamp_ = timestamp;
+  fragment_metadata_.clear();
 
   return storage_manager_->array_reopen(
-      open_array_, encryption_key_, timestamp_);
+      array_uri_,
+      timestamp_,
+      encryption_key_,
+      &array_schema_,
+      &fragment_metadata_);
 }
 
 uint64_t Array::timestamp() const {
+  std::unique_lock<std::mutex> lck(mtx_);
   return timestamp_;
 }
 
@@ -321,7 +427,7 @@ void Array::clear_last_max_buffer_sizes() {
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
   // Allocate space for max buffer sizes subarray
-  auto subarray_size = 2 * open_array_->array_schema()->coords_size();
+  auto subarray_size = 2 * array_schema_->coords_size();
   if (last_max_buffer_sizes_subarray_ == nullptr) {
     last_max_buffer_sizes_subarray_ = std::malloc(subarray_size);
     if (last_max_buffer_sizes_subarray_ == nullptr)
@@ -334,12 +440,124 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
       std::memcmp(last_max_buffer_sizes_subarray_, subarray, subarray_size) !=
           0) {
     last_max_buffer_sizes_.clear();
-    RETURN_NOT_OK(storage_manager_->array_compute_max_buffer_sizes(
-        open_array_, timestamp_, subarray, &last_max_buffer_sizes_));
+
+    // Get all attributes and coordinates
+    auto attributes = array_schema_->attributes();
+    last_max_buffer_sizes_.clear();
+    for (const auto& attr : attributes)
+      last_max_buffer_sizes_[attr->name()] =
+          std::pair<uint64_t, uint64_t>(0, 0);
+    last_max_buffer_sizes_[constants::coords] =
+        std::pair<uint64_t, uint64_t>(0, 0);
+    RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
   }
 
   // Update subarray
   std::memcpy(last_max_buffer_sizes_subarray_, subarray, subarray_size);
+
+  return Status::Ok();
+}
+
+Status Array::compute_max_buffer_sizes(
+    const void* subarray,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) const {
+  // Return if there are no metadata
+  if (fragment_metadata_.empty())
+    return Status::Ok();
+
+  // Compute buffer sizes
+  switch (array_schema_->coords_type()) {
+    case Datatype::INT32:
+      return compute_max_buffer_sizes<int>(
+          static_cast<const int*>(subarray), buffer_sizes);
+    case Datatype::INT64:
+      return compute_max_buffer_sizes<int64_t>(
+          static_cast<const int64_t*>(subarray), buffer_sizes);
+    case Datatype::FLOAT32:
+      return compute_max_buffer_sizes<float>(
+          static_cast<const float*>(subarray), buffer_sizes);
+    case Datatype::FLOAT64:
+      return compute_max_buffer_sizes<double>(
+          static_cast<const double*>(subarray), buffer_sizes);
+    case Datatype::INT8:
+      return compute_max_buffer_sizes<int8_t>(
+          static_cast<const int8_t*>(subarray), buffer_sizes);
+    case Datatype::UINT8:
+      return compute_max_buffer_sizes<uint8_t>(
+          static_cast<const uint8_t*>(subarray), buffer_sizes);
+    case Datatype::INT16:
+      return compute_max_buffer_sizes<int16_t>(
+          static_cast<const int16_t*>(subarray), buffer_sizes);
+    case Datatype::UINT16:
+      return compute_max_buffer_sizes<uint16_t>(
+          static_cast<const uint16_t*>(subarray), buffer_sizes);
+    case Datatype::UINT32:
+      return compute_max_buffer_sizes<uint32_t>(
+          static_cast<const uint32_t*>(subarray), buffer_sizes);
+    case Datatype::UINT64:
+      return compute_max_buffer_sizes<uint64_t>(
+          static_cast<const uint64_t*>(subarray), buffer_sizes);
+    default:
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot compute max read buffer sizes; Invalid coordinates type"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Array::compute_max_buffer_sizes(
+    const T* subarray,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        max_buffer_sizes) const {
+  // Sanity check
+  assert(!fragment_metadata_.empty());
+
+  // First we calculate a rough upper bound. Especially for dense
+  // arrays, this will not be accurate, as it accounts only for the
+  // non-empty regions of the subarray.
+  for (auto& meta : fragment_metadata_)
+    RETURN_NOT_OK(meta->add_max_buffer_sizes(subarray, max_buffer_sizes));
+
+  // Rectify bound for dense arrays
+  if (array_schema_->dense()) {
+    auto cell_num = array_schema_->domain()->cell_num(subarray);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *max_buffer_sizes) {
+        if (array_schema_->var_size(it.first)) {
+          it.second.first = cell_num * constants::cell_var_offset_size;
+          it.second.second +=
+              cell_num * datatype_size(array_schema_->type(it.first));
+        } else {
+          it.second.first = cell_num * array_schema_->cell_size(it.first);
+        }
+      }
+    }
+  }
+
+  // Rectify bound for sparse arrays with integer domain
+  if (!array_schema_->dense() &&
+      datatype_is_integer(array_schema_->domain()->type())) {
+    auto cell_num = array_schema_->domain()->cell_num(subarray);
+    // `cell_num` becomes 0 when `subarray` is huge, leading to a
+    // `uint64_t` overflow.
+    if (cell_num != 0) {
+      for (auto& it : *max_buffer_sizes) {
+        if (!array_schema_->var_size(it.first)) {
+          // Check for overflow
+          uint64_t new_size = cell_num * array_schema_->cell_size(it.first);
+          if (new_size / array_schema_->cell_size((it.first)) != cell_num)
+            continue;
+
+          // Potentially rectify size
+          it.second.first = MIN(it.second.first, new_size);
+        }
+      }
+    }
+  }
 
   return Status::Ok();
 }

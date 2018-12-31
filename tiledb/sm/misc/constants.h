@@ -173,8 +173,35 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
+/**
+ * The factor by which the size of the dense fragment resulting
+ * from consolidating a set of fragments (containing at least one
+ * dense fragment) can be amplified. This is important when
+ * the union of the non-empty domains of the fragments to be
+ * consolidated have a lot of empty cells, which the consolidated
+ * fragment will have to fill with the special fill value
+ * (since the resulting fragments is dense).
+ */
+extern const float consolidation_amplification;
+
 /** The buffer size for each attribute used in consolidation. */
 extern const uint64_t consolidation_buffer_size;
+
+/** Number of steps in the consolidation algorithm. */
+extern const uint32_t consolidation_steps;
+
+/** Minimum number of fragments to consolidate per step. */
+extern const uint32_t consolidation_step_min_frags;
+
+/** Maximum number of fragments to consolidate per step. */
+extern const uint32_t consolidation_step_max_frags;
+
+/**
+ * Size ratio of two fragments to be considered for consolidation in a step.
+ * This should be a value in [0.0, 1.0].
+ * 0.0 means always consolidate and 1.0 never consolidate.
+ */
+extern const float consolidation_step_size_ratio;
 
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;

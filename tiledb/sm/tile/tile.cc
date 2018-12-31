@@ -77,14 +77,16 @@ Tile::Tile(
     , type_(type) {
 }
 
-Tile::Tile(const Tile& tile) {
+Tile::Tile(const Tile& tile)
+    : Tile() {
   // Make a deep-copy clone
   auto clone = tile.clone(true);
   // Swap with the clone
   swap(clone);
 }
 
-Tile::Tile(Tile&& tile) {
+Tile::Tile(Tile&& tile)
+    : Tile() {
   // Swap with the argument
   swap(tile);
 }

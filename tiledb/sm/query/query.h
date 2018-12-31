@@ -293,6 +293,19 @@ class Query {
   Status set_layout(Layout layout);
 
   /**
+   * This is applicable only to dense arrays (errors out for sparse arrays),
+   * and only in the case where the array is opened in a way that all its
+   * fragments are sparse. Also it is only applicable to read queries.
+   * If the input is `true`, then the dense array will be read in
+   * "sparse mode", i.e., the sparse read algorithm will be executing,
+   * returning results only for the non-empty cells.
+   *
+   * @param sparse_mode This sets the sparse mode.
+   * @return Status
+   */
+  Status set_sparse_mode(bool sparse_mode);
+
+  /**
    * Sets the query subarray. If it is null, then the subarray will be set to
    * the entire domain.
    *

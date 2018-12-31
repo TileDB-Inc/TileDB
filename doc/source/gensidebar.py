@@ -113,6 +113,7 @@ def generate_sidebar(conf, conf_api):
 
     toctree('Tutorials – Advanced')
     write('Fragments and Consolidation', 'tutorials/fragments-consolidation')
+    write('Advanced Consolidation', 'tutorials/advanced-consolidation')
     write('Asynchronous Queries', 'tutorials/async')
     write('Parallelism', 'tutorials/parallelism')
     write('Concurrency and Consistency', 'tutorials/concurrency-consistency')

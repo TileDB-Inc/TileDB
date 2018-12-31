@@ -115,10 +115,10 @@ class OpenArray {
   std::vector<FragmentMetadata*> fragment_metadata(uint64_t timestamp) const;
 
   /**
-   * Returns `true` if the fragment metadata of the input URI are already
-   * loaded in this open array.
+   * Returns the `FragmentMetadata` object of the input fragment URI,
+   * or `nullptr` if the fragment metadata do no exist.
    */
-  bool fragment_metadata_exists(const URI& uri) const;
+  FragmentMetadata* fragment_metadata(const URI& uri) const;
 
   /** Locks the array mutex. */
   void mtx_lock();
@@ -172,10 +172,10 @@ class OpenArray {
   std::set<FragmentMetadata*, cmp_frag_meta_ptr> fragment_metadata_;
 
   /**
-   * The set of the URI strings for the metadata that already have been
+   * A map of URI strings to the fragment metadata that already have been
    * loaded in `fragment_metadata_`.
    */
-  std::set<std::string> fragment_metadata_set_;
+  std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
 
   /**
    * A mutex used to lock the array when loading the array metadata and

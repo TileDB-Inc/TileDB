@@ -314,6 +314,7 @@ Status Domain::split_subarray_cell(
   *subarray_2 = std::malloc(2 * dim_num_ * sizeof(T));
   if (*subarray_2 == nullptr) {
     std::free(subarray_1);
+    *subarray_1 = nullptr;
     return LOG_STATUS(
         Status::DomainError("Cannot split subarray; Memory allocation failed"));
   }
