@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
