@@ -110,15 +110,16 @@ std::vector<Status> parallel_for_each(IterT begin, IterT end, const FuncT& F) {
 
 template <typename FuncT>
 std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
-  assert(begin < end);
-  uint64_t num_iters = end - begin;
+  assert(begin <= end);
+  uint64_t num_iters = end - begin + 1;
   std::vector<Status> result(num_iters);
 #ifdef HAVE_TBB
-  tbb::parallel_for(
-      begin, end, [&result, &F](uint64_t i) { result[i] = F(i); });
+  tbb::parallel_for(begin, end, [begin, &result, &F](uint64_t i) {
+    result[i - begin] = F(i);
+  });
 #else
   for (uint64_t i = begin; i < end; i++) {
-    result[i] = F(i);
+    result[i - begin] = F(i);
   }
 #endif
   return result;

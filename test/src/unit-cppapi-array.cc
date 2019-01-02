@@ -759,3 +759,50 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Writing single cell with global order", "[cppapi], [sparse]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1};
+  std::vector<int> coords_w = {0, 0};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_coordinates(coords_w)
+      .set_layout(TILEDB_GLOBAL_ORDER)
+      .set_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  const std::vector<int> subarray = {0, 0, 0, 0};
+  std::vector<int> data(1);
+  query.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", data);
+  query.submit();
+  array.close();
+
+  REQUIRE(data[0] == 1);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
