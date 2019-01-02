@@ -278,7 +278,7 @@ class Array {
    * Computes the maximum buffer sizes for all attributes given a list of
    * subarrays, which are cached locally in the instance.
    */
-  Status compute_max_buffer_sizes(const void* subarray);
+  Status compute_max_buffer_sizes(const std::vector<const void*>& subarrays);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
@@ -295,7 +295,7 @@ class Array {
    * @return Status
    */
   Status compute_max_buffer_sizes(
-      const void* subarray,
+      const std::vector<const void*>& subarrays,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes_) const;
 
@@ -315,7 +315,7 @@ class Array {
    */
   template <class T>
   Status compute_max_buffer_sizes(
-      const T* subarray,
+      const std::vector<const T*>& subarrays,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes) const;
 

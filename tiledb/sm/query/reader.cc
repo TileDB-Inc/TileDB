@@ -1983,7 +1983,7 @@ Status Reader::init_tile_fragment_dense_cell_range_iters(
 }
 
 Status Reader::invalidate_irrelevant_tiles(OverlappingTileVec* tiles) const {
-  if (array_schema_->dense())
+  if (array_schema_->dense() && !sparse_mode_)
     return LOG_STATUS(
         Status::ReaderError("Cannot invalidate irrelevant tiles; not yet "
                             "implemented for dense arrays."));

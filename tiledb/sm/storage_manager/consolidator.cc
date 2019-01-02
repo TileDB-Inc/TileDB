@@ -506,13 +506,17 @@ Status Consolidator::create_queries(
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
+  std::vector<const void*> subarrays;
+  if (subarray != nullptr)
+    subarrays.push_back(subarray);
+
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
   if (!(*query_r)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_r)->set_layout(layout));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
-  RETURN_NOT_OK((*query_r)->set_subarray(subarray));
+  RETURN_NOT_OK((*query_r)->set_subarrays(subarrays));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -524,9 +528,6 @@ Status Consolidator::create_queries(
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   if (!(*query_r)->array_schema()->is_kv())
     RETURN_NOT_OK((*query_w)->set_layout(layout));
-  std::vector<const void*> subarrays;
-  if (subarray != nullptr)
-    subarrays.push_back(subarray);
   RETURN_NOT_OK((*query_w)->set_subarrays(subarrays));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));

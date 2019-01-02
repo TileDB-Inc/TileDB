@@ -440,8 +440,7 @@ Status Array::compute_max_buffer_sizes(
   // Get all attributes and coordinates
   auto attributes = array_schema_->attributes();
   for (const auto& attr : attributes)
-    last_max_buffer_sizes_[attr->name()] =
-        std::pair<uint64_t, uint64_t>(0, 0);
+    last_max_buffer_sizes_[attr->name()] = std::pair<uint64_t, uint64_t>(0, 0);
   last_max_buffer_sizes_[constants::coords] =
       std::pair<uint64_t, uint64_t>(0, 0);
   RETURN_NOT_OK(compute_max_buffer_sizes(subarrays, &last_max_buffer_sizes_));
@@ -472,34 +471,54 @@ Status Array::compute_max_buffer_sizes(
   switch (array_schema_->coords_type()) {
     case Datatype::INT32:
       return compute_max_buffer_sizes<int>(
-          utils::datatype::recast_vector_elements<const void*, const int*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::INT64:
       return compute_max_buffer_sizes<int64_t>(
-          utils::datatype::recast_vector_elements<const void*, const int64_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int64_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::FLOAT32:
       return compute_max_buffer_sizes<float>(
-          utils::datatype::recast_vector_elements<const void*, const float*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const float*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::FLOAT64:
       return compute_max_buffer_sizes<double>(
-          utils::datatype::recast_vector_elements<const void*, const double*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const double*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::INT8:
       return compute_max_buffer_sizes<int8_t>(
-          utils::datatype::recast_vector_elements<const void*, const int8_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int8_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::UINT8:
       return compute_max_buffer_sizes<uint8_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint8_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint8_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::INT16:
       return compute_max_buffer_sizes<int16_t>(
-          utils::datatype::recast_vector_elements<const void*, const int16_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const int16_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::UINT16:
       return compute_max_buffer_sizes<uint16_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint16_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint16_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::UINT32:
       return compute_max_buffer_sizes<uint32_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint32_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint32_t*>(
+              subarrays),
+          buffer_sizes);
     case Datatype::UINT64:
       return compute_max_buffer_sizes<uint64_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint64_t*>(subarrays), buffer_sizes);
+          utils::datatype::recast_vector_elements<const void*, const uint64_t*>(
+              subarrays),
+          buffer_sizes);
     default:
       return LOG_STATUS(Status::ArrayError(
           "Cannot compute max read buffer sizes; Invalid coordinates type"));
@@ -569,7 +588,7 @@ bool Array::compare_subarray_vector(
   if (subarrays.size() != last_max_buffer_sizes_subarrays_.size())
     return false;
 
-  const auto subarray_size = 2 * open_array_->array_schema()->coords_size();
+  const auto subarray_size = 2 * array_schema_->coords_size();
   for (size_t i = 0; i < subarrays.size(); i++) {
     if (std::memcmp(
             subarrays[i], last_max_buffer_sizes_subarrays_[i], subarray_size) !=
