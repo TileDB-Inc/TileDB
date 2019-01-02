@@ -329,7 +329,7 @@ Status Query::set_sparse_mode(bool sparse_mode) {
 }
 
 Status Query::set_subarrays(const std::vector<const void*>& subarrays) {
-  RETURN_NOT_OK(check_subarray(subarrays));
+  RETURN_NOT_OK(check_subarrays(subarrays));
   if (type_ == QueryType::WRITE) {
     if (subarrays.size() > 1)
       return LOG_STATUS(
@@ -371,7 +371,7 @@ QueryType Query::type() const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Query::check_subarray(const std::vector<const void*>& subarrays) const {
+Status Query::check_subarrays(const std::vector<const void *> &subarrays) const {
   if (subarrays.empty())
     return Status::Ok();
 
@@ -382,44 +382,44 @@ Status Query::check_subarray(const std::vector<const void*>& subarrays) const {
 
   switch (array_schema->domain()->type()) {
     case Datatype::INT8:
-      return check_subarray<int8_t>(
-          utils::datatype::recast_vector_elements<const void*, const int8_t*>(
+      return check_subarrays<int8_t>(
+          utils::datatype::recast_vector_elements<const void *, const int8_t *>(
               subarrays));
     case Datatype::UINT8:
-      return check_subarray<uint8_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint8_t*>(
+      return check_subarrays<uint8_t>(
+          utils::datatype::recast_vector_elements<const void *, const uint8_t *>(
               subarrays));
     case Datatype::INT16:
-      return check_subarray<int16_t>(
-          utils::datatype::recast_vector_elements<const void*, const int16_t*>(
+      return check_subarrays<int16_t>(
+          utils::datatype::recast_vector_elements<const void *, const int16_t *>(
               subarrays));
     case Datatype::UINT16:
-      return check_subarray<uint16_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint16_t*>(
+      return check_subarrays<uint16_t>(
+          utils::datatype::recast_vector_elements<const void *, const uint16_t *>(
               subarrays));
     case Datatype::INT32:
-      return check_subarray<int32_t>(
-          utils::datatype::recast_vector_elements<const void*, const int32_t*>(
+      return check_subarrays<int32_t>(
+          utils::datatype::recast_vector_elements<const void *, const int32_t *>(
               subarrays));
     case Datatype::UINT32:
-      return check_subarray<uint32_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint32_t*>(
+      return check_subarrays<uint32_t>(
+          utils::datatype::recast_vector_elements<const void *, const uint32_t *>(
               subarrays));
     case Datatype::INT64:
-      return check_subarray<int64_t>(
-          utils::datatype::recast_vector_elements<const void*, const int64_t*>(
+      return check_subarrays<int64_t>(
+          utils::datatype::recast_vector_elements<const void *, const int64_t *>(
               subarrays));
     case Datatype::UINT64:
-      return check_subarray<uint64_t>(
-          utils::datatype::recast_vector_elements<const void*, const uint64_t*>(
+      return check_subarrays<uint64_t>(
+          utils::datatype::recast_vector_elements<const void *, const uint64_t *>(
               subarrays));
     case Datatype::FLOAT32:
-      return check_subarray<float>(
-          utils::datatype::recast_vector_elements<const void*, const float*>(
+      return check_subarrays<float>(
+          utils::datatype::recast_vector_elements<const void *, const float *>(
               subarrays));
     case Datatype::FLOAT64:
-      return check_subarray<double>(
-          utils::datatype::recast_vector_elements<const void*, const double*>(
+      return check_subarrays<double>(
+          utils::datatype::recast_vector_elements<const void *, const double *>(
               subarrays));
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:

@@ -418,14 +418,14 @@ class Query {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Correctness checks on `subarray`. */
-  Status check_subarray(const std::vector<const void*>& subarrays) const;
+  /** Correctness checks on `subarrays`. */
+  Status check_subarrays(const std::vector<const void *> &subarrays) const;
 
-  /** Correctness checks on `subarray`. */
+  /** Correctness checks on `subarrays`. */
   template <
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const std::vector<const T*>& subarrays) const {
+  Status check_subarrays(const std::vector<const T *> &subarrays) const {
     auto array_schema = this->array_schema();
     auto domain = array_schema->domain();
     auto dim_num = domain->dim_num();
@@ -449,7 +449,7 @@ class Query {
   template <
       typename T,
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const std::vector<const T*>& subarrays) const {
+  Status check_subarrays(const std::vector<const T *> &subarrays) const {
     auto array_schema = this->array_schema();
     auto domain = array_schema->domain();
     auto dim_num = domain->dim_num();
