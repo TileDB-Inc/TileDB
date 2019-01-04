@@ -58,6 +58,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
+  src/unit-capi-expr.cc
   src/unit-capi-filter.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
@@ -79,6 +80,8 @@ set(TILEDB_TEST_SOURCES
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-ctx.cc
+  src/unit-computation-ir.cc
+  src/unit-computation-parser.cc
   src/unit-encryption.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc

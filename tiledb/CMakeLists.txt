@@ -104,6 +104,14 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/ir/ir.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/ir/ir_visitor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/parse/parser.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/parse/tokenizer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/environment.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/expr.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/expr_executor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/computation/recursive_descent_interpreter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key_validation.cc

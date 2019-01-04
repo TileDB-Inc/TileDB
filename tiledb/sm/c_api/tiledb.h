@@ -4928,6 +4928,27 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
  */
 TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out);
 
+/* ****************************** */
+/*             Expr               */
+/* ****************************** */
+
+typedef struct tiledb_expr_t tiledb_expr_t;
+
+TILEDB_EXPORT int32_t
+tiledb_expr_alloc(tiledb_ctx_t* ctx, tiledb_expr_t** expr);
+
+TILEDB_EXPORT void tiledb_expr_free(tiledb_expr_t** expr);
+
+TILEDB_EXPORT int32_t
+tiledb_expr_set(tiledb_ctx_t* ctx, tiledb_expr_t* expr, const char* str);
+
+TILEDB_EXPORT int32_t tiledb_query_set_expr(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_expr_t* expr,
+    void* buffer,
+    uint64_t* buffer_size);
+
 #ifdef __cplusplus
 }
 #endif

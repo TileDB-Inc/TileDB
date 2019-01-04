@@ -33,6 +33,7 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include "tiledb/sm/computation/expr.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -333,6 +334,8 @@ class Query {
       void* buffer_val,
       uint64_t* buffer_val_size,
       bool check_null_buffers = true);
+
+  Status set_expr(Expr* expr, void* buffer, uint64_t* buffer_size);
 
   /**
    * Sets the cell layout of the query. The function will return an error

@@ -454,6 +454,14 @@ Status Query::set_buffer(
       check_null_buffers);
 }
 
+Status Query::set_expr(Expr* expr, void* buffer, uint64_t* buffer_size) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set expression on query; expressions only "
+                           "supported for reads."));
+  return reader_.set_expr(expr, buffer, buffer_size);
+}
+
 Status Query::set_layout(Layout layout) {
   layout_ = layout;
   if (type_ == QueryType::WRITE)

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/computation/expr_executor.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -452,6 +453,30 @@ Status Reader::set_buffer(
   // Set attribute buffer
   attr_buffers_[attribute] =
       AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+
+  return Status::Ok();
+}
+
+Status Reader::set_expr(Expr* expr, void* buffer, uint64_t* buffer_size) {
+  // Check buffer
+  if (buffer == nullptr || buffer_size == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set expression; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set expression; Array schema not set"));
+
+  if (expr_buffer_.buffer != nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set expression; Expression already set"));
+
+  RETURN_NOT_OK(expr->compile(array_schema_));
+
+  expr_buffer_.expr = expr;
+  expr_buffer_.buffer = buffer;
+  expr_buffer_.buffer_size = buffer_size;
 
   return Status::Ok();
 }
@@ -1079,6 +1104,44 @@ Status Reader::copy_var_cells(
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_copy_var_cells);
+}
+
+Status Reader::compute_expressions(
+    uint64_t stride,
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  if (expr_buffer_.expr == nullptr)
+    return Status::Ok();
+
+  if (stride != UINT64_MAX)
+    return LOG_STATUS(Status::ReaderError(
+        "Computations on noncontiguous cells not yet supported."));
+
+  // Count the cells being computed over.
+  uint64_t num_cells = 0;
+  for (const auto& cs : result_cell_slabs)
+    num_cells += cs.length_;
+
+  // Create the environment.
+  computation::Environment env(num_cells);
+  for (const auto& it : attr_buffers_) {
+    if (it.second.buffer_var_ != nullptr)
+      return Status::ReaderError(
+          "Computations on var-len attributes not yet supported.");
+    env.bind(
+        it.first,
+        array_schema_->type(it.first),
+        it.second.buffer_,
+        *it.second.buffer_size_);
+  }
+
+  // Bind the output buffer
+  env.bind_output(expr_buffer_.buffer, *expr_buffer_.buffer_size);
+
+  // Execute
+  computation::ExprExecutor executor;
+  RETURN_NOT_OK(executor.execute(expr_buffer_.expr, &env));
+
+  return Status::Ok();
 }
 
 Status Reader::compute_var_cell_destinations(
@@ -1949,8 +2012,24 @@ Status Reader::sparse_read() {
     tile.attr_tiles_.erase(constants::coords);
   tile_coords.clear();
 
-  // Copy cells
+  // Prepare attributes to be read
+  std::set<std::string> all_attributes;
   for (const auto& attr : attributes_) {
+    if (attr != constants::coords)
+      all_attributes.insert(attr);
+  }
+
+  // Add any attributes needed by expressions.
+  std::set<std::string> attrs_required_by_query = all_attributes;
+  std::set<std::string> attrs_required_by_expr;
+  if (expr_buffer_.expr != nullptr) {
+    attrs_required_by_expr = expr_buffer_.expr->attributes_required();
+    for (const auto& attr : attrs_required_by_expr)
+      all_attributes.insert(attr);
+  }
+
+  // Copy cells
+  for (const auto& attr : all_attributes) {
     if (read_state_.overflowed_)
       break;
     if (attr == constants::coords)
@@ -1958,9 +2037,23 @@ Status Reader::sparse_read() {
 
     RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
     RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
-    clear_tiles(attr, result_tiles);
+
+    // Don't attempt to copy unless user requested the attribute.
+    if (attrs_required_by_query.count(attr) > 0)
+      RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
+
+    // Can't clear tiles yet if they are needed to compute expressions.
+    if (attrs_required_by_expr.count(attr) == 0)
+      clear_tiles(attr, result_tiles);
   }
+
+  // Compute expressions
+  if (!read_state_.overflowed_)
+    RETURN_CANCEL_OR_ERROR(compute_expressions(stride, result_cell_slabs));
+
+  // Now clear tiles that were used by the expression.
+  for (const auto& attr : attrs_required_by_expr)
+    clear_tiles(attr, result_tiles);
 
   return Status::Ok();
 

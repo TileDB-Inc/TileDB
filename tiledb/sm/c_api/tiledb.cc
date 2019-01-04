@@ -36,6 +36,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/computation/expr.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -4345,6 +4346,91 @@ int32_t tiledb_deserialize_array_metadata(
               *(buffer->buffer_)))) {
     return TILEDB_ERR;
   }
+
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*             Expr               */
+/* ****************************** */
+
+struct tiledb_expr_t {
+  tiledb::sm::Expr* expr_ = nullptr;
+};
+
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_expr_t* expr) {
+  if (expr == nullptr || expr->expr_ == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB expression object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+int32_t tiledb_expr_alloc(tiledb_ctx_t* ctx, tiledb_expr_t** expr) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a expr struct
+  *expr = new (std::nothrow) tiledb_expr_t;
+  if (*expr == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB expr object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new Expr object
+  (*expr)->expr_ = new (std::nothrow) tiledb::sm::Expr;
+  if ((*expr)->expr_ == nullptr) {
+    delete *expr;
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB expr object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_expr_free(tiledb_expr_t** expr) {
+  if (expr != nullptr && *expr != nullptr) {
+    delete (*expr)->expr_;
+    delete (*expr);
+    *expr = nullptr;
+  }
+}
+
+int32_t tiledb_expr_set(
+    tiledb_ctx_t* ctx, tiledb_expr_t* expr, const char* str) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, expr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, expr->expr_->set_expr(str)))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_expr(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_expr_t* expr,
+    void* buffer,
+    uint64_t* buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, expr) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->set_expr(expr->expr_, buffer, buffer_size)))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }

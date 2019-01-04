@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/computation/expr.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
@@ -302,6 +303,8 @@ class Reader {
       uint64_t* buffer_val_size,
       bool check_null_buffers = true);
 
+  Status set_expr(Expr* expr, void* buffer, uint64_t* buffer_size);
+
   /** Sets the fragment metadata. */
   void set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
@@ -481,6 +484,23 @@ class Reader {
 
  private:
   /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  /** Holds user buffer information for an Expr. */
+  struct ExprBuffer {
+    ExprBuffer()
+        : expr(nullptr)
+        , buffer(nullptr)
+        , buffer_size(nullptr) {
+    }
+
+    Expr* expr;
+    void* buffer;
+    uint64_t* buffer_size;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
@@ -498,6 +518,9 @@ class Reader {
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
+
+  /** The query expression, if one is set. */
+  ExprBuffer expr_buffer_;
 
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
@@ -723,6 +746,10 @@ class Reader {
       const std::string& attribute,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
+
+  Status compute_expressions(
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Computes offsets into destination buffers for the given attribute's offset

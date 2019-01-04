@@ -219,6 +219,15 @@ std::string Status::code_to_string() const {
     case StatusCode::SerializationError:
       type = "[TileDB::Serialization] Error";
       break;
+    case StatusCode::TokenizerError:
+      type = "[TileDB::Tokenizer] Error";
+      break;
+    case StatusCode::ParserError:
+      type = "[TileDB::Parser] Error";
+      break;
+    case StatusCode::ExprError:
+      type = "[TileDB::Expr] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

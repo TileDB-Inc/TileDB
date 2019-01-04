@@ -118,7 +118,10 @@ enum class StatusCode : char {
   RTreeError,
   CellSlabIterError,
   RestError,
-  SerializationError
+  SerializationError,
+  TokenizerError,
+  ParserError,
+  ExprError
 };
 
 class Status {
@@ -364,6 +367,21 @@ class Status {
   /** Return a SerializationError error class Status with a given message **/
   static Status SerializationError(const std::string& msg) {
     return Status(StatusCode::SerializationError, msg, -1);
+  }
+
+  /** Return a TokenizerError error class Status with a given message **/
+  static Status TokenizerError(const std::string& msg) {
+    return Status(StatusCode::TokenizerError, msg, -1);
+  }
+
+  /** Return a ParserError error class Status with a given message **/
+  static Status ParserError(const std::string& msg) {
+    return Status(StatusCode::ParserError, msg, -1);
+  }
+
+  /** Return a ExprError error class Status with a given message **/
+  static Status ExprError(const std::string& msg) {
+    return Status(StatusCode::ExprError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
