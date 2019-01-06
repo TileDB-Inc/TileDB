@@ -71,9 +71,9 @@ class Config {
 
   /** Storage manager parameters. */
   struct SMParams {
-    uint64_t array_schema_cache_size_;
-    uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
+    uint64_t memory_budget_;
+    uint64_t memory_budget_var_;
     uint64_t num_async_threads_;
     uint64_t num_reader_threads_;
     uint64_t num_writer_threads_;
@@ -86,9 +86,9 @@ class Config {
     ConsolidationParams consolidation_params_;
 
     SMParams() {
-      array_schema_cache_size_ = constants::array_schema_cache_size;
-      fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
+      memory_budget_ = constants::memory_budget_fixed;
+      memory_budget_var_ = constants::memory_budget_var;
       num_async_threads_ = constants::num_async_threads;
       num_reader_threads_ = constants::num_reader_threads;
       num_writer_threads_ = constants::num_writer_threads;
@@ -167,15 +167,14 @@ class Config {
     FileParams file_params_;
     uint64_t num_threads_;
     uint64_t min_parallel_size_;
-    uint64_t max_batch_read_size_;
-    float max_batch_read_amplification_;
+    uint64_t min_batch_gap_;
+    uint64_t min_batch_size_;
 
     VFSParams() {
       num_threads_ = constants::vfs_num_threads;
+      min_batch_gap_ = constants::vfs_min_batch_gap;
+      min_batch_size_ = constants::vfs_min_batch_size;
       min_parallel_size_ = constants::vfs_min_parallel_size;
-      max_batch_read_size_ = constants::vfs_max_batch_read_size;
-      max_batch_read_amplification_ =
-          constants::vfs_max_batch_read_amplification;
     }
   };
 
@@ -241,14 +240,6 @@ class Config {
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
    *    **Default**: 10,000,000
-   * - `sm.array_schema_cache_size` <br>
-   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
-   * <br>
-   *    **Default**: 10,000,000
-   * - `sm.fragment_metadata_cache_size` <br>
-   *    The fragment metadata cache size in bytes. Any `uint64_t` value is
-   *    acceptable. <br>
-   *    **Default**: 10,000,000
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
@@ -296,6 +287,14 @@ class Config {
    *    The size ratio that two ("adjacent") fragments must satisfy to be
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
+   * - `sm.memory_budget` <br>
+   *    The memory budget for tiles of fixed-sized attributes (or offsets for
+   *    var-sized attributes) to be fetched during reads.<br>
+   *    **Default**: 5GB
+   * - `sm.memory_budget_var` <br>
+   *    The memory budget for tiles of var-sized attributes
+   *    to be fetched during reads.<br>
+   *    **Default**: 10GB
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>
@@ -305,13 +304,12 @@ class Config {
    *    (except parallel S3 writes, which are controlled by
    *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
-   * - `vfs.max_batch_read_size` <br>
-   *    The maximum number of bytes in a batched VFS read operation. <br>
-   *    **Default**: 100MB
-   * - `vfs.max_batch_read_amplification` <br>
-   *    The maximum amplification factor (>= 1.0) of batched VFS read
-   *    operations. <br>
-   *    **Default**: 1.0
+   * - `vfs.min_batch_gap` <br>
+   *    The minimum number of bytes between two VFS read batches.<br>
+   *    **Default**: 500KB
+   * - `vfs.min_batch_size` <br>
+   *    The minimum number of bytes in a VFS read operation<br>
+   *    **Default**: 20MB
    * - `vfs.file.max_parallel_ops` <br>
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
@@ -450,12 +448,6 @@ class Config {
   /** Sets the check for global order parameter. */
   Status set_sm_check_global_order(const std::string& value);
 
-  /** Sets the array metadata cache size, properly parsing the input value. */
-  Status set_sm_array_schema_cache_size(const std::string& value);
-
-  /** Sets the fragment metadata cache size, properly parsing the input value.*/
-  Status set_sm_fragment_metadata_cache_size(const std::string& value);
-
   /** Sets the enable signal handlers value, properly parsing the input value.*/
   Status set_sm_enable_signal_handlers(const std::string& value);
 
@@ -489,6 +481,15 @@ class Config {
   /** Sets the consolidation buffer size, properly parsing the input value. */
   Status set_consolidation_buffer_size(const std::string& value);
 
+  /** Sets the memory_budget, properly parsing the input value. */
+  Status set_sm_memory_budget(const std::string& value);
+
+  /**
+   * Sets the memory_budget for var-sized attributes, properly parsing the
+   * input value.
+   */
+  Status set_sm_memory_budget_var(const std::string& value);
+
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);
 
@@ -498,11 +499,11 @@ class Config {
   /** Sets the min number of bytes of a VFS parallel operation. */
   Status set_vfs_min_parallel_size(const std::string& value);
 
-  /** Sets the max number of bytes of a batched VFS read operation. */
-  Status set_vfs_max_batch_read_size(const std::string& value);
+  /** Sets the min number of bytes between two VFS read batches. */
+  Status set_vfs_min_batch_gap(const std::string& value);
 
-  /** Sets the max read amplification for batched VFS read operations. */
-  Status set_vfs_max_batch_read_amplification(const std::string& value);
+  /** Sets the min number of bytes of a VFS read operation. */
+  Status set_vfs_min_batch_size(const std::string& value);
 
   /** Sets the max number of allowed file:/// parallel operations. */
   Status set_vfs_file_max_parallel_ops(const std::string& value);

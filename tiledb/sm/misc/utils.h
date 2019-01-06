@@ -171,7 +171,7 @@ uint64_t cell_num(const T* rect, unsigned dim_num) {
  *
  * @tparam T The type of the cell and subarray.
  * @param coords The coordinates to be checked.
- * @param rect The hyper-rectangle to be checked, expresses as [low, high] pairs
+ * @param rect The hyper-rectangle to be checked, expressed as [low, high] pairs
  *     along each dimension.
  * @param dim_num The number of dimensions for the coordinates and
  *     hyper-rectangle.
@@ -179,6 +179,21 @@ uint64_t cell_num(const T* rect, unsigned dim_num) {
  */
 template <class T>
 bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
+
+/**
+ * Checks if `coords` are inside `rect`.
+ *
+ * @tparam T The type of the cell and subarray.
+ * @param coords The coordinates to be checked.
+ * @param rect The hyper-rectangle to be checked, expressed as [low, high] pairs
+ *     along each dimension.
+ * @param dim_num The number of dimensions for the coordinates and
+ *     hyper-rectangle.
+ * @return `true` if `coords` are inside `rect` and `false` otherwise.
+ */
+template <class T>
+bool coords_in_rect(
+    const T* coords, const std::vector<const T*>& rect, unsigned int dim_num);
 
 /**
  * Checks if `rect_a` is inside `rect_b`.
@@ -191,6 +206,20 @@ bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
  */
 template <class T>
 bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
+
+/**
+ * Computes the union of a set of MBRs (rectangles).
+ *
+ * @tparam T The domain type.
+ * @param dim_num The number of dimensions.
+ * @param mbrs The start of the MBRs whose union to compute.
+ * @param mbr_num The number of MBRs serialized one after the
+ *     other and starting at ``mbrs``.
+ * @param mbr_union The MBR union to be computed.
+ */
+template <class T>
+void compute_mbr_union(
+    unsigned dim_num, T* mbrs, uint64_t mbr_num, T* mbr_union);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.
@@ -216,7 +245,7 @@ void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 template <class T>
 void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num);
 
-/** Returns *true* if hyper-rectangles `a` overlaps with `b`. */
+/** Returns *true* if hyper-rectangle `a` overlaps with `b`. */
 template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num);
 
@@ -278,6 +307,16 @@ namespace math {
 
 /** Returns the value of x/y (integer division) rounded up. */
 uint64_t ceil(uint64_t x, uint64_t y);
+
+/** Returns log_b(x). */
+double log(double b, double x);
+
+/**
+ * Computes a * b, but it checks for overflow. In case the product
+ * overflows, it returns std::numeric_limits<T>::max().
+ */
+template <class T>
+T safe_mul(T a, T b);
 
 }  // namespace math
 

@@ -58,6 +58,31 @@ namespace sm {
 namespace constants {
 
 /**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a fixed-sized attribute or the offsets of a var-sized attribute.
+ */
+const uint64_t memory_budget_fixed = 5368709120;  // 5GB
+
+/**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a var-sized attribute.
+ */
+const uint64_t memory_budget_var = 10737418240;  // 10GB;
+
+/**
+ * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
+ * split by the partitioner. If the number is equal to 0.3, then this
+ * means that the number of ranges will be reduced by 30%.
+ */
+const double multi_range_reduction_in_split = 0.3;
+
+/** Amplification factor for the result size estimation. */
+const double est_result_size_amplification = 1.0;
+
+/** Default fanout for RTrees. */
+const unsigned rtree_fanout = 10;
+
+/**
  * If `true`, this will check for coordinate duplicates upon sparse
  * writes.
  */
@@ -225,11 +250,13 @@ const uint64_t vfs_num_threads = std::thread::hardware_concurrency();
 /** The default minimum number of bytes in a parallel VFS operation. */
 const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
 
-/** The default maximum number of bytes in a batched VFS read operation. */
-const uint64_t vfs_max_batch_read_size = 100 * 1024 * 1024;
+/**
+ * The default minimum number of bytes between two VFS read batches.
+ */
+const uint64_t vfs_min_batch_gap = 500 * 1024;
 
-/** The default maximum amplification factor for batched VFS read operations. */
-const float vfs_max_batch_read_amplification = 1.0;
+/** The default minimum number of bytes in a batched VFS read operation. */
+const uint64_t vfs_min_batch_size = 20 * 1024 * 1024;
 
 /** The default maximum number of parallel file:/// operations. */
 const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
@@ -247,12 +274,6 @@ const uint32_t var_num = std::numeric_limits<unsigned int>::max();
 
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";
-
-/** The array schema cache size. */
-const uint64_t array_schema_cache_size = 10000000;
-
-/** The fragment metadata cache size. */
-const uint64_t fragment_metadata_cache_size = 10000000;
 
 /** Whether or not the signal handlers are installed. */
 const bool enable_signal_handlers = true;
@@ -406,7 +427,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 2;
+const uint32_t format_version = 3;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

@@ -174,14 +174,14 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_check_global_order(value));
   } else if (param == "sm.tile_cache_size") {
     RETURN_NOT_OK(set_sm_tile_cache_size(value));
+  } else if (param == "sm.memory_budget") {
+    RETURN_NOT_OK(set_sm_memory_budget(value));
+  } else if (param == "sm.memory_budget_var") {
+    RETURN_NOT_OK(set_sm_memory_budget_var(value));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(set_consolidation_amplification(value));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(set_consolidation_buffer_size(value));
-  } else if (param == "sm.array_schema_cache_size") {
-    RETURN_NOT_OK(set_sm_array_schema_cache_size(value));
-  } else if (param == "sm.fragment_metadata_cache_size") {
-    RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(value));
   } else if (param == "sm.enable_signal_handlers") {
     RETURN_NOT_OK(set_sm_enable_signal_handlers(value));
   } else if (param == "sm.num_async_threads") {
@@ -204,10 +204,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_num_threads(value));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(set_vfs_min_parallel_size(value));
-  } else if (param == "vfs.max_batch_read_size") {
-    RETURN_NOT_OK(set_vfs_max_batch_read_size(value));
-  } else if (param == "vfs.max_batch_read_amplification") {
-    RETURN_NOT_OK(set_vfs_max_batch_read_amplification(value));
+  } else if (param == "vfs.min_batch_gap") {
+    RETURN_NOT_OK(set_vfs_min_batch_gap(value));
+  } else if (param == "vfs.min_batch_size") {
+    RETURN_NOT_OK(set_vfs_min_batch_size(value));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(set_vfs_file_max_parallel_ops(value));
   } else if (param == "vfs.s3.region") {
@@ -306,6 +306,16 @@ Status Config::unset(const std::string& param) {
     value << sm_params_.tile_cache_size_;
     param_values_["sm.tile_cache_size"] = value.str();
     value.str(std::string());
+  } else if (param == "sm.memory_budget") {
+    sm_params_.memory_budget_ = constants::memory_budget_fixed;
+    value << sm_params_.memory_budget_;
+    param_values_["sm.memory_budget"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.memory_budget_var") {
+    sm_params_.memory_budget_var_ = constants::memory_budget_var;
+    value << sm_params_.memory_budget_var_;
+    param_values_["sm.memory_budget_var"] = value.str();
+    value.str(std::string());
   } else if (param == "sm.consolidation.amplification") {
     sm_params_.consolidation_params_.amplification_ =
         constants::consolidation_amplification;
@@ -317,17 +327,6 @@ Status Config::unset(const std::string& param) {
         constants::consolidation_buffer_size;
     value << sm_params_.consolidation_params_.buffer_size_;
     param_values_["sm.consolidation.buffer_size"] = value.str();
-    value.str(std::string());
-  } else if (param == "sm.array_schema_cache_size") {
-    sm_params_.array_schema_cache_size_ = constants::array_schema_cache_size;
-    value << sm_params_.array_schema_cache_size_;
-    param_values_["sm.array_schema_cache_size"] = value.str();
-    value.str(std::string());
-  } else if (param == "sm.fragment_metadata_cache_size") {
-    sm_params_.fragment_metadata_cache_size_ =
-        constants::fragment_metadata_cache_size;
-    value << sm_params_.fragment_metadata_cache_size_;
-    param_values_["sm.fragment_metadata_cache_size"] = value.str();
     value.str(std::string());
   } else if (param == "sm.enable_signal_handlers") {
     sm_params_.enable_signal_handlers_ = constants::enable_signal_handlers;
@@ -387,16 +386,15 @@ Status Config::unset(const std::string& param) {
     value << vfs_params_.min_parallel_size_;
     param_values_["vfs.min_parallel_size"] = value.str();
     value.str(std::string());
-  } else if (param == "vfs.max_batch_read_size") {
-    vfs_params_.max_batch_read_size_ = constants::vfs_max_batch_read_size;
-    value << vfs_params_.max_batch_read_size_;
-    param_values_["vfs.max_batch_read_size"] = value.str();
+  } else if (param == "vfs.min_batch_gap") {
+    vfs_params_.min_batch_gap_ = constants::vfs_min_batch_gap;
+    value << vfs_params_.min_batch_gap_;
+    param_values_["vfs.min_batch_gap"] = value.str();
     value.str(std::string());
-  } else if (param == "vfs.max_batch_read_amplification") {
-    vfs_params_.max_batch_read_amplification_ =
-        constants::vfs_max_batch_read_amplification;
-    value << vfs_params_.max_batch_read_amplification_;
-    param_values_["vfs.max_batch_read_amplification"] = value.str();
+  } else if (param == "vfs.min_batch_size") {
+    vfs_params_.min_batch_size_ = constants::vfs_min_batch_size;
+    value << vfs_params_.min_batch_size_;
+    param_values_["vfs.min_batch_size"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.file.max_parallel_ops") {
     vfs_params_.file_params_.max_parallel_ops_ =
@@ -544,20 +542,20 @@ void Config::set_default_param_values() {
   param_values_["sm.tile_cache_size"] = value.str();
   value.str(std::string());
 
+  value << sm_params_.memory_budget_;
+  param_values_["sm.memory_budget"] = value.str();
+  value.str(std::string());
+
+  value << sm_params_.memory_budget_var_;
+  param_values_["sm.memory_budget_var"] = value.str();
+  value.str(std::string());
+
   value << sm_params_.consolidation_params_.amplification_;
   param_values_["sm.consolidation.amplification"] = value.str();
   value.str(std::string());
 
   value << sm_params_.consolidation_params_.buffer_size_;
   param_values_["sm.consolidation.buffer_size"] = value.str();
-  value.str(std::string());
-
-  value << sm_params_.array_schema_cache_size_;
-  param_values_["sm.array_schema_cache_size"] = value.str();
-  value.str(std::string());
-
-  value << sm_params_.fragment_metadata_cache_size_;
-  param_values_["sm.fragment_metadata_cache_size"] = value.str();
   value.str(std::string());
 
   value << (sm_params_.enable_signal_handlers_ ? "true" : "false");
@@ -604,12 +602,12 @@ void Config::set_default_param_values() {
   param_values_["vfs.min_parallel_size"] = value.str();
   value.str(std::string());
 
-  value << vfs_params_.max_batch_read_size_;
-  param_values_["vfs.max_batch_read_size"] = value.str();
+  value << vfs_params_.min_batch_gap_;
+  param_values_["vfs.min_batch_gap"] = value.str();
   value.str(std::string());
 
-  value << vfs_params_.max_batch_read_amplification_;
-  param_values_["vfs.max_batch_read_amplification"] = value.str();
+  value << vfs_params_.min_batch_size_;
+  param_values_["vfs.min_batch_size"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.file_params_.max_parallel_ops_;
@@ -751,22 +749,6 @@ Status Config::set_sm_check_global_order(const std::string& value) {
   return Status::Ok();
 }
 
-Status Config::set_sm_array_schema_cache_size(const std::string& value) {
-  uint64_t v;
-  RETURN_NOT_OK(utils::parse::convert(value, &v));
-  sm_params_.array_schema_cache_size_ = v;
-
-  return Status::Ok();
-}
-
-Status Config::set_sm_fragment_metadata_cache_size(const std::string& value) {
-  uint64_t v;
-  RETURN_NOT_OK(utils::parse::convert(value, &v));
-  sm_params_.fragment_metadata_cache_size_ = v;
-
-  return Status::Ok();
-}
-
 Status Config::set_sm_enable_signal_handlers(const std::string& value) {
   bool v;
   RETURN_NOT_OK(parse_bool(value, &v));
@@ -847,6 +829,22 @@ Status Config::set_sm_tile_cache_size(const std::string& value) {
   return Status::Ok();
 }
 
+Status Config::set_sm_memory_budget(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.memory_budget_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_memory_budget_var(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.memory_budget_var_ = v;
+
+  return Status::Ok();
+}
+
 Status Config::set_consolidation_amplification(const std::string& value) {
   float v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
@@ -879,18 +877,18 @@ Status Config::set_vfs_min_parallel_size(const std::string& value) {
   return Status::Ok();
 }
 
-Status Config::set_vfs_max_batch_read_size(const std::string& value) {
+Status Config::set_vfs_min_batch_gap(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
-  vfs_params_.max_batch_read_size_ = v;
+  vfs_params_.min_batch_gap_ = v;
 
   return Status::Ok();
 }
 
-Status Config::set_vfs_max_batch_read_amplification(const std::string& value) {
-  float v;
+Status Config::set_vfs_min_batch_size(const std::string& value) {
+  uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
-  vfs_params_.max_batch_read_amplification_ = v;
+  vfs_params_.min_batch_size_ = v;
 
   return Status::Ok();
 }

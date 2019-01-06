@@ -50,9 +50,7 @@ struct FragmentInfo {
   /** The size of the entire fragment directory. */
   uint64_t fragment_size_;
   /** The fragment's non-empty domain. */
-  void* non_empty_domain_;
-  /** The size in bytes of non_empty_domain_.  */
-  uint64_t non_empty_domain_size_;
+  std::vector<uint8_t> non_empty_domain_;
 
   /** Constructor. */
   FragmentInfo() {
@@ -60,8 +58,6 @@ struct FragmentInfo {
     sparse_ = false;
     timestamp_ = 0;
     fragment_size_ = 0;
-    non_empty_domain_ = nullptr;
-    non_empty_domain_size_ = 0;
   }
 
   /** Constructor. */
@@ -70,15 +66,12 @@ struct FragmentInfo {
       bool sparse,
       uint64_t timestamp,
       uint64_t fragment_size,
-      const void* non_empty_domain,
-      uint64_t non_empty_domain_size)
+      const std::vector<uint8_t>& non_empty_domain)
       : uri_(uri)
       , sparse_(sparse)
       , timestamp_(timestamp)
       , fragment_size_(fragment_size)
-      , non_empty_domain_size_(non_empty_domain_size) {
-    non_empty_domain_ = std::malloc(non_empty_domain_size);
-    std::memcpy(non_empty_domain_, non_empty_domain, non_empty_domain_size);
+      , non_empty_domain_(non_empty_domain) {
   }
 
   /** Copy constructor. */
@@ -92,11 +85,6 @@ struct FragmentInfo {
   FragmentInfo(FragmentInfo&& info)
       : FragmentInfo() {
     swap(info);
-  }
-
-  /** Destructor. */
-  ~FragmentInfo() {
-    std::free(non_empty_domain_);
   }
 
   /** Copy assignment operator. */
@@ -122,15 +110,7 @@ struct FragmentInfo {
     clone.sparse_ = sparse_;
     clone.timestamp_ = timestamp_;
     clone.fragment_size_ = fragment_size_;
-    clone.non_empty_domain_size_ = non_empty_domain_size_;
-    if (non_empty_domain_ == nullptr) {
-      clone.non_empty_domain_ = nullptr;
-    } else {
-      clone.non_empty_domain_ = std::malloc(non_empty_domain_size_);
-      std::memcpy(
-          clone.non_empty_domain_, non_empty_domain_, non_empty_domain_size_);
-    }
-
+    clone.non_empty_domain_ = non_empty_domain_;
     return clone;
   }
 
@@ -141,7 +121,6 @@ struct FragmentInfo {
     std::swap(timestamp_, info.timestamp_);
     std::swap(fragment_size_, info.fragment_size_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
-    std::swap(non_empty_domain_size_, info.non_empty_domain_size_);
   }
 };
 

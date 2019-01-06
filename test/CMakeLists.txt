@@ -47,7 +47,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-async.cc
   src/unit-capi-array.cc
   src/unit-capi-config.cc
-  src/unit-capi-consistency.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
   src/unit-capi-dense_neg.cc
@@ -56,14 +55,20 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-error.cc
   src/unit-capi-filter.cc
   src/unit-capi-incomplete.cc
+  src/unit-capi-incomplete-2.cc
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-sparse_array.cc
+  src/unit-capi-sparse_array_2.cc
   src/unit-capi-sparse_neg.cc
+  src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc
   src/unit-capi-stats.cc
+  src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
+  src/unit-capi-subarray.cc
+  src/unit-capi-subarray_partitioner.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -74,6 +79,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-filter-pipeline.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-rtree.cc
   src/unit-s3.cc
   src/unit-status.cc
   src/unit-tbb.cc
@@ -93,6 +99,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-map.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc

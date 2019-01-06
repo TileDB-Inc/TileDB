@@ -38,6 +38,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -46,6 +47,7 @@
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
+
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
@@ -62,8 +64,6 @@ namespace sm {
 /* ****************************** */
 
 StorageManager::StorageManager() {
-  array_schema_cache_ = nullptr;
-  fragment_metadata_cache_ = nullptr;
   tile_cache_ = nullptr;
   vfs_ = nullptr;
   cancellation_in_progress_ = false;
@@ -74,8 +74,6 @@ StorageManager::~StorageManager() {
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
   cancel_all_tasks();
 
-  delete array_schema_cache_;
-  delete fragment_metadata_cache_;
   delete tile_cache_;
 
   // Release all filelocks and delete all opened arrays for reads
@@ -203,16 +201,12 @@ Status StorageManager::array_open_for_reads(
   std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load);
+  RETURN_NOT_OK(
+      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
-  bool in_cache;
   Status st = load_fragment_metadata(
-      open_array,
-      encryption_key,
-      fragments_to_load,
-      &in_cache,
-      fragment_metadata);
+      open_array, encryption_key, fragments_to_load, fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -252,13 +246,8 @@ Status StorageManager::array_open_for_reads(
     fragments_to_load.emplace_back(fragment.timestamp_, fragment.uri_);
 
   // Get fragment metadata in the case of reads, if not fetched already
-  bool in_cache;
   Status st = load_fragment_metadata(
-      open_array,
-      encryption_key,
-      fragments_to_load,
-      &in_cache,
-      fragment_metadata);
+      open_array, encryption_key, fragments_to_load, fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -299,14 +288,18 @@ Status StorageManager::array_open_for_writes(
   {
     std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
 
-    // Find the open array entry
+    // Find the open array entry and check key correctness
     auto it = open_arrays_for_writes_.find(array_uri.to_string());
     if (it != open_arrays_for_writes_.end()) {
+      RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       open_array = it->second;
     } else {  // Create a new entry
       open_array = new OpenArray(array_uri, QueryType::WRITE);
+      RETURN_NOT_OK_ELSE(
+          open_array->set_encryption_key(encryption_key), delete open_array);
       open_arrays_for_writes_[array_uri.to_string()] = open_array;
     }
+
     // Lock the array and increment counter
     open_array->mtx_lock();
     open_array->cnt_incr();
@@ -315,28 +308,14 @@ Status StorageManager::array_open_for_writes(
   // No shared filelock needed to be acquired
 
   // Load array schema if not fetched already
-  bool in_cache = true;
   if (open_array->array_schema() == nullptr) {
-    auto st = load_array_schema(
-        array_uri, obj_type, open_array, encryption_key, &in_cache);
+    auto st =
+        load_array_schema(array_uri, obj_type, open_array, encryption_key);
     if (!st.ok()) {
       open_array->mtx_unlock();
       array_close_for_writes(array_uri);
       return st;
     }
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  auto st = check_array_encryption_key(
-      open_array->array_schema(), encryption_key, in_cache);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_writes(array_uri);
-    return st;
   }
 
   // No fragment metadata to be loaded
@@ -372,37 +351,23 @@ Status StorageManager::array_reopen(
           std::string("Cannot reopen array ") + array_uri.to_string() +
           "; Array not open"));
     }
+    RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
     open_array = it->second;
 
     // Lock the array
     open_array->mtx_lock();
   }
 
-  // Check the encryption key. Note we always pass true for cache hit by
-  // definition of reopening an array.
-  auto st = check_array_encryption_key(
-      open_array->array_schema(), encryption_key, true);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
-
   // Determine which fragments to load
   std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load);
+  RETURN_NOT_OK(
+      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
-  bool in_cache;
-  st = load_fragment_metadata(
-      open_array,
-      encryption_key,
-      fragments_to_load,
-      &in_cache,
-      fragment_metadata);
+  auto st = load_fragment_metadata(
+      open_array, encryption_key, fragments_to_load, fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -421,7 +386,9 @@ Status StorageManager::array_reopen(
   STATS_FUNC_OUT(sm_array_reopen);
 }
 
+// TODO: remove after the new dense read algorithm is in
 Status StorageManager::array_compute_est_read_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     const void* subarray,
@@ -434,60 +401,70 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   switch (array_schema->coords_type()) {
     case Datatype::INT32:
       return array_compute_est_read_buffer_sizes<int>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int*>(subarray),
           buffer_sizes);
     case Datatype::INT64:
       return array_compute_est_read_buffer_sizes<int64_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int64_t*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT32:
       return array_compute_est_read_buffer_sizes<float>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const float*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT64:
       return array_compute_est_read_buffer_sizes<double>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const double*>(subarray),
           buffer_sizes);
     case Datatype::INT8:
       return array_compute_est_read_buffer_sizes<int8_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int8_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT8:
       return array_compute_est_read_buffer_sizes<uint8_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint8_t*>(subarray),
           buffer_sizes);
     case Datatype::INT16:
       return array_compute_est_read_buffer_sizes<int16_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT16:
       return array_compute_est_read_buffer_sizes<uint16_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT32:
       return array_compute_est_read_buffer_sizes<uint32_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint32_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT64:
       return array_compute_est_read_buffer_sizes<uint64_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint64_t*>(subarray),
@@ -669,6 +646,9 @@ Status StorageManager::array_get_encryption(
 }
 
 Status StorageManager::array_xlock(const URI& array_uri) {
+  // Get exclusive lock for threads
+  xlock_mtx_.lock();
+
   // Wait until the array is closed for reads
   std::unique_lock<std::mutex> lk(open_array_for_reads_mtx_);
   xlock_cv_.wait(lk, [this, array_uri] {
@@ -676,7 +656,7 @@ Status StorageManager::array_xlock(const URI& array_uri) {
            open_arrays_for_reads_.end();
   });
 
-  // Retrieve filelock
+  // Get exclusive lock for processes through a filelock
   filelock_t filelock = INVALID_FILELOCK;
   auto lock_uri = array_uri.join_path(constants::filelock_name);
   RETURN_NOT_OK(vfs_->filelock_lock(lock_uri, &filelock, false));
@@ -693,10 +673,14 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
         "Cannot unlock array exclusive lock; Filelock not found"));
   auto filelock = it->second;
 
+  // Release exclusive lock for processes through the filelock
   auto lock_uri = array_uri.join_path(constants::filelock_name);
   if (filelock != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri, filelock));
   xfilelocks_.erase(it);
+
+  // Release exclusive lock for threads
+  xlock_mtx_.unlock();
 
   return Status::Ok();
 }
@@ -762,38 +746,12 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
-Status StorageManager::touch(const URI& uri) {
-  return vfs_->touch(uri);
+Status StorageManager::is_dir(const URI& uri, bool* is_dir) const {
+  return vfs_->is_dir(uri, is_dir);
 }
 
-Status StorageManager::check_array_encryption_key(
-    const ArraySchema* schema,
-    const EncryptionKey& encryption_key,
-    bool was_cache_hit) {
-  std::string uri = schema->array_uri().to_string();
-  EncryptionKeyValidation* validation = nullptr;
-
-  // Get or add the validation instance
-  std::lock_guard<std::mutex> lck(open_arrays_encryption_keys_mtx_);
-  auto it = open_arrays_encryption_keys_.find(uri);
-  if (it == open_arrays_encryption_keys_.end()) {
-    // Sanity check for cached schemas, which should already have added a
-    // validation instance.
-    if (was_cache_hit)
-      return LOG_STATUS(
-          Status::StorageManagerError("Encryption key check failed; schema was "
-                                      "cached but key not previously used."));
-
-    auto ptr =
-        std::unique_ptr<EncryptionKeyValidation>(new EncryptionKeyValidation);
-    validation = ptr.get();
-    open_arrays_encryption_keys_[uri] = std::move(ptr);
-  } else {
-    validation = it->second.get();
-  }
-
-  assert(validation != nullptr);
-  return validation->check_encryption_key(encryption_key);
+Status StorageManager::touch(const URI& uri) {
+  return vfs_->touch(uri);
 }
 
 void StorageManager::decrement_in_progress() {
@@ -847,6 +805,9 @@ Status StorageManager::get_fragment_info(
     std::vector<FragmentInfo>* fragment_info) {
   fragment_info->clear();
 
+  // TODO: open and close array here instead, in order to comply
+  // TODO: with the xlocks in case a fragment is being written
+
   // Get fragment URIs
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_schema->array_uri(), &fragment_uris));
@@ -857,39 +818,43 @@ Status StorageManager::get_fragment_info(
 
   // Sort the URIs by timestamp
   std::vector<std::pair<uint64_t, URI>> sorted_fragment_uris;
-  get_sorted_fragment_uris(fragment_uris, timestamp, &sorted_fragment_uris);
+  RETURN_NOT_OK(get_sorted_fragment_uris(
+      fragment_uris, timestamp, &sorted_fragment_uris));
 
   uint64_t domain_size = 2 * array_schema->coords_size();
-  uint64_t size;
-  bool sparse, in_cache;
-  void* non_empty_domain = std::malloc(domain_size);
-  if (non_empty_domain == nullptr)
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot get fragment info; Memory allocation failed"));
+  auto fragment_num = sorted_fragment_uris.size();
+  fragment_info->resize(fragment_num);
 
   // Get the rest of fragment info
-  for (const auto& uri : sorted_fragment_uris) {
+  auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
     // Determine if the fragment is sparse
+    const auto& uri = sorted_fragment_uris[f];
     URI coords_uri =
         uri.second.join_path(constants::coords + constants::file_suffix);
+    bool sparse;
     RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
 
-    // Get fragment size
-    RETURN_NOT_OK(vfs_->dir_size(uri.second, &size));
+    std::vector<uint8_t> non_empty_domain;
+    non_empty_domain.resize(domain_size);
 
     // Get fragment non-empty domain
-    auto metadata =
-        FragmentMetadata(array_schema, !sparse, uri.second, uri.first);
-    RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key, &in_cache));
-    std::memcpy(non_empty_domain, metadata.non_empty_domain(), domain_size);
+    FragmentMetadata metadata(
+        this, array_schema, !sparse, uri.second, uri.first);
+    RETURN_NOT_OK(metadata.load(encryption_key));
+    std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
+
+    // Get fragment size
+    uint64_t size;
+    RETURN_NOT_OK(metadata.fragment_size(&size));
 
     // Push new fragment info
-    fragment_info->emplace_back(
-        uri.second, sparse, uri.first, size, non_empty_domain, domain_size);
-  }
+    (*fragment_info)[f] =
+        FragmentInfo(uri.second, sparse, uri.first, size, non_empty_domain);
 
-  // Clean up
-  std::free(non_empty_domain);
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   return Status::Ok();
 }
@@ -915,30 +880,29 @@ Status StorageManager::get_fragment_info(
       (std::string("%") + std::string(PRId64)).c_str(),
       (long long int*)&timestamp);
 
-  // Get fragment size
-  uint64_t size;
-  RETURN_NOT_OK(vfs_->dir_size(fragment_uri, &size));
-
   // Check if fragment is sparse
   uint64_t domain_size = 2 * array_schema->coords_size();
-  bool sparse, in_cache;
+  bool sparse;
   URI coords_uri =
       fragment_uri.join_path(constants::coords + constants::file_suffix);
   RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
 
   // Get fragment non-empty domain
-  auto metadata =
-      FragmentMetadata(array_schema, !sparse, fragment_uri, timestamp);
-  RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key, &in_cache));
+  FragmentMetadata metadata(
+      this, array_schema, !sparse, fragment_uri, timestamp);
+  RETURN_NOT_OK(metadata.load(encryption_key));
+
+  // Get fragment size
+  uint64_t size;
+  RETURN_NOT_OK(metadata.fragment_size(&size));
+
+  std::vector<uint8_t> non_empty_domain;
+  non_empty_domain.resize(domain_size);
+  std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
 
   // Set fragment info
-  *fragment_info = FragmentInfo(
-      fragment_uri,
-      sparse,
-      timestamp,
-      size,
-      metadata.non_empty_domain(),
-      domain_size);
+  *fragment_info =
+      FragmentInfo(fragment_uri, sparse, timestamp, size, non_empty_domain);
 
   return Status::Ok();
 }
@@ -977,9 +941,6 @@ Status StorageManager::init(Config* config) {
   if (config != nullptr)
     config_ = *config;
   Config::SMParams sm_params = config_.sm_params();
-  array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
-  fragment_metadata_cache_ =
-      new LRUCache(sm_params.fragment_metadata_cache_size_);
   RETURN_NOT_OK(async_thread_pool_.init(sm_params.num_async_threads_));
   RETURN_NOT_OK(reader_thread_pool_.init(sm_params.num_reader_threads_));
   RETURN_NOT_OK(writer_thread_pool_.init(sm_params.num_writer_threads_));
@@ -1013,8 +974,8 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status StorageManager::is_fragment(const URI& uri, bool* is_fragment) const {
-  RETURN_NOT_OK(TileIO::is_generic_tile(
-      this, uri.join_path(constants::fragment_metadata_filename), is_fragment));
+  RETURN_NOT_OK(vfs_->is_file(
+      uri.join_path(constants::fragment_metadata_filename), is_fragment));
   return Status::Ok();
 }
 
@@ -1034,8 +995,7 @@ Status StorageManager::load_array_schema(
     const URI& array_uri,
     ObjectType object_type,
     const EncryptionKey& encryption_key,
-    ArraySchema** array_schema,
-    bool* in_cache) {
+    ArraySchema** array_schema) {
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
@@ -1046,24 +1006,14 @@ Status StorageManager::load_array_schema(
                        array_uri.join_path(constants::array_schema_filename) :
                        array_uri.join_path(constants::kv_schema_filename);
 
-  // Try to read from cache
-  auto buff = new Buffer();
+  auto tile_io = new TileIO(this, schema_uri);
+  auto tile = (Tile*)nullptr;
   RETURN_NOT_OK_ELSE(
-      array_schema_cache_->read(schema_uri.to_string(), buff, in_cache),
-      delete buff);
-
-  // Read from file if not in cache
-  if (!(*in_cache)) {
-    delete buff;
-    auto tile_io = new TileIO(this, schema_uri);
-    auto tile = (Tile*)nullptr;
-    RETURN_NOT_OK_ELSE(
-        tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
-    tile->disown_buff();
-    buff = tile->buffer();
-    delete tile;
-    delete tile_io;
-  }
+      tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
+  tile->disown_buff();
+  auto buff = tile->buffer();
+  delete tile;
+  delete tile_io;
 
   // Deserialize
   bool is_kv = (object_type == ObjectType::KEY_VALUE);
@@ -1075,85 +1025,6 @@ Status StorageManager::load_array_schema(
   if (!st.ok()) {
     delete *array_schema;
     *array_schema = nullptr;
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  st = check_array_encryption_key(*array_schema, encryption_key, *in_cache);
-  if (!st.ok()) {
-    delete *array_schema;
-    *array_schema = nullptr;
-  }
-
-  // Store in cache
-  if (st.ok() && !(*in_cache) &&
-      buff->size() <= array_schema_cache_->max_size()) {
-    buff->disown_data();
-    st = array_schema_cache_->insert(
-        schema_uri.to_string(), buff->data(), buff->size());
-  }
-
-  delete buff;
-
-  return st;
-}
-
-Status StorageManager::load_fragment_metadata(
-    FragmentMetadata* fragment_metadata,
-    const EncryptionKey& encryption_key,
-    bool* in_cache) {
-  const URI& fragment_uri = fragment_metadata->fragment_uri();
-  bool fragment_exists;
-  RETURN_NOT_OK(is_fragment(fragment_uri, &fragment_exists));
-  if (!fragment_exists)
-    return Status::StorageManagerError(
-        "Cannot load fragment metadata; Fragment does not exist");
-
-  URI fragment_metadata_uri = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename));
-
-  // Try to read from cache
-  auto buff = new Buffer();
-  RETURN_NOT_OK_ELSE(
-      fragment_metadata_cache_->read(
-          fragment_metadata_uri.to_string(), buff, in_cache),
-      delete buff);
-
-  // Read from file if not in cache
-  if (!(*in_cache)) {
-    delete buff;
-    auto tile_io = new TileIO(this, fragment_metadata_uri);
-    auto tile = (Tile*)nullptr;
-    RETURN_NOT_OK_ELSE(
-        tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
-    tile->disown_buff();
-    buff = tile->buffer();
-    STATS_COUNTER_ADD(fragment_metadata_cache_read_misses, 1);
-    STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io->file_size());
-    delete tile;
-    delete tile_io;
-  } else {
-    STATS_COUNTER_ADD(fragment_metadata_cache_read_hits, 1);
-    STATS_COUNTER_ADD(fragment_metadata_cached_bytes_copied, buff->size());
-  }
-
-  // Deserialize
-  auto cbuff = new ConstBuffer(buff);
-  Status st = fragment_metadata->deserialize(cbuff);
-  delete cbuff;
-
-  // Store in cache
-  if (st.ok()) {
-    STATS_COUNTER_ADD(fragment_metadata_bytes, buff->size());
-    if (!(*in_cache) && buff->size() <= fragment_metadata_cache_->max_size()) {
-      buff->disown_data();
-      st = fragment_metadata_cache_->insert(
-          fragment_metadata_uri.to_string(), buff->data(), buff->size());
-      STATS_COUNTER_ADD_IF(st.ok(), fragment_metadata_cache_inserts, 1);
-    }
   }
 
   delete buff;
@@ -1465,52 +1336,6 @@ Status StorageManager::store_array_schema(
   return st;
 }
 
-Status StorageManager::store_fragment_metadata(
-    FragmentMetadata* metadata, const EncryptionKey& encryption_key) {
-  // For thread-safety while loading fragment metadata
-  std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
-
-  // Do nothing if fragment directory does not exist. The fragment directory
-  // is created only when some attribute file is written
-  bool is_dir = false;
-  const URI& fragment_uri = metadata->fragment_uri();
-  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
-  if (!is_dir) {
-    return Status::Ok();
-  }
-
-  // Serialize
-  auto buff = new Buffer();
-  Status st = metadata->serialize(buff);
-  if (!st.ok()) {
-    delete buff;
-    return st;
-  }
-
-  // Write to file
-  URI fragment_metadata_uri = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename));
-  buff->reset_offset();
-  auto tile = new Tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      buff,
-      false);
-
-  auto tile_io = new TileIO(this, fragment_metadata_uri);
-  st = tile_io->write_generic(tile, encryption_key);
-  if (st.ok()) {
-    st = close_file(fragment_metadata_uri);
-  }
-
-  delete tile;
-  delete tile_io;
-  delete buff;
-
-  return st;
-}
-
 Status StorageManager::close_file(const URI& uri) {
   return vfs_->close_file(uri);
 }
@@ -1571,12 +1396,18 @@ Status StorageManager::write(const URI& uri, Buffer* buffer) const {
   return vfs_->write(uri, buffer->data(), buffer->size());
 }
 
+Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
+  return vfs_->write(uri, data, size);
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+// TODO: remove after the new dense read algorithm is in
 template <class T>
 Status StorageManager::array_compute_est_read_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
     const T* subarray,
@@ -1588,7 +1419,8 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : metadata)
-    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(subarray, buffer_sizes));
+    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(
+        encryption_key, subarray, buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema->dense()) {
@@ -1672,16 +1504,21 @@ Status StorageManager::array_open_without_fragments(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
 
-  // Lock mutex
+  // Lock mutexes
   {
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
+    std::lock_guard<std::mutex> xlock{xlock_mtx_};
 
-    // Find the open array entry
+    // Find the open array entry and check encryption key
     auto it = open_arrays_for_reads_.find(array_uri.to_string());
     if (it != open_arrays_for_reads_.end()) {
+      RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       *open_array = it->second;
     } else {  // Create a new entry
       *open_array = new OpenArray(array_uri, QueryType::READ);
+      RETURN_NOT_OK_ELSE(
+          (*open_array)->set_encryption_key(encryption_key),
+          delete *open_array);
       open_arrays_for_reads_[array_uri.to_string()] = *open_array;
     }
     // Lock the array and increment counter
@@ -1698,28 +1535,14 @@ Status StorageManager::array_open_without_fragments(
   }
 
   // Load array schema if not fetched already
-  bool in_cache = true;
   if ((*open_array)->array_schema() == nullptr) {
-    auto st = load_array_schema(
-        array_uri, obj_type, *open_array, encryption_key, &in_cache);
+    auto st =
+        load_array_schema(array_uri, obj_type, *open_array, encryption_key);
     if (!st.ok()) {
       (*open_array)->mtx_unlock();
       array_close_for_reads(array_uri);
       return st;
     }
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  st = check_array_encryption_key(
-      (*open_array)->array_schema(), encryption_key, in_cache);
-  if (!st.ok()) {
-    (*open_array)->mtx_unlock();
-    array_close_for_reads(array_uri);
-    return st;
   }
 
   return Status::Ok();
@@ -1749,15 +1572,14 @@ Status StorageManager::load_array_schema(
     const URI& array_uri,
     ObjectType object_type,
     OpenArray* open_array,
-    const EncryptionKey& encryption_key,
-    bool* in_cache) {
+    const EncryptionKey& encryption_key) {
   // Do nothing if the array schema is already loaded
   if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema(
-      array_uri, object_type, encryption_key, &array_schema, in_cache));
+  RETURN_NOT_OK(
+      load_array_schema(array_uri, object_type, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();
@@ -1767,13 +1589,14 @@ Status StorageManager::load_fragment_metadata(
     OpenArray* open_array,
     const EncryptionKey& encryption_key,
     const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
-    bool* in_cache,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
-  *in_cache = false;
-  for (auto& sf : fragments_to_load) {
+  auto fragment_num = fragments_to_load.size();
+  fragment_metadata->resize(fragment_num);
+  auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
+    const auto& sf = fragments_to_load[f];
     auto frag_timestamp = sf.first;
-    auto frag_uri = sf.second;
+    const auto& frag_uri = sf.second;
     auto metadata = open_array->fragment_metadata(frag_uri);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
@@ -1781,28 +1604,28 @@ Status StorageManager::load_fragment_metadata(
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
       metadata = new FragmentMetadata(
-          open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
-      bool metadata_in_cache;
-      RETURN_NOT_OK_ELSE(
-          load_fragment_metadata(metadata, encryption_key, &metadata_in_cache),
-          delete metadata);
-      STATS_COUNTER_ADD(fragment_metadata_num_fragments, 1);
-      *in_cache |= metadata_in_cache;
+          this, open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
+      RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
       open_array->insert_fragment_metadata(metadata);
     }
-    fragment_metadata->push_back(metadata);
-  }
+    (*fragment_metadata)[f] = metadata;
+    return Status::Ok();
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  STATS_COUNTER_ADD(fragment_metadata_num_fragments, fragment_num);
 
   return Status::Ok();
 }
 
-void StorageManager::get_sorted_fragment_uris(
+Status StorageManager::get_sorted_fragment_uris(
     const std::vector<URI>& fragment_uris,
     uint64_t timestamp,
     std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const {
   // Do nothing if there are not enough fragments
   if (fragment_uris.empty())
-    return;
+    return Status::Ok();
 
   // Initializations
   std::string t_str;
@@ -1830,6 +1653,8 @@ void StorageManager::get_sorted_fragment_uris(
 
   // Sort the names based on the timestamps
   std::sort(sorted_fragment_uris->begin(), sorted_fragment_uris->end());
+
+  return Status::Ok();
 }
 
 }  // namespace sm

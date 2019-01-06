@@ -85,10 +85,9 @@ Status Consolidator::consolidate(
   // Get array schema
   ObjectType object_type;
   RETURN_NOT_OK(storage_manager_->object_type(array_uri, &object_type));
-  bool in_cache;
   auto array_schema = (ArraySchema*)nullptr;
   RETURN_NOT_OK(storage_manager_->load_array_schema(
-      array_uri, object_type, enc_key, &array_schema, &in_cache));
+      array_uri, object_type, enc_key, &array_schema));
 
   RETURN_NOT_OK_ELSE(
       consolidate(array_schema, encryption_type, encryption_key, key_length),
@@ -130,7 +129,7 @@ bool Consolidator::are_consolidatable(
   for (size_t i = 0; i < start; ++i) {
     if (utils::geometry::overlap(
             union_non_empty_domains,
-            (T*)fragments[i].non_empty_domain_,
+            (T*)&fragments[i].non_empty_domain_[0],
             dim_num))
       return false;
   }
@@ -141,7 +140,7 @@ bool Consolidator::are_consolidatable(
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
     sum_cell_num += utils::geometry::cell_num<T>(
-        (T*)fragments[i].non_empty_domain_, dim_num);
+        (T*)&fragments[i].non_empty_domain_[0], dim_num);
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
@@ -338,25 +337,16 @@ Status Consolidator::consolidate(
   // Read from one array and write to the other
   st = copy_array(query_r, query_w);
   if (!st.ok()) {
-    storage_manager_->array_close_for_reads(array_uri);
-    storage_manager_->array_close_for_writes(array_uri);
+    array_for_reads.close();
+    array_for_writes.close();
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
     return st;
   }
 
   // Close array for reading
-  st = storage_manager_->array_close_for_reads(array_uri);
+  st = array_for_reads.close();
   if (!st.ok()) {
-    storage_manager_->array_close_for_writes(array_uri);
-    storage_manager_->vfs()->remove_dir(*new_fragment_uri);
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
-    return st;
-  }
-
-  // Lock the array exclusively
-  st = storage_manager_->array_xlock(array_uri);
-  if (!st.ok()) {
-    storage_manager_->array_close_for_writes(array_uri);
+    array_for_writes.close();
     storage_manager_->vfs()->remove_dir(*new_fragment_uri);
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
     return st;
@@ -365,9 +355,8 @@ Status Consolidator::consolidate(
   // Finalize write query
   st = query_w->finalize();
   if (!st.ok()) {
-    storage_manager_->array_close_for_writes(array_uri);
+    array_for_writes.close();
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
-    storage_manager_->array_xunlock(array_uri);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -377,9 +366,8 @@ Status Consolidator::consolidate(
   }
 
   // Close array
-  storage_manager_->array_close_for_writes(array_uri);
+  st = array_for_writes.close();
   if (!st.ok()) {
-    storage_manager_->array_xunlock(array_uri);
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
@@ -394,16 +382,7 @@ Status Consolidator::consolidate(
     to_delete.emplace_back(f.uri_);
 
   // Delete old fragment metadata. This makes the old fragments invisible
-  st = delete_fragment_metadata(to_delete);
-  if (!st.ok()) {
-    delete_fragments(to_delete);
-    storage_manager_->array_xunlock(array_uri);
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
-    return st;
-  }
-
-  // Unlock the array
-  st = storage_manager_->array_xunlock(array_uri);
+  st = delete_fragment_metadata(array_uri, to_delete);
   if (!st.ok()) {
     delete_fragments(to_delete);
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
@@ -523,11 +502,15 @@ Status Consolidator::create_queries(
 }
 
 Status Consolidator::delete_fragment_metadata(
-    const std::vector<URI>& fragments) {
+    const URI& array_uri, const std::vector<URI>& fragments) {
+  RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
+
   for (auto& uri : fragments) {
     auto meta_uri = uri.join_path(constants::fragment_metadata_filename);
     RETURN_NOT_OK(storage_manager_->vfs()->remove_file(meta_uri));
   }
+
+  RETURN_NOT_OK(storage_manager_->array_xunlock(array_uri));
 
   return Status::Ok();
 }
@@ -563,8 +546,8 @@ Status Consolidator::delete_overwritten_fragments(
     for (auto check = updated.begin();
          check->uri_.to_string() != cur->uri_.to_string();) {
       if (utils::geometry::rect_in_rect<T>(
-              (T*)check->non_empty_domain_,
-              (T*)cur->non_empty_domain_,
+              (T*)&check->non_empty_domain_[0],
+              (T*)&cur->non_empty_domain_[0],
               dim_num)) {
         to_delete.emplace_back(check->uri_);
         check = updated.erase(check);
@@ -574,17 +557,9 @@ Status Consolidator::delete_overwritten_fragments(
     }
   }
 
-  // Lock the array exclusively
-  const auto& array_uri = array_schema->array_uri();
-  RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
-
   // Delete the fragment metadata
-  RETURN_NOT_OK_ELSE(
-      delete_fragment_metadata(to_delete),
-      storage_manager_->array_xunlock(array_uri));
-
-  // Unlock the array
-  RETURN_NOT_OK(storage_manager_->array_xunlock(array_uri));
+  auto array_uri = array_schema->array_uri();
+  RETURN_NOT_OK(delete_fragment_metadata(array_uri, to_delete));
 
   // Delete the fragments
   RETURN_NOT_OK(delete_fragments(to_delete));
@@ -658,7 +633,7 @@ Status Consolidator::compute_next_to_consolidate(
       if (i == 0) {  // In the first row we store the sizes of `fragments`
         m_sizes[i][j] = fragments[j].fragment_size_;
         std::memcpy(
-            &m_union[i][j][0], fragments[j].non_empty_domain_, domain_size);
+            &m_union[i][j][0], &fragments[j].non_empty_domain_[0], domain_size);
       } else if (i + j >= col_num) {  // Non-valid entries
         m_sizes[i][j] = UINT64_MAX;
         m_union[i][j].clear();
@@ -666,12 +641,13 @@ Status Consolidator::compute_next_to_consolidate(
         auto ratio = (float)fragments[i + j - 1].fragment_size_ /
                      fragments[i + j].fragment_size_;
         ratio = (ratio <= 1.0f) ? ratio : 1.0f / ratio;
+
         if (ratio >= size_ratio) {
           m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size_;
           std::memcpy(&m_union[i][j][0], &m_union[i - 1][j][0], domain_size);
           utils::geometry::expand_mbr_with_mbr<T>(
               (T*)&m_union[i][j][0],
-              (const T*)fragments[i + j].non_empty_domain_,
+              (const T*)&fragments[i + j].non_empty_domain_[0],
               dim_num);
           domain->expand_domain<T>((T*)&m_union[i][j][0]);
           if (!are_consolidatable<T>(
@@ -725,6 +701,9 @@ Status Consolidator::compute_next_to_consolidate(
 }
 
 Status Consolidator::rename_new_fragment_uri(URI* uri) const {
+  // Remove trailing slash
+  *uri = uri->remove_trailing_slash();
+
   // Get timestamp
   std::string name = uri->last_path_part();
   auto timestamp_str = name.substr(name.find_last_of('_') + 1);

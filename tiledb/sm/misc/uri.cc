@@ -92,6 +92,16 @@ URI URI::add_trailing_slash() const {
   }
 }
 
+URI URI::remove_trailing_slash() const {
+  if (uri_.back() == '/') {
+    std::string uri_str = uri_;
+    uri_str.pop_back();
+    return URI(uri_str);
+  }
+
+  return URI(uri_);
+}
+
 const char* URI::c_str() const {
   return uri_.c_str();
 }

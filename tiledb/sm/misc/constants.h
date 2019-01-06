@@ -45,6 +45,31 @@ enum class Compressor : uint8_t;
 namespace constants {
 
 /**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a fixed-sized attribute or the offsets of a var-sized attribute.
+ */
+extern const uint64_t memory_budget_fixed;
+
+/**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a var-sized attribute.
+ */
+extern const uint64_t memory_budget_var;
+
+/**
+ * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
+ * split by the partitioner. If the number is equal to 0.3, then this
+ * means that the number of ranges will be reduced by 30%.
+ */
+extern const double multi_range_reduction_in_split;
+
+/** Amplification factor for the result size estimation. */
+extern const double est_result_size_amplification;
+
+/** Default fanout for RTrees. */
+extern const unsigned rtree_fanout;
+
+/**
  * If `true`, this will check for coordinate duplicates upon sparse
  * writes.
  */
@@ -212,11 +237,14 @@ extern const uint64_t vfs_num_threads;
 /** The default minimum number of bytes in a parallel VFS operation. */
 extern const uint64_t vfs_min_parallel_size;
 
-/** The default maximum number of bytes in a batched VFS read operation. */
-extern const uint64_t vfs_max_batch_read_size;
+/**
+ * The default minimum number of bytes between the offsets of two VFS
+ * read operations.
+ */
+extern const uint64_t vfs_min_batch_gap;
 
-/** The default maximum amplification factor for batched VFS read operations. */
-extern const float vfs_max_batch_read_amplification;
+/** The default minimum number of bytes in a batched VFS read operation. */
+extern const uint64_t vfs_min_batch_size;
 
 /** The default maximum number of parallel file:/// operations. */
 extern const uint64_t vfs_file_max_parallel_ops;
@@ -232,12 +260,6 @@ extern const uint32_t var_num;
 
 /** String describing no compression. */
 extern const std::string no_compression_str;
-
-/** The array schema cache size. */
-extern const uint64_t array_schema_cache_size;
-
-/** The fragment metadata cache size. */
-extern const uint64_t fragment_metadata_cache_size;
 
 /** Whether or not the signal handlers are installed. */
 extern const bool enable_signal_handlers;

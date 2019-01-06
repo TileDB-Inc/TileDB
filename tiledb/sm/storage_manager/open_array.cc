@@ -68,6 +68,10 @@ const URI& OpenArray::array_uri() const {
   return array_uri_;
 }
 
+Status OpenArray::set_encryption_key(const EncryptionKey& encryption_key) {
+  return key_validation_.check_encryption_key(encryption_key);
+}
+
 uint64_t OpenArray::cnt() const {
   return cnt_;
 }
@@ -141,6 +145,7 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
 }
 
 void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
+  std::lock_guard<std::mutex> lock(local_mtx_);
   assert(metadata != nullptr);
   fragment_metadata_.insert(metadata);
   fragment_metadata_set_[metadata->fragment_uri().to_string()] = metadata;

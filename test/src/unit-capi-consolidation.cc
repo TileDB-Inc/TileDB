@@ -3137,7 +3137,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, KV",
-    "[capi], [consolidation], [kv], [kv-consolidation]") {
+    "[capi], [consolidation], [kv], [consolidation-kv]") {
   remove_kv();
   create_kv();
 
@@ -3480,7 +3480,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.5", &error);
+      config, "sm.consolidation.step_size_ratio", "0.3", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -3551,7 +3551,8 @@ TEST_CASE_METHOD(
   remove_dense_vector();
 }
 
-// Test consolidation size ratio 0.5 and 10 steps
+// Test consolidation size ratio 0.3
+// and 10 steps
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #6",
@@ -4196,7 +4197,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.5", &error);
+      config, "sm.consolidation.step_size_ratio", "0.6", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
