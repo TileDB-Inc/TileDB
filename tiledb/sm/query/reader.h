@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/types.h"
+#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <future>
@@ -91,6 +92,18 @@ class Reader {
     bool overflowed_;
     /** True if the current subarray partition is unsplittable. */
     bool unsplittable_;
+  };
+
+  struct ReadState2 {
+    /**
+     * True if the query led to a result that does not fit in
+     * the user buffers.
+     */
+    bool overflowed_ = false;
+    /** ``True`` if a Subarray object has been set to the reader. */
+    bool set_ = false;
+    /** The subarray. */
+    Subarray subarray_;
   };
 
   /**
@@ -303,12 +316,6 @@ class Reader {
    */
   bool incomplete() const;
 
-  /** Returns the number of fragments involved in the (read) query. */
-  unsigned fragment_num() const;
-
-  /** Returns a vector with the fragment URIs. */
-  std::vector<URI> fragment_uris() const;
-
   /**
    * Retrieves the buffer of a fixed-sized attribute.
    *
@@ -364,6 +371,9 @@ class Reader {
 
   /** Performs a read query using its set members. */
   Status read();
+
+  /** Performs a read query (applicable when setting a Subarray). */
+  Status read_2();
 
   /** Sets the array. */
   void set_array(const Array* array);
@@ -455,6 +465,14 @@ class Reader {
    */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   */
+  Status set_subarray(const Subarray& subarray);
+
   /** Returns the subarray. */
   void* subarray() const;
 
@@ -487,6 +505,9 @@ class Reader {
 
   /** To handle incomplete read queries. */
   ReadState read_state_;
+
+  /** Read state for Subarray queries. */
+  ReadState2 read_state_2_;
 
   /**
    * If `true`, then the dense array will be read in "sparse mode", i.e.,
@@ -833,6 +854,9 @@ class Reader {
   /** Initializes the read state. */
   Status init_read_state();
 
+  /** Initializes the read state. */
+  Status init_read_state_2();
+
   /**
    * Initializes a fixed-sized tile.
    *
@@ -939,6 +963,18 @@ class Reader {
    */
   template <class T>
   Status sparse_read();
+
+  /** Performs a read on a sparse array. */
+  Status sparse_read_2();
+
+  /**
+   * Performs a read on a sparse array.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status sparse_read_2();
 
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();
