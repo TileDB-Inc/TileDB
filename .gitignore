@@ -11,6 +11,7 @@ coverage.info
 test/obj/*
 test/bin/*
 test/tiledb_test/*
+test/inputs/arrays/read_compatibility_test*
 Doxyfile.log
 doxyfile.inc
 doxygen/html/

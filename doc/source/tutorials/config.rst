@@ -78,7 +78,6 @@ in this program and explain the output.
         Tile cache size: 10000000
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -90,7 +89,8 @@ in this program and explain the output.
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.memory_budget" : "5368709120"
+        "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
         "sm.num_reader_threads" : "1"
         "sm.num_tbb_threads" : "-1"
@@ -100,8 +100,8 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
-        "vfs.max_batch_read_amplification" : "1"
-        "vfs.max_batch_read_size" : "104857600"
+        "vfs.min_batch_gap" : "512000"
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -152,7 +152,6 @@ in this program and explain the output.
         Tile cache size: 10000000
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -164,7 +163,8 @@ in this program and explain the output.
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.memory_budget" : "5368709120"
+        "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
         "sm.num_reader_threads" : "1"
         "sm.num_tbb_threads" : "-1"
@@ -174,8 +174,8 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
-        "vfs.max_batch_read_amplification" : "1"
-        "vfs.max_batch_read_size" : "104857600"
+        "vfs.min_batch_gap" : "512000"
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -302,7 +302,6 @@ The corresponding output is (note that we ran this on a machine with
 .. code-block:: bash
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -314,7 +313,8 @@ The corresponding output is (note that we ran this on a machine with
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
+        "sm.memory_budget" : "5368709120"
+        "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
         "sm.num_reader_threads" : "1"
         "sm.num_tbb_threads" : "-1"
@@ -324,8 +324,8 @@ The corresponding output is (note that we ran this on a machine with
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
-        "vfs.max_batch_read_amplification" : "1"
-        "vfs.max_batch_read_size" : "104857600"
+        "vfs.min_batch_gap" : "512000"
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -456,7 +456,6 @@ Inspecting the contents of the exported config file, we get the following:
 .. code-block:: bash
 
   $ cat tiledb_config.txt
-  sm.array_schema_cache_size 10000000
   sm.check_coord_dups true
   sm.check_coord_oob true
   sm.check_global_order true
@@ -468,15 +467,16 @@ Inspecting the contents of the exported config file, we get the following:
   sm.consolidation.steps 4294967295
   sm.dedup_coords false
   sm.enable_signal_handlers true
-  sm.fragment_metadata_cache_size 10000000
+  sm.memory_budget 5368709120
+  sm.memory_budget_var 10737418240
   sm.num_async_threads 1
   sm.num_reader_threads 1
   sm.num_tbb_threads -1
   sm.num_writer_threads 1
   sm.tile_cache_size 0
   vfs.file.max_parallel_ops 8
-  vfs.max_batch_read_amplification 1
-  vfs.max_batch_read_size 104857600
+  vfs.min_batch_gap 512000
+  vfs.min_batch_size 20971520
   vfs.min_parallel_size 10485760
   vfs.num_threads 8
   vfs.s3.connect_max_tries 5
@@ -508,7 +508,6 @@ along with their description and default values.
     ======================================    ===================     ==================================================
     **Parameter**                             **Default Value**       **Description**
     --------------------------------------    -------------------     --------------------------------------------------
-    ``"sm.array_schema_cache_size"``          ``"10000000"``          The array schema cache size in bytes.
     ``"sm.check_coord_dups"``                 ``"true"``              This is applicable only if ``sm.dedup_coords`` is
                                                                       ``false``. If ``true``, an error will be thrown if
                                                                       there are cells with duplicate coordinates during
@@ -549,7 +548,11 @@ along with their description and default values.
                                                                       arbitrarily.
     ``"sm.enable_signal_handlers"``           ``"true"``              Determines whether or not TileDB will install
                                                                       signal handlers.
-    ``"sm.fragment_metadata_cache_size"``     ``"10000000"``          The fragment metadata cache size in bytes.
+    ``"sm.memory_budget"``                    ``"5GB"``               The memory budget for tiles of fixed-sized
+                                                                      attributes (or offsets for var-sized attributes)
+                                                                      to be fetched during reads.
+    ``"sm.memory_budget_var"``                ``"10GB"``              The memory budget for tiles of var-sized
+                                                                      attributes to be fetched during reads.
     ``"sm.num_async_threads"``                ``"1"``                 The number of threads allocated for async queries.
     ``"sm.num_reader_threads"``               ``"1"``                 The number of threads allocated for filesystem
                                                                       read operations.
@@ -566,6 +569,10 @@ along with their description and default values.
                                                                       operations (any backend), per VFS instance.
     ``"vfs.file.max_parallel_ops"``           ``vfs.num_threads``     The maximum number of parallel operations on
                                                                       objects with ``file:///`` URIs.
+    ``"vfs.min_batch_gap"``                   ``"512000"``            The minimum number of bytes between two VFS
+                                                                      read batches.
+    ``"vfs.min_batch_size"``                  ``"20971520"``          The minimum number of bytes in a VFS
+                                                                      read operation.
     ``"vfs.min_parallel_size"``               ``"10485760"``          The minimum number of bytes in a parallel VFS
                                                                       operation (except parallel S3 writes, which are
                                                                       controlled by ``vfs.s3.multipart_part_size``).

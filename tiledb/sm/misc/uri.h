@@ -87,6 +87,12 @@ class URI {
    */
   URI add_trailing_slash() const;
 
+  /**
+   * Return a copy of this URI without a trailing '/' (if it already
+   * has one).
+   */
+  URI remove_trailing_slash() const;
+
   /** Returns a C-style pointer to the URI string. */
   const char* c_str() const;
 

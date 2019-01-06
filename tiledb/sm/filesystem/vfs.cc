@@ -856,7 +856,9 @@ Status VFS::read_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) {
+    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    ThreadPool* thread_pool,
+    std::vector<std::future<Status>>* tasks) {
   STATS_FUNC_IN(vfs_read_all);
   STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 
@@ -868,19 +870,27 @@ Status VFS::read_all(
   RETURN_NOT_OK(compute_read_batches(regions, &batches));
 
   // Read all the batches and copy to the original destinations.
-  Buffer buffer;
   for (const auto& batch : batches) {
-    RETURN_NOT_OK(buffer.realloc(batch.nbytes));
-    RETURN_NOT_OK(read(uri, batch.offset, buffer.data(), batch.nbytes));
-    // Parallel copy back into the individual destinations.
-    parallel_for(0, batch.regions.size(), [&batch, &buffer](uint64_t i) {
-      const auto& region = batch.regions[i];
-      uint64_t offset = std::get<0>(region);
-      void* dest = std::get<1>(region);
-      uint64_t nbytes = std::get<2>(region);
-      std::memcpy(dest, buffer.data(offset - batch.offset), nbytes);
+    URI uri_copy = uri;
+    BatchedRead batch_copy = batch;
+    auto task = thread_pool->enqueue([uri_copy, batch_copy, this]() {
+      Buffer buffer;
+      RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
+      RETURN_NOT_OK(
+          read(uri_copy, batch_copy.offset, buffer.data(), batch_copy.nbytes));
+      // Parallel copy back into the individual destinations.
+      for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
+        const auto& region = batch_copy.regions[i];
+        uint64_t offset = std::get<0>(region);
+        void* dest = std::get<1>(region);
+        uint64_t nbytes = std::get<2>(region);
+        std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
+      }
+
       return Status::Ok();
     });
+
+    tasks->push_back(std::move(task));
   }
 
   return Status::Ok();
@@ -910,10 +920,9 @@ Status VFS::compute_read_batches(
     uint64_t offset = std::get<0>(region);
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
-    float amplification =
-        new_batch_size / float(curr_batch_useful_bytes + nbytes);
-    if (new_batch_size <= vfs_params_.max_batch_read_size_ &&
-        amplification <= vfs_params_.max_batch_read_amplification_) {
+    uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
+    if (new_batch_size <= vfs_params_.min_batch_size_ ||
+        gap <= vfs_params_.min_batch_gap_) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);

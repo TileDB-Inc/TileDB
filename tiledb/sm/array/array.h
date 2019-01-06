@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
 namespace sm {
@@ -149,6 +150,9 @@ class Array {
 
   /** Closes the array and frees all memory. */
   Status close();
+
+  /** Returns a constant pointer to the encryption key. */
+  const EncryptionKey* encryption_key() const;
 
   /**
    * Returns the fragment metadata of the array. If the array is not open,

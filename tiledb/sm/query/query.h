@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 #include <functional>
 #include <utility>
@@ -187,12 +188,6 @@ class Query {
    */
   Status finalize();
 
-  /** Returns the number of fragments involved in the (read) query. */
-  unsigned fragment_num() const;
-
-  /** Returns a vector with the fragment URIs. */
-  std::vector<URI> fragment_uris() const;
-
   /**
    * Retrieves the buffer of a fixed-sized attribute.
    *
@@ -313,6 +308,14 @@ class Query {
    * @return Status
    */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   */
+  Status set_subarray(const Subarray& subarray);
 
   /** Submits the query to the storage manager. */
   Status submit();

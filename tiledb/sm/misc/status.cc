@@ -201,6 +201,15 @@ std::string Status::code_to_string() const {
     case StatusCode::ContextError:
       type = "[TileDB::Context] Error";
       break;
+    case StatusCode::SubarrayError:
+      type = "[TileDB::Subarray] Error";
+      break;
+    case StatusCode::SubarrayPartitionerError:
+      type = "[TileDB::SubarrayPartitioner] Error";
+      break;
+    case StatusCode::RTreeError:
+      type = "[TileDB::RTree] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

@@ -321,10 +321,12 @@ class Consolidator {
    * Deletes the fragment metadata files of the input fragments.
    * This renders the fragments "invisible".
    *
+   * @param array_uri The array URI.
    * @param fragments The URIs of the fragments to be deleted.
    * @return Status
    */
-  Status delete_fragment_metadata(const std::vector<URI>& fragments);
+  Status delete_fragment_metadata(
+      const URI& array_uri, const std::vector<URI>& fragments);
 
   /**
    * Deletes the entire directories of the input fragments.
