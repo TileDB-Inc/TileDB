@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
 * Added an advanced, tunable consolidation algorithm
 * Added config params `vfs.s3.aws_access_key_id` and `vfs.s3.aws_secret_access_key` for configure s3 access at runtime. [#1036](https://github.com/TileDB-Inc/TileDB/pull/1036)
 * Added missing check if coordinates obey the global order in global order sparse writes. [#1039](https://github.com/TileDB-Inc/TileDB/pull/1039)
@@ -17,6 +18,8 @@
 
 ### C API
 
+* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
+* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_vfs_dir_size`.
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.

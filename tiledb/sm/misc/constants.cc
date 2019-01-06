@@ -57,6 +57,12 @@ namespace sm {
 
 namespace constants {
 
+/** Amplification factor for the result size estimation. */
+const double est_result_size_amplification = 1.0;
+
+/** Default fanout for RTrees. */
+const unsigned rtree_fanout = 10;
+
 /**
  * If `true`, this will check for coordinate duplicates upon sparse
  * writes.

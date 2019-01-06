@@ -102,19 +102,6 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
-unsigned Query::fragment_num() const {
-  if (type_ == QueryType::WRITE)
-    return 0;
-  return reader_.fragment_num();
-}
-
-std::vector<URI> Query::fragment_uris() const {
-  std::vector<URI> uris;
-  if (type_ == QueryType::WRITE)
-    return uris;
-  return reader_.fragment_uris();
-}
-
 Status Query::get_buffer(
     const char* attribute, void** buffer, uint64_t** buffer_size) const {
   // Normalize attribute
@@ -336,6 +323,19 @@ Status Query::set_subarray(const void* subarray) {
     RETURN_NOT_OK(reader_.set_subarray(subarray));
   }
 
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
+Status Query::set_subarray(const Subarray& subarray) {
+  // Check that the subarray is associated with the same array as the query
+  if (subarray.array() != array_)
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; The array of subarray is "
+                           "different from that of the query"));
+
+  RETURN_NOT_OK(reader_.set_subarray(subarray));
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();

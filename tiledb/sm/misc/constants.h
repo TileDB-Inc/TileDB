@@ -44,6 +44,12 @@ enum class Compressor : uint8_t;
 
 namespace constants {
 
+/** Amplification factor for the result size estimation. */
+extern const double est_result_size_amplification;
+
+/** Default fanout for RTrees. */
+extern const unsigned rtree_fanout;
+
 /**
  * If `true`, this will check for coordinate duplicates upon sparse
  * writes.

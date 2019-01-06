@@ -38,6 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/rtree/rtree.h"
 
 #include <vector>
 
@@ -250,7 +251,7 @@ class FragmentMetadata {
   uint64_t last_tile_cell_num() const;
 
   /** Returns the MBRs. */
-  const std::vector<void*>& mbrs() const;
+  const std::vector<void*>* mbrs() const;
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
@@ -416,6 +417,9 @@ class FragmentMetadata {
   uint64_t persisted_tile_var_size(
       const std::string& attribute, uint64_t tile_idx) const;
 
+  /** Returns the MBR RTree. */
+  const RTree* rtree() const;
+
   /**
    * Returns the (uncompressed) tile size for a given attribute
    * and tile index. If the attribute is var-sized, this will return
@@ -436,6 +440,10 @@ class FragmentMetadata {
    * @return The tile size.
    */
   uint64_t tile_var_size(const std::string& attribute, uint64_t tile_idx) const;
+
+  /** Returns the uncompressed tile sizes for a given var-sized attribute. */
+  const std::vector<uint64_t>* tile_var_sizes(
+      const std::string& attr_name) const;
 
   /** The creation timestamp of the fragment. */
   uint64_t timestamp() const;
@@ -489,6 +497,8 @@ class FragmentMetadata {
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
 
+  // TODO(sp) we may need to refactor this to be a std::shared_ptr<uint8_t[]>
+  // instead
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
 
@@ -503,6 +513,9 @@ class FragmentMetadata {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* non_empty_domain_;
+
+  /** An RTree for the MBRs. */
+  RTree rtree_;
 
   /**
    * The tile index base which is added to tile indices in setter functions.
