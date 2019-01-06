@@ -92,6 +92,7 @@ Reader::Reader() {
   read_state_.initialized_ = false;
   read_state_.overflowed_ = false;
   sparse_mode_ = false;
+  read_state_2_.set_ = false;
 }
 
 Reader::~Reader() {
@@ -120,18 +121,6 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
 bool Reader::incomplete() const {
   return read_state_.overflowed_ ||
          read_state_.cur_subarray_partition_ != nullptr;
-}
-
-unsigned Reader::fragment_num() const {
-  return (unsigned int)fragment_metadata_.size();
-}
-
-std::vector<URI> Reader::fragment_uris() const {
-  std::vector<URI> uris;
-  for (auto meta : fragment_metadata_)
-    uris.emplace_back(meta->fragment_uri());
-
-  return uris;
 }
 
 Status Reader::get_buffer(
@@ -174,24 +163,31 @@ Status Reader::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot initialize query; Storage manager not set"));
+        "Cannot initialize reader; Storage manager not set"));
   if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot initialize query; Array metadata not set"));
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize reader; Array metadata not set"));
   if (attr_buffers_.empty())
     return LOG_STATUS(
-        Status::ReaderError("Cannot initialize query; Buffers not set"));
+        Status::ReaderError("Cannot initialize reader; Buffers not set"));
   if (attributes_.empty())
     return LOG_STATUS(
-        Status::ReaderError("Cannot initialize query; Attributes not set"));
+        Status::ReaderError("Cannot initialize reader; Attributes not set"));
 
-  if (read_state_.subarray_ == nullptr)
-    RETURN_NOT_OK(set_subarray(nullptr));
+  // This checks if a Subarray object has been set
+  // TODO(sp): this will be removed once the two read states are merged
+  if (read_state_2_.set_) {
+    if (!fragment_metadata_.empty())
+      RETURN_NOT_OK(init_read_state_2());
+  } else {
+    if (read_state_.subarray_ == nullptr)
+      RETURN_NOT_OK(set_subarray(nullptr));
 
-  optimize_layout_for_1D();
+    optimize_layout_for_1D();
 
-  if (!fragment_metadata_.empty())
-    RETURN_NOT_OK(init_read_state());
+    if (!fragment_metadata_.empty())
+      RETURN_NOT_OK(init_read_state());
+  }
 
   return Status::Ok();
 }
@@ -336,6 +332,9 @@ bool Reader::no_results() const {
 }
 
 Status Reader::read() {
+  if (read_state_2_.set_)
+    return read_2();
+
   STATS_FUNC_IN(reader_read);
 
   if (fragment_metadata_.empty() ||
@@ -375,6 +374,48 @@ Status Reader::read() {
 
     no_results = this->no_results();
   } while (no_results && read_state_.cur_subarray_partition_ != nullptr);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(reader_read);
+}
+
+Status Reader::read_2() {
+  STATS_FUNC_IN(reader_read);
+
+  if (fragment_metadata_.empty() ||
+      read_state_.cur_subarray_partition_ == nullptr) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  bool no_results;
+  do {
+    read_state_2_.overflowed_ = false;
+    reset_buffer_sizes();
+
+    // Perform dense or sparse read if there are fragments
+    assert(!array_schema_->dense());
+    sparse_read_2();
+
+    // Zero out the buffer sizes if this partition led to an overflow.
+    // In the case of overflow, `next_subarray_partition` below will
+    // split further the current partition and continue with the loop.
+    if (read_state_2_.overflowed_)
+      zero_out_buffer_sizes();
+
+    RETURN_NOT_OK(read_state_2_.subarray_.next_partition());
+
+    // If no new subarray partition is found because the current one
+    // is unsplittable, and the current partition had led to an
+    // overflow, zero out the buffer sizes and return
+    if (read_state_2_.subarray_.unsplittable() && read_state_2_.overflowed_) {
+      zero_out_buffer_sizes();
+      return Status::Ok();
+    }
+
+    no_results = this->no_results();
+  } while (no_results && !read_state_2_.subarray_.no_more_partitions());
 
   return Status::Ok();
 
@@ -428,6 +469,8 @@ Status Reader::set_buffer(
   if (!attr_exists)
     attributes_.emplace_back(attribute);
 
+  // TODO: probably update the memory budget of Subarray
+
   // Set attribute buffer
   attr_buffers_[attribute] =
       AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
@@ -476,6 +519,8 @@ Status Reader::set_buffer(
   // Append to attributes only if buffer not set before
   if (!attr_exists)
     attributes_.emplace_back(attribute);
+
+  // TODO: probably update the memory budget of Subarray
 
   // Set attribute buffer
   attr_buffers_[attribute] =
@@ -538,6 +583,15 @@ Status Reader::set_subarray(const void* subarray) {
         read_state_.subarray_,
         array_schema_->domain()->domain(),
         subarray_size);
+
+  return Status::Ok();
+}
+
+Status Reader::set_subarray(const Subarray& subarray) {
+  read_state_2_.subarray_ = subarray;
+  read_state_2_.subarray_.add_missing_ranges();
+  read_state_2_.set_ = true;
+  read_state_2_.overflowed_ = false;
 
   return Status::Ok();
 }
@@ -943,10 +997,10 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
       continue;
 
     auto mbrs = fragment_metadata_[i]->mbrs();
-    auto mbr_num = (uint64_t)mbrs.size();
+    auto mbr_num = (uint64_t)mbrs->size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (utils::geometry::overlap(
-              &subarray[0], (const T*)(mbrs[j]), dim_num, &full_overlap)) {
+              &subarray[0], (const T*)((*mbrs)[j]), dim_num, &full_overlap)) {
         auto tile = std::unique_ptr<OverlappingTile>(
             new OverlappingTile(i, j, attributes_, full_overlap));
         tiles->push_back(std::move(tile));
@@ -1694,6 +1748,25 @@ Status Reader::init_read_state() {
   return Status::Ok();
 }
 
+Status Reader::init_read_state_2() {
+  // Set memory budget
+  for (const auto& a : attr_buffers_) {
+    auto attr_name = a.first;
+    auto buffer_size = a.second.buffer_size_;
+    auto buffer_var_size = a.second.buffer_var_size_;
+    if (array_schema_->var_size(a.first))
+      read_state_2_.subarray_.set_result_budget(
+          attr_name.c_str(), *buffer_size);
+    else
+      read_state_2_.subarray_.set_result_budget(
+          attr_name.c_str(), *buffer_size, *buffer_var_size);
+  }
+
+  RETURN_NOT_OK(read_state_2_.subarray_.next_partition());
+
+  return Status::Ok();
+}
+
 Status Reader::init_tile(
     uint32_t format_version, const std::string& attribute, Tile* tile) const {
   // For easy reference
@@ -2080,6 +2153,87 @@ Status Reader::sparse_read() {
       break;
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
   }
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(reader_sparse_read);
+}
+
+Status Reader::sparse_read_2() {
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return sparse_read_2<int8_t>();
+    case Datatype::UINT8:
+      return sparse_read_2<uint8_t>();
+    case Datatype::INT16:
+      return sparse_read_2<int16_t>();
+    case Datatype::UINT16:
+      return sparse_read_2<uint16_t>();
+    case Datatype::INT32:
+      return sparse_read_2<int>();
+    case Datatype::UINT32:
+      return sparse_read_2<unsigned>();
+    case Datatype::INT64:
+      return sparse_read_2<int64_t>();
+    case Datatype::UINT64:
+      return sparse_read_2<uint64_t>();
+    case Datatype::FLOAT32:
+      return sparse_read_2<float>();
+    case Datatype::FLOAT64:
+      return sparse_read_2<double>();
+    default:
+      return LOG_STATUS(
+          Status::ReaderError("Cannot read; Unsupported domain type"));
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Reader::sparse_read_2() {
+  STATS_FUNC_IN(reader_sparse_read);
+
+  /* // TODO
+
+// Get overlapping tile indexes
+OverlappingTileVec tiles;
+RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&tiles));
+
+// Read tiles
+RETURN_CANCEL_OR_ERROR(read_all_tiles(&tiles));
+
+// Filter tiles
+RETURN_CANCEL_OR_ERROR(filter_all_tiles(&tiles));
+
+// Compute the read coordinates for all fragments
+OverlappingCoordsList<T> coords;
+RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(tiles, &coords));
+
+// Compute the tile coordinates for all overlapping coordinates (for sorting).
+std::unique_ptr<T[]> tile_coords(nullptr);
+RETURN_CANCEL_OR_ERROR(compute_tile_coords<T>(&tile_coords, &coords));
+
+// Sort and dedup the coordinates (not applicable to the global order
+// layout for a single fragment)
+if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
+RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
+RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
+}
+tile_coords.reset(nullptr);
+
+// Compute the maximal cell ranges
+OverlappingCellRangeList cell_ranges;
+RETURN_CANCEL_OR_ERROR(compute_cell_ranges(coords, &cell_ranges));
+coords.clear();
+
+// Copy cells
+for (const auto& attr : attributes_) {
+if (read_state_.overflowed_)
+  break;
+RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
+}
+   */
 
   return Status::Ok();
 

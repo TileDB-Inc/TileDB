@@ -4,6 +4,7 @@
 ## Improvements
 
 * Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
+* The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
 
 ## Bug fixes
 
@@ -58,6 +59,8 @@ The 1.5.0 release focuses on stability, performance, and usability improvements,
 
 ### C API
 
+* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
+* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_vfs_dir_size`.
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.

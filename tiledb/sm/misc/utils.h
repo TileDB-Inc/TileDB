@@ -193,6 +193,20 @@ template <class T>
 bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
 
 /**
+ * Computes the union of a set of MBRs (rectangles).
+ *
+ * @tparam T The domain type.
+ * @param dim_num The number of dimensions.
+ * @param mbrs The start of the MBRs whose union to compute.
+ * @param mbr_num The number of MBRs serialized one after the
+ *     other and starting at ``mbrs``.
+ * @param mbr_union The MBR union to be computed.
+ */
+template <class T>
+void compute_mbr_union(
+    unsigned dim_num, T* mbrs, uint64_t mbr_num, T* mbr_union);
+
+/**
  * Expands the input MBR so that it encompasses the input coordinates.
  *
  * @tparam T The type of the MBR and coordinates.
@@ -278,6 +292,9 @@ namespace math {
 
 /** Returns the value of x/y (integer division) rounded up. */
 uint64_t ceil(uint64_t x, uint64_t y);
+
+/** Returns log_b(x). */
+double log(double b, double x);
 
 }  // namespace math
 

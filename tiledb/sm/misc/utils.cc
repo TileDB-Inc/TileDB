@@ -500,6 +500,22 @@ inline bool rect_in_rect(
 }
 
 template <class T>
+void compute_mbr_union(
+    unsigned dim_num, T* mbrs, uint64_t mbr_num, T* mbr_union) {
+  // Sanity check
+  if (dim_num == 0 || mbr_num == 0)
+    return;
+
+  // Set the first rectangle to the union
+  auto mbr_size = 2 * dim_num * sizeof(T);
+  std::memcpy(mbr_union, mbrs, mbr_size);
+
+  // Expand the union with every other MBR
+  for (uint64_t i = 1; i < mbr_num; ++i)
+    expand_mbr_with_mbr<T>(mbr_union, &mbrs[i * 2 * dim_num], dim_num);
+}
+
+template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     // Update lower bound on dimension i
@@ -619,6 +635,10 @@ uint64_t ceil(uint64_t x, uint64_t y) {
     return 0;
 
   return x / y + (x % y != 0);
+}
+
+double log(double b, double x) {
+  return ::log(x) / ::log(b);
 }
 
 }  // namespace math
@@ -823,6 +843,27 @@ template double coverage<float>(
     const float* a, const float* b, unsigned dim_num);
 template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
+
+template void compute_mbr_union<int8_t>(
+    unsigned dim_num, int8_t* mbrs, uint64_t mbr_num, int8_t* mbr_union);
+template void compute_mbr_union<uint8_t>(
+    unsigned dim_num, uint8_t* mbrs, uint64_t mbr_num, uint8_t* mbr_union);
+template void compute_mbr_union<int16_t>(
+    unsigned dim_num, int16_t* mbrs, uint64_t mbr_num, int16_t* mbr_union);
+template void compute_mbr_union<uint16_t>(
+    unsigned dim_num, uint16_t* mbrs, uint64_t mbr_num, uint16_t* mbr_union);
+template void compute_mbr_union<int32_t>(
+    unsigned dim_num, int32_t* mbrs, uint64_t mbr_num, int32_t* mbr_union);
+template void compute_mbr_union<uint32_t>(
+    unsigned dim_num, uint32_t* mbrs, uint64_t mbr_num, uint32_t* mbr_union);
+template void compute_mbr_union<int64_t>(
+    unsigned dim_num, int64_t* mbrs, uint64_t mbr_num, int64_t* mbr_union);
+template void compute_mbr_union<uint64_t>(
+    unsigned dim_num, uint64_t* mbrs, uint64_t mbr_num, uint64_t* mbr_union);
+template void compute_mbr_union<float>(
+    unsigned dim_num, float* mbrs, uint64_t mbr_num, float* mbr_union);
+template void compute_mbr_union<double>(
+    unsigned dim_num, double* mbrs, uint64_t mbr_num, double* mbr_union);
 
 }  // namespace geometry
 

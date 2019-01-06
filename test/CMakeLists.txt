@@ -65,6 +65,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_real.cc
   src/unit-capi-stats.cc
   src/unit-capi-string.cc
+  src/unit-capi-subarray.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -75,6 +76,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-filter-pipeline.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-rtree.cc
   src/unit-s3.cc
   src/unit-status.cc
   src/unit-tbb.cc

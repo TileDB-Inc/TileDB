@@ -437,8 +437,8 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
   return last_tile_cell_num_;
 }
 
-const std::vector<void*>& FragmentMetadata::mbrs() const {
-  return mbrs_;
+const std::vector<void*>* FragmentMetadata::mbrs() const {
+  return &mbrs_;
 }
 
 const void* FragmentMetadata::non_empty_domain() const {
@@ -542,6 +542,10 @@ uint64_t FragmentMetadata::persisted_tile_var_size(
                  tile_var_offsets_[attribute_id][tile_idx];
 }
 
+const RTree* FragmentMetadata::rtree() const {
+  return &rtree_;
+}
+
 uint64_t FragmentMetadata::tile_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto var_size = array_schema_->var_size(attribute);
@@ -555,6 +559,13 @@ uint64_t FragmentMetadata::tile_var_size(
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
   return tile_var_sizes_[attribute_id][tile_idx];
+}
+
+const std::vector<uint64_t>* FragmentMetadata::tile_var_sizes(
+    const std::string& attr_name) const {
+  auto it = attribute_idx_map_.find(attr_name);
+  auto attribute_id = it->second;
+  return &tile_var_sizes_[attribute_id];
 }
 
 uint64_t FragmentMetadata::timestamp() const {
@@ -812,6 +823,13 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     }
     mbrs_[i] = mbr;
   }
+
+  // Create RTree
+  auto dim_num = array_schema_->dim_num();
+  auto type = array_schema_->domain()->type();
+  auto rtree = RTree(type, dim_num, constants::rtree_fanout, mbrs_);
+  rtree_ = std::move(rtree);
+
   return Status::Ok();
 }
 
