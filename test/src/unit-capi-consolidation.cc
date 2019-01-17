@@ -2899,6 +2899,10 @@ TEST_CASE_METHOD(
   remove_dense_array();
   create_dense_array();
 
+  SECTION("- empty") {
+    consolidate_dense();
+  }
+
   SECTION("- write full, subarray, unordered") {
     write_dense_full();
     write_dense_subarray();
@@ -2944,6 +2948,10 @@ TEST_CASE_METHOD(
     "[capi], [consolidation], [sparse-consolidation]") {
   remove_sparse_array();
   create_sparse_array();
+
+  SECTION("- empty") {
+    consolidate_sparse();
+  }
 
   SECTION("- write full, unordered") {
     write_sparse_full();
