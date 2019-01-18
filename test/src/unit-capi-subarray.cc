@@ -1855,13 +1855,13 @@ TEST_CASE_METHOD(
       rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[2]);
+      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {6, 7};
       rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {9, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[2]);
+      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_subarray_get_est_result_size(
           ctx_, subarray, TILEDB_COORDS, &size);
