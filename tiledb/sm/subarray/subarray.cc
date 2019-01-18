@@ -46,16 +46,18 @@ Subarray::Subarray() {
   array_ = nullptr;
   layout_ = Layout::UNORDERED;
   result_est_size_computed_ = false;
+  tile_overlap_computed_ = false;
 }
 
 Subarray::Subarray(const Array* array, Layout layout)
     : array_(array)
     , layout_(layout) {
-  result_est_size_computed_ = false;
   auto dim_num = array->array_schema()->dim_num();
   auto domain_type = array->array_schema()->domain()->type();
   for (uint32_t i = 0; i < dim_num; ++i)
     ranges_.emplace_back(domain_type);
+  result_est_size_computed_ = false;
+  tile_overlap_computed_ = false;
 }
 
 Subarray::Subarray(const Subarray& subarray)
@@ -450,8 +452,11 @@ template <class T>
 Status Subarray::add_range(uint32_t dim_idx, const T* range) {
   assert(dim_idx < array_->array_schema()->dim_num());
 
-  // Must reset the tile overlap
+  // Must reset the result size and tile overlap
   result_est_size_computed_ = false;
+  est_result_size_.clear();
+  tile_overlap_computed_ = false;
+  tile_overlap_.clear();
 
   // Check for NaN
   RETURN_NOT_OK(check_nan<T>(range));
@@ -551,9 +556,9 @@ void Subarray::compute_est_result_size() {
   if (result_est_size_computed_)
     return;
 
-  compute_range_offsets();
-  tile_overlap_.clear();
-  est_result_size_.clear();
+  if(!tile_overlap_computed_)
+    compute_tile_overlap<T>();
+
   std::mutex mtx;
 
   // Prepare estimated result size vector for all attributes and coords
@@ -569,9 +574,8 @@ void Subarray::compute_est_result_size() {
   auto range_num = this->range_num();
   auto statuses_1 = parallel_for(0, fragment_num, [&](unsigned i) {
     auto statuses_2 = parallel_for(0, range_num, [&](unsigned j) {
-      auto rtree = meta[i]->rtree();
-      auto range = this->range<T>(j);
-      auto overlap = rtree->get_tile_overlap<T>(range);
+      const auto& overlap = tile_overlap_[i][j];
+      // Compute estimated result size for all attributes
       for (unsigned a = 0; a < attributes.size(); ++a) {
         auto attr_name = attributes[a]->name();
         bool var_size = attributes[a]->var_size();
@@ -639,6 +643,32 @@ Subarray::ResultSize Subarray::compute_est_result_size(
   return ret;
 }
 
+template <class T>
+void Subarray::compute_tile_overlap() {
+  compute_range_offsets();
+  tile_overlap_.clear();
+  auto meta = array_->fragment_metadata();
+  auto fragment_num = meta.size();
+  tile_overlap_.resize(fragment_num);
+  auto range_num = this->range_num();
+  for(unsigned i=0; i<fragment_num; ++i)
+    tile_overlap_[i].resize(range_num);
+
+  // Compute estimated tile overlap in parallel over fragments and ranges
+  auto statuses_1 = parallel_for(0, fragment_num, [&](unsigned i) {
+    auto statuses_2 = parallel_for(0, range_num, [&](unsigned j) {
+      auto rtree = meta[i]->rtree();
+      auto range = this->range<T>(j);
+      auto overlap = rtree->get_tile_overlap<T>(range);
+      tile_overlap_[i][j] = overlap;
+      return Status::Ok();
+    });
+    return Status::Ok();
+  });
+
+  tile_overlap_computed_ = true;
+}
+
 Subarray Subarray::clone() const {
   Subarray clone;
   clone.array_ = array_;
@@ -648,6 +678,7 @@ Subarray Subarray::clone() const {
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
   clone.result_est_size_computed_ = result_est_size_computed_;
+  clone.tile_overlap_computed_ = tile_overlap_computed_;
 
   return clone;
 }
@@ -660,6 +691,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
   std::swap(result_est_size_computed_, subarray.result_est_size_computed_);
+  std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
 }
 
 }  // namespace sm

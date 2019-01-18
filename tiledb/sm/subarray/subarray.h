@@ -304,6 +304,12 @@ class Subarray {
   std::vector<uint64_t> range_offsets_;
 
   /**
+   * ``True`` if the estimated result size for all attributes has been
+   * computed.
+   */
+  bool result_est_size_computed_;
+
+  /**
    * Stores info about the overlap of the subarray with tiles
    * of all array fragments. Each element is a vector corresponding
    * to a single range of the subarray. These vectors/ranges are sorted
@@ -312,10 +318,10 @@ class Subarray {
   std::vector<std::vector<TileOverlap>> tile_overlap_;
 
   /**
-   * ``True`` if the estimated result size for all attributes has been
-   * computed.
+   * ``True`` if the tile overlap for the ranges of the subarray has
+   *  been computed.
    */
-  bool result_est_size_computed_;
+  bool tile_overlap_computed_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -365,6 +371,13 @@ class Subarray {
   /** Computes the estimated result size for all attributes. */
   template <class T>
   void compute_est_result_size();
+
+  /**
+   * Computes the tile overlap with all subarray ranges for
+   * all fragments.
+   */
+  template<class T>
+  void compute_tile_overlap();
 
   /**
    * Computes the estimated result size for a given attribute, fragment index,
