@@ -369,6 +369,27 @@ Subarray
 .. doxygenfunction:: tiledb_subarray_get_est_result_size_var
     :project: TileDB-C
 
+SubarrayPartitioner
+-------------------
+.. doxygenfunction:: tiledb_subarray_partitioner_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_set_result_budget
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_set_result_budget_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_get_result_budget
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_get_result_budget_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_next
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_get_current
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_done
+    :project: TileDB-C
+
 Filter
 ------
 .. doxygenfunction:: tiledb_filter_alloc

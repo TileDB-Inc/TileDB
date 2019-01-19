@@ -65,6 +65,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-stats.cc
   src/unit-capi-string.cc
   src/unit-capi-subarray.cc
+  src/unit-capi-subarray_partitioner.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc

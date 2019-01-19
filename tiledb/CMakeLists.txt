@@ -149,6 +149,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_io.cc
 )

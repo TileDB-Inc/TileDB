@@ -3453,7 +3453,42 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
 /*         SUBARRAY PARTITIONER      */
 /* ********************************* */
 
-// TODO: Move to partitioner
+/**
+ * Creates a subarray partitioner object for a subarray.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "file:///my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, TILEDB_UNORDERED, &subarray);
+ * tiledb_subarray_partitioner_t* partitioner;
+ * tiledb_subarray_partitioner_alloc(ctx, subarray, &partitioner);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The input subarray.
+ * @param partitioner The subarray partitioner to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @note A subarray partitioner can only be created for subarrays
+ *     of arrays opened in READ mode.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    tiledb_subarray_partitioner_t** partitioner);
+
+/**
+ * Deletes a subarray partitioner object.
+ *
+ * @param partitioner The subarray partitioner object to be deleted.
+ */
+TILEDB_EXPORT void tiledb_subarray_partitioner_free(
+    tiledb_subarray_partitioner_t** partitioner);
+
 /**
  * Gets the result size budget set for a given fixed-sized attribute.
  *
@@ -3461,22 +3496,22 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
  *
  * @code{.c}
  * uint64_t budget;
- * tiledb_subarray_get_result_budget(ctx, subarray, "a", &budget);
+ * tiledb_subarray_partitioner_get_result_budget(ctx, partitioner, "a",
+ * &budget);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param subarray The subarray.
+ * @param partitioner The subarray partitioner.
  * @param attr_name The name of the attribute to set the budget for.
  * @param budget The budget (in bytes) to be retrieved for the input attribute.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_result_budget(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget(
     tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
+    const tiledb_subarray_partitioner_t* partitioner,
     const char* attr_name,
     uint64_t* budget);
 
-// TODO: Move to partitioner
 /**
  * Gets the result size budget set for a given var-sized attribute.
  *
@@ -3484,12 +3519,12 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_result_budget(
  *
  * @code{.c}
  * uint64_t budget_off, budget_val;
- * tiledb_subarray_get_result_budget_var(
- *     ctx, subarray, "a", &budget_off, &budget_val);
+ * tiledb_subarray_partitioner_get_result_budget_var(
+ *     ctx, partitioner, "a", &budget_off, &budget_val);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param subarray The subarray.
+ * @param partitioner The subarray partitioner.
  * @param attr_name The name of the attribute to set the budget for.
  * @param budget_off The result size budget (in bytes) for the offsets to
  *     be retrieved for the input attribute.
@@ -3497,48 +3532,47 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_result_budget(
  *     be retrieved for the input attribute.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_result_budget_var(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
     tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
+    const tiledb_subarray_partitioner_t* partitioner,
     const char* attr_name,
     uint64_t* budget_off,
     uint64_t* budget_val);
 
-// TODO: move to partitioner
 /**
  * Sets the result size budget (in size) for a given fixed-sized attribute.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_set_result_budget(ctx, subarray, "a", 10000000);
+ * tiledb_subarray_partitioner_set_result_budget(
+ *     ctx, partitioner, "a", 10000000);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param subarray The subarray.
+ * @param partitioner The partitioner.
  * @param attr_name The name of the attribute to set the budget for.
  * @param budget The result size budget (in bytes) for this attribute.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_set_result_budget(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
     tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
+    const tiledb_subarray_partitioner_t* partitioner,
     const char* attr_name,
     uint64_t budget);
 
-// TODO: move to partitioner
 /**
  * Sets the result size (in bytes) budget for for a given var-sized attribute.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_set_result_budget_var(
- *     ctx, subarray, "a", 10000000, 10000000);
+ * tiledb_subarray_partitioner_set_result_budget_var(
+ *     ctx, partitioner, "a", 10000000, 10000000);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param subarray The subarray.
+ * @param partitioner The subarray partitioner.
  * @param attr_name The name of the attribute to set the budget for.
  * @param budget_off The result size budget (in bytes) for the
  *     offsets of this attribute.
@@ -3546,40 +3580,54 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_result_budget(
  *     values of this attribute.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_set_result_budget_var(
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var(
     tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
+    const tiledb_subarray_partitioner_t* partitioner,
     const char* attr_name,
     uint64_t budget_off,
     uint64_t budget_val);
 
-// TODO
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    tiledb_subarray_partitioner_t** partitioner);
-
-// TODO
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_next(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_partitioner_t* partitioner,
-    int* got_next);
-
-// TODO
+/**
+ * Retrieves the current partition.
+ *
+ * @param ctx The TileDB context.
+ * @param partitioner The subarray partitioner.
+ * @param partition The partition to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_current(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* partitioner,
     tiledb_subarray_t** partition);
 
-// TODO
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_has_next(
+/**
+ * It advances the partitioner to the next partition. If the remaining
+ * subarray cannot be split further to produce the next partition,
+ * ``unsplittable`` is set to ``true``.
+ *
+ * @param ctx The TileDB context.
+ * @param partitioner The subarray partitioner.
+ * @param unsplittable Set to ``true`` if the remaining subarray cannot
+ *     be split to produce the next partition.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_next(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* partitioner,
-    int* has_next);
+    int* unsplittable);
 
-// TODO
-TILEDB_EXPORT int32_t
-tiledb_subarray_partitioner_free(tiledb_subarray_partitioner_t** partitioner);
+/**
+ * Checks if the partitioner is done producing partitions.
+ *
+ * @param ctx The TileDB context.
+ * @param partitioner The subarray partitioner.
+ * @param done Sets it to ``true`` if the partitioner is done.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_done(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    int* done);
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */

@@ -204,6 +204,9 @@ std::string Status::code_to_string() const {
     case StatusCode::SubarrayError:
       type = "[TileDB::Subarray] Error";
       break;
+    case StatusCode::SubarrayPartitionerError:
+      type = "[TileDB::SubarrayPartitioner] Error";
+      break;
     case StatusCode::RTreeError:
       type = "[TileDB::RTree] Error";
       break;

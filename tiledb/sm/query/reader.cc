@@ -389,33 +389,36 @@ Status Reader::read_2() {
     return Status::Ok();
   }
 
-  bool no_results;
-  do {
-    read_state_2_.overflowed_ = false;
-    reset_buffer_sizes();
+  /* // TODO
 
-    // Perform dense or sparse read if there are fragments
-    assert(!array_schema_->dense());
-    sparse_read_2();
+bool no_results;
+do {
+read_state_2_.overflowed_ = false;
+reset_buffer_sizes();
 
-    // Zero out the buffer sizes if this partition led to an overflow.
-    // In the case of overflow, `next_subarray_partition` below will
-    // split further the current partition and continue with the loop.
-    if (read_state_2_.overflowed_)
-      zero_out_buffer_sizes();
+// Perform dense or sparse read if there are fragments
+assert(!array_schema_->dense());
+sparse_read_2();
 
-    RETURN_NOT_OK(read_state_2_.subarray_.next_partition());
+// Zero out the buffer sizes if this partition led to an overflow.
+// In the case of overflow, `next_subarray_partition` below will
+// split further the current partition and continue with the loop.
+if (read_state_2_.overflowed_)
+  zero_out_buffer_sizes();
 
-    // If no new subarray partition is found because the current one
-    // is unsplittable, and the current partition had led to an
-    // overflow, zero out the buffer sizes and return
-    if (read_state_2_.subarray_.unsplittable() && read_state_2_.overflowed_) {
-      zero_out_buffer_sizes();
-      return Status::Ok();
-    }
+RETURN_NOT_OK(read_state_2_.partitioner_.next());
 
-    no_results = this->no_results();
-  } while (no_results && !read_state_2_.subarray_.no_more_partitions());
+// If no new subarray partition is found because the current one
+// is unsplittable, and the current partition had led to an
+// overflow, zero out the buffer sizes and return
+if (read_state_2_.subarray_.unsplittable() && read_state_2_.overflowed_) {
+  zero_out_buffer_sizes();
+  return Status::Ok();
+}
+
+no_results = this->no_results();
+} while (no_results && !read_state_2_.subarray_.no_more_partitions());
+   */
 
   return Status::Ok();
 
@@ -588,8 +591,7 @@ Status Reader::set_subarray(const void* subarray) {
 }
 
 Status Reader::set_subarray(const Subarray& subarray) {
-  read_state_2_.subarray_ = subarray;
-  read_state_2_.subarray_.add_missing_ranges();
+  read_state_2_.partitioner_ = SubarrayPartitioner(subarray);
   read_state_2_.set_ = true;
   read_state_2_.overflowed_ = false;
 
@@ -1754,15 +1756,15 @@ Status Reader::init_read_state_2() {
     auto attr_name = a.first;
     auto buffer_size = a.second.buffer_size_;
     auto buffer_var_size = a.second.buffer_var_size_;
-    if (array_schema_->var_size(a.first))
-      read_state_2_.subarray_.set_result_budget(
+    if (!array_schema_->var_size(a.first))
+      read_state_2_.partitioner_.set_result_budget(
           attr_name.c_str(), *buffer_size);
     else
-      read_state_2_.subarray_.set_result_budget(
+      read_state_2_.partitioner_.set_result_budget(
           attr_name.c_str(), *buffer_size, *buffer_var_size);
   }
 
-  RETURN_NOT_OK(read_state_2_.subarray_.next_partition());
+  // TODO  RETURN_NOT_OK(read_state_2_.subarray_.next_partition());
 
   return Status::Ok();
 }
