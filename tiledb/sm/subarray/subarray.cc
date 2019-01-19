@@ -35,6 +35,8 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/rtree/rtree.h"
 
+#include <iomanip>
+
 namespace tiledb {
 namespace sm {
 
@@ -58,6 +60,7 @@ Subarray::Subarray(const Array* array, Layout layout)
     ranges_.emplace_back(domain_type);
   result_est_size_computed_ = false;
   tile_overlap_computed_ = false;
+  add_default_ranges();
 }
 
 Subarray::Subarray(const Subarray& subarray)
@@ -93,19 +96,6 @@ Subarray& Subarray::operator=(Subarray&& subarray) {
 /* ****************************** */
 /*               API              */
 /* ****************************** */
-
-Status Subarray::add_missing_ranges() {
-  auto dim_num = array_->array_schema()->dim_num();
-  auto domain = (unsigned char*)array_->array_schema()->domain()->domain();
-  for (unsigned i = 0; i < dim_num; ++i) {
-    auto range_size = ranges_[i].range_size_;
-    if (ranges_[i].range_num() == 0) {
-      ranges_[i].add_range(&(domain[i * range_size]));
-    }
-  }
-
-  return Status::Ok();
-}
 
 Status Subarray::add_range(uint32_t dim_idx, const void* range) {
   if (range == nullptr)
@@ -153,6 +143,48 @@ const Array* Subarray::array() const {
 
 void Subarray::clear() {
   ranges_.clear();
+  range_offsets_.clear();
+  tile_overlap_.clear();
+  result_est_size_computed_ = false;
+  tile_overlap_computed_ = false;
+}
+
+void Subarray::compute_tile_overlap() {
+  auto type = array_->array_schema()->domain()->type();
+  switch (type) {
+    case Datatype::INT8:
+      compute_tile_overlap<int8_t>();
+      break;
+    case Datatype::UINT8:
+      compute_tile_overlap<uint8_t>();
+      break;
+    case Datatype::INT16:
+      compute_tile_overlap<int16_t>();
+      break;
+    case Datatype::UINT16:
+      compute_tile_overlap<uint16_t>();
+      break;
+    case Datatype::INT32:
+      compute_tile_overlap<int32_t>();
+      break;
+    case Datatype::UINT32:
+      compute_tile_overlap<uint32_t>();
+      break;
+    case Datatype::INT64:
+      compute_tile_overlap<int64_t>();
+      break;
+    case Datatype::UINT64:
+      compute_tile_overlap<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      compute_tile_overlap<float>();
+      break;
+    case Datatype::FLOAT64:
+      compute_tile_overlap<double>();
+      break;
+    default:
+      assert(false);
+  }
 }
 
 uint32_t Subarray::dim_num() const {
@@ -161,6 +193,18 @@ uint32_t Subarray::dim_num() const {
 
 const void* Subarray::domain() const {
   return array_->array_schema()->domain()->domain();
+}
+
+bool Subarray::empty() const {
+  return range_num() == 0;
+}
+
+Status Subarray::get_query_type(QueryType* type) const {
+  if (array_ == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get query type from array; Invalid array"));
+
+  return array_->get_query_type(type);
 }
 
 Status Subarray::get_range(
@@ -192,90 +236,48 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   return Status::Ok();
 }
 
-Layout Subarray::layout() const {
-  return layout_;
+template <class T>
+Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
+  Subarray ret(array_, layout_);
+
+  auto start_coords = get_range_coords(start);
+  auto end_coords = get_range_coords(end);
+
+  auto dim_num = this->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    for (uint64_t r = start_coords[i]; r <= end_coords[i]; ++r) {
+      ret.add_range(i, ranges_[i].get_range(r));
+    }
+  }
+
+  // Set tile overlap
+  auto fragment_num = tile_overlap_.size();
+  ret.tile_overlap_.resize(fragment_num);
+  for (unsigned i = 0; i < fragment_num; ++i) {
+    for (uint64_t r = start; r <= end; ++r) {
+      ret.tile_overlap_[i].push_back(tile_overlap_[i][r]);
+    }
+  }
+
+  return ret;
 }
 
-// TODO: Move this to the partitioner
-Status Subarray::next_partition() {
-  //  TODO
-  return Status::Ok();
-}
+bool Subarray::is_unary() const {
+  if (range_num() != 1)
+    return false;
 
-// TODO: Move this to the partitioner
-bool Subarray::no_more_partitions() const {
-  // TODO
+  for (const auto& range : ranges_) {
+    auto r = (const uint8_t*)range.get_range(0);
+    auto range_size = range.range_size_;
+    if (std::memcmp(r, r + range_size / 2, range_size / 2) != 0)
+      return false;
+  }
+
   return true;
 }
 
-Status Subarray::get_result_budget(const char* attr_name, uint64_t* budget) {
-  // Check attribute name
-  if (attr_name == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get result budget; Invalid attribute"));
-
-  // Check attribute name
-  auto attr = array_->array_schema()->attribute(attr_name);
-  if (attr == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get result budget; Invalid attribute"));
-
-  // Check budget pointer
-  if (budget == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Invalid budget input"));
-
-  // Check if the attribute is fixed-sized
-  if (attr->var_size())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Attribute must be fixed-sized"));
-
-  // Check if budget has been set
-  auto b_it = budget_.find(attr_name);
-  if (b_it == budget_.end())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Budget not set for the input attribute"));
-
-  // Get budget
-  *budget = b_it->second.size_fixed_;
-
-  return Status::Ok();
-}
-
-Status Subarray::get_result_budget(
-    const char* attr_name, uint64_t* budget_off, uint64_t* budget_val) {
-  // Check attribute name
-  if (attr_name == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get result budget; Invalid attribute"));
-
-  // Check attribute
-  auto attr = array_->array_schema()->attribute(attr_name);
-  if (attr == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get result budget; Invalid attribute"));
-
-  // Check budget pointer
-  if (budget_off == nullptr || budget_val == nullptr)
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Invalid budget input"));
-
-  // Check if the attribute is var-sized
-  if (!attr->var_size())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Attribute must be var-sized"));
-
-  // Check if budget has been set
-  auto b_it = budget_.find(attr_name);
-  if (b_it == budget_.end())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot get result budget; Budget not set for the input attribute"));
-
-  // Get budget
-  *budget_off = b_it->second.size_fixed_;
-  *budget_val = b_it->second.size_var_;
-
-  return Status::Ok();
+Layout Subarray::layout() const {
+  return layout_;
 }
 
 Status Subarray::get_est_result_size(const char* attr_name, uint64_t* size) {
@@ -295,7 +297,7 @@ Status Subarray::get_est_result_size(const char* attr_name, uint64_t* size) {
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Invalid attribute"));
 
-  // Check budget pointer
+  // Check size pointer
   if (size == nullptr)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Invalid size input"));
@@ -330,7 +332,7 @@ Status Subarray::get_est_result_size(
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Invalid attribute"));
 
-  // Check budget pointer
+  // Check size pointer
   if (size_off == nullptr || size_val == nullptr)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get estimated result size; Invalid size input"));
@@ -346,6 +348,43 @@ Status Subarray::get_est_result_size(
   *size_val = (uint64_t)ceil(est_result_size_[attr_name].size_var_);
 
   return Status::Ok();
+}
+
+std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
+  std::vector<uint64_t> ret;
+
+  uint64_t tmp_idx = range_idx;
+  auto dim_num = this->dim_num();
+  auto cell_order = array_->array_schema()->cell_order();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+
+  if (layout == Layout::ROW_MAJOR) {
+    for (unsigned i = 0; i < dim_num; ++i) {
+      ret.push_back(tmp_idx / range_offsets_[i]);
+      tmp_idx %= range_offsets_[i];
+    }
+  } else if (layout == Layout::COL_MAJOR) {
+    for (unsigned i = dim_num - 1;; --i) {
+      ret.push_back(tmp_idx / range_offsets_[i]);
+      tmp_idx %= range_offsets_[i];
+      if (i == 0)
+        break;
+    }
+    std::reverse(ret.begin(), ret.end());
+  } else {
+    assert(false);
+  }
+
+  return ret;
+}
+
+uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
+  uint64_t ret = 0;
+  auto dim_num = this->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i)
+    ret += range_offsets_[i] * range_coords[i];
+
+  return ret;
 }
 
 uint64_t Subarray::range_num() const {
@@ -387,66 +426,26 @@ std::vector<const T*> Subarray::range(uint64_t range_idx) const {
   return ret;
 }
 
-// TODO: Move this to the partitioner
-Status Subarray::set_result_budget(const char* attr_name, uint64_t budget) {
-  // Check attribute name
-  if (attr_name == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot set result budget; Invalid attribute"));
-
-  // Check attribute
-  auto attr = array_->array_schema()->attribute(attr_name);
-  if (attr == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot set result budget; Invalid attribute"));
-
-  // Check if the attribute is fixed-sized
-  if (attr->var_size())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot set result budget; Attribute must be fixed-sized"));
-
-  budget_[attr_name] = {(double)budget, 0.0};
-
-  return Status::Ok();
-}
-
-// TODO: Move this to the partitioner
-Status Subarray::set_result_budget(
-    const char* attr_name, uint64_t budget_off, uint64_t budget_val) {
-  // Check attribute name
-  if (attr_name == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot set result budget; Invalid attribute"));
-
-  // Check attribute
-  auto attr = array_->array_schema()->attribute(attr_name);
-  if (attr == nullptr)
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot set result budget; Invalid attribute"));
-
-  // Check if the attribute is var-sized
-  if (!attr->var_size())
-    return LOG_STATUS(Status::SubarrayError(
-        "Cannot set result budget; Attribute must be var-sized"));
-
-  budget_[attr_name] = {(double)budget_off, (double)budget_val};
-
-  return Status::Ok();
+const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
+  return tile_overlap_;
 }
 
 Datatype Subarray::type() const {
   return array_->array_schema()->domain()->type();
 }
 
-// TODO: Move this to the partitioner
-bool Subarray::unsplittable() const {
-  // TODO
-  return false;
-}
-
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+void Subarray::add_default_ranges() {
+  auto dim_num = array_->array_schema()->dim_num();
+  auto domain = (unsigned char*)array_->array_schema()->domain()->domain();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto range_size = ranges_[i].range_size_;
+    ranges_[i].add_range(&(domain[i * range_size]), true);
+  }
+}
 
 template <class T>
 Status Subarray::add_range(uint32_t dim_idx, const T* range) {
@@ -454,9 +453,7 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
 
   // Must reset the result size and tile overlap
   result_est_size_computed_ = false;
-  est_result_size_.clear();
   tile_overlap_computed_ = false;
-  tile_overlap_.clear();
 
   // Check for NaN
   RETURN_NOT_OK(check_nan<T>(range));
@@ -556,8 +553,7 @@ void Subarray::compute_est_result_size() {
   if (result_est_size_computed_)
     return;
 
-  if(!tile_overlap_computed_)
-    compute_tile_overlap<T>();
+  compute_tile_overlap<T>();
 
   std::mutex mtx;
 
@@ -595,6 +591,8 @@ void Subarray::compute_est_result_size() {
     return Status::Ok();
   });
 
+  // TODO: Calibrate the size if it exceeds the maximum size
+
   // Amplify result estimation
   for (auto& r : est_result_size_vec) {
     r.size_fixed_ *= constants::est_result_size_amplification;
@@ -602,6 +600,7 @@ void Subarray::compute_est_result_size() {
   }
 
   // Set the estimated result size map
+  est_result_size_.clear();
   for (unsigned i = 0; i < attributes.size(); ++i)
     est_result_size_[attributes[i]->name()] = est_result_size_vec[i];
   est_result_size_[constants::coords] = est_result_size_vec.back();
@@ -645,13 +644,16 @@ Subarray::ResultSize Subarray::compute_est_result_size(
 
 template <class T>
 void Subarray::compute_tile_overlap() {
+  if (tile_overlap_computed_)
+    return;
+
   compute_range_offsets();
   tile_overlap_.clear();
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
   tile_overlap_.resize(fragment_num);
   auto range_num = this->range_num();
-  for(unsigned i=0; i<fragment_num; ++i)
+  for (unsigned i = 0; i < fragment_num; ++i)
     tile_overlap_[i].resize(range_num);
 
   // Compute estimated tile overlap in parallel over fragments and ranges
@@ -672,7 +674,6 @@ void Subarray::compute_tile_overlap() {
 Subarray Subarray::clone() const {
   Subarray clone;
   clone.array_ = array_;
-  clone.budget_ = budget_;
   clone.layout_ = layout_;
   clone.ranges_ = ranges_;
   clone.range_offsets_ = range_offsets_;
@@ -685,7 +686,6 @@ Subarray Subarray::clone() const {
 
 void Subarray::swap(Subarray& subarray) {
   std::swap(array_, subarray.array_);
-  std::swap(budget_, subarray.budget_);
   std::swap(layout_, subarray.layout_);
   std::swap(ranges_, subarray.ranges_);
   std::swap(range_offsets_, subarray.range_offsets_);
@@ -693,6 +693,28 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(result_est_size_computed_, subarray.result_est_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
 }
+
+// Explicit instantiations
+template Subarray Subarray::get_subarray<uint8_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<int8_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<uint16_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<int16_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<uint32_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<int32_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<uint64_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<int64_t>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<float>(
+    uint64_t start, uint64_t end) const;
+template Subarray Subarray::get_subarray<double>(
+    uint64_t start, uint64_t end) const;
 
 }  // namespace sm
 }  // namespace tiledb

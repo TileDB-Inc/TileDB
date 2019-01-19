@@ -49,6 +49,7 @@
 #include "tiledb/sm/storage_manager/config_iter.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #include <map>
 #include <memory>
@@ -146,6 +147,10 @@ struct tiledb_query_t {
 
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
+};
+
+struct tiledb_subarray_partitioner_t {
+  tiledb::sm::SubarrayPartitioner* partitioner_ = nullptr;
 };
 
 struct tiledb_kv_schema_t {
@@ -336,6 +341,18 @@ inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray) {
   if (subarray == nullptr || subarray->subarray_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB subarray object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_subarray_partitioner_t* partitioner) {
+  if (partitioner == nullptr || partitioner->partitioner_ == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Invalid TileDB subarray partitioner object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -2907,76 +2924,6 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   }
 }
 
-int32_t tiledb_subarray_set_result_budget(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* attr_name,
-    uint64_t budget) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx, subarray->subarray_->set_result_budget(attr_name, budget)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_set_result_budget_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* attr_name,
-    uint64_t budget_off,
-    uint64_t budget_val) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          subarray->subarray_->set_result_budget(
-              attr_name, budget_off, budget_val)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_result_budget(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* attr_name,
-    uint64_t* budget) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx, subarray->subarray_->get_result_budget(attr_name, budget)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_result_budget_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* attr_name,
-    uint64_t* budget_off,
-    uint64_t* budget_val) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          subarray->subarray_->get_result_budget(
-              attr_name, budget_off, budget_val)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_subarray_get_layout(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
@@ -3103,6 +3050,207 @@ int32_t tiledb_subarray_get_est_result_size_var(
 /* ****************************** */
 /*       SUBARRAY PARTITIONER     */
 /* ****************************** */
+
+int32_t tiledb_subarray_partitioner_alloc(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    tiledb_subarray_partitioner_t** partitioner) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, subarray) == TILEDB_ERR) {
+    *partitioner = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Check query type
+  tiledb::sm::QueryType query_type;
+  if (SAVE_ERROR_CATCH(ctx, subarray->subarray_->get_query_type(&query_type)))
+    return TILEDB_ERR;
+  if (query_type == tiledb::sm::QueryType::WRITE) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB subarray partitioner object; Subarray cannot "
+        "belong "
+        "to array opened for writes");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Create subarray partitioner struct
+  *partitioner = new (std::nothrow) tiledb_subarray_partitioner_t;
+  if (*partitioner == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB subarray partitioner object; Memory "
+        "allocation error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Allocate a subarray partitioner object
+  (*partitioner)->partitioner_ = new (std::nothrow)
+      tiledb::sm::SubarrayPartitioner(*(subarray->subarray_));
+  if ((*partitioner)->partitioner_ == nullptr) {
+    delete *partitioner;
+    *partitioner = nullptr;
+    tiledb::sm::Status st = tiledb::sm::Status::Error(
+        "Failed to create TileDB subarray partitioner object; Memory "
+        "allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_subarray_partitioner_free(
+    tiledb_subarray_partitioner_t** partitioner) {
+  if (partitioner != nullptr && *partitioner != nullptr) {
+    delete (*partitioner)->partitioner_;
+    delete *partitioner;
+    *partitioner = nullptr;
+  }
+}
+
+int32_t tiledb_subarray_partitioner_get_result_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    const char* attr_name,
+    uint64_t* budget) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->get_result_budget(attr_name, budget)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_get_result_budget_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    const char* attr_name,
+    uint64_t* budget_off,
+    uint64_t* budget_val) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          partitioner->partitioner_->get_result_budget(
+              attr_name, budget_off, budget_val)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_set_result_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    const char* attr_name,
+    uint64_t budget) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->set_result_budget(attr_name, budget)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_set_result_budget_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    const char* attr_name,
+    uint64_t budget_off,
+    uint64_t budget_val) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          partitioner->partitioner_->set_result_budget(
+              attr_name, budget_off, budget_val)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_get_current(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    tiledb_subarray_t** partition) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get current partition from partitioner
+  auto current = partitioner->partitioner_->current();
+
+  // Create subarray struct
+  *partition = new (std::nothrow) tiledb_subarray_t;
+  if (*partition == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to get current partition; Memory allocation error when "
+        "creating subarray struct object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Allocate a subarray object
+  (*partition)->subarray_ = new (std::nothrow) tiledb::sm::Subarray(current);
+  if ((*partition)->subarray_ == nullptr) {
+    delete *partition;
+    *partition = nullptr;
+    tiledb::sm::Status st = tiledb::sm::Status::Error(
+        "Failed to get current partition; Memory allocation error when "
+        "creating subarray object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_next(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    int* unsplittable) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool ret;
+  if (SAVE_ERROR_CATCH(ctx, partitioner->partitioner_->next(&ret)))
+    return TILEDB_ERR;
+
+  *unsplittable = (int)ret;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_done(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    int* done) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *done = (int)partitioner->partitioner_->done();
+
+  return TILEDB_OK;
+}
 
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */

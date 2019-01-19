@@ -539,16 +539,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(std::memcmp(dom, domain, sizeof(domain)) == 0);
 
-  // Check that there are no ranges initially
-  uint64_t range_num;
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 0);
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 0);
-
   // Check getting range num from an invalid dimension index
+  uint64_t range_num;
   rc = tiledb_subarray_get_range_num(ctx_, subarray, 2, &range_num);
   CHECK(rc == TILEDB_ERR);
 
@@ -558,7 +550,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Check getting range from an invalid range index
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, &range);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, &range);
   CHECK(rc == TILEDB_ERR);
 
   // Add null range
@@ -620,6 +612,59 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(r10[0] == 2);
   CHECK(r10[1] == 2);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, check default (empty) subarray",
+    "[capi], [subarray], [subarray-default]") {
+  std::string array_name = "subarray_default";
+  remove_array(array_name);
+  create_sparse_array(array_name);
+
+  // Allocate subarray with an unopened array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Allocate subarray with an opened array
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Check that there are no ranges initially
+  uint64_t range_num;
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check ranges
+  const uint64_t *r1, *r2;
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r1);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r1[0] == 1);
+  CHECK(r1[1] == 10);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r2);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r2[0] == 1);
+  CHECK(r2[1] == 10);
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);
@@ -814,56 +859,6 @@ TEST_CASE_METHOD(
   tiledb_subarray_t* subarray = nullptr;
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
   CHECK(rc == TILEDB_OK);
-
-  uint64_t budget, budget_off, budget_val;
-
-  // Set/get result budget, fixed-sized
-  rc = tiledb_subarray_get_result_budget(ctx_, subarray, "a", &budget);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget(ctx_, subarray, nullptr, 10);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget(ctx_, subarray, "foo", 10);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget_var(ctx_, subarray, "a", 10, 10);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget(ctx_, subarray, "a", 10);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_result_budget(ctx_, subarray, nullptr, &budget);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget(ctx_, subarray, "foo", &budget);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget_var(
-      ctx_, subarray, "a", &budget_off, &budget_val);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget(ctx_, subarray, "a", &budget);
-  CHECK(rc == TILEDB_OK);
-  CHECK(budget == 10);
-
-  // Set/get result budget, var-sized
-  rc = tiledb_subarray_get_result_budget_var(
-      ctx_, subarray, "b", &budget_off, &budget_val);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget_var(ctx_, subarray, nullptr, 100, 101);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget_var(ctx_, subarray, "foo", 100, 101);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget(ctx_, subarray, "b", 100);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_set_result_budget_var(ctx_, subarray, "b", 100, 101);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_result_budget_var(
-      ctx_, subarray, nullptr, &budget_off, &budget_val);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget_var(
-      ctx_, subarray, "foo", &budget_off, &budget_val);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget(ctx_, subarray, "b", &budget);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_result_budget_var(
-      ctx_, subarray, "b", &budget_off, &budget_val);
-  CHECK(rc == TILEDB_OK);
-  CHECK(budget_off == 100);
-  CHECK(budget_val == 101);
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);
@@ -1705,13 +1700,13 @@ TEST_CASE_METHOD(
       rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[2]);
+      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {6, 7};
       rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {9, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[2]);
+      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_subarray_get_est_result_size(
           ctx_, subarray, TILEDB_COORDS, &size);

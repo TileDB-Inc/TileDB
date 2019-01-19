@@ -18,6 +18,8 @@
 
 ### C API
 
+* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
+* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
 * Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
 * Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_vfs_dir_size`.

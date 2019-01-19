@@ -39,7 +39,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/types.h"
-#include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <future>
@@ -102,8 +102,8 @@ class Reader {
     bool overflowed_ = false;
     /** ``True`` if a Subarray object has been set to the reader. */
     bool set_ = false;
-    /** The subarray. */
-    Subarray subarray_;
+    /** The subarray partitioner. */
+    SubarrayPartitioner partitioner_;
   };
 
   /**

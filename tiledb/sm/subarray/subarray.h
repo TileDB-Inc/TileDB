@@ -36,6 +36,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 
@@ -91,6 +92,9 @@ class Array;
  * @note The subarray will certainly have the same type and number of
  *     dimensions as the array domain it is constructed from, but it may
  *     have a different shape.
+ *
+ * @note If no 1D ranges are set for some dimension, then the subarray
+ *     by default will cover the entire domain of that dimension.
  */
 class Subarray {
  public:
@@ -148,16 +152,19 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
-  /**
-   * If no range has been added for a dimension, this function adds
-   * a range that covers the whole domain along that dimension.
-   *
-   * @return Status
-   */
-  Status add_missing_ranges();
-
   /** Adds a range along the dimension with the given index. */
   Status add_range(uint32_t dim_idx, const void* range);
+
+  /**
+   * Adds a range along the dimension with the given index.
+   *
+   * @tparam T The subarray domain type.
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param range The range to add.
+   * @return Status
+   */
+  template <class T>
+  Status add_range(uint32_t dim_idx, const T* range);
 
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
@@ -165,11 +172,36 @@ class Subarray {
   /** Clears the contents of the subarray. */
   void clear();
 
+  /**
+   * Computes the tile overlap with all subarray ranges for
+   * all fragments.
+   */
+  void compute_tile_overlap();
+
+  /**
+   * Computes the estimated result size for a given attribute, fragment index,
+   * and tile overlap info.
+   *
+   * @param attr_name The name of the attribute to focus on.
+   * @param var_size Whether the attribute is var-sized or not.
+   * @param fragment_idx The id of the fragment to focus on.
+   * @param overlap The tile overlap info.
+   * @return The result size.
+   */
+  ResultSize compute_est_result_size(
+      const std::string& attr_name,
+      bool var_size,
+      unsigned fragment_idx,
+      const TileOverlap& overlap) const;
+
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
 
   /** Returns the domain the subarray is constructed from. */
   const void* domain() const;
+
+  /** ``True`` if the subarray does not contain any ranges. */
+  bool empty() const;
 
   /** Retrieves a range of a given dimension at a given range index. */
   Status get_range(
@@ -178,21 +210,12 @@ class Subarray {
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
 
-  /** Returns the subarray layout. */
-  Layout layout() const;
-
-  /** Retrieves the next partition. */
-  Status next_partition();
-
-  /** Returns ``true`` if all subarray partitions have been consumed. */
-  bool no_more_partitions() const;
-
-  /** Gets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status get_result_budget(const char* attr_name, uint64_t* budget);
-
-  /** Gets result size budget (in bytes) for the input var-sized attribute. */
-  Status get_result_budget(
-      const char* attr_name, uint64_t* budget_off, uint64_t* budget_val);
+  /**
+   * Returns ``true`` if the subarray is unary, which happens when it consists
+   * of a single ND range **and** each 1D range is unary (i.e., consisting of
+   * a single point in the 1D domain).
+   */
+  bool is_unary() const;
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
@@ -207,6 +230,34 @@ class Subarray {
   Status get_est_result_size(
       const char* attr_name, uint64_t* size_off, uint64_t* size_val);
 
+  /** Retrieves the query type of the subarray's array. */
+  Status get_query_type(QueryType* type) const;
+
+  /**
+   * Returns the range coordinates (for all dimensions) given a flattened
+   * 1D range id.
+   */
+  std::vector<uint64_t> get_range_coords(uint64_t range_idx) const;
+
+  /**
+   * Returns a subarray consisting of the ranges specified by
+   * the input.
+   *
+   * @tparam T The domain type.
+   * @param start The subarray will be constructed from ranges in
+   *     interval ``[start, end]`` in the flattened range order.
+   * @param end The subarray will be constructed from ranges in
+   *     interval ``[start, end]`` in the flattened range order.
+   */
+  template <class T>
+  Subarray get_subarray(uint64_t start, uint64_t end) const;
+
+  /** Returns the subarray layout. */
+  Layout layout() const;
+
+  /** Returns the flattened 1D id of the range with the input coordinates. */
+  uint64_t range_idx(const std::vector<uint64_t>& range_coords) const;
+
   /** The total number of multi-dimensional ranges in the subarray. */
   uint64_t range_num() const;
 
@@ -220,21 +271,11 @@ class Subarray {
   template <class T>
   std::vector<const T*> range(uint64_t range_idx) const;
 
-  /** Sets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status set_result_budget(const char* attr_name, uint64_t budget);
-
-  /** Sets result size budget (in bytes) for the input var-sized attribute. */
-  Status set_result_budget(
-      const char* attr_name, uint64_t budget_off, uint64_t budget_val);
+  /** Returns the tile overlap of the subarray. */
+  const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
 
   /** Returns the subarray domain type. */
   Datatype type() const;
-
-  /**
-   * Returns ``true`` if the current partition with the given memory
-   * budget is unsplittable.
-   */
-  bool unsplittable() const;
 
  private:
   /* ********************************* */
@@ -247,6 +288,13 @@ class Subarray {
   struct Ranges {
     /** A buffer where all the ranges are appended to. */
     Buffer buffer_;
+
+    /**
+     * ``true`` if it has the default entire-domain range
+     * that must be replaced the first time a new range
+     * is added.
+     */
+    bool has_default_range_ = false;
 
     /** The size in bytes of a range. */
     uint64_t range_size_;
@@ -261,8 +309,17 @@ class Subarray {
     }
 
     /** Adds a range to the buffer. */
-    void add_range(const void* range) {
-      buffer_.write(range, range_size_);
+    void add_range(const void* range, bool is_default = false) {
+      if (is_default) {
+        buffer_.write(range, range_size_);
+        has_default_range_ = true;
+      } else {
+        if (has_default_range_) {
+          buffer_.clear();
+          has_default_range_ = false;
+        }
+        buffer_.write(range, range_size_);
+      }
     }
 
     /** Gets the range at the give index. */
@@ -283,9 +340,6 @@ class Subarray {
 
   /** The array the subarray object is associated with. */
   const Array* array_;
-
-  /** Result size budget (in bytes) for all attributes. */
-  std::unordered_map<std::string, ResultSize> budget_;
 
   /** Stores the estimated result size for each array attribute. */
   std::unordered_map<std::string, ResultSize> est_result_size_;
@@ -328,15 +382,12 @@ class Subarray {
   /* ********************************* */
 
   /**
-   * Adds a range along the dimension with the given index.
-   *
-   * @tparam T The subarray domain type.
-   * @param dim_idx The index of the dimension to add the range to.
-   * @param range The range to add.
-   * @return Status
+   * This function adds a range that covers the whole domain along
+   * each dimension. When ``add_range()`` is called for the first
+   * time along a dimension, the corresponding default range is
+   * replaced.
    */
-  template <class T>
-  Status add_range(uint32_t dim_idx, const T* range);
+  void add_default_ranges();
 
   /** Checks if the input range contains NaN. This is a noop for integers. */
   template <
@@ -376,24 +427,8 @@ class Subarray {
    * Computes the tile overlap with all subarray ranges for
    * all fragments.
    */
-  template<class T>
+  template <class T>
   void compute_tile_overlap();
-
-  /**
-   * Computes the estimated result size for a given attribute, fragment index,
-   * and tile overlap info.
-   *
-   * @param attr_name The name of the attribute to focus on.
-   * @param var_size Whether the attribute is var-sized or not.
-   * @param fragment_idx The id of the fragment to focus on.
-   * @param overlap The tile overlap info.
-   * @return The result size.
-   */
-  ResultSize compute_est_result_size(
-      const std::string& attr_name,
-      bool var_size,
-      unsigned fragment_idx,
-      const TileOverlap& overlap) const;
 
   /** Returns a deep copy of this Subarray. */
   Subarray clone() const;
