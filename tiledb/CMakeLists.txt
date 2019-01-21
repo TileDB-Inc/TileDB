@@ -240,6 +240,11 @@ if (TILEDB_VERBOSE)
   message(STATUS "The TileDB library is compiled with verbosity.")
 endif()
 
+if (TILEDB_STATS)
+  add_definitions(-DTILEDB_STATS)
+  message(STATUS "The TileDB library is compiled with stats enabled.")
+endif()
+
 ############################################################
 # Dependencies: set up includes/linking
 ############################################################

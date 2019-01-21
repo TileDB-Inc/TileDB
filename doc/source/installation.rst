@@ -274,6 +274,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 ``--disable-werror``         Disables building with the ``-Werror`` flag             ``TILEDB_WERROR=OFF``
 ``--disable-cpp-api``        Disables building the TileDB C++ API                    ``TILEDB_CPP_API=OFF``
 ``--disable-tbb``            Disables use of TBB for parallelization                 ``TILEDB_TBB=OFF``
+``--disable-stats``          Disables internal TileDB statistics                     ``TILEDB_STATS=OFF``
 ``--disable-tests``          Disables building the TileDB test suite                 ``TILEDB_TESTS=OFF``
 ==========================   ======================================================  ==============================
 
@@ -357,6 +358,7 @@ The flags for the bootstrap script and the CMake equivalents are as follows:
 ``-DisableWerror``        Disables building with the ``/WX`` flag           ``TILEDB_WERROR=OFF``
 ``-DisableCppApi``        Disables building the TileDB C++ API              ``TILEDB_CPP_API=OFF``
 ``-DisableTBB``           Disables use of TBB for parallelization           ``TILEDB_TBB=OFF``
+``-DisableStats``         Disables internal TileDB statistics               ``TILEDB_STATS=OFF``
 ``-DisableTests``         Disables building the TileDB test suite           ``TILEDB_TESTS=OFF``
 =======================   ================================================  ==============================
 

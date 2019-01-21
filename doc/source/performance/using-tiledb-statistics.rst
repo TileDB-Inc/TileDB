@@ -131,6 +131,10 @@ Write compression ratio
     is the total number of uncompressed bytes requested to be written to disk. The
     denominator is the total number of bytes written from disk, after compression.
 
+.. note::
+    The TileDB library is built by default with statistics enabled. You can disable
+    statistics gathering with the ``-DTILEDB_STATS=OFF`` CMake variable.
+
 Read example
 ------------
 

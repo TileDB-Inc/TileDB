@@ -72,6 +72,7 @@ Param(
     [switch]$DisableCppApi,
     [switch]$DisableTests,
     [switch]$DisableTBB,
+    [switch]$DisableStats,
     [Alias('J')]
     [int]
     $BuildProcesses = $env:NUMBER_OF_PROCESSORS
@@ -133,6 +134,11 @@ if ($DisableTBB.IsPresent) {
     $TBB = "OFF"
 }
 
+$Stats = "ON"
+if ($DisableStats.IsPresent) {
+    $Stats = "OFF"
+}
+
 $TileDBStatic = "OFF";
 if ($EnableStaticTileDB.IsPresent) {
     $TileDBStatic = "ON"
@@ -171,7 +177,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATIC=$TileDBStatic $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
