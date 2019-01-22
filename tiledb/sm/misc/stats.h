@@ -170,6 +170,8 @@ extern Statistics all_stats;
 /*               MACROS              */
 /* ********************************* */
 
+#ifdef TILEDB_STATS
+
 /** Marks the beginning of a stats-enabled function. This should come before the
  * first statement where you want the function timer to start. */
 #define STATS_FUNC_IN(f)                                 \
@@ -237,6 +239,28 @@ extern Statistics all_stats;
 #define STATS_TIMER_PRINT(os, name)                                           \
   (os) << "[stats] Timer " #name " value = " << STATS_TIMER_NS(name) << " ns" \
        << std::endl
+
+#else
+
+#define STATS_FUNC_IN(f)
+
+#define STATS_FUNC_OUT(f)
+
+#define STATS_FUNC_VOID_IN(f)
+
+#define STATS_FUNC_VOID_OUT(f)
+
+#define STATS_COUNTER_ADD(counter_name, value)
+
+#define STATS_COUNTER_ADD_IF(cond, counter_name, value)
+
+#define STATS_TIMER_START(name)
+
+#define STATS_TIMER_NS(name)
+
+#define STATS_TIMER_PRINT(os, name)
+
+#endif
 
 }  // namespace stats
 }  // namespace sm
