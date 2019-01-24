@@ -1301,6 +1301,27 @@ class Map {
         config.ptr().get()));
   }
 
+  /**
+   * Gets the encryption type the given map was created with.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb_encryption_type_t enc_type;
+   * tiledb::Map::encryption_type(ctx, "s3://bucket-name/map-name", &enc_type);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map
+   * @param encryption_type Set to the encryption type of the map.
+   */
+  static tiledb_encryption_type_t encryption_type(
+      const Context& ctx, const std::string& uri) {
+    tiledb_encryption_type_t encryption_type;
+    ctx.handle_error(
+        tiledb_kv_encryption_type(ctx, uri.c_str(), &encryption_type));
+    return encryption_type;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

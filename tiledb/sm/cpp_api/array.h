@@ -613,6 +613,28 @@ class Array {
   }
 
   /**
+   * Gets the encryption type the given array was created with.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb_encryption_type_t enc_type;
+   * tiledb::Array::encryption_type(ctx, "s3://bucket-name/array-name",
+   *    &enc_type);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param encryption_type Set to the encryption type of the array.
+   */
+  static tiledb_encryption_type_t encryption_type(
+      const Context& ctx, const std::string& array_uri) {
+    tiledb_encryption_type_t encryption_type;
+    ctx.handle_error(
+        tiledb_array_encryption_type(ctx, array_uri.c_str(), &encryption_type));
+    return encryption_type;
+  }
+
+  /**
    * Retrieves the non-empty domain from the array. This is the union of the
    * non-empty domains of the array fragments.
    *

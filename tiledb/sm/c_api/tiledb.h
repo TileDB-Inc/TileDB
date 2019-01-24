@@ -3292,6 +3292,19 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var(
 TILEDB_EXPORT int32_t tiledb_array_get_uri(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri);
 
+/**
+ * Retrieves the encryption type the array at the given URI was created with.
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array URI.
+ * @param encryption_type The array encryption type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_encryption_type(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t* encryption_type);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */
@@ -4281,6 +4294,20 @@ TILEDB_EXPORT int32_t tiledb_kv_has_key(
     tiledb_datatype_t key_type,
     uint64_t key_size,
     int32_t* has_key);
+
+/**
+ * Retrieves the encryption type the key-value store at the given URI was
+ * created with.
+ *
+ * @param ctx The TileDB context.
+ * @param kv_uri The key-value store URI.
+ * @param encryption_type The encryption type to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_kv_encryption_type(
+    tiledb_ctx_t* ctx,
+    const char* kv_uri,
+    tiledb_encryption_type_t* encryption_type);
 
 /* ****************************** */
 /*          KEY-VALUE ITER        */
