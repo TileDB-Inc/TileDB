@@ -965,7 +965,7 @@ Status Writer::filter_tile(
 
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);
-  STATS_COUNTER_ADD(writer_num_input_bytes, orig_size);
+  STATS_COUNTER_ADD(writer_num_bytes_before_filtering, orig_size);
 
   return Status::Ok();
 }
