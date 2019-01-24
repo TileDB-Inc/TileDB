@@ -265,6 +265,19 @@ class StorageManager {
   Status array_get_non_empty_domain(Array* array, void* domain, bool* is_empty);
 
   /**
+   * Retrieves the encryption type from an array.
+   *
+   * @param array_uri URI of the array
+   * @param object_type This is either ARRAY or KEY_VALUE.
+   * @param encryption_type Set to the encryption type of the array.
+   * @return Status
+   */
+  Status array_get_encryption(
+      const std::string& array_uri,
+      ObjectType object_type,
+      EncryptionType* encryption_type);
+
+  /**
    * Exclusively locks an array preventing it from being opened in
    * read mode. This function will wait on the array to
    * be closed if it is already open (always in read mode). After an array

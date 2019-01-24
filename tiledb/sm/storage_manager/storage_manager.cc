@@ -638,6 +638,30 @@ Status StorageManager::array_get_non_empty_domain(
   return Status::Ok();
 }
 
+Status StorageManager::array_get_encryption(
+    const std::string& array_uri,
+    ObjectType object_type,
+    EncryptionType* encryption_type) {
+  URI uri(array_uri);
+
+  if (uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot get array encryption; Invalid array URI"));
+
+  assert(
+      object_type == ObjectType::ARRAY || object_type == ObjectType::KEY_VALUE);
+  URI schema_uri = (object_type == ObjectType::ARRAY) ?
+                       uri.join_path(constants::array_schema_filename) :
+                       uri.join_path(constants::kv_schema_filename);
+
+  // Read tile header.
+  TileIO::GenericTileHeader header;
+  RETURN_NOT_OK(TileIO::read_generic_tile_header(this, schema_uri, 0, &header));
+  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
+
+  return Status::Ok();
+}
+
 Status StorageManager::array_xlock(const URI& array_uri) {
   // Wait until the array is closed for reads
   std::unique_lock<std::mutex> lk(open_array_for_reads_mtx_);

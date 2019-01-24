@@ -262,6 +262,12 @@ void KVFx::create_kv(const std::string& path) {
   tiledb_attribute_free(&a3);
   tiledb_kv_schema_free(&kv_schema);
 
+  // Check getting encryption type
+  tiledb_encryption_type_t enc_type;
+  rc = tiledb_kv_encryption_type(ctx_, path.c_str(), &enc_type);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(enc_type == encryption_type_);
+
   // Load schema
   if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_kv_schema_load(ctx_, path.c_str(), &kv_schema);

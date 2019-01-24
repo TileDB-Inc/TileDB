@@ -520,6 +520,12 @@ TEST_CASE_METHOD(
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
 
+    // Check getting encryption type
+    tiledb_encryption_type_t enc_type;
+    rc = tiledb_array_encryption_type(ctx_, array_name.c_str(), &enc_type);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(enc_type == TILEDB_AES_256_GCM);
+
     // Open array
     tiledb_array_t* array;
     rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -658,6 +664,12 @@ TEST_CASE_METHOD(
     tiledb_dimension_free(&d1);
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
+
+    // Check getting encryption type
+    tiledb_encryption_type_t enc_type;
+    rc = tiledb_array_encryption_type(ctx_, array_name.c_str(), &enc_type);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(enc_type == TILEDB_NO_ENCRYPTION);
 
     // Open array
     tiledb_array_t* array;

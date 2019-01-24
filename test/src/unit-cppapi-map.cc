@@ -81,6 +81,8 @@ struct CPPMapFx {
 TEST_CASE_METHOD(CPPMapFx, "C++ API: Map", "[cppapi], [cppapi-map]") {
   create_map();
 
+  REQUIRE(Map::encryption_type(ctx, "cpp_unit_map") == TILEDB_NO_ENCRYPTION);
+
   Map map(ctx, "cpp_unit_map", TILEDB_WRITE);
   CHECK(map.is_open());
   CHECK(!map.is_dirty());
@@ -367,6 +369,8 @@ TEST_CASE_METHOD(
 
   map.close();
   CHECK(!map.is_open());
+
+  REQUIRE(Map::encryption_type(ctx, "cpp_unit_map") == TILEDB_AES_256_GCM);
 
   REQUIRE_THROWS_AS(map.open(TILEDB_READ), tiledb::TileDBError);
   map.open(TILEDB_READ, TILEDB_AES_256_GCM, encryption_key, key_len);

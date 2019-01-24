@@ -2723,6 +2723,27 @@ int32_t tiledb_array_get_uri(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_encryption_type(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t* encryption_type) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || array_uri == nullptr ||
+      encryption_type == nullptr)
+    return TILEDB_ERR;
+
+  tiledb::sm::EncryptionType enc;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_get_encryption(
+              array_uri, tiledb::sm::ObjectType::ARRAY, &enc)))
+    return TILEDB_ERR;
+
+  *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */
@@ -3358,6 +3379,27 @@ int32_t tiledb_kv_has_key(
   *has_key = (int32_t)has_key_b;
 
   // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_kv_encryption_type(
+    tiledb_ctx_t* ctx,
+    const char* kv_uri,
+    tiledb_encryption_type_t* encryption_type) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || kv_uri == nullptr ||
+      encryption_type == nullptr)
+    return TILEDB_ERR;
+
+  tiledb::sm::EncryptionType enc;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_get_encryption(
+              kv_uri, tiledb::sm::ObjectType::KEY_VALUE, &enc)))
+    return TILEDB_ERR;
+
+  *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
+
   return TILEDB_OK;
 }
 

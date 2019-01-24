@@ -130,6 +130,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
 
     std::vector<int> subarray = {0, 1, 0, 0};
 
+    REQUIRE(
+        Array::encryption_type(ctx, "cpp_unit_array") == TILEDB_NO_ENCRYPTION);
+
     try {
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
       CHECK(array.query_type() == TILEDB_READ);
@@ -491,7 +494,11 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+  REQUIRE_THROWS_AS(
+      Array::encryption_type(ctx, array_name), tiledb::TileDBError);
   Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
   REQUIRE_THROWS_AS(
       [&]() { ArraySchema schema_read(ctx, array_name); }(),
@@ -505,9 +512,11 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
       tiledb::TileDBError);
 
   Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
   array.close();
   REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
   array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
   REQUIRE_THROWS_AS(
       [&]() { Array array2(ctx, array_name, TILEDB_WRITE); }(),

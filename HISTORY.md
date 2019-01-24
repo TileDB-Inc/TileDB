@@ -20,12 +20,14 @@
 * Added function `tiledb_vfs_dir_size`.
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.
+* Added functions `tiledb_{array,kv}_encryption_type`.
 
 ### C++ API
 
 * `{Array,Map}::consolidate{_with_key}` now takes a `Config` as an optional argument.
 * Added function `VFS::dir_size`.
 * Added function `VFS::ls`.
+* Added `{Array,Map}::encryption_type()`.
 
 ## Breaking changes
 

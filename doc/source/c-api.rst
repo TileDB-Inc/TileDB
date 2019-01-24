@@ -198,6 +198,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_uri
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_encryption_type
+    :project: TileDB-C
 
 Array Schema
 ------------
@@ -429,7 +431,8 @@ Key-value
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_is_dirty
     :project: TileDB-C
-
+.. doxygenfunction:: tiledb_kv_encryption_type
+    :project: TileDB-C
 
 Key-value Schema
 ----------------
