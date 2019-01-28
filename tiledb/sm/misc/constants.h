@@ -44,6 +44,13 @@ enum class Compressor : uint8_t;
 
 namespace constants {
 
+/**
+ * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
+ * split by the partitioner. If the number is equal to 0.3, then this
+ * means that the number of ranges will be reduced by 30%.
+ */
+extern const double multi_range_reduction_in_split;
+
 /** Amplification factor for the result size estimation. */
 extern const double est_result_size_amplification;
 
