@@ -130,8 +130,11 @@ class Attribute {
 
     FilterList filter_list(ctx);
     Filter filter(ctx, Compressor::to_filter(compressor.compressor()));
-    int32_t level = compressor.level();
-    filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    // Don't set compression level for TILEDB_FILTER_NONE type
+    if (filter.filter_type() != TILEDB_FILTER_NONE) {
+      int32_t level = compressor.level();
+      filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    }
     filter_list.add_filter(filter);
     set_filter_list(filter_list);
   }
@@ -305,8 +308,11 @@ class Attribute {
     auto& ctx = ctx_.get();
     FilterList filter_list(ctx);
     Filter filter(ctx, Compressor::to_filter(c.compressor()));
-    int32_t level = c.level();
-    filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    // Don't set compression level for TILEDB_FILTER_NONE type
+    if (filter.filter_type() != TILEDB_FILTER_NONE) {
+      int32_t level = c.level();
+      filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    }
     filter_list.add_filter(filter);
     set_filter_list(filter_list);
     return *this;
@@ -422,8 +428,11 @@ class Attribute {
       const Compressor& compressor) {
     FilterList filter_list(ctx);
     Filter filter(ctx, Compressor::to_filter(compressor.compressor()));
-    int32_t level = compressor.level();
-    filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    // Don't set compression level for TILEDB_FILTER_NONE type
+    if (filter.filter_type() != TILEDB_FILTER_NONE) {
+      int32_t level = compressor.level();
+      filter.set_option(TILEDB_COMPRESSION_LEVEL, &level);
+    }
     filter_list.add_filter(filter);
 
     auto a = create<T>(ctx, name);
