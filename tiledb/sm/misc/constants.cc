@@ -57,6 +57,13 @@ namespace sm {
 
 namespace constants {
 
+/**
+ * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
+ * split by the partitioner. If the number is equal to 0.3, then this
+ * means that the number of ranges will be reduced by 30%.
+ */
+const double multi_range_reduction_in_split = 0.3;
+
 /** Amplification factor for the result size estimation. */
 const double est_result_size_amplification = 1.0;
 

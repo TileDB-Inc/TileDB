@@ -139,6 +139,15 @@ class SubarrayPartitioner {
   Status set_result_budget(
       const char* attr_name, uint64_t budget_off, uint64_t budget_val);
 
+  /**
+   * Splits the current partition and updates the state, retrieving
+   * a new current partition. This function is typically called
+   * by the reader when the current partition was estimated to fit
+   * the results, but that was not eventually true.
+   */
+  template <class T>
+  Status split_current(bool* unsplittable);
+
  private:
   /* ********************************* */
   /*      PRIVATE TYPE DEFINITIONS     */
