@@ -477,6 +477,17 @@ namespace geometry {
 
 template <class T>
 inline bool coords_in_rect(
+    const T* coords, const std::vector<const T*>& rect, unsigned int dim_num) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    if (coords[i] < rect[i][0] || coords[i] > rect[i][1])
+      return false;
+  }
+
+  return true;
+}
+
+template <class T>
+inline bool coords_in_rect(
     const T* coords, const T* rect, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     if (coords[i] < rect[2 * i] || coords[i] > rect[2 * i + 1])
@@ -667,6 +678,47 @@ template bool coords_in_rect<uint32_t>(
     const uint32_t* coords, const uint32_t* subarray, unsigned int dim_num);
 template bool coords_in_rect<uint64_t>(
     const uint64_t* coords, const uint64_t* subarray, unsigned int dim_num);
+
+template bool coords_in_rect<int>(
+    const int* corrds,
+    const std::vector<const int*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int64_t>(
+    const int64_t* corrds,
+    const std::vector<const int64_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<float>(
+    const float* coords,
+    const std::vector<const float*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<double>(
+    const double* coords,
+    const std::vector<const double*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int8_t>(
+    const int8_t* coords,
+    const std::vector<const int8_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint8_t>(
+    const uint8_t* coords,
+    const std::vector<const uint8_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int16_t>(
+    const int16_t* coords,
+    const std::vector<const int16_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint16_t>(
+    const uint16_t* coords,
+    const std::vector<const uint16_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint32_t>(
+    const uint32_t* coords,
+    const std::vector<const uint32_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint64_t>(
+    const uint64_t* coords,
+    const std::vector<const uint64_t*>& subarray,
+    unsigned int dim_num);
 
 template bool rect_in_rect<int>(
     const int* rect_a, const int* rect_b, unsigned int dim_num);

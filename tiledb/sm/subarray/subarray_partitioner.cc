@@ -275,6 +275,29 @@ Status SubarrayPartitioner::set_result_budget(
   return Status::Ok();
 }
 
+template <class T>
+Status SubarrayPartitioner::split_current(bool* unsplittable) {
+  // Split multi-range subarray
+  if (current_.start_ < current_.end_) {
+    current_.end_ *= (1 - constants::multi_range_reduction_in_split);
+    current_.partition_ =
+        std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
+    state_.start_ = current_.end_ + 1;
+    *unsplittable = false;
+    return Status::Ok();
+  }
+
+  // Split single-range subarray
+  state_.single_range_.push_front(current_.partition_);
+  split_top_single_range<T>(unsplittable);
+  if (!unsplittable) {
+    current_.partition_ = std::move(state_.single_range_.front());
+    state_.single_range_.pop_front();
+  }
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -579,6 +602,21 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(current_, partitioner.current_);
   std::swap(state_, partitioner.state_);
 }
+
+// Explicit template instantiations
+template Status SubarrayPartitioner::split_current<int8_t>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<uint8_t>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<int16_t>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<uint16_t>(
+    bool* unsplittable);
+template Status SubarrayPartitioner::split_current<int32_t>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<uint32_t>(
+    bool* unsplittable);
+template Status SubarrayPartitioner::split_current<int64_t>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<uint64_t>(
+    bool* unsplittable);
+template Status SubarrayPartitioner::split_current<float>(bool* unsplittable);
+template Status SubarrayPartitioner::split_current<double>(bool* unsplittable);
 
 }  // namespace sm
 }  // namespace tiledb
