@@ -257,6 +257,7 @@ class SubarrayPartitioner {
    * If the interval is a single range, which does not fit in the budget,
    * then the function returns ``false``.
    */
+  template <class T>
   bool compute_current_start_end();
 
   /**
@@ -270,6 +271,7 @@ class SubarrayPartitioner {
       unsigned* splitting_dim, T* splitting_point, bool* unsplittable);
 
   /** Returns ``true`` if the top single range in the state must be split. */
+  template <class T>
   bool must_split_top_single_range();
 
   /**

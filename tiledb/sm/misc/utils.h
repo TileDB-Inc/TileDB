@@ -311,6 +311,13 @@ uint64_t ceil(uint64_t x, uint64_t y);
 /** Returns log_b(x). */
 double log(double b, double x);
 
+/**
+ * Computes a * b, but it checks for overflow. In case the product
+ * overflows, it returns std::numeric_limits<T>::max().
+ */
+template <class T>
+T safe_mul(T a, T b);
+
 }  // namespace math
 
 }  // namespace utils

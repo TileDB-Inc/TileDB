@@ -419,11 +419,8 @@ Status Reader::read_2() {
   assert(!array_schema_->dense());
 
   // Get next partition
-  RETURN_NOT_OK(read_state_2_.next());
-  if (read_state_2_.unsplittable_) {
-    zero_out_buffer_sizes();
-    return Status::Ok();
-  }
+  if (!read_state_2_.unsplittable_)
+    RETURN_NOT_OK(read_state_2_.next());
 
   // Handle empty array or empty/finished subarray
   if (fragment_metadata_.empty()) {
@@ -432,11 +429,8 @@ Status Reader::read_2() {
   }
 
   // Loop until you find results, or unsplittable, or done
-  bool no_results = false;
+  bool no_results;
   do {
-    if (no_results)
-      RETURN_NOT_OK(read_state_2_.next());
-
     read_state_2_.overflowed_ = false;
     reset_buffer_sizes();
 
@@ -449,14 +443,13 @@ Status Reader::read_2() {
     if (read_state_2_.overflowed_) {
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_2_.split_current<T>());
-
-      if (read_state_2_.unsplittable_) {
-        zero_out_buffer_sizes();
+      if (read_state_2_.unsplittable_)
         return Status::Ok();
-      }
     }
 
     no_results = this->no_results();
+    if (no_results)
+      RETURN_NOT_OK(read_state_2_.next());
   } while (no_results && !read_state_2_.done());
 
   return Status::Ok();
