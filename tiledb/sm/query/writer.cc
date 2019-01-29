@@ -326,6 +326,18 @@ Status Writer::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+Status Writer::set_subarray(const Subarray& subarray) {
+  if (!array_schema_->dense())  // Sparse arrays
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set subarray when writing to sparse arrays"));
+
+  // TODO
+  // TODO: for the dense case, allow only single-range subarrays
+  (void)subarray;
+
+  return Status::Ok();
+}
+
 void* Writer::subarray() const {
   return subarray_;
 }

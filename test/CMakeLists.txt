@@ -56,13 +56,17 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-error.cc
   src/unit-capi-filter.cc
   src/unit-capi-incomplete.cc
+  src/unit-capi-incomplete-2.cc
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-sparse_array.cc
+  src/unit-capi-sparse_array_2.cc
   src/unit-capi-sparse_neg.cc
+  src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc
   src/unit-capi-stats.cc
+  src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-subarray.cc
   src/unit-capi-subarray_partitioner.cc
