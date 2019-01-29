@@ -31,9 +31,8 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-#include "tiledb/sm/array/array.h"
-
 #include <iomanip>
+#include "tiledb/sm/array/array.h"
 
 namespace tiledb {
 namespace sm {
@@ -211,7 +210,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
     return next_from_single_range<T>(unsplittable);
 
   // Find the [start, end] of the subarray ranges that fit in the budget
-  bool interval_found = compute_current_start_end();
+  bool interval_found = compute_current_start_end<T>();
 
   // Single-range partition that must be split
   if (!interval_found)
@@ -385,51 +384,39 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   return clone;
 }
 
+template <class T>
 bool SubarrayPartitioner::compute_current_start_end() {
   // Preparation
-  auto tile_overlap = subarray_.tile_overlap();
   auto array_schema = subarray_.array()->array_schema();
-  auto fragment_num = tile_overlap.size();
-  std::unordered_map<std::string, ResultBudget> sizes;
+  std::unordered_map<std::string, ResultBudget> cur_sizes;
   for (const auto& it : budget_)
-    sizes[it.first] = ResultBudget{0, 0};
-
-  // TODO: calibrate size here not to exceed the maximum possible
+    cur_sizes[it.first] = ResultBudget{0, 0};
 
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
        ++current_.end_) {
-    // TODO: Update the maximum size here
+    // Update current sizes
+    for (const auto& budget_it : budget_) {
+      auto attr_name = budget_it.first;
+      auto var_size = array_schema->var_size(attr_name);
+      auto est_size = subarray_.compute_est_result_size<T>(
+          attr_name, current_.end_, var_size);
+      auto& cur_size = cur_sizes[attr_name];
+      cur_size.size_fixed_ += est_size.size_fixed_;
+      cur_size.size_var_ += est_size.size_var_;
 
-    for (unsigned i = 0; i < fragment_num; ++i) {
-      for (const auto& budget_it : budget_) {
-        auto attr_name = budget_it.first;
-        auto var_size = array_schema->var_size(attr_name);
-        auto size = subarray_.compute_est_result_size(
-            attr_name, var_size, i, tile_overlap[i][current_.end_]);
-        auto& size_it = sizes[attr_name];
-        size_it.size_fixed_ += size.size_fixed_;
-        size_it.size_var_ += size.size_var_;
+      if (cur_size.size_fixed_ > budget_it.second.size_fixed_ ||
+          cur_size.size_var_ > budget_it.second.size_var_) {
+        // Cannot find range that fits in the buffer
+        if (current_.end_ == current_.start_)
+          return false;
 
-        // TODO: calibrate here before the check
-
-        if (size_it.size_fixed_ > budget_it.second.size_fixed_ ||
-            size_it.size_var_ > budget_it.second.size_var_) {
-          // Cannot find range that fits in the buffer
-          if (current_.end_ == current_.start_)
-            return false;
-
-          // Range found, make it inclusive
-          current_.end_--;
-          return true;
-        }
+        // Range found, make it inclusive
+        current_.end_--;
+        return true;
       }
     }
   }
-
-  // Cannot find range that fits in the buffer
-  if (current_.end_ == current_.start_)
-    return false;
 
   // Range found, make it inclusive
   current_.end_--;
@@ -438,8 +425,6 @@ bool SubarrayPartitioner::compute_current_start_end() {
   // TODO: generalize to different layouts
   // TODO: handle splitting of multi-range subarrays
 }
-
-// TODO: Split current
 
 // TODO (sp): in the future this can be more sophisticated, taking into
 // TODO (sp): account MBRs (i.e., the distirbution of the data) as well
@@ -480,19 +465,27 @@ void SubarrayPartitioner::compute_splitting_point(
   assert(*splitting_dim != UINT32_MAX);
 }
 
+template <class T>
 bool SubarrayPartitioner::must_split_top_single_range() {
   auto& range = state_.single_range_.front();
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
+
   uint64_t size_fixed, size_var;
   for (const auto& b : budget_) {
+    // Compute max sizes
+    auto attr_name = b.first;
+    auto var_size = array_schema->var_size(attr_name);
+
+    // Compute est sizes
     size_fixed = 0;
     size_var = 0;
-    if (array_schema->var_size(b.first))
+    if (var_size)
       range.get_est_result_size(b.first.c_str(), &size_fixed, &size_var);
     else
       range.get_est_result_size(b.first.c_str(), &size_fixed);
 
+    // Check for budget overflow
     if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_) {
       must_split = true;
       break;
@@ -520,20 +513,17 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     auto s = subarray_.get_subarray<T>(current_.start_, current_.end_);
     state_.single_range_.push_front(std::move(s));
     split_top_single_range<T>(unsplittable);
-    if (*unsplittable)
-      return Status::Ok();
   }
 
   // Loop until you find a partition that fits or unsplittable
-  bool must_split;
-  do {
-    must_split = must_split_top_single_range();
-    if (must_split) {
-      RETURN_NOT_OK(split_top_single_range<T>(unsplittable));
-      if (*unsplittable)
-        return Status::Ok();
-    }
-  } while (must_split);
+  if (!*unsplittable) {
+    bool must_split;
+    do {
+      must_split = must_split_top_single_range<T>();
+      if (must_split)
+        RETURN_NOT_OK(split_top_single_range<T>(unsplittable));
+    } while (must_split && !*unsplittable);
+  }
 
   // At this point, the top range is the next partition
   current_.partition_ = std::move(state_.single_range_.front());
@@ -587,6 +577,9 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
       r2.add_range(i, range_1d);
     }
   }
+
+  r1.compute_range_offsets();
+  r2.compute_range_offsets();
 
   // Update list
   state_.single_range_.pop_front();

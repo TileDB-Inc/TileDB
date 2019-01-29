@@ -37,6 +37,14 @@
 
 #include <iomanip>
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 namespace tiledb {
 namespace sm {
 
@@ -139,6 +147,33 @@ Status Subarray::add_range(uint32_t dim_idx, const void* range) {
 
 const Array* Subarray::array() const {
   return array_;
+}
+
+template <class T>
+uint64_t Subarray::cell_num(uint64_t range_idx) const {
+  // Special case if it unary
+  if (is_unary(range_idx))
+    return 1;
+
+  // Inapplicable to non-unary real ranges
+  if (!std::is_integral<T>::value)
+    return UINT64_MAX;
+
+  uint64_t ret = 1, length;
+  auto range = this->range<T>(range_idx);
+
+  for (const auto& r : range) {
+    // The code below essentially computes
+    // ret *= r[1] - r[0] + 1;
+    // while performing overflow checks
+    length = r[1] - r[0];
+    if (length == UINT64_MAX)  // overflow
+      return UINT64_MAX;
+    ++length;
+    ret = utils::math::safe_mul(length, ret);
+  }
+
+  return ret;
 }
 
 void Subarray::clear() {
@@ -272,6 +307,20 @@ bool Subarray::is_unary() const {
   for (const auto& range : ranges_) {
     auto r = (const uint8_t*)range.get_range(0);
     auto range_size = range.range_size_;
+    if (std::memcmp(r, r + range_size / 2, range_size / 2) != 0)
+      return false;
+  }
+
+  return true;
+}
+
+bool Subarray::is_unary(uint64_t range_idx) const {
+  auto coords = get_range_coords(range_idx);
+  auto dim_num = this->dim_num();
+
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto r = (const uint8_t*)ranges_[i].get_range(coords[i]);
+    auto range_size = ranges_[i].range_size_;
     if (std::memcmp(r, r + range_size / 2, range_size / 2) != 0)
       return false;
   }
@@ -562,8 +611,9 @@ void Subarray::compute_est_result_size() {
 
   // Prepare estimated result size vector for all attributes and coords
   auto attributes = array_->array_schema()->attributes();
+  auto attribute_num = attributes.size();
   std::vector<ResultSize> est_result_size_vec;
-  for (unsigned i = 0; i < attributes.size() + 1; ++i)
+  for (unsigned i = 0; i < attribute_num + 1; ++i)
     est_result_size_vec.emplace_back(ResultSize{0.0, 0.0});
 
   // Compute estimated result in parallel over fragments and ranges
@@ -571,76 +621,88 @@ void Subarray::compute_est_result_size() {
   auto fragment_num = meta.size();
   tile_overlap_.resize(fragment_num);
   auto range_num = this->range_num();
-  auto statuses_1 = parallel_for(0, fragment_num, [&](unsigned i) {
-    auto statuses_2 = parallel_for(0, range_num, [&](unsigned j) {
-      const auto& overlap = tile_overlap_[i][j];
-      // Compute estimated result size for all attributes
-      for (unsigned a = 0; a < attributes.size(); ++a) {
-        auto attr_name = attributes[a]->name();
-        bool var_size = attributes[a]->var_size();
-        auto result_size =
-            compute_est_result_size(attr_name, var_size, i, overlap);
-        std::lock_guard<std::mutex> block(mtx);
-        est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
-        est_result_size_vec[a].size_var_ += result_size.size_var_;
-      }
-      auto result_size =
-          compute_est_result_size(constants::coords, false, i, overlap);
+  auto statuses_1 = parallel_for(0, range_num, [&](uint64_t i) {
+    auto statuses_2 = parallel_for(0, attribute_num + 1, [&](unsigned a) {
+      auto attr_name =
+          (a == attribute_num) ? constants::coords : attributes[a]->name();
+      bool var_size = (a == attribute_num) ? false : attributes[a]->var_size();
+      auto result_size = compute_est_result_size<T>(attr_name, i, var_size);
       std::lock_guard<std::mutex> block(mtx);
-      est_result_size_vec.back().size_fixed_ += result_size.size_fixed_;
-      est_result_size_vec.back().size_var_ += result_size.size_var_;
+      est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
+      est_result_size_vec[a].size_var_ += result_size.size_var_;
       return Status::Ok();
     });
     return Status::Ok();
   });
 
-  // TODO: Calibrate the size if it exceeds the maximum size
-
   // Amplify result estimation
-  for (auto& r : est_result_size_vec) {
-    r.size_fixed_ *= constants::est_result_size_amplification;
-    r.size_var_ *= constants::est_result_size_amplification;
+  if (constants::est_result_size_amplification != 1.0) {
+    for (auto& r : est_result_size_vec) {
+      r.size_fixed_ *= constants::est_result_size_amplification;
+      r.size_var_ *= constants::est_result_size_amplification;
+    }
   }
 
   // Set the estimated result size map
   est_result_size_.clear();
-  for (unsigned i = 0; i < attributes.size(); ++i)
-    est_result_size_[attributes[i]->name()] = est_result_size_vec[i];
-  est_result_size_[constants::coords] = est_result_size_vec.back();
+  for (unsigned a = 0; a < attribute_num + 1; ++a) {
+    auto attr_name =
+        (a == attribute_num) ? constants::coords : attributes[a]->name();
+    est_result_size_[attr_name] = est_result_size_vec[a];
+  }
   result_est_size_computed_ = true;
 }
 
+template <class T>
 Subarray::ResultSize Subarray::compute_est_result_size(
-    const std::string& attr_name,
-    bool var_size,
-    unsigned fragment_idx,
-    const TileOverlap& overlap) const {
+    const std::string& attr_name, uint64_t range_idx, bool var_size) const {
+  // For easy reference
+  auto fragment_num = array_->fragment_metadata().size();
   ResultSize ret{0.0, 0.0};
-  auto meta = array_->fragment_metadata()[fragment_idx];
+  auto array_schema = array_->array_schema();
 
-  // Parse tile ranges
-  for (const auto& tr : overlap.tile_ranges_) {
-    for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
+  // Compute estimated result
+  for (unsigned f = 0; f < fragment_num; ++f) {
+    const auto& overlap = tile_overlap_[f][range_idx];
+    auto meta = array_->fragment_metadata()[f];
+
+    // Parse tile ranges
+    for (const auto& tr : overlap.tile_ranges_) {
+      for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
+        if (!var_size) {
+          ret.size_fixed_ += meta->tile_size(attr_name, tid);
+        } else {
+          ret.size_fixed_ += meta->tile_size(attr_name, tid);
+          ret.size_var_ += meta->tile_var_size(attr_name, tid);
+        }
+      }
+    }
+
+    // Parse individual tiles
+    for (const auto& t : overlap.tiles_) {
+      auto tid = t.first;
+      auto ratio = t.second;
       if (!var_size) {
-        ret.size_fixed_ += meta->tile_size(attr_name, tid);
+        ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
       } else {
-        ret.size_fixed_ += meta->tile_size(attr_name, tid);
-        ret.size_var_ += meta->tile_var_size(attr_name, tid);
+        ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
+        ret.size_var_ += meta->tile_var_size(attr_name, tid) * ratio;
       }
     }
   }
 
-  // Parse individual tiles
-  for (const auto& t : overlap.tiles_) {
-    auto tid = t.first;
-    auto ratio = t.second;
-    if (!var_size) {
-      ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
-    } else {
-      ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
-      ret.size_var_ += meta->tile_var_size(attr_name, tid) * ratio;
-    }
+  // Calibrate result
+  uint64_t max_size_fixed, max_size_var = UINT64_MAX;
+  auto cell_num = this->cell_num<T>(range_idx);
+  if (var_size) {
+    max_size_fixed =
+        utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
+  } else {
+    max_size_fixed =
+        utils::math::safe_mul(cell_num, array_schema->cell_size(attr_name));
   }
+  ret.size_fixed_ = MIN(ret.size_fixed_, max_size_fixed);
+  ret.size_var_ = MIN(ret.size_var_, max_size_var);
 
   return ret;
 }
@@ -718,6 +780,17 @@ template Subarray Subarray::get_subarray<float>(
     uint64_t start, uint64_t end) const;
 template Subarray Subarray::get_subarray<double>(
     uint64_t start, uint64_t end) const;
+
+template uint64_t Subarray::cell_num<int8_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<uint8_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<int16_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<uint16_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<int32_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<uint32_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<int64_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<uint64_t>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<float>(uint64_t range_idx) const;
+template uint64_t Subarray::cell_num<double>(uint64_t range_idx) const;
 
 }  // namespace sm
 }  // namespace tiledb

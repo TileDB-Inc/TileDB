@@ -490,3 +490,72 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    SparseRealFx2,
+    "C API: Test 2d sparse array with real domain 2, unary range",
+    "[capi], [sparse-real-2]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_real_unary";
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_sparse_array(array_name);
+
+  // Write twice (2 fragments)
+  write_sparse_array(array_name);
+  write_sparse_array(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create some subarray
+  float s0[] = {-23.5f, -23.5f};
+  float s1[] = {-20.0f, -20.0f};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  int a[1];
+  uint64_t a_size = sizeof(a);
+  float coords[2];
+  uint64_t coords_size = sizeof(coords);
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  int a_c[] = {1};
+  float coords_c[] = {-23.5f, -20.0f};
+  CHECK(a_size == sizeof(a_c));
+  CHECK(!memcmp(a, a_c, sizeof(a_c)));
+  CHECK(coords_size == sizeof(coords_c));
+  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
