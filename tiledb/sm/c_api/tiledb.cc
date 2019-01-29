@@ -2848,15 +2848,6 @@ int32_t tiledb_subarray_alloc(
     return TILEDB_ERR;
   }
 
-  // Check layout
-  if (layout != TILEDB_UNORDERED) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to create TileDB subarray object; Unsupported layout");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Check if array is open
   if (!array->array_->is_open()) {
     auto st = tiledb::sm::Status::Error(
@@ -2870,19 +2861,6 @@ int32_t tiledb_subarray_alloc(
   if (array->array_->array_schema()->dense()) {
     auto st = tiledb::sm::Status::Error(
         "Failed to create TileDB subarray object; Input array cannot be dense");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Check query type
-  tiledb::sm::QueryType query_type;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&query_type)))
-    return TILEDB_ERR;
-  if (query_type == tiledb::sm::QueryType::WRITE) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to create TileDB subarray object; Input array cannot be open "
-        "for writes");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;

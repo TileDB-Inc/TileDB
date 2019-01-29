@@ -232,6 +232,14 @@ class Writer {
    */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   */
+  Status set_subarray(const Subarray& subarray);
+
   /*
    * Return the subarray
    * @return subarray
