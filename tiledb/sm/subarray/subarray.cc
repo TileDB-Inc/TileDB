@@ -259,6 +259,9 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
     }
   }
 
+  // Compute range offsets
+  ret.compute_range_offsets();
+
   return ret;
 }
 

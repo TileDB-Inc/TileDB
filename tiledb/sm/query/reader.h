@@ -115,7 +115,7 @@ class Reader {
     bool unsplittable_ = false;
 
     /** ``true`` if there are no more partitions. */
-    bool done() {
+    bool done() const {
       return partitioner_.done();
     }
 

@@ -120,7 +120,8 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
 
 bool Reader::incomplete() const {
   return read_state_.overflowed_ ||
-         read_state_.cur_subarray_partition_ != nullptr;
+         read_state_.cur_subarray_partition_ != nullptr ||
+         read_state_2_.overflowed_ || !read_state_2_.done();
 }
 
 Status Reader::get_buffer(
@@ -332,10 +333,10 @@ bool Reader::no_results() const {
 }
 
 Status Reader::read() {
+  STATS_FUNC_IN(reader_read);
+
   if (read_state_2_.set_)
     return read_2();
-
-  STATS_FUNC_IN(reader_read);
 
   if (fragment_metadata_.empty() ||
       read_state_.cur_subarray_partition_ == nullptr) {
@@ -417,22 +418,25 @@ Status Reader::read_2() {
 
   assert(!array_schema_->dense());
 
-  // Handle empty array or empty/finished subarray
-  if (fragment_metadata_.empty() || read_state_2_.done()) {
-    zero_out_buffer_sizes();
-    return Status::Ok();
-  }
-
-  // Handle case it was unsplittable before
-  if (read_state_2_.unsplittable_)
-    read_state_2_.next();
+  // Get next partition
+  RETURN_NOT_OK(read_state_2_.next());
   if (read_state_2_.unsplittable_) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
-  bool no_results;
+  // Handle empty array or empty/finished subarray
+  if (fragment_metadata_.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  // Loop until you find results, or unsplittable, or done
+  bool no_results = false;
   do {
+    if (no_results)
+      RETURN_NOT_OK(read_state_2_.next());
+
     read_state_2_.overflowed_ = false;
     reset_buffer_sizes();
 
@@ -440,22 +444,16 @@ Status Reader::read_2() {
     // TODO: add dense reads
     sparse_read_2<T>();
 
-    // Zero out the buffer sizes if this partition led to an overflow.
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_2_.overflowed_) {
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_2_.split_current<T>());
-    } else {
-      RETURN_NOT_OK(read_state_2_.next());
-    }
 
-    // If no new subarray partition is found because the current one
-    // is unsplittable, and the current partition had led to an
-    // overflow, zero out the buffer sizes and return
-    if (read_state_2_.unsplittable_ && read_state_2_.overflowed_) {
-      zero_out_buffer_sizes();
-      return Status::Ok();
+      if (read_state_2_.unsplittable_) {
+        zero_out_buffer_sizes();
+        return Status::Ok();
+      }
     }
 
     no_results = this->no_results();
@@ -636,6 +634,7 @@ Status Reader::set_subarray(const Subarray& subarray) {
   read_state_2_.set_ = true;
   read_state_2_.overflowed_ = false;
   read_state_2_.unsplittable_ = false;
+  layout_ = subarray.layout();
 
   return Status::Ok();
 }
@@ -1056,11 +1055,13 @@ Status Reader::compute_range_coords(
     RETURN_NOT_OK(
         compute_range_coords(r, tiles, tile_map, &((*range_coords)[r])));
 
-    // Need to sort and dedup if the coords come from multiple fragments
-    if (!single_fragment[r]) {
+    // Potentially sort
+    if (layout_ != Layout::UNORDERED || !single_fragment[r])
       RETURN_CANCEL_OR_ERROR(sort_coords_2<T>(&((*range_coords)[r])));
+
+    // Potentially dedup
+    if (!single_fragment[r])
       RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&((*range_coords)[r])));
-    }
 
     // Compute tile coordinate
     return Status::Ok();
@@ -1118,7 +1119,8 @@ template <class T>
 Status Reader::compute_subarray_coords(
     std::vector<OverlappingCoordsVec<T>>* range_coords,
     OverlappingCoordsVec<T>* coords) {
-  assert(layout_ == Layout::UNORDERED);
+  assert(range_coords->size() == 1 || layout_ == Layout::UNORDERED);
+
   // TODO: handle other layouts
 
   // Add all valid ``range_coords`` to ``coords``
@@ -1179,6 +1181,7 @@ Status Reader::compute_overlapping_tiles_2(
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> last_fragment;
+  last_fragment.resize(range_num);
   for (uint64_t r = 0; r < range_num; ++r)
     last_fragment[r] = UINT32_MAX;
 
@@ -1309,6 +1312,7 @@ Status Reader::copy_fixed_cells(
   // Handle overflow
   if (buffer_offset > *buffer_size) {
     read_state_.overflowed_ = true;
+    read_state_2_.overflowed_ = true;
     return Status::Ok();
   }
 
@@ -1379,6 +1383,7 @@ Status Reader::copy_var_cells(
   // Check for overflow and return early (without copying) in that case.
   if (total_offset_size > *buffer_size || total_var_size > *buffer_var_size) {
     read_state_.overflowed_ = true;
+    read_state_2_.overflowed_ = true;
     return Status::Ok();
   }
 
@@ -1980,7 +1985,8 @@ Status Reader::init_read_state_2() {
           attr_name.c_str(), *buffer_size, *buffer_var_size);
   }
 
-  RETURN_NOT_OK(read_state_2_.next());
+  read_state_2_.unsplittable_ = false;
+  read_state_2_.overflowed_ = false;
 
   return Status::Ok();
 }
@@ -2303,13 +2309,20 @@ template <class T>
 Status Reader::sort_coords_2(OverlappingCoordsVec<T>* coords) const {
   STATS_FUNC_IN(reader_sort_coords);
 
+  auto dim_num = array_schema_->dim_num();
+  if (dim_num == 1)  // No need to sort
+    return Status::Ok();
+
   auto cell_order = array_schema_->cell_order();
   auto layout = (layout_ == Layout ::UNORDERED) ? cell_order : layout_;
-  auto dim_num = array_schema_->dim_num();
-  if (layout == Layout::ROW_MAJOR)
+
+  if (layout == Layout::ROW_MAJOR) {
     parallel_sort(coords->begin(), coords->end(), RowCmp<T>(dim_num));
-  else if (layout == Layout::COL_MAJOR)
+  } else if (layout == Layout::COL_MAJOR) {
     parallel_sort(coords->begin(), coords->end(), ColCmp<T>(dim_num));
+  } else {
+    assert(false);
+  }
 
   return Status::Ok();
 
@@ -2429,7 +2442,7 @@ Status Reader::sparse_read_2() {
 
   // Copy cells
   for (const auto& attr : attributes_) {
-    if (read_state_.overflowed_)
+    if (read_state_2_.overflowed_)
       break;
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
   }

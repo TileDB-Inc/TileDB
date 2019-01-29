@@ -508,10 +508,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Allocate subarray with an unsupported layout
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
   // Allocate subarray with an opened array
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
   CHECK(rc == TILEDB_OK);
@@ -690,35 +686,6 @@ TEST_CASE_METHOD(
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    SubarrayFx,
-    "C API: Test subarray, check creating subarray for an array opened for "
-    "writes",
-    "[capi][subarray][subarray-errors][subarray-writes]") {
-  std::string array_name = "subarray_writes";
-  remove_array(array_name);
-  create_sparse_array(array_name);
-
-  // Create subarray
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   tiledb_subarray_t* subarray = nullptr;
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);

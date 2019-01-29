@@ -335,7 +335,12 @@ Status Query::set_subarray(const Subarray& subarray) {
         Status::QueryError("Cannot set subarray; The array of subarray is "
                            "different from that of the query"));
 
-  RETURN_NOT_OK(reader_.set_subarray(subarray));
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_subarray(subarray));
+  } else {  // READ
+    RETURN_NOT_OK(reader_.set_subarray(subarray));
+  }
+
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
