@@ -169,8 +169,22 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
+  /**
+   * Returns the number of cells in the ND range with the input id.
+   * If the domain is huge and the number of cells overflows, the
+   * function returns UINT64_MAX.
+   */
+  template <class T>
+  uint64_t cell_num(uint64_t range_idx) const;
+
   /** Clears the contents of the subarray. */
   void clear();
+
+  /**
+   * Computes the range offsets which are important for getting
+   * an ND range index from a flat serialized index.
+   */
+  void compute_range_offsets();
 
   /**
    * Computes the tile overlap with all subarray ranges for
@@ -179,20 +193,18 @@ class Subarray {
   void compute_tile_overlap();
 
   /**
-   * Computes the estimated result size for a given attribute, fragment index,
-   * and tile overlap info.
+   * Computes the estimated result size (calibrated using the maximum size)
+   * for a given attribute and range id, for all fragments.
    *
+   * @tparam T The domain type.
    * @param attr_name The name of the attribute to focus on.
+   * @param range_idx The id of the subarray range to focus on.
    * @param var_size Whether the attribute is var-sized or not.
-   * @param fragment_idx The id of the fragment to focus on.
-   * @param overlap The tile overlap info.
    * @return The result size.
    */
+  template <class T>
   ResultSize compute_est_result_size(
-      const std::string& attr_name,
-      bool var_size,
-      unsigned fragment_idx,
-      const TileOverlap& overlap) const;
+      const std::string& attr_name, uint64_t range_idx, bool var_size) const;
 
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
@@ -216,6 +228,12 @@ class Subarray {
    * a single point in the 1D domain).
    */
   bool is_unary() const;
+
+  /**
+   * Returns ``true`` if the subarray range with the input id is unary
+   * (i.e., consisting of a single point in the 1D domain).
+   */
+  bool is_unary(uint64_t range_idx) const;
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
@@ -409,12 +427,6 @@ class Subarray {
           "Cannot add range to dimension; Range contains NaN"));
     return Status::Ok();
   }
-
-  /**
-   * Computes the range offsets which are important for getting
-   * an ND range index from a flat serialized index.
-   */
-  void compute_range_offsets();
 
   /** Computes the estimated result size for all attributes. */
   void compute_est_result_size();

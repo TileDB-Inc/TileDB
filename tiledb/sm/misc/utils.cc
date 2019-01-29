@@ -652,6 +652,19 @@ double log(double b, double x) {
   return ::log(x) / ::log(b);
 }
 
+template <class T>
+T safe_mul(T a, T b) {
+  T prod = a * b;
+
+  // Check for overflow only for integers
+  if (std::is_integral<T>::value) {
+    if (prod / a != b)  // Overflow
+      return std::numeric_limits<T>::max();
+  }
+
+  return prod;
+}
+
 }  // namespace math
 
 // Explicit template instantiations
@@ -918,6 +931,21 @@ template void compute_mbr_union<double>(
     unsigned dim_num, double* mbrs, uint64_t mbr_num, double* mbr_union);
 
 }  // namespace geometry
+
+namespace math {
+
+template int8_t safe_mul<int8_t>(int8_t a, int8_t b);
+template uint8_t safe_mul<uint8_t>(uint8_t a, uint8_t b);
+template int16_t safe_mul<int16_t>(int16_t a, int16_t b);
+template uint16_t safe_mul<uint16_t>(uint16_t a, uint16_t b);
+template int32_t safe_mul<int32_t>(int32_t a, int32_t b);
+template uint32_t safe_mul<uint32_t>(uint32_t a, uint32_t b);
+template int64_t safe_mul<int64_t>(int64_t a, int64_t b);
+template uint64_t safe_mul<uint64_t>(uint64_t a, uint64_t b);
+template float safe_mul<float>(float a, float b);
+template double safe_mul<double>(double a, double b);
+
+}  // namespace math
 
 }  // namespace utils
 

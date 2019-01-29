@@ -1175,6 +1175,20 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(unsplittable == 1);
 
+  // Get current and check
+  tiledb_subarray_t* partition = nullptr;
+  rc = tiledb_subarray_partitioner_get_current(ctx_, partitioner, &partition);
+  CHECK(rc == TILEDB_OK);
+  uint64_t range_num;
+  rc = tiledb_subarray_get_range_num(ctx_, partition, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  const uint64_t* r;
+  rc = tiledb_subarray_get_range(ctx_, partition, 0, 0, (const void**)&r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r[0] == 2);
+  CHECK(r[1] == 2);
+
   // Check done again
   rc = tiledb_subarray_partitioner_done(ctx_, partitioner, &done);
   CHECK(rc == TILEDB_OK);
@@ -1191,18 +1205,15 @@ TEST_CASE_METHOD(
   CHECK(unsplittable == 0);
 
   // Get current and check
-  tiledb_subarray_t* partition = nullptr;
   rc = tiledb_subarray_partitioner_get_current(ctx_, partitioner, &partition);
   CHECK(rc == TILEDB_OK);
-  uint64_t range_num;
   rc = tiledb_subarray_get_range_num(ctx_, partition, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
-  const uint64_t* r;
   rc = tiledb_subarray_get_range(ctx_, partition, 0, 0, (const void**)&r);
   CHECK(rc == TILEDB_OK);
-  CHECK(r[0] == 2);
-  CHECK(r[1] == 2);
+  CHECK(r[0] == 3);
+  CHECK(r[1] == 3);
 
   // Check done again
   rc = tiledb_subarray_partitioner_done(ctx_, partitioner, &done);
