@@ -4330,6 +4330,31 @@ int32_t tiledb_stats_dump(FILE* out) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_stats_dump_str(char** out) {
+  if (out == nullptr)
+    return TILEDB_ERR;
+
+  std::string str;
+  tiledb::sm::stats::all_stats.dump(&str);
+
+  *out = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*out == nullptr)
+    return TILEDB_ERR;
+
+  std::memcpy(*out, str.data(), str.size());
+  (*out)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_stats_free_str(char** out) {
+  if (out != nullptr) {
+    std::free(*out);
+    *out = nullptr;
+  }
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */

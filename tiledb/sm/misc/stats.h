@@ -89,6 +89,9 @@ class Statistics {
   /** Dump the current counter values to the given file. */
   void dump(FILE* out) const;
 
+  /** Dump the current counter values to the given string. */
+  void dump(std::string* out) const;
+
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
@@ -109,6 +112,17 @@ class Statistics {
 #undef STATS_REPORT_FUNC_STAT
   }
 
+  /** Dump all function stats to the output. */
+  void dump_all_func_stats(std::stringstream& ss) const {
+#define STATS_REPORT_FUNC_STAT(function_name)                              \
+  ss << "    { ";                                                          \
+  ss << "\"name\": \"" << #function_name << "\", ";                        \
+  ss << "\"callCount\": " << (uint64_t)function_name##_call_count << ", "; \
+  ss << "\"ns\": " << (uint64_t)function_name##_total_ns << " },\n";
+#include "tiledb/sm/misc/stats_counters.h"
+#undef STATS_REPORT_FUNC_STAT
+  }
+
   /** Dump all counter stats to the output. */
   void dump_all_counter_stats(FILE* out) const {
 #define STATS_REPORT_COUNTER_STAT(counter_name) \
@@ -117,6 +131,16 @@ class Statistics {
       "%-60s%20" PRIu64 "\n",                   \
       "  " #counter_name ",",                   \
       (uint64_t)counter_##counter_name);
+#include "tiledb/sm/misc/stats_counters.h"
+#undef STATS_REPORT_COUNTER_STAT
+  }
+
+  /** Dump all counter stats to the output. */
+  void dump_all_counter_stats(std::stringstream& ss) const {
+#define STATS_REPORT_COUNTER_STAT(counter_name)    \
+  ss << "    { ";                                  \
+  ss << "\"name\": \"" << #counter_name << "\", "; \
+  ss << "\"value\": " << (uint64_t)counter_##counter_name << " },\n";
 #include "tiledb/sm/misc/stats_counters.h"
 #undef STATS_REPORT_COUNTER_STAT
   }
