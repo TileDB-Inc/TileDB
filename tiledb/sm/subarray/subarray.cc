@@ -621,8 +621,9 @@ void Subarray::compute_est_result_size() {
   auto fragment_num = meta.size();
   tile_overlap_.resize(fragment_num);
   auto range_num = this->range_num();
+
   auto statuses_1 = parallel_for(0, range_num, [&](uint64_t i) {
-    auto statuses_2 = parallel_for(0, attribute_num + 1, [&](unsigned a) {
+    for (unsigned a = 0; a < attribute_num + 1; ++a) {
       auto attr_name =
           (a == attribute_num) ? constants::coords : attributes[a]->name();
       bool var_size = (a == attribute_num) ? false : attributes[a]->var_size();
@@ -630,8 +631,7 @@ void Subarray::compute_est_result_size() {
       std::lock_guard<std::mutex> block(mtx);
       est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
       est_result_size_vec[a].size_var_ += result_size.size_var_;
-      return Status::Ok();
-    });
+    }
     return Status::Ok();
   });
 
