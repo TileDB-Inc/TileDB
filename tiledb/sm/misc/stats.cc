@@ -122,6 +122,29 @@ void Statistics::dump_write_summary(FILE* out) const {
           counter_tileio_write_num_bytes_written);
 }
 
+void Statistics::dump(std::string* out) const {
+  std::stringstream ss;
+  ss << "{\n";
+  ss << "  \"functions\": [\n";
+  dump_all_func_stats(ss);
+
+  // Replace last ,\n with just \n
+  ss.seekp(-2, std::ios_base::cur);
+  ss << "\n";
+
+  ss << "  ],\n";
+  ss << "  \"counters\": [\n";
+  dump_all_counter_stats(ss);
+
+  // Replace last ,\n with just \n
+  ss.seekp(-2, std::ios_base::cur);
+  ss << "\n";
+
+  ss << "  ]\n";
+  ss << "}";
+  *out = ss.str();
+}
+
 void Statistics::report_ratio(
     FILE* out,
     const char* msg,

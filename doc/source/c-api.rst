@@ -579,3 +579,7 @@ Stats
     :project: TileDB-C
 .. doxygenfunction:: tiledb_stats_dump
     :project: TileDB-C
+.. doxygenfunction:: tiledb_stats_dump_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_stats_free_str
+    :project: TileDB-C

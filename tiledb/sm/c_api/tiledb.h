@@ -5010,6 +5010,33 @@ TILEDB_EXPORT int32_t tiledb_stats_reset();
  */
 TILEDB_EXPORT int32_t tiledb_stats_dump(FILE* out);
 
+/**
+ * Dump all internal statistics counters to an output string. The caller is
+ * responsible for freeing the resulting string.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char *stats_str;
+ * tiledb_stats_dump_str(&stats_str);
+ * // ...
+ * tiledb_stats_free_str(&stats_str);
+ * @endcode
+ *
+ * @param out Will be set to point to an allocated string containing the stats.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
+
+/**
+ *
+ * Free the memory associated with a previously dumped stats string.
+ *
+ * @param out Pointer to a previously allocated stats string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out);
+
 #ifdef __cplusplus
 }
 #endif

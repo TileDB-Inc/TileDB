@@ -21,6 +21,7 @@
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.
 * Added functions `tiledb_{array,kv}_encryption_type`.
+* Added functions `tiledb_stats_{dump,free}_str`.
 
 ### C++ API
 

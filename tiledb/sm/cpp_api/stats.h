@@ -46,6 +46,10 @@ namespace tiledb {
  * tiledb::Stats::enable();
  * query.submit();
  * tiledb::Stats::dump();
+ *
+ * // Dump to a string instead.
+ * std::string str;
+ * tiledb::Stats::dump(&str);
  * @endcode
  */
 class Stats {
@@ -72,6 +76,18 @@ class Stats {
    */
   static void dump(FILE* out = stdout) {
     check_error(tiledb_stats_dump(out), "error dumping stats");
+  }
+
+  /**
+   * Dump all statistics counters to a string.
+   *
+   * @param out The output.
+   */
+  static void dump(std::string* out) {
+    char* c_str = nullptr;
+    check_error(tiledb_stats_dump_str(&c_str), "error dumping stats");
+    *out = std::string(c_str);
+    check_error(tiledb_stats_free_str(&c_str), "error freeing stats string");
   }
 
  private:

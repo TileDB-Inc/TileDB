@@ -62,6 +62,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_real.cc
+  src/unit-capi-stats.cc
   src/unit-capi-string.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
