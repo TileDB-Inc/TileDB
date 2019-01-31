@@ -122,6 +122,10 @@ class Deleter {
     tiledb_filter_list_free(&p);
   }
 
+  void operator()(tiledb_subarray_t* p) const {
+    tiledb_subarray_free(&p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

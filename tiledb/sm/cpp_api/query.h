@@ -41,6 +41,7 @@
 #include "core_interface.h"
 #include "deleter.h"
 #include "exception.h"
+#include "subarray.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -475,6 +476,43 @@ class Query {
           buf.push_back(p[1]);
         });
     return set_subarray(buf);
+  }
+
+  /**
+   * Sets a subarray, defined using the given Subarray object.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * tiledb::Query query(ctx, array);
+   * tiledb::Subarray subarray(ctx, array, TILEDB_UNORDERED);
+   *
+   * // Read the cell (0, 0) from a 2D array.
+   * int range[] = { 0, 0 };
+   * subarray.add_range(0, range);
+   * subarray.add_range(1, range);
+   *
+   * query.set_subarray(subarray);
+   * @endcode
+   *
+   * @param subarray The Subarray to set
+   * @return Reference to this Query
+   *
+   * @note Setting a subarray object to the query does not work with
+   *     writes. This function will output an error if the query was
+   *     created in write mode.
+   *
+   * @note Setting a subarray object to the query does not work for
+   *     dense arrays. This function will output an error if the
+   *     query was created for a dense array.
+   *
+   * @note Setting a subarray object to the query does not work for
+   *     any layout other than `TILEDB_UNORDERED`.
+   */
+  Query& set_subarray(Subarray& subarray) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_set_subarray_2(ctx, query_.get(), subarray));
+    return *this;
   }
 
   /**
