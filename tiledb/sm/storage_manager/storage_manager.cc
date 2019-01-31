@@ -1124,8 +1124,13 @@ Status StorageManager::load_fragment_metadata(
         tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
     tile->disown_buff();
     buff = tile->buffer();
+    STATS_COUNTER_ADD(fragment_metadata_cache_read_misses, 1);
+    STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io->file_size());
     delete tile;
     delete tile_io;
+  } else {
+    STATS_COUNTER_ADD(fragment_metadata_cache_read_hits, 1);
+    STATS_COUNTER_ADD(fragment_metadata_cached_bytes_copied, buff->size());
   }
 
   // Deserialize
@@ -1134,11 +1139,14 @@ Status StorageManager::load_fragment_metadata(
   delete cbuff;
 
   // Store in cache
-  if (st.ok() && !(*in_cache) &&
-      buff->size() <= fragment_metadata_cache_->max_size()) {
-    buff->disown_data();
-    st = fragment_metadata_cache_->insert(
-        fragment_metadata_uri.to_string(), buff->data(), buff->size());
+  if (st.ok()) {
+    STATS_COUNTER_ADD(fragment_metadata_bytes, buff->size());
+    if (!(*in_cache) && buff->size() <= fragment_metadata_cache_->max_size()) {
+      buff->disown_data();
+      st = fragment_metadata_cache_->insert(
+          fragment_metadata_uri.to_string(), buff->data(), buff->size());
+      STATS_COUNTER_ADD_IF(st.ok(), fragment_metadata_cache_inserts, 1);
+    }
   }
 
   delete buff;
@@ -1773,6 +1781,7 @@ Status StorageManager::load_fragment_metadata(
       RETURN_NOT_OK_ELSE(
           load_fragment_metadata(metadata, encryption_key, &metadata_in_cache),
           delete metadata);
+      STATS_COUNTER_ADD(fragment_metadata_num_fragments, 1);
       *in_cache |= metadata_in_cache;
       open_array->insert_fragment_metadata(metadata);
     }

@@ -67,7 +67,6 @@ FragmentMetadata::FragmentMetadata(
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
-
   auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     auto attr_name = attributes[i]->name();
@@ -78,7 +77,6 @@ FragmentMetadata::FragmentMetadata(
       attribute_var_uri_map_[attr_name] =
           fragment_uri_.join_path(attr_name + "_var" + constants::file_suffix);
   }
-
   attribute_idx_map_[constants::coords] = array_schema_->attribute_num();
   attribute_uri_map_[constants::coords] =
       fragment_uri_.join_path(constants::coords + constants::file_suffix);
@@ -342,7 +340,6 @@ Status FragmentMetadata::deserialize(ConstBuffer* buf) {
   RETURN_NOT_OK(load_last_tile_cell_num(buf));
   RETURN_NOT_OK(load_file_sizes(buf));
   RETURN_NOT_OK(load_file_var_sizes(buf));
-
   return Status::Ok();
 }
 

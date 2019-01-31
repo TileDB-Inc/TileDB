@@ -161,6 +161,10 @@ Status LRUCache::invalidate(const std::string& key, bool* success) {
   STATS_FUNC_OUT(cache_lru_invalidate);
 }
 
+uint64_t LRUCache::size() const {
+  return size_;
+}
+
 uint64_t LRUCache::max_size() const {
   return max_size_;
 }

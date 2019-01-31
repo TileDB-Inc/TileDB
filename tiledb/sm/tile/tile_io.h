@@ -93,9 +93,6 @@ class TileIO {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  TileIO();
-
   /**
    * Constructor.
    *
@@ -104,14 +101,11 @@ class TileIO {
    */
   TileIO(StorageManager* storage_manager, const URI& uri);
 
-  /**
-   * Constructor.
-   *
-   * @param storage_manager The storage manager.
-   * @param uri The name of the file that stores data.
-   * @param file_size The size of the file pointed by `uri`.
-   */
-  TileIO(StorageManager* storage_manager, const URI& uri, uint64_t file_size);
+  TileIO() = delete;
+  TileIO(const TileIO& other) = delete;
+  TileIO(TileIO&& other) = delete;
+  TileIO& operator=(const TileIO& other) = delete;
+  TileIO& operator=(TileIO&& other) = delete;
 
   /* ********************************* */
   /*                API                */
