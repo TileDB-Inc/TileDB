@@ -99,6 +99,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-filter.cc
     src/unit-cppapi-map.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
