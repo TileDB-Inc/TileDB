@@ -133,7 +133,10 @@ class LRUCache {
    */
   Status invalidate(const std::string& key, bool* success);
 
-  /** Returns the maximum size of the cache. */
+  /** Returns the current size of cache in bytes. */
+  uint64_t size() const;
+
+  /** Returns the maximum size of the cache in bytes. */
   uint64_t max_size() const;
 
   /**

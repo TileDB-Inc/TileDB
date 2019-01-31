@@ -52,23 +52,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO() {
-  file_size_ = 0;
-  storage_manager_ = nullptr;
-  uri_ = URI("");
-}
-
 TileIO::TileIO(StorageManager* storage_manager, const URI& uri)
     : storage_manager_(storage_manager)
     , uri_(uri) {
   file_size_ = 0;
-}
-
-TileIO::TileIO(
-    StorageManager* storage_manager, const URI& uri, uint64_t file_size)
-    : file_size_(file_size)
-    , storage_manager_(storage_manager)
-    , uri_(uri) {
 }
 
 /* ****************************** */
@@ -161,6 +148,7 @@ Status TileIO::read_generic(
     // Filter
     RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
 
+    file_size_ = header.persisted_size;
     STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
     STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, (*tile)->size());
 
@@ -230,7 +218,8 @@ Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(write_generic_tile_header(&header));
   RETURN_NOT_OK(storage_manager_->write(uri_, tile->buffer()));
 
-  STATS_COUNTER_ADD(tileio_write_num_bytes_written, tile->buffer()->size());
+  file_size_ = header.persisted_size;
+  STATS_COUNTER_ADD(tileio_write_num_bytes_written, header.persisted_size);
 
   return Status::Ok();
 
