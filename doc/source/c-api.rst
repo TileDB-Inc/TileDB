@@ -162,6 +162,8 @@ Array
 -----
 .. doxygenfunction:: tiledb_array_alloc
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_set_subarray
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_with_key

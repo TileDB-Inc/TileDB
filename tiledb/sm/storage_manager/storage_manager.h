@@ -131,6 +131,8 @@ class StorageManager {
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param encryption_key The encryption key to use.
+   * @param subarray If it is non-null, then only the fragments whose
+   *     non-empty domain overlap with this subarray will be loaded.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
@@ -141,6 +143,7 @@ class StorageManager {
       const URI& array_uri,
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
+      const void* subarray,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -187,6 +190,9 @@ class StorageManager {
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
    * @param encryption_key The encryption key to use.
+   * @param subarray If it is non-null, then only the array fragments
+   *     whose non-empty domain overlaps with the subarray will be
+   *     loaded.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
@@ -197,6 +203,7 @@ class StorageManager {
       const URI& array_uri,
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
+      const void* subarray,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -850,6 +857,27 @@ class StorageManager {
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
+  /**
+   * Checks if the non-empty domain of the fragment with the input URI
+   * overlaps with the input subarray.
+   */
+  Status fragment_overlaps(
+      const ArraySchema* array_schema,
+      const URI& uri,
+      const void* subarray,
+      bool* overlaps) const;
+
+  /**
+   * Checks if the non-empty domain of the fragment with the input URI
+   * overlaps with the input subarray.
+   */
+  template <class T>
+  Status fragment_overlaps(
+      const ArraySchema* array_schema,
+      const URI& uri,
+      const void* subarray,
+      bool* overlaps) const;
+
   /** Retrieves all the fragment URI's of an array. */
   Status get_fragment_uris(
       const URI& array_uri, std::vector<URI>* fragment_uris) const;
@@ -904,10 +932,15 @@ class StorageManager {
    * of UUID. Only the fragments with timestamp smaller than or equal to
    * `timestamp` are considered. The sorted fragment URIs are stored in
    * the second input, including the fragment timestamps.
+   *
+   * Moreover, if ``subarray`` is non-null, the function will retrieve
+   * only the fragments whose non-empty domain overlaps with the subarray.
    */
-  void get_sorted_fragment_uris(
+  Status get_sorted_fragment_uris(
+      const ArraySchema* array_schema,
       const std::vector<URI>& fragment_uris,
       uint64_t timestamp,
+      const void* subarray,
       std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const;
 
   /** Block until there are zero in-progress queries. */
