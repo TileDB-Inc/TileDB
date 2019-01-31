@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* If a subarray is set to an array before opening, only metadata of the fragments whose empty domain overlaps with that subarray are loaded upon array opening.
 * The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
 * Added an advanced, tunable consolidation algorithm
 * Added config params `vfs.s3.aws_access_key_id` and `vfs.s3.aws_secret_access_key` for configure s3 access at runtime. [#1036](https://github.com/TileDB-Inc/TileDB/pull/1036)
@@ -18,6 +19,7 @@
 
 ### C API
 
+* Added function `tiledb_array_set_subarray`
 * Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
 * Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
 * Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.

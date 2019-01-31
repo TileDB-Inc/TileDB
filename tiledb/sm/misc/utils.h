@@ -245,7 +245,7 @@ void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 template <class T>
 void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num);
 
-/** Returns *true* if hyper-rectangles `a` overlaps with `b`. */
+/** Returns *true* if hyper-rectangle `a` overlaps with `b`. */
 template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num);
 

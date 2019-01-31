@@ -2853,6 +2853,39 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
 
 /**
+ * Constrains the array view to a subarray. This function must be called
+ * before opening the array, otherwise it errors. Also it is applicable
+ * only to reads (the subarray is ignored in writes).
+ *
+ * The array will load only the fragment metadata whose non-empty domain
+ * overlaps with the subarray. Therefore, this array will be producing
+ * results only for the data stored in the fragments whose metadata
+ * is loaded.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * uint64_t subarray[] = {1, 10, 1, 10};
+ * tiledb_array_set_subarray(ctx, array, subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The input array.
+ * @param subarray The subarray to be set to the array.
+ * @param subarray_size The size of ``subarray`` in bytes. This must be
+ *     given because the array is not open at the time this function
+ *     is called and, therefore, the array schema is not yet retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const void* subarray,
+    uint64_t subarray_size);
+
+/**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`

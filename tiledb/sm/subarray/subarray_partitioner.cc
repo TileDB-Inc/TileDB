@@ -34,6 +34,14 @@
 #include <iomanip>
 #include "tiledb/sm/array/array.h"
 
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 namespace tiledb {
 namespace sm {
 
@@ -202,6 +210,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 template <class T>
 Status SubarrayPartitioner::next(bool* unsplittable) {
   *unsplittable = false;
+
   if (done())
     return Status::Ok();
 
@@ -279,6 +288,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   // Split multi-range subarray
   if (current_.start_ < current_.end_) {
     current_.end_ *= (1 - constants::multi_range_reduction_in_split);
+    current_.end_ = MAX(current_.start_, current_.end_);
     current_.partition_ =
         std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
     state_.start_ = current_.end_ + 1;
@@ -286,13 +296,17 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     return Status::Ok();
   }
 
+  // Update state start if the current was derived from
+  // ``next_from_multiple_ranges()``, which advanced
+  // the state start to point after this range.
+  if (state_.single_range_.empty())
+    state_.start_--;
+
   // Split single-range subarray
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range<T>(unsplittable);
-  if (!unsplittable) {
-    current_.partition_ = std::move(state_.single_range_.front());
-    state_.single_range_.pop_front();
-  }
+  current_.partition_ = std::move(state_.single_range_.front());
+  state_.single_range_.pop_front();
 
   return Status::Ok();
 }
@@ -508,7 +522,7 @@ template <class T>
 Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   *unsplittable = false;
 
-  // Handle case a new single range must be put in the list and split
+  // Handle case where a new single range must be put in the list and split
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray<T>(current_.start_, current_.end_);
     state_.single_range_.push_front(std::move(s));
@@ -578,8 +592,9 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
     }
   }
 
-  r1.compute_range_offsets();
-  r2.compute_range_offsets();
+  // Important
+  r1.compute_tile_overlap();
+  r2.compute_tile_overlap();
 
   // Update list
   state_.single_range_.pop_front();
