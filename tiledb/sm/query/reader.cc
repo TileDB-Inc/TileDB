@@ -119,9 +119,15 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
 }
 
 bool Reader::incomplete() const {
-  return read_state_.overflowed_ ||
-         read_state_.cur_subarray_partition_ != nullptr ||
-         read_state_2_.overflowed_ || !read_state_2_.done();
+  bool ret;
+  if (read_state_2_.set_) {
+    ret = read_state_2_.overflowed_ || !read_state_2_.done();
+  } else {
+    ret = read_state_.overflowed_ ||
+          read_state_.cur_subarray_partition_ != nullptr;
+  }
+
+  return ret;
 }
 
 Status Reader::get_buffer(
@@ -429,7 +435,6 @@ Status Reader::read_2() {
   }
 
   // Loop until you find results, or unsplittable, or done
-  bool no_results;
   do {
     read_state_2_.overflowed_ = false;
     reset_buffer_sizes();
@@ -445,12 +450,14 @@ Status Reader::read_2() {
       RETURN_NOT_OK(read_state_2_.split_current<T>());
       if (read_state_2_.unsplittable_)
         return Status::Ok();
-    }
+    } else {
+      bool no_results = this->no_results();
+      if (!no_results || read_state_2_.done())
+        return Status::Ok();
 
-    no_results = this->no_results();
-    if (no_results)
       RETURN_NOT_OK(read_state_2_.next());
-  } while (no_results && !read_state_2_.done());
+    }
+  } while (true);
 
   return Status::Ok();
 
@@ -504,7 +511,10 @@ Status Reader::set_buffer(
   if (!attr_exists)
     attributes_.emplace_back(attribute);
 
-  // TODO: probably update the memory budget of Subarray
+  // Update the memory budget of the partitioner
+  if (read_state_2_.set_)
+    read_state_2_.partitioner_.set_result_budget(
+        attribute.c_str(), *buffer_size);
 
   // Set attribute buffer
   attr_buffers_[attribute] =
@@ -555,7 +565,10 @@ Status Reader::set_buffer(
   if (!attr_exists)
     attributes_.emplace_back(attribute);
 
-  // TODO: probably update the memory budget of Subarray
+  // Update the memory budget of the partitioner
+  if (read_state_2_.set_)
+    read_state_2_.partitioner_.set_result_budget(
+        attribute.c_str(), *buffer_off_size, *buffer_val_size);
 
   // Set attribute buffer
   attr_buffers_[attribute] =

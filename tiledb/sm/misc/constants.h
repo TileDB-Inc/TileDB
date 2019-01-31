@@ -78,6 +78,9 @@ extern const std::string filelock_name;
 /** The array schema file name. */
 extern const std::string array_schema_filename;
 
+/** The non-empty domain file name. */
+extern const std::string non_empty_domain_filename;
+
 /** The key-value schema file name. */
 extern const std::string kv_schema_filename;
 

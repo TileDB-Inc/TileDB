@@ -445,6 +445,10 @@ const void* FragmentMetadata::non_empty_domain() const {
   return non_empty_domain_;
 }
 
+uint64_t FragmentMetadata::non_empty_domain_size() const {
+  return (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
+}
+
 Status FragmentMetadata::serialize(Buffer* buf) {
   RETURN_NOT_OK(write_version(buf));
   RETURN_NOT_OK(write_non_empty_domain(buf));

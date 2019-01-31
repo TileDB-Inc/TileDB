@@ -256,6 +256,9 @@ class FragmentMetadata {
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
 
+  /** Returns the non-empty domain size in bytes. */
+  uint64_t non_empty_domain_size() const;
+
   /**
    * Serializes the metadata structures into a binary buffer.
    *
