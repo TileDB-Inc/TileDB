@@ -218,6 +218,10 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   if (!state_.single_range_.empty())
     return next_from_single_range<T>(unsplittable);
 
+  // Handle multi-range partitions, remaining from slab splits
+  if (!state_.multi_range_.empty())
+    return next_from_multiple_ranges<T>();
+
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found = compute_current_start_end<T>();
 
@@ -226,8 +230,18 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
     return next_from_single_range<T>(unsplittable);
 
   // An interval of whole ranges that may need calibration
-  calibrate_current_start_end();
+  bool must_split_slab;
+  calibrate_current_start_end(&must_split_slab);
 
+  // Handle case the next partition is composed of whole ND ranges
+  if (!must_split_slab) {
+    current_.partition_ =
+        std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
+    state_.start_ = current_.end_ + 1;
+    return Status::Ok();
+  }
+
+  // Must split a multi-range subarray slab
   return next_from_multiple_ranges<T>();
 }
 
@@ -315,9 +329,12 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void SubarrayPartitioner::calibrate_current_start_end() {
+void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto start_coords = subarray_.get_range_coords(current_.start_);
   auto end_coords = subarray_.get_range_coords(current_.end_);
+
+  // Initialize (may be reset below)
+  *must_split_slab = false;
 
   std::vector<uint64_t> range_num;
   auto dim_num = subarray_.dim_num();
@@ -384,6 +401,15 @@ void SubarrayPartitioner::calibrate_current_start_end() {
     }
   }
 
+  // Calibrate the range to a slab if layout is row-/col-major
+  if (dim_num > 1 && subarray_.layout() != Layout::UNORDERED) {
+    auto d = (subarray_.layout() == Layout::ROW_MAJOR) ? 0 : dim_num - 1;
+    if (end_coords[d] != range_num[d] - 1) {
+      end_coords[d] = range_num[d] - 1;
+      *must_split_slab = true;
+    }
+  }
+
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
 }
@@ -435,9 +461,6 @@ bool SubarrayPartitioner::compute_current_start_end() {
   // Range found, make it inclusive
   current_.end_--;
   return true;
-
-  // TODO: generalize to different layouts
-  // TODO: handle splitting of multi-range subarrays
 }
 
 // TODO (sp): in the future this can be more sophisticated, taking into
@@ -511,9 +534,8 @@ bool SubarrayPartitioner::must_split_top_single_range() {
 
 template <class T>
 Status SubarrayPartitioner::next_from_multiple_ranges() {
-  current_.partition_ =
-      std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
-  state_.start_ = current_.end_ + 1;
+  // TODO
+  assert(false);
 
   return Status::Ok();
 }
