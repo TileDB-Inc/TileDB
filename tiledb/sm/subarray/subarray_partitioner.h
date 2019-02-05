@@ -210,6 +210,14 @@ class SubarrayPartitioner {
      * of single-range partitions that need to be explored next.
      */
     std::list<Subarray> single_range_;
+    /**
+     * This is a list of subarrays that resulted from splitting a
+     * multi-range subarray "slab" to produce the current partition
+     * (applicable only to ROW_MAJOR and COL_MAJOR layouts).
+     * The list stores the remaining multi-range subarray slab as a
+     * set of multi-range partitions that need to be explored next.
+     */
+    std::list<Subarray> multi_range_;
   };
 
   /* ********************************* */
@@ -238,14 +246,20 @@ class SubarrayPartitioner {
    * budget, this function must calibrate ``current_.end_`` so that the
    * interval corresponds to either (i) a full slab of ranges, i.e.,
    * full rows or columns (depending on the layout) of ranges, or (ii) a
-   * single partial row or column (depending on the layout) of the ranges.
-   * The reason is that the next partition to be stored in
+   * single partial row or column (applicable only to UNORDERED layout) of
+   * the ranges. The reason is that the next partition to be stored in
    * ``current_.partition_`` must always have a proper ``Subarray`` structure,
    * consisting of a set of 1D ranges per dimension, that all together form
    * a set of multiple ND ranges (produced by the cross produce of the 1D
    * ranges).
+   *
+   * For ROW_MAJOR and COL_MAJOR layouts, this function may set
+   * ``must_split_slab`` to ``true`` if after calibrating the range interval
+   * to form a "slab", that slab does not entirely fit in the result budget
+   * and needs splitting along the splitting dimension (that depends on
+   * the layout).
    */
-  void calibrate_current_start_end();
+  void calibrate_current_start_end(bool* must_split_slab);
 
   /** Returns a deep copy of this SubarrayPartitioner. */
   SubarrayPartitioner clone() const;
