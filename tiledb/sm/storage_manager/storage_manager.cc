@@ -888,6 +888,7 @@ Status StorageManager::get_fragment_info(
     RETURN_NOT_OK(vfs_->dir_size(uri.second, &size));
 
     // Get fragment non-empty domain
+    // TODO: get it from the file
     auto metadata =
         FragmentMetadata(array_schema, !sparse, uri.second, uri.first);
     RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key, &in_cache));

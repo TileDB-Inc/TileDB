@@ -40,6 +40,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
+#include <cmake-build-debug/examples/tiledb/tiledb.h>
 #include <iostream>
 
 namespace tiledb {
@@ -1061,13 +1062,11 @@ Status Reader::compute_range_coords(
     RETURN_NOT_OK(
         compute_range_coords(r, tiles, tile_map, &((*range_coords)[r])));
 
-    // Potentially sort
-    if (layout_ != Layout::UNORDERED || !single_fragment[r])
+    // Potentially sort for deduping purposes (for the case of updates)
+    if (!single_fragment[r]) {
       RETURN_CANCEL_OR_ERROR(sort_coords_2<T>(&((*range_coords)[r])));
-
-    // Potentially dedup
-    if (!single_fragment[r])
       RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&((*range_coords)[r])));
+    }
 
     // Compute tile coordinate
     return Status::Ok();
@@ -1127,8 +1126,6 @@ Status Reader::compute_subarray_coords(
     OverlappingCoordsVec<T>* coords) {
   assert(range_coords->size() == 1 || layout_ == Layout::UNORDERED);
 
-  // TODO: handle other layouts
-
   // Add all valid ``range_coords`` to ``coords``
   for (const auto& rv : *range_coords) {
     for (const auto& c : rv) {
@@ -1136,6 +1133,10 @@ Status Reader::compute_subarray_coords(
         coords->emplace_back(c.tile_, c.coords_, c.pos_);
     }
   }
+
+  // Potentially sort
+  if (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)
+    RETURN_NOT_OK(sort_coords_2(coords));
 
   return Status::Ok();
 }
