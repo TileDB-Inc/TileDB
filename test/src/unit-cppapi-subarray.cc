@@ -158,7 +158,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi], [sparse], [subarray]") {
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete)",
-    "[cppapi], [sparse], [subarray], [incomplete]") {
+    "[cppapi], [sparse], [cppapi-subarray], [incomplete]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -289,4 +289,7 @@ TEST_CASE(
   REQUIRE(result_num == 2);
   REQUIRE(data[0] == 'j');
   REQUIRE(data[1] == 'k');
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
 }
