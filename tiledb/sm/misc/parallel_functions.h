@@ -37,6 +37,7 @@
 #include <cassert>
 
 #ifdef HAVE_TBB
+#include <tbb/blocked_range2d.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_sort.h>
@@ -120,6 +121,52 @@ std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
 #else
   for (uint64_t i = begin; i < end; i++) {
     result[i - begin] = F(i);
+  }
+#endif
+  return result;
+}
+
+/**
+ * Call the given function on every pair (i, j) in the given i and j ranges,
+ * possibly in parallel.
+ *
+ * @tparam FuncT Function type (returning Status).
+ * @param i0 Inclusive start of outer (rows) range.
+ * @param i1 Exclusive end of outer range.
+ * @param j0 Inclusive start of inner (cols) range.
+ * @param j1 Exclusive end of inner range.
+ * @param F Function to call on each (i, j) pair.
+ * @return Vector of Status objects, one for each function invocation.
+ */
+template <typename FuncT>
+std::vector<Status> parallel_for_2d(
+    uint64_t i0, uint64_t i1, uint64_t j0, uint64_t j1, const FuncT& F) {
+  assert(i0 <= i1);
+  assert(j0 <= j1);
+  const uint64_t num_i_iters = i1 - i0 + 1, num_j_iters = j1 - j0 + 1;
+  const uint64_t num_iters = num_i_iters * num_j_iters;
+  std::vector<Status> result(num_iters);
+#ifdef HAVE_TBB
+  auto range = tbb::blocked_range2d<uint64_t>(i0, i1, j0, j1);
+  tbb::parallel_for(
+      range,
+      [i0, j0, num_j_iters, &result, &F](
+          const tbb::blocked_range2d<uint64_t>& r) {
+        const auto& rows = r.rows();
+        const auto& cols = r.cols();
+        for (uint64_t i = rows.begin(); i < rows.end(); i++) {
+          for (uint64_t j = cols.begin(); j < cols.end(); j++) {
+            uint64_t idx = (i - i0) * num_j_iters + (j - j0);
+            result[idx] = F(i, j);
+          }
+        }
+      });
+#else
+  for (uint64_t i = i0; i < i1; i++) {
+    for (uint64_t j = j0; j < j1; j++) {
+      uint64_t idx = (i - i0) * num_j_iters + (j - j0);
+      result[idx] = F(i, j);
+    }
   }
 #endif
   return result;
