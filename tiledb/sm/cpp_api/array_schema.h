@@ -600,6 +600,20 @@ class ArraySchema : public Schema {
     return Attribute(ctx, attr);
   }
 
+  /**
+   * Checks if the schema has an attribute of the given name.
+   *
+   * @param name Name of attribute to check for
+   * @return True if the schema has an attribute of the given name.
+   */
+  bool has_attribute(const std::string& name) const {
+    auto& ctx = ctx_.get();
+    int32_t has_attr;
+    ctx.handle_error(tiledb_array_schema_has_attribute(
+        ctx, schema_.get(), name.c_str(), &has_attr));
+    return has_attr == 1;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */

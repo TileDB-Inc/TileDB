@@ -1065,6 +1065,20 @@ TEST_CASE_METHOD(
   rc = tiledb_kv_schema_check(ctx_, kv_schema);
   CHECK(rc == TILEDB_OK);
 
+  int32_t has_attr = 0;
+  rc = tiledb_kv_schema_has_attribute(
+      ctx_, kv_schema, ATTR_1.c_str(), &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 1);
+  has_attr = 0;
+  rc = tiledb_kv_schema_has_attribute(ctx_, kv_schema, "", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 0);
+  has_attr = 0;
+  rc = tiledb_kv_schema_has_attribute(ctx_, kv_schema, "foo", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 0);
+
   // Clean up
   rc = tiledb_kv_close(ctx_, kv);
   REQUIRE(rc == TILEDB_OK);

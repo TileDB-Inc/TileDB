@@ -22,6 +22,8 @@
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.
 * Added functions `tiledb_{array,kv}_encryption_type`.
 * Added functions `tiledb_stats_{dump,free}_str`.
+* Added function `tiledb_{array,kv}_schema_has_attribute`.
+* Added function `tiledb_domain_has_dimension`.
 
 ### C++ API
 
@@ -29,6 +31,8 @@
 * Added function `VFS::dir_size`.
 * Added function `VFS::ls`.
 * Added `{Array,Map}::encryption_type()`.
+* Added `{ArraySchema,MapSchema}::has_attribute()`
+* Added `Domain::has_dimension()`
 
 ## Breaking changes
 

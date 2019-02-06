@@ -363,6 +363,23 @@ void ArraySchema::dump(FILE* out) const {
   }
 }
 
+Status ArraySchema::has_attribute(
+    const std::string& name, bool* has_attr) const {
+  *has_attr = false;
+
+  std::string normalized;
+  RETURN_NOT_OK(attribute_name_normalized(name.c_str(), &normalized));
+
+  for (auto& attr : attributes_) {
+    if (normalized == attr->name()) {
+      *has_attr = true;
+      break;
+    }
+  }
+
+  return Status::Ok();
+}
+
 bool ArraySchema::is_kv() const {
   return is_kv_;
 }

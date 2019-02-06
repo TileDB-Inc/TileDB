@@ -235,6 +235,20 @@ class Domain {
     return *this;
   }
 
+  /**
+   * Checks if the domain has a dimension of the given name.
+   *
+   * @param name Name of dimension to check for
+   * @return True if the domain has a dimension of the given name.
+   */
+  bool has_dimension(const std::string& name) const {
+    auto& ctx = ctx_.get();
+    int32_t has_dim;
+    ctx.handle_error(tiledb_domain_has_dimension(
+        ctx, domain_.get(), name.c_str(), &has_dim));
+    return has_dim == 1;
+  }
+
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_domain_t> ptr() const {
     return domain_;
