@@ -179,6 +179,11 @@ class SubarrayPartitioner {
      * current partition has been constructed from.
      */
     uint64_t end_;
+    /**
+     * ``true`` if the partition came from splitting a multi-range
+     * subarray that was put into ``state_.multi_range_``.
+     */
+    bool split_multi_range_ = false;
   };
 
   /**
@@ -275,25 +280,42 @@ class SubarrayPartitioner {
   bool compute_current_start_end();
 
   /**
+   * Computes the splitting point and dimension for the input range.
+   * In case of real domains, if this function may not be able to find a
+   * splitting point and set ``unsplittable`` to ``true``.
+   */
+  template <class T>
+  void compute_splitting_point_single_range(
+      const Subarray& range,
+      unsigned* splitting_dim,
+      T* splitting_point,
+      bool* unsplittable);
+
+  /**
    * Computes the splitting point and dimension for
-   * ``state_.single_range_.front()``. In case of real domains, if this
+   * ``state_.multi_range_.front()``. In case of real domains, if this
    * function may not be able to find a splitting point and set
    * ``unsplittable`` to ``true``.
    */
   template <class T>
-  void compute_splitting_point(
-      unsigned* splitting_dim, T* splitting_point, bool* unsplittable);
+  void compute_splitting_point_multi_range(
+      unsigned* splitting_dim,
+      uint64_t* splitting_range,
+      T* splitting_point,
+      bool* unsplittable);
 
-  /** Returns ``true`` if the top single range in the state must be split. */
+  /** Returns ``true`` if the input partition must be split. */
   template <class T>
-  bool must_split_top_single_range();
+  bool must_split(Subarray* partition);
 
   /**
-   * It computes the next partition from multiple subarray ranges, namely
-   * those in ``[current.start_, current_.end_]``.
+   * It computes the next partition from a multi-range subarray, which may
+   * need to be split and added to the list of multi-range subarray
+   * partitions. If the next partition cannot be produced,
+   * ``unsplittable`` is set to ``true``.
    */
   template <class T>
-  Status next_from_multiple_ranges();
+  Status next_from_multi_range(bool* unsplittable);
 
   /**
    * It handles the case where ``state_.single_range_`` is non-empty, which
@@ -311,6 +333,13 @@ class SubarrayPartitioner {
    */
   template <class T>
   Status split_top_single_range(bool* unsplittable);
+
+  /**
+   * Splits the top multi-range, or sets ``unsplittable`` to ``true``
+   * if that is not possible.
+   */
+  template <class T>
+  Status split_top_multi_range(bool* unsplittable);
 
   /**
    * Swaps the contents (all field values) of this subarray partitioner with

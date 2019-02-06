@@ -448,6 +448,7 @@ Status Reader::read_2() {
     if (read_state_2_.overflowed_) {
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_2_.split_current<T>());
+
       if (read_state_2_.unsplittable_)
         return Status::Ok();
     } else {
@@ -1123,8 +1124,6 @@ template <class T>
 Status Reader::compute_subarray_coords(
     std::vector<OverlappingCoordsVec<T>>* range_coords,
     OverlappingCoordsVec<T>* coords) {
-  assert(range_coords->size() == 1 || layout_ == Layout::UNORDERED);
-
   // Add all valid ``range_coords`` to ``coords``
   for (const auto& rv : *range_coords) {
     for (const auto& c : rv) {
@@ -1186,12 +1185,15 @@ Status Reader::compute_overlapping_tiles_2(
   auto overlap = subarray.tile_overlap();
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
-  std::vector<unsigned> last_fragment;
-  last_fragment.resize(range_num);
+  std::vector<unsigned> first_fragment;
+  first_fragment.resize(range_num);
   for (uint64_t r = 0; r < range_num; ++r)
-    last_fragment[r] = UINT32_MAX;
+    first_fragment[r] = UINT32_MAX;
 
   single_fragment->resize(range_num);
+  for (uint64_t i = 0; i < range_num; ++i)
+    (*single_fragment)[i] = true;
+
   tiles->clear();
   for (unsigned f = 0; f < fragment_num; ++f) {
     // Applicable only to sparse fragments
@@ -1210,8 +1212,10 @@ Status Reader::compute_overlapping_tiles_2(
                 new OverlappingTile(f, t, attributes_, true));
             tiles->push_back(std::move(tile));
             (*tile_map)[pair] = tiles->size() - 1;
-            (*single_fragment)[r] = (f < last_fragment[r]);
-            last_fragment[r] = f;
+            if (f > first_fragment[r])
+              (*single_fragment)[r] = false;
+            else
+              first_fragment[r] = f;
           }
         }
       }
@@ -1228,8 +1232,10 @@ Status Reader::compute_overlapping_tiles_2(
               new OverlappingTile(f, t, attributes_, full_overlap));
           tiles->push_back(std::move(tile));
           (*tile_map)[pair] = tiles->size() - 1;
-          (*single_fragment)[r] = (f < last_fragment[r]);
-          last_fragment[r] = f;
+          if (f > first_fragment[r])
+            (*single_fragment)[r] = false;
+          else
+            first_fragment[r] = f;
         }
       }
     }

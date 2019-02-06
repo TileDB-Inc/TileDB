@@ -1203,7 +1203,7 @@ void SparseArrayFx2::check_sparse_array_unordered_with_duplicates_dedup(
 
   // Create subarray
   tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
   REQUIRE(rc == TILEDB_OK);
 
   // Set subarray
@@ -3477,63 +3477,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SparseArrayFx2,
-    "C API: Test sparse array 2, multi-subarray, 2D, invalid layout",
-    "[capi], [sparse-2], [sparse-2-multi-subarray-2d-invalid-layout]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR +
-                           "sparse_multi_subarray_2d_invalid_layout";
-  remove_array(array_name);
-  create_sparse_array(array_name);
-  write_sparse_array(array_name);
-
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create some subarray
-  uint64_t s00[] = {1, 1};
-  uint64_t s01[] = {3, 4};
-  uint64_t s10[] = {2, 2};
-  uint64_t s11[] = {3, 4};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s00);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s01);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s10);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s11);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Create WRITE query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx, query, subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
-
-  // Clean up
-  tiledb_query_free(&query);
-  tiledb_array_free(&array);
-  tiledb_subarray_free(&subarray);
-  tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    SparseArrayFx2,
     "C API: Test sparse array 2, multi-subarray, 2D, complete, col",
     "[capi], [sparse-2], [sparse-2-multi-subarray-2d-complete-col]") {
   std::string array_name =
@@ -3799,6 +3742,2301 @@ TEST_CASE_METHOD(
   CHECK(b_coords[5] == 4);
   CHECK(b_coords[6] == 2);
   CHECK(b_coords[7] == 3);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major",
+    "[capi], [sparse-2], [sparse-2-multi-range-row]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[20];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(b_a1_size == 8 * sizeof(int));
+  CHECK(b_a2_off_size == 8 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 20 * sizeof(char));
+  CHECK(b_a3_size == 16 * sizeof(float));
+  CHECK(b_coords_size == 16 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 1);
+  CHECK(b_a1[2] == 2);
+  CHECK(b_a1[3] == 3);
+  CHECK(b_a1[4] == 4);
+  CHECK(b_a1[5] == 6);
+  CHECK(b_a1[6] == 7);
+  CHECK(b_a1[7] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 3);
+  CHECK(b_a2_off[3] == 6);
+  CHECK(b_a2_off[4] == 10);
+  CHECK(b_a2_off[5] == 11);
+  CHECK(b_a2_off[6] == 14);
+  CHECK(b_a2_off[7] == 18);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'b');
+  CHECK(b_a2_val[2] == 'b');
+  CHECK(b_a2_val[3] == 'c');
+  CHECK(b_a2_val[4] == 'c');
+  CHECK(b_a2_val[5] == 'c');
+  CHECK(b_a2_val[6] == 'd');
+  CHECK(b_a2_val[7] == 'd');
+  CHECK(b_a2_val[8] == 'd');
+  CHECK(b_a2_val[9] == 'd');
+  CHECK(b_a2_val[10] == 'e');
+  CHECK(b_a2_val[11] == 'g');
+  CHECK(b_a2_val[12] == 'g');
+  CHECK(b_a2_val[13] == 'g');
+  CHECK(b_a2_val[14] == 'h');
+  CHECK(b_a2_val[15] == 'h');
+  CHECK(b_a2_val[16] == 'h');
+  CHECK(b_a2_val[17] == 'h');
+  CHECK(b_a2_val[18] == 'f');
+  CHECK(b_a2_val[19] == 'f');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 1.1f);
+  CHECK(b_a3[3] == 1.2f);
+  CHECK(b_a3[4] == 2.1f);
+  CHECK(b_a3[5] == 2.2f);
+  CHECK(b_a3[6] == 3.1f);
+  CHECK(b_a3[7] == 3.2f);
+  CHECK(b_a3[8] == 4.1f);
+  CHECK(b_a3[9] == 4.2f);
+  CHECK(b_a3[10] == 6.1f);
+  CHECK(b_a3[11] == 6.2f);
+  CHECK(b_a3[12] == 7.1f);
+  CHECK(b_a3[13] == 7.2f);
+  CHECK(b_a3[14] == 5.1f);
+  CHECK(b_a3[15] == 5.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 1);
+  CHECK(b_coords[3] == 2);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 4);
+  CHECK(b_coords[6] == 2);
+  CHECK(b_coords[7] == 3);
+  CHECK(b_coords[8] == 3);
+  CHECK(b_coords[9] == 1);
+  CHECK(b_coords[10] == 3);
+  CHECK(b_coords[11] == 3);
+  CHECK(b_coords[12] == 3);
+  CHECK(b_coords[13] == 4);
+  CHECK(b_coords[14] == 4);
+  CHECK(b_coords[15] == 2);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, col-major",
+    "[capi], [sparse-2], [sparse-2-multi-range-col]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[20];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(b_a1_size == 8 * sizeof(int));
+  CHECK(b_a2_off_size == 8 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 20 * sizeof(char));
+  CHECK(b_a3_size == 16 * sizeof(float));
+  CHECK(b_coords_size == 16 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 4);
+  CHECK(b_a1[2] == 1);
+  CHECK(b_a1[3] == 5);
+  CHECK(b_a1[4] == 3);
+  CHECK(b_a1[5] == 6);
+  CHECK(b_a1[6] == 2);
+  CHECK(b_a1[7] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 2);
+  CHECK(b_a2_off[3] == 4);
+  CHECK(b_a2_off[4] == 6);
+  CHECK(b_a2_off[5] == 10);
+  CHECK(b_a2_off[6] == 13);
+  CHECK(b_a2_off[7] == 16);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'e');
+  CHECK(b_a2_val[2] == 'b');
+  CHECK(b_a2_val[3] == 'b');
+  CHECK(b_a2_val[4] == 'f');
+  CHECK(b_a2_val[5] == 'f');
+  CHECK(b_a2_val[6] == 'd');
+  CHECK(b_a2_val[7] == 'd');
+  CHECK(b_a2_val[8] == 'd');
+  CHECK(b_a2_val[9] == 'd');
+  CHECK(b_a2_val[10] == 'g');
+  CHECK(b_a2_val[11] == 'g');
+  CHECK(b_a2_val[12] == 'g');
+  CHECK(b_a2_val[13] == 'c');
+  CHECK(b_a2_val[14] == 'c');
+  CHECK(b_a2_val[15] == 'c');
+  CHECK(b_a2_val[16] == 'h');
+  CHECK(b_a2_val[17] == 'h');
+  CHECK(b_a2_val[18] == 'h');
+  CHECK(b_a2_val[19] == 'h');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 4.1f);
+  CHECK(b_a3[3] == 4.2f);
+  CHECK(b_a3[4] == 1.1f);
+  CHECK(b_a3[5] == 1.2f);
+  CHECK(b_a3[6] == 5.1f);
+  CHECK(b_a3[7] == 5.2f);
+  CHECK(b_a3[8] == 3.1f);
+  CHECK(b_a3[9] == 3.2f);
+  CHECK(b_a3[10] == 6.1f);
+  CHECK(b_a3[11] == 6.2f);
+  CHECK(b_a3[12] == 2.1f);
+  CHECK(b_a3[13] == 2.2f);
+  CHECK(b_a3[14] == 7.1f);
+  CHECK(b_a3[15] == 7.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 1);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 2);
+  CHECK(b_coords[6] == 4);
+  CHECK(b_coords[7] == 2);
+  CHECK(b_coords[8] == 2);
+  CHECK(b_coords[9] == 3);
+  CHECK(b_coords[10] == 3);
+  CHECK(b_coords[11] == 3);
+  CHECK(b_coords[12] == 1);
+  CHECK(b_coords[13] == 4);
+  CHECK(b_coords[14] == 3);
+  CHECK(b_coords[15] == 4);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major, incomplete 1",
+    "[capi], [sparse-2], [sparse-2-multi-range-row-incomplete-1]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_1";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[6];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 4 * sizeof(int));
+  CHECK(b_a2_off_size == 4 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 10 * sizeof(char));
+  CHECK(b_a3_size == 8 * sizeof(float));
+  CHECK(b_coords_size == 8 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 1);
+  CHECK(b_a1[2] == 2);
+  CHECK(b_a1[3] == 3);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 3);
+  CHECK(b_a2_off[3] == 6);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'b');
+  CHECK(b_a2_val[2] == 'b');
+  CHECK(b_a2_val[3] == 'c');
+  CHECK(b_a2_val[4] == 'c');
+  CHECK(b_a2_val[5] == 'c');
+  CHECK(b_a2_val[6] == 'd');
+  CHECK(b_a2_val[7] == 'd');
+  CHECK(b_a2_val[8] == 'd');
+  CHECK(b_a2_val[9] == 'd');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 1.1f);
+  CHECK(b_a3[3] == 1.2f);
+  CHECK(b_a3[4] == 2.1f);
+  CHECK(b_a3[5] == 2.2f);
+  CHECK(b_a3[6] == 3.1f);
+  CHECK(b_a3[7] == 3.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 1);
+  CHECK(b_coords[3] == 2);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 4);
+  CHECK(b_coords[6] == 2);
+  CHECK(b_coords[7] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(b_a1_size == 4 * sizeof(int));
+  CHECK(b_a2_off_size == 4 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 10 * sizeof(char));
+  CHECK(b_a3_size == 8 * sizeof(float));
+  CHECK(b_coords_size == 8 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 4);
+  CHECK(b_a1[1] == 6);
+  CHECK(b_a1[2] == 7);
+  CHECK(b_a1[3] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 4);
+  CHECK(b_a2_off[3] == 8);
+
+  CHECK(b_a2_val[0] == 'e');
+  CHECK(b_a2_val[1] == 'g');
+  CHECK(b_a2_val[2] == 'g');
+  CHECK(b_a2_val[3] == 'g');
+  CHECK(b_a2_val[4] == 'h');
+  CHECK(b_a2_val[5] == 'h');
+  CHECK(b_a2_val[6] == 'h');
+  CHECK(b_a2_val[7] == 'h');
+  CHECK(b_a2_val[8] == 'f');
+  CHECK(b_a2_val[9] == 'f');
+
+  CHECK(b_a3[0] == 4.1f);
+  CHECK(b_a3[1] == 4.2f);
+  CHECK(b_a3[2] == 6.1f);
+  CHECK(b_a3[3] == 6.2f);
+  CHECK(b_a3[4] == 7.1f);
+  CHECK(b_a3[5] == 7.2f);
+  CHECK(b_a3[6] == 5.1f);
+  CHECK(b_a3[7] == 5.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 3);
+  CHECK(b_coords[4] == 3);
+  CHECK(b_coords[5] == 4);
+  CHECK(b_coords[6] == 4);
+  CHECK(b_coords[7] == 2);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, col-major, incomplete 1",
+    "[capi], [sparse-2], [sparse-2-multi-range-col-incomplete-1]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_1";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[6];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 4 * sizeof(int));
+  CHECK(b_a2_off_size == 4 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 6 * sizeof(char));
+  CHECK(b_a3_size == 8 * sizeof(float));
+  CHECK(b_coords_size == 8 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 4);
+  CHECK(b_a1[2] == 1);
+  CHECK(b_a1[3] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 2);
+  CHECK(b_a2_off[3] == 4);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'e');
+  CHECK(b_a2_val[2] == 'b');
+  CHECK(b_a2_val[3] == 'b');
+  CHECK(b_a2_val[4] == 'f');
+  CHECK(b_a2_val[5] == 'f');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 4.1f);
+  CHECK(b_a3[3] == 4.2f);
+  CHECK(b_a3[4] == 1.1f);
+  CHECK(b_a3[5] == 1.2f);
+  CHECK(b_a3[6] == 5.1f);
+  CHECK(b_a3[7] == 5.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 1);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 2);
+  CHECK(b_coords[6] == 4);
+  CHECK(b_coords[7] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(b_a1_size == 4 * sizeof(int));
+  CHECK(b_a2_off_size == 4 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 14 * sizeof(char));
+  CHECK(b_a3_size == 8 * sizeof(float));
+  CHECK(b_coords_size == 8 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+  CHECK(b_a1[1] == 6);
+  CHECK(b_a1[2] == 2);
+  CHECK(b_a1[3] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 4);
+  CHECK(b_a2_off[2] == 7);
+  CHECK(b_a2_off[3] == 10);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+  CHECK(b_a2_val[4] == 'g');
+  CHECK(b_a2_val[5] == 'g');
+  CHECK(b_a2_val[6] == 'g');
+  CHECK(b_a2_val[7] == 'c');
+  CHECK(b_a2_val[8] == 'c');
+  CHECK(b_a2_val[9] == 'c');
+  CHECK(b_a2_val[10] == 'h');
+  CHECK(b_a2_val[11] == 'h');
+  CHECK(b_a2_val[12] == 'h');
+  CHECK(b_a2_val[13] == 'h');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+  CHECK(b_a3[2] == 6.1f);
+  CHECK(b_a3[3] == 6.2f);
+  CHECK(b_a3[4] == 2.1f);
+  CHECK(b_a3[5] == 2.2f);
+  CHECK(b_a3[6] == 7.1f);
+  CHECK(b_a3[7] == 7.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 3);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 4);
+  CHECK(b_coords[6] == 3);
+  CHECK(b_coords[7] == 4);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major, incomplete 2",
+    "[capi], [sparse-2], [sparse-2-multi-range-row-incomplete-2]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_2";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[3];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 3 * sizeof(int));
+  CHECK(b_a2_off_size == 3 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 6 * sizeof(char));
+  CHECK(b_a3_size == 6 * sizeof(float));
+  CHECK(b_coords_size == 6 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 1);
+  CHECK(b_a1[2] == 2);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 3);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'b');
+  CHECK(b_a2_val[2] == 'b');
+  CHECK(b_a2_val[3] == 'c');
+  CHECK(b_a2_val[4] == 'c');
+  CHECK(b_a2_val[5] == 'c');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 1.1f);
+  CHECK(b_a3[3] == 1.2f);
+  CHECK(b_a3[4] == 2.1f);
+  CHECK(b_a3[5] == 2.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 1);
+  CHECK(b_coords[3] == 2);
+  CHECK(b_coords[4] == 1);
+  CHECK(b_coords[5] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 3 * sizeof(int));
+  CHECK(b_a2_off_size == 3 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 8 * sizeof(char));
+  CHECK(b_a3_size == 6 * sizeof(float));
+  CHECK(b_coords_size == 6 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 4);
+  CHECK(b_a1[1] == 6);
+  CHECK(b_a1[2] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+  CHECK(b_a2_off[2] == 4);
+
+  CHECK(b_a2_val[0] == 'e');
+  CHECK(b_a2_val[1] == 'g');
+  CHECK(b_a2_val[2] == 'g');
+  CHECK(b_a2_val[3] == 'g');
+  CHECK(b_a2_val[4] == 'h');
+  CHECK(b_a2_val[5] == 'h');
+  CHECK(b_a2_val[6] == 'h');
+  CHECK(b_a2_val[7] == 'h');
+
+  CHECK(b_a3[0] == 4.1f);
+  CHECK(b_a3[1] == 4.2f);
+  CHECK(b_a3[2] == 6.1f);
+  CHECK(b_a3[3] == 6.2f);
+  CHECK(b_a3[4] == 7.1f);
+  CHECK(b_a3[5] == 7.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 3);
+  CHECK(b_coords[4] == 3);
+  CHECK(b_coords[5] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'f');
+  CHECK(b_a2_val[1] == 'f');
+
+  CHECK(b_a3[0] == 5.1f);
+  CHECK(b_a3[1] == 5.2f);
+
+  CHECK(b_coords[0] == 4);
+  CHECK(b_coords[1] == 2);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, col-major, incomplete 2",
+    "[capi], [sparse-2], [sparse-2-multi-range-col-incomplete-2]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_2";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[3];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 4);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'e');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 4.1f);
+  CHECK(b_a3[3] == 4.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 1);
+  CHECK(b_a1[1] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 2);
+
+  CHECK(b_a2_val[0] == 'b');
+  CHECK(b_a2_val[1] == 'b');
+  CHECK(b_a2_val[2] == 'f');
+  CHECK(b_a2_val[3] == 'f');
+
+  CHECK(b_a3[0] == 1.1f);
+  CHECK(b_a3[1] == 1.2f);
+  CHECK(b_a3[2] == 5.1f);
+  CHECK(b_a3[3] == 5.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 2);
+  CHECK(b_coords[2] == 4);
+  CHECK(b_coords[3] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 7 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+  CHECK(b_a1[1] == 6);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 4);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+  CHECK(b_a2_val[4] == 'g');
+  CHECK(b_a2_val[5] == 'g');
+  CHECK(b_a2_val[6] == 'g');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+  CHECK(b_a3[2] == 6.1f);
+  CHECK(b_a3[3] == 6.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 7 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 2);
+  CHECK(b_a1[1] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 3);
+
+  CHECK(b_a2_val[0] == 'c');
+  CHECK(b_a2_val[1] == 'c');
+  CHECK(b_a2_val[2] == 'c');
+  CHECK(b_a2_val[3] == 'h');
+  CHECK(b_a2_val[4] == 'h');
+  CHECK(b_a2_val[5] == 'h');
+  CHECK(b_a2_val[6] == 'h');
+
+  CHECK(b_a3[0] == 2.1f);
+  CHECK(b_a3[1] == 2.2f);
+  CHECK(b_a3[2] == 7.1f);
+  CHECK(b_a3[3] == 7.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 4);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 4);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major, incomplete 3",
+    "[capi], [sparse-2], [sparse-2-multi-range-row-incomplete-3]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_3";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[2];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+  CHECK(b_a1[1] == 1);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 1);
+
+  CHECK(b_a2_val[0] == 'a');
+  CHECK(b_a2_val[1] == 'b');
+  CHECK(b_a2_val[2] == 'b');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+  CHECK(b_a3[2] == 1.1f);
+  CHECK(b_a3[3] == 1.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+  CHECK(b_coords[2] == 1);
+  CHECK(b_coords[3] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 2);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'c');
+  CHECK(b_a2_val[1] == 'c');
+  CHECK(b_a2_val[2] == 'c');
+
+  CHECK(b_a3[0] == 2.1f);
+  CHECK(b_a3[1] == 2.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 4);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'e');
+
+  CHECK(b_a3[0] == 4.1f);
+  CHECK(b_a3[1] == 4.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 2 * sizeof(int));
+  CHECK(b_a2_off_size == 2 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 7 * sizeof(char));
+  CHECK(b_a3_size == 4 * sizeof(float));
+  CHECK(b_coords_size == 4 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 6);
+  CHECK(b_a1[1] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+  CHECK(b_a2_off[1] == 3);
+
+  CHECK(b_a2_val[0] == 'g');
+  CHECK(b_a2_val[1] == 'g');
+  CHECK(b_a2_val[2] == 'g');
+  CHECK(b_a2_val[3] == 'h');
+  CHECK(b_a2_val[4] == 'h');
+  CHECK(b_a2_val[5] == 'h');
+  CHECK(b_a2_val[6] == 'h');
+
+  CHECK(b_a3[0] == 6.1f);
+  CHECK(b_a3[1] == 6.2f);
+  CHECK(b_a3[2] == 7.1f);
+  CHECK(b_a3[3] == 7.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 3);
+  CHECK(b_coords[2] == 3);
+  CHECK(b_coords[3] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'f');
+  CHECK(b_a2_val[1] == 'f');
+
+  CHECK(b_a3[0] == 5.1f);
+  CHECK(b_a3[1] == 5.2f);
+
+  CHECK(b_coords[0] == 4);
+  CHECK(b_coords[1] == 2);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major, incomplete 4",
+    "[capi], [sparse-2], [sparse-2-multi-range-row-incomplete-4]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_4";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[1];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'a');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 1);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'b');
+  CHECK(b_a2_val[1] == 'b');
+
+  CHECK(b_a3[0] == 1.1f);
+  CHECK(b_a3[1] == 1.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 2);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'c');
+  CHECK(b_a2_val[1] == 'c');
+  CHECK(b_a2_val[2] == 'c');
+
+  CHECK(b_a3[0] == 2.1f);
+  CHECK(b_a3[1] == 2.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 4);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'e');
+
+  CHECK(b_a3[0] == 4.1f);
+  CHECK(b_a3[1] == 4.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 6);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'g');
+  CHECK(b_a2_val[1] == 'g');
+  CHECK(b_a2_val[1] == 'g');
+
+  CHECK(b_a3[0] == 6.1f);
+  CHECK(b_a3[1] == 6.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'h');
+  CHECK(b_a2_val[1] == 'h');
+  CHECK(b_a2_val[1] == 'h');
+  CHECK(b_a2_val[2] == 'h');
+
+  CHECK(b_a3[0] == 7.1f);
+  CHECK(b_a3[1] == 7.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'f');
+  CHECK(b_a2_val[1] == 'f');
+
+  CHECK(b_a3[0] == 5.1f);
+  CHECK(b_a3[1] == 5.2f);
+
+  CHECK(b_coords[0] == 4);
+  CHECK(b_coords[1] == 2);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, col-major, incomplete 4",
+    "[capi], [sparse-2], [sparse-2-multi-range-col-incomplete-4]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_4";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[1];
+  uint64_t b_a1_size = sizeof(b_a1);
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'a');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 4);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'e');
+
+  CHECK(b_a3[0] == 4.1f);
+  CHECK(b_a3[1] == 4.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 1);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 1);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'b');
+  CHECK(b_a2_val[1] == 'b');
+
+  CHECK(b_a3[0] == 1.1f);
+  CHECK(b_a3[1] == 1.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 2 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 5);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'f');
+  CHECK(b_a2_val[1] == 'f');
+
+  CHECK(b_a3[0] == 5.1f);
+  CHECK(b_a3[1] == 5.2f);
+
+  CHECK(b_coords[0] == 4);
+  CHECK(b_coords[1] == 2);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 3);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'd');
+  CHECK(b_a2_val[1] == 'd');
+  CHECK(b_a2_val[2] == 'd');
+  CHECK(b_a2_val[3] == 'd');
+
+  CHECK(b_a3[0] == 3.1f);
+  CHECK(b_a3[1] == 3.2f);
+
+  CHECK(b_coords[0] == 2);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 6);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'g');
+  CHECK(b_a2_val[1] == 'g');
+  CHECK(b_a2_val[1] == 'g');
+
+  CHECK(b_a3[0] == 6.1f);
+  CHECK(b_a3[1] == 6.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 3);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 3 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 2);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'c');
+  CHECK(b_a2_val[1] == 'c');
+  CHECK(b_a2_val[1] == 'c');
+
+  CHECK(b_a3[0] == 2.1f);
+  CHECK(b_a3[1] == 2.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 4);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 4 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 7);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'h');
+  CHECK(b_a2_val[1] == 'h');
+  CHECK(b_a2_val[2] == 'h');
+  CHECK(b_a2_val[3] == 'h');
+
+  CHECK(b_a3[0] == 7.1f);
+  CHECK(b_a3[1] == 7.2f);
+
+  CHECK(b_coords[0] == 3);
+  CHECK(b_coords[1] == 4);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, row-major, incomplete 5",
+    "[capi], [sparse-2], [sparse-2-multi-range-row-incomplete-5]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_5";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[1];
+  uint64_t b_a1_size = 1;
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 0);
+  CHECK(b_a2_off_size == 0);
+  CHECK(b_a2_val_size == 0);
+  CHECK(b_a3_size == 0);
+  CHECK(b_coords_size == 0);
+
+  // Reset buffer
+  b_a1_size = 1 * sizeof(int);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'a');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx2,
+    "C API: Test sparse array 2, multi-range subarray, col-major, incomplete 5",
+    "[capi], [sparse-2], [sparse-2-multi-range-col-incomplete-5]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_5";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t domain[] = {1, 10, 1, 10};
+  create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
+  write_sparse_array(array_name);
+
+  // Create array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open the array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create a subarray
+  int64_t s0[] = {1, 2};
+  int64_t s1[] = {3, 4};
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s0);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create buffers
+  int b_a1[1];
+  uint64_t b_a1_size = 1;
+  uint64_t b_a2_off[20];
+  uint64_t b_a2_off_size = sizeof(b_a2_off);
+  char b_a2_val[20];
+  uint64_t b_a2_val_size = sizeof(b_a2_val);
+  float b_a3[20];
+  uint64_t b_a3_size = sizeof(b_a3);
+  uint64_t b_coords[20];
+  uint64_t b_coords_size = sizeof(b_coords);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "a2", b_a2_off, &b_a2_off_size, b_a2_val, &b_a2_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", b_a3, &b_a3_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, b_coords, &b_coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 0);
+  CHECK(b_a2_off_size == 0);
+  CHECK(b_a2_val_size == 0);
+  CHECK(b_a3_size == 0);
+  CHECK(b_coords_size == 0);
+
+  // Reset buffer
+  b_a1_size = 1 * sizeof(int);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", b_a1, &b_a1_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
+
+  // Check buffers
+  CHECK(b_a1_size == 1 * sizeof(int));
+  CHECK(b_a2_off_size == 1 * sizeof(uint64_t));
+  CHECK(b_a2_val_size == 1 * sizeof(char));
+  CHECK(b_a3_size == 2 * sizeof(float));
+  CHECK(b_coords_size == 2 * sizeof(uint64_t));
+
+  CHECK(b_a1[0] == 0);
+
+  CHECK(b_a2_off[0] == 0);
+
+  CHECK(b_a2_val[0] == 'a');
+
+  CHECK(b_a3[0] == 0.1f);
+  CHECK(b_a3[1] == 0.2f);
+
+  CHECK(b_coords[0] == 1);
+  CHECK(b_coords[1] == 1);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
