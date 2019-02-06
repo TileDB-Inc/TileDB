@@ -335,13 +335,6 @@ Status Query::set_subarray(const Subarray& subarray) {
         Status::QueryError("Cannot set subarray; The array of subarray is "
                            "different from that of the query"));
 
-  // Check layout
-  // TODO(sp): this will be removed when we support other layouts
-  if (subarray.range_num() > 1 && subarray.layout() != Layout::UNORDERED)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; The only supported layout for "
-                           "multi-range subarrays is UNORDERED"));
-
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(writer_.set_subarray(subarray));
   } else {  // READ

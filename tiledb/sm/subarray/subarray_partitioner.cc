@@ -220,13 +220,13 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // Handle multi-range partitions, remaining from slab splits
   if (!state_.multi_range_.empty())
-    return next_from_multiple_ranges<T>();
+    return next_from_multi_range<T>(unsplittable);
 
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found = compute_current_start_end<T>();
 
   // Single-range partition that must be split
-  if (!interval_found)
+  if (!interval_found && subarray_.layout() == Layout::UNORDERED)
     return next_from_single_range<T>(unsplittable);
 
   // An interval of whole ranges that may need calibration
@@ -234,15 +234,16 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   calibrate_current_start_end(&must_split_slab);
 
   // Handle case the next partition is composed of whole ND ranges
-  if (!must_split_slab) {
+  if (interval_found && !must_split_slab) {
     current_.partition_ =
         std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
+    current_.split_multi_range_ = false;
     state_.start_ = current_.end_ + 1;
     return Status::Ok();
   }
 
   // Must split a multi-range subarray slab
-  return next_from_multiple_ranges<T>();
+  return next_from_multi_range<T>(unsplittable);
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -299,30 +300,33 @@ Status SubarrayPartitioner::set_result_budget(
 
 template <class T>
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
-  // Split multi-range subarray
+  *unsplittable = false;
+
+  // Current came from splitting a multi-range partition
+  if (current_.split_multi_range_) {
+    if (state_.multi_range_.empty())
+      state_.start_ = current_.start_;
+    state_.multi_range_.push_front(current_.partition_);
+    split_top_multi_range<T>(unsplittable);
+    return next_from_multi_range<T>(unsplittable);
+  }
+
+  // Current came from retrieving a multi-range partition from subarray
   if (current_.start_ < current_.end_) {
     current_.end_ *= (1 - constants::multi_range_reduction_in_split);
     current_.end_ = MAX(current_.start_, current_.end_);
     current_.partition_ =
         std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
     state_.start_ = current_.end_ + 1;
-    *unsplittable = false;
     return Status::Ok();
   }
 
-  // Update state start if the current was derived from
-  // ``next_from_multiple_ranges()``, which advanced
-  // the state start to point after this range.
+  // Current came from splitting a single-range partition
   if (state_.single_range_.empty())
     state_.start_--;
-
-  // Split single-range subarray
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range<T>(unsplittable);
-  current_.partition_ = std::move(state_.single_range_.front());
-  state_.single_range_.pop_front();
-
-  return Status::Ok();
+  return next_from_single_range<T>(unsplittable);
 }
 
 /* ****************************** */
@@ -403,7 +407,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Calibrate the range to a slab if layout is row-/col-major
   if (dim_num > 1 && subarray_.layout() != Layout::UNORDERED) {
-    auto d = (subarray_.layout() == Layout::ROW_MAJOR) ? 0 : dim_num - 1;
+    auto d = (subarray_.layout() == Layout::ROW_MAJOR) ? dim_num - 1 : 0;
     if (end_coords[d] != range_num[d] - 1) {
       end_coords[d] = range_num[d] - 1;
       *must_split_slab = true;
@@ -466,13 +470,15 @@ bool SubarrayPartitioner::compute_current_start_end() {
 // TODO (sp): in the future this can be more sophisticated, taking into
 // TODO (sp): account MBRs (i.e., the distirbution of the data) as well
 template <class T>
-void SubarrayPartitioner::compute_splitting_point(
-    unsigned* splitting_dim, T* splitting_point, bool* unsplittable) {
+void SubarrayPartitioner::compute_splitting_point_single_range(
+    const Subarray& range,
+    unsigned* splitting_dim,
+    T* splitting_point,
+    bool* unsplittable) {
   // For easy reference
   auto layout = subarray_.layout();
   auto dim_num = subarray_.array()->array_schema()->dim_num();
   auto cell_order = subarray_.array()->array_schema()->cell_order();
-  const auto& range = state_.single_range_.front();
   assert(!range.is_unary());
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   const void* r_v;
@@ -503,8 +509,66 @@ void SubarrayPartitioner::compute_splitting_point(
 }
 
 template <class T>
-bool SubarrayPartitioner::must_split_top_single_range() {
-  auto& range = state_.single_range_.front();
+void SubarrayPartitioner::compute_splitting_point_multi_range(
+    unsigned* splitting_dim,
+    uint64_t* splitting_range,
+    T* splitting_point,
+    bool* unsplittable) {
+  const auto& partition = state_.multi_range_.front();
+
+  // Single-range partittion
+  if (partition.range_num() == 1) {
+    compute_splitting_point_single_range(
+        partition, splitting_dim, splitting_point, unsplittable);
+    return;
+  }
+
+  // Multi-range partition
+  auto layout = subarray_.layout();
+  auto dim_num = subarray_.array()->array_schema()->dim_num();
+  auto cell_order = subarray_.array()->array_schema()->cell_order();
+  layout = (layout == Layout::UNORDERED) ? cell_order : layout;
+  const void* r_v;
+  *splitting_dim = UINT32_MAX;
+  uint64_t range_num;
+
+  std::vector<unsigned> dims;
+  if (layout == Layout::ROW_MAJOR) {
+    for (unsigned i = 0; i < dim_num; ++i)
+      dims.push_back(i);
+  } else {
+    for (unsigned i = 0; i < dim_num; ++i)
+      dims.push_back(dim_num - i - 1);
+  }
+
+  // Compute splitting dimension, range and point
+  for (auto i : dims) {
+    // Check if we need to split the multiple ranges
+    partition.get_range_num(i, &range_num);
+    if (range_num > 1) {
+      assert(i == dims.back());
+      *splitting_dim = i;
+      *splitting_range = (range_num - 1) / 2;
+      *unsplittable = false;
+      break;
+    }
+
+    // Check if we need to split single range
+    partition.get_range(i, 0, &r_v);
+    auto r = (T*)r_v;
+    if (std::memcmp(r, &r[1], sizeof(T)) != 0) {
+      *splitting_dim = i;
+      *splitting_point = r[0] + (r[1] - r[0]) / 2;
+      *unsplittable = !std::memcmp(splitting_point, &r[1], sizeof(T));
+      break;
+    }
+  }
+
+  assert(*splitting_dim != UINT32_MAX);
+}
+
+template <class T>
+bool SubarrayPartitioner::must_split(Subarray* partition) {
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
 
@@ -518,9 +582,9 @@ bool SubarrayPartitioner::must_split_top_single_range() {
     size_fixed = 0;
     size_var = 0;
     if (var_size)
-      range.get_est_result_size(b.first.c_str(), &size_fixed, &size_var);
+      partition->get_est_result_size(b.first.c_str(), &size_fixed, &size_var);
     else
-      range.get_est_result_size(b.first.c_str(), &size_fixed);
+      partition->get_est_result_size(b.first.c_str(), &size_fixed);
 
     // Check for budget overflow
     if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_) {
@@ -533,17 +597,37 @@ bool SubarrayPartitioner::must_split_top_single_range() {
 }
 
 template <class T>
-Status SubarrayPartitioner::next_from_multiple_ranges() {
-  // TODO
-  assert(false);
+Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
+  // A new multi-range subarray may need to be put in the list and split
+  if (state_.multi_range_.empty()) {
+    auto s = subarray_.get_subarray<T>(current_.start_, current_.end_);
+    state_.multi_range_.push_front(std::move(s));
+    split_top_multi_range<T>(unsplittable);
+  }
+
+  // Loop until you find a partition that fits or unsplittable
+  if (!*unsplittable) {
+    bool must_split;
+    do {
+      auto& partition = state_.multi_range_.front();
+      must_split = this->must_split<T>(&partition);
+      if (must_split)
+        RETURN_NOT_OK(split_top_multi_range<T>(unsplittable));
+    } while (must_split && !*unsplittable);
+  }
+
+  // At this point, the top mulit-range is the next partition
+  current_.partition_ = std::move(state_.multi_range_.front());
+  current_.split_multi_range_ = true;
+  state_.multi_range_.pop_front();
+  if (state_.multi_range_.empty())
+    state_.start_ = current_.end_ + 1;
 
   return Status::Ok();
 }
 
 template <class T>
 Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
-  *unsplittable = false;
-
   // Handle case where a new single range must be put in the list and split
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray<T>(current_.start_, current_.end_);
@@ -555,7 +639,8 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   if (!*unsplittable) {
     bool must_split;
     do {
-      must_split = must_split_top_single_range<T>();
+      auto& partition = state_.single_range_.front();
+      must_split = this->must_split<T>(&partition);
       if (must_split)
         RETURN_NOT_OK(split_top_single_range<T>(unsplittable));
     } while (must_split && !*unsplittable);
@@ -563,6 +648,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
 
   // At this point, the top range is the next partition
   current_.partition_ = std::move(state_.single_range_.front());
+  current_.split_multi_range_ = false;
   state_.single_range_.pop_front();
   if (state_.single_range_.empty())
     state_.start_++;
@@ -588,7 +674,8 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   // Finding splitting point
   T splitting_point;
   unsigned splitting_dim;
-  compute_splitting_point<T>(&splitting_dim, &splitting_point, unsplittable);
+  compute_splitting_point_single_range<T>(
+      range, &splitting_dim, &splitting_point, unsplittable);
 
   if (*unsplittable)
     return Status::Ok();
@@ -622,6 +709,80 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   state_.single_range_.pop_front();
   state_.single_range_.push_front(std::move(r2));
   state_.single_range_.push_front(std::move(r1));
+
+  return Status::Ok();
+}
+
+template <class T>
+Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
+  // For easy reference
+  const auto& partition = state_.multi_range_.front();
+  auto dim_num = subarray_.dim_num();
+  auto max = std::numeric_limits<T>::max();
+  bool int_domain = std::numeric_limits<T>::is_integer;
+  const void* range_1d;
+  uint64_t range_num;
+
+  // Check if unsplittable
+  if (partition.is_unary()) {
+    *unsplittable = true;
+    return Status::Ok();
+  }
+
+  // Finding splitting point
+  unsigned splitting_dim;
+  uint64_t splitting_range = UINT64_MAX;
+  T splitting_point;
+  compute_splitting_point_multi_range<T>(
+      &splitting_dim, &splitting_range, &splitting_point, unsplittable);
+
+  if (*unsplittable)
+    return Status::Ok();
+
+  // Split partition into two partitions
+  Subarray p1(subarray_.array(), subarray_.layout());
+  Subarray p2(subarray_.array(), subarray_.layout());
+
+  for (unsigned i = 0; i < dim_num; ++i) {
+    RETURN_NOT_OK(partition.get_range_num(i, &range_num));
+    if (i != splitting_dim) {
+      for (uint64_t j = 0; j < range_num; ++j) {
+        partition.get_range(i, j, &range_1d);
+        p1.add_range(i, range_1d);
+        p2.add_range(i, range_1d);
+      }
+    } else {                                // i == splitting_dim
+      if (splitting_range != UINT64_MAX) {  // Need to split multiple ranges
+        for (uint64_t j = 0; j <= splitting_range; ++j) {
+          partition.get_range(i, j, &range_1d);
+          p1.add_range(i, range_1d);
+        }
+        for (uint64_t j = splitting_range + 1; j < range_num; ++j) {
+          partition.get_range(i, j, &range_1d);
+          p2.add_range(i, range_1d);
+        }
+      } else {  // Need to split a single range
+        partition.get_range(i, 0, &range_1d);
+        T r[2];
+        r[0] = ((const T*)range_1d)[0];
+        r[1] = splitting_point;
+        p1.add_range(i, r);
+        r[0] = (int_domain) ? (splitting_point + 1) :
+                              std::nextafter(splitting_point, max);
+        r[1] = ((const T*)range_1d)[1];
+        p2.add_range(i, r);
+      }
+    }
+  }
+
+  // Important
+  p1.compute_tile_overlap();
+  p2.compute_tile_overlap();
+
+  // Update list
+  state_.multi_range_.pop_front();
+  state_.multi_range_.push_front(std::move(p2));
+  state_.multi_range_.push_front(std::move(p1));
 
   return Status::Ok();
 }
