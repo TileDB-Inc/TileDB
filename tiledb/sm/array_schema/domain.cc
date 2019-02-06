@@ -717,6 +717,19 @@ void Domain::get_tile_subarray(
   }
 }
 
+Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
+  *has_dim = false;
+
+  for (const auto& dim : dimensions_) {
+    if (name == dim->name()) {
+      *has_dim = true;
+      break;
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set cell and tile order
   cell_order_ = cell_order;

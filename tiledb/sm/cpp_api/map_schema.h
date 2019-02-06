@@ -262,6 +262,20 @@ class MapSchema : public Schema {
   }
 
   /**
+   * Checks if the schema has an attribute of the given name.
+   *
+   * @param name Name of attribute to check for
+   * @return True if the schema has an attribute of the given name.
+   */
+  bool has_attribute(const std::string& name) const {
+    auto& ctx = ctx_.get();
+    int32_t has_attr;
+    ctx.handle_error(tiledb_kv_schema_has_attribute(
+        ctx, schema_.get(), name.c_str(), &has_attr));
+    return has_attr == 1;
+  }
+
+  /**
    * Sets the tile capacity.
    *
    * @param capacity Capacity value to set.

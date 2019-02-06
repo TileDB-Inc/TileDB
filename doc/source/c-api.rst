@@ -255,6 +255,8 @@ Array Schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_attribute_from_name
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_has_attribute
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_dump
     :project: TileDB-C
 
@@ -300,6 +302,8 @@ Domain
 .. doxygenfunction:: tiledb_domain_get_dimension_from_index
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_get_dimension_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_domain_has_dimension
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_dump
     :project: TileDB-C
@@ -453,6 +457,8 @@ Key-value Schema
 .. doxygenfunction:: tiledb_kv_schema_get_attribute_from_index
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_get_attribute_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_kv_schema_has_attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_schema_dump
     :project: TileDB-C

@@ -1578,6 +1578,29 @@ TILEDB_EXPORT int32_t tiledb_domain_get_dimension_from_name(
     tiledb_dimension_t** dim);
 
 /**
+ * Checks whether the domain has a dimension of the given name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t has_dim;
+ * tiledb_domain_has_dimension(ctx, domain, "dim_0", &has_dim);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param domain The domain.
+ * @param name The name of the dimension to check for.
+ * @param has_dim Set to `1` if the domain has a dimension of the given name,
+ *      else `0`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    const char* name,
+    int32_t* has_dim);
+
+/**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
  * file or `stdout`).
  *
@@ -2318,6 +2341,29 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_name(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     tiledb_attribute_t** attr);
+
+/**
+ * Checks whether the array schema has an attribute of the given name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t has_attr;
+ * tiledb_array_schema_has_attribute(ctx, array_schema, "attr_0", &has_attr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param name The name of the attribute to check for.
+ * @param has_attr Set to `1` if the array schema has an attribute of the
+ *      given name, else `0`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    const char* name,
+    int32_t* has_attr);
 
 /**
  * Dumps the array schema in ASCII format in the selected output.
@@ -3647,6 +3693,29 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_from_name(
     const tiledb_kv_schema_t* kv_schema,
     const char* name,
     tiledb_attribute_t** attr);
+
+/**
+ * Checks whether the KV schema has an attribute of the given name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t has_attr;
+ * tiledb_kv_schema_has_attribute(ctx, kv_schema, "attr_0", &has_attr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param kv_schema The KV schema.
+ * @param name The name of the attribute to check for.
+ * @param has_attr Set to `1` if the KV schema has an attribute of the
+ *      given name, else 0.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_kv_schema_has_attribute(
+    tiledb_ctx_t* ctx,
+    const tiledb_kv_schema_t* kv_schema,
+    const char* name,
+    int32_t* has_attr);
 
 /**
  * Dumps the key-value schema in ASCII format in the selected output.

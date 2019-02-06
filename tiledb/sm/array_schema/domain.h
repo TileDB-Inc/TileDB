@@ -435,6 +435,15 @@ class Domain {
       const T* domain, const T* tile_coords, T* tile_subarray) const;
 
   /**
+   * Checks if the domain has a dimension of the given name.
+   *
+   * @param name Name of dimension to check for
+   * @param has_dim Set to true if the domain has a dimension of the given name.
+   * @return Status
+   */
+  Status has_dimension(const std::string& name, bool* has_dim) const;
+
+  /**
    * Initializes the domain.
    *
    * @param cell_order The cell order of the array the domain belongs to.

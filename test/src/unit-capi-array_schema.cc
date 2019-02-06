@@ -610,6 +610,15 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_dimension_free(&get_dim);
 
+  int32_t has_dim = 0;
+  rc = tiledb_domain_has_dimension(ctx_, domain, "d2", &has_dim);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_dim == 1);
+  has_dim = false;
+  rc = tiledb_domain_has_dimension(ctx_, domain, "d3", &has_dim);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_dim == 0);
+
   rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d2", &get_dim);
   const char* get_name = nullptr;
   CHECK(rc == TILEDB_OK);
@@ -729,6 +738,19 @@ TEST_CASE_METHOD(
   CHECK_THAT(get_name, Catch::Equals("foo"));
   tiledb_attribute_free(&get_attr);
 
+  int32_t has_attr = 0;
+  rc = tiledb_array_schema_has_attribute(ctx_, array_schema, "", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 1);
+  has_attr = 0;
+  rc = tiledb_array_schema_has_attribute(ctx_, array_schema, "foo", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 1);
+  has_attr = 0;
+  rc = tiledb_array_schema_has_attribute(ctx_, array_schema, "bar", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 0);
+
   // Clean up
   tiledb_attribute_free(&attr1);
   tiledb_attribute_free(&attr2);
@@ -784,6 +806,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(get_attr != nullptr);
   tiledb_attribute_free(&get_attr);
+
+  int32_t has_attr = false;
+  rc = tiledb_array_schema_has_attribute(ctx_, array_schema, "", &has_attr);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(has_attr == 1);
 
   // Clean up
   tiledb_attribute_free(&attr1);

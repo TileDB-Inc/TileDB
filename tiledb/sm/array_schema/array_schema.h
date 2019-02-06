@@ -206,6 +206,16 @@ class ArraySchema {
   /** Dumps the array schema in ASCII format in the selected output. */
   void dump(FILE* out) const;
 
+  /**
+   * Checks if the array schema has a attribute of the given name.
+   *
+   * @param name Name of attribute to check for
+   * @param has_attr Set to true if the array schema has a attribute of the
+   * given name.
+   * @return Status
+   */
+  Status has_attribute(const std::string& name, bool* has_attr) const;
+
   /** Checks if the array is defined as a key-value store. */
   bool is_kv() const;
 
