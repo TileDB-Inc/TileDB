@@ -290,6 +290,9 @@ TEST_CASE(
   REQUIRE(data[0] == 'j');
   REQUIRE(data[1] == 'k');
 
+  // Close array.
+  array.close();
+
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
