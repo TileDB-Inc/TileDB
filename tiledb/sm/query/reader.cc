@@ -40,7 +40,6 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
-#include <cmake-build-debug/examples/tiledb/tiledb.h>
 #include <iostream>
 
 namespace tiledb {
