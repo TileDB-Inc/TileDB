@@ -722,16 +722,14 @@ void Subarray::compute_tile_overlap() {
     tile_overlap_[i].resize(range_num);
 
   // Compute estimated tile overlap in parallel over fragments and ranges
-  auto statuses_1 = parallel_for(0, fragment_num, [&](unsigned i) {
-    auto statuses_2 = parallel_for(0, range_num, [&](unsigned j) {
-      auto rtree = meta[i]->rtree();
-      auto range = this->range<T>(j);
-      auto overlap = rtree->get_tile_overlap<T>(range);
-      tile_overlap_[i][j] = overlap;
-      return Status::Ok();
-    });
-    return Status::Ok();
-  });
+  auto statuses = parallel_for_2d(
+      0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
+        auto rtree = meta[i]->rtree();
+        auto range = this->range<T>(j);
+        auto overlap = rtree->get_tile_overlap<T>(range);
+        tile_overlap_[i][j] = overlap;
+        return Status::Ok();
+      });
 
   tile_overlap_computed_ = true;
 }
