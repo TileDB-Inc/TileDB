@@ -91,6 +91,36 @@ class Array {
   }
 
   /**
+   * Constructor. This opens the array for the given query type and constrains
+   * the view to the given subarray. The destructor calls the `close()` method.
+   *
+   * @param ctx TileDB context.
+   * @param array_uri The array URI.
+   * @param query_type Query type to open the array for.
+   */
+  template <typename T>
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      const std::vector<T>& subarray)
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    tiledb_array_t* array;
+    ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
+    array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
+
+    ctx.handle_error(tiledb_array_set_subarray(
+        ctx, array, subarray.data(), subarray.size() * sizeof(T)));
+
+    ctx.handle_error(tiledb_array_open(ctx, array, query_type));
+
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  /**
    * Constructor. This opens an encrypted array for the given query type. The
    * destructor calls the `close()` method.
    *
