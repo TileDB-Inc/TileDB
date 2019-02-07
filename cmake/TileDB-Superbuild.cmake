@@ -178,4 +178,9 @@ if(DOXYGEN_FOUND)
     COMMENT "Generating API documentation with Doxygen" VERBATIM
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
   )
+else(DOXYGEN_FOUND)
+  add_custom_target(doc
+    _______doc
+    COMMENT "!! Docs cannot be built. Please install Doxygen and re-run cmake. !!" VERBATIM
+  )
 endif(DOXYGEN_FOUND)
