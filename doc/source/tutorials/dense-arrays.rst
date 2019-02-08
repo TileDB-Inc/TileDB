@@ -187,10 +187,11 @@ will essentially persist the array schema we just created on disk.
 
 .. note::
 
-  The array name here can actually be a full URI, for example a path like
+  The array name here will be used to create a data directory in the
+  current working path (see `On-disk Structure`_. below).
+  The array name can also be a full URI, for example a path like
   ``file:///home/username/my_array`` or an S3 URI like
   ``s3://bucket-name/array-name``.
-
 
 Writing to the array
 --------------------

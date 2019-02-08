@@ -238,7 +238,7 @@ Writing in global layout
 
   Currently global writes are not supported in the Python API.
 
-So far we have been using the "unorderded" layout when providing the
+So far we have been using the "unordered" layout when providing the
 cells to TileDB for writing, which will be the most frequent layout
 you will use. However, *if* your cells are already laid out in the
 global order of your array, TileDB allows you to write them in the

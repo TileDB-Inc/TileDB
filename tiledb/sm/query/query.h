@@ -249,7 +249,7 @@ class Query {
    *     or will hold the data to be read.
    * @param buffer_size In the case of writes, this is the size of `buffer`
    *     in bytes. In the case of reads, this initially contains the allocated
-   *     size of `buffer`, but after the termination of the function
+   *     size of `buffer`, but after the termination of the query
    *     it will contain the size of the useful (read) data in `buffer`.
    * @return Status
    */
@@ -274,7 +274,7 @@ class Query {
    * @param buffer_val_size In the case of writes, it is the size of
    *     `buffer_val` in bytes. In the case of reads, this initially contains
    *     the allocated size of `buffer_val`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
+   *     query it will contain the size of the useful (read) data in
    *     `buffer_val`.
    * @return Status
    */

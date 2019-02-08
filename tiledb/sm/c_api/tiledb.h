@@ -2311,7 +2311,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *     or will hold the data to be read.
  * @param buffer_size In the case of writes, this is the size of `buffer`
  *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer`, but after the termination of the function
+ *     size of `buffer`, but after the termination of the query
  *     it will contain the size of the useful (read) data in `buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -2346,8 +2346,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer(
  *     of each cell value in `buffer_val`.
  * @param buffer_off_size In the case of writes, it is the size of `buffer_off`
  *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_off`, but after the termination of the function
- *     it will contain the size of the useful (read) data in `buffer_off`.
+ *     size of `buffer_off`, but after the *end of the query*
+ *     (`tiledb_query_submit`) it will contain the size of the useful (read)
+ *     data in `buffer_off`.
  * @param buffer_val The buffer that either have the input data to be written,
  *     or will hold the data to be read. This buffer holds the actual var-sized
  *     cell values.

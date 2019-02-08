@@ -159,6 +159,8 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
 
       .. code-block:: c++
 
+         #include <tiledb/tiledb>
+
          // Name of array.
          std::string array_name("quickstart_dense_array");
 
@@ -174,7 +176,7 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
            // The array will be dense.
            ArraySchema schema(ctx, TILEDB_DENSE);
            schema.set_domain(domain)
-                 .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
+                 .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
            // Add a single attribute "a" so each (i,j) cell can store an integer.
            schema.add_attribute(Attribute::create<int>(ctx, "a"));
@@ -562,6 +564,8 @@ a single ``int`` attribute, i.e., it will store integer values in its cells.
       :title: C++
 
       .. code-block:: c++
+
+         #include <tiledb/tiledb>
 
          // Name of array.
          std::string array_name("quickstart_sparse_array");
