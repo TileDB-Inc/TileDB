@@ -256,7 +256,7 @@ Modern Build System
 TileDB offers a modern build system that works on Linux, macOS and Windows,
 with automatic installation of all dependencies. TileDB ships with all
 its compressors by default. This makes it easier to share compressed data,
-since they are all compressed using the same suit of compressors. In contrast,
+since they are all compressed using the same suite of compressors. In contrast,
 HDF5 does not ship with all compressors, but rather offers compressor plug-ins
 that must be build separately. This can make it difficult to share compressed
 data if end users have different compressors installed (or none).
