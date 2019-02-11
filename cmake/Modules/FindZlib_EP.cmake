@@ -36,8 +36,13 @@ include(TileDBCommon)
 # Search the path set during the superbuild for the EP.
 set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
-# First try the builtin find module.
-find_package(ZLIB QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+# Try the builtin find module unless built w/ EP superbuild
+#  Built-in module only supports shared zlib, so using it
+#  w/in superbuild we end up linking zlib.dll.
+#  https://gitlab.kitware.com/cmake/cmake/issues/18029)
+if (NOT TILEDB_ZLIB_EP_BUILT)
+  find_package(ZLIB QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
 
 # Next try finding the superbuild external project
 if (NOT ZLIB_FOUND)
