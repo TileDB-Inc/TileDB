@@ -5,8 +5,8 @@
 * Fixed support for config parameter values `sm.num_reader_threads` and `sm.num_writer_threads. User-specified values had been ignored for these parameters. [#1096](https://github.com/TileDB-Inc/TileDB/pull/1096)
 * Fixed GCC 7 linker errors. [#1091](https://github.com/TileDB-Inc/TileDB/pull/1091)
 * Bug fix in the case of dense reads in the presence of both dense and sparse fragments. [#1079](https://github.com/TileDB-Inc/TileDB/pull/1074)
-
 * Fixed double-delta decompression bug on reads for uncompressible chunks. [#1074](https://github.com/TileDB-Inc/TileDB/pull/1074)
+* Fixed unnecessary linking of shared zlib when using TileDB superbuild. [#1125](https://github.com/TileDB-Inc/TileDB/pull/1125)
 
 ## Improvements
 
