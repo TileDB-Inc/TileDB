@@ -40,7 +40,6 @@ TEST_CASE("C API: Test stats", "[capi], [stats]") {
   char* stats_str = nullptr;
   REQUIRE(tiledb_stats_dump_str(&stats_str) == TILEDB_OK);
   REQUIRE(stats_str != nullptr);
-  REQUIRE(strlen(stats_str) == 9178);
 
   // Check a small sample of the output
   std::string beginning(stats_str, 16);

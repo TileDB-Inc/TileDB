@@ -38,7 +38,6 @@
 #include "array.h"
 #include "array_schema.h"
 #include "attribute.h"
-#include "compressor.h"
 #include "config.h"
 #include "context.h"
 #include "deleter.h"

@@ -76,9 +76,7 @@ struct ArraySchemaFx {
   const char* ATTR_NAME = "a";
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
   const char* ATTR_TYPE_STR = "INT32";
-  const tiledb_compressor_t ATTR_COMPRESSOR = TILEDB_NO_COMPRESSION;
   const char* ATTR_COMPRESSOR_STR = "NO_COMPRESSION";
-  const int ATTR_COMPRESSION_LEVEL = -1;
   const char* ATTR_COMPRESSION_LEVEL_STR = "-1";
   const unsigned int CELL_VAL_NUM = 1;
   const char* CELL_VAL_NUM_STR = "1";

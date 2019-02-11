@@ -1104,18 +1104,6 @@ int32_t tiledb_attribute_set_filter_list(
   return TILEDB_OK;
 }
 
-int32_t tiledb_attribute_set_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    tiledb_compressor_t compressor,
-    int32_t compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
-    return TILEDB_ERR;
-  attr->attr_->set_compressor(static_cast<tiledb::sm::Compressor>(compressor));
-  attr->attr_->set_compression_level(compression_level);
-  return TILEDB_OK;
-}
-
 int32_t tiledb_attribute_set_cell_val_num(
     tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint32_t cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
@@ -1178,18 +1166,6 @@ int32_t tiledb_attribute_get_filter_list(
     return TILEDB_OOM;
   }
 
-  return TILEDB_OK;
-}
-
-int32_t tiledb_attribute_get_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
-    return TILEDB_ERR;
-  *compressor = static_cast<tiledb_compressor_t>(attr->attr_->compressor());
-  *compression_level = attr->attr_->compression_level();
   return TILEDB_OK;
 }
 
@@ -1647,20 +1623,6 @@ int32_t tiledb_array_schema_set_coords_filter_list(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_set_coords_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t compressor,
-    int32_t compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  array_schema->array_schema_->set_coords_compressor(
-      static_cast<tiledb::sm::Compressor>(compressor));
-  array_schema->array_schema_->set_coords_compression_level(compression_level);
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -1676,21 +1638,6 @@ int32_t tiledb_array_schema_set_offsets_filter_list(
               filter_list->pipeline_)))
     return TILEDB_ERR;
 
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_schema_set_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t compressor,
-    int32_t compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  array_schema->array_schema_->set_cell_var_offsets_compressor(
-      static_cast<tiledb::sm::Compressor>(compressor));
-  array_schema->array_schema_->set_cell_var_offsets_compression_level(
-      compression_level);
   return TILEDB_OK;
 }
 
@@ -1829,21 +1776,6 @@ int32_t tiledb_array_schema_get_coords_filter_list(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_get_coords_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *compressor = static_cast<tiledb_compressor_t>(
-      array_schema->array_schema_->coords_compression());
-  *compression_level = array_schema->array_schema_->coords_compression_level();
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_schema_get_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -1874,22 +1806,6 @@ int32_t tiledb_array_schema_get_offsets_filter_list(
     return TILEDB_OOM;
   }
 
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_schema_get_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *compressor = static_cast<tiledb_compressor_t>(
-      array_schema->array_schema_->cell_var_offsets_compression());
-  *compression_level =
-      array_schema->array_schema_->cell_var_offsets_compression_level();
   return TILEDB_OK;
 }
 

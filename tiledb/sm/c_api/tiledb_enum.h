@@ -108,23 +108,6 @@
     TILEDB_LAYOUT_ENUM(UNORDERED) = 3,
 #endif
 
-#ifdef TILEDB_COMPRESSOR_ENUM
-    /** No compressor */
-    TILEDB_COMPRESSOR_ENUM(NO_COMPRESSION) = 0,
-    /** Gzip compressor */
-    TILEDB_COMPRESSOR_ENUM(GZIP) = 1,
-    /** Zstandard compressor */
-    TILEDB_COMPRESSOR_ENUM(ZSTD) = 2,
-    /** LZ4 compressor */
-    TILEDB_COMPRESSOR_ENUM(LZ4) = 3,
-    /** Run-length encoding compressor */
-    TILEDB_COMPRESSOR_ENUM(RLE) = 4,
-    /** Bzip2 compressor */
-    TILEDB_COMPRESSOR_ENUM(BZIP2) = 5,
-    /** Double-delta compressor */
-    TILEDB_COMPRESSOR_ENUM(DOUBLE_DELTA) = 6,
-#endif
-
 #ifdef TILEDB_FILTER_TYPE_ENUM
     /** No-op filter */
     TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,

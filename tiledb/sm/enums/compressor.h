@@ -44,9 +44,20 @@ namespace sm {
 
 /** Defines the compressor type. */
 enum class Compressor : uint8_t {
-#define TILEDB_COMPRESSOR_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
-#undef TILEDB_COMPRESSOR_ENUM
+  /** No compressor */
+  NO_COMPRESSION = 0,
+  /** Gzip compressor */
+  GZIP = 1,
+  /** Zstandard compressor */
+  ZSTD = 2,
+  /** LZ4 compressor */
+  LZ4 = 3,
+  /** Run-length encoding compressor */
+  RLE = 4,
+  /** Bzip2 compressor */
+  BZIP2 = 5,
+  /** Double-delta compressor */
+  DOUBLE_DELTA = 6
 };
 
 /** Returns the string representation of the input compressor. */
