@@ -846,7 +846,9 @@ Status VFS::read_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) const {
+    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+    ThreadPool* thread_pool,
+    std::vector<std::future<Status>>* tasks) const {
   STATS_FUNC_IN(vfs_read_all);
   STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 
@@ -858,19 +860,27 @@ Status VFS::read_all(
   RETURN_NOT_OK(compute_read_batches(regions, &batches));
 
   // Read all the batches and copy to the original destinations.
-  Buffer buffer;
   for (const auto& batch : batches) {
-    RETURN_NOT_OK(buffer.realloc(batch.nbytes));
-    RETURN_NOT_OK(read(uri, batch.offset, buffer.data(), batch.nbytes));
-    // Parallel copy back into the individual destinations.
-    parallel_for(0, batch.regions.size(), [&batch, &buffer](uint64_t i) {
-      const auto& region = batch.regions[i];
-      uint64_t offset = std::get<0>(region);
-      void* dest = std::get<1>(region);
-      uint64_t nbytes = std::get<2>(region);
-      std::memcpy(dest, buffer.data(offset - batch.offset), nbytes);
+    URI uri_copy = uri;
+    BatchedRead batch_copy = batch;
+    auto task = thread_pool->enqueue([uri_copy, batch_copy, this]() {
+      Buffer buffer;
+      RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
+      RETURN_NOT_OK(
+          read(uri_copy, batch_copy.offset, buffer.data(), batch_copy.nbytes));
+      // Parallel copy back into the individual destinations.
+      for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
+        const auto& region = batch_copy.regions[i];
+        uint64_t offset = std::get<0>(region);
+        void* dest = std::get<1>(region);
+        uint64_t nbytes = std::get<2>(region);
+        std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
+      }
+
       return Status::Ok();
     });
+
+    tasks->push_back(std::move(task));
   }
 
   return Status::Ok();

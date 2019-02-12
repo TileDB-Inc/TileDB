@@ -1094,8 +1094,8 @@ Status Reader::compute_range_coords(
     const OverlappingTileVec& tiles,
     const OverlappingTileMap& tile_map,
     OverlappingCoordsVec<T>* range_coords) {
-  auto subarray = read_state_2_.partitioner_.current();
-  auto overlap = subarray.tile_overlap();
+  const auto& subarray = read_state_2_.partitioner_.current();
+  const auto& overlap = subarray.tile_overlap();
   auto range = subarray.range<T>(range_idx);
   auto fragment_num = fragment_metadata_.size();
 
@@ -1192,8 +1192,8 @@ Status Reader::compute_overlapping_tiles_2(
   STATS_FUNC_IN(reader_compute_overlapping_tiles);
 
   // For easy reference
-  auto subarray = read_state_2_.partitioner_.current();
-  auto overlap = subarray.tile_overlap();
+  const auto& subarray = read_state_2_.partitioner_.current();
+  const auto& overlap = subarray.tile_overlap();
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> first_fragment;
@@ -2301,16 +2301,11 @@ Status Reader::read_tiles(
 
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
-    // Note capturing the URI and region vector by value (implying a copy) so
-    // that the closure is valid once the regions map goes out of scope.
-    const auto& uri = item.first;
-    const auto& regions = item.second;
-    auto task =
-        storage_manager_->reader_thread_pool()->enqueue([uri, regions, this]() {
-          RETURN_NOT_OK(storage_manager_->vfs()->read_all(uri, regions));
-          return Status::Ok();
-        });
-    tasks->push_back(std::move(task));
+    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+        item.first,
+        item.second,
+        storage_manager_->reader_thread_pool(),
+        tasks));
   }
 
   STATS_COUNTER_ADD(
