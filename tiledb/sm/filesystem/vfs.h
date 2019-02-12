@@ -303,11 +303,15 @@ class VFS {
    * @param uri The URI of the file.
    * @param regions The list of regions to read. Each region is a tuple
    *    `(file_offset, dest_buffer, nbytes)`.
+   * @param thread_pool Thread pool to enqueue async read tasks to.
+   * @param tasks Vector to which new async read tasks are pushed.
    * @return Status
    */
   Status read_all(
       const URI& uri,
-      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions);
+      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
+      ThreadPool* thread_pool,
+      std::vector<std::future<Status>>* tasks) const;
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;

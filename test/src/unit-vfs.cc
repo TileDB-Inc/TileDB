@@ -58,12 +58,17 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   stats::all_stats.reset();
 
   std::vector<std::tuple<uint64_t, void*, uint64_t>> batches;
+  ThreadPool thread_pool;
+  REQUIRE(thread_pool.init(4).ok());
+  std::vector<std::future<Status>> tasks;
 
   SECTION("- Default config") {
     // Check reading in one batch: single read operation.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
@@ -79,7 +84,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
     batches.emplace_back(
         (nelts - 1) * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == nelts - 1);
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
@@ -94,7 +101,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     for (unsigned i = 0; i < nelts; i++)
       batches.emplace_back(
           i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
@@ -113,7 +122,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // Check large batches are not split up.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
@@ -129,7 +140,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     for (unsigned i = 0; i < nelts; i++)
       batches.emplace_back(
           i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
     unsigned expected_num_reads =
@@ -148,7 +161,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
     batches.emplace_back(
         (nelts - 1) * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == nelts - 1);
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
@@ -171,7 +186,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     for (unsigned i = 0; i < nelts; i++)
       batches.emplace_back(
           i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
@@ -185,7 +202,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.clear();
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
     batches.emplace_back(2 * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == 2);
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
@@ -203,7 +222,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.clear();
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
     batches.emplace_back(2 * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches).ok());
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == 2);
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
