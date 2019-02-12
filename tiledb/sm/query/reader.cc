@@ -673,6 +673,12 @@ void Reader::clear_read_state() {
   read_state_.overflowed_ = false;
 }
 
+void Reader::clear_tiles(
+    const std::string& attr, OverlappingTileVec* tiles) const {
+  for (auto& tile : *tiles)
+    tile->attr_tiles_.erase(attr);
+}
+
 template <class T>
 Status Reader::compute_cell_ranges(
     const OverlappingCoordsVec<T>& coords,
@@ -2181,6 +2187,25 @@ Status Reader::read_all_tiles(
 }
 
 Status Reader::read_tiles(
+    const std::string& attr, OverlappingTileVec* tiles) const {
+  // Shortcut for empty tile vec
+  if (tiles->empty())
+    return Status::Ok();
+
+  // Read the tiles asynchronously
+  std::vector<std::future<Status>> tasks;
+  RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles, &tasks));
+
+  // Wait for the reads to finish and check statuses.
+  auto statuses =
+      storage_manager_->reader_thread_pool()->wait_all_status(tasks);
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
+}
+
+Status Reader::read_tiles(
     const std::string& attribute,
     OverlappingTileVec* tiles,
     std::vector<std::future<Status>>* tasks) const {
@@ -2435,11 +2460,9 @@ Status Reader::sparse_read_2() {
   RETURN_CANCEL_OR_ERROR(
       compute_overlapping_tiles_2<T>(&tiles, &tile_map, &single_fragment));
 
-  // Read tiles
-  RETURN_CANCEL_OR_ERROR(read_all_tiles(&tiles));
-
-  // Filter tiles
-  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&tiles));
+  // Read and filter coordinate tiles
+  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, &tiles));
+  RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, &tiles));
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<OverlappingCoordsVec<T>> range_coords;
@@ -2457,11 +2480,22 @@ Status Reader::sparse_read_2() {
   RETURN_CANCEL_OR_ERROR(compute_cell_ranges(coords, &cell_ranges));
   coords.clear();
 
+  // Copy coordinates first and clean up coordinate tiles
+  if (std::find(attributes_.begin(), attributes_.end(), constants::coords) !=
+      attributes_.end())
+    RETURN_CANCEL_OR_ERROR(copy_cells(constants::coords, cell_ranges));
+  clear_tiles(constants::coords, &tiles);
+
   // Copy cells
   for (const auto& attr : attributes_) {
     if (read_state_2_.overflowed_)
       break;
+    if (attr == constants::coords)
+      continue;
+    RETURN_CANCEL_OR_ERROR(read_tiles(attr, &tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, cell_ranges));
+    clear_tiles(attr, &tiles);
   }
 
   return Status::Ok();
