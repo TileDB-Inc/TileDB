@@ -5,6 +5,7 @@
 
 * Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
 * The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
+* Removed array schema caching.
 
 ## Bug fixes
 

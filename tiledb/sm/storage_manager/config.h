@@ -71,7 +71,6 @@ class Config {
 
   /** Storage manager parameters. */
   struct SMParams {
-    uint64_t array_schema_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
     uint64_t memory_budget_;
@@ -88,7 +87,6 @@ class Config {
     ConsolidationParams consolidation_params_;
 
     SMParams() {
-      array_schema_cache_size_ = constants::array_schema_cache_size;
       fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
       memory_budget_ = constants::memory_budget_fixed;
@@ -244,10 +242,6 @@ class Config {
    *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
-   *    **Default**: 10,000,000
-   * - `sm.array_schema_cache_size` <br>
-   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
-   * <br>
    *    **Default**: 10,000,000
    * - `sm.fragment_metadata_cache_size` <br>
    *    The fragment metadata cache size in bytes. Any `uint64_t` value is
@@ -461,9 +455,6 @@ class Config {
 
   /** Sets the check for global order parameter. */
   Status set_sm_check_global_order(const std::string& value);
-
-  /** Sets the array metadata cache size, properly parsing the input value. */
-  Status set_sm_array_schema_cache_size(const std::string& value);
 
   /** Sets the fragment metadata cache size, properly parsing the input value.*/
   Status set_sm_fragment_metadata_cache_size(const std::string& value);

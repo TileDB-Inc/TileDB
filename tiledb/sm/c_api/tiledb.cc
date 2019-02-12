@@ -1817,15 +1817,13 @@ int32_t tiledb_array_schema_load_with_key(
 
   // Load array schema
   auto storage_manager = ctx->ctx_->storage_manager();
-  bool in_cache;
   if (SAVE_ERROR_CATCH(
           ctx,
           storage_manager->load_array_schema(
               tiledb::sm::URI(array_uri),
               tiledb::sm::ObjectType::ARRAY,
               key,
-              &((*array_schema)->array_schema_),
-              &in_cache))) {
+              &((*array_schema)->array_schema_)))) {
     delete *array_schema;
     return TILEDB_ERR;
   }
@@ -3560,15 +3558,13 @@ int32_t tiledb_kv_schema_load_with_key(
 
   // Load array schema
   auto storage_manager = ctx->ctx_->storage_manager();
-  bool in_cache;
   if (SAVE_ERROR_CATCH(
           ctx,
           storage_manager->load_array_schema(
               tiledb::sm::URI(kv_uri),
               tiledb::sm::ObjectType::KEY_VALUE,
               key,
-              &((*kv_schema)->array_schema_),
-              &in_cache))) {
+              &((*kv_schema)->array_schema_)))) {
     delete *kv_schema;
     return TILEDB_ERR;
   }

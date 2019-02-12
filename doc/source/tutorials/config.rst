@@ -78,7 +78,6 @@ in this program and explain the output.
         Tile cache size: 10000000
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -154,7 +153,6 @@ in this program and explain the output.
         Tile cache size: 10000000
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -306,7 +304,6 @@ The corresponding output is (note that we ran this on a machine with
 .. code-block:: bash
 
         Default settings:
-        "sm.array_schema_cache_size" : "10000000"
         "sm.check_coord_dups" : "true"
         "sm.check_coord_oob" : "true"
         "sm.check_global_order" : "true"
@@ -462,7 +459,6 @@ Inspecting the contents of the exported config file, we get the following:
 .. code-block:: bash
 
   $ cat tiledb_config.txt
-  sm.array_schema_cache_size 10000000
   sm.check_coord_dups true
   sm.check_coord_oob true
   sm.check_global_order true
@@ -516,7 +512,6 @@ along with their description and default values.
     ======================================    ===================     ==================================================
     **Parameter**                             **Default Value**       **Description**
     --------------------------------------    -------------------     --------------------------------------------------
-    ``"sm.array_schema_cache_size"``          ``"10000000"``          The array schema cache size in bytes.
     ``"sm.check_coord_dups"``                 ``"true"``              This is applicable only if ``sm.dedup_coords`` is
                                                                       ``false``. If ``true``, an error will be thrown if
                                                                       there are cells with duplicate coordinates during

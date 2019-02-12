@@ -494,10 +494,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.tile_cache_size` <br>
  *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
  *    **Default**: 10,000,000
- * - `sm.array_schema_cache_size` <br>
- *    The array schema cache size in bytes. Any `uint64_t` value is
- *    acceptable. <br>
- *    **Default**: 10,000,000
  * - `sm.fragment_metadata_cache_size` <br>
  *    The fragment metadata cache size in bytes. Any `uint64_t` value is
  *    acceptable. <br>
