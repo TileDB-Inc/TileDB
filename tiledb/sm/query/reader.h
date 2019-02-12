@@ -564,6 +564,16 @@ class Reader {
   void clear_read_state();
 
   /**
+   * Deletes the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
+   * @param attr The attribute name.
+   * @param tiles The tiles will be deleted from `tiles`.
+   * @return void
+   */
+  void clear_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
+
+  /**
    * Compute the maximal cell ranges of contiguous cell positions.
    *
    * @tparam T The coords type.
@@ -1051,6 +1061,16 @@ class Reader {
    */
   Status read_all_tiles(
       OverlappingTileVec* tiles, bool ensure_coords = true) const;
+
+  /**
+   * Retrieves the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
+   * @param attr The attribute name.
+   * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @return Status
+   */
+  Status read_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
 
   /**
    * Retrieves the tiles on a particular attribute from all input fragments
