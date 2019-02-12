@@ -261,9 +261,6 @@ extern const uint32_t var_num;
 /** String describing no compression. */
 extern const std::string no_compression_str;
 
-/** The array schema cache size. */
-extern const uint64_t array_schema_cache_size;
-
 /** The fragment metadata cache size. */
 extern const uint64_t fragment_metadata_cache_size;
 

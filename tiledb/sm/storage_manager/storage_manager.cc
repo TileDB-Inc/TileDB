@@ -63,7 +63,6 @@ namespace sm {
 /* ****************************** */
 
 StorageManager::StorageManager() {
-  array_schema_cache_ = nullptr;
   fragment_metadata_cache_ = nullptr;
   tile_cache_ = nullptr;
   vfs_ = nullptr;
@@ -75,7 +74,6 @@ StorageManager::~StorageManager() {
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
   cancel_all_tasks();
 
-  delete array_schema_cache_;
   delete fragment_metadata_cache_;
   delete tile_cache_;
   delete vfs_;
@@ -312,28 +310,14 @@ Status StorageManager::array_open_for_writes(
   // No shared filelock needed to be acquired
 
   // Load array schema if not fetched already
-  bool in_cache = true;
   if (open_array->array_schema() == nullptr) {
-    auto st = load_array_schema(
-        array_uri, obj_type, open_array, encryption_key, &in_cache);
+    auto st =
+        load_array_schema(array_uri, obj_type, open_array, encryption_key);
     if (!st.ok()) {
       open_array->mtx_unlock();
       array_close_for_writes(array_uri);
       return st;
     }
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  auto st = check_array_encryption_key(
-      open_array->array_schema(), encryption_key, in_cache);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_writes(array_uri);
-    return st;
   }
 
   // No fragment metadata to be loaded
@@ -376,17 +360,6 @@ Status StorageManager::array_reopen(
     open_array->mtx_lock();
   }
 
-  // Check the encryption key. Note we always pass true for cache hit by
-  // definition of reopening an array.
-  auto st = check_array_encryption_key(
-      open_array->array_schema(), encryption_key, true);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
-
   // Determine which fragments to load
   std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
   std::vector<URI> fragment_uris;
@@ -400,7 +373,7 @@ Status StorageManager::array_reopen(
 
   // Get fragment metadata in the case of reads, if not fetched already
   bool in_cache;
-  st = load_fragment_metadata(
+  auto st = load_fragment_metadata(
       open_array,
       encryption_key,
       fragments_to_load,
@@ -768,36 +741,6 @@ Status StorageManager::touch(const URI& uri) {
   return vfs_->touch(uri);
 }
 
-Status StorageManager::check_array_encryption_key(
-    const ArraySchema* schema,
-    const EncryptionKey& encryption_key,
-    bool was_cache_hit) {
-  std::string uri = schema->array_uri().to_string();
-  EncryptionKeyValidation* validation = nullptr;
-
-  // Get or add the validation instance
-  std::lock_guard<std::mutex> lck(open_arrays_encryption_keys_mtx_);
-  auto it = open_arrays_encryption_keys_.find(uri);
-  if (it == open_arrays_encryption_keys_.end()) {
-    // Sanity check for cached schemas, which should already have added a
-    // validation instance.
-    if (was_cache_hit)
-      return LOG_STATUS(
-          Status::StorageManagerError("Encryption key check failed; schema was "
-                                      "cached but key not previously used."));
-
-    auto ptr =
-        std::unique_ptr<EncryptionKeyValidation>(new EncryptionKeyValidation);
-    validation = ptr.get();
-    open_arrays_encryption_keys_[uri] = std::move(ptr);
-  } else {
-    validation = it->second.get();
-  }
-
-  assert(validation != nullptr);
-  return validation->check_encryption_key(encryption_key);
-}
-
 void StorageManager::decrement_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_--;
@@ -978,7 +921,6 @@ Status StorageManager::init(Config* config) {
   if (config != nullptr)
     config_ = *config;
   Config::SMParams sm_params = config_.sm_params();
-  array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
   async_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
@@ -1038,8 +980,7 @@ Status StorageManager::load_array_schema(
     const URI& array_uri,
     ObjectType object_type,
     const EncryptionKey& encryption_key,
-    ArraySchema** array_schema,
-    bool* in_cache) {
+    ArraySchema** array_schema) {
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
@@ -1050,24 +991,14 @@ Status StorageManager::load_array_schema(
                        array_uri.join_path(constants::array_schema_filename) :
                        array_uri.join_path(constants::kv_schema_filename);
 
-  // Try to read from cache
-  auto buff = new Buffer();
+  auto tile_io = new TileIO(this, schema_uri);
+  auto tile = (Tile*)nullptr;
   RETURN_NOT_OK_ELSE(
-      array_schema_cache_->read(schema_uri.to_string(), buff, in_cache),
-      delete buff);
-
-  // Read from file if not in cache
-  if (!(*in_cache)) {
-    delete buff;
-    auto tile_io = new TileIO(this, schema_uri);
-    auto tile = (Tile*)nullptr;
-    RETURN_NOT_OK_ELSE(
-        tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
-    tile->disown_buff();
-    buff = tile->buffer();
-    delete tile;
-    delete tile_io;
-  }
+      tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
+  tile->disown_buff();
+  auto buff = tile->buffer();
+  delete tile;
+  delete tile_io;
 
   // Deserialize
   bool is_kv = (object_type == ObjectType::KEY_VALUE);
@@ -1079,25 +1010,6 @@ Status StorageManager::load_array_schema(
   if (!st.ok()) {
     delete *array_schema;
     *array_schema = nullptr;
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  st = check_array_encryption_key(*array_schema, encryption_key, *in_cache);
-  if (!st.ok()) {
-    delete *array_schema;
-    *array_schema = nullptr;
-  }
-
-  // Store in cache
-  if (st.ok() && !(*in_cache) &&
-      buff->size() <= array_schema_cache_->max_size()) {
-    buff->disown_data();
-    st = array_schema_cache_->insert(
-        schema_uri.to_string(), buff->data(), buff->size());
   }
 
   delete buff;
@@ -1714,28 +1626,14 @@ Status StorageManager::array_open_without_fragments(
   }
 
   // Load array schema if not fetched already
-  bool in_cache = true;
   if ((*open_array)->array_schema() == nullptr) {
-    auto st = load_array_schema(
-        array_uri, obj_type, *open_array, encryption_key, &in_cache);
+    auto st =
+        load_array_schema(array_uri, obj_type, *open_array, encryption_key);
     if (!st.ok()) {
       (*open_array)->mtx_unlock();
       array_close_for_reads(array_uri);
       return st;
     }
-  }
-
-  // Check encryption key is valid and correct. If the schema was not read from
-  // cache, we only get here when the encryption key is actually
-  // valid (reading the schema from disk would have failed with an invalid key).
-  // If the schema was cached, this will check that the given key is the same as
-  // the key used when first loading the schema.
-  st = check_array_encryption_key(
-      (*open_array)->array_schema(), encryption_key, in_cache);
-  if (!st.ok()) {
-    (*open_array)->mtx_unlock();
-    array_close_for_reads(array_uri);
-    return st;
   }
 
   return Status::Ok();
@@ -1842,15 +1740,14 @@ Status StorageManager::load_array_schema(
     const URI& array_uri,
     ObjectType object_type,
     OpenArray* open_array,
-    const EncryptionKey& encryption_key,
-    bool* in_cache) {
+    const EncryptionKey& encryption_key) {
   // Do nothing if the array schema is already loaded
   if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema(
-      array_uri, object_type, encryption_key, &array_schema, in_cache));
+  RETURN_NOT_OK(
+      load_array_schema(array_uri, object_type, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();
@@ -1881,9 +1778,6 @@ Status StorageManager::load_fragment_metadata(
           delete metadata);
       STATS_COUNTER_ADD(fragment_metadata_num_fragments, 1);
       *in_cache |= metadata_in_cache;
-
-      // TODO: insert here only if the non-empty domain overlaps with subarray
-
       open_array->insert_fragment_metadata(metadata);
     }
     fragment_metadata->push_back(metadata);

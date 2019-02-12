@@ -59,7 +59,7 @@ void check_load_correct_file() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000 # some comment\n";
+  ofs << "sm.num_async_threads 10 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -112,7 +112,7 @@ void check_load_incorrect_file_missing_value() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size    \n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000\n";
+  ofs << "sm.num_async_threads 10\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -142,7 +142,7 @@ void check_load_incorrect_file_extra_word() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000 some comment\n";
+  ofs << "sm.num_async_threads 10 some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -190,7 +190,6 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
-  ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -358,9 +357,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
-  rc = tiledb_config_set(config, "sm.array_schema_cache_size", "1000", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);

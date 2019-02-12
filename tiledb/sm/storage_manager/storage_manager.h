@@ -443,15 +443,13 @@ class StorageManager {
    * @param object_type This is either ARRAY or KEY_VALUE.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
-   * @param in_cache Set to true if the schema was cached.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       ObjectType object_type,
       const EncryptionKey& encryption_key,
-      ArraySchema** array_schema,
-      bool* in_cache);
+      ArraySchema** array_schema);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -695,9 +693,6 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** An array schema cache. */
-  LRUCache* array_schema_cache_;
-
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
 
@@ -729,25 +724,11 @@ class StorageManager {
   /** Mutex for managing OpenArray objects for writes. */
   std::mutex open_array_for_writes_mtx_;
 
-  /** Mutex protecting open_arrays_encryption_keys_. */
-  std::mutex open_arrays_encryption_keys_mtx_;
-
   /** Stores the currently open arrays for reads. */
   std::map<std::string, OpenArray*> open_arrays_for_reads_;
 
   /** Stores the currently open arrays for writes. */
   std::map<std::string, OpenArray*> open_arrays_for_writes_;
-
-  /**
-   * Map of array URI -> encryption key validation instance for arrays that have
-   * been opened with an encryption key. This does not store the actual keys.
-   *
-   * Note: there is no difference when opening arrays for reads or writes. This
-   * map is insert-only (items not removed when arrays are closed) because
-   * the encryption key does not (and should not) ever change.
-   */
-  std::map<std::string, std::unique_ptr<EncryptionKeyValidation>>
-      open_arrays_encryption_keys_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;
@@ -835,21 +816,6 @@ class StorageManager {
       const EncryptionKey& encryption_key,
       OpenArray** open_array);
 
-  /**
-   * Checks that the given encryption key is valid for the given array. Returns
-   * an error if the key is invalid.
-   *
-   * @param schema Array schema
-   * @param encryption_key The encryption key to check.
-   * @param was_cache_hit If true, also returns an error if the encryption key
-   *    was not used before (sanity check).
-   * @return Status
-   */
-  Status check_array_encryption_key(
-      const ArraySchema* schema,
-      const EncryptionKey& encryption_key,
-      bool was_cache_hit);
-
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
@@ -888,15 +854,13 @@ class StorageManager {
    * @param object_type This is either ARRAY or KEY_VALUE.
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
-   * @param in_cache Set to true if the schema was retrieved from the cache.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       ObjectType object_type,
       OpenArray* open_array,
-      const EncryptionKey& encryption_key,
-      bool* in_cache);
+      const EncryptionKey& encryption_key);
 
   /**
    * Loads the fragment metadata of an open array given a vector of

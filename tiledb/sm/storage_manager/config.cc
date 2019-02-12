@@ -182,8 +182,6 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_consolidation_amplification(value));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(set_consolidation_buffer_size(value));
-  } else if (param == "sm.array_schema_cache_size") {
-    RETURN_NOT_OK(set_sm_array_schema_cache_size(value));
   } else if (param == "sm.fragment_metadata_cache_size") {
     RETURN_NOT_OK(set_sm_fragment_metadata_cache_size(value));
   } else if (param == "sm.enable_signal_handlers") {
@@ -331,11 +329,6 @@ Status Config::unset(const std::string& param) {
         constants::consolidation_buffer_size;
     value << sm_params_.consolidation_params_.buffer_size_;
     param_values_["sm.consolidation.buffer_size"] = value.str();
-    value.str(std::string());
-  } else if (param == "sm.array_schema_cache_size") {
-    sm_params_.array_schema_cache_size_ = constants::array_schema_cache_size;
-    value << sm_params_.array_schema_cache_size_;
-    param_values_["sm.array_schema_cache_size"] = value.str();
     value.str(std::string());
   } else if (param == "sm.fragment_metadata_cache_size") {
     sm_params_.fragment_metadata_cache_size_ =
@@ -574,10 +567,6 @@ void Config::set_default_param_values() {
   param_values_["sm.consolidation.buffer_size"] = value.str();
   value.str(std::string());
 
-  value << sm_params_.array_schema_cache_size_;
-  param_values_["sm.array_schema_cache_size"] = value.str();
-  value.str(std::string());
-
   value << sm_params_.fragment_metadata_cache_size_;
   param_values_["sm.fragment_metadata_cache_size"] = value.str();
   value.str(std::string());
@@ -770,14 +759,6 @@ Status Config::set_sm_check_global_order(const std::string& value) {
         "Cannot set parameter; Invalid check global order value"));
   }
   sm_params_.check_global_order_ = v;
-  return Status::Ok();
-}
-
-Status Config::set_sm_array_schema_cache_size(const std::string& value) {
-  uint64_t v;
-  RETURN_NOT_OK(utils::parse::convert(value, &v));
-  sm_params_.array_schema_cache_size_ = v;
-
   return Status::Ok();
 }
 

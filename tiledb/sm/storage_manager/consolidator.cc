@@ -85,10 +85,9 @@ Status Consolidator::consolidate(
   // Get array schema
   ObjectType object_type;
   RETURN_NOT_OK(storage_manager_->object_type(array_uri, &object_type));
-  bool in_cache;
   auto array_schema = (ArraySchema*)nullptr;
   RETURN_NOT_OK(storage_manager_->load_array_schema(
-      array_uri, object_type, enc_key, &array_schema, &in_cache));
+      array_uri, object_type, enc_key, &array_schema));
 
   RETURN_NOT_OK_ELSE(
       consolidate(array_schema, encryption_type, encryption_key, key_length),
