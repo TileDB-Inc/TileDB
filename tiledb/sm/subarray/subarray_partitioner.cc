@@ -313,8 +313,11 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
 
   // Current came from retrieving a multi-range partition from subarray
   if (current_.start_ < current_.end_) {
-    current_.end_ *= (1 - constants::multi_range_reduction_in_split);
-    current_.end_ = MAX(current_.start_, current_.end_);
+    auto range_num = (current_.end_ - current_.start_ + 1);
+    assert(1 - constants::multi_range_reduction_in_split <= 1);
+    auto new_range_num =
+        range_num * (1 - constants::multi_range_reduction_in_split);
+    current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
     current_.partition_ =
         std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
     state_.start_ = current_.end_ + 1;
