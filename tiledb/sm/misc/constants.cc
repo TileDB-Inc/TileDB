@@ -276,9 +276,6 @@ const uint32_t var_num = std::numeric_limits<unsigned int>::max();
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";
 
-/** The fragment metadata cache size. */
-const uint64_t fragment_metadata_cache_size = 10000000;
-
 /** Whether or not the signal handlers are installed. */
 const bool enable_signal_handlers = true;
 

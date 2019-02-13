@@ -89,7 +89,6 @@ in this program and explain the output.
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
         "sm.memory_budget" : "5368709120"
         "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
@@ -164,7 +163,6 @@ in this program and explain the output.
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
         "sm.memory_budget" : "5368709120"
         "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
@@ -315,7 +313,6 @@ The corresponding output is (note that we ran this on a machine with
         "sm.consolidation.steps" : "4294967295"
         "sm.dedup_coords" : "false"
         "sm.enable_signal_handlers" : "true"
-        "sm.fragment_metadata_cache_size" : "10000000"
         "sm.memory_budget" : "5368709120"
         "sm.memory_budget_var" : "10737418240"
         "sm.num_async_threads" : "1"
@@ -470,7 +467,6 @@ Inspecting the contents of the exported config file, we get the following:
   sm.consolidation.steps 4294967295
   sm.dedup_coords false
   sm.enable_signal_handlers true
-  sm.fragment_metadata_cache_size 10000000
   sm.memory_budget 5368709120
   sm.memory_budget_var 10737418240
   sm.num_async_threads 1
@@ -552,7 +548,6 @@ along with their description and default values.
                                                                       arbitrarily.
     ``"sm.enable_signal_handlers"``           ``"true"``              Determines whether or not TileDB will install
                                                                       signal handlers.
-    ``"sm.fragment_metadata_cache_size"``     ``"10000000"``          The fragment metadata cache size in bytes.
     ``"sm.memory_budget"``                    ``"5GB"``               The memory budget for tiles of fixed-sized
                                                                       attributes (or offsets for var-sized attributes)
                                                                       to be fetched during reads.

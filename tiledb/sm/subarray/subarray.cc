@@ -802,10 +802,12 @@ void Subarray::compute_tile_overlap() {
   // Compute estimated tile overlap in parallel over fragments and ranges
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
+        // TODO: only if it overlaps with the non-empty domain
+        // TODO: the R-Tree will be loaded on demand
+        // TODO: don't expose R-Tree -> send it directly to metadata instead
         auto rtree = meta[i]->rtree();
         auto range = this->range<T>(j);
-        auto overlap = rtree->get_tile_overlap<T>(range);
-        tile_overlap_[i][j] = overlap;
+        tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
         return Status::Ok();
       });
 

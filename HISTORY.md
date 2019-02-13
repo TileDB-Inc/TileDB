@@ -8,6 +8,7 @@
 
 ## Improvements
 
+* Removed fragment metadata caching.
 * Removed array schema caching.
 * If a subarray is set to an array before opening, only metadata of the fragments whose empty domain overlaps with that subarray are loaded upon array opening.
 * The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
