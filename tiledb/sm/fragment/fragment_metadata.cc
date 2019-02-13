@@ -565,13 +565,6 @@ uint64_t FragmentMetadata::tile_var_size(
   return tile_var_sizes_[attribute_id][tile_idx];
 }
 
-const std::vector<uint64_t>* FragmentMetadata::tile_var_sizes(
-    const std::string& attr_name) const {
-  auto it = attribute_idx_map_.find(attr_name);
-  auto attribute_id = it->second;
-  return &tile_var_sizes_[attribute_id];
-}
-
 uint64_t FragmentMetadata::timestamp() const {
   return timestamp_;
 }
