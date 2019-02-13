@@ -444,10 +444,6 @@ class FragmentMetadata {
    */
   uint64_t tile_var_size(const std::string& attribute, uint64_t tile_idx) const;
 
-  /** Returns the uncompressed tile sizes for a given var-sized attribute. */
-  const std::vector<uint64_t>* tile_var_sizes(
-      const std::string& attr_name) const;
-
   /** The creation timestamp of the fragment. */
   uint64_t timestamp() const;
 
