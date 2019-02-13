@@ -148,12 +148,6 @@ class ArraySchema {
    */
   const FilterPipeline* cell_var_offsets_filters() const;
 
-  /** Returns the compression type used for offsets of variable-sized cells. */
-  Compressor cell_var_offsets_compression() const;
-
-  /** Returns the compression level used for offsets of variable-sized cells. */
-  int cell_var_offsets_compression_level() const;
-
   /**
    * Checks the correctness of the array schema.
    *
@@ -172,12 +166,6 @@ class ArraySchema {
 
   /** Return the filter pipeline for the given attribute. */
   const FilterPipeline* filters(const std::string& attribute) const;
-
-  /** Returns the compression type of the input attribute. */
-  Compressor compression(const std::string& compression) const;
-
-  /** Return the compression level of the input attribute. */
-  int compression_level(const std::string& attribute) const;
 
   /** Return a pointer to the pipeline used for coordinates. */
   const FilterPipeline* coords_filters() const;
@@ -281,20 +269,8 @@ class ArraySchema {
   /** Sets an array URI. */
   void set_array_uri(const URI& array_uri);
 
-  /** Sets the variable cell offsets compressor. */
-  void set_cell_var_offsets_compressor(Compressor compressor);
-
-  /** Sets the variable cell offsets compression level. */
-  void set_cell_var_offsets_compression_level(int compression_level);
-
   /** Sets the filter pipeline for the variable cell offsets. */
   Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
-
-  /** Sets the coordinates compressor. */
-  void set_coords_compressor(Compressor compressor);
-
-  /** Sets the coordinates compression level. */
-  void set_coords_compression_level(int compression_level);
 
   /** Sets the filter pipeline for the coordinates. */
   Status set_coords_filter_pipeline(const FilterPipeline* pipeline);

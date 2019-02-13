@@ -134,14 +134,6 @@ typedef enum {
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 } tiledb_encryption_type_t;
 
-/** Compression type. */
-typedef enum {
-/** Helper macro for defining compressor enums. */
-#define TILEDB_COMPRESSOR_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_COMPRESSOR_ENUM
-} tiledb_compressor_t;
-
 /** Walk traversal order. */
 typedef enum {
 /** Helper macro for defining walk order enums. */
@@ -1250,30 +1242,6 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
     tiledb_filter_list_t* filter_list);
 
 /**
- * Sets a compressor for an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_set_compressor(ctx, attr, TILEDB_ZSTD, -1);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param compressor The compressor to be set.
- * @param compression_level The compression level (use `-1` for default).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_attribute_set_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    tiledb_compressor_t compressor,
-    int32_t compression_level);
-
-/**
  * Sets the number of values per cell for an attribute. If this is not
  * used, the default is `1`.
  *
@@ -1355,32 +1323,6 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_filter_list_t** filter_list);
-
-/**
- * Retrieves the attribute compressor and the compression level.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_compressor_t compressor;
- * int32_t level;
- * tiledb_attribute_get_compressor(ctx, attr, &compressor, &level);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_attribute_get_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level);
 
 /**
  * Retrieves the number of values per cell for the attribute. For variable-sized
@@ -1918,33 +1860,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_filter_list_t* filter_list);
 
 /**
- * Sets the compressor to use for the coordinates.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_set_coords_compressor(
- *     ctx, array_schema, TILEDB_GZIP, -1);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param compressor The coordinates compressor.
- * @param compression_level The coordinates compression level (use `-1` for
- *     default).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t
-tiledb_array_schema_set_coords_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t compressor,
-    int32_t compression_level);
-
-/**
  * Sets the filter list to use for the offsets of variable-sized attribute
  * values.
  *
@@ -1966,34 +1881,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list);
-
-/**
- * Sets the compressor to use for the offsets of variable-sized attribute
- * values.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_set_offsets_compressor(
- *     ctx, array_schema, TILEDB_GZIP, -1);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param compressor The offsets compressor.
- * @param compression_level The coordinates compression level (use `-1` for
- *     default).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t
-tiledb_array_schema_set_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t compressor,
-    int32_t compression_level);
 
 /**
  * Checks the correctness of the array schema.
@@ -2151,34 +2038,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
     tiledb_filter_list_t** filter_list);
 
 /**
- * Retrieves the compressor info of the coordinates.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_compressor_t compressor;
- * int32_t level;
- * tiledb_array_schema_get_coords_compressor(
- *     ctx, array_schema, &compressor, &level);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t
-tiledb_array_schema_get_coords_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level);
-
-/**
  * Retrieves the filter list used for the offsets.
  *
  * **Example:**
@@ -2198,34 +2057,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list);
-
-/**
- * Retrieves the compressor info of the offsets.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_compressor_t compressor;
- * int32_t level;
- * tiledb_array_schema_get_offsets_compressor(
- *     ctx, array_schema, &compressor, &level);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function is deprecated and will be removed in a future version.
- *       The filter API should be used instead.
- */
-TILEDB_EXPORT TILEDB_DEPRECATED int32_t
-tiledb_array_schema_get_offsets_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_compressor_t* compressor,
-    int32_t* compression_level);
 
 /**
  * Retrieves the array domain.

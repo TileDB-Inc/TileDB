@@ -92,8 +92,6 @@ Enumerations
     :project: TileDB-C
 .. doxygenenum:: tiledb_filter_option_t
     :project: TileDB-C
-.. doxygenenum:: tiledb_compressor_t
-    :project: TileDB-C
 .. doxygenenum:: tiledb_walk_order_t
     :project: TileDB-C
 .. doxygenenum:: tiledb_vfs_mode_t
@@ -221,10 +219,6 @@ Array Schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_set_offsets_filter_list
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_set_coords_compressor
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_set_offsets_compressor
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_check
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_load
@@ -240,10 +234,6 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_get_coords_filter_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_offsets_filter_list
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_get_coords_compressor
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_get_offsets_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_domain
     :project: TileDB-C
@@ -268,8 +258,6 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_filter_list
     :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_set_compressor
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_cell_val_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_name
@@ -277,8 +265,6 @@ Attribute
 .. doxygenfunction:: tiledb_attribute_get_type
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_filter_list
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_get_compressor
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_cell_val_num
     :project: TileDB-C

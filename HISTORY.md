@@ -39,8 +39,11 @@
 ### C API
 
 * `tiledb_{array,kv}_consolidate{_with_key}` now takes a `tiledb_config_t*` as argument.
+* Deprecated `tiledb_compressor_t` APIs from v1.3.x have been removed, replaced by the `tiledb_filter_list` API. [#1128](https://github.com/TileDB-Inc/TileDB/pull/1128)
 
 ### C++ API
+
+* Deprecated `tiledb::Compressor` APIs from v1.3.x have been removed, replaced by the `FilterList` API. [#1128](https://github.com/TileDB-Inc/TileDB/pull/1128)
 
 
 # TileDB v1.4.1 Release Notes
