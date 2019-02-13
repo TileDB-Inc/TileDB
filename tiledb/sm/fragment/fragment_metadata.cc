@@ -439,21 +439,15 @@ Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
+  // Read format version
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
-  tile->disown_buff();
-  auto buff = tile->buffer();
-  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
-  delete tile;
+  TileIO::GenericTileHeader header;
+  RETURN_NOT_OK(tile_io.read_generic_tile_header(
+      storage_manager_, fragment_metadata_uri, 0, &header));
 
-  // Deserialize
-  ConstBuffer cbuff(buff);
-  Status st = deserialize(&cbuff);
-
-  delete buff;
-
-  return st;
+  if (header.version_number <= 2)
+    return load_v2(encryption_key);
+  return load_v3(encryption_key);
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
@@ -1057,6 +1051,50 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   return Status::Ok();
+}
+
+Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  // Read format version
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  auto tile = (Tile*)nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+  tile->disown_buff();
+  auto buff = tile->buffer();
+  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
+  delete tile;
+
+  // Deserialize
+  ConstBuffer cbuff(buff);
+  Status st = deserialize(&cbuff);
+
+  delete buff;
+
+  return st;
+}
+
+Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  // Read format version
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  auto tile = (Tile*)nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+  tile->disown_buff();
+  auto buff = tile->buffer();
+  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
+  delete tile;
+
+  // Deserialize
+  ConstBuffer cbuff(buff);
+  Status st = deserialize(&cbuff);
+
+  delete buff;
+
+  return st;
 }
 
 // ===== FORMAT =====

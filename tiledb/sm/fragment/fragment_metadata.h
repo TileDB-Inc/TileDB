@@ -656,6 +656,12 @@ class FragmentMetadata {
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
+  /** Loads the basic metadata from storage (version 2 or before). */
+  Status load_v2(const EncryptionKey& encryption_key);
+
+  /** Loads the basic metadata from storage (version 3). */
+  Status load_v3(const EncryptionKey& encryption_key);
+
   /**
    * Writes the bounding coordinates to the fragment metadata buffer.
    *
