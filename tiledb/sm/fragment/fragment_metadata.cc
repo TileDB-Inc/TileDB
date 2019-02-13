@@ -35,7 +35,9 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/tile/tile_io.h"
 
 #include <cassert>
 #include <iostream>
@@ -55,11 +57,13 @@ namespace sm {
 /* ****************************** */
 
 FragmentMetadata::FragmentMetadata(
+    StorageManager* storage_manager,
     const ArraySchema* array_schema,
     bool dense,
     const URI& fragment_uri,
     uint64_t timestamp)
-    : array_schema_(array_schema)
+    : storage_manager_(storage_manager)
+    , array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_(timestamp) {
@@ -347,18 +351,6 @@ const void* FragmentMetadata::domain() const {
   return domain_;
 }
 
-uint64_t FragmentMetadata::file_sizes(const std::string& attribute) const {
-  auto it = attribute_idx_map_.find(attribute);
-  auto attribute_id = it->second;
-  return file_sizes_[attribute_id];
-}
-
-uint64_t FragmentMetadata::file_var_sizes(const std::string& attribute) const {
-  auto it = attribute_idx_map_.find(attribute);
-  auto attribute_id = it->second;
-  return file_var_sizes_[attribute_id];
-}
-
 uint32_t FragmentMetadata::format_version() const {
   return version_;
 }
@@ -435,6 +427,78 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
 
 uint64_t FragmentMetadata::last_tile_cell_num() const {
   return last_tile_cell_num_;
+}
+
+Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
+  bool fragment_exists;
+  RETURN_NOT_OK(storage_manager_->is_fragment(fragment_uri_, &fragment_exists));
+  if (!fragment_exists)
+    return Status::StorageManagerError(
+        "Cannot load fragment metadata; Fragment does not exist");
+
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  auto tile = (Tile*)nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+  tile->disown_buff();
+  auto buff = tile->buffer();
+  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
+  delete tile;
+
+  // Deserialize
+  ConstBuffer cbuff(buff);
+  Status st = deserialize(&cbuff);
+
+  delete buff;
+
+  return st;
+}
+
+Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
+  auto array_uri = this->array_uri();
+
+  // Do nothing if fragment directory does not exist. The fragment directory
+  // is created only when some attribute file is written
+  bool is_dir = false;
+  RETURN_NOT_OK(storage_manager_->is_dir(fragment_uri_, &is_dir));
+  if (!is_dir)
+    return Status::Ok();
+
+  // Serialize
+  Buffer buff;
+  RETURN_NOT_OK(serialize(&buff));
+
+  // Write to file
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+  buff.reset_offset();
+  Tile tile(
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      &buff,
+      false);
+
+  // TODO: we need locking for thread-/process-safety here
+
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key));
+  RETURN_NOT_OK(storage_manager_->close_file(fragment_metadata_uri));
+
+  // Write non-empty domain to file
+  // TODO(sp): this will be refactored
+  auto domain_size = non_empty_domain_size();
+  if (domain_size > 0) {
+    URI file_uri =
+        fragment_uri_.join_path(constants::non_empty_domain_filename);
+    RETURN_NOT_OK(
+        storage_manager_->write(file_uri, non_empty_domain_, domain_size));
+    RETURN_NOT_OK(storage_manager_->close_file(file_uri));
+  }
+
+  return Status::Ok();
 }
 
 const std::vector<void*>* FragmentMetadata::mbrs() const {

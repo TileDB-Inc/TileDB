@@ -727,6 +727,10 @@ Status StorageManager::create_dir(const URI& uri) {
   return vfs_->create_dir(uri);
 }
 
+Status StorageManager::is_dir(const URI& uri, bool* is_dir) const {
+  return vfs_->is_dir(uri, is_dir);
+}
+
 Status StorageManager::touch(const URI& uri) {
   return vfs_->touch(uri);
 }
@@ -816,14 +820,17 @@ Status StorageManager::get_fragment_info(
     // Get fragment non-empty domain
     // TODO: get it from the file
     auto metadata =
-        FragmentMetadata(array_schema, !sparse, uri.second, uri.first);
-    RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key));
+        FragmentMetadata(this, array_schema, !sparse, uri.second, uri.first);
+    RETURN_NOT_OK(metadata.load(encryption_key));
     std::memcpy(non_empty_domain, metadata.non_empty_domain(), domain_size);
 
     // Push new fragment info
     fragment_info->emplace_back(
         uri.second, sparse, uri.first, size, non_empty_domain, domain_size);
   }
+
+  // TODO: non-empty domain is not freed upon error
+  // TODO: use uint8_t vector instead
 
   // Clean up
   std::free(non_empty_domain);
@@ -865,8 +872,8 @@ Status StorageManager::get_fragment_info(
 
   // Get fragment non-empty domain
   auto metadata =
-      FragmentMetadata(array_schema, !sparse, fragment_uri, timestamp);
-  RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key));
+      FragmentMetadata(this, array_schema, !sparse, fragment_uri, timestamp);
+  RETURN_NOT_OK(metadata.load(encryption_key));
 
   // Set fragment info
   *fragment_info = FragmentInfo(
@@ -1000,38 +1007,6 @@ Status StorageManager::load_array_schema(
     *array_schema = nullptr;
   }
 
-  delete buff;
-
-  return st;
-}
-
-Status StorageManager::load_fragment_metadata(
-    FragmentMetadata* fragment_metadata, const EncryptionKey& encryption_key) {
-  const URI& fragment_uri = fragment_metadata->fragment_uri();
-  bool fragment_exists;
-  RETURN_NOT_OK(is_fragment(fragment_uri, &fragment_exists));
-  if (!fragment_exists)
-    return Status::StorageManagerError(
-        "Cannot load fragment metadata; Fragment does not exist");
-
-  URI fragment_metadata_uri = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename));
-
-  auto tile_io = new TileIO(this, fragment_metadata_uri);
-  auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK_ELSE(
-      tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
-  tile->disown_buff();
-  auto buff = tile->buffer();
-  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io->file_size());
-  delete tile;
-  delete tile_io;
-
-  // Deserialize
-  auto cbuff = new ConstBuffer(buff);
-  Status st = fragment_metadata->deserialize(cbuff);
-
-  delete cbuff;
   delete buff;
 
   return st;
@@ -1341,62 +1316,6 @@ Status StorageManager::store_array_schema(
   return st;
 }
 
-Status StorageManager::store_fragment_metadata(
-    FragmentMetadata* metadata, const EncryptionKey& encryption_key) {
-  // For thread-safety while loading fragment metadata
-  std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
-
-  // Do nothing if fragment directory does not exist. The fragment directory
-  // is created only when some attribute file is written
-  bool is_dir = false;
-  const URI& fragment_uri = metadata->fragment_uri();
-  RETURN_NOT_OK(vfs_->is_dir(fragment_uri, &is_dir));
-  if (!is_dir) {
-    return Status::Ok();
-  }
-
-  // Serialize
-  auto buff = new Buffer();
-  Status st = metadata->serialize(buff);
-  if (!st.ok()) {
-    delete buff;
-    return st;
-  }
-
-  // Write to file
-  URI fragment_metadata_uri = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename));
-  buff->reset_offset();
-  auto tile = new Tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      buff,
-      false);
-
-  auto tile_io = new TileIO(this, fragment_metadata_uri);
-  st = tile_io->write_generic(tile, encryption_key);
-  if (st.ok()) {
-    st = close_file(fragment_metadata_uri);
-  }
-
-  // Write non-empty domain to file
-  // TODO(sp): this will be refactored
-  auto non_empty_domain = metadata->non_empty_domain();
-  auto domain_size = metadata->non_empty_domain_size();
-  if (domain_size > 0) {
-    URI file_uri = fragment_uri.join_path(constants::non_empty_domain_filename);
-    RETURN_NOT_OK(vfs_->write(file_uri, non_empty_domain, domain_size));
-    RETURN_NOT_OK(close_file(file_uri));
-  }
-
-  delete tile;
-  delete tile_io;
-  delete buff;
-
-  return st;
-}
-
 Status StorageManager::close_file(const URI& uri) {
   return vfs_->close_file(uri);
 }
@@ -1455,6 +1374,10 @@ Status StorageManager::write_to_cache(
 
 Status StorageManager::write(const URI& uri, Buffer* buffer) const {
   return vfs_->write(uri, buffer->data(), buffer->size());
+}
+
+Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
+  return vfs_->write(uri, data, size);
 }
 
 /* ****************************** */
@@ -1717,6 +1640,7 @@ Status StorageManager::load_fragment_metadata(
     const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
+  // TODO: do this in parallel
   for (auto& sf : fragments_to_load) {
     auto frag_timestamp = sf.first;
     auto frag_uri = sf.second;
@@ -1727,9 +1651,8 @@ Status StorageManager::load_fragment_metadata(
       bool sparse;
       RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
       metadata = new FragmentMetadata(
-          open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
-      RETURN_NOT_OK_ELSE(
-          load_fragment_metadata(metadata, encryption_key), delete metadata);
+          this, open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
+      RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
       STATS_COUNTER_ADD(fragment_metadata_num_fragments, 1);
       open_array->insert_fragment_metadata(metadata);
     }

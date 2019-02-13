@@ -922,8 +922,8 @@ Status Writer::create_fragment(
     RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
-  *frag_meta =
-      std::make_shared<FragmentMetadata>(array_schema_, dense, uri, timestamp);
+  *frag_meta = std::make_shared<FragmentMetadata>(
+      storage_manager_, array_schema_, dense, uri, timestamp);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 
@@ -1056,8 +1056,7 @@ Status Writer::finalize_global_write_state() {
   }
 
   // Flush fragment metadata to storage
-  st = storage_manager_->store_fragment_metadata(
-      meta, array_->get_encryption_key());
+  st = meta->store(array_->get_encryption_key());
   if (!st.ok())
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
 
@@ -1525,8 +1524,7 @@ Status Writer::ordered_write() {
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      storage_manager_->store_fragment_metadata(
-          frag_meta.get(), array_->get_encryption_key()),
+      frag_meta.get()->store(array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();
@@ -2156,8 +2154,7 @@ Status Writer::unordered_write() {
 
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
-      storage_manager_->store_fragment_metadata(
-          frag_meta.get(), array_->get_encryption_key()),
+      frag_meta.get()->store(array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
 
   return Status::Ok();

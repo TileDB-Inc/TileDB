@@ -45,6 +45,8 @@
 namespace tiledb {
 namespace sm {
 
+class StorageManager;
+
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
  public:
@@ -55,6 +57,7 @@ class FragmentMetadata {
   /**
    * Constructor.
    *
+   * @param storage_manager A storage manager instance.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param fragment_uri The fragment URI.
@@ -62,6 +65,7 @@ class FragmentMetadata {
    * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
   FragmentMetadata(
+      StorageManager* storage_manager,
       const ArraySchema* array_schema,
       bool dense,
       const URI& fragment_uri,
@@ -215,12 +219,6 @@ class FragmentMetadata {
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
 
-  /** Returns the size of the input attribute. */
-  uint64_t file_sizes(const std::string& attribute) const;
-
-  /** Returns the size of the input variable attribute. */
-  uint64_t file_var_sizes(const std::string& attribute) const;
-
   /** Returns the format version of this fragment. */
   uint32_t format_version() const;
 
@@ -249,6 +247,12 @@ class FragmentMetadata {
 
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
+
+  /** Loads the basic metadata from storage. */
+  Status load(const EncryptionKey& encryption_key);
+
+  /** Stores all the metadata to storage. */
+  Status store(const EncryptionKey& encryption_key);
 
   /** Returns the MBRs. */
   const std::vector<void*>* mbrs() const;
@@ -457,6 +461,9 @@ class FragmentMetadata {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The storage manager. */
+  StorageManager* storage_manager_;
 
   /** The array schema */
   const ArraySchema* array_schema_;
