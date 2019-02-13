@@ -141,6 +141,7 @@ void OpenArray::set_array_schema(ArraySchema* array_schema) {
 }
 
 void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
+  std::lock_guard<std::mutex> lock(local_mtx_);
   assert(metadata != nullptr);
   fragment_metadata_.insert(metadata);
   fragment_metadata_set_[metadata->fragment_uri().to_string()] = metadata;

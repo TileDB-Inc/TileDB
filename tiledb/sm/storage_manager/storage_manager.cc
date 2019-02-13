@@ -38,6 +38,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -1640,10 +1641,12 @@ Status StorageManager::load_fragment_metadata(
     const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
-  // TODO: do this in parallel
-  for (auto& sf : fragments_to_load) {
+  auto fragment_num = fragments_to_load.size();
+  fragment_metadata->resize(fragment_num);
+  auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
+    const auto& sf = fragments_to_load[f];
     auto frag_timestamp = sf.first;
-    auto frag_uri = sf.second;
+    const auto& frag_uri = sf.second;
     auto metadata = open_array->fragment_metadata(frag_uri);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
@@ -1653,11 +1656,15 @@ Status StorageManager::load_fragment_metadata(
       metadata = new FragmentMetadata(
           this, open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
       RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
-      STATS_COUNTER_ADD(fragment_metadata_num_fragments, 1);
       open_array->insert_fragment_metadata(metadata);
     }
-    fragment_metadata->push_back(metadata);
-  }
+    (*fragment_metadata)[f] = metadata;
+    return Status::Ok();
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  STATS_COUNTER_ADD(fragment_metadata_num_fragments, fragment_num);
 
   return Status::Ok();
 }

@@ -183,6 +183,11 @@ class OpenArray {
    */
   mutable std::mutex mtx_;
 
+  /**
+   * A mutex used for local process-safety in the object.
+   */
+  mutable std::mutex local_mtx_;
+
   /** The query type the array was opened with. */
   QueryType query_type_;
 
