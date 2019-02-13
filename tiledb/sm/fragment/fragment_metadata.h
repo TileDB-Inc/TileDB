@@ -51,6 +51,23 @@ class StorageManager;
 class FragmentMetadata {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * Stores the start offsets of the generic tiles stored in the
+   * metadata file, each separately storing the various metadata
+   * (e.g., basic, mbrs, etc).
+   */
+  struct GenericTileOffsets {
+    uint64_t basic_;
+    uint64_t mbrs_;
+    uint64_t tile_offsets_;
+    uint64_t tile_var_offsets_;
+    uint64_t tile_var_sizes_;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -208,14 +225,6 @@ class FragmentMetadata {
    */
   bool dense() const;
 
-  /**
-   * Loads the fragment metadata structures from the input binary buffer.
-   *
-   * @param buff The binary buffer to deserialize from.
-   * @return Status
-   */
-  Status deserialize(ConstBuffer* buff);
-
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
 
@@ -262,23 +271,6 @@ class FragmentMetadata {
 
   /** Returns the non-empty domain size in bytes. */
   uint64_t non_empty_domain_size() const;
-
-  /**
-   * Serializes the metadata structures into a binary buffer.
-   *
-   * @param buff The buffer to serialize into.
-   * @return Status
-   */
-  Status serialize(Buffer* buff);
-
-  /**
-   * Sets the input tile's bounding coordinates in the fragment metadata.
-   *
-   * @param tile The tile index whose bounding coords will be set.
-   * @param bounding_coords The bounding coordinates to be set.
-   * @return void
-   */
-  void set_bounding_coords(uint64_t tile, const void* bounding_coords);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -553,6 +545,9 @@ class FragmentMetadata {
   /** The creation timestamp of the fragment. */
   uint64_t timestamp_;
 
+  /** Stores the generic tile offsets, facilitating loading. */
+  GenericTileOffsets gt_offsets_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -590,6 +585,21 @@ class FragmentMetadata {
    */
   template <class T>
   Status expand_non_empty_domain(const T* mbr);
+
+  /** Loads the basic metadata from storage. */
+  Status load_basic(const EncryptionKey& encryption_key);
+
+  /** Loads the MBRs from storage. */
+  Status load_mbrs(const EncryptionKey& encryption_key);
+
+  /** Loads the tile offsets from storage. */
+  Status load_tile_offsets(const EncryptionKey& encryption_key);
+
+  /** Loads the variable tile offsets from storage. */
+  Status load_tile_var_offsets(const EncryptionKey& encryption_key);
+
+  /** Loads the variable tile sizes from storage. */
+  Status load_tile_var_sizes(const EncryptionKey& encryption_key);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -656,76 +666,84 @@ class FragmentMetadata {
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
+  /**
+   * Retrieves the size of the generic tile starting at the input offset.
+   */
+  Status get_generic_tile_size(uint64_t offset, uint64_t* size);
+
+  /**
+   * Loads the offsets of each generic tile (to be used to load the basic
+   * metadata, mbrs, tile offsets, etc. - each written in a separate generic
+   * tile).
+   */
+  Status load_generic_tile_offsets();
+
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v2(const EncryptionKey& encryption_key);
 
   /** Loads the basic metadata from storage (version 3). */
   Status load_v3(const EncryptionKey& encryption_key);
 
-  /**
-   * Writes the bounding coordinates to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
-  Status write_bounding_coords(Buffer* buff);
-
-  /** Writes the sizes of each attribute file in the buffer. */
+  /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff);
 
-  /** Writes the sizes of each variable attribute file in the buffer. */
+  /** Writes the sizes of each variable attribute file to the buffer. */
   Status write_file_var_sizes(Buffer* buff);
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
    */
   Status write_last_tile_cell_num(Buffer* buff);
 
-  /**
-   * Writes the MBRs to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the MBRs to storage. */
+  Status store_mbrs(const EncryptionKey& encryption_key);
+
+  /** Writes the MBRs to the input buffer. */
   Status write_mbrs(Buffer* buff);
 
-  /**
-   * Writes the non-empty domain to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff);
 
-  /**
-   * Writes the tile offsets to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the tile offsets to storage. */
+  Status store_tile_offsets(const EncryptionKey& encryption_key);
+
+  /** Writes the tile offsets to the input buffer. */
   Status write_tile_offsets(Buffer* buff);
 
-  /**
-   * Writes the variable tile offsets to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the variable tile offsets to storage. */
+  Status store_tile_var_offsets(const EncryptionKey& encryption_key);
+
+  /** Writes the variable tile offsets to the input buffer. */
   Status write_tile_var_offsets(Buffer* buff);
 
-  /**
-   * Writes the variable tile sizes to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the variable tile sizes to the input buffer. */
+  Status store_tile_var_sizes(const EncryptionKey& encryption_key);
+
+  /** Writes the variable tile sizes to storage. */
   Status write_tile_var_sizes(Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
+
+  /** Writes the basic metadata to storage. */
+  Status store_basic(const EncryptionKey& encryption_key);
+
+  /**
+   * Reads the contents of a generic tile starting at the input offset,
+   * and stores them into an allocated buffer ``buff``. It is the
+   * responsibility of the user to deallocate ``buff``.
+   */
+  Status read_generic_tile_from_file(
+      const EncryptionKey& encryption_key,
+      uint64_t offset,
+      Buffer** buff) const;
+
+  /**
+   * Writes the contents of the input buffer as a separate
+   * generic tile to the metadata file.
+   */
+  Status write_generic_tile_to_file(
+      const EncryptionKey& encryption_key, Buffer* buff) const;
 };
 
 }  // namespace sm

@@ -827,21 +827,6 @@ Status Writer::compute_coords_metadata(
     meta->set_mbr(tile_id, &mbr[0]);
   }
 
-  // Compute bounding coordinates
-  std::vector<T> bcoords;
-  bcoords.resize(2 * dim_num);
-  for (uint64_t tile_id = 0; tile_id < tiles.size(); tile_id++) {
-    const auto& tile = tiles[tile_id];
-    auto data = (T*)tile.data();
-    auto cell_num = tile.size() / coords_size;
-    assert(cell_num > 0);
-
-    std::memcpy(&bcoords[0], data, coords_size);
-    std::memcpy(
-        &bcoords[dim_num], &data[(cell_num - 1) * dim_num], coords_size);
-    meta->set_bounding_coords(tile_id, &bcoords[0]);
-  }
-
   // Set last tile cell number
   meta->set_last_tile_cell_num(tiles.back().size() / coords_size);
 

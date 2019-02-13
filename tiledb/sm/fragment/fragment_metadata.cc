@@ -107,19 +107,6 @@ const URI& FragmentMetadata::array_uri() const {
   return array_schema_->array_uri();
 }
 
-void FragmentMetadata::set_bounding_coords(
-    uint64_t tile, const void* bounding_coords) {
-  // For easy reference
-  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
-  tile += tile_index_base_;
-
-  // Copy and set MBR
-  void* new_bounding_coords = std::malloc(bounding_coords_size);
-  std::memcpy(new_bounding_coords, bounding_coords, bounding_coords_size);
-  assert(tile < bounding_coords_.size());
-  bounding_coords_[tile] = new_bounding_coords;
-}
-
 Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
   switch (array_schema_->coords_type()) {
     case Datatype::INT8:
@@ -333,20 +320,6 @@ bool FragmentMetadata::dense() const {
   return dense_;
 }
 
-Status FragmentMetadata::deserialize(ConstBuffer* buf) {
-  RETURN_NOT_OK(load_version(buf));
-  RETURN_NOT_OK(load_non_empty_domain(buf));
-  RETURN_NOT_OK(load_mbrs(buf));
-  RETURN_NOT_OK(load_bounding_coords(buf));
-  RETURN_NOT_OK(load_tile_offsets(buf));
-  RETURN_NOT_OK(load_tile_var_offsets(buf));
-  RETURN_NOT_OK(load_tile_var_sizes(buf));
-  RETURN_NOT_OK(load_last_tile_cell_num(buf));
-  RETURN_NOT_OK(load_file_sizes(buf));
-  RETURN_NOT_OK(load_file_var_sizes(buf));
-  return Status::Ok();
-}
-
 const void* FragmentMetadata::domain() const {
   return domain_;
 }
@@ -460,25 +433,18 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   if (!is_dir)
     return Status::Ok();
 
-  // Serialize
-  Buffer buff;
-  RETURN_NOT_OK(serialize(&buff));
-
-  // Write to file
-  URI fragment_metadata_uri = fragment_uri_.join_path(
-      std::string(constants::fragment_metadata_filename));
-  buff.reset_offset();
-  Tile tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      &buff,
-      false);
-
   // TODO: we need locking for thread-/process-safety here
 
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key));
+  // Write to disk
+  RETURN_NOT_OK(store_basic(encryption_key));
+  RETURN_NOT_OK(store_mbrs(encryption_key));
+  RETURN_NOT_OK(store_tile_offsets(encryption_key));
+  RETURN_NOT_OK(store_tile_var_offsets(encryption_key));
+  RETURN_NOT_OK(store_tile_var_sizes(encryption_key));
+
+  // Close file
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
   RETURN_NOT_OK(storage_manager_->close_file(fragment_metadata_uri));
 
   // Write non-empty domain to file
@@ -505,21 +471,6 @@ const void* FragmentMetadata::non_empty_domain() const {
 
 uint64_t FragmentMetadata::non_empty_domain_size() const {
   return (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
-}
-
-Status FragmentMetadata::serialize(Buffer* buf) {
-  RETURN_NOT_OK(write_version(buf));
-  RETURN_NOT_OK(write_non_empty_domain(buf));
-  RETURN_NOT_OK(write_mbrs(buf));
-  RETURN_NOT_OK(write_bounding_coords(buf));
-  RETURN_NOT_OK(write_tile_offsets(buf));
-  RETURN_NOT_OK(write_tile_var_offsets(buf));
-  RETURN_NOT_OK(write_tile_var_sizes(buf));
-  RETURN_NOT_OK(write_last_tile_cell_num(buf));
-  RETURN_NOT_OK(write_file_sizes(buf));
-  RETURN_NOT_OK(write_file_var_sizes(buf));
-
-  return Status::Ok();
 }
 
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -768,6 +719,78 @@ Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
     coords[i] = mbr[2 * i + 1];
   utils::geometry::expand_mbr(non_empty_domain, coords, dim_num);
   delete[] coords;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(
+      read_generic_tile_from_file(encryption_key, gt_offsets_.basic_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(load_version(&cbuff));
+  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
+  RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
+  RETURN_NOT_OK(load_file_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+
+  delete buff;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(
+      read_generic_tile_from_file(encryption_key, gt_offsets_.mbrs_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(load_mbrs(&cbuff));
+
+  delete buff;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_tile_offsets(
+    const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_offsets_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(load_tile_offsets(&cbuff));
+
+  delete buff;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_tile_var_offsets(
+    const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_var_offsets_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(load_tile_var_offsets(&cbuff));
+
+  delete buff;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_tile_var_sizes(
+    const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_var_sizes_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(load_tile_var_sizes(&cbuff));
+
+  delete buff;
 
   return Status::Ok();
 }
@@ -1053,11 +1076,56 @@ Status FragmentMetadata::load_version(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::get_generic_tile_size(
+    uint64_t offset, uint64_t* size) {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  TileIO::GenericTileHeader header;
+  RETURN_NOT_OK(tile_io.read_generic_tile_header(
+      storage_manager_, fragment_metadata_uri, offset, &header));
+
+  *size = TileIO::GenericTileHeader::BASE_SIZE + header.filter_pipeline_size +
+          header.persisted_size;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_generic_tile_offsets() {
+  uint64_t size, offset = 0;
+
+  // Offset for basic metadata
+  offset = 0;
+  gt_offsets_.basic_ = 0;
+
+  // Offset for mbrs
+  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+  offset += size;
+  gt_offsets_.mbrs_ = offset;
+
+  // Offset for tile offsets
+  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+  offset += size;
+  gt_offsets_.tile_offsets_ = offset;
+
+  // Offset for variable tile offsets
+  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+  offset += size;
+  gt_offsets_.tile_var_offsets_ = offset;
+
+  // Offset for variable tile sizes
+  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+  offset += size;
+  gt_offsets_.tile_var_sizes_ = offset;
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  // Read format version
+  // Read metadata
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
@@ -1068,59 +1136,31 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
 
   // Deserialize
   ConstBuffer cbuff(buff);
-  Status st = deserialize(&cbuff);
+  RETURN_NOT_OK(load_version(&cbuff));
+  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
+  RETURN_NOT_OK(load_mbrs(&cbuff));
+  RETURN_NOT_OK(load_bounding_coords(&cbuff));
+  RETURN_NOT_OK(load_tile_offsets(&cbuff));
+  RETURN_NOT_OK(load_tile_var_offsets(&cbuff));
+  RETURN_NOT_OK(load_tile_var_sizes(&cbuff));
+  RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
+  RETURN_NOT_OK(load_file_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
 
   delete buff;
 
-  return st;
+  return Status::Ok();
 }
 
 Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
-  URI fragment_metadata_uri = fragment_uri_.join_path(
-      std::string(constants::fragment_metadata_filename));
+  // Load from disk
+  RETURN_NOT_OK(load_generic_tile_offsets());
+  RETURN_NOT_OK(load_basic(encryption_key));
+  RETURN_NOT_OK(load_mbrs(encryption_key));
+  RETURN_NOT_OK(load_tile_offsets(encryption_key));
+  RETURN_NOT_OK(load_tile_var_offsets(encryption_key));
+  RETURN_NOT_OK(load_tile_var_sizes(encryption_key));
 
-  // Read format version
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
-  tile->disown_buff();
-  auto buff = tile->buffer();
-  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
-  delete tile;
-
-  // Deserialize
-  ConstBuffer cbuff(buff);
-  Status st = deserialize(&cbuff);
-
-  delete buff;
-
-  return st;
-}
-
-// ===== FORMAT =====
-// bounding_coords_num(uint64_t)
-// bounding_coords_#1(void*) bounding_coords_#2(void*) ...
-Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
-  Status st;
-  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
-  auto bounding_coords_num = (uint64_t)bounding_coords_.size();
-  // Write number of bounding coordinates
-  st = buff->write(&bounding_coords_num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing number of bounding "
-        "coordinates failed"));
-  }
-
-  // Write bounding coordinates
-  for (uint64_t i = 0; i < bounding_coords_num; ++i) {
-    st = buff->write(bounding_coords_[i], bounding_coords_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
-                                        "Writing bounding coordinates failed"));
-    }
-  }
   return Status::Ok();
 }
 
@@ -1176,6 +1216,14 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::store_mbrs(const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_mbrs(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 // mbr_num(uint64_t)
 // mbr_#1(void*) mbr_#2(void*) ...
@@ -1228,6 +1276,48 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::read_generic_tile_from_file(
+    const EncryptionKey& encryption_key, uint64_t offset, Buffer** buff) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  // Read metadata
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  auto tile = (Tile*)nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, offset, encryption_key));
+  tile->disown_buff();
+  *buff = tile->buffer();
+  delete tile;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_generic_tile_to_file(
+    const EncryptionKey& encryption_key, Buffer* buff) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+  buff->reset_offset();
+  Tile tile(
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      buff,
+      false);
+  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key));
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::store_tile_offsets(
+    const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_tile_offsets(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 // tile_offsets_attr#0_num(uint64_t)
 // tile_offsets_attr#0_#1 (uint64_t) tile_offsets_attr#0_#2 (uint64_t) ...
@@ -1260,6 +1350,15 @@ Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
           "Cannot serialize fragment metadata; Writing tile offsets failed"));
     }
   }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::store_tile_var_offsets(
+    const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_tile_var_offsets(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
 
   return Status::Ok();
 }
@@ -1299,6 +1398,15 @@ Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
           "variable tile offsets failed"));
     }
   }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::store_tile_var_sizes(
+    const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_tile_var_sizes(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
 
   return Status::Ok();
 }
@@ -1344,6 +1452,18 @@ Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
 // version (uint32_t)
 Status FragmentMetadata::write_version(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
+  return Status::Ok();
+}
+
+Status FragmentMetadata::store_basic(const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_version(&buff));
+  RETURN_NOT_OK(write_non_empty_domain(&buff));
+  RETURN_NOT_OK(write_last_tile_cell_num(&buff));
+  RETURN_NOT_OK(write_file_sizes(&buff));
+  RETURN_NOT_OK(write_file_var_sizes(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+
   return Status::Ok();
 }
 
