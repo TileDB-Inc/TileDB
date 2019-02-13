@@ -71,7 +71,6 @@ class Config {
 
   /** Storage manager parameters. */
   struct SMParams {
-    uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
     uint64_t memory_budget_;
     uint64_t memory_budget_var_;
@@ -87,7 +86,6 @@ class Config {
     ConsolidationParams consolidation_params_;
 
     SMParams() {
-      fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
       memory_budget_ = constants::memory_budget_fixed;
       memory_budget_var_ = constants::memory_budget_var;
@@ -242,10 +240,6 @@ class Config {
    *    **Default**: true
    * - `sm.tile_cache_size` <br>
    *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
-   *    **Default**: 10,000,000
-   * - `sm.fragment_metadata_cache_size` <br>
-   *    The fragment metadata cache size in bytes. Any `uint64_t` value is
-   *    acceptable. <br>
    *    **Default**: 10,000,000
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
@@ -455,9 +449,6 @@ class Config {
 
   /** Sets the check for global order parameter. */
   Status set_sm_check_global_order(const std::string& value);
-
-  /** Sets the fragment metadata cache size, properly parsing the input value.*/
-  Status set_sm_fragment_metadata_cache_size(const std::string& value);
 
   /** Sets the enable signal handlers value, properly parsing the input value.*/
   Status set_sm_enable_signal_handlers(const std::string& value);

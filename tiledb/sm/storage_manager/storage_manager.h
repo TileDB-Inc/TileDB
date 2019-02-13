@@ -457,13 +457,10 @@ class StorageManager {
    *
    * @param metadata The fragment metadata to be loaded.
    * @param encryption_key The encryption key to use.
-   * @param in_cache Set to true if the metadata was retrieved from the cache
    * @return Status
    */
   Status load_fragment_metadata(
-      FragmentMetadata* metadata,
-      const EncryptionKey& encryption_key,
-      bool* in_cache);
+      FragmentMetadata* metadata, const EncryptionKey& encryption_key);
 
   /** Removes a TileDB object (group, array, kv). */
   Status object_remove(const char* path) const;
@@ -715,9 +712,6 @@ class StorageManager {
   /** Stores exclusive filelocks for arrays. */
   std::unordered_map<std::string, filelock_t> xfilelocks_;
 
-  /** A fragment metadata cache. */
-  LRUCache* fragment_metadata_cache_;
-
   /** Mutex for managing OpenArray objects for reads. */
   std::mutex open_array_for_reads_mtx_;
 
@@ -878,7 +872,6 @@ class StorageManager {
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load. This
    *     is a vector of pairs (timestamp, URI).
-   * @param in_cache Set to true if any metdata was retrieved from the cache
    * @param fragment_metadata The fragment metadata retrieved in a
    *     vector.
    * @return Status
@@ -887,7 +880,6 @@ class StorageManager {
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
       const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
-      bool* in_cache,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
