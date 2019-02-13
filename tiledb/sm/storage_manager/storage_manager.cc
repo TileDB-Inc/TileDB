@@ -1517,6 +1517,7 @@ Status StorageManager::store_fragment_metadata(
   if (domain_size > 0) {
     URI file_uri = fragment_uri.join_path(constants::non_empty_domain_filename);
     RETURN_NOT_OK(vfs_->write(file_uri, non_empty_domain, domain_size));
+    RETURN_NOT_OK(close_file(file_uri));
   }
 
   delete tile;
