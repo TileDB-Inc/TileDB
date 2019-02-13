@@ -890,6 +890,7 @@ void IncompleteFx2::check_sparse_incomplete() {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
 
   // Check buffer
@@ -982,6 +983,7 @@ void IncompleteFx2::check_sparse_until_complete() {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
 }
 
@@ -1049,6 +1051,7 @@ void IncompleteFx2::check_sparse_unsplittable_overflow() {
 
   // Clean up
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
 }
 

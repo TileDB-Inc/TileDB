@@ -3831,11 +3831,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
+      tiledb_config_set(config, "sm.consolidation.step_min_frags", "1", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
+      tiledb_config_set(config, "sm.consolidation.step_max_frags", "1", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
@@ -3941,11 +3941,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
+      tiledb_config_set(config, "sm.consolidation.step_min_frags", "1", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
+      tiledb_config_set(config, "sm.consolidation.step_max_frags", "1", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
