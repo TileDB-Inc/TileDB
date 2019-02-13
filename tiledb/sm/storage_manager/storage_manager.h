@@ -451,17 +451,6 @@ class StorageManager {
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
 
-  /**
-   * Loads the fragment metadata of an array from persistent storage into
-   * memory.
-   *
-   * @param metadata The fragment metadata to be loaded.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status load_fragment_metadata(
-      FragmentMetadata* metadata, const EncryptionKey& encryption_key);
-
   /** Removes a TileDB object (group, array, kv). */
   Status object_remove(const char* path) const;
 
@@ -613,16 +602,6 @@ class StorageManager {
   Status store_array_schema(
       ArraySchema* array_schema, const EncryptionKey& encryption_key);
 
-  /**
-   * Stores the fragment metadata into persistent storage.
-   *
-   * @param metadata The fragment metadata to be stored.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_fragment_metadata(
-      FragmentMetadata* metadata, const EncryptionKey& encryption_key);
-
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
@@ -657,6 +636,16 @@ class StorageManager {
    * @return Status.
    */
   Status write(const URI& uri, Buffer* buffer) const;
+
+  /**
+   * Writes the input data into a URI file.
+   *
+   * @param uri The file to write into.
+   * @param data The data to write.
+   * @param size The data size in bytes.
+   * @return Status.
+   */
+  Status write(const URI& uri, void* data, uint64_t size) const;
 
  private:
   /* ********************************* */
