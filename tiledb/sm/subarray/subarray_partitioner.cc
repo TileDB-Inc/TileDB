@@ -704,10 +704,6 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
     }
   }
 
-  // Important
-  r1.compute_tile_overlap();
-  r2.compute_tile_overlap();
-
   // Update list
   state_.single_range_.pop_front();
   state_.single_range_.push_front(std::move(r2));
@@ -777,10 +773,6 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
       }
     }
   }
-
-  // Important
-  p1.compute_tile_overlap();
-  p2.compute_tile_overlap();
 
   // Update list
   state_.multi_range_.pop_front();
