@@ -58,6 +58,18 @@ namespace sm {
 namespace constants {
 
 /**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a fixed-sized attribute or the offsets of a var-sized attribute.
+ */
+const uint64_t memory_budget_fixed = (uint64_t)5 * 1024 * 1204 * 1024;  // 5GB
+
+/**
+ * The maximum memory budget for producing the result (in bytes)
+ * for a var-sized attribute.
+ */
+const uint64_t memory_budget_var = (uint64_t)10 * 1024 * 1204 * 1024;  // 10GB;
+
+/**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
  * split by the partitioner. If the number is equal to 0.3, then this
  * means that the number of ranges will be reduced by 30%.

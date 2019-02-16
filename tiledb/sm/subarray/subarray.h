@@ -108,6 +108,16 @@ class Subarray {
     double size_fixed_;
     /** Size of values for var-sized attributes. */
     double size_var_;
+    /**
+     * Maximum size of overlapping tiles fetched into memory for
+     * fixed-sized attributes or offsets of var-sized attributes.
+     */
+    uint64_t mem_size_fixed_;
+    /**
+     * Maximum size of overlapping tiles fetched into memory for
+     * var-sized attributes.
+     */
+    uint64_t mem_size_var_;
   };
 
   /* ********************************* */
@@ -246,6 +256,19 @@ class Subarray {
    * attribute.
    */
   Status get_est_result_size(
+      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+
+  /*
+   * Gets the maximum memory required to produce the result (in bytes)
+   * for the input fixed-sized attribute.
+   */
+  Status get_max_memory_size(const char* attr_name, uint64_t* size);
+
+  /**
+   * Gets the maximum memory required to produce the result (in bytes)
+   * for the input fixed-sized attribute.
+   */
+  Status get_max_memory_size(
       const char* attr_name, uint64_t* size_off, uint64_t* size_val);
 
   /** Retrieves the query type of the subarray's array. */
