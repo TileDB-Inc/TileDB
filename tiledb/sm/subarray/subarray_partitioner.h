@@ -36,6 +36,7 @@
 #include <list>
 
 #include <unordered_map>
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
@@ -62,6 +63,32 @@ class SubarrayPartitioner {
     uint64_t size_fixed_;
     /** Size of values for var-sized attributes. */
     uint64_t size_var_;
+    /**
+     * The maximum memory budget for producing the result (in bytes)
+     * for a fixed-sized attribute or the offsets of a var-sized attribute.
+     */
+    uint64_t mem_size_fixed_;
+    /**
+     * The maximum memory budget for producing the result (in bytes)
+     * for a var-sized attribute.
+     */
+    uint64_t mem_size_var_;
+
+    /** Constructor. */
+    ResultBudget() {
+      size_fixed_ = 0;
+      size_var_ = 0;
+      mem_size_fixed_ = 0;
+      mem_size_var_ = 0;
+    }
+
+    /** Constructor. */
+    ResultBudget(uint64_t size_fixed, uint64_t size_var)
+        : size_fixed_(size_fixed)
+        , size_var_(size_var) {
+      mem_size_fixed_ = constants::memory_budget_fixed;
+      mem_size_var_ = constants::memory_budget_var;
+    }
   };
 
   /* ********************************* */

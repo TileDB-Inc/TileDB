@@ -402,6 +402,76 @@ Status Subarray::get_est_result_size(
   return Status::Ok();
 }
 
+Status Subarray::get_max_memory_size(const char* attr_name, uint64_t* size) {
+  if (array_->array_schema()->dense())
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get maximum memory size; Feature not "
+                              "supported for dense arrays yet"));
+
+  // Check attribute name
+  if (attr_name == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get max memory size; Invalid attribute"));
+
+  // Check attribute
+  auto attr = array_->array_schema()->attribute(attr_name);
+  if (attr_name != constants::coords && attr == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get max memory size; Invalid attribute"));
+
+  // Check size pointer
+  if (size == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Invalid size input"));
+
+  // Check if the attribute is fixed-sized
+  if (attr_name != constants::coords && attr->var_size())
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute must be fixed-sized"));
+
+  // Compute tile overlap for each fragment
+  compute_est_result_size();
+  *size = (uint64_t)ceil(est_result_size_[attr_name].mem_size_fixed_);
+
+  return Status::Ok();
+}
+
+Status Subarray::get_max_memory_size(
+    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
+  if (array_->array_schema()->dense())
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get max memory size; Feature not "
+                              "supported for dense arrays yet"));
+
+  // Check attribute name
+  if (attr_name == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get max memory size; Invalid attribute"));
+
+  // Check attribute
+  auto attr = array_->array_schema()->attribute(attr_name);
+  if (attr == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get max memory size; Invalid attribute"));
+
+  // Check size pointer
+  if (size_off == nullptr || size_val == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Invalid size input"));
+
+  // Check if the attribute is var-sized
+  if (!attr->var_size())
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute must be var-sized"));
+
+  // Compute tile overlap for each fragment
+  compute_est_result_size();
+  *size_off = (uint64_t)ceil(est_result_size_[attr_name].mem_size_fixed_);
+  *size_val = (uint64_t)ceil(est_result_size_[attr_name].mem_size_var_);
+
+  return Status::Ok();
+}
+
 std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
   std::vector<uint64_t> ret;
 
@@ -614,7 +684,7 @@ void Subarray::compute_est_result_size() {
   auto attribute_num = attributes.size();
   std::vector<ResultSize> est_result_size_vec;
   for (unsigned i = 0; i < attribute_num + 1; ++i)
-    est_result_size_vec.emplace_back(ResultSize{0.0, 0.0});
+    est_result_size_vec.emplace_back(ResultSize{0.0, 0.0, 0, 0});
 
   // Compute estimated result in parallel over fragments and ranges
   auto meta = array_->fragment_metadata();
@@ -631,6 +701,8 @@ void Subarray::compute_est_result_size() {
       std::lock_guard<std::mutex> block(mtx);
       est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
       est_result_size_vec[a].size_var_ += result_size.size_var_;
+      est_result_size_vec[a].mem_size_fixed_ += result_size.mem_size_fixed_;
+      est_result_size_vec[a].mem_size_var_ += result_size.mem_size_var_;
     }
     return Status::Ok();
   });
@@ -658,7 +730,7 @@ Subarray::ResultSize Subarray::compute_est_result_size(
     const std::string& attr_name, uint64_t range_idx, bool var_size) const {
   // For easy reference
   auto fragment_num = array_->fragment_metadata().size();
-  ResultSize ret{0.0, 0.0};
+  ResultSize ret{0.0, 0.0, 0, 0};
   auto array_schema = array_->array_schema();
 
   // Compute estimated result
@@ -671,9 +743,12 @@ Subarray::ResultSize Subarray::compute_est_result_size(
       for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
         if (!var_size) {
           ret.size_fixed_ += meta->tile_size(attr_name, tid);
+          ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
         } else {
           ret.size_fixed_ += meta->tile_size(attr_name, tid);
           ret.size_var_ += meta->tile_var_size(attr_name, tid);
+          ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
+          ret.mem_size_var_ += meta->tile_var_size(attr_name, tid);
         }
       }
     }
@@ -684,9 +759,12 @@ Subarray::ResultSize Subarray::compute_est_result_size(
       auto ratio = t.second;
       if (!var_size) {
         ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
+        ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
       } else {
         ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
         ret.size_var_ += meta->tile_var_size(attr_name, tid) * ratio;
+        ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
+        ret.mem_size_var_ += meta->tile_var_size(attr_name, tid);
       }
     }
   }
