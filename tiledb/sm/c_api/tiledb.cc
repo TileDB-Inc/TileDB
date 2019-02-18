@@ -3143,6 +3143,23 @@ int32_t tiledb_subarray_partitioner_get_result_budget_var(
   return TILEDB_OK;
 }
 
+int32_t tiledb_subarray_partitioner_get_memory_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    uint64_t* budget,
+    uint64_t* budget_var) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          partitioner->partitioner_->get_memory_budget(budget, budget_var)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_subarray_partitioner_set_result_budget(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* partitioner,
@@ -3173,6 +3190,23 @@ int32_t tiledb_subarray_partitioner_set_result_budget_var(
           ctx,
           partitioner->partitioner_->set_result_budget(
               attr_name, budget_off, budget_val)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_set_memory_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    uint64_t budget,
+    uint64_t budget_var) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          partitioner->partitioner_->set_memory_budget(budget, budget_var)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

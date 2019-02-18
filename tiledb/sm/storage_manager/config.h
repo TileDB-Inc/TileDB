@@ -74,6 +74,8 @@ class Config {
     uint64_t array_schema_cache_size_;
     uint64_t fragment_metadata_cache_size_;
     bool enable_signal_handlers_;
+    uint64_t memory_budget_;
+    uint64_t memory_budget_var_;
     uint64_t num_async_threads_;
     uint64_t num_reader_threads_;
     uint64_t num_writer_threads_;
@@ -89,6 +91,8 @@ class Config {
       array_schema_cache_size_ = constants::array_schema_cache_size;
       fragment_metadata_cache_size_ = constants::fragment_metadata_cache_size;
       enable_signal_handlers_ = constants::enable_signal_handlers;
+      memory_budget_ = constants::memory_budget_fixed;
+      memory_budget_var_ = constants::memory_budget_var;
       num_async_threads_ = constants::num_async_threads;
       num_reader_threads_ = constants::num_reader_threads;
       num_writer_threads_ = constants::num_writer_threads;
@@ -296,6 +300,14 @@ class Config {
    *    The size ratio that two ("adjacent") fragments must satisfy to be
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
+   * - `sm.memory_budget` <br>
+   *    The memory budget for tiles of fixed-sized attributes (or offsets for
+   *    var-sized attributes) to be fetched during reads.<br>
+   *    **Default**: 5GB
+   * - `sm.memory_budget_var` <br>
+   *    The memory budget for tiles of var-sized attributes
+   *    to be fetched during reads.<br>
+   *    **Default**: 10GB
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>
@@ -488,6 +500,15 @@ class Config {
 
   /** Sets the consolidation buffer size, properly parsing the input value. */
   Status set_consolidation_buffer_size(const std::string& value);
+
+  /** Sets the memory_budget, properly parsing the input value. */
+  Status set_sm_memory_budget(const std::string& value);
+
+  /**
+   * Sets the memory_budget for var-sized attributes, properly parsing the
+   * input value.
+   */
+  Status set_sm_memory_budget_var(const std::string& value);
 
   /** Sets the tile cache size, properly parsing the input value. */
   Status set_sm_tile_cache_size(const std::string& value);

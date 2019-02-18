@@ -395,9 +395,13 @@ SubarrayPartitioner
     :project: TileDB-C
 .. doxygenfunction:: tiledb_subarray_partitioner_set_result_budget_var
     :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_set_memory_budget
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_subarray_partitioner_get_result_budget
     :project: TileDB-C
 .. doxygenfunction:: tiledb_subarray_partitioner_get_result_budget_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_subarray_partitioner_get_memory_budget
     :project: TileDB-C
 .. doxygenfunction:: tiledb_subarray_partitioner_next
     :project: TileDB-C
