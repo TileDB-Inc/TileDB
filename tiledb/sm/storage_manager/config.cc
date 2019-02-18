@@ -174,6 +174,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_sm_check_global_order(value));
   } else if (param == "sm.tile_cache_size") {
     RETURN_NOT_OK(set_sm_tile_cache_size(value));
+  } else if (param == "sm.memory_budget") {
+    RETURN_NOT_OK(set_sm_memory_budget(value));
+  } else if (param == "sm.memory_budget_var") {
+    RETURN_NOT_OK(set_sm_memory_budget_var(value));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(set_consolidation_amplification(value));
   } else if (param == "sm.consolidation.buffer_size") {
@@ -305,6 +309,16 @@ Status Config::unset(const std::string& param) {
     sm_params_.tile_cache_size_ = constants::tile_cache_size;
     value << sm_params_.tile_cache_size_;
     param_values_["sm.tile_cache_size"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.memory_budget") {
+    sm_params_.memory_budget_ = constants::memory_budget_fixed;
+    value << sm_params_.memory_budget_;
+    param_values_["sm.memory_budget"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.memory_budget_var") {
+    sm_params_.memory_budget_var_ = constants::memory_budget_var;
+    value << sm_params_.memory_budget_var_;
+    param_values_["sm.memory_budget_var"] = value.str();
     value.str(std::string());
   } else if (param == "sm.consolidation.amplification") {
     sm_params_.consolidation_params_.amplification_ =
@@ -542,6 +556,14 @@ void Config::set_default_param_values() {
 
   value << sm_params_.tile_cache_size_;
   param_values_["sm.tile_cache_size"] = value.str();
+  value.str(std::string());
+
+  value << sm_params_.memory_budget_;
+  param_values_["sm.memory_budget"] = value.str();
+  value.str(std::string());
+
+  value << sm_params_.memory_budget_var_;
+  param_values_["sm.memory_budget_var"] = value.str();
   value.str(std::string());
 
   value << sm_params_.consolidation_params_.amplification_;
@@ -843,6 +865,22 @@ Status Config::set_sm_tile_cache_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.tile_cache_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_memory_budget(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.memory_budget_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_sm_memory_budget_var(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  sm_params_.memory_budget_var_ = v;
 
   return Status::Ok();
 }

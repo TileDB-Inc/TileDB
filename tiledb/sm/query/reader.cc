@@ -181,6 +181,14 @@ Status Reader::init() {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Attributes not set"));
 
+  // Get configuration parameters
+  const char *memory_budget, *memory_budget_var;
+  auto config = storage_manager_->config();
+  RETURN_NOT_OK(config.get("sm.memory_budget", &memory_budget));
+  RETURN_NOT_OK(config.get("sm.memory_budget_var", &memory_budget_var));
+  RETURN_NOT_OK(utils::parse::convert(memory_budget, &memory_budget_));
+  RETURN_NOT_OK(utils::parse::convert(memory_budget_var, &memory_budget_var_));
+
   // This checks if a Subarray object has been set
   // TODO(sp): this will be removed once the two read states are merged
   if (read_state_2_.set_) {
@@ -1990,18 +1998,23 @@ Status Reader::init_read_state() {
 }
 
 Status Reader::init_read_state_2() {
-  // Set memory budget
+  // Set result size budget
   for (const auto& a : attr_buffers_) {
     auto attr_name = a.first;
     auto buffer_size = a.second.buffer_size_;
     auto buffer_var_size = a.second.buffer_var_size_;
-    if (!array_schema_->var_size(a.first))
-      read_state_2_.partitioner_.set_result_budget(
-          attr_name.c_str(), *buffer_size);
-    else
-      read_state_2_.partitioner_.set_result_budget(
-          attr_name.c_str(), *buffer_size, *buffer_var_size);
+    if (!array_schema_->var_size(a.first)) {
+      RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
+          attr_name.c_str(), *buffer_size));
+    } else {
+      RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
+          attr_name.c_str(), *buffer_size, *buffer_var_size));
+    }
   }
+
+  // Set memory budget
+  RETURN_NOT_OK(read_state_2_.partitioner_.set_memory_budget(
+      memory_budget_, memory_budget_var_));
 
   read_state_2_.unsplittable_ = false;
   read_state_2_.overflowed_ = false;

@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 
+#include <tiledb/sm/misc/constants.h>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -202,6 +203,8 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.fragment_metadata_cache_size 10000000\n";
+  ss << "sm.memory_budget 5368709120\n";
+  ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_async_threads 1\n";
   ss << "sm.num_reader_threads 1\n";
   ss << "sm.num_tbb_threads -1\n";
@@ -374,6 +377,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
+  all_param_values["sm.memory_budget"] = "5368709120";
+  all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.array_schema_cache_size"] = "1000";
   all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
   all_param_values["sm.enable_signal_handlers"] = "true";

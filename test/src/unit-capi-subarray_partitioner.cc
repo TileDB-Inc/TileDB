@@ -4671,3 +4671,109 @@ TEST_CASE_METHOD(
 
   remove_array(array_name);
 }
+
+TEST_CASE_METHOD(
+    SubarrayPartitionerFx,
+    "C API: Test subarray partitioner, 1D, memory budget",
+    "[capi], [subarray-partitioner], "
+    "[subarray-partitioner-1d-memory-budget]") {
+  // Create array
+  std::string array_name = "subarray_partitioner_1d_memory_budget";
+  remove_array(array_name);
+  uint64_t domain[] = {1, 100};
+  create_sparse_array_1d(array_name, domain);
+  std::vector<uint64_t> coords = {2, 4, 5, 10, 12, 18};
+  std::vector<int> a = {1, 2, 3, 4, 5, 6};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
+  write_sparse_array(array_name, coords, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Create partitioner
+  tiledb_subarray_partitioner_t* partitioner;
+  rc = tiledb_subarray_partitioner_alloc(ctx_, subarray, &partitioner);
+  CHECK(rc == TILEDB_OK);
+
+  // Set budget
+  rc = tiledb_subarray_partitioner_set_result_budget(
+      ctx_, partitioner, TILEDB_COORDS, 100 * sizeof(uint64_t));
+  CHECK(rc == TILEDB_OK);
+
+  // Get memory budget
+  uint64_t memory_budget, memory_budget_var;
+  rc = tiledb_subarray_partitioner_get_memory_budget(
+      ctx_, partitioner, &memory_budget, &memory_budget_var);
+  CHECK(rc == TILEDB_OK);
+  CHECK(memory_budget == 5368709120);
+  CHECK(memory_budget_var == 10737418240);
+
+  // Set memory budget
+  rc = tiledb_subarray_partitioner_set_memory_budget(ctx_, partitioner, 16, 16);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_partitioner_get_memory_budget(
+      ctx_, partitioner, &memory_budget, &memory_budget_var);
+  CHECK(rc == TILEDB_OK);
+  CHECK(memory_budget == 16);
+  CHECK(memory_budget_var == 16);
+
+  // Check done
+  int done;
+  rc = tiledb_subarray_partitioner_done(ctx_, partitioner, &done);
+  CHECK(rc == TILEDB_OK);
+  CHECK(done == 0);
+
+  // Check next
+  int unsplittable;
+  rc = tiledb_subarray_partitioner_next(ctx_, partitioner, &unsplittable);
+  CHECK(rc == TILEDB_OK);
+  CHECK(unsplittable == 0);
+
+  // Get current and check
+  tiledb_subarray_t* partition = nullptr;
+  rc = tiledb_subarray_partitioner_get_current(ctx_, partitioner, &partition);
+  CHECK(rc == TILEDB_OK);
+  uint64_t range_num;
+  rc = tiledb_subarray_get_range_num(ctx_, partition, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  const uint64_t* r;
+  rc = tiledb_subarray_get_range(ctx_, partition, 0, 0, (const void**)&r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r[0] == 1);
+  CHECK(r[1] == 4);
+
+  // Check done
+  rc = tiledb_subarray_partitioner_done(ctx_, partitioner, &done);
+  CHECK(rc == TILEDB_OK);
+  CHECK(done == 0);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+  tiledb_subarray_free(&partition);
+  CHECK(partition == nullptr);
+  tiledb_subarray_partitioner_free(&partitioner);
+  CHECK(partitioner == nullptr);
+
+  remove_array(array_name);
+}
