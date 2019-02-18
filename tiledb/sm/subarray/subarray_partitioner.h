@@ -63,32 +63,6 @@ class SubarrayPartitioner {
     uint64_t size_fixed_;
     /** Size of values for var-sized attributes. */
     uint64_t size_var_;
-    /**
-     * The maximum memory budget for producing the result (in bytes)
-     * for a fixed-sized attribute or the offsets of a var-sized attribute.
-     */
-    uint64_t mem_size_fixed_;
-    /**
-     * The maximum memory budget for producing the result (in bytes)
-     * for a var-sized attribute.
-     */
-    uint64_t mem_size_var_;
-
-    /** Constructor. */
-    ResultBudget() {
-      size_fixed_ = 0;
-      size_var_ = 0;
-      mem_size_fixed_ = 0;
-      mem_size_var_ = 0;
-    }
-
-    /** Constructor. */
-    ResultBudget(uint64_t size_fixed, uint64_t size_var)
-        : size_fixed_(size_fixed)
-        , size_var_(size_var) {
-      mem_size_fixed_ = constants::memory_budget_fixed;
-      mem_size_var_ = constants::memory_budget_var;
-    }
   };
 
   /* ********************************* */
@@ -137,6 +111,16 @@ class SubarrayPartitioner {
       const char* attr_name, uint64_t* budget_off, uint64_t* budget_val);
 
   /**
+   * Gets the memory budget (in bytes).
+   *
+   * @param budget The budget for the fixed-sized attributes and the
+   *     offsets of the var-sized attributes.
+   * @param budget_var The budget for the var-sized attributes.
+   * @return Status
+   */
+  Status get_memory_budget(uint64_t* budget, uint64_t* budget_var);
+
+  /**
    * The partitioner iterates over the partitions of the subarray it is
    * associated with. This function advances to compute the next partition
    * based on the specified budget. If this cannot be retrieved because
@@ -158,6 +142,16 @@ class SubarrayPartitioner {
    */
   template <class T>
   Status next(bool* unsplittable);
+
+  /**
+   * Sets the memory budget (in bytes).
+   *
+   * @param budget The budget for the fixed-sized attributes and the
+   *     offsets of the var-sized attributes.
+   * @param budget_var The budget for the var-sized attributes.
+   * @return Status
+   */
+  Status set_memory_budget(uint64_t budget, uint64_t budget_var);
 
   /** Sets result size budget (in bytes) for the input fixed-sized attribute. */
   Status set_result_budget(const char* attr_name, uint64_t budget);
@@ -267,6 +261,15 @@ class SubarrayPartitioner {
 
   /** The state information for the remaining partitions to be produced. */
   State state_;
+
+  /**
+   * The memory budget for the fixed-sized attributes and the offsets
+   * of the var-sized attributes.
+   */
+  uint64_t memory_budget_;
+
+  /** The memory budget for the var-sized attributes. */
+  uint64_t memory_budget_var_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

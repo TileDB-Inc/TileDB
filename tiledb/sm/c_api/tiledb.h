@@ -444,6 +444,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The size ratio that two ("adjacent") fragments must satisfy to be
  *    considered for consolidation in a single step.<br>
  *    **Default**: 0.0
+ * - `sm.memory_budget` <br>
+ *    The memory budget for tiles of fixed-sized attributes (or offsets for
+ *    var-sized attributes) to be fetched during reads.<br>
+ *    **Default**: 5GB
+ * - `sm.memory_budget_var` <br>
+ *    The memory budget for tiles of var-sized attributes
+ *    to be fetched during reads.<br>
+ *    **Default**: 10GB
  * - `vfs.num_threads` <br>
  *    The number of threads allocated for VFS operations (any backend), per VFS
  *    instance. <br>
@@ -3573,7 +3581,33 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
     uint64_t* budget_val);
 
 /**
- * Sets the result size budget (in size) for a given fixed-sized attribute.
+ * Gets the memory budget (in bytes) that dictates the maximum amount
+ * of bytes to be read and decompressed for the attributes during
+ * reads.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t budget, budget_var;
+ * tiledb_subarray_partitioner_get_memory_budget(
+ *     ctx, partitioner, &budget, &budget_var);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param partitioner The partitioner.
+ * @param budget The memory budget for a fixed-sized attribute or the
+ *     offsets of a var-sized attribute.
+ * @param budget_var The memory budget for a var-sized attribute.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    uint64_t* budget,
+    uint64_t* budget_var);
+
+/**
+ * Sets the result budget (in bytes) for a given fixed-sized attribute.
  *
  * **Example:**
  *
@@ -3595,7 +3629,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
     uint64_t budget);
 
 /**
- * Sets the result size (in bytes) budget for for a given var-sized attribute.
+ * Sets the result budget (in bytes) for for a given var-sized attribute.
  *
  * **Example:**
  *
@@ -3619,6 +3653,31 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var(
     const char* attr_name,
     uint64_t budget_off,
     uint64_t budget_val);
+
+/**
+ * Sets the memory budget (in bytes) that dictates the maximum amount
+ * of bytes to be read and decompressed for the attributes during
+ * reads.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_set_memory_budget(
+ *     ctx, partitioner, 10000000, 20000000);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param partitioner The partitioner.
+ * @param budget The memory budget for a fixed-sized attribute or the
+ *     offsets of a var-sized attribute.
+ * @param budget_var The memory budget for a var-sized attribute.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_partitioner_t* partitioner,
+    uint64_t budget,
+    uint64_t budget_var);
 
 /**
  * Retrieves the current partition.

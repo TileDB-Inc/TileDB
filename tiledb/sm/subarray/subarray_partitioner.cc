@@ -49,7 +49,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-SubarrayPartitioner::SubarrayPartitioner() = default;
+SubarrayPartitioner::SubarrayPartitioner() {
+  memory_budget_ = constants::memory_budget_fixed;
+  memory_budget_var_ = constants::memory_budget_var;
+}
 
 SubarrayPartitioner::SubarrayPartitioner(const Subarray& subarray)
     : subarray_(subarray) {
@@ -57,6 +60,8 @@ SubarrayPartitioner::SubarrayPartitioner(const Subarray& subarray)
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
+  memory_budget_ = constants::memory_budget_fixed;
+  memory_budget_var_ = constants::memory_budget_var;
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;
@@ -176,6 +181,13 @@ Status SubarrayPartitioner::get_result_budget(
   return Status::Ok();
 }
 
+Status SubarrayPartitioner::get_memory_budget(
+    uint64_t* budget, uint64_t* budget_var) {
+  *budget = memory_budget_;
+  *budget_var = memory_budget_var_;
+  return Status::Ok();
+}
+
 Status SubarrayPartitioner::next(bool* unsplittable) {
   auto type = subarray_.array()->array_schema()->domain()->type();
   switch (type) {
@@ -266,8 +278,7 @@ Status SubarrayPartitioner::set_result_budget(
           "Cannot set result budget; Attribute must be fixed-sized"));
   }
 
-  // TODO: fix after creating set_memory_budget
-  budget_[attr_name] = ResultBudget(budget, 0);
+  budget_[attr_name] = ResultBudget{budget, 0};
 
   return Status::Ok();
 }
@@ -294,9 +305,15 @@ Status SubarrayPartitioner::set_result_budget(
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot set result budget; Attribute must be var-sized"));
 
-  // TODO: fix after creating set_memory_budget
-  budget_[attr_name] = ResultBudget(budget_off, budget_val);
+  budget_[attr_name] = ResultBudget{budget_off, budget_val};
 
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::set_memory_budget(
+    uint64_t budget, uint64_t budget_var) {
+  memory_budget_ = budget;
+  memory_budget_var_ = budget_var;
   return Status::Ok();
 }
 
@@ -429,6 +446,8 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.budget_ = budget_;
   clone.current_ = current_;
   clone.state_ = state_;
+  clone.memory_budget_ = memory_budget_;
+  clone.memory_budget_var_ = memory_budget_var_;
 
   return clone;
 }
@@ -437,9 +456,11 @@ template <class T>
 bool SubarrayPartitioner::compute_current_start_end() {
   // Preparation
   auto array_schema = subarray_.array()->array_schema();
-  std::unordered_map<std::string, ResultBudget> cur_sizes;
-  for (const auto& it : budget_)
-    cur_sizes[it.first] = ResultBudget();
+  std::unordered_map<std::string, ResultBudget> cur_sizes, mem_sizes;
+  for (const auto& it : budget_) {
+    cur_sizes[it.first] = ResultBudget();  // Est budget
+    mem_sizes[it.first] = ResultBudget();  // Max memory budget
+  }
 
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
@@ -451,15 +472,16 @@ bool SubarrayPartitioner::compute_current_start_end() {
       auto est_size = subarray_.compute_est_result_size<T>(
           attr_name, current_.end_, var_size);
       auto& cur_size = cur_sizes[attr_name];
+      auto& mem_size = mem_sizes[attr_name];
       cur_size.size_fixed_ += est_size.size_fixed_;
       cur_size.size_var_ += est_size.size_var_;
-      cur_size.mem_size_fixed_ += est_size.mem_size_fixed_;
-      cur_size.mem_size_var_ += est_size.mem_size_var_;
+      mem_size.size_fixed_ += est_size.mem_size_fixed_;
+      mem_size.size_var_ += est_size.mem_size_var_;
 
       if (cur_size.size_fixed_ > budget_it.second.size_fixed_ ||
           cur_size.size_var_ > budget_it.second.size_var_ ||
-          cur_size.mem_size_fixed_ > budget_it.second.mem_size_fixed_ ||
-          cur_size.mem_size_var_ > budget_it.second.mem_size_var_) {
+          mem_size.size_fixed_ > memory_budget_ ||
+          mem_size.size_var_ > memory_budget_var_) {
         // Cannot find range that fits in the buffer
         if (current_.end_ == current_.start_)
           return false;
@@ -603,8 +625,7 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
 
     // Check for budget overflow
     if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-        mem_size_fixed > b.second.mem_size_fixed_ ||
-        mem_size_var > b.second.mem_size_var_) {
+        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_) {
       must_split = true;
       break;
     }
@@ -801,6 +822,8 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(budget_, partitioner.budget_);
   std::swap(current_, partitioner.current_);
   std::swap(state_, partitioner.state_);
+  std::swap(memory_budget_, partitioner.memory_budget_);
+  std::swap(memory_budget_var_, partitioner.memory_budget_var_);
 }
 
 // Explicit template instantiations

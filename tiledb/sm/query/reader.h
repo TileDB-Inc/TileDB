@@ -556,6 +556,15 @@ class Reader {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
+  /**
+   * The memory budget for the fixed-sized attributes and the offsets
+   * of the var-sized attributes.
+   */
+  uint64_t memory_budget_;
+
+  /** The memory budget for the var-sized attributes. */
+  uint64_t memory_budget_var_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

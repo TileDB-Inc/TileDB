@@ -159,6 +159,13 @@ Coordinate global order check -- ``sm.check_global_order``
 Consolidation parameters -- ``sm.consolidation.*``
     The effect of all these parameters is explained in :ref:`advanced-consolidation`.
 
+Memory budget -- ``sm.memory_budget``, ``sm.memory_budget_var``
+    This caps the total number of bytes that can be fetched for each fixed-
+    or var-sized attribute during reads. This can prevent OOM issues when a
+    read query overlaps with a huge number of tiles that must be fetched and
+    decompressed in memory. For large subarrays, this may lead to incomplete
+    queries (see :ref:`incomplete_queries`).
+
 Async query concurrency -- ``sm.num_async_threads``
     By default only one thread is allocated to handle async queries. Increasing
     this parameter value can lead to better performance if you are issuing many

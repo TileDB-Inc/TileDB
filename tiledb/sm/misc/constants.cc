@@ -61,13 +61,13 @@ namespace constants {
  * The maximum memory budget for producing the result (in bytes)
  * for a fixed-sized attribute or the offsets of a var-sized attribute.
  */
-const uint64_t memory_budget_fixed = (uint64_t)5 * 1024 * 1204 * 1024;  // 5GB
+const uint64_t memory_budget_fixed = 5368709120;  // 5GB
 
 /**
  * The maximum memory budget for producing the result (in bytes)
  * for a var-sized attribute.
  */
-const uint64_t memory_budget_var = (uint64_t)10 * 1024 * 1204 * 1024;  // 10GB;
+const uint64_t memory_budget_var = 10737418240;  // 10GB;
 
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray

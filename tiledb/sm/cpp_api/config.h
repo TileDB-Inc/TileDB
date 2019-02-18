@@ -300,6 +300,14 @@ class Config {
    *    The size ratio that two ("adjacent") fragments must satisfy to be
    *    considered for consolidation in a single step.<br>
    *    **Default**: 0.0
+   * - `sm.memory_budget` <br>
+   *    The memory budget for tiles of fixed-sized attributes (or offsets for
+   *    var-sized attributes) to be fetched during reads.<br>
+   *    **Default**: 5GB
+   * - `sm.memory_budget_var` <br>
+   *    The memory budget for tiles of var-sized attributes
+   *    to be fetched during reads.<br>
+   *    **Default**: 10GB
    * - `vfs.num_threads` <br>
    *    The number of threads allocated for VFS operations (any backend), per
    *    VFS instance. <br>
