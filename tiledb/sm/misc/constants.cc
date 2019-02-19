@@ -251,7 +251,7 @@ const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 const uint64_t vfs_num_threads = std::thread::hardware_concurrency();
 
 /** The default minimum number of bytes in a parallel VFS operation. */
-const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
+const uint64_t vfs_min_parallel_size = 20 * 1024 * 1024;
 
 /** The default maximum number of bytes in a batched VFS read operation. */
 const uint64_t vfs_max_batch_read_size = 100 * 1024 * 1024;
