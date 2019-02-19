@@ -76,8 +76,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
         stats::all_stats.counter_vfs_read_total_bytes ==
         nelts * sizeof(uint32_t));
 
-    // Check reading first and last element: 2 reads due to the default
-    // amplification limit.
+    // Check reading first and last element: 1 reads due to the default
+    // batch size.
     stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
@@ -89,9 +89,10 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == nelts - 1);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 2);
+    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
     REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
+        stats::all_stats.counter_vfs_read_total_bytes ==
+        100 * sizeof(uint32_t));
 
     // Check each element as a different region: single read because there is no
     // amplification required (all work is useful).
@@ -112,11 +113,11 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
         nelts * sizeof(uint32_t));
   }
 
-  SECTION("- Limit max batch size") {
+  SECTION("- Limit min parallel batch size") {
     // Set a smaller max batch size
     const unsigned batch_bytes = 13;
     Config::VFSParams vfs_params;
-    vfs_params.max_batch_read_size_ = batch_bytes;
+    vfs_params.min_parallel_size_ = batch_bytes;
     REQUIRE(vfs->init(vfs_params).ok());
 
     // Check large batches are not split up.
@@ -169,67 +170,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
     REQUIRE(
         stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
-    REQUIRE(vfs->terminate().ok());
-  }
-
-  SECTION("- Limit amplification") {
-    // No amplification allowed.
-    Config::VFSParams vfs_params;
-    vfs_params.max_batch_read_amplification_ = 1;
-    REQUIRE(vfs->init(vfs_params).ok());
-
-    // Check each element as a different region: still a single read because
-    // there is no amplification necessary (all work is useful).
-    stats::all_stats.reset();
-    std::memset(data_read, 0, nelts * sizeof(uint32_t));
-    batches.clear();
-    for (unsigned i = 0; i < nelts; i++)
-      batches.emplace_back(
-          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
-    REQUIRE(thread_pool.wait_all(tasks).ok());
-    tasks.clear();
-    for (unsigned i = 0; i < nelts; i++)
-      REQUIRE(data_read[i] == i);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
-
-    // Read elements 0 and 2: 2 reads because no amplification allowed.
-    stats::all_stats.reset();
-    std::memset(data_read, 0, nelts * sizeof(uint32_t));
-    batches.clear();
-    batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
-    batches.emplace_back(2 * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
-    REQUIRE(thread_pool.wait_all(tasks).ok());
-    tasks.clear();
-    REQUIRE(data_read[0] == 0);
-    REQUIRE(data_read[1] == 2);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 2);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
-
-    // Increase amplification to 1.5x.
-    vfs_params.max_batch_read_amplification_ = 1.5;
-    REQUIRE(vfs->init(vfs_params).ok());
-
-    // Read elements 0 and 2 again: 1 read operation because reading 12 bytes
-    // and using 8 bytes is 12/8 = 1.5x amplification.
-    stats::all_stats.reset();
-    std::memset(data_read, 0, nelts * sizeof(uint32_t));
-    batches.clear();
-    batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
-    batches.emplace_back(2 * sizeof(uint32_t), &data_read[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
-    REQUIRE(thread_pool.wait_all(tasks).ok());
-    tasks.clear();
-    REQUIRE(data_read[0] == 0);
-    REQUIRE(data_read[1] == 2);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes == 3 * sizeof(uint32_t));
     REQUIRE(vfs->terminate().ok());
   }
 
