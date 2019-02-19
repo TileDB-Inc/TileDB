@@ -920,10 +920,8 @@ Status VFS::compute_read_batches(
     uint64_t offset = std::get<0>(region);
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
-    float amplification =
-        new_batch_size / float(curr_batch_useful_bytes + nbytes);
-    if (new_batch_size <= vfs_params_.max_batch_read_size_ &&
-        amplification <= vfs_params_.max_batch_read_amplification_) {
+    // TODO (sp): we may need another config param here
+    if (new_batch_size <= vfs_params_.min_parallel_size_) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);
