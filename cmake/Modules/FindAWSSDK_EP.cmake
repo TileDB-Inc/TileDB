@@ -68,8 +68,8 @@ if (NOT AWSSDK_FOUND)
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.4.23.zip"
-      URL_HASH SHA1=32030b0fc44d956c1f0dc606044d555c155d40a6
+      URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.50.zip"
+      URL_HASH SHA1=efda5b8a88981e3c420b74dc5feb68fff87b38d9
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTING=OFF
