@@ -1108,30 +1108,37 @@ Status Reader::compute_range_coords(
   auto fragment_num = fragment_metadata_.size();
 
   for (unsigned f = 0; f < fragment_num; ++f) {
-    // Handle full overlap
-    for (const auto& tr : overlap[f][range_idx].tile_ranges_) {
-      for (uint64_t t = tr.first; t <= tr.second; ++t) {
-        auto pair = std::pair<unsigned, uint64_t>(f, t);
+    auto tr = overlap[f][range_idx].tile_ranges_.begin();
+    auto tr_end = overlap[f][range_idx].tile_ranges_.end();
+    auto t = overlap[f][range_idx].tiles_.begin();
+    auto t_end = overlap[f][range_idx].tiles_.end();
+
+    while (tr != tr_end || t != t_end) {
+      // Handle tile range
+      if (tr != tr_end && (t == t_end || tr->first < t->first)) {
+        for (uint64_t i = tr->first; i <= tr->second; ++i) {
+          auto pair = std::pair<unsigned, uint64_t>(f, i);
+          auto tile_it = tile_map.find(pair);
+          assert(tile_it != tile_map.end());
+          auto tile_idx = tile_it->second;
+          const auto& tile = tiles[tile_idx];
+          RETURN_NOT_OK(get_all_coords<T>(tile.get(), range_coords));
+        }
+        ++tr;
+      } else {
+        // Handle single tile
+        auto pair = std::pair<unsigned, uint64_t>(f, t->first);
         auto tile_it = tile_map.find(pair);
         assert(tile_it != tile_map.end());
         auto tile_idx = tile_it->second;
         const auto& tile = tiles[tile_idx];
-        RETURN_NOT_OK(get_all_coords<T>(tile.get(), range_coords));
-      }
-    }
-
-    // Handle potentially partial overlap
-    for (auto t : overlap[f][range_idx].tiles_) {
-      auto pair = std::pair<unsigned, uint64_t>(f, t.first);
-      auto tile_it = tile_map.find(pair);
-      assert(tile_it != tile_map.end());
-      auto tile_idx = tile_it->second;
-      const auto& tile = tiles[tile_idx];
-      if (t.second == 1.0) {  // Full overlap
-        RETURN_NOT_OK(get_all_coords<T>(tile.get(), range_coords));
-      } else {  // Partial overlap
-        RETURN_NOT_OK(
-            compute_overlapping_coords_2<T>(tile.get(), range, range_coords));
+        if (t->second == 1.0) {  // Full overlap
+          RETURN_NOT_OK(get_all_coords<T>(tile.get(), range_coords));
+        } else {  // Partial overlap
+          RETURN_NOT_OK(
+              compute_overlapping_coords_2<T>(tile.get(), range, range_coords));
+        }
+        ++t;
       }
     }
   }
