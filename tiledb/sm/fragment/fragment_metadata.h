@@ -446,9 +446,9 @@ class FragmentMetadata {
     uint64_t basic_ = 0;
     uint64_t rtree_ = 0;
     uint64_t mbrs_ = 0;
-    uint64_t tile_offsets_ = 0;
-    uint64_t tile_var_offsets_ = 0;
-    uint64_t tile_var_sizes_ = 0;
+    std::vector<uint64_t> tile_offsets_;
+    std::vector<uint64_t> tile_var_offsets_;
+    std::vector<uint64_t> tile_var_sizes_;
   };
 
   /* ********************************* */
@@ -599,14 +599,17 @@ class FragmentMetadata {
   /** Loads the MBRs from storage. */
   Status load_mbrs(const EncryptionKey& encryption_key);
 
-  /** Loads the tile offsets from storage. */
-  Status load_tile_offsets(const EncryptionKey& encryption_key);
+  /** Loads the tile offsets for the input attribute from storage. */
+  Status load_tile_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
-  /** Loads the variable tile offsets from storage. */
-  Status load_tile_var_offsets(const EncryptionKey& encryption_key);
+  /** Loads the variable tile offsets for the input attribute from storage. */
+  Status load_tile_var_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
-  /** Loads the variable tile sizes from storage. */
-  Status load_tile_var_sizes(const EncryptionKey& encryption_key);
+  /** Loads the variable tile sizes for the input attribute from storage. */
+  Status load_tile_var_sizes(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -647,12 +650,14 @@ class FragmentMetadata {
   Status load_non_empty_domain(ConstBuffer* buff);
 
   /**
-   * Loads the tile offsets from the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
+   * Loads the tile offsets for the input attribute from the input buffer.
    */
   Status load_tile_offsets(ConstBuffer* buff);
+
+  /**
+   * Loads the tile offsets for the input attribute from the input buffer.
+   */
+  Status load_tile_offsets(unsigned attr_id, ConstBuffer* buff);
 
   /**
    * Loads the variable tile offsets from the fragment metadata buffer.
@@ -663,12 +668,22 @@ class FragmentMetadata {
   Status load_tile_var_offsets(ConstBuffer* buff);
 
   /**
+   * Loads the variable tile offsets for the input attribute from the buffer.
+   */
+  Status load_tile_var_offsets(unsigned attr_id, ConstBuffer* buff);
+
+  /**
    * Loads the variable tile sizes from the fragment metadata.
    *
    * @param buff Metadata buffer.
    * @return Status
    */
   Status load_tile_var_sizes(ConstBuffer* buff);
+
+  /**
+   * Loads the variable tile sizes for the input attribute from the buffer.
+   */
+  Status load_tile_var_sizes(unsigned attr_id, ConstBuffer* buff);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -717,23 +732,26 @@ class FragmentMetadata {
   /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff);
 
-  /** Writes the tile offsets to storage. */
-  Status store_tile_offsets(const EncryptionKey& encryption_key);
+  /** Writes the tile offsets of the input attribute to storage. */
+  Status store_tile_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
-  /** Writes the tile offsets to the input buffer. */
-  Status write_tile_offsets(Buffer* buff);
+  /** Writes the tile offsets of the input attribut$ to the input buffer. */
+  Status write_tile_offsets(unsigned attr_id, Buffer* buff);
 
-  /** Writes the variable tile offsets to storage. */
-  Status store_tile_var_offsets(const EncryptionKey& encryption_key);
+  /** Writes the variable tile offsets of the input attribute to storage. */
+  Status store_tile_var_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
-  /** Writes the variable tile offsets to the input buffer. */
-  Status write_tile_var_offsets(Buffer* buff);
+  /** Writes the variable tile offsets of the input attribute to the buffer. */
+  Status write_tile_var_offsets(unsigned attr_id, Buffer* buff);
 
-  /** Writes the variable tile sizes to the input buffer. */
-  Status store_tile_var_sizes(const EncryptionKey& encryption_key);
+  /** Writes the variable tile sizes for the input attribute to the buffer. */
+  Status store_tile_var_sizes(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
   /** Writes the variable tile sizes to storage. */
-  Status write_tile_var_sizes(Buffer* buff);
+  Status write_tile_var_sizes(unsigned attr_id, Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
