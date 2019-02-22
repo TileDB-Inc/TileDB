@@ -35,6 +35,8 @@
 
 #include <memory>
 #include <vector>
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/status.h"
@@ -123,6 +125,12 @@ class RTree {
 
   /** Returns the datatype of the R-Tree. */
   Datatype type() const;
+
+  /** Serializes the contents of the object to the input buffer. */
+  Status serialize(Buffer* buff) const;
+
+  /** Deserializes the contents of the object from the input buffer. */
+  Status deserialize(ConstBuffer* cbuff);
 
  private:
   /* ********************************* */
