@@ -51,23 +51,6 @@ class StorageManager;
 class FragmentMetadata {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /**
-   * Stores the start offsets of the generic tiles stored in the
-   * metadata file, each separately storing the various metadata
-   * (e.g., basic, mbrs, etc).
-   */
-  struct GenericTileOffsets {
-    uint64_t basic_;
-    uint64_t mbrs_;
-    uint64_t tile_offsets_;
-    uint64_t tile_var_offsets_;
-    uint64_t tile_var_sizes_;
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -451,6 +434,24 @@ class FragmentMetadata {
 
  private:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * Stores the start offsets of the generic tiles stored in the
+   * metadata file, each separately storing the various metadata
+   * (e.g., basic, mbrs, etc).
+   */
+  struct GenericTileOffsets {
+    uint64_t basic_ = 0;
+    uint64_t rtree_ = 0;
+    uint64_t mbrs_ = 0;
+    uint64_t tile_offsets_ = 0;
+    uint64_t tile_var_offsets_ = 0;
+    uint64_t tile_var_sizes_ = 0;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
@@ -564,6 +565,9 @@ class FragmentMetadata {
   std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
       const T* subarray) const;
 
+  /** Creates an RTree (stored in `rtree_`) on top of `mbrs_`. */
+  Status create_rtree();
+
   /**
    * Retrieves the tile domain for the input `subarray` based on the expanded
    * `domain_`.
@@ -588,6 +592,9 @@ class FragmentMetadata {
 
   /** Loads the basic metadata from storage. */
   Status load_basic(const EncryptionKey& encryption_key);
+
+  /** Loads the R-tree from storage. */
+  Status load_rtree(const EncryptionKey& encryption_key);
 
   /** Loads the MBRs from storage. */
   Status load_mbrs(const EncryptionKey& encryption_key);
@@ -695,8 +702,14 @@ class FragmentMetadata {
    */
   Status write_last_tile_cell_num(Buffer* buff);
 
+  /** Writes the R-tree to storage. */
+  Status store_rtree(const EncryptionKey& encryption_key);
+
   /** Writes the MBRs to storage. */
   Status store_mbrs(const EncryptionKey& encryption_key);
+
+  /** Writes the R-tree to the input buffer. */
+  Status write_rtree(Buffer* buff);
 
   /** Writes the MBRs to the input buffer. */
   Status write_mbrs(Buffer* buff);

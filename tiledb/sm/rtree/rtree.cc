@@ -220,6 +220,49 @@ Datatype RTree::type() const {
   return type_;
 }
 
+Status RTree::serialize(Buffer* buff) const {
+  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(dim_num_)));
+  RETURN_NOT_OK(buff->write(&fanout_, sizeof(fanout_)));
+  auto type = (uint8_t)type_;
+  RETURN_NOT_OK(buff->write(&type, sizeof(type)));
+  auto level_num = (unsigned)levels_.size();
+  RETURN_NOT_OK(buff->write(&level_num, sizeof(level_num)));
+
+  for (unsigned i = 0; i < level_num; ++i) {
+    auto mbr_num = levels_[i].mbr_num_;
+    auto mbrs_size = levels_[i].mbrs_.size();
+    auto mbrs = levels_[i].mbrs_.data();
+    RETURN_NOT_OK(buff->write(&mbr_num, sizeof(uint64_t)));
+    RETURN_NOT_OK(buff->write(mbrs, mbrs_size));
+  }
+
+  return Status::Ok();
+}
+
+Status RTree::deserialize(ConstBuffer* cbuff) {
+  RETURN_NOT_OK(cbuff->read(&dim_num_, sizeof(dim_num_)));
+  RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
+  uint8_t type;
+  RETURN_NOT_OK(cbuff->read(&type, sizeof(uint8_t)));
+  type_ = (Datatype)type;
+  unsigned level_num;
+  RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
+
+  levels_.clear();
+  levels_.resize(level_num);
+  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  uint64_t mbr_num;
+  for (unsigned i = 0; i < level_num; ++i) {
+    RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
+    levels_[i].mbr_num_ = mbr_num;
+    auto mbrs_size = mbr_num * mbr_size;
+    levels_[i].mbrs_.resize(mbrs_size);
+    RETURN_NOT_OK(cbuff->read(&levels_[i].mbrs_[0], mbrs_size));
+  }
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

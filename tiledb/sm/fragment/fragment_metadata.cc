@@ -437,6 +437,7 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
 
   // Write to disk
   RETURN_NOT_OK(store_basic(encryption_key));
+  RETURN_NOT_OK(store_rtree(encryption_key));
   RETURN_NOT_OK(store_mbrs(encryption_key));
   RETURN_NOT_OK(store_tile_offsets(encryption_key));
   RETURN_NOT_OK(store_tile_var_offsets(encryption_key));
@@ -740,6 +741,19 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(
+      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
+
+  ConstBuffer cbuff(buff);
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff));
+
+  delete buff;
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(
@@ -901,12 +915,6 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     }
     mbrs_[i] = mbr;
   }
-
-  // Create RTree
-  auto dim_num = array_schema_->dim_num();
-  auto type = array_schema_->domain()->type();
-  auto rtree = RTree(type, dim_num, constants::rtree_fanout, mbrs_);
-  rtree_ = std::move(rtree);
 
   return Status::Ok();
 }
@@ -1076,6 +1084,14 @@ Status FragmentMetadata::load_version(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::create_rtree() {
+  auto dim_num = array_schema_->dim_num();
+  auto type = array_schema_->domain()->type();
+  auto rtree = RTree(type, dim_num, constants::rtree_fanout, mbrs_);
+  rtree_ = std::move(rtree);
+  return Status::Ok();
+}
+
 Status FragmentMetadata::get_generic_tile_size(
     uint64_t offset, uint64_t* size) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
@@ -1097,6 +1113,11 @@ Status FragmentMetadata::load_generic_tile_offsets() {
   // Offset for basic metadata
   offset = 0;
   gt_offsets_.basic_ = 0;
+
+  // Offset for rtree
+  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+  offset += size;
+  gt_offsets_.rtree_ = offset;
 
   // Offset for mbrs
   RETURN_NOT_OK(get_generic_tile_size(offset, &size));
@@ -1146,6 +1167,7 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
   RETURN_NOT_OK(load_file_sizes(&cbuff));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+  RETURN_NOT_OK(create_rtree());
 
   delete buff;
 
@@ -1154,8 +1176,11 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
   // Load from disk
-  RETURN_NOT_OK(load_generic_tile_offsets());
   RETURN_NOT_OK(load_basic(encryption_key));
+
+  // TODO: these should not be loaded here, but instead on demand
+  RETURN_NOT_OK(load_generic_tile_offsets());
+  RETURN_NOT_OK(load_rtree(encryption_key));
   RETURN_NOT_OK(load_mbrs(encryption_key));
   RETURN_NOT_OK(load_tile_offsets(encryption_key));
   RETURN_NOT_OK(load_tile_var_offsets(encryption_key));
@@ -1216,10 +1241,25 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::store_rtree(const EncryptionKey& encryption_key) {
+  Buffer buff;
+  RETURN_NOT_OK(write_rtree(&buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::store_mbrs(const EncryptionKey& encryption_key) {
   Buffer buff;
   RETURN_NOT_OK(write_mbrs(&buff));
   RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_rtree(Buffer* buff) {
+  RETURN_NOT_OK(create_rtree());
+  RETURN_NOT_OK(rtree_.serialize(buff));
 
   return Status::Ok();
 }
