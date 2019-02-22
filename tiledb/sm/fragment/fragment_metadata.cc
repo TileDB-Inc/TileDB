@@ -439,9 +439,14 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(store_basic(encryption_key));
   RETURN_NOT_OK(store_rtree(encryption_key));
   RETURN_NOT_OK(store_mbrs(encryption_key));
-  RETURN_NOT_OK(store_tile_offsets(encryption_key));
-  RETURN_NOT_OK(store_tile_var_offsets(encryption_key));
-  RETURN_NOT_OK(store_tile_var_sizes(encryption_key));
+
+  unsigned int attribute_num = array_schema_->attribute_num();
+  for (unsigned int i = 0; i < attribute_num + 1; ++i)
+    RETURN_NOT_OK(store_tile_offsets(i, encryption_key));
+  for (unsigned int i = 0; i < attribute_num; ++i)
+    RETURN_NOT_OK(store_tile_var_offsets(i, encryption_key));
+  for (unsigned int i = 0; i < attribute_num; ++i)
+    RETURN_NOT_OK(store_tile_var_sizes(i, encryption_key));
 
   // Close file
   URI fragment_metadata_uri = fragment_uri_.join_path(
@@ -736,6 +741,10 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_file_sizes(&cbuff));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
 
+  tile_offsets_.resize(array_schema_->attribute_num() + 1);
+  tile_var_offsets_.resize(array_schema_->attribute_num());
+  tile_var_sizes_.resize(array_schema_->attribute_num());
+
   delete buff;
 
   return Status::Ok();
@@ -768,13 +777,13 @@ Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_tile_offsets(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_offsets_, &buff));
+      encryption_key, gt_offsets_.tile_offsets_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
-  RETURN_NOT_OK(load_tile_offsets(&cbuff));
+  RETURN_NOT_OK(load_tile_offsets(attr_id, &cbuff));
 
   delete buff;
 
@@ -782,13 +791,13 @@ Status FragmentMetadata::load_tile_offsets(
 }
 
 Status FragmentMetadata::load_tile_var_offsets(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_offsets_, &buff));
+      encryption_key, gt_offsets_.tile_var_offsets_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
-  RETURN_NOT_OK(load_tile_var_offsets(&cbuff));
+  RETURN_NOT_OK(load_tile_var_offsets(attr_id, &cbuff));
 
   delete buff;
 
@@ -796,13 +805,13 @@ Status FragmentMetadata::load_tile_var_offsets(
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_sizes_, &buff));
+      encryption_key, gt_offsets_.tile_var_sizes_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
-  RETURN_NOT_OK(load_tile_var_sizes(&cbuff));
+  RETURN_NOT_OK(load_tile_var_sizes(attr_id, &cbuff));
 
   delete buff;
 
@@ -956,13 +965,6 @@ Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// tile_offsets_attr#0_num (uint64_t)
-// tile_offsets_attr#0_#1 (uint64_t) tile_offsets_attr#0_#2 (uint64_t) ...
-// ...
-// tile_offsets_attr#<attribute_num>_num (uint64_t)
-// tile_offsets_attr#<attribute_num>_#1 (uint64_t)
-// tile_offsets_attr#<attribute_num>_#2 (uint64_t) ...
 Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
   Status st;
   uint64_t tile_offsets_num = 0;
@@ -992,6 +994,34 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading tile offsets failed"));
     }
   }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_tile_offsets(
+    unsigned attr_id, ConstBuffer* buff) {
+  Status st;
+  uint64_t tile_offsets_num = 0;
+
+  // Get number of tile offsets
+  st = buff->read(&tile_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading number of tile offsets "
+        "failed"));
+  }
+
+  // Get tile offsets
+  if (tile_offsets_num != 0) {
+    tile_offsets_[attr_id].resize(tile_offsets_num);
+    st = buff->read(
+        &tile_offsets_[attr_id][0], tile_offsets_num * sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading tile offsets failed"));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1037,6 +1067,35 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_tile_var_offsets(
+    unsigned attr_id, ConstBuffer* buff) {
+  Status st;
+  uint64_t tile_var_offsets_num = 0;
+
+  // Get number of tile offsets
+  st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading number of variable tile "
+        "offsets failed"));
+  }
+
+  // Get variable tile offsets
+  if (tile_var_offsets_num != 0) {
+    tile_var_offsets_[attr_id].resize(tile_var_offsets_num);
+    st = buff->read(
+        &tile_var_offsets_[attr_id][0],
+        tile_var_offsets_num * sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading variable tile offsets "
+          "failed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 // tile_var_sizes_attr#0_num (uint64_t)
 // tile_var_sizes_attr#0_#1 (uint64_t) tile_sizes_attr#0_#2 (uint64_t) ...
@@ -1077,6 +1136,33 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_tile_var_sizes(
+    unsigned attr_id, ConstBuffer* buff) {
+  Status st;
+  uint64_t tile_var_sizes_num = 0;
+
+  // Get number of tile sizes
+  st = buff->read(&tile_var_sizes_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading number of variable tile "
+        "sizes failed"));
+  }
+
+  // Get variable tile sizes
+  if (tile_var_sizes_num != 0) {
+    tile_var_sizes_[attr_id].resize(tile_var_sizes_num);
+    st = buff->read(
+        &tile_var_sizes_[attr_id][0], tile_var_sizes_num * sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading variable tile sizes failed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 // version (uint32_t)
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
@@ -1109,6 +1195,7 @@ Status FragmentMetadata::get_generic_tile_size(
 
 Status FragmentMetadata::load_generic_tile_offsets() {
   uint64_t size, offset = 0;
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Offset for basic metadata
   offset = 0;
@@ -1124,20 +1211,29 @@ Status FragmentMetadata::load_generic_tile_offsets() {
   offset += size;
   gt_offsets_.mbrs_ = offset;
 
-  // Offset for tile offsets
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.tile_offsets_ = offset;
+  // Offsets for tile offsets
+  gt_offsets_.tile_offsets_.resize(attribute_num + 1);
+  for (unsigned i = 0; i < attribute_num + 1; ++i) {
+    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+    offset += size;
+    gt_offsets_.tile_offsets_[i] = offset;
+  }
 
-  // Offset for variable tile offsets
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.tile_var_offsets_ = offset;
+  // Offsets for variable tile offsets
+  gt_offsets_.tile_var_offsets_.resize(attribute_num);
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+    offset += size;
+    gt_offsets_.tile_var_offsets_[i] = offset;
+  }
 
-  // Offset for variable tile sizes
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.tile_var_sizes_ = offset;
+  // Offsets for variable tile sizes
+  gt_offsets_.tile_var_sizes_.resize(attribute_num);
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
+    offset += size;
+    gt_offsets_.tile_var_sizes_[i] = offset;
+  }
 
   return Status::Ok();
 }
@@ -1182,9 +1278,14 @@ Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_generic_tile_offsets());
   RETURN_NOT_OK(load_rtree(encryption_key));
   RETURN_NOT_OK(load_mbrs(encryption_key));
-  RETURN_NOT_OK(load_tile_offsets(encryption_key));
-  RETURN_NOT_OK(load_tile_var_offsets(encryption_key));
-  RETURN_NOT_OK(load_tile_var_sizes(encryption_key));
+
+  unsigned int attribute_num = array_schema_->attribute_num();
+  for (unsigned int i = 0; i < attribute_num + 1; ++i)
+    RETURN_NOT_OK(load_tile_offsets(i, encryption_key));
+  for (unsigned int i = 0; i < attribute_num; ++i)
+    RETURN_NOT_OK(load_tile_var_offsets(i, encryption_key));
+  for (unsigned int i = 0; i < attribute_num; ++i)
+    RETURN_NOT_OK(load_tile_var_sizes(i, encryption_key));
 
   return Status::Ok();
 }
@@ -1350,41 +1451,30 @@ Status FragmentMetadata::write_generic_tile_to_file(
 }
 
 Status FragmentMetadata::store_tile_offsets(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   Buffer buff;
-  RETURN_NOT_OK(write_tile_offsets(&buff));
+  RETURN_NOT_OK(write_tile_offsets(attr_id, &buff));
   RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
 
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// tile_offsets_attr#0_num(uint64_t)
-// tile_offsets_attr#0_#1 (uint64_t) tile_offsets_attr#0_#2 (uint64_t) ...
-// ...
-// tile_offsets_attr#<attribute_num>_num(uint64_t)
-// tile_offsets_attr#<attribute_num>_#1 (uint64_t)
-// tile_offsets_attr#<attribute_num>_#2 (uint64_t) ...
-Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
+Status FragmentMetadata::write_tile_offsets(unsigned attr_id, Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_schema_->attribute_num();
 
-  // Write tile offsets for each attribute
-  for (unsigned int i = 0; i < attribute_num + 1; ++i) {
-    // Write number of tile offsets
-    uint64_t tile_offsets_num = tile_offsets_[i].size();
-    st = buff->write(&tile_offsets_num, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing number of tile offsets "
-          "failed"));
-    }
+  // Write number of tile offsets
+  uint64_t tile_offsets_num = tile_offsets_[attr_id].size();
+  st = buff->write(&tile_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing number of tile offsets "
+        "failed"));
+  }
 
-    if (tile_offsets_num == 0)
-      continue;
-
-    // Write tile offsets
-    st = buff->write(&tile_offsets_[i][0], tile_offsets_num * sizeof(uint64_t));
+  // Write tile offsets
+  if (tile_offsets_num != 0) {
+    st = buff->write(
+        &tile_offsets_[attr_id][0], tile_offsets_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot serialize fragment metadata; Writing tile offsets failed"));
@@ -1395,43 +1485,33 @@ Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
 }
 
 Status FragmentMetadata::store_tile_var_offsets(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   Buffer buff;
-  RETURN_NOT_OK(write_tile_var_offsets(&buff));
+  RETURN_NOT_OK(write_tile_var_offsets(attr_id, &buff));
   RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
 
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// tile_var_offsets_attr#0_num(uint64_t)
-// tile_var_offsets_attr#0_#1 (uint64_t) tile_var_offsets_attr#0_#2 (uint64_t)
-// ...
-// ...
-// tile_var_offsets_attr#<attribute_num-1>_num(uint64_t)
-// tile_var_offsets_attr#<attribute_num-1>_#1 (uint64_t)
-//     tile_var_offsets_attr#<attribute_num-1>_#2 (uint64_t) ...
-Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
+Status FragmentMetadata::write_tile_var_offsets(
+    unsigned attr_id, Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Write tile offsets for each attribute
-  for (unsigned int i = 0; i < attribute_num; ++i) {
-    // Write number of offsets
-    uint64_t tile_var_offsets_num = tile_var_offsets_[i].size();
-    st = buff->write(&tile_var_offsets_num, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing number of "
-          "variable tile offsets failed"));
-    }
+  // Write number of offsets
+  uint64_t tile_var_offsets_num = tile_var_offsets_[attr_id].size();
+  st = buff->write(&tile_var_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing number of "
+        "variable tile offsets failed"));
+  }
 
-    if (tile_var_offsets_num == 0)
-      continue;
-
-    // Write tile offsets
+  // Write tile offsets
+  if (tile_var_offsets_num != 0) {
     st = buff->write(
-        &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(uint64_t));
+        &tile_var_offsets_[attr_id][0],
+        tile_var_offsets_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot serialize fragment metadata; Writing "
@@ -1443,42 +1523,30 @@ Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
 }
 
 Status FragmentMetadata::store_tile_var_sizes(
-    const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key) {
   Buffer buff;
-  RETURN_NOT_OK(write_tile_var_sizes(&buff));
+  RETURN_NOT_OK(write_tile_var_sizes(attr_id, &buff));
   RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
 
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// tile_var_sizes_attr#0_num(uint64_t)
-// tile_var_sizes_attr#0_#1 (uint64_t) tile_sizes_attr#0_#2 (uint64_t) ...
-// ...
-// tile_var_sizes_attr#<attribute_num-1>_num(uint64_t)
-// tile_var_sizes_attr#<attribute_num-1>_#1(uint64_t)
-//     tile_var_sizes_attr#<attribute_num-1>_#2 (uint64_t) ...
-Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
+Status FragmentMetadata::write_tile_var_sizes(unsigned attr_id, Buffer* buff) {
   Status st;
-  unsigned int attribute_num = array_schema_->attribute_num();
 
-  // Write tile sizes for each attribute
-  for (unsigned int i = 0; i < attribute_num; ++i) {
-    // Write number of sizes
-    uint64_t tile_var_sizes_num = tile_var_sizes_[i].size();
-    st = buff->write(&tile_var_sizes_num, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing number of "
-          "variable tile sizes failed"));
-    }
+  // Write number of sizes
+  uint64_t tile_var_sizes_num = tile_var_sizes_[attr_id].size();
+  st = buff->write(&tile_var_sizes_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing number of "
+        "variable tile sizes failed"));
+  }
 
-    if (tile_var_sizes_num == 0)
-      continue;
-
-    // Write tile sizes
+  // Write tile sizes
+  if (tile_var_sizes_num != 0) {
     st = buff->write(
-        &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(uint64_t));
+        &tile_var_sizes_[attr_id][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(
           Status::FragmentMetadataError("Cannot serialize fragment metadata; "
