@@ -438,6 +438,8 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   // Write to disk
   RETURN_NOT_OK(store_basic(encryption_key));
   RETURN_NOT_OK(store_rtree(encryption_key));
+
+  // TODO: after updating to the new algorithm, remove
   RETURN_NOT_OK(store_mbrs(encryption_key));
 
   unsigned int attribute_num = array_schema_->attribute_num();
@@ -456,6 +458,7 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
+// TODO: load - should remove
 const std::vector<void*>* FragmentMetadata::mbrs() const {
   return &mbrs_;
 }
@@ -511,6 +514,7 @@ URI FragmentMetadata::attr_var_uri(const std::string& attribute) const {
   return attribute_var_uri_map_.at(attribute);
 }
 
+// TODO: load
 uint64_t FragmentMetadata::file_offset(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
@@ -518,6 +522,7 @@ uint64_t FragmentMetadata::file_offset(
   return tile_offsets_[attribute_id][tile_idx];
 }
 
+// TODO: load
 uint64_t FragmentMetadata::file_var_offset(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
@@ -525,6 +530,7 @@ uint64_t FragmentMetadata::file_var_offset(
   return tile_var_offsets_[attribute_id][tile_idx];
 }
 
+// TODO: load
 uint64_t FragmentMetadata::persisted_tile_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
@@ -537,6 +543,7 @@ uint64_t FragmentMetadata::persisted_tile_size(
              file_sizes_[attribute_id] - tile_offsets_[attribute_id][tile_idx];
 }
 
+// TODO: load
 uint64_t FragmentMetadata::persisted_tile_var_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
@@ -550,6 +557,7 @@ uint64_t FragmentMetadata::persisted_tile_var_size(
                  tile_var_offsets_[attribute_id][tile_idx];
 }
 
+// TODO: load
 const RTree* FragmentMetadata::rtree() const {
   return &rtree_;
 }
@@ -562,6 +570,7 @@ uint64_t FragmentMetadata::tile_size(
                       cell_num * array_schema_->cell_size(attribute);
 }
 
+// TODO: load
 uint64_t FragmentMetadata::tile_var_size(
     const std::string& attribute, uint64_t tile_idx) const {
   auto it = attribute_idx_map_.find(attribute);
