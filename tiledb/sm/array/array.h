@@ -215,14 +215,6 @@ class Array {
   /** Returns the timestamp at which the array was opened. */
   uint64_t timestamp() const;
 
-  /**
-   * Sets a subarray to the array, constraining its "view". Only fragment
-   * metadata whose non-empty domain overlaps with the subarray will
-   * be loaded upon opening the array. This function will error out
-   * if the array is already open.
-   */
-  Status set_subarray(const void* subarray, uint64_t subarray_size);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -273,9 +265,6 @@ class Array {
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
-
-  /** The subarray that constrains the array "view". */
-  std::vector<uint8_t> subarray_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

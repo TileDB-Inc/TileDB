@@ -453,17 +453,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
       std::string(constants::fragment_metadata_filename));
   RETURN_NOT_OK(storage_manager_->close_file(fragment_metadata_uri));
 
-  // Write non-empty domain to file
-  // TODO(sp): this will be refactored
-  auto domain_size = non_empty_domain_size();
-  if (domain_size > 0) {
-    URI file_uri =
-        fragment_uri_.join_path(constants::non_empty_domain_filename);
-    RETURN_NOT_OK(
-        storage_manager_->write(file_uri, non_empty_domain_, domain_size));
-    RETURN_NOT_OK(storage_manager_->close_file(file_uri));
-  }
-
   return Status::Ok();
 }
 
