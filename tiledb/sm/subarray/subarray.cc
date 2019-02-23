@@ -184,42 +184,35 @@ void Subarray::clear() {
   tile_overlap_computed_ = false;
 }
 
-void Subarray::compute_tile_overlap() {
+Status Subarray::compute_tile_overlap() {
   auto type = array_->array_schema()->domain()->type();
   switch (type) {
     case Datatype::INT8:
-      compute_tile_overlap<int8_t>();
-      break;
+      return compute_tile_overlap<int8_t>();
     case Datatype::UINT8:
-      compute_tile_overlap<uint8_t>();
-      break;
+      return compute_tile_overlap<uint8_t>();
     case Datatype::INT16:
-      compute_tile_overlap<int16_t>();
-      break;
+      return compute_tile_overlap<int16_t>();
     case Datatype::UINT16:
-      compute_tile_overlap<uint16_t>();
-      break;
+      return compute_tile_overlap<uint16_t>();
     case Datatype::INT32:
-      compute_tile_overlap<int32_t>();
-      break;
+      return compute_tile_overlap<int32_t>();
     case Datatype::UINT32:
-      compute_tile_overlap<uint32_t>();
-      break;
+      return compute_tile_overlap<uint32_t>();
     case Datatype::INT64:
-      compute_tile_overlap<int64_t>();
-      break;
+      return compute_tile_overlap<int64_t>();
     case Datatype::UINT64:
-      compute_tile_overlap<uint64_t>();
-      break;
+      return compute_tile_overlap<uint64_t>();
     case Datatype::FLOAT32:
-      compute_tile_overlap<float>();
-      break;
+      return compute_tile_overlap<float>();
     case Datatype::FLOAT64:
-      compute_tile_overlap<double>();
-      break;
+      return compute_tile_overlap<double>();
     default:
-      assert(false);
+      return LOG_STATUS(Status::SubarrayError(
+          "Failed to compute tile overlap; unsupported domain type"));
   }
+
+  return Status::Ok();
 }
 
 uint32_t Subarray::dim_num() const {
@@ -360,7 +353,7 @@ Status Subarray::get_est_result_size(const char* attr_name, uint64_t* size) {
         "Cannot get estimated result size; Attribute must be fixed-sized"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size();
+  RETURN_NOT_OK(compute_est_result_size());
   *size = (uint64_t)ceil(est_result_size_[attr_name].size_fixed_);
 
   return Status::Ok();
@@ -395,7 +388,7 @@ Status Subarray::get_est_result_size(
         "Cannot get estimated result size; Attribute must be var-sized"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size();
+  RETURN_NOT_OK(compute_est_result_size());
   *size_off = (uint64_t)ceil(est_result_size_[attr_name].size_fixed_);
   *size_val = (uint64_t)ceil(est_result_size_[attr_name].size_var_);
 
@@ -629,53 +622,46 @@ void Subarray::compute_range_offsets() {
   }
 }
 
-void Subarray::compute_est_result_size() {
+Status Subarray::compute_est_result_size() {
   if (result_est_size_computed_)
-    return;
+    return Status::Ok();
 
   auto type = array_->array_schema()->domain()->type();
   switch (type) {
     case Datatype::INT8:
-      compute_est_result_size<int8_t>();
-      break;
+      return compute_est_result_size<int8_t>();
     case Datatype::UINT8:
-      compute_est_result_size<uint8_t>();
-      break;
+      return compute_est_result_size<uint8_t>();
     case Datatype::INT16:
-      compute_est_result_size<int16_t>();
-      break;
+      return compute_est_result_size<int16_t>();
     case Datatype::UINT16:
-      compute_est_result_size<uint16_t>();
-      break;
+      return compute_est_result_size<uint16_t>();
     case Datatype::INT32:
-      compute_est_result_size<int32_t>();
-      break;
+      return compute_est_result_size<int32_t>();
     case Datatype::UINT32:
-      compute_est_result_size<uint32_t>();
-      break;
+      return compute_est_result_size<uint32_t>();
     case Datatype::INT64:
-      compute_est_result_size<int64_t>();
-      break;
+      return compute_est_result_size<int64_t>();
     case Datatype::UINT64:
-      compute_est_result_size<uint64_t>();
-      break;
+      return compute_est_result_size<uint64_t>();
     case Datatype::FLOAT32:
-      compute_est_result_size<float>();
-      break;
+      return compute_est_result_size<float>();
     case Datatype::FLOAT64:
-      compute_est_result_size<double>();
-      break;
+      return compute_est_result_size<double>();
     default:
-      assert(false);
+      return LOG_STATUS(Status::SubarrayError(
+          "Cannot compute estimated results size; unsupported domain type"));
   }
+
+  return Status::Ok();
 }
 
 template <class T>
-void Subarray::compute_est_result_size() {
+Status Subarray::compute_est_result_size() {
   if (result_est_size_computed_)
-    return;
+    return Status::Ok();
 
-  compute_tile_overlap<T>();
+  RETURN_NOT_OK(compute_tile_overlap<T>());
 
   std::mutex mtx;
 
@@ -723,6 +709,8 @@ void Subarray::compute_est_result_size() {
     est_result_size_[attr_name] = est_result_size_vec[a];
   }
   result_est_size_computed_ = true;
+
+  return Status::Ok();
 }
 
 template <class T>
@@ -786,9 +774,9 @@ Subarray::ResultSize Subarray::compute_est_result_size(
 }
 
 template <class T>
-void Subarray::compute_tile_overlap() {
+Status Subarray::compute_tile_overlap() {
   if (tile_overlap_computed_)
-    return;
+    return Status::Ok();
 
   compute_range_offsets();
   tile_overlap_.clear();
@@ -802,9 +790,7 @@ void Subarray::compute_tile_overlap() {
   // Compute estimated tile overlap in parallel over fragments and ranges
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
-        // TODO: only if it overlaps with the non-empty domain
-        // TODO: the R-Tree will be loaded on demand
-        // TODO: don't expose R-Tree -> send it directly to metadata instead
+        // TODO: may return error
         auto rtree = meta[i]->rtree();
         auto range = this->range<T>(j);
         tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
@@ -812,6 +798,8 @@ void Subarray::compute_tile_overlap() {
       });
 
   tile_overlap_computed_ = true;
+
+  return Status::Ok();
 }
 
 Subarray Subarray::clone() const {

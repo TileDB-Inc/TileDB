@@ -200,7 +200,7 @@ class Subarray {
    * Computes the tile overlap with all subarray ranges for
    * all fragments.
    */
-  void compute_tile_overlap();
+  Status compute_tile_overlap();
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
@@ -452,18 +452,18 @@ class Subarray {
   }
 
   /** Computes the estimated result size for all attributes. */
-  void compute_est_result_size();
+  Status compute_est_result_size();
 
   /** Computes the estimated result size for all attributes. */
   template <class T>
-  void compute_est_result_size();
+  Status compute_est_result_size();
 
   /**
    * Computes the tile overlap with all subarray ranges for
    * all fragments.
    */
   template <class T>
-  void compute_tile_overlap();
+  Status compute_tile_overlap();
 
   /** Returns a deep copy of this Subarray. */
   Subarray clone() const;
