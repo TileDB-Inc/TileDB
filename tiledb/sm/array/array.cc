@@ -131,7 +131,6 @@ Status Array::open(
         array_uri_,
         timestamp_,
         encryption_key_,
-        subarray_.data(),
         &array_schema_,
         &fragment_metadata_));
   } else {
@@ -212,7 +211,6 @@ Status Array::open(
       array_uri_,
       timestamp_,
       encryption_key_,
-      subarray_.data(),
       &array_schema_,
       &fragment_metadata_));
 
@@ -409,7 +407,6 @@ Status Array::reopen(uint64_t timestamp) {
       array_uri_,
       timestamp_,
       encryption_key_,
-      subarray_.data(),
       &array_schema_,
       &fragment_metadata_);
 }
@@ -417,20 +414,6 @@ Status Array::reopen(uint64_t timestamp) {
 uint64_t Array::timestamp() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return timestamp_;
-}
-
-Status Array::set_subarray(const void* subarray, uint64_t subarray_size) {
-  if (subarray == nullptr || subarray_size == 0)
-    return LOG_STATUS(Status::ArrayError("Cannot set a null subarray"));
-
-  if (is_open())
-    return LOG_STATUS(
-        Status::ArrayError("Cannot set subarray; Array is already open"));
-
-  subarray_.resize(subarray_size);
-  std::memcpy(&subarray_[0], subarray, subarray_size);
-
-  return Status::Ok();
 }
 
 /* ********************************* */

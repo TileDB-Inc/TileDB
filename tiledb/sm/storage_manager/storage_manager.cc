@@ -184,7 +184,6 @@ Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
-    const void* subarray,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_open_for_reads);
@@ -202,8 +201,8 @@ Status StorageManager::array_open_for_reads(
   std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(get_sorted_fragment_uris(
-      *array_schema, fragment_uris, timestamp, subarray, &fragments_to_load));
+  RETURN_NOT_OK(
+      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -331,7 +330,6 @@ Status StorageManager::array_reopen(
     const URI& array_uri,
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
-    const void* subarray,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_reopen);
@@ -359,12 +357,8 @@ Status StorageManager::array_reopen(
   std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(get_sorted_fragment_uris(
-      open_array->array_schema(),
-      fragment_uris,
-      timestamp,
-      subarray,
-      &fragments_to_load));
+  RETURN_NOT_OK(
+      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
@@ -798,7 +792,7 @@ Status StorageManager::get_fragment_info(
   // Sort the URIs by timestamp
   std::vector<std::pair<uint64_t, URI>> sorted_fragment_uris;
   RETURN_NOT_OK(get_sorted_fragment_uris(
-      array_schema, fragment_uris, timestamp, nullptr, &sorted_fragment_uris));
+      fragment_uris, timestamp, &sorted_fragment_uris));
 
   uint64_t domain_size = 2 * array_schema->coords_size();
   uint64_t size;
@@ -1521,83 +1515,6 @@ Status StorageManager::array_open_without_fragments(
   return Status::Ok();
 }
 
-Status StorageManager::fragment_overlaps(
-    const ArraySchema* array_schema,
-    const URI& uri,
-    const void* subarray,
-    bool* overlaps) const {
-  *overlaps = true;
-
-  // Exit if the subarray is empty
-  if (subarray == nullptr)
-    return Status::Ok();
-
-  // Compute buffer sizes
-  switch (array_schema->domain()->type()) {
-    case Datatype::INT8:
-      return fragment_overlaps<int8_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::UINT8:
-      return fragment_overlaps<uint8_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::INT16:
-      return fragment_overlaps<int16_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::UINT16:
-      return fragment_overlaps<uint16_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::INT32:
-      return fragment_overlaps<int32_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::UINT32:
-      return fragment_overlaps<uint32_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::INT64:
-      return fragment_overlaps<int64_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::UINT64:
-      return fragment_overlaps<uint64_t>(array_schema, uri, subarray, overlaps);
-    case Datatype::FLOAT32:
-      return fragment_overlaps<float>(array_schema, uri, subarray, overlaps);
-    case Datatype::FLOAT64:
-      return fragment_overlaps<double>(array_schema, uri, subarray, overlaps);
-    default:
-      return LOG_STATUS(Status::StorageManagerError(
-          "Cannot check if fragmen non-empty domain overlap with subarray; "
-          "Invalid domain type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status StorageManager::fragment_overlaps(
-    const ArraySchema* array_schema,
-    const URI& uri,
-    const void* subarray,
-    bool* overlaps) const {
-  *overlaps = true;
-
-  // Exit if the subarray is empty
-  if (subarray == nullptr)
-    return Status::Ok();
-
-  // Check if the non-empty domain file exists
-  bool file_exists;
-  URI file_uri = uri.join_path(constants::non_empty_domain_filename);
-  RETURN_NOT_OK(vfs_->is_file(file_uri, &file_exists));
-  if (!file_exists)
-    return Status::Ok();
-
-  // Read the file
-  uint64_t file_size = 2 * array_schema->coords_size();
-  auto non_empty_domain = std::malloc(file_size);
-  RETURN_NOT_OK(vfs_->read(file_uri, 0, non_empty_domain, file_size));
-
-  // Check for overlap
-  auto dim_num = array_schema->dim_num();
-  *overlaps =
-      utils::geometry::overlap<T>((T*)subarray, (T*)non_empty_domain, dim_num);
-
-  // Clean up
-  std::free(non_empty_domain);
-
-  return Status::Ok();
-}
-
 Status StorageManager::get_fragment_uris(
     const URI& array_uri, std::vector<URI>* fragment_uris) const {
   // Get all uris in the array directory
@@ -1670,10 +1587,8 @@ Status StorageManager::load_fragment_metadata(
 }
 
 Status StorageManager::get_sorted_fragment_uris(
-    const ArraySchema* array_schema,
     const std::vector<URI>& fragment_uris,
     uint64_t timestamp,
-    const void* subarray,
     std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const {
   // Do nothing if there are not enough fragments
   if (fragment_uris.empty())
@@ -1682,15 +1597,9 @@ Status StorageManager::get_sorted_fragment_uris(
   // Initializations
   std::string t_str;
   uint64_t t;
-  bool overlaps;
 
   // Get the timestamp for each fragment
   for (auto& uri : fragment_uris) {
-    // Check if fragment overlaps with subarray
-    RETURN_NOT_OK(fragment_overlaps(array_schema, uri, subarray, &overlaps));
-    if (!overlaps)
-      continue;
-
     // Get fragment name
     std::string uri_str = uri.c_str();
     if (uri_str.back() == '/')

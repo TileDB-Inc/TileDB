@@ -100,9 +100,6 @@ const bool dedup_coords = false;
 /** The array schema file name. */
 const std::string array_schema_filename = "__array_schema.tdb";
 
-/** The non-empty domain file name. */
-const std::string non_empty_domain_filename = "__non_empty_domain.tdb";
-
 /** The key-value schema file name. */
 const std::string kv_schema_filename = "__kv_schema.tdb";
 

@@ -61,7 +61,6 @@ The 1.5.0 release focuses on stability, performance, and usability improvements,
 
 ### C API
 
-* Added function `tiledb_array_set_subarray`
 * Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
 * Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
 * Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
