@@ -51,6 +51,8 @@
 #include <sstream>
 #include <thread>
 
+extern bool tiledb_cleanup;
+
 struct DenseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";
@@ -347,14 +349,14 @@ void DenseArrayFx::set_supported_fs() {
 }
 
 void DenseArrayFx::create_temp_dir(const std::string& path) {
-  remove_temp_dir(path);
-  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
+    remove_temp_dir(path);
+    REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
 void DenseArrayFx::remove_temp_dir(const std::string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
+  if (is_dir && tiledb_cleanup)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 

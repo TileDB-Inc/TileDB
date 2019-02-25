@@ -47,6 +47,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
+extern bool tiledb_cleanup;
+
 struct ArraySchemaFx {
   // Filesystem related
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
@@ -200,7 +202,7 @@ void ArraySchemaFx::create_temp_dir(const std::string& path) {
 void ArraySchemaFx::remove_temp_dir(const std::string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
+  if (is_dir && tiledb_cleanup)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 

@@ -68,4 +68,8 @@ static int set_attribute_compression_filter(
   return TILEDB_OK;
 }
 
+// This variable controls whether the tests clean up their output
+// repeat invocations with `true` will fail due to existing output.
+extern bool tiledb_cleanup;
+
 #endif

@@ -50,6 +50,8 @@
 #include <sstream>
 #include <thread>
 
+extern bool tiledb_cleanup;
+
 struct SparseArrayFx {
   // Constant parameters
   std::string ATTR_NAME = "a";
@@ -292,7 +294,7 @@ void SparseArrayFx::create_temp_dir(const std::string& path) {
 void SparseArrayFx::remove_temp_dir(const std::string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
+  if (is_dir && tiledb_cleanup)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 

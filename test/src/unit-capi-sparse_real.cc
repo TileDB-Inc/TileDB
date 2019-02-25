@@ -43,6 +43,8 @@
 #include <sstream>
 #include <thread>
 
+extern bool tiledb_cleanup;
+
 struct SparseRealFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
@@ -162,7 +164,7 @@ void SparseRealFx::create_temp_dir(const std::string& path) {
 void SparseRealFx::remove_temp_dir(const std::string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
+  if (is_dir && tiledb_cleanup)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
