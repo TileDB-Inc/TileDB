@@ -71,6 +71,7 @@ FragmentMetadata::FragmentMetadata(
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
+  sparse_tile_num_ = 0;
   auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     auto attr_name = attributes[i]->name();
@@ -193,12 +194,13 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const {
+        buffer_sizes) {
   if (dense_)
     return add_max_buffer_sizes_dense(subarray, buffer_sizes);
-  return add_max_buffer_sizes_sparse(subarray, buffer_sizes);
+  return add_max_buffer_sizes_sparse(encryption_key, subarray, buffer_sizes);
 }
 
 template <class T>
@@ -225,11 +227,15 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
   return Status::Ok();
 }
 
+// TODO (sp): remove when the new dense algorithm is in
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_sparse(
+    const EncryptionKey& encryption_key,
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const {
+        buffer_sizes) {
+  RETURN_NOT_OK(load_mbrs(encryption_key));
+
   unsigned tid = 0;
   auto dim_num = array_schema_->dim_num();
   for (auto& mbr : mbrs_) {
@@ -250,16 +256,19 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   return Status::Ok();
 }
 
+// TODO (sp): remove when the new dense algorithm is in
 template <class T>
 Status FragmentMetadata::add_est_read_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const {
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   if (dense_)
     return add_est_read_buffer_sizes_dense(subarray, buffer_sizes);
-  return add_est_read_buffer_sizes_sparse(subarray, buffer_sizes);
+  return add_est_read_buffer_sizes_sparse(
+      encryption_key, subarray, buffer_sizes);
 }
 
+// TODO (sp): remove when the new dense algorithm is in
 template <class T>
 Status FragmentMetadata::add_est_read_buffer_sizes_dense(
     const T* subarray,
@@ -285,11 +294,14 @@ Status FragmentMetadata::add_est_read_buffer_sizes_dense(
   return Status::Ok();
 }
 
+// TODO: remove after new dense read algorithm is in
 template <class T>
 Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
+    const EncryptionKey& encryption_key,
     const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const {
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
+  RETURN_NOT_OK(load_mbrs(encryption_key));
+
   bool overlap;
   auto dim_num = array_schema_->dim_num();
   auto subarray_overlap = new T[2 * dim_num];
@@ -458,17 +470,16 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
-// TODO: load - should remove
-const std::vector<void*>* FragmentMetadata::mbrs() const {
-  return &mbrs_;
+// TODO (sp): remove when the new dense algorithm is in
+Status FragmentMetadata::mbrs(
+    const EncryptionKey& encryption_key, const std::vector<void*>** mbrs) {
+  RETURN_NOT_OK(load_mbrs(encryption_key))
+  *mbrs = &mbrs_;
+  return Status::Ok();
 }
 
 const void* FragmentMetadata::non_empty_domain() const {
   return non_empty_domain_;
-}
-
-uint64_t FragmentMetadata::non_empty_domain_size() const {
-  return (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
 }
 
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -485,6 +496,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
   if (!dense_) {
     mbrs_.resize(num_tiles, nullptr);
+    sparse_tile_num_ = num_tiles;
     bounding_coords_.resize(num_tiles, nullptr);
   }
 
@@ -503,7 +515,7 @@ uint64_t FragmentMetadata::tile_num() const {
   if (dense_)
     return array_schema_->domain()->tile_num(domain_);
 
-  return (uint64_t)mbrs_.size();
+  return sparse_tile_num_;
 }
 
 URI FragmentMetadata::attr_uri(const std::string& attribute) const {
@@ -557,9 +569,11 @@ uint64_t FragmentMetadata::persisted_tile_var_size(
                  tile_var_offsets_[attribute_id][tile_idx];
 }
 
-// TODO: load
-const RTree* FragmentMetadata::rtree() const {
-  return &rtree_;
+Status FragmentMetadata::rtree(
+    const EncryptionKey& encryption_key, const RTree** rtree) {
+  RETURN_NOT_OK(load_rtree(encryption_key));
+  *rtree = &rtree_;
+  return Status::Ok();
 }
 
 uint64_t FragmentMetadata::tile_size(
@@ -728,6 +742,11 @@ Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
 }
 
 Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.basic_)
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.basic_, &buff));
@@ -735,6 +754,7 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(load_version(&cbuff));
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
+  RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
   RETURN_NOT_OK(load_file_sizes(&cbuff));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
@@ -743,12 +763,28 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
   tile_var_offsets_.resize(array_schema_->attribute_num());
   tile_var_sizes_.resize(array_schema_->attribute_num());
 
+  loaded_metadata_.tile_offsets_.resize(
+      array_schema_->attribute_num() + 1, false);
+  loaded_metadata_.tile_var_offsets_.resize(
+      array_schema_->attribute_num(), false);
+  loaded_metadata_.tile_var_sizes_.resize(
+      array_schema_->attribute_num(), false);
+
+  loaded_metadata_.basic_ = true;
+
   delete buff;
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
+  RETURN_NOT_OK(load_generic_tile_offsets());
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.rtree_)
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
@@ -756,18 +792,29 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(rtree_.deserialize(&cbuff));
 
+  loaded_metadata_.rtree_ = true;
+
   delete buff;
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
+  RETURN_NOT_OK(load_generic_tile_offsets());
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.mbrs_)
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.mbrs_, &buff));
 
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(load_mbrs(&cbuff));
+
+  loaded_metadata_.mbrs_ = true;
 
   delete buff;
 
@@ -776,12 +823,21 @@ Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::load_tile_offsets(
     unsigned attr_id, const EncryptionKey& encryption_key) {
+  RETURN_NOT_OK(load_generic_tile_offsets());
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.tile_offsets_[attr_id])
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(load_tile_offsets(attr_id, &cbuff));
+
+  loaded_metadata_.tile_offsets_[attr_id] = true;
 
   delete buff;
 
@@ -790,12 +846,21 @@ Status FragmentMetadata::load_tile_offsets(
 
 Status FragmentMetadata::load_tile_var_offsets(
     unsigned attr_id, const EncryptionKey& encryption_key) {
+  RETURN_NOT_OK(load_generic_tile_offsets());
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.tile_var_offsets_[attr_id])
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(load_tile_var_offsets(attr_id, &cbuff));
+
+  loaded_metadata_.tile_var_offsets_[attr_id] = true;
 
   delete buff;
 
@@ -804,12 +869,21 @@ Status FragmentMetadata::load_tile_var_offsets(
 
 Status FragmentMetadata::load_tile_var_sizes(
     unsigned attr_id, const EncryptionKey& encryption_key) {
+  RETURN_NOT_OK(load_generic_tile_offsets());
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.tile_var_sizes_[attr_id])
+    return Status::Ok();
+
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_sizes_[attr_id], &buff));
 
   ConstBuffer cbuff(buff);
   RETURN_NOT_OK(load_tile_var_sizes(attr_id, &cbuff));
+
+  loaded_metadata_.tile_var_sizes_[attr_id] = true;
 
   delete buff;
 
@@ -923,6 +997,9 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     mbrs_[i] = mbr;
   }
 
+  loaded_metadata_.mbrs_ = true;
+  sparse_tile_num_ = mbrs_.size();
+
   return Status::Ok();
 }
 
@@ -993,6 +1070,9 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
     }
   }
 
+  loaded_metadata_.tile_offsets_.resize(
+      array_schema_->attribute_num() + 1, true);
+
   return Status::Ok();
 }
 
@@ -1062,6 +1142,10 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
           "failed"));
     }
   }
+
+  loaded_metadata_.tile_var_offsets_.resize(
+      array_schema_->attribute_num(), true);
+
   return Status::Ok();
 }
 
@@ -1131,6 +1215,9 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
           "Cannot load fragment metadata; Reading variable tile sizes failed"));
     }
   }
+
+  loaded_metadata_.tile_var_sizes_.resize(array_schema_->attribute_num(), true);
+
   return Status::Ok();
 }
 
@@ -1161,13 +1248,18 @@ Status FragmentMetadata::load_tile_var_sizes(
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// version (uint32_t)
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
+  RETURN_NOT_OK(buff->read(&sparse_tile_num_, sizeof(uint64_t)));
+  return Status::Ok();
+}
+
+// TODO: when the new dense read algorithm is in, don't double
+// TODO: buffer the leaf level of the tree
 Status FragmentMetadata::create_rtree() {
   auto dim_num = array_schema_->dim_num();
   auto type = array_schema_->domain()->type();
@@ -1192,6 +1284,11 @@ Status FragmentMetadata::get_generic_tile_size(
 }
 
 Status FragmentMetadata::load_generic_tile_offsets() {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.generic_tile_offsets_)
+    return Status::Ok();
+
   uint64_t size, offset = 0;
   unsigned int attribute_num = array_schema_->attribute_num();
 
@@ -1233,6 +1330,8 @@ Status FragmentMetadata::load_generic_tile_offsets() {
     gt_offsets_.tile_var_sizes_[i] = offset;
   }
 
+  loaded_metadata_.generic_tile_offsets_ = true;
+
   return Status::Ok();
 }
 
@@ -1263,6 +1362,9 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
   RETURN_NOT_OK(create_rtree());
 
+  // Important in order no to ever load generic tile offsets
+  loaded_metadata_.generic_tile_offsets_ = true;
+
   delete buff;
 
   return Status::Ok();
@@ -1273,10 +1375,6 @@ Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_basic(encryption_key));
 
   // TODO: these should not be loaded here, but instead on demand
-  RETURN_NOT_OK(load_generic_tile_offsets());
-  RETURN_NOT_OK(load_rtree(encryption_key));
-  RETURN_NOT_OK(load_mbrs(encryption_key));
-
   unsigned int attribute_num = array_schema_->attribute_num();
   for (unsigned int i = 0; i < attribute_num + 1; ++i)
     RETURN_NOT_OK(load_tile_offsets(i, encryption_key));
@@ -1554,10 +1652,13 @@ Status FragmentMetadata::write_tile_var_sizes(unsigned attr_id, Buffer* buff) {
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// version (uint32_t)
 Status FragmentMetadata::write_version(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_sparse_tile_num(Buffer* buff) {
+  RETURN_NOT_OK(buff->write(&sparse_tile_num_, sizeof(uint64_t)));
   return Status::Ok();
 }
 
@@ -1565,6 +1666,7 @@ Status FragmentMetadata::store_basic(const EncryptionKey& encryption_key) {
   Buffer buff;
   RETURN_NOT_OK(write_version(&buff));
   RETURN_NOT_OK(write_non_empty_domain(&buff));
+  RETURN_NOT_OK(write_sparse_tile_num(&buff));
   RETURN_NOT_OK(write_last_tile_cell_num(&buff));
   RETURN_NOT_OK(write_file_sizes(&buff));
   RETURN_NOT_OK(write_file_var_sizes(&buff));
@@ -1596,86 +1698,96 @@ template Status FragmentMetadata::set_mbr<double>(
     uint64_t tile, const void* mbr);
 
 template Status FragmentMetadata::add_max_buffer_sizes<int8_t>(
+    const EncryptionKey& encryption_key,
     const int8_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<uint8_t>(
+    const EncryptionKey& encryption_key,
     const uint8_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<int16_t>(
+    const EncryptionKey& encryption_key,
     const int16_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<uint16_t>(
+    const EncryptionKey& encryption_key,
     const uint16_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<int>(
+    const EncryptionKey& encryption_key,
     const int* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<unsigned>(
+    const EncryptionKey& encryption_key,
     const unsigned* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<int64_t>(
+    const EncryptionKey& encryption_key,
     const int64_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<uint64_t>(
+    const EncryptionKey& encryption_key,
     const uint64_t* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<float>(
+    const EncryptionKey& encryption_key,
     const float* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 template Status FragmentMetadata::add_max_buffer_sizes<double>(
+    const EncryptionKey& encryption_key,
     const double* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const;
+        buffer_sizes);
 
 template Status FragmentMetadata::add_est_read_buffer_sizes<int8_t>(
+    const EncryptionKey& encryption_key,
     const int8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<uint8_t>(
+    const EncryptionKey& encryption_key,
     const uint8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<int16_t>(
+    const EncryptionKey& encryption_key,
     const int16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<uint16_t>(
+    const EncryptionKey& encryption_key,
     const uint16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<int>(
+    const EncryptionKey& encryption_key,
     const int* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<unsigned>(
+    const EncryptionKey& encryption_key,
     const unsigned* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<int64_t>(
+    const EncryptionKey& encryption_key,
     const int64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<uint64_t>(
+    const EncryptionKey& encryption_key,
     const uint64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<float>(
+    const EncryptionKey& encryption_key,
     const float* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 template Status FragmentMetadata::add_est_read_buffer_sizes<double>(
+    const EncryptionKey& encryption_key,
     const double* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const;
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
 template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
     const int8_t* tile_coords) const;

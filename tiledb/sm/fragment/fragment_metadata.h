@@ -40,6 +40,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/rtree/rtree.h"
 
+#include <mutex>
 #include <vector>
 
 namespace tiledb {
@@ -90,6 +91,7 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -99,9 +101,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -130,6 +133,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -139,9 +143,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_sparse(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -149,6 +154,7 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -158,9 +164,9 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -189,6 +195,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -198,9 +205,9 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_sparse(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
    * Returns ture if the corresponding fragment is dense, and false if it
@@ -246,14 +253,13 @@ class FragmentMetadata {
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
 
-  /** Returns the MBRs. */
-  const std::vector<void*>* mbrs() const;
+  /** Retrieves the MBRs. */
+  // TODO: Remove after the new dense read algorithm is in
+  Status mbrs(
+      const EncryptionKey& encryption_key, const std::vector<void*>** mbrs);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
-
-  /** Returns the non-empty domain size in bytes. */
-  uint64_t non_empty_domain_size() const;
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -399,8 +405,8 @@ class FragmentMetadata {
   uint64_t persisted_tile_var_size(
       const std::string& attribute, uint64_t tile_idx) const;
 
-  /** Returns the MBR RTree. */
-  const RTree* rtree() const;
+  /** Retrieves the RTree. */
+  Status rtree(const EncryptionKey& encryption_key, const RTree** rtree);
 
   /**
    * Returns the (uncompressed) tile size for a given attribute
@@ -451,6 +457,17 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_var_sizes_;
   };
 
+  /** Keeps track of which metadata is loaded. */
+  struct LoadedMetadata {
+    bool basic_ = false;
+    bool generic_tile_offsets_ = false;
+    bool rtree_ = false;
+    bool mbrs_ = false;
+    std::vector<bool> tile_offsets_;
+    std::vector<bool> tile_var_offsets_;
+    std::vector<bool> tile_var_sizes_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -496,10 +513,18 @@ class FragmentMetadata {
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
 
-  // TODO(sp) we may need to refactor this to be a std::shared_ptr<uint8_t[]>
-  // instead
+  /** Number of sparse tiles. */
+  uint64_t sparse_tile_num_;
+
+  /** Keeps track of which metadata has been loaded. */
+  LoadedMetadata loaded_metadata_;
+
+  // TODO(sp): remove after the new dense algorithm is implemented
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
+
+  /** Local mutex for thread-safety. */
+  std::mutex mtx_;
 
   /** The offsets of the next tile for each attribute. */
   std::vector<uint64_t> next_tile_offsets_;
@@ -688,6 +713,9 @@ class FragmentMetadata {
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
+  /** Loads the number of sparse tiles from the buffer. */
+  Status load_sparse_tile_num(ConstBuffer* buff);
+
   /**
    * Retrieves the size of the generic tile starting at the input offset.
    */
@@ -755,6 +783,9 @@ class FragmentMetadata {
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
+
+  /** Writes the number of sparse tiles to the buffer. */
+  Status write_sparse_tile_num(Buffer* buff);
 
   /** Writes the basic metadata to storage. */
   Status store_basic(const EncryptionKey& encryption_key);

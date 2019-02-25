@@ -265,7 +265,11 @@ Status Reader::next_subarray_partition() {
     for (const auto& attr_it : buffer_sizes_map)
       est_buffer_sizes[attr_it.first] = std::pair<double, double>(0, 0);
     auto st = storage_manager_->array_compute_est_read_buffer_sizes(
-        array_schema_, fragment_metadata_, next_partition, &est_buffer_sizes);
+        *(array_->encryption_key()),
+        array_schema_,
+        fragment_metadata_,
+        next_partition,
+        &est_buffer_sizes);
 
     if (!st.ok()) {
       std::free(next_partition);
@@ -1168,6 +1172,7 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
   auto subarray = (T*)read_state_.cur_subarray_partition_;
   auto dim_num = array_schema_->dim_num();
   auto fragment_num = fragment_metadata_.size();
+  auto encryption_key = array_->encryption_key();
   bool full_overlap;
 
   // Find overlapping tile indexes for each fragment
@@ -1177,7 +1182,8 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     if (fragment_metadata_[i]->dense())
       continue;
 
-    auto mbrs = fragment_metadata_[i]->mbrs();
+    auto mbrs = (const std::vector<void*>*)nullptr;
+    RETURN_NOT_OK(fragment_metadata_[i]->mbrs(*encryption_key, &mbrs));
     auto mbr_num = (uint64_t)mbrs->size();
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (utils::geometry::overlap(

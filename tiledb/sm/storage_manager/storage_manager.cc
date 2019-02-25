@@ -381,7 +381,9 @@ Status StorageManager::array_reopen(
   STATS_FUNC_OUT(sm_array_reopen);
 }
 
+// TODO: remove after the new dense read algorithm is in
 Status StorageManager::array_compute_est_read_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     const void* subarray,
@@ -394,60 +396,70 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   switch (array_schema->coords_type()) {
     case Datatype::INT32:
       return array_compute_est_read_buffer_sizes<int>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int*>(subarray),
           buffer_sizes);
     case Datatype::INT64:
       return array_compute_est_read_buffer_sizes<int64_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int64_t*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT32:
       return array_compute_est_read_buffer_sizes<float>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const float*>(subarray),
           buffer_sizes);
     case Datatype::FLOAT64:
       return array_compute_est_read_buffer_sizes<double>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const double*>(subarray),
           buffer_sizes);
     case Datatype::INT8:
       return array_compute_est_read_buffer_sizes<int8_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int8_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT8:
       return array_compute_est_read_buffer_sizes<uint8_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint8_t*>(subarray),
           buffer_sizes);
     case Datatype::INT16:
       return array_compute_est_read_buffer_sizes<int16_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const int16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT16:
       return array_compute_est_read_buffer_sizes<uint16_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint16_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT32:
       return array_compute_est_read_buffer_sizes<uint32_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint32_t*>(subarray),
           buffer_sizes);
     case Datatype::UINT64:
       return array_compute_est_read_buffer_sizes<uint64_t>(
+          encryption_key,
           array_schema,
           fragment_metadata,
           static_cast<const uint64_t*>(subarray),
@@ -774,6 +786,7 @@ Status StorageManager::object_move(
   return vfs_->move_dir(old_uri, new_uri);
 }
 
+// TODO: revisit this
 Status StorageManager::get_fragment_info(
     const ArraySchema* array_schema,
     uint64_t timestamp,
@@ -814,8 +827,8 @@ Status StorageManager::get_fragment_info(
 
     // Get fragment non-empty domain
     // TODO: get it from the file
-    auto metadata =
-        FragmentMetadata(this, array_schema, !sparse, uri.second, uri.first);
+    FragmentMetadata metadata(
+        this, array_schema, !sparse, uri.second, uri.first);
     RETURN_NOT_OK(metadata.load(encryption_key));
     std::memcpy(non_empty_domain, metadata.non_empty_domain(), domain_size);
 
@@ -833,6 +846,7 @@ Status StorageManager::get_fragment_info(
   return Status::Ok();
 }
 
+// TODO: revisit this
 Status StorageManager::get_fragment_info(
     const ArraySchema* array_schema,
     const EncryptionKey& encryption_key,
@@ -866,8 +880,9 @@ Status StorageManager::get_fragment_info(
   RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
 
   // Get fragment non-empty domain
-  auto metadata =
-      FragmentMetadata(this, array_schema, !sparse, fragment_uri, timestamp);
+  // TODO: get it from the open array instead
+  FragmentMetadata metadata(
+      this, array_schema, !sparse, fragment_uri, timestamp);
   RETURN_NOT_OK(metadata.load(encryption_key));
 
   // Set fragment info
@@ -1379,8 +1394,10 @@ Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+// TODO: remove after the new dense read algorithm is in
 template <class T>
 Status StorageManager::array_compute_est_read_buffer_sizes(
+    const EncryptionKey& encryption_key,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& metadata,
     const T* subarray,
@@ -1392,7 +1409,8 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : metadata)
-    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(subarray, buffer_sizes));
+    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(
+        encryption_key, subarray, buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema->dense()) {
