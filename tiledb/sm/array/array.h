@@ -151,6 +151,9 @@ class Array {
   /** Closes the array and frees all memory. */
   Status close();
 
+  /** Returns a constant pointer to the encryption key. */
+  const EncryptionKey* encryption_key() const;
+
   /**
    * Returns the fragment metadata of the array. If the array is not open,
    * an empty vector is returned.

@@ -204,6 +204,7 @@ class StorageManager {
    * Computes an estimate on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
+   * @parma encryption_key The key the array got opened with.
    * @param array_schema The array schema
    * @param fragment_metadata The fragment metadata of the array.
    * @param subarray The subarray to focus on. Note that it must have the same
@@ -215,6 +216,7 @@ class StorageManager {
    * @return Status
    */
   Status array_compute_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const void* subarray,
@@ -757,6 +759,7 @@ class StorageManager {
    * query, for a given subarray and set of attributes.
    *
    * @tparam T The domain type
+   * @parma encryption_key The key the array got opened with.
    * @param array_schema The array schema.
    * @param fragment_metadata The fragment metadata of the array.
    * @param subarray The subarray to focus on. Note that it must have the same
@@ -769,6 +772,7 @@ class StorageManager {
    */
   template <class T>
   Status array_compute_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const T* subarray,

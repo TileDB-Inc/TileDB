@@ -110,6 +110,10 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
+const EncryptionKey* Array::encryption_key() const {
+  return &encryption_key_;
+}
+
 Status Array::open(
     QueryType query_type,
     EncryptionType encryption_type,
@@ -519,7 +523,8 @@ Status Array::compute_max_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_)
-    RETURN_NOT_OK(meta->add_max_buffer_sizes(subarray, max_buffer_sizes));
+    RETURN_NOT_OK(meta->add_max_buffer_sizes(
+        encryption_key_, subarray, max_buffer_sizes));
 
   // Rectify bound for dense arrays
   if (array_schema_->dense()) {
