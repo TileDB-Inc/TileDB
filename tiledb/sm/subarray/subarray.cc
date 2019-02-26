@@ -678,12 +678,14 @@ Status Subarray::compute_est_result_size() {
   tile_overlap_.resize(fragment_num);
   auto range_num = this->range_num();
 
-  auto statuses_1 = parallel_for(0, range_num, [&](uint64_t i) {
+  auto statuses = parallel_for(0, range_num, [&](uint64_t i) {
     for (unsigned a = 0; a < attribute_num + 1; ++a) {
       auto attr_name =
           (a == attribute_num) ? constants::coords : attributes[a]->name();
       bool var_size = (a == attribute_num) ? false : attributes[a]->var_size();
-      auto result_size = compute_est_result_size<T>(attr_name, i, var_size);
+      ResultSize result_size;
+      RETURN_NOT_OK(
+          compute_est_result_size<T>(attr_name, i, var_size, &result_size));
       std::lock_guard<std::mutex> block(mtx);
       est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
       est_result_size_vec[a].size_var_ += result_size.size_var_;
@@ -692,6 +694,8 @@ Status Subarray::compute_est_result_size() {
     }
     return Status::Ok();
   });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
 
   // Amplify result estimation
   if (constants::est_result_size_amplification != 1.0) {
@@ -714,12 +718,17 @@ Status Subarray::compute_est_result_size() {
 }
 
 template <class T>
-Subarray::ResultSize Subarray::compute_est_result_size(
-    const std::string& attr_name, uint64_t range_idx, bool var_size) const {
+Status Subarray::compute_est_result_size(
+    const std::string& attr_name,
+    uint64_t range_idx,
+    bool var_size,
+    ResultSize* result_size) const {
   // For easy reference
   auto fragment_num = array_->fragment_metadata().size();
   ResultSize ret{0.0, 0.0, 0, 0};
   auto array_schema = array_->array_schema();
+  auto encryption_key = array_->encryption_key();
+  uint64_t size;
 
   // Compute estimated result
   for (unsigned f = 0; f < fragment_num; ++f) {
@@ -734,9 +743,11 @@ Subarray::ResultSize Subarray::compute_est_result_size(
           ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
         } else {
           ret.size_fixed_ += meta->tile_size(attr_name, tid);
-          ret.size_var_ += meta->tile_var_size(attr_name, tid);
+          RETURN_NOT_OK(
+              meta->tile_var_size(*encryption_key, attr_name, tid, &size));
+          ret.size_var_ += size;
           ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
-          ret.mem_size_var_ += meta->tile_var_size(attr_name, tid);
+          ret.mem_size_var_ += size;
         }
       }
     }
@@ -750,9 +761,11 @@ Subarray::ResultSize Subarray::compute_est_result_size(
         ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
       } else {
         ret.size_fixed_ += meta->tile_size(attr_name, tid) * ratio;
-        ret.size_var_ += meta->tile_var_size(attr_name, tid) * ratio;
+        RETURN_NOT_OK(
+            meta->tile_var_size(*encryption_key, attr_name, tid, &size));
+        ret.size_var_ += size * ratio;
         ret.mem_size_fixed_ += meta->tile_size(attr_name, tid);
-        ret.mem_size_var_ += meta->tile_var_size(attr_name, tid);
+        ret.mem_size_var_ += size;
       }
     }
   }
@@ -770,7 +783,9 @@ Subarray::ResultSize Subarray::compute_est_result_size(
   ret.size_fixed_ = MIN(ret.size_fixed_, max_size_fixed);
   ret.size_var_ = MIN(ret.size_var_, max_size_var);
 
-  return ret;
+  *result_size = ret;
+
+  return Status::Ok();
 }
 
 template <class T>

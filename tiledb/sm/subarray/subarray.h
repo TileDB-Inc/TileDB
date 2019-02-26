@@ -210,11 +210,15 @@ class Subarray {
    * @param attr_name The name of the attribute to focus on.
    * @param range_idx The id of the subarray range to focus on.
    * @param var_size Whether the attribute is var-sized or not.
-   * @return The result size.
+   * @param result_size The result size to be retrieved.
+   * @return Status
    */
   template <class T>
-  ResultSize compute_est_result_size(
-      const std::string& attr_name, uint64_t range_idx, bool var_size) const;
+  Status compute_est_result_size(
+      const std::string& attr_name,
+      uint64_t range_idx,
+      bool var_size,
+      ResultSize* result_size) const;
 
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;

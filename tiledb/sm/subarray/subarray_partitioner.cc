@@ -235,7 +235,8 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
     return next_from_multi_range<T>(unsplittable);
 
   // Find the [start, end] of the subarray ranges that fit in the budget
-  bool interval_found = compute_current_start_end<T>();
+  bool interval_found;
+  RETURN_NOT_OK(compute_current_start_end<T>(&interval_found));
 
   // Single-range partition that must be split
   if (!interval_found && subarray_.layout() == Layout::UNORDERED)
@@ -453,7 +454,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 }
 
 template <class T>
-bool SubarrayPartitioner::compute_current_start_end() {
+Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Preparation
   auto array_schema = subarray_.array()->array_schema();
   std::unordered_map<std::string, ResultBudget> cur_sizes, mem_sizes;
@@ -469,8 +470,9 @@ bool SubarrayPartitioner::compute_current_start_end() {
     for (const auto& budget_it : budget_) {
       auto attr_name = budget_it.first;
       auto var_size = array_schema->var_size(attr_name);
-      auto est_size = subarray_.compute_est_result_size<T>(
-          attr_name, current_.end_, var_size);
+      Subarray::ResultSize est_size;
+      RETURN_NOT_OK(subarray_.compute_est_result_size<T>(
+          attr_name, current_.end_, var_size, &est_size));
       auto& cur_size = cur_sizes[attr_name];
       auto& mem_size = mem_sizes[attr_name];
       cur_size.size_fixed_ += est_size.size_fixed_;
@@ -483,19 +485,24 @@ bool SubarrayPartitioner::compute_current_start_end() {
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_) {
         // Cannot find range that fits in the buffer
-        if (current_.end_ == current_.start_)
-          return false;
+        if (current_.end_ == current_.start_) {
+          *found = false;
+          return Status::Ok();
+        }
 
         // Range found, make it inclusive
         current_.end_--;
-        return true;
+        *found = true;
+        return Status::Ok();
       }
     }
   }
 
   // Range found, make it inclusive
   current_.end_--;
-  return true;
+  *found = true;
+
+  return Status::Ok();
 }
 
 // TODO (sp): in the future this can be more sophisticated, taking into

@@ -113,6 +113,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -122,9 +123,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_dense(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -175,6 +177,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -184,9 +187,9 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_dense(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -360,50 +363,71 @@ class FragmentMetadata {
   URI attr_var_uri(const std::string& attribute) const;
 
   /**
-   * Returns the starting offset of the input tile of input attribute
+   * Retrieves the starting offset of the input tile of input attribute
    * in the file. If the attribute is var-sized, it returns the starting
    * offset of the offsets tile.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset.
+   * @param offset The file offset to be retrieved.
+   * @return Status
    */
-  uint64_t file_offset(const std::string& attribute, uint64_t tile_idx) const;
+  Status file_offset(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* offset);
 
   /**
-   * Returns the starting offset of the input tile of input attribute
+   * Retrieves the starting offset of the input tile of input attribute
    * in the file. The attribute must be var-sized.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute_id The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset.
+   * @param offset The file offset to be retrieved.
+   * @return Status
    */
-  uint64_t file_var_offset(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status file_var_offset(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* offset);
 
   /**
-   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given attribute and tile index. If the
    * attribute is var-sized, this will return the persisted size of the offsets
    * tile.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t persisted_tile_size(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status persisted_tile_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
 
   /**
-   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given var-sized attribute and tile index.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The inout attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t persisted_tile_var_size(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status persisted_tile_var_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
 
   /** Retrieves the RTree. */
   Status rtree(const EncryptionKey& encryption_key, const RTree** rtree);
@@ -420,14 +444,20 @@ class FragmentMetadata {
   uint64_t tile_size(const std::string& attribute, uint64_t tile_idx) const;
 
   /**
-   * Returns the (uncompressed) tile size for a given var-sized attribute
+   * Retrieves the (uncompressed) tile size for a given var-sized attribute
    * and tile index.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t tile_var_size(const std::string& attribute, uint64_t tile_idx) const;
+  Status tile_var_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
 
   /** The creation timestamp of the fragment. */
   uint64_t timestamp() const;
@@ -626,15 +656,15 @@ class FragmentMetadata {
 
   /** Loads the tile offsets for the input attribute from storage. */
   Status load_tile_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key, unsigned attr_id);
 
   /** Loads the variable tile offsets for the input attribute from storage. */
   Status load_tile_var_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key, unsigned attr_id);
 
   /** Loads the variable tile sizes for the input attribute from storage. */
   Status load_tile_var_sizes(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key, unsigned attr_id);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
