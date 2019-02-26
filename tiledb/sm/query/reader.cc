@@ -1838,6 +1838,8 @@ Status Reader::filter_tiles(
 
   auto var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(tiles->size());
+  auto encryption_key = array_->encryption_key();
+
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = (*tiles)[i];
     auto it = tile->attr_tiles_.find(attribute);
@@ -1848,7 +1850,9 @@ Status Reader::filter_tiles(
     // Get information about the tile in its fragment
     auto& fragment = fragment_metadata_[tile->fragment_idx_];
     auto tile_attr_uri = fragment->attr_uri(attribute);
-    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+    uint64_t tile_attr_offset;
+    RETURN_NOT_OK(fragment->file_offset(
+        *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
 
     auto& tile_pair = it->second;
     auto& t = tile_pair.first;
@@ -1863,8 +1867,9 @@ Status Reader::filter_tiles(
 
     if (var_size && !t_var.filtered()) {
       auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
-      auto tile_attr_var_offset =
-          fragment->file_var_offset(attribute, tile->tile_idx_);
+      uint64_t tile_attr_var_offset;
+      RETURN_NOT_OK(fragment->file_var_offset(
+          *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
 
       // Decompress, etc.
       RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
@@ -2233,6 +2238,7 @@ Status Reader::read_tiles(
   // For each tile, read from its fragment.
   bool var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(tiles->size());
+  auto encryption_key = array_->encryption_key();
 
   // Populate the list of regions per file to be read.
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
@@ -2258,10 +2264,13 @@ Status Reader::read_tiles(
 
     // Get information about the tile in its fragment
     auto tile_attr_uri = fragment->attr_uri(attribute);
-    auto tile_attr_offset = fragment->file_offset(attribute, tile->tile_idx_);
+    uint64_t tile_attr_offset;
+    RETURN_NOT_OK(fragment->file_offset(
+        *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
     auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
-    auto tile_persisted_size =
-        fragment->persisted_tile_size(attribute, tile->tile_idx_);
+    uint64_t tile_persisted_size;
+    RETURN_NOT_OK(fragment->persisted_tile_size(
+        *encryption_key, attribute, tile->tile_idx_, &tile_persisted_size));
 
     // Try the cache first.
     bool cache_hit;
@@ -2283,11 +2292,18 @@ Status Reader::read_tiles(
 
     if (var_size) {
       auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
-      auto tile_attr_var_offset =
-          fragment->file_var_offset(attribute, tile->tile_idx_);
-      auto tile_var_size = fragment->tile_var_size(attribute, tile->tile_idx_);
-      auto tile_var_persisted_size =
-          fragment->persisted_tile_var_size(attribute, tile->tile_idx_);
+      uint64_t tile_attr_var_offset;
+      RETURN_NOT_OK(fragment->file_var_offset(
+          *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
+      uint64_t tile_var_size;
+      RETURN_NOT_OK(fragment->tile_var_size(
+          *encryption_key, attribute, tile->tile_idx_, &tile_var_size));
+      uint64_t tile_var_persisted_size;
+      RETURN_NOT_OK(fragment->persisted_tile_var_size(
+          *encryption_key,
+          attribute,
+          tile->tile_idx_,
+          &tile_var_persisted_size));
 
       RETURN_NOT_OK(storage_manager_->read_from_cache(
           tile_attr_var_uri,

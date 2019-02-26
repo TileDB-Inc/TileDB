@@ -304,10 +304,10 @@ class SubarrayPartitioner {
    * needed to compute the next partition to set to ``current_.partition_``.
    *
    * If the interval is a single range, which does not fit in the budget,
-   * then the function returns ``false``.
+   * then the function sets ``found`` to ``false`` and ``true`` otherwise.
    */
   template <class T>
-  bool compute_current_start_end();
+  Status compute_current_start_end(bool* found);
 
   /**
    * Computes the splitting point and dimension for the input range.

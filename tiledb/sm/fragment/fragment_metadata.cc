@@ -199,17 +199,19 @@ Status FragmentMetadata::add_max_buffer_sizes(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
   if (dense_)
-    return add_max_buffer_sizes_dense(subarray, buffer_sizes);
+    return add_max_buffer_sizes_dense(encryption_key, subarray, buffer_sizes);
   return add_max_buffer_sizes_sparse(encryption_key, subarray, buffer_sizes);
 }
 
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_dense(
+    const EncryptionKey& encryption_key,
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const {
+        buffer_sizes) {
   // Calculate the ids of all tiles overlapping with subarray
   auto tids = compute_overlapping_tile_ids(subarray);
+  uint64_t size;
 
   // Compute buffer sizes
   for (auto& tid : tids) {
@@ -217,7 +219,8 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
       if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
         it.second.first += cell_num * constants::cell_var_offset_size;
-        it.second.second += tile_var_size(it.first, tid);
+        RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+        it.second.second += size;
       } else {
         it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
@@ -237,6 +240,7 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_mbrs(encryption_key));
 
   unsigned tid = 0;
+  uint64_t size;
   auto dim_num = array_schema_->dim_num();
   for (auto& mbr : mbrs_) {
     if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
@@ -244,7 +248,8 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
         if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
           it.second.first += cell_num * constants::cell_var_offset_size;
-          it.second.second += tile_var_size(it.first, tid);
+          RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+          it.second.second += size;
         } else {
           it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
         }
@@ -263,7 +268,8 @@ Status FragmentMetadata::add_est_read_buffer_sizes(
     const T* subarray,
     std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   if (dense_)
-    return add_est_read_buffer_sizes_dense(subarray, buffer_sizes);
+    return add_est_read_buffer_sizes_dense(
+        encryption_key, subarray, buffer_sizes);
   return add_est_read_buffer_sizes_sparse(
       encryption_key, subarray, buffer_sizes);
 }
@@ -271,11 +277,12 @@ Status FragmentMetadata::add_est_read_buffer_sizes(
 // TODO (sp): remove when the new dense algorithm is in
 template <class T>
 Status FragmentMetadata::add_est_read_buffer_sizes_dense(
+    const EncryptionKey& encryption_key,
     const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-    const {
+    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   // Calculate the ids and coverage of all tiles overlapping with subarray
   auto tids_cov = compute_overlapping_tile_ids_cov(subarray);
+  uint64_t size;
 
   // Compute buffer sizes
   for (auto& tid_cov : tids_cov) {
@@ -284,7 +291,8 @@ Status FragmentMetadata::add_est_read_buffer_sizes_dense(
     for (auto& it : *buffer_sizes) {
       if (array_schema_->var_size(it.first)) {
         it.second.first += cov * tile_size(it.first, tid);
-        it.second.second += cov * tile_var_size(it.first, tid);
+        RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+        it.second.second += cov * size;
       } else {
         it.second.first += cov * tile_size(it.first, tid);
       }
@@ -306,6 +314,7 @@ Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
   auto dim_num = array_schema_->dim_num();
   auto subarray_overlap = new T[2 * dim_num];
   unsigned tid = 0;
+  uint64_t size;
   for (auto& mbr : mbrs_) {
     utils::geometry::overlap(
         (T*)mbr, subarray, dim_num, subarray_overlap, &overlap);
@@ -315,7 +324,8 @@ Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
       for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           it.second.first += cov * tile_size(it.first, tid);
-          it.second.second += cov * tile_var_size(it.first, tid);
+          RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
+          it.second.second += cov * size;
         } else {
           it.second.first += cov * tile_size(it.first, tid);
         }
@@ -526,47 +536,67 @@ URI FragmentMetadata::attr_var_uri(const std::string& attribute) const {
   return attribute_var_uri_map_.at(attribute);
 }
 
-// TODO: load
-uint64_t FragmentMetadata::file_offset(
-    const std::string& attribute, uint64_t tile_idx) const {
+Status FragmentMetadata::file_offset(
+    const EncryptionKey& encryption_key,
+    const std::string& attribute,
+    uint64_t tile_idx,
+    uint64_t* offset) {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
-  return tile_offsets_[attribute_id][tile_idx];
+  RETURN_NOT_OK(load_tile_offsets(encryption_key, attribute_id));
+  *offset = tile_offsets_[attribute_id][tile_idx];
+  return Status::Ok();
 }
 
-// TODO: load
-uint64_t FragmentMetadata::file_var_offset(
-    const std::string& attribute, uint64_t tile_idx) const {
+Status FragmentMetadata::file_var_offset(
+    const EncryptionKey& encryption_key,
+    const std::string& attribute,
+    uint64_t tile_idx,
+    uint64_t* offset) {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
-  return tile_var_offsets_[attribute_id][tile_idx];
+  RETURN_NOT_OK(load_tile_var_offsets(encryption_key, attribute_id));
+  *offset = tile_var_offsets_[attribute_id][tile_idx];
+  return Status::Ok();
 }
 
-// TODO: load
-uint64_t FragmentMetadata::persisted_tile_size(
-    const std::string& attribute, uint64_t tile_idx) const {
+Status FragmentMetadata::persisted_tile_size(
+    const EncryptionKey& encryption_key,
+    const std::string& attribute,
+    uint64_t tile_idx,
+    uint64_t* tile_size) {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
+  RETURN_NOT_OK(load_tile_offsets(encryption_key, attribute_id));
+
   auto tile_num = this->tile_num();
 
-  return (tile_idx != tile_num - 1) ?
-             tile_offsets_[attribute_id][tile_idx + 1] -
-                 tile_offsets_[attribute_id][tile_idx] :
-             file_sizes_[attribute_id] - tile_offsets_[attribute_id][tile_idx];
+  *tile_size =
+      (tile_idx != tile_num - 1) ?
+          tile_offsets_[attribute_id][tile_idx + 1] -
+              tile_offsets_[attribute_id][tile_idx] :
+          file_sizes_[attribute_id] - tile_offsets_[attribute_id][tile_idx];
+
+  return Status::Ok();
 }
 
-// TODO: load
-uint64_t FragmentMetadata::persisted_tile_var_size(
-    const std::string& attribute, uint64_t tile_idx) const {
+Status FragmentMetadata::persisted_tile_var_size(
+    const EncryptionKey& encryption_key,
+    const std::string& attribute,
+    uint64_t tile_idx,
+    uint64_t* tile_size) {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
+  RETURN_NOT_OK(load_tile_var_offsets(encryption_key, attribute_id));
   auto tile_num = this->tile_num();
 
-  return (tile_idx != tile_num - 1) ?
-             tile_var_offsets_[attribute_id][tile_idx + 1] -
-                 tile_var_offsets_[attribute_id][tile_idx] :
-             file_var_sizes_[attribute_id] -
-                 tile_var_offsets_[attribute_id][tile_idx];
+  *tile_size = (tile_idx != tile_num - 1) ?
+                   tile_var_offsets_[attribute_id][tile_idx + 1] -
+                       tile_var_offsets_[attribute_id][tile_idx] :
+                   file_var_sizes_[attribute_id] -
+                       tile_var_offsets_[attribute_id][tile_idx];
+
+  return Status::Ok();
 }
 
 Status FragmentMetadata::rtree(
@@ -584,12 +614,16 @@ uint64_t FragmentMetadata::tile_size(
                       cell_num * array_schema_->cell_size(attribute);
 }
 
-// TODO: load
-uint64_t FragmentMetadata::tile_var_size(
-    const std::string& attribute, uint64_t tile_idx) const {
+Status FragmentMetadata::tile_var_size(
+    const EncryptionKey& encryption_key,
+    const std::string& attribute,
+    uint64_t tile_idx,
+    uint64_t* tile_size) {
   auto it = attribute_idx_map_.find(attribute);
   auto attribute_id = it->second;
-  return tile_var_sizes_[attribute_id][tile_idx];
+  RETURN_NOT_OK(load_tile_var_sizes(encryption_key, attribute_id));
+  *tile_size = tile_var_sizes_[attribute_id][tile_idx];
+  return Status::Ok();
 }
 
 uint64_t FragmentMetadata::timestamp() const {
@@ -822,7 +856,7 @@ Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_tile_offsets(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key, unsigned attr_id) {
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -845,7 +879,7 @@ Status FragmentMetadata::load_tile_offsets(
 }
 
 Status FragmentMetadata::load_tile_var_offsets(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key, unsigned attr_id) {
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -868,7 +902,7 @@ Status FragmentMetadata::load_tile_var_offsets(
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key, unsigned attr_id) {
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -1371,18 +1405,7 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
-  // Load from disk
   RETURN_NOT_OK(load_basic(encryption_key));
-
-  // TODO: these should not be loaded here, but instead on demand
-  unsigned int attribute_num = array_schema_->attribute_num();
-  for (unsigned int i = 0; i < attribute_num + 1; ++i)
-    RETURN_NOT_OK(load_tile_offsets(i, encryption_key));
-  for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK(load_tile_var_offsets(i, encryption_key));
-  for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK(load_tile_var_sizes(i, encryption_key));
-
   return Status::Ok();
 }
 
