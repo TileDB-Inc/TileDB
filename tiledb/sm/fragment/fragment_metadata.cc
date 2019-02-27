@@ -472,27 +472,42 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   if (!is_dir)
     return Status::Ok();
 
-  // TODO: we need locking for thread-/process-safety here
+  // Exclusively lock the array
+  RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
 
   // Write to disk
-  RETURN_NOT_OK(store_basic(encryption_key));
-  RETURN_NOT_OK(store_rtree(encryption_key));
+  RETURN_NOT_OK_ELSE(
+      store_basic(encryption_key), storage_manager_->array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(
+      store_rtree(encryption_key), storage_manager_->array_xunlock(array_uri));
 
-  // TODO: after updating to the new algorithm, remove
+  // TODO: after updating to the new dense read algorithm, remove
+  // TODO: after removing, update the format spec
   RETURN_NOT_OK(store_mbrs(encryption_key));
 
   unsigned int attribute_num = array_schema_->attribute_num();
   for (unsigned int i = 0; i < attribute_num + 1; ++i)
-    RETURN_NOT_OK(store_tile_offsets(i, encryption_key));
+    RETURN_NOT_OK_ELSE(
+        store_tile_offsets(i, encryption_key),
+        storage_manager_->array_xunlock(array_uri));
   for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK(store_tile_var_offsets(i, encryption_key));
+    RETURN_NOT_OK_ELSE(
+        store_tile_var_offsets(i, encryption_key),
+        storage_manager_->array_xunlock(array_uri));
   for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK(store_tile_var_sizes(i, encryption_key));
+    RETURN_NOT_OK_ELSE(
+        store_tile_var_sizes(i, encryption_key),
+        storage_manager_->array_xunlock(array_uri));
 
   // Close file
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-  RETURN_NOT_OK(storage_manager_->close_file(fragment_metadata_uri));
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->close_file(fragment_metadata_uri),
+      storage_manager_->array_xunlock(array_uri));
+
+  // Unlock the array
+  RETURN_NOT_OK(storage_manager_->array_xunlock(array_uri));
 
   return Status::Ok();
 }

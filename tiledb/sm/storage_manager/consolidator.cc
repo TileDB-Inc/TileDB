@@ -352,21 +352,11 @@ Status Consolidator::consolidate(
     return st;
   }
 
-  // Lock the array exclusively
-  st = storage_manager_->array_xlock(array_uri);
-  if (!st.ok()) {
-    storage_manager_->array_close_for_writes(array_uri);
-    storage_manager_->vfs()->remove_dir(*new_fragment_uri);
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
-    return st;
-  }
-
   // Finalize write query
   st = query_w->finalize();
   if (!st.ok()) {
     storage_manager_->array_close_for_writes(array_uri);
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
-    storage_manager_->array_xunlock(array_uri);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -378,7 +368,6 @@ Status Consolidator::consolidate(
   // Close array
   storage_manager_->array_close_for_writes(array_uri);
   if (!st.ok()) {
-    storage_manager_->array_xunlock(array_uri);
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
@@ -391,6 +380,14 @@ Status Consolidator::consolidate(
   std::vector<URI> to_delete;
   for (const auto& f : to_consolidate)
     to_delete.emplace_back(f.uri_);
+
+  // Lock the array exclusively
+  st = storage_manager_->array_xlock(array_uri);
+  if (!st.ok()) {
+    storage_manager_->vfs()->remove_dir(*new_fragment_uri);
+    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    return st;
+  }
 
   // Delete old fragment metadata. This makes the old fragments invisible
   st = delete_fragment_metadata(to_delete);
@@ -657,7 +654,7 @@ Status Consolidator::compute_next_to_consolidate(
       if (i == 0) {  // In the first row we store the sizes of `fragments`
         m_sizes[i][j] = fragments[j].fragment_size_;
         std::memcpy(
-            &m_union[i][j][0], fragments[j].non_empty_domain_, domain_size);
+            &m_union[i][j][0], &fragments[j].non_empty_domain_[0], domain_size);
       } else if (i + j >= col_num) {  // Non-valid entries
         m_sizes[i][j] = UINT64_MAX;
         m_union[i][j].clear();
@@ -671,7 +668,7 @@ Status Consolidator::compute_next_to_consolidate(
           std::memcpy(&m_union[i][j][0], &m_union[i - 1][j][0], domain_size);
           utils::geometry::expand_mbr_with_mbr<T>(
               (T*)&m_union[i][j][0],
-              (const T*)fragments[i + j].non_empty_domain_,
+              (const T*)&fragments[i + j].non_empty_domain_[0],
               dim_num);
           domain->expand_domain<T>((T*)&m_union[i][j][0]);
           if (!are_consolidatable<T>(

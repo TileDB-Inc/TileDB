@@ -3137,7 +3137,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, KV",
-    "[capi], [consolidation], [kv], [kv-consolidation]") {
+    "[capi], [consolidation], [kv], [consolidation-kv]") {
   remove_kv();
   create_kv();
 
@@ -3832,11 +3832,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "1", &error);
+      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "1", &error);
+      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
@@ -3942,11 +3942,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_min_frags", "1", &error);
+      tiledb_config_set(config, "sm.consolidation.step_min_frags", "2", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc =
-      tiledb_config_set(config, "sm.consolidation.step_max_frags", "1", &error);
+      tiledb_config_set(config, "sm.consolidation.step_max_frags", "2", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
@@ -4197,7 +4197,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.5", &error);
+      config, "sm.consolidation.step_size_ratio", "0.6", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
