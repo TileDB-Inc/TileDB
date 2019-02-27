@@ -129,7 +129,7 @@ bool Consolidator::are_consolidatable(
   for (size_t i = 0; i < start; ++i) {
     if (utils::geometry::overlap(
             union_non_empty_domains,
-            (T*)fragments[i].non_empty_domain_,
+            (T*)&fragments[i].non_empty_domain_[0],
             dim_num))
       return false;
   }
@@ -140,7 +140,7 @@ bool Consolidator::are_consolidatable(
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
     sum_cell_num += utils::geometry::cell_num<T>(
-        (T*)fragments[i].non_empty_domain_, dim_num);
+        (T*)&fragments[i].non_empty_domain_[0], dim_num);
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
@@ -562,8 +562,8 @@ Status Consolidator::delete_overwritten_fragments(
     for (auto check = updated.begin();
          check->uri_.to_string() != cur->uri_.to_string();) {
       if (utils::geometry::rect_in_rect<T>(
-              (T*)check->non_empty_domain_,
-              (T*)cur->non_empty_domain_,
+              (T*)&check->non_empty_domain_[0],
+              (T*)&cur->non_empty_domain_[0],
               dim_num)) {
         to_delete.emplace_back(check->uri_);
         check = updated.erase(check);
