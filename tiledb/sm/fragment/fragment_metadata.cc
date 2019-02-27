@@ -350,6 +350,23 @@ uint32_t FragmentMetadata::format_version() const {
   return version_;
 }
 
+Status FragmentMetadata::fragment_size(uint64_t* size) const {
+  // Add file sizes
+  *size = 0;
+  for (const auto& file_size : file_sizes_)
+    *size += file_size;
+  for (const auto& file_var_size : file_var_sizes_)
+    *size += file_var_size;
+
+  // Add fragment metadata file size
+  auto uri = fragment_uri_.join_path(constants::fragment_metadata_filename);
+  uint64_t meta_file_size;
+  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size));
+  *size += meta_file_size;
+
+  return Status::Ok();
+}
+
 const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
 }

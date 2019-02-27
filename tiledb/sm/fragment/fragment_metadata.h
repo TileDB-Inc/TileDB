@@ -224,6 +224,9 @@ class FragmentMetadata {
   /** Returns the format version of this fragment. */
   uint32_t format_version() const;
 
+  /** Retrieves the fragment size. */
+  Status fragment_size(uint64_t* size) const;
+
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
 
