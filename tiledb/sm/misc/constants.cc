@@ -193,7 +193,7 @@ const std::string group_filename = "__tiledb_group.tdb";
  * the union of the non-empty domains of the fragments to be
  * consolidated have a lot of empty cells, which the consolidated
  * fragment will have to fill with the special fill value
- * (since the resulting fragments is dense).
+ * (since the resulting fragment is dense).
  */
 const float consolidation_amplification = 1.0f;
 

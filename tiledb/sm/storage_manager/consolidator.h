@@ -182,7 +182,7 @@ class Consolidator {
       const std::vector<FragmentInfo>& fragments,
       size_t start,
       size_t end,
-      T* union_non_empty_domains,
+      const T* union_non_empty_domains,
       unsigned dim_num) const;
 
   /**
@@ -230,8 +230,6 @@ class Consolidator {
    * @param union_non_empty_domains The union of the non-empty domains of
    *     the fragments in `to_consolidate`. Applicable only when those
    *     fragments are *not* all sparse.
-   * @param coincides `True` if the union of the non-empty domains coincides
-   *     with the domain space tiles.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -245,7 +243,6 @@ class Consolidator {
       const URI& array_uri,
       const std::vector<FragmentInfo>& to_consolidate,
       T* union_non_empty_domains,
-      bool coincides,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length,
@@ -302,7 +299,6 @@ class Consolidator {
    *     in special sparse mode. This is ignored for sparse arrays.
    * @param subarray The subarray to read from (the fragments to consolidate)
    *     and write to (the new fragment).
-   * @param layout The layout to read from and write to.
    * @param buffers The buffers to be passed in the queries.
    * @param buffer_sizes The corresponding buffer sizes.
    * @param query_r This query reads from the fragments to be consolidated.
@@ -315,108 +311,11 @@ class Consolidator {
       Array* array_for_writes,
       bool sparse_mode,
       void* subarray,
-      Layout layout,
       void** buffers,
       uint64_t* buffer_sizes,
       Query** query_r,
       Query** query_w,
       URI* new_fragment_uri);
-
-  /**
-   * Computes the union of the non-empty domains of `fragments` between
-   * `start` and `end`. Note that this set of fragments must contain at
-   * least one dense fragment.
-   *
-   * @tparam T The domain type.
-   * @param array_schema The array schema.
-   * @param fragments The fragments input.
-   * @param start The function will compute the union of the non-empty
-   *    domains focusing only of fragments between `start` and `end`.
-   * @param end The function will compute the union of the non-empty
-   *    domains focusing only of fragments between `start` and `end`.
-   * @param uinion_non_empty_domains The union of the non-empty domains
-   *    to compute.
-   * @param coincides This is set to `true` by the function if the
-   *     computed union of non-empty domains coincides with the array space
-   *     tiles.
-   * @return Status
-   *
-   * @note  This function is not applicable to all sparse fragments.
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  Status compute_union_non_empty_domains(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentInfo>& fragments,
-      size_t start,
-      size_t end,
-      T* union_non_empty_domains,
-      bool* coincides) const {
-    // Non-applicable to all sparse fragments
-    if (all_sparse(fragments, start, end))
-      return Status::Ok();
-
-    auto dim_num = array_schema->dim_num();
-    auto domain_size = 2 * array_schema->coords_size();
-    auto domain = (T*)array_schema->domain()->domain();
-    auto tile_extents = (T*)array_schema->domain()->tile_extents();
-    assert(
-        !fragments.empty() && start < fragments.size() &&
-        end < fragments.size() && start <= end);
-
-    // Initialize subarray to the first fragment non-empty domain
-    std::memcpy(
-        union_non_empty_domains,
-        fragments[start].non_empty_domain_,
-        domain_size);
-
-    // Initialize subarray
-    for (size_t i = start + 1; i <= end; ++i) {
-      utils::geometry::expand_mbr_with_mbr<T>(
-          union_non_empty_domains,
-          (const T*)fragments[i].non_empty_domain_,
-          dim_num);
-    }
-
-    *coincides = true;
-    for (unsigned i = 0; i < dim_num; ++i) {
-      assert(
-          (union_non_empty_domains[2 * i + 1] - domain[2 * i]) !=
-          std::numeric_limits<T>::max());
-      if (((union_non_empty_domains[2 * i] - domain[2 * i]) %
-           tile_extents[i]) ||
-          (union_non_empty_domains[2 * i + 1] - domain[2 * i] + 1) %
-              tile_extents[i]) {
-        *coincides = false;
-        break;
-      }
-    }
-
-    return Status::Ok();
-  }
-
-  /** Non-applicable for float/double domains. */
-  template <
-      class T,
-      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-  Status compute_union_non_empty_domains(
-      const ArraySchema* array_schema,
-      const std::vector<FragmentInfo>& fragments,
-      size_t start,
-      size_t end,
-      T* union_non_empty_domains,
-      bool* coincides) const {
-    (void)array_schema;
-    (void)fragments;
-    (void)start;
-    (void)end;
-    (void)union_non_empty_domains;
-    (void)coincides;
-    return Status::ConsolidatorError(
-        "Cannot compute union of fragment non-empty domains; domain type not "
-        "supported");
-  };
 
   /**
    * Deletes the fragment metadata files of the input fragments.
@@ -474,8 +373,6 @@ class Consolidator {
    * @param to_consolidate The fragments to consolidate in the next step.
    * @param union_non_empty_domains The function will return here the
    *     union of the non-empty domains of the fragments in `to_consolidate`.
-   * @param coincides The function will set this to `true` if the union
-   *     of the non-empty domains coincides with the domain space tiles.
    * @return Status
    */
   template <class T>
@@ -483,8 +380,7 @@ class Consolidator {
       const ArraySchema* array_schema,
       const std::vector<FragmentInfo>& fragments,
       std::vector<FragmentInfo>* to_consolidate,
-      T* union_non_empty_domains,
-      bool* coincides) const;
+      T* union_non_empty_domains) const;
 
   /**
    * Renames the new fragment URI. The new name has the format

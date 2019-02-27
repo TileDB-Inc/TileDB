@@ -556,28 +556,6 @@ void Domain::expand_domain(void* domain) const {
 }
 
 template <class T>
-void Domain::expand_domain(T* domain) const {
-  // Applicable only to regular tiles
-  if (tile_extents_ == nullptr)
-    return;
-
-  auto tile_extents = static_cast<const T*>(tile_extents_);
-  auto array_domain = static_cast<const T*>(domain_);
-
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    // This will always make the first bound coincide with a tile
-    domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
-                     tile_extents[i]) +
-                    array_domain[2 * i];
-
-    domain[2 * i + 1] =
-        ((domain[2 * i + 1] - array_domain[2 * i]) / tile_extents[i] + 1) *
-            tile_extents[i] -
-        1 + array_domain[2 * i];
-  }
-}
-
-template <class T>
 void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
   auto domain = (T*)domain_;
   auto tile_extents = (T*)tile_extents_;

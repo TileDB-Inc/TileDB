@@ -261,8 +261,37 @@ class Domain {
    * @param domain The domain to be expanded.
    * @return void
    */
-  template <class T>
-  void expand_domain(T* domain) const;
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
+  void expand_domain(T* domain) const {
+    // Applicable only to regular tiles
+    if (tile_extents_ == nullptr)
+      return;
+
+    auto tile_extents = static_cast<const T*>(tile_extents_);
+    auto array_domain = static_cast<const T*>(domain_);
+
+    for (unsigned int i = 0; i < dim_num_; ++i) {
+      // This will always make the first bound coincide with a tile
+      domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
+                       tile_extents[i]) +
+                      array_domain[2 * i];
+
+      domain[2 * i + 1] =
+          ((domain[2 * i + 1] - array_domain[2 * i]) / tile_extents[i] + 1) *
+              tile_extents[i] -
+          1 + array_domain[2 * i];
+    }
+  }
+
+  /** No-op for float/double domains. */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
+  void expand_domain(T* domain) const {
+    (void)domain;
+  }
 
   /**
    * Returns the position of the input coordinates inside its corresponding

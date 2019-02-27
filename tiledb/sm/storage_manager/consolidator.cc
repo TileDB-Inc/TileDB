@@ -120,7 +120,7 @@ bool Consolidator::are_consolidatable(
     const std::vector<FragmentInfo>& fragments,
     size_t start,
     size_t end,
-    T* union_non_empty_domains,
+    const T* union_non_empty_domains,
     unsigned dim_num) const {
   // True if all fragments in [start, end] are sparse
   if (all_sparse(fragments, start, end))
@@ -143,6 +143,7 @@ bool Consolidator::are_consolidatable(
     sum_cell_num += utils::geometry::cell_num<T>(
         (T*)fragments[i].non_empty_domain_, dim_num);
   }
+
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
 }
 
@@ -225,13 +226,11 @@ Status Consolidator::consolidate(
       break;
 
     // Find the next fragments to be consolidated
-    bool coincides;
     RETURN_NOT_OK(compute_next_to_consolidate<T>(
         array_schema,
         fragment_info,
         &to_consolidate,
-        (T*)union_non_empty_domains.get(),
-        &coincides));
+        (T*)union_non_empty_domains.get()));
 
     // Check if there is anything to consolidate
     if (to_consolidate.size() <= 1)
@@ -243,7 +242,6 @@ Status Consolidator::consolidate(
         array_uri,
         to_consolidate,
         (T*)union_non_empty_domains.get(),
-        coincides,
         encryption_type,
         encryption_key,
         key_length,
@@ -269,7 +267,6 @@ Status Consolidator::consolidate(
     const URI& array_uri,
     const std::vector<FragmentInfo>& to_consolidate,
     T* union_non_empty_domains,
-    bool coincides,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length,
@@ -304,8 +301,6 @@ Status Consolidator::consolidate(
       this->all_sparse(to_consolidate, 0, to_consolidate.size() - 1);
 
   // Compute layout and subarray
-  Layout layout = (all_sparse || coincides) ? Layout::GLOBAL_ORDER :
-                                              array_schema->cell_order();
   void* subarray = (all_sparse) ? nullptr : union_non_empty_domains;
 
   // Prepare buffers
@@ -328,7 +323,6 @@ Status Consolidator::consolidate(
       &array_for_writes,
       all_sparse,
       subarray,
-      layout,
       buffers,
       buffer_sizes,
       &query_r,
@@ -500,7 +494,6 @@ Status Consolidator::create_queries(
     Array* array_for_writes,
     bool sparse_mode,
     void* subarray,
-    Layout layout,
     void** buffers,
     uint64_t* buffer_sizes,
     Query** query_r,
@@ -509,7 +502,7 @@ Status Consolidator::create_queries(
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
   if (!(*query_r)->array_schema()->is_kv())
-    RETURN_NOT_OK((*query_r)->set_layout(layout));
+    RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
   RETURN_NOT_OK((*query_r)->set_subarray(subarray));
@@ -523,7 +516,7 @@ Status Consolidator::create_queries(
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   if (!(*query_r)->array_schema()->is_kv())
-    RETURN_NOT_OK((*query_w)->set_layout(layout));
+    RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->set_subarray(subarray));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
@@ -620,9 +613,11 @@ Status Consolidator::compute_next_to_consolidate(
     const ArraySchema* array_schema,
     const std::vector<FragmentInfo>& fragments,
     std::vector<FragmentInfo>* to_consolidate,
-    T* union_non_empty_domains,
-    bool* coincides) const {
+    T* union_non_empty_domains) const {
   // Preparation
+  auto domain_size = 2 * array_schema->coords_size();
+  auto dim_num = array_schema->dim_num();
+  auto domain = array_schema->domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
   min = (uint32_t)((min > fragments.size()) ? fragments.size() : min);
@@ -634,33 +629,66 @@ Status Consolidator::compute_next_to_consolidate(
   if (max == 0)
     return Status::Ok();
 
-  // Prepare the dynamic-programming matrix. The rows are from 1 to max
-  // and the columns represent the fragments in `fragments`.
-  std::vector<std::vector<uint64_t>> m;
+  // Prepare the dynamic-programming matrices. The rows are from 1 to max
+  // and the columns represent the fragments in `fragments`. One matrix
+  // stores the sum of fragment sizes, and the other the union of the
+  // corresponding non-empty domains of the fragments.
+  std::vector<std::vector<uint64_t>> m_sizes;
+  std::vector<std::vector<std::vector<uint8_t>>> m_union;
   auto col_num = fragments.size();
   auto row_num = max;
-  m.resize(row_num);
-  for (auto& row : m)
+  m_sizes.resize(row_num);
+  for (auto& row : m_sizes)
     row.resize(col_num);
+  m_union.resize(row_num);
+  for (auto& row : m_union) {
+    row.resize(col_num);
+    for (auto& col : row)
+      col.resize(domain_size);
+  }
 
   // Entry m[i][j] contains the collective size of fragments
   // fragments[j], ..., fragments[j+i]. If the size ratio
   // of any adjacent pair in the above list is smaller than the
-  // defined one, then the size sum of that entry is infinity (UINT64_MAX).
+  // defined one, or the entries' corresponding fragments are no
+  // consolidatable, then the size sum of that entry is infinity
+  // (UINT64_MAX) and the memory from the union matrix is freed.
+  // This marks this entry as invalid and it will never be selected
+  // as the winner for choosing which fragments to consolidate next.
   for (size_t i = 0; i < row_num; ++i) {
     for (size_t j = 0; j < col_num; ++j) {
       if (i == 0) {  // In the first row we store the sizes of `fragments`
-        m[i][j] = fragments[j].fragment_size_;
+        m_sizes[i][j] = fragments[j].fragment_size_;
+        std::memcpy(
+            &m_union[i][j][0], fragments[j].non_empty_domain_, domain_size);
       } else if (i + j >= col_num) {  // Non-valid entries
-        m[i][j] = UINT64_MAX;
+        m_sizes[i][j] = UINT64_MAX;
+        m_union[i][j].clear();
       } else {  // Every other row is computed using the previous row
         auto ratio = (float)fragments[i + j - 1].fragment_size_ /
                      fragments[i + j].fragment_size_;
         ratio = (ratio <= 1.0f) ? ratio : 1.0f / ratio;
-        if (ratio >= size_ratio)
-          m[i][j] = m[i - 1][j] + fragments[i + j].fragment_size_;
-        else
-          m[i][j] = UINT64_MAX;
+        if (ratio >= size_ratio) {
+          m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size_;
+          std::memcpy(&m_union[i][j][0], &m_union[i - 1][j][0], domain_size);
+          utils::geometry::expand_mbr_with_mbr<T>(
+              (T*)&m_union[i][j][0],
+              (const T*)fragments[i + j].non_empty_domain_,
+              dim_num);
+          domain->expand_domain<T>((T*)&m_union[i][j][0]);
+          if (!are_consolidatable<T>(
+                  fragments, j, j + i, (const T*)&m_union[i][j][0], dim_num)) {
+            // Mark this entry as invalid
+            m_sizes[i][j] = UINT64_MAX;
+            m_union[i][j].clear();
+            m_union[i][j].shrink_to_fit();
+          }
+        } else {
+          // Mark this entry as invalid
+          m_sizes[i][j] = UINT64_MAX;
+          m_union[i][j].clear();
+          m_union[i][j].shrink_to_fit();
+        }
       }
     }
   }
@@ -678,8 +706,8 @@ Status Consolidator::compute_next_to_consolidate(
       // fragment sets in the middle of the timeline may get consolidated,
       // which will hinder the next step of consolidation (which will
       // select some small and some big fragments).
-      if (min_size == UINT64_MAX || m[i][j] < (min_size / 1.25)) {
-        min_size = m[i][j];
+      if (min_size == UINT64_MAX || m_sizes[i][j] < (min_size / 1.25)) {
+        min_size = m_sizes[i][j];
         min_col = j;
       }
     }
@@ -688,26 +716,11 @@ Status Consolidator::compute_next_to_consolidate(
     if (min_size == UINT64_MAX)
       continue;
 
-    // Compute union of non-empty domains of fragments to consolidate
-    RETURN_NOT_OK(compute_union_non_empty_domains<T>(
-        array_schema,
-        fragments,
-        min_col,
-        min_col + i,
-        union_non_empty_domains,
-        coincides));
-
     // Results found
-    if (are_consolidatable<T>(
-            fragments,
-            min_col,
-            min_col + i,
-            union_non_empty_domains,
-            array_schema->dim_num())) {
-      for (size_t f = min_col; f <= min_col + i; ++f)
-        to_consolidate->emplace_back(fragments[f]);
-      break;
-    }
+    for (size_t f = min_col; f <= min_col + i; ++f)
+      to_consolidate->emplace_back(fragments[f]);
+    std::memcpy(union_non_empty_domains, &m_union[i][min_col][0], domain_size);
+    break;
   }
 
   return Status::Ok();

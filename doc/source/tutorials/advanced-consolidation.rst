@@ -159,6 +159,15 @@ The algorithm is based on dynamic programming and runs in time
 number of fragments considered in a given step, and ``max_frags`` is
 equal to the ``sm.consolidation.step_max_frags`` config parameter.
 
+.. note::
+    When computing the union of the non-empty domains of the
+    fragments to be consolidated, in case there is at least one
+    dense fragment, the union is always expanded to coincide with
+    the space tile extents. This affects criterion 1 (since the
+    expanded domain union may now overlap with some older fragments)
+    and 2 (since the expanded union may amplify resulting consolidated
+    fragment size).
+
 Performance tips
 ----------------
 

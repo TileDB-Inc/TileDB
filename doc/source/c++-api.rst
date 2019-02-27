@@ -74,12 +74,6 @@ Filter List
     :project: TileDB-C++
     :members:
 
-Compressor
-----------
-.. doxygenclass:: tiledb::Compressor
-    :project: TileDB-C++
-    :members:
-
 Group
 -----
 .. doxygenfunction:: tiledb::create_group
