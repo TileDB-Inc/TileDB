@@ -722,6 +722,9 @@ Status Consolidator::compute_next_to_consolidate(
 }
 
 Status Consolidator::rename_new_fragment_uri(URI* uri) const {
+  // Remove trailing slash
+  *uri = uri->remove_trailing_slash();
+
   // Get timestamp
   std::string name = uri->last_path_part();
   auto timestamp_str = name.substr(name.find_last_of('_') + 1);
