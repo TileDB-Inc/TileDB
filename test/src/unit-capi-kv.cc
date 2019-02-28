@@ -618,6 +618,7 @@ void KVFx::check_single_read(const std::string& path) {
   tiledb_kv_item_t* kv_item1;
   rc = tiledb_kv_get_item(ctx_, kv, &key1, key1_type, key1_size, &kv_item1);
   REQUIRE(rc == TILEDB_OK);
+  REQUIRE(kv_item1 != nullptr);
   rc = tiledb_kv_item_get_value(
       ctx_, kv_item1, ATTR_1.c_str(), &a1, &a1_type, &a1_size);
   CHECK(rc == TILEDB_OK);
