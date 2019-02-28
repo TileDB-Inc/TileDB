@@ -702,6 +702,9 @@ class StorageManager {
   /** Mutex for managing OpenArray objects for writes. */
   std::mutex open_array_for_writes_mtx_;
 
+  /** Mutex for managing exclusive locks. */
+  std::mutex xlock_mtx_;
+
   /** Stores the currently open arrays for reads. */
   std::map<std::string, OpenArray*> open_arrays_for_reads_;
 
