@@ -490,11 +490,6 @@ void Reader::set_fragment_metadata(
 }
 
 Status Reader::set_layout(Layout layout) {
-  // Check if the array is a key-value store
-  if (array_schema_->is_kv())
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set layout; The array is defined as a key-value store"));
-
   layout_ = layout;
 
   return Status::Ok();

@@ -501,8 +501,7 @@ Status Consolidator::create_queries(
     URI* new_fragment_uri) {
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
-  if (!(*query_r)->array_schema()->is_kv())
-    RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
   RETURN_NOT_OK((*query_r)->set_subarray(subarray));
@@ -515,8 +514,7 @@ Status Consolidator::create_queries(
 
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
-  if (!(*query_r)->array_schema()->is_kv())
-    RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->set_subarray(subarray));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));

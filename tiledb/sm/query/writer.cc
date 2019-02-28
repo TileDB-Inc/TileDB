@@ -279,11 +279,6 @@ void Writer::set_fragment_uri(const URI& fragment_uri) {
 }
 
 Status Writer::set_layout(Layout layout) {
-  // Check if the array is a key-value store
-  if (array_schema_->is_kv())
-    return LOG_STATUS(Status::WriterError(
-        "Cannot set layout; The array is defined as a key-value store"));
-
   // Ordered layout for writes in sparse arrays is meaningless
   if (!array_schema_->dense() &&
       (layout == Layout::COL_MAJOR || layout == Layout::ROW_MAJOR))
