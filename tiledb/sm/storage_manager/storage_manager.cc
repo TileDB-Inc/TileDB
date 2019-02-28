@@ -635,6 +635,9 @@ Status StorageManager::array_get_encryption(
 }
 
 Status StorageManager::array_xlock(const URI& array_uri) {
+  // Get exclusive lock for threads
+  xlock_mtx_.lock();
+
   // Wait until the array is closed for reads
   std::unique_lock<std::mutex> lk(open_array_for_reads_mtx_);
   xlock_cv_.wait(lk, [this, array_uri] {
@@ -642,7 +645,7 @@ Status StorageManager::array_xlock(const URI& array_uri) {
            open_arrays_for_reads_.end();
   });
 
-  // Retrieve filelock
+  // Get exclusive lock for processes through a filelock
   filelock_t filelock = INVALID_FILELOCK;
   auto lock_uri = array_uri.join_path(constants::filelock_name);
   RETURN_NOT_OK(vfs_->filelock_lock(lock_uri, &filelock, false));
@@ -659,10 +662,14 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
         "Cannot unlock array exclusive lock; Filelock not found"));
   auto filelock = it->second;
 
+  // Release exclusive lock for processes through the filelock
   auto lock_uri = array_uri.join_path(constants::filelock_name);
   if (filelock != INVALID_FILELOCK)
     RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri, filelock));
   xfilelocks_.erase(it);
+
+  // Release exclusive lock for threads
+  xlock_mtx_.unlock();
 
   return Status::Ok();
 }
@@ -1484,9 +1491,10 @@ Status StorageManager::array_open_without_fragments(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
 
-  // Lock mutex
+  // Lock mutexes
   {
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
+    std::lock_guard<std::mutex> xlock{xlock_mtx_};
 
     // Find the open array entry
     auto it = open_arrays_for_reads_.find(array_uri.to_string());

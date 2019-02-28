@@ -3039,12 +3039,16 @@ TEST_CASE_METHOD(
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_ERR);
 
-  // Open array for reads
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  // Get timestamp before writing then next fragment
+  auto timestamp = TILEDB_TIMESTAMP_NOW_MS;
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  // Write something in the meantime
+  // Write something
   write_partial_dense_array(array_name);
+
+  // Open array at a timestamp before the last fragment
+  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
+  CHECK(rc == TILEDB_OK);
 
   // Prepare buffer
   const uint64_t subarray[] = {3, 3, 4, 4};
