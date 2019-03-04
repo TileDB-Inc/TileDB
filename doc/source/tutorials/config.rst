@@ -100,6 +100,7 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -172,6 +173,7 @@ in this program and explain the output.
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -320,6 +322,7 @@ The corresponding output is (note that we ran this on a machine with
         "vfs.hdfs.kerb_ticket_cache_path" : ""
         "vfs.hdfs.name_node_uri" : ""
         "vfs.hdfs.username" : ""
+        "vfs.min_batch_size" : "20971520"
         "vfs.min_parallel_size" : "10485760"
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
@@ -469,6 +472,7 @@ Inspecting the contents of the exported config file, we get the following:
   sm.num_writer_threads 1
   sm.tile_cache_size 0
   vfs.file.max_parallel_ops 8
+  vfs.min_batch_size 20971520
   vfs.min_parallel_size 10485760
   vfs.num_threads 8
   vfs.s3.connect_max_tries 5
@@ -561,6 +565,8 @@ along with their description and default values.
                                                                       operations (any backend), per VFS instance.
     ``"vfs.file.max_parallel_ops"``           ``vfs.num_threads``     The maximum number of parallel operations on
                                                                       objects with ``file:///`` URIs.
+    ``"vfs.min_batch_size"``                  ``"20971520"``          The minimum number of bytes in a VFS
+                                                                      read operation.
     ``"vfs.min_parallel_size"``               ``"10485760"``          The minimum number of bytes in a parallel VFS
                                                                       operation (except parallel S3 writes, which are
                                                                       controlled by ``vfs.s3.multipart_part_size``).

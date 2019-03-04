@@ -204,6 +204,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_num_threads(value));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(set_vfs_min_parallel_size(value));
+  } else if (param == "vfs.min_batch_size") {
+    RETURN_NOT_OK(set_vfs_min_batch_size(value));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(set_vfs_file_max_parallel_ops(value));
   } else if (param == "vfs.s3.region") {
@@ -381,6 +383,11 @@ Status Config::unset(const std::string& param) {
     vfs_params_.min_parallel_size_ = constants::vfs_min_parallel_size;
     value << vfs_params_.min_parallel_size_;
     param_values_["vfs.min_parallel_size"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.min_batch_size") {
+    vfs_params_.min_batch_size_ = constants::vfs_min_batch_size;
+    value << vfs_params_.min_batch_size_;
+    param_values_["vfs.min_batch_size"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.file.max_parallel_ops") {
     vfs_params_.file_params_.max_parallel_ops_ =
@@ -586,6 +593,10 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.min_parallel_size_;
   param_values_["vfs.min_parallel_size"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.min_batch_size_;
+  param_values_["vfs.min_batch_size"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.file_params_.max_parallel_ops_;
@@ -851,6 +862,14 @@ Status Config::set_vfs_min_parallel_size(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.min_parallel_size_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_vfs_min_batch_size(const std::string& value) {
+  uint64_t v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.min_batch_size_ = v;
 
   return Status::Ok();
 }

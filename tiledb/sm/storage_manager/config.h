@@ -167,9 +167,11 @@ class Config {
     FileParams file_params_;
     uint64_t num_threads_;
     uint64_t min_parallel_size_;
+    uint64_t min_batch_size_;
 
     VFSParams() {
       num_threads_ = constants::vfs_num_threads;
+      min_batch_size_ = constants::vfs_min_batch_size;
       min_parallel_size_ = constants::vfs_min_parallel_size;
     }
   };
@@ -300,6 +302,9 @@ class Config {
    *    (except parallel S3 writes, which are controlled by
    *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.min_batch_size` <br>
+   *    The minimum number of bytes in a VFS read operation<br>
+   *    **Default**: 20MB
    * - `vfs.file.max_parallel_ops` <br>
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
@@ -488,6 +493,9 @@ class Config {
 
   /** Sets the min number of bytes of a VFS parallel operation. */
   Status set_vfs_min_parallel_size(const std::string& value);
+
+  /** Sets the min number of bytes of a VFS read operation. */
+  Status set_vfs_min_batch_size(const std::string& value);
 
   /** Sets the max number of allowed file:/// parallel operations. */
   Status set_vfs_file_max_parallel_ops(const std::string& value);
