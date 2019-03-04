@@ -156,7 +156,7 @@ if (WIN32)
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
   if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi)
+    add_compile_options(/DDEBUG /Od /Zi /bigobj)
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
     add_compile_options(/DNDEBUG /Ox)
   endif()
