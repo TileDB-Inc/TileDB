@@ -464,6 +464,9 @@ Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto array_uri = this->array_uri();
+  auto fragment_metadata_uri =
+      fragment_uri_.join_path(constants::fragment_metadata_filename);
+  unsigned int attribute_num = array_schema_->attribute_num();
 
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
@@ -475,41 +478,76 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   // Exclusively lock the array
   RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
 
-  // Write to disk
-  RETURN_NOT_OK_ELSE(
-      store_basic(encryption_key), storage_manager_->array_xunlock(array_uri));
-  RETURN_NOT_OK_ELSE(
-      store_rtree(encryption_key), storage_manager_->array_xunlock(array_uri));
+  // Store basic
+  auto st = store_basic(encryption_key);
+  if (!st.ok()) {
+    storage_manager_->close_file(fragment_metadata_uri);
+    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+    storage_manager_->array_xunlock(array_uri);
+    return st;
+  }
 
+  // Store R-Tree
+  st = store_rtree(encryption_key);
+  if (!st.ok()) {
+    storage_manager_->close_file(fragment_metadata_uri);
+    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+    storage_manager_->array_xunlock(array_uri);
+    return st;
+  }
+
+  // Store MBRs
   // TODO: after updating to the new dense read algorithm, remove
   // TODO: after removing, update the format spec
-  RETURN_NOT_OK(store_mbrs(encryption_key));
+  st = store_mbrs(encryption_key);
+  if (!st.ok()) {
+    storage_manager_->close_file(fragment_metadata_uri);
+    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+    storage_manager_->array_xunlock(array_uri);
+    return st;
+  }
 
-  unsigned int attribute_num = array_schema_->attribute_num();
-  for (unsigned int i = 0; i < attribute_num + 1; ++i)
-    RETURN_NOT_OK_ELSE(
-        store_tile_offsets(i, encryption_key),
-        storage_manager_->array_xunlock(array_uri));
-  for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_offsets(i, encryption_key),
-        storage_manager_->array_xunlock(array_uri));
-  for (unsigned int i = 0; i < attribute_num; ++i)
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_sizes(i, encryption_key),
-        storage_manager_->array_xunlock(array_uri));
+  // Store tile offsets
+  for (unsigned int i = 0; i < attribute_num + 1; ++i) {
+    store_tile_offsets(i, encryption_key);
+    if (!st.ok()) {
+      storage_manager_->close_file(fragment_metadata_uri);
+      storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+      storage_manager_->array_xunlock(array_uri);
+      return st;
+    }
+  }
+
+  // Store tile var offsets
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    st = store_tile_var_offsets(i, encryption_key);
+    if (!st.ok()) {
+      storage_manager_->close_file(fragment_metadata_uri);
+      storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+      storage_manager_->array_xunlock(array_uri);
+      return st;
+    }
+  }
+
+  // Store tile var sizes
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    st = store_tile_var_sizes(i, encryption_key);
+    if (!st.ok()) {
+      storage_manager_->close_file(fragment_metadata_uri);
+      storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+      storage_manager_->array_xunlock(array_uri);
+      return st;
+    }
+  }
 
   // Close file
-  URI fragment_metadata_uri = fragment_uri_.join_path(
-      std::string(constants::fragment_metadata_filename));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->close_file(fragment_metadata_uri),
-      storage_manager_->array_xunlock(array_uri));
+  st = storage_manager_->close_file(fragment_metadata_uri);
 
-  // Unlock the array
-  RETURN_NOT_OK(storage_manager_->array_xunlock(array_uri));
+  // Unlock array
+  auto st2 = storage_manager_->array_xunlock(array_uri);
+  (void)st2;  // TODO: add this to error stack in the future
 
-  return Status::Ok();
+  return st;
 }
 
 // TODO (sp): remove when the new dense algorithm is in

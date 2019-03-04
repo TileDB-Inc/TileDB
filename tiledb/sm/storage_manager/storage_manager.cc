@@ -800,6 +800,9 @@ Status StorageManager::get_fragment_info(
     std::vector<FragmentInfo>* fragment_info) {
   fragment_info->clear();
 
+  // TODO: open and close array here instead, in order to comply
+  // TODO: with the xlocks in case a fragment is being written
+
   // Get fragment URIs
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_schema->array_uri(), &fragment_uris));
