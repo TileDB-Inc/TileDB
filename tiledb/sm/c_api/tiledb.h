@@ -557,13 +557,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    (except parallel S3 writes, which are controlled by
  *    `vfs.s3.multipart_part_size`). <br>
  *    **Default**: 10MB
- * - `vfs.max_batch_read_size` <br>
- *    The maximum number of bytes in a batched VFS read operation. <br>
- *    **Default**: 100MB
- * - `vfs.max_batch_read_amplification` <br>
- *    The maximum amplification factor (>= 1.0) of batched VFS read operations.
- *    <br>
- *    **Default**: 1.0
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
