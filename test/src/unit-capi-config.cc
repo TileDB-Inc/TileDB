@@ -210,6 +210,7 @@ void check_save_to_file() {
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.num_threads " << std::thread::hardware_concurrency() << "\n";
@@ -386,6 +387,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.step_size_ratio"] = "0";
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.file.max_parallel_ops"] =
@@ -415,6 +417,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["file.max_parallel_ops"] =
