@@ -910,8 +910,9 @@ Status VFS::compute_read_batches(
     uint64_t offset = std::get<0>(region);
     uint64_t nbytes = std::get<2>(region);
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
-    // TODO: account for gaps
-    if (new_batch_size <= vfs_params_.min_batch_size_) {
+    uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
+    if (new_batch_size <= vfs_params_.min_batch_size_ ||
+        gap <= vfs_params_.min_batch_gap_) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);

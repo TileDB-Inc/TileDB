@@ -167,10 +167,12 @@ class Config {
     FileParams file_params_;
     uint64_t num_threads_;
     uint64_t min_parallel_size_;
+    uint64_t min_batch_gap_;
     uint64_t min_batch_size_;
 
     VFSParams() {
       num_threads_ = constants::vfs_num_threads;
+      min_batch_gap_ = constants::vfs_min_batch_gap;
       min_batch_size_ = constants::vfs_min_batch_size;
       min_parallel_size_ = constants::vfs_min_parallel_size;
     }
@@ -302,6 +304,9 @@ class Config {
    *    (except parallel S3 writes, which are controlled by
    *    `vfs.s3.multipart_part_size`.) <br>
    *    **Default**: 10MB
+   * - `vfs.min_batch_gap` <br>
+   *    The minimum number of bytes between two VFS read batches.<br>
+   *    **Default**: 500KB
    * - `vfs.min_batch_size` <br>
    *    The minimum number of bytes in a VFS read operation<br>
    *    **Default**: 20MB
@@ -493,6 +498,9 @@ class Config {
 
   /** Sets the min number of bytes of a VFS parallel operation. */
   Status set_vfs_min_parallel_size(const std::string& value);
+
+  /** Sets the min number of bytes between two VFS read batches. */
+  Status set_vfs_min_batch_gap(const std::string& value);
 
   /** Sets the min number of bytes of a VFS read operation. */
   Status set_vfs_min_batch_size(const std::string& value);

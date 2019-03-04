@@ -113,11 +113,12 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
         nelts * sizeof(uint32_t));
   }
 
-  SECTION("- Limit min parallel batch size") {
-    // Set a smaller max batch size
+  SECTION("- Reduce min batch size and min batch gap") {
+    // Set a smaller min batch size and min batch gap
     const unsigned batch_bytes = 13;
     Config::VFSParams vfs_params;
-    vfs_params.min_parallel_size_ = batch_bytes;
+    vfs_params.min_batch_size_ = 0;
+    vfs_params.min_batch_gap_ = 0;
     REQUIRE(vfs->init(vfs_params).ok());
 
     // Check large batches are not split up.
@@ -138,21 +139,18 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
-    for (unsigned i = 0; i < nelts; i++)
+    for (unsigned i = 0; i < nelts / 2; i++)
       batches.emplace_back(
-          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+          2 * i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
     REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
     REQUIRE(thread_pool.wait_all(tasks).ok());
     tasks.clear();
-    for (unsigned i = 0; i < nelts; i++)
-      REQUIRE(data_read[i] == i);
-    unsigned expected_num_reads =
-        nelts / (batch_bytes / sizeof(uint32_t)) +
-        unsigned(nelts % (batch_bytes / sizeof(uint32_t)) != 0);
-    REQUIRE(stats::all_stats.vfs_read_call_count == expected_num_reads);
-    REQUIRE(
+    for (unsigned i = 0; i < nelts / 2; i++)
+      REQUIRE(data_read[i] == 2 * i);
+    CHECK(stats::all_stats.vfs_read_call_count == nelts / 2);
+    CHECK(
         stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
+        (nelts / 2) * sizeof(uint32_t));
 
     // Check reading first and last element (results in 2 reads because the
     // whole region is too big).
@@ -170,6 +168,54 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
     REQUIRE(
         stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
+  }
+
+  SECTION("- Reduce min batch size but not min batch gap") {
+    // Set a smaller min batch size
+    const unsigned batch_bytes = 13;
+    Config::VFSParams vfs_params;
+    vfs_params.min_batch_size_ = 0;
+    REQUIRE(vfs->init(vfs_params).ok());
+
+    // There should be a single read due to the gap
+    std::memset(data_read, 0, nelts * sizeof(uint32_t));
+    batches.clear();
+    for (unsigned i = 0; i < nelts; i++)
+      batches.emplace_back(
+          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
+    for (unsigned i = 0; i < nelts; i++)
+      REQUIRE(data_read[i] == i);
+    CHECK(stats::all_stats.vfs_read_call_count == 1);
+    CHECK(
+        stats::all_stats.counter_vfs_read_total_bytes ==
+        nelts * sizeof(uint32_t));
+  }
+
+  SECTION("- Reduce min batch gap but not min batch size") {
+    // Set a smaller min batch size
+    const unsigned batch_bytes = 13;
+    Config::VFSParams vfs_params;
+    vfs_params.min_batch_gap_ = 0;
+    REQUIRE(vfs->init(vfs_params).ok());
+
+    // There should be a single read due to the batch size
+    std::memset(data_read, 0, nelts * sizeof(uint32_t));
+    batches.clear();
+    for (unsigned i = 0; i < nelts; i++)
+      batches.emplace_back(
+          i * sizeof(uint32_t), &data_read[i], sizeof(uint32_t));
+    REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
+    REQUIRE(thread_pool.wait_all(tasks).ok());
+    tasks.clear();
+    for (unsigned i = 0; i < nelts; i++)
+      REQUIRE(data_read[i] == i);
+    CHECK(stats::all_stats.vfs_read_call_count == 1);
+    CHECK(
+        stats::all_stats.counter_vfs_read_total_bytes ==
+        nelts * sizeof(uint32_t));
   }
 
   REQUIRE(vfs->is_file(testfile, &exists).ok());

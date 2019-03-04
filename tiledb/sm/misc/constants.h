@@ -237,6 +237,12 @@ extern const uint64_t vfs_num_threads;
 /** The default minimum number of bytes in a parallel VFS operation. */
 extern const uint64_t vfs_min_parallel_size;
 
+/**
+ * The default minimum number of bytes between the offsets of two VFS
+ * read operations.
+ */
+extern const uint64_t vfs_min_batch_gap;
+
 /** The default minimum number of bytes in a batched VFS read operation. */
 extern const uint64_t vfs_min_batch_size;
 

@@ -250,6 +250,11 @@ const uint64_t vfs_num_threads = std::thread::hardware_concurrency();
 /** The default minimum number of bytes in a parallel VFS operation. */
 const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
 
+/**
+ * The default minimum number of bytes between two VFS read batches.
+ */
+const uint64_t vfs_min_batch_gap = 500 * 1024;
+
 /** The default minimum number of bytes in a batched VFS read operation. */
 const uint64_t vfs_min_batch_size = 20 * 1024 * 1024;
 

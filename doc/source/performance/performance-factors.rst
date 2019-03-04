@@ -203,7 +203,7 @@ VFS parallelism -- ``vfs.min_parallel_size`` and ``vfs.file.max_parallel_ops``
     the maximum number of parallel operations for ``file:///`` URIs, independently
     of the thread pool size, allowing you to over- or under-subscribe VFS threads.
 
-VFS read batching -- ``vfs.min_batch_size``
+VFS read batching -- ``vfs.min_batch_size`` and ``vfs.min_batch_gap``
     During read queries, the VFS system will batch reads for distinct tiles that
     are physically close together (not necessarily adjacent) in the same file.
     The ``vfs.min_batch_size`` parameter sets the minimum size in bytes that
@@ -211,6 +211,11 @@ VFS read batching -- ``vfs.min_batch_size``
     group "close by" tiles into the same batch, if the new batch size is
     smaller than or equal to ``vfs.min_batch_size``. This can help minimize
     the I/O latency that can come with numerous very small VFS read operations.
+    Similarly, ``vfs.min_batch_gap`` defines the minimum number of bytes between
+    the end of one batch and the start of its subsequent one. If two batches
+    are fewer bytes apart than ``vfs.min_batch_gap``, they get stitched into
+    a single batch read operation. This can help better group and parallelize
+    over "adjacent" batch read operations.
 
 S3 parallelism -- ``vfs.s3.max_parallel_ops``
     This controls the maximum number of parallel operations for ``s3://`` URIs
