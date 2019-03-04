@@ -210,8 +210,6 @@ void check_save_to_file() {
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
-  ss << "vfs.max_batch_read_amplification 1\n";
-  ss << "vfs.max_batch_read_size 104857600\n";
   ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.num_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "vfs.s3.connect_max_tries 5\n";
@@ -388,8 +386,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_parallel_size"] = "10485760";
-  all_param_values["vfs.max_batch_read_amplification"] = "1";
-  all_param_values["vfs.max_batch_read_size"] = "104857600";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.scheme"] = "https";
@@ -418,8 +414,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["min_parallel_size"] = "10485760";
-  vfs_param_values["max_batch_read_amplification"] = "1";
-  vfs_param_values["max_batch_read_size"] = "104857600";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.scheme"] = "https";
