@@ -164,7 +164,7 @@ class LRUCache {
    */
   Status read(
       const std::string& key,
-      void* buffer,
+      Buffer* buffer,
       uint64_t offset,
       uint64_t nbytes,
       bool* success);

@@ -202,7 +202,7 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
 
 Status LRUCache::read(
     const std::string& key,
-    void* buffer,
+    Buffer* buffer,
     uint64_t offset,
     uint64_t nbytes,
     bool* success) {
@@ -223,7 +223,8 @@ Status LRUCache::read(
     return LOG_STATUS(
         Status::LRUCacheError("Failed to read item; Byte range out of bounds"));
   }
-  std::memcpy(buffer, (char*)item->object_ + offset, nbytes);
+
+  RETURN_NOT_OK(buffer->write((char*)item->object_ + offset, nbytes));
 
   // Move cache item node to the end of the list
   if (std::next(item) != item_ll_.end()) {

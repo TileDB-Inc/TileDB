@@ -1398,9 +1398,7 @@ Status StorageManager::read_from_cache(
 
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
-  RETURN_NOT_OK(buffer->realloc(nbytes));
-  RETURN_NOT_OK(
-      tile_cache_->read(key.str(), buffer->data(), 0, nbytes, in_cache));
+  RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
   buffer->set_size(nbytes);
   buffer->reset_offset();
 
