@@ -2873,10 +2873,20 @@ int32_t tiledb_subarray_alloc(
     return TILEDB_ERR;
   }
 
-  // Check if array is sparse
-  if (array->array_->array_schema()->dense()) {
+  // Layout checks
+  if (layout == TILEDB_GLOBAL_ORDER) {
     auto st = tiledb::sm::Status::Error(
-        "Failed to create TileDB subarray object; Input array cannot be dense");
+        "Failed to create TileDB subarray object; GLOBAL_ORDER is not a valid "
+        "subarray layout");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  bool dense = array->array_->array_schema()->dense();
+  if (dense && layout == TILEDB_UNORDERED) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to create TileDB subarray object; UNORDERED is not a valid "
+        "subarray layout for dense arrays");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;

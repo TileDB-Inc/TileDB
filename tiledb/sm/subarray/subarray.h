@@ -309,7 +309,7 @@ class Subarray {
   /**
    * Returns the multi-dimensional range with the input id, based on the
    * order imposed on the the subarray ranges by the layout. If ``layout_``
-   * is UNORDERED, the the range layout will be the same as the array's
+   * is UNORDERED, then the range layout will be the same as the array's
    * cell order, since this will lead to more beneficial tile access
    * patterns upon a read query.
    */
@@ -471,6 +471,19 @@ class Subarray {
 
   /** Returns a deep copy of this Subarray. */
   Subarray clone() const;
+
+  /**
+   * Compute the tile overlap between ``range`` and the non-empty domain
+   * of the input fragment. Applicable only to dense fragments.
+   *
+   * @tparam T The domain data type.
+   * @param range The range to compute the overlap with.
+   * @param fid The id of the fragment to focus on.
+   * @return The tile overlap.
+   */
+  template <class T>
+  TileOverlap get_tile_overlap(
+      const std::vector<const T*>& range, unsigned fid) const;
 
   /**
    * Swaps the contents (all field values) of this subarray with the

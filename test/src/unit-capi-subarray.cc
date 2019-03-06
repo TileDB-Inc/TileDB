@@ -62,6 +62,12 @@ struct SubarrayFx {
       const uint64_t* dim_domain = DIM_DOMAIN,
       tiledb_layout_t layout = TILEDB_ROW_MAJOR);
   void create_sparse_array_real(const std::string& array_name);
+  void write_dense_array(
+      const std::string& array_name,
+      const std::vector<uint64_t>& domain,
+      const std::vector<int>& a,
+      const std::vector<uint64_t>& b_off,
+      const std::vector<int>& b_val);
   void write_sparse_array(
       const std::string& array_name,
       const std::vector<uint64_t>& coords,
@@ -117,13 +123,20 @@ void SubarrayFx::create_dense_array(const std::string& array_name) {
   rc = tiledb_domain_add_dimension(ctx_, domain, d2);
   CHECK(rc == TILEDB_OK);
 
-  // Create attribute
+  // Create attributes
   tiledb_attribute_t* a;
   rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
   CHECK(rc == TILEDB_OK);
   rc = set_attribute_compression_filter(ctx_, a, TILEDB_FILTER_LZ4, -1);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a, 1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* b;
+  rc = tiledb_attribute_alloc(ctx_, "b", TILEDB_INT32, &b);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, b, TILEDB_FILTER_LZ4, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
   // Create array schmea
@@ -140,6 +153,8 @@ void SubarrayFx::create_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, b);
+  CHECK(rc == TILEDB_OK);
 
   // Check array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
@@ -151,6 +166,7 @@ void SubarrayFx::create_dense_array(const std::string& array_name) {
 
   // Clean up
   tiledb_attribute_free(&a);
+  tiledb_attribute_free(&b);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
@@ -432,6 +448,59 @@ void SubarrayFx::create_sparse_array_real(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
+void SubarrayFx::write_dense_array(
+    const std::string& array_name,
+    const std::vector<uint64_t>& domain,
+    const std::vector<int>& a,
+    const std::vector<uint64_t>& b_off,
+    const std::vector<int>& b_val) {
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  uint64_t a_size = a.size() * sizeof(int);
+  uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
+  uint64_t b_val_size = b_val.size() * sizeof(int);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, &domain[0]);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "b",
+      (uint64_t*)b_off.data(),
+      &b_off_size,
+      (void*)b_val.data(),
+      &b_val_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void SubarrayFx::write_sparse_array(
     const std::string& array_name,
     const std::vector<uint64_t>& coords,
@@ -490,9 +559,9 @@ void SubarrayFx::write_sparse_array(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, basic API usage and errors",
-    "[capi], [subarray], [subarray-basic]") {
-  std::string array_name = "subarray_basic";
+    "C API: Test subarray, sparse, basic API usage and errors",
+    "[capi], [subarray], [subarray-sparse], [subarray-sparse-basic]") {
+  std::string array_name = "subarray_sparse_basic";
   remove_array(array_name);
   create_sparse_array(array_name);
 
@@ -507,6 +576,10 @@ TEST_CASE_METHOD(
   // Open array
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
+
+  // Allocate subarray with an opened array in GLOBAL_ORDER layout
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_GLOBAL_ORDER, &subarray);
+  CHECK(rc == TILEDB_ERR);
 
   // Allocate subarray with an opened array
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
@@ -550,7 +623,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Add null range
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, NULL);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, nullptr);
   CHECK(rc == TILEDB_ERR);
 
   // Add ranges outside the subarray domain
@@ -622,9 +695,9 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, check default (empty) subarray",
-    "[capi], [subarray], [subarray-default]") {
-  std::string array_name = "subarray_default";
+    "C API: Test subarray, sparse, check default (empty) subarray",
+    "[capi], [subarray], [subarray-sparse], [subarray-sparse-default]") {
+  std::string array_name = "subarray_sparse_default";
   remove_array(array_name);
   create_sparse_array(array_name);
 
@@ -675,37 +748,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, check creating subarray for a dense array",
-    "[capi][subarray][subarray-errors][subarray-dense]") {
-  std::string array_name = "subarray_dense";
-  remove_array(array_name);
-  create_dense_array(array_name);
-
-  // Create subarray
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    SubarrayFx,
-    "C API: Test subarray, check NaN ranges",
-    "[capi][subarray][subarray-errors][subarray-nan]") {
-  std::string array_name = "subarray_nan";
+    "C API: Test subarray, sparse, check NaN ranges",
+    "[capi][subarray][subarray-sparse][subarray-sparse-errors]"
+    "[subarray-sparse-nan]") {
+  std::string array_name = "subarray_sparse_nan";
   remove_array(array_name);
   create_sparse_array_real(array_name);
 
@@ -740,10 +786,12 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, check errors in setting the subarray to query",
-    "[capi][subarray][subarray-errors][subarray-errors-query]") {
-  std::string array_name = "subarray_query_set";
-  std::string array_name_inv = "subarray_query_inv";
+    "C API: Test subarray, sparse, check errors in setting the subarray to "
+    "query",
+    "[capi][subarray][subarray-sparse][subarray-sparse-errors]"
+    "[subarray-sparse-errors-query]") {
+  std::string array_name = "subarray_sparse_query_set";
+  std::string array_name_inv = "subarray_sparse_query_inv";
   remove_array(array_name);
   remove_array(array_name_inv);
   create_sparse_array(array_name);
@@ -809,41 +857,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, check setters/getters of memory budget",
-    "[capi][subarray][subarray-budget]") {
-  std::string array_name = "subarray_budget";
-  remove_array(array_name);
-  create_sparse_array(array_name);
-
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    SubarrayFx,
-    "C API: Test subarray, sparse result estimation, empty tree",
-    "[capi][subarray][subarray-result-estimation]"
-    "[subarray-result-estimation-0]") {
-  std::string array_name = "subarray_result_estimation_0";
+    "C API: Test subarray, sparse, result estimation, empty tree",
+    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation]"
+    "[subarray-sparse-result-estimation-0]") {
+  std::string array_name = "subarray_sparse_result_estimation_0";
   remove_array(array_name);
   create_sparse_array_1d(array_name);
 
@@ -896,10 +913,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, 1D, sparse result estimation, height 2",
-    "[capi][subarray][subarray-result-estimation-1d]"
-    "[subarray-result-estimation-1d-2]") {
-  std::string array_name = "subarray_result_estimation_1d_2";
+    "C API: Test subarray, sparse, 1D, result estimation, height 2",
+    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-1d]"
+    "[subarray-sparse-result-estimation-1d-2]") {
+  std::string array_name = "subarray_sparse_result_estimation_1d_2";
   remove_array(array_name);
 
   uint64_t domain[] = {1, 100};
@@ -1179,10 +1196,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, 1D, sparse result estimation, height 3",
-    "[capi][subarray][subarray-result-estimation-1d]"
-    "[subarray-result-estimation-1d-3]") {
-  std::string array_name = "subarray_result_estimation_1d_3";
+    "C API: Test subarray, sparse, 1D, result estimation, height 3",
+    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-1d]"
+    "[subarray-sparse-result-estimation-1d-3]") {
+  std::string array_name = "subarray_sparse_result_estimation_1d_3";
   remove_array(array_name);
 
   uint64_t domain[] = {1, 100};
@@ -1587,10 +1604,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SubarrayFx,
-    "C API: Test subarray, 2D, sparse result estimation, height 2",
-    "[capi][subarray][subarray-result-estimation-2d]"
-    "[subarray-result-estimation-2d-2]") {
-  std::string array_name = "subarray_result_estimation_2d_2";
+    "C API: Test subarray, sparse, 2D, result estimation, height 2",
+    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-2d]"
+    "[subarray-sparse-result-estimation-2d-2]") {
+  std::string array_name = "subarray_sparse_result_estimation_2d_2";
   remove_array(array_name);
 
   uint64_t domain[] = {1, 10, 1, 10};
@@ -1903,6 +1920,823 @@ TEST_CASE_METHOD(
 
   // Clean-up
   int rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, basic API usage and errors",
+    "[capi], [subarray], [subarray-dense], [subarray-dense-basic]") {
+  std::string array_name = "subarray_dense_basic";
+  remove_array(array_name);
+  create_dense_array(array_name);
+
+  // Allocate subarray with an unopened array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Allocate subarray with an opened array in UNORDERED layout
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Allocate subarray with an opened array in GLOBAL_ORDER layout
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_GLOBAL_ORDER, &subarray);
+  CHECK(rc == TILEDB_ERR);
+
+  // Permitted allocation
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Get layout
+  tiledb_layout_t layout;
+  rc = tiledb_subarray_get_layout(ctx_, subarray, &layout);
+  CHECK(rc == TILEDB_OK);
+  CHECK(layout == TILEDB_ROW_MAJOR);
+
+  // Get type and ndim
+  tiledb_datatype_t type;
+  uint32_t dim_num;
+  rc = tiledb_subarray_get_type(ctx_, subarray, &type);
+  CHECK(rc == TILEDB_OK);
+  CHECK(type == TILEDB_UINT64);
+  rc = tiledb_subarray_get_ndim(ctx_, subarray, &dim_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(dim_num == 2);
+
+  // Get domain
+  const void* dom;
+  uint64_t domain[] = {1, 10, 1, 10};
+  rc = tiledb_subarray_get_domain(ctx_, subarray, &dom);
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::memcmp(dom, domain, sizeof(domain)) == 0);
+
+  // Check getting range num from an invalid dimension index
+  uint64_t range_num;
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 2, &range_num);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check getting range from an invalid dimension index
+  const void* range;
+  rc = tiledb_subarray_get_range(ctx_, subarray, 2, 0, &range);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check getting range from an invalid range index
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, &range);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add null range
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, nullptr);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add ranges outside the subarray domain
+  uint64_t inv_r1[] = {0, 0};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r1[0]);
+  CHECK(rc == TILEDB_ERR);
+  uint64_t inv_r2[] = {0, 20};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r2[0]);
+  CHECK(rc == TILEDB_ERR);
+  uint64_t inv_r3[] = {11, 20};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r3[0]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add range with invalid end points
+  uint64_t inv_r4[] = {5, 4};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r4[0]);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add valid ranges
+  uint64_t r1[] = {1, 3};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  CHECK(rc == TILEDB_OK);
+  uint64_t r2[] = {2, 8};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+  CHECK(rc == TILEDB_OK);
+  uint64_t r3[] = {2, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r3[0]);
+  CHECK(rc == TILEDB_OK);
+
+  // Check range num
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 2);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check getting range from an invalid range index
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 2, &range);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 1, &range);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check ranges
+  const uint64_t *r00, *r01, *r10;
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r00);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r00[0] == 1);
+  CHECK(r00[1] == 3);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, (const void**)&r01);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r01[0] == 2);
+  CHECK(r01[1] == 8);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r10);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r10[0] == 2);
+  CHECK(r10[1] == 2);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, check default (empty) subarray",
+    "[capi], [subarray], [subarray-dense], [subarray-dense-default]") {
+  std::string array_name = "subarray_dense_default";
+  remove_array(array_name);
+  create_dense_array(array_name);
+
+  // Allocate subarray with an unopened array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  // Open array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Allocate subarray with an opened array
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Check that there are no ranges initially
+  uint64_t range_num;
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check ranges
+  const uint64_t *r1, *r2;
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r1);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r1[0] == 1);
+  CHECK(r1[1] == 10);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r2);
+  CHECK(rc == TILEDB_OK);
+  CHECK(r2[0] == 1);
+  CHECK(r2[1] == 10);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, check errors in setting the subarray to "
+    "query",
+    "[capi][subarray][subarray-dense][subarray-dense-errors]"
+    "[subarray-dense-errors-query]") {
+  std::string array_name = "subarray_dense_query_set";
+  std::string array_name_inv = "subarray_dense_query_inv";
+  remove_array(array_name);
+  remove_array(array_name_inv);
+  create_dense_array(array_name);
+  create_dense_array(array_name_inv);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Open invalid array
+  tiledb_array_t* array_inv;
+  rc = tiledb_array_alloc(ctx_, array_name_inv.c_str(), &array_inv);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array_inv, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray for invalid array
+  tiledb_subarray_t* subarray_inv = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array_inv, TILEDB_ROW_MAJOR, &subarray_inv);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query for correct array
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // Set invalid subarray to correct array
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray_inv);
+  CHECK(rc == TILEDB_ERR);
+
+  // Create subarray for correct array
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Set correct subarray to correct array
+  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  rc = tiledb_array_close(ctx_, array_inv);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array_inv);
+  CHECK(array_inv == nullptr);
+  tiledb_subarray_free(&subarray_inv);
+  CHECK(subarray_inv == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
+
+  remove_array(array_name);
+  remove_array(array_name_inv);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, empty array",
+    "[capi][subarray][subarray-dense][subarray-dense-result-estimation]"
+    "[subarray-dense-result-estimation-0]") {
+  std::string array_name = "subarray_dense_result_estimation_0";
+  remove_array(array_name);
+  create_dense_array(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  CHECK(rc == TILEDB_OK);
+
+  uint64_t size, size_off, size_val;
+
+  // Simple checks
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "b", &size);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "a", &size_off, &size_val);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "foo", &size);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "foo", &size_off, &size_val);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get estimated result size
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 0);
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 0);
+  CHECK(size_val == 0);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, 1 range, full tile",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-1r-full-tile]") {
+  std::string array_name = "subarray_dense_est_1r_full_tile";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+  };
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {1, 2, 1, 2};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  CHECK(rc == TILEDB_OK);
+  uint64_t r[] = {1, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 4 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 4 * sizeof(uint64_t));
+  CHECK(size_val == 9 * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, 1 range, 2 full tiles",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-1r-2-full-tiles]") {
+  std::string array_name = "subarray_dense_est_1r_2_full_tiles";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {1, 2, 1, 4};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r1[] = {1, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  uint64_t r2[] = {1, 4};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 8 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 8 * sizeof(uint64_t));
+  CHECK(size_val == 16 * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, 1 range, partial tiles",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-1r-2-full-tiles]") {
+  std::string array_name = "subarray_dense_est_1r_2_full_tiles";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {1, 2, 1, 4};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r1[] = {2, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  uint64_t r2[] = {1, 3};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 3 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 3 * sizeof(uint64_t));
+  CHECK(size_val == 6 * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, multiple ranges",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-nr]") {
+  std::string array_name = "subarray_dense_est_nr";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {1, 2, 1, 4};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r11[] = {1, 1};
+  uint64_t r12[] = {2, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+  uint64_t r21[] = {1, 1};
+  uint64_t r22[] = {3, 4};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 6 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 6 * sizeof(uint64_t));
+  CHECK(size_val == 12 * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, non-coinciding domain",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-non-coinciding]") {
+  std::string array_name = "subarray_dense_est_non_coinciding";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {2, 3, 1, 4};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r11[] = {2, 2};
+  uint64_t r12[] = {3, 3};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+  uint64_t r21[] = {1, 1};
+  uint64_t r22[] = {3, 4};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 6 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 6 * sizeof(uint64_t));
+  CHECK(size_val == (0.25 * 5 + 0.5 * 8 + 0.25 * 7 + 0.5 * 4) * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, 1 range, 2 dense frags",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-1r-2-dense-frags]") {
+  std::string array_name = "subarray_dense_est_1r_2_dense_frags";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain1 = {1, 2, 1, 4};
+  std::vector<uint64_t> domain2 = {3, 4, 1, 4};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain1, a, b_off, b_val);
+  write_dense_array(array_name, domain2, a, b_off, b_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r1[] = {2, 3};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  uint64_t r2[] = {1, 3};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 6 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 6 * sizeof(uint64_t));
+  CHECK(size_val == 12 * sizeof(int));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_subarray_free(&subarray);
+  CHECK(subarray == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "C API: Test subarray, dense, result estimation, 1 range, mixed frags",
+    "[capi][subarray][subarray-dense][subarray-dense-est]"
+    "[subarray-dense-est][subarray-dense-est-1r-mixed-frags]") {
+  std::string array_name = "subarray_dense_est_1r_mixed_frags";
+  remove_array(array_name);
+
+  std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 14 * sizeof(int),
+                                 15 * sizeof(int)};
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
+  uint64_t size, size_off, size_val;
+  std::vector<uint64_t> domain = {1, 2, 1, 4};
+  std::vector<uint64_t> coords = {1, 4, 2, 2};
+  std::vector<int> a2 = {1, 2};
+  std::vector<uint64_t> b2_off = {0, sizeof(int)};
+  std::vector<int> b2_val = {1, 2};
+
+  // Create array
+  create_dense_array(array_name);
+  write_dense_array(array_name, domain, a, b_off, b_val);
+  write_sparse_array(array_name, coords, a2, b2_off, b2_val);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create subarray
+  tiledb_subarray_t* subarray = nullptr;
+
+  SECTION("- row-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  }
+
+  SECTION("- col-major") {
+    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
+  }
+
+  CHECK(rc == TILEDB_OK);
+  uint64_t r1[] = {1, 2};
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  uint64_t r2[] = {1, 3};
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 6 * sizeof(int));
+  rc = tiledb_subarray_get_est_result_size_var(
+      ctx_, subarray, "b", &size_off, &size_val);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size_off == 6 * sizeof(uint64_t));
+  CHECK(size_val == ceil((12 + 0.666667 * 2) * sizeof(int)));
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);

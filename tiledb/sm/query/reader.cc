@@ -1223,10 +1223,6 @@ Status Reader::compute_overlapping_tiles_2(
 
   tiles->clear();
   for (unsigned f = 0; f < fragment_num; ++f) {
-    // Applicable only to sparse fragments
-    if (fragment_metadata_[f]->dense())
-      continue;
-
     for (uint64_t r = 0; r < range_num; ++r) {
       // Handle range of tiles (full overlap)
       const auto& tile_ranges = overlap[f][r].tile_ranges_;
