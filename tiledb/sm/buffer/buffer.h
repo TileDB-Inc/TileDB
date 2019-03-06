@@ -245,6 +245,19 @@ class Buffer {
 
   /** Size of the buffer useful data. */
   uint64_t size_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * Ensure that the allocation is equal to or larger than the given number of
+   * bytes.
+   *
+   * @param nbytes Minimum number of bytes to be ensured in the allocation.
+   * @return Status
+   */
+  Status ensure_alloced_size(uint64_t nbytes);
 };
 
 }  // namespace sm
