@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 
 using namespace tiledb::sm;
@@ -68,7 +69,8 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   bool success;
   st = lru_cache_->insert("key", &v, CACHE_SIZE + 1);
   CHECK(st.ok());
-  st = lru_cache_->read("key", &v, 0, sizeof(int), &success);
+  Buffer v_buf;
+  st = lru_cache_->read("key", &v_buf, 0, sizeof(int), &success);
   CHECK(st.ok());
   CHECK(!success);
 
@@ -94,32 +96,34 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   CHECK(check_key_order("v1v2v3"));
 
   // Read non-existent item
-  st = lru_cache_->read("v", &v, 0, sizeof(int), &success);
+  v_buf.reset_offset();
+  st = lru_cache_->read("v", &v_buf, 0, sizeof(int), &success);
   CHECK(st.ok());
   CHECK(!success);
 
   // Read full v3
-  int b3[3];
-  st = lru_cache_->read("v3", b3, 0, 3 * sizeof(int), &success);
+  v_buf.reset_offset();
+  st = lru_cache_->read("v3", &v_buf, 0, 3 * sizeof(int), &success);
   CHECK(st.ok());
   CHECK(success);
-  CHECK(!memcmp(b3, v3, 3 * sizeof(int)));
+  CHECK(!memcmp(v_buf.data(), v3, 3 * sizeof(int)));
 
   // Check that the order in the linked list is v1-v2-v3
   CHECK(check_key_order("v1v2v3"));
 
   // Read partial v2
-  int b2;
-  st = lru_cache_->read("v2", &b2, sizeof(int), sizeof(int), &success);
+  v_buf.reset_offset();
+  st = lru_cache_->read("v2", &v_buf, sizeof(int), sizeof(int), &success);
   CHECK(st.ok());
   CHECK(success);
-  CHECK(b2 == v2[1]);
+  CHECK(v_buf.value<int>(0) == v2[1]);
 
   // Check that the order in the linked list is v1-v3-v2
   CHECK(check_key_order("v1v3v2"));
 
   // Read out of bounds
-  st = lru_cache_->read("v2", &b2, sizeof(int), 4 * sizeof(int), &success);
+  v_buf.reset_offset();
+  st = lru_cache_->read("v2", &v_buf, sizeof(int), 4 * sizeof(int), &success);
   CHECK(!st.ok());
 
   // Test eviction
