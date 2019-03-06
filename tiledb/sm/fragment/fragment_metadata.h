@@ -213,6 +213,14 @@ class FragmentMetadata {
       std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
+   * Returns the ids (positions) of the tiles overlapping `subarray`, along with
+   * with the coverage of the overlap.
+   */
+  template <class T>
+  std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
+      const T* subarray) const;
+
+  /**
    * Returns ture if the corresponding fragment is dense, and false if it
    * is sparse.
    */
@@ -614,14 +622,6 @@ class FragmentMetadata {
   /** Returns the ids (positions) of the tiles overlapping `subarray`. */
   template <class T>
   std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
-
-  /**
-   * Returns the ids (positions) of the tiles overlapping `subarray`, along with
-   * with the coverage of the overlap.
-   */
-  template <class T>
-  std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
-      const T* subarray) const;
 
   /** Creates an RTree (stored in `rtree_`) on top of `mbrs_`. */
   Status create_rtree();

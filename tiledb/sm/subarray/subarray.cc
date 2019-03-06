@@ -326,11 +326,6 @@ Layout Subarray::layout() const {
 }
 
 Status Subarray::get_est_result_size(const char* attr_name, uint64_t* size) {
-  if (array_->array_schema()->dense())
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get estimated result size; Feature not "
-                              "supported for dense arrays yet"));
-
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayError(
@@ -361,11 +356,6 @@ Status Subarray::get_est_result_size(const char* attr_name, uint64_t* size) {
 
 Status Subarray::get_est_result_size(
     const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
-  if (array_->array_schema()->dense())
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get estimated result size; Feature not "
-                              "supported for dense arrays yet"));
-
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayError(
@@ -396,11 +386,6 @@ Status Subarray::get_est_result_size(
 }
 
 Status Subarray::get_max_memory_size(const char* attr_name, uint64_t* size) {
-  if (array_->array_schema()->dense())
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get maximum memory size; Feature not "
-                              "supported for dense arrays yet"));
-
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(
@@ -431,11 +416,6 @@ Status Subarray::get_max_memory_size(const char* attr_name, uint64_t* size) {
 
 Status Subarray::get_max_memory_size(
     const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
-  if (array_->array_schema()->dense())
-    return LOG_STATUS(
-        Status::SubarrayError("Cannot get max memory size; Feature not "
-                              "supported for dense arrays yet"));
-
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(
@@ -674,8 +654,6 @@ Status Subarray::compute_est_result_size() {
 
   // Compute estimated result in parallel over fragments and ranges
   auto meta = array_->fragment_metadata();
-  auto fragment_num = meta.size();
-  tile_overlap_.resize(fragment_num);
   auto range_num = this->range_num();
 
   auto statuses = parallel_for(0, range_num, [&](uint64_t i) {
@@ -808,9 +786,13 @@ Status Subarray::compute_tile_overlap() {
   auto rtree = (const RTree*)nullptr;
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
-        RETURN_NOT_OK(meta[i]->rtree(*encryption_key, &rtree));
         auto range = this->range<T>(j);
-        tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
+        if (meta[i]->dense()) {  // Dense fragment
+          tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
+        } else {  // Sparse fragment
+          RETURN_NOT_OK(meta[i]->rtree(*encryption_key, &rtree));
+          tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
+        }
         return Status::Ok();
       });
   for (const auto& st : statuses) {
@@ -834,6 +816,75 @@ Subarray Subarray::clone() const {
   clone.tile_overlap_computed_ = tile_overlap_computed_;
 
   return clone;
+}
+
+template <class T>
+TileOverlap Subarray::get_tile_overlap(
+    const std::vector<const T*>& range, unsigned fid) const {
+  TileOverlap ret;
+
+  // Prepare a range copy
+  auto dim_num = array_->array_schema()->dim_num();
+  std::vector<T> range_cpy;
+  range_cpy.resize(2 * dim_num);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    range_cpy[2 * i] = range[i][0];
+    range_cpy[2 * i + 1] = range[i][1];
+  }
+
+  // Get tile overlap from fragment
+  auto meta = array_->fragment_metadata()[fid];
+  auto frag_overlap = meta->compute_overlapping_tile_ids_cov<T>(&range_cpy[0]);
+
+  // Prepare ret. Contiguous tile ids with full overlap
+  // will be grouped together
+  uint64_t start_tid = UINT64_MAX;  // Indicates no new range has started
+  uint64_t end_tid = UINT64_MAX;    // Indicates no new range has started
+  for (auto o : frag_overlap) {
+    // Partial overlap
+    if (o.second != 1.0) {
+      // Add previous range (if started) and reset
+      if (start_tid != UINT64_MAX) {
+        if (start_tid != end_tid)
+          ret.tile_ranges_.emplace_back(start_tid, end_tid);
+        else
+          ret.tiles_.emplace_back(start_tid, 1.0);
+        start_tid = UINT64_MAX;
+        end_tid = UINT64_MAX;
+      }
+      // Add this tile overlap
+      ret.tiles_.push_back(o);
+    } else {  // Full overlap
+      // New range starting
+      if (start_tid == UINT64_MAX) {
+        start_tid = o.first;
+        end_tid = o.first;
+      } else {
+        if (o.first == end_tid + 1) {  // Group into previous range
+          end_tid++;
+        } else {
+          // Add previous range
+          if (start_tid != end_tid)
+            ret.tile_ranges_.emplace_back(start_tid, end_tid);
+          else
+            ret.tiles_.emplace_back(start_tid, 1.0);
+          // New range starting
+          start_tid = o.first;
+          end_tid = o.first;
+        }
+      }
+    }
+  }
+
+  // Potentially add last tile range
+  if (start_tid != UINT64_MAX) {
+    if (start_tid != end_tid)
+      ret.tile_ranges_.emplace_back(start_tid, end_tid);
+    else
+      ret.tiles_.emplace_back(start_tid, 1.0);
+  }
+
+  return ret;
 }
 
 void Subarray::swap(Subarray& subarray) {
