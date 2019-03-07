@@ -108,7 +108,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
 
   for (auto attr : array_schema->attributes_) {
     if (attr->name() != constants::key_attr_name)
-      add_attribute(attr);
+      add_attribute(attr, false);
   }
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
