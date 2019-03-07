@@ -563,6 +563,29 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
     vfs.remove_dir(array_name);
 }
 
+TEST_CASE(
+    "C++ API: Open array with anonymous attribute",
+    "[cppapi], [cppapi-open-array-anon-attr]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cppapi_open_array_anon_attr";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, ""));
+  Array::create(array_name, schema);
+
+  Array array(ctx, array_name, TILEDB_READ);
+  auto reloaded_schema = array.schema();
+
+  REQUIRE(reloaded_schema.attribute_num() == 1);
+}
+
 TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
   Context ctx;
   VFS vfs(ctx);
