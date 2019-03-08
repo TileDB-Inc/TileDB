@@ -85,7 +85,7 @@ def generate_sidebar(conf, conf_api):
     write_api_url('Go', 'https://godoc.org/github.com/TileDB-Inc/TileDB-Go')
     endl()
 
-    toctree('Tutorials – Beginner')
+    toctree('Tutorials - Beginner')
     write('Dense Arrays', 'tutorials/dense-arrays')
     write('Sparse Arrays', 'tutorials/sparse-arrays')
     write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
@@ -98,7 +98,7 @@ def generate_sidebar(conf, conf_api):
     write('Working with HDFS', 'tutorials/working-with-hdfs')
     endl()
 
-    toctree('Tutorials – Intermediate')
+    toctree('Tutorials - Intermediate')
     write('Tiling Dense Arrays', 'tutorials/tiling-dense')
     write('Tiling Sparse Arrays', 'tutorials/tiling-sparse')
     write('Writing Sparse Arrays', 'tutorials/writing-sparse')
@@ -111,7 +111,7 @@ def generate_sidebar(conf, conf_api):
     write('Configuration Parameters', 'tutorials/config')
     endl()
 
-    toctree('Tutorials – Advanced')
+    toctree('Tutorials - Advanced')
     write('Fragments and Consolidation', 'tutorials/fragments-consolidation')
     write('Advanced Consolidation', 'tutorials/advanced-consolidation')
     write('Asynchronous Queries', 'tutorials/async')
