@@ -73,8 +73,8 @@ install:
 
     # Build the documentation (this does not deploy to RTD).
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        pushd $TRAVIS_BUILD_DIR/doc;
-        ./local-build.sh;
+        pushd $TRAVIS_BUILD_DIR/doc &&
+        ./local-build.sh &&
         popd;
       fi
 
@@ -84,25 +84,25 @@ script:
       fi
     - make check
     - |
-      pushd $TRAVIS_BUILD_DIR/examples/cmake_project
-      mkdir build && cd build
-      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make
-      ./ExampleExe
-      ./ExampleExe_static
+      pushd $TRAVIS_BUILD_DIR/examples/cmake_project &&
+      mkdir build && cd build &&
+      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make &&
+      ./ExampleExe &&
+      ./ExampleExe_static &&
       popd
     # Build and run the PNG ingestion example.
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        pushd $TRAVIS_BUILD_DIR/examples/png_ingestion;
-        mkdir build && cd build;
-        cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make;
-        ./tiledb_png $TRAVIS_BUILD_DIR/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+        pushd $TRAVIS_BUILD_DIR/examples/png_ingestion &&
+        mkdir build && cd build &&
+        cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make &&
+        ./tiledb_png $TRAVIS_BUILD_DIR/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png &&
         popd;
       fi
     # Build the benchmarks (but do not run them).
     - |
-      pushd $TRAVIS_BUILD_DIR/test/benchmarking && \
-      mkdir build && cd build && \
-      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist ../src && make && \
+      pushd $TRAVIS_BUILD_DIR/test/benchmarking &&
+      mkdir build && cd build &&
+      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist ../src && make &&
       popd
     - |
       testfile=$(mktemp)
