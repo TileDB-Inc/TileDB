@@ -126,35 +126,21 @@ Status TileIO::read_generic(
   auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  // Try the cache first.
-  bool cache_hit;
-  RETURN_NOT_OK(storage_manager_->read_from_cache(
-      uri_,
-      file_offset + tile_data_offset,
-      (*tile)->buffer(),
-      header.tile_size,
-      &cache_hit));
+  // Read the tile.
+  RETURN_NOT_OK_ELSE(
+      storage_manager_->read(
+          uri_,
+          file_offset + tile_data_offset,
+          (*tile)->buffer(),
+          header.persisted_size),
+      delete *tile);
 
-  // Read from disk and add to cache if it missed.
-  if (!cache_hit) {
-    RETURN_NOT_OK_ELSE(
-        storage_manager_->read(
-            uri_,
-            file_offset + tile_data_offset,
-            (*tile)->buffer(),
-            header.persisted_size),
-        delete *tile);
+  // Filter
+  RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
 
-    // Filter
-    RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
-
-    file_size_ = header.persisted_size;
-    STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
-    STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, (*tile)->size());
-
-    RETURN_NOT_OK(storage_manager_->write_to_cache(
-        uri_, file_offset + tile_data_offset, (*tile)->buffer()));
-  }
+  file_size_ = header.persisted_size;
+  STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
+  STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, (*tile)->size());
 
   return Status::Ok();
 
