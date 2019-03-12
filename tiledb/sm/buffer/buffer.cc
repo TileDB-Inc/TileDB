@@ -228,8 +228,7 @@ Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
     return LOG_STATUS(Status::BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
-  while (offset_ + nbytes > alloced_size_)
-    RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
+  RETURN_NOT_OK(ensure_alloced_size(offset_ + nbytes));
 
   buff->read((char*)data_ + offset_, nbytes);
   offset_ += nbytes;
@@ -244,8 +243,7 @@ Status Buffer::write(const void* buffer, uint64_t nbytes) {
     return LOG_STATUS(Status::BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
-  while (offset_ + nbytes > alloced_size_)
-    RETURN_NOT_OK(realloc(MAX(nbytes, 2 * alloced_size_)));
+  RETURN_NOT_OK(ensure_alloced_size(offset_ + nbytes));
 
   std::memcpy((char*)data_ + offset_, buffer, nbytes);
   offset_ += nbytes;
@@ -295,6 +293,17 @@ Buffer& Buffer::operator=(const Buffer& buff) {
   }
 
   return *this;
+}
+
+Status Buffer::ensure_alloced_size(uint64_t nbytes) {
+  if (alloced_size_ >= nbytes)
+    return Status::Ok();
+
+  auto new_alloc_size = alloced_size_ == 0 ? nbytes : alloced_size_;
+  while (new_alloc_size < nbytes)
+    new_alloc_size *= 2;
+
+  return realloc(new_alloc_size);
 }
 
 /* ****************************** */
