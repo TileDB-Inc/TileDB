@@ -193,3 +193,15 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(dom_get.dimensions()[0].tile_extent<int>() == 11);
   }
 }
+
+TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi]") {
+  tiledb::Context ctx;
+  // Test that this generates no compiler warnings.
+  std::unique_ptr<tiledb::ArraySchema> schema;
+  std::unique_ptr<tiledb::MapSchema> map_schema;
+
+  // Just instantiate them, don't care about runtime errors.
+  schema.reset(new tiledb::ArraySchema(ctx, TILEDB_SPARSE));
+  CHECK_THROWS_AS(
+      map_schema.reset(new tiledb::MapSchema(ctx, "")), tiledb::TileDBError);
+}
