@@ -130,6 +130,7 @@ class MapSchema : public Schema {
 
   MapSchema(const MapSchema&) = default;
   MapSchema(MapSchema&&) = default;
+  virtual ~MapSchema() = default;
   MapSchema& operator=(const MapSchema&) = default;
   MapSchema& operator=(MapSchema&&) = default;
 

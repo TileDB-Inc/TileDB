@@ -179,6 +179,7 @@ class ArraySchema : public Schema {
   ArraySchema() = default;
   ArraySchema(const ArraySchema&) = default;
   ArraySchema(ArraySchema&&) = default;
+  virtual ~ArraySchema() = default;
   ArraySchema& operator=(const ArraySchema&) = default;
   ArraySchema& operator=(ArraySchema&&) = default;
 
