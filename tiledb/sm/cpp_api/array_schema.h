@@ -165,6 +165,27 @@ class ArraySchema : public Schema {
   }
 
   /**
+   * Loads the schema of an existing encrypted array.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of array
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  ArraySchema(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key)
+      : ArraySchema(
+            ctx,
+            uri,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size()) {
+  }
+
+  /**
    * Loads the schema of an existing array with the input C array
    * schema object.
    *
