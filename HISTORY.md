@@ -33,6 +33,8 @@
 * Added `{Array,Map}::encryption_type()`.
 * Added `{ArraySchema,MapSchema}::has_attribute()`
 * Added `Domain::has_dimension()`
+* Added constructor overloads for `Array` and `Map` to take a `std::string` encryption key.
+* Added overloads for `{Array,Map}::{open,create,consolidate}` to take a `std::string` encryption key.
 
 ## Breaking changes
 

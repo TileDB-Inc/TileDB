@@ -68,8 +68,8 @@ namespace tiledb {
 class Array {
  public:
   /**
-   * Constructor. This opens the array for the given query type. The destructor
-   * calls the `close()` method.
+   * @brief Constructor. This opens the array for the given query type. The
+   * destructor calls the `close()` method.
    *
    * **Example:**
    *
@@ -91,8 +91,8 @@ class Array {
   }
 
   /**
-   * Constructor. This opens an encrypted array for the given query type. The
-   * destructor calls the `close()` method.
+   * @brief Constructor. This opens an encrypted array for the given query type.
+   * The destructor calls the `close()` method.
    *
    * **Example:**
    *
@@ -132,9 +132,37 @@ class Array {
     schema_ = ArraySchema(ctx, array_schema);
   }
 
+  // clang-format off
   /**
-   * Constructor. This opens the array for the given query type. The
-   * destructor calls the `close()` method.
+   * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t)
+   *
+   * See @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t) "Array::Array"
+   *
+   * @param ctx TileDB context.
+   * @param array_uri The array URI.
+   * @param query_type Query type to open the array for.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  // clang-format on
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size()) {
+  }
+
+  /**
+   * @brief Constructor. This opens the array for the given query type at the
+   * given timestamp. The destructor calls the `close()` method.
    *
    * This constructor takes as input a
    * timestamp, representing time in milliseconds ellapsed since
@@ -175,18 +203,12 @@ class Array {
             timestamp) {
   }
 
+  // clang-format off
   /**
-   * Constructor. This opens an encrypted array for the given query type. The
-   * destructor calls the `close()` method.
+   * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t)
    *
-   * This constructor takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
-   * timestamp provides a view of the array with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
-   * consistency at a potential distributed setting, where machines
-   * need to operate on the same view of the array.
+   * Same as @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t) "Array::Array"
+   * but for encrypted arrays.
    *
    * **Example:**
    *
@@ -208,6 +230,7 @@ class Array {
    * @param key_length Length in bytes of the encryption key.
    * @param timestamp The timestamp to open the array at.
    */
+  // clang-format on
   Array(
       const Context& ctx,
       const std::string& array_uri,
@@ -233,6 +256,30 @@ class Array {
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
+   *
+   * See @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::Array"
+   */
+  // clang-format on
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      uint64_t timestamp)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size(),
+            timestamp) {
   }
 
   Array(const Array&) = default;
@@ -280,7 +327,8 @@ class Array {
   }
 
   /**
-   * Opens the array. The array is opened using a query type as input.
+   * @brief Opens the array. The array is opened using a query type as input.
+   *
    * This is to indicate that queries created for this `Array`
    * object will inherit the query type. In other words, `Array`
    * objects are opened to receive only one type of queries.
@@ -308,7 +356,7 @@ class Array {
   }
 
   /**
-   * Opens the array, for encrypted arrays.
+   * @brief Opens the array, for encrypted arrays.
    *
    * **Example:**
    * @code{.cpp}
@@ -345,17 +393,26 @@ class Array {
     schema_ = ArraySchema(ctx, array_schema);
   }
 
+  // clang-format off
   /**
-   * Opens the array. The array is opened using a query type as input.
-   * This is to indicate that queries created for this `Array`
-   * object will inherit the query type. In other words, `Array`
-   * objects are opened to receive only one type of queries.
-   * They can always be closed and be re-opened with another query type.
-   * Also there may be many different `Array`
-   * objects created and opened with different query types. For
-   * instance, one may create and open an array object `array_read` for
-   * reads and another one `array_write` for writes, and interleave
-   * creation and submission of queries for both these array objects.
+   * @copybrief Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t)
+   *
+   * See @ref Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t) "Array::open"
+   */
+  // clang-format on
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) {
+    open(
+        query_type,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size());
+  }
+
+  /**
+   * @brief Opens the array for a query type, at the given timestamp.
    *
    * This function takes as input a
    * timestamp, representing time in milliseconds ellapsed since
@@ -385,16 +442,10 @@ class Array {
   }
 
   /**
-   * Opens the array, for encrypted arrays.
+   * @copybrief Array::open(tiledb_query_type_t,uint64_t)
    *
-   * This function takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
-   * timestamp provides a view of the array with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
-   * consistency at a potential distributed setting, where machines
-   * need to operate on the same view of the array.
+   * Same as @ref Array::open(tiledb_query_type_t,uint64_t) "Array::open"
+   * but for encrypted arrays.
    *
    * **Example:**
    * @code{.cpp}
@@ -433,6 +484,26 @@ class Array {
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
+   *
+   * See @ref Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::open"
+   */
+  // clang-format on
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      uint64_t timestamp) {
+    open(
+        query_type,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size(),
+        timestamp);
   }
 
   /**
@@ -508,7 +579,7 @@ class Array {
   }
 
   /**
-   * Consolidates the fragments of an array into a single fragment.
+   * @brief Consolidates the fragments of an array into a single fragment.
    *
    * You must first finalize all queries to the array before consolidation can
    * begin (as consolidation temporarily acquires an exclusive lock on the
@@ -531,7 +602,8 @@ class Array {
   }
 
   /**
-   * Consolidates the fragments of an encrypted array into a single fragment.
+   * @brief Consolidates the fragments of an encrypted array into a single
+   * fragment.
    *
    * You must first finalize all queries to the array before consolidation can
    * begin (as consolidation temporarily acquires an exclusive lock on the
@@ -568,6 +640,34 @@ class Array {
         config.ptr().get()));
   }
 
+  // clang-format off
+  /**
+   * @copybrief Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
+   *
+   * See @ref Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&) "Array::consolidate"
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param config Configuration parameters for the consolidation.
+   */
+  // clang-format on
+  static void consolidate(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      const Config& config = Config()) {
+    return consolidate(
+        ctx,
+        uri,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size(),
+        config);
+  }
+
   /**
    * Creates a new TileDB array given an input schema.
    *
@@ -584,7 +684,7 @@ class Array {
   }
 
   /**
-   * Creates a new encrypted TileDB array given an input schema.
+   * @brief Creates a new encrypted TileDB array given an input schema.
    *
    * **Example:**
    * @code{.cpp}
@@ -610,6 +710,31 @@ class Array {
     ctx.handle_error(tiledb_array_schema_check(ctx, schema));
     ctx.handle_error(tiledb_array_create_with_key(
         ctx, uri.c_str(), schema, encryption_type, encryption_key, key_length));
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::create(const std::string&,const ArraySchema&,tiledb_encryption_type_t,const void*,uint32_t)
+   *
+   * See @ref Array::create(const std::string&,const ArraySchema&,tiledb_encryption_type_t,const void*,uint32_t) "Array::create"
+   *
+   * @param uri URI where array will be created.
+   * @param schema The array schema.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  // clang-format on
+  static void create(
+      const std::string& uri,
+      const ArraySchema& schema,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) {
+    return create(
+        uri,
+        schema,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size());
   }
 
   /**

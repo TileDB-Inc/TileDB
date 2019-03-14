@@ -674,7 +674,7 @@ class Map {
   }
 
   /**
-   * Load an existing encrypted map for reading/writing.
+   * @brief Load an existing encrypted map for reading/writing.
    *
    * @param ctx TileDB context
    * @param uri URI of map to open.
@@ -704,7 +704,30 @@ class Map {
   }
 
   /**
-   * Load an existing map for reading/writing.
+   * @brief Load an existing encrypted map for reading/writing.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  Map(const Context& ctx,
+      const std::string& uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key)
+      : Map(ctx,
+            uri,
+            query_type,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size()) {
+  }
+
+  /**
+   * @brief Load an existing map for reading/writing with a timestamp.
    *
    * This constructor takes as input a
    * timestamp, representing time in milliseconds ellapsed since
@@ -728,17 +751,11 @@ class Map {
       : Map(ctx, uri, query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp) {
   }
 
+  // clang-format off
   /**
-   * Load an existing encrypted map for reading/writing.
+   * @brief Load an existing encrypted map for reading/writing with a timestamp.
    *
-   * This constructor takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
-   * timestamp provides a view of the map with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
-   * consistency at a potential distributed setting, where machines
-   * need to operate on the same view of the map.
+   * See @ref Map::Map(const Context&,const std::string&,tiledb_query_type_t,uint64_t) "Map::Map"
    *
    * @param ctx TileDB context
    * @param uri URI of map to open.
@@ -749,6 +766,7 @@ class Map {
    * @param key_length Length in bytes of the encryption key.
    * @param timestamp The timestamp to open the map at.
    */
+  // clang-format on
   Map(const Context& ctx,
       const std::string& uri,
       tiledb_query_type_t query_type,
@@ -773,6 +791,36 @@ class Map {
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Map::Map(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
+   *
+   * See @ref Map::Map(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Map::Map"
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to open.
+   * @param query_type The mode in which the map is opened
+   *     (for reads or writes).
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param timestamp The timestamp to open the map at.
+   */
+  // clang-format on
+  Map(const Context& ctx,
+      const std::string& uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      uint64_t timestamp)
+      : Map(ctx,
+            uri,
+            query_type,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size(),
+            timestamp) {
   }
 
   Map(const Map&) = default;
@@ -974,8 +1022,26 @@ class Map {
   }
 
   /**
-   * Opens the Map, preparing it for reading/writing. This is called
-   * automatically by the constructor.
+   * Opens the Map, for encrypted Maps.
+   *
+   * @param query_type The type of queries the Map will be receiving.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) {
+    return open(
+        query_type,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size());
+  }
+
+  /**
+   * @brief Opens the Map, preparing it for reading/writing with a given
+   * timestamp.
    *
    * This function takes as input a
    * timestamp, representing time in milliseconds ellapsed since
@@ -994,16 +1060,9 @@ class Map {
   }
 
   /**
-   * Opens the Map, for encrypted Maps.
+   * @brief Opens the Map, for encrypted Maps, at the given timestamp.
    *
-   * This function takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). Opening the map at a
-   * timestamp provides a view of the map with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
-   * consistency at a potential distributed setting, where machines
-   * need to operate on the same view of the map.
+   * See @ref Map::open(tiledb_query_type_t,uint64_t) "Map::open"
    *
    * @param query_type The type of queries the Map will be receiving.
    * @param encryption_type The encryption type to use.
@@ -1030,6 +1089,31 @@ class Map {
     tiledb_kv_schema_t* kv_schema;
     ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Map::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
+   *
+   * See @ref Map::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Map::open"
+   *
+   * @param query_type The type of queries the Map will be receiving.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param timestamp The timestamp to open the map at.
+   */
+  // clang-format on
+  void open(
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      uint64_t timestamp) {
+    return open(
+        query_type,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size(),
+        timestamp);
   }
 
   /** Checks if the Map is open. */
@@ -1139,7 +1223,9 @@ class Map {
   }
 
   /**
-   * Create a new encrypted empty map at the given URI with the given schema.
+   * @brief Create a new encrypted empty map at the given URI with the given
+   * schema.
+   *
    * **Example:**
    *
    * @code{.cpp}
@@ -1172,6 +1258,31 @@ class Map {
         encryption_type,
         encryption_key,
         key_length));
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Map::create(const std::string&,const MapSchema&,tiledb_encryption_type_t,const void*,uint32_t)
+   *
+   * See @ref Map::create(const std::string&,const MapSchema&,tiledb_encryption_type_t,const void*,uint32_t) "Map::create"
+   *
+   * @param uri URI where the map will be created
+   * @param schema Schema for the map
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  // clang-format on
+  static void create(
+      const std::string& uri,
+      const MapSchema& schema,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) {
+    return create(
+        uri,
+        schema,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size());
   }
 
   /**
@@ -1212,7 +1323,7 @@ class Map {
   }
 
   /**
-   * Create an encrypted TileDB map from a `std::map`.
+   * @brief Create an encrypted TileDB map from a `std::map`.
    *
    * **Example:**
    * @code{.cpp}
@@ -1262,6 +1373,40 @@ class Map {
   }
 
   /**
+   * @brief Create an encrypted TileDB map from a `std::map`.
+   *
+   * @tparam MapT `std::map` type
+   * @tparam Key Key type for `std::map`
+   * @tparam Value Value type for `std::map`
+   * @param ctx TileDB context
+   * @param uri URI of map to create
+   * @param map `std::map` instance to read from
+   * @param attr_name Name of attribute to create
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  template <
+      typename MapT,
+      typename Key = typename MapT::key_type,
+      typename Value = typename MapT::mapped_type>
+  static void create(
+      const Context& ctx,
+      const std::string& uri,
+      const MapT& map,
+      const std::string& attr_name,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) {
+    create(
+        ctx,
+        uri,
+        map,
+        attr_name,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size());
+  }
+
+  /**
    * Consolidates the fragments of a Map into a single fragment.
    *
    * @param ctx TileDB context
@@ -1276,7 +1421,8 @@ class Map {
   }
 
   /**
-   * Consolidates the fragments of an encrypted Map into a single fragment.
+   * @brief Consolidates the fragments of an encrypted Map into a single
+   * fragment.
    *
    * @param ctx TileDB context
    * @param uri URI of map
@@ -1299,6 +1445,31 @@ class Map {
         encryption_key,
         key_length,
         config.ptr().get()));
+  }
+
+  /**
+   * @brief Consolidates the fragments of an encrypted Map into a single
+   * fragment.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      const Config& config = Config()) {
+    consolidate(
+        ctx,
+        uri,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size(),
+        config);
   }
 
   /**

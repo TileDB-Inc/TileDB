@@ -559,6 +559,103 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
   for (unsigned i = 0; i < 4; i++)
     REQUIRE(a_values[i] == a_read[i]);
 
+  // Open with equivalent string key
+  const std::string str_key = "0123456789abcdeF0123456789abcdeF";
+  Array array_3(ctx, array_name, TILEDB_READ, TILEDB_AES_256_GCM, str_key);
+  a_read = std::vector<int>(4, 0);
+  Query query_r2(ctx, array_3);
+  query_r2.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_read);
+  query_r2.submit();
+  array_3.close();
+
+  for (unsigned i = 0; i < 4; i++)
+    REQUIRE(a_values[i] == a_read[i]);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Encrypted array, std::string key", "[cppapi], [encryption]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  const std::string key = "0123456789abcdeF0123456789abcdeF";
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 3}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+  REQUIRE_THROWS_AS(
+      Array::encryption_type(ctx, array_name), tiledb::TileDBError);
+  Array::create(array_name, schema, TILEDB_AES_256_GCM, key);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
+
+  REQUIRE_THROWS_AS(
+      [&]() { ArraySchema schema_read(ctx, array_name); }(),
+      tiledb::TileDBError);
+  REQUIRE_NOTHROW([&]() {
+    ArraySchema schema_read(ctx, array_name, TILEDB_AES_256_GCM, key);
+  }());
+
+  REQUIRE_THROWS_AS(
+      [&]() { Array array(ctx, array_name, TILEDB_WRITE); }(),
+      tiledb::TileDBError);
+
+  Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
+  array.close();
+  REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
+  array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
+
+  REQUIRE_THROWS_AS(
+      [&]() { Array array2(ctx, array_name, TILEDB_WRITE); }(),
+      tiledb::TileDBError);
+
+  Query query(ctx, array);
+  query.set_layout(TILEDB_ROW_MAJOR);
+  std::vector<int> a_values = {1, 2, 3, 4};
+  query.set_buffer("a", a_values);
+  query.submit();
+  array.close();
+
+  // Write a second time, as consolidation needs at least two fragments
+  // to trigger an error with encryption (consolidation is a noop for
+  // single-fragment arrays and, thus, always succeeds)
+  Array array_2(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key);
+  Query query_2(ctx, array_2);
+  query_2.set_layout(TILEDB_ROW_MAJOR);
+  query_2.set_buffer("a", a_values);
+  query_2.submit();
+  array_2.close();
+
+  REQUIRE_THROWS_AS(Array::consolidate(ctx, array_name), tiledb::TileDBError);
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, TILEDB_AES_256_GCM, key));
+
+  array.open(TILEDB_READ, TILEDB_AES_256_GCM, key);
+  array.reopen();
+
+  std::vector<int> subarray = {0, 3};
+  std::vector<int> a_read(4);
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", a_read);
+  query_r.submit();
+  array.close();
+
+  for (unsigned i = 0; i < 4; i++)
+    REQUIRE(a_values[i] == a_read[i]);
+
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }

@@ -120,6 +120,27 @@ class MapSchema : public Schema {
   }
 
   /**
+   * Loads the schema of an existing encrypted Map with the given URI.
+   *
+   * @param ctx TileDB context
+   * @param uri URI of map to load
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   */
+  MapSchema(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key)
+      : MapSchema(
+            ctx,
+            uri,
+            encryption_type,
+            encryption_key.data(),
+            (uint32_t)encryption_key.size()) {
+  }
+
+  /**
    * Loads the schema of an existing kv with the input C array
    * schema object.
    */
